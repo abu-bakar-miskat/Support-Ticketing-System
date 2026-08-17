@@ -1,0 +1,234 @@
+import { prisma } from "@/lib/db"
+import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth"
+import { Role } from "@/generated/prisma/enums"
+import { managerCanManageUser, teamInScope } from "@/lib/dept-scope"
+
+const VALID_ROLES = Object.values(Role)
+// Managers can only assign these roles — not admin or manager
+const MANAGER_ALLOWED_ROLES: Role[] = ["lead", "staff"]
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { profile, error } = await requireAuth()
+  if (error) return error
+
+  const isAdmin = profile!.role === "admin"
+  const isManager = profile!.role === "manager"
+  if (!isAdmin && !isManager) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const { id } = await params
+  const body = await request.json()
+
+  if (isManager && !(await managerCanManageUser(profile!, id))) {
+    return NextResponse.json({ error: "User is outside your department scope" }, { status: 403 })
+  }
+
+  const data: {
+    role?: Role
+    teamId?: string | null
+    location?: string | null
+    timezone?: string | null
+    isActive?: boolean
+  } = {}
+
+  if ("location" in body) {
+    data.location = body.location ? String(body.location).trim() : null
+  }
+
+  if ("timezone" in body) {
+    data.timezone = body.timezone ? String(body.timezone).trim() : null
+  }
+
+  if ("isActive" in body) {
+    data.isActive = Boolean(body.isActive)
+  }
+
+  if ("role" in body) {
+    if (!VALID_ROLES.includes(body.role)) {
+      return NextResponse.json(
+        { error: `role must be one of: ${VALID_ROLES.join(", ")}` },
+        { status: 400 },
+      )
+    }
+    // Managers can only assign lead or staff — not admin or manager
+    if (isManager && !MANAGER_ALLOWED_ROLES.includes(body.role)) {
+      return NextResponse.json(
+        { error: "Managers can only assign lead or staff roles" },
+        { status: 403 },
+      )
+    }
+    data.role = body.role
+  }
+
+  if ("teamId" in body) {
+    const nextTeamId = body.teamId ?? null
+    if (isManager && nextTeamId && !(await teamInScope(profile!, nextTeamId))) {
+      return NextResponse.json({ error: "Team is outside your department scope" }, { status: 403 })
+    }
+    data.teamId = nextTeamId
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 })
+  }
+
+  const updatedProfile = await prisma.profile.update({ where: { id }, data })
+
+  // Keep TeamMembership.role in sync with Profile.role — non-fatal if it fails
+  if (data.role) {
+    await prisma.teamMembership.updateMany({
+      where: { userId: id },
+      data: { role: data.role },
+    }).catch(() => {})
+  }
+
+  // Keep TeamMembership in sync with Profile.teamId. The department members list is
+  // built from active TeamMembership rows, so a teamId change must move the user's
+  // membership too — otherwise the change appears to save but never shows up.
+  if ("teamId" in data) {
+    const nextTeamId = data.teamId ?? null
+    if (nextTeamId) {
+      const team = await prisma.team.findUnique({
+        where: { id: nextTeamId },
+        select: { departmentId: true },
+      })
+      if (team) {
+        await prisma.$transaction([
+          // Deactivate the user's other active memberships in the same department
+          // so this is a move (single-team dropdown), not an additive assignment.
+          (prisma.teamMembership as any).updateMany({
+            where: {
+              userId: id,
+              isActive: true,
+              teamId: { not: nextTeamId },
+              team: { departmentId: team.departmentId },
+            },
+            data: { isActive: false },
+          }),
+          (prisma.teamMembership as any).upsert({
+            where: { userId_teamId: { userId: id, teamId: nextTeamId } },
+            create: { userId: id, teamId: nextTeamId, role: updatedProfile.role, isActive: true },
+            update: { isActive: true, role: updatedProfile.role },
+          }),
+        ])
+      }
+    }
+  }
+
+  return NextResponse.json(updatedProfile)
+}
+
+// DELETE — admin hard-removes a user's footprints and soft-deletes their profile.
+// Tickets/comments authored by the user are preserved but point to the deactivated profile.
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { profile, error } = await requireAuth()
+  if (error) return error
+
+  if (profile!.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const { id } = await params
+
+  if (id === profile!.id) {
+    return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 })
+  }
+
+  const target = await prisma.profile.findUnique({
+    where: { id },
+    select: { id: true, deletedAt: true },
+  })
+  if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 })
+  if (target.deletedAt) return NextResponse.json({ error: "User already deleted" }, { status: 409 })
+
+  // Pre-fetch pending join requests + their notification recipients BEFORE the
+  // transaction wipes them — needed to broadcast resolutions afterwards.
+  const pendingJoinRequests = await prisma.joinRequest.findMany({
+    where: { userId: id, status: "pending" },
+    select: {
+      id: true,
+      notifications: {
+        select: { recipientId: true },
+        distinct: ["recipientId"],
+      },
+    },
+  })
+
+  // Cascade-delete all user footprints, then soft-delete the profile.
+  // Profile is soft-deleted (not hard-deleted) so that non-nullable FK references
+  // on Ticket.creatorId, Comment.authorId, and Attachment.uploaderProfileId remain intact.
+  await prisma.$transaction([
+    // ── Membership & access ──────────────────────────────────────────────────
+    (prisma.teamMembership as any).deleteMany({ where: { userId: id } }),
+    prisma.departmentManager.deleteMany({ where: { userId: id } }),
+    prisma.departmentAccess.deleteMany({ where: { userId: id } }),
+    (prisma.projectMember as any).deleteMany({ where: { userId: id } }),
+    (prisma.ticketAssignee as any).deleteMany({ where: { userId: id } }),
+    // ── Ticket assignment ────────────────────────────────────────────────────
+    // Null-out primary assignee on open tickets so they can be re-assigned
+    prisma.ticket.updateMany({
+      where: { assigneeId: id },
+      data: { assigneeId: null },
+    }),
+    // ── Personal workspace data ──────────────────────────────────────────────
+    prisma.timeEntry.deleteMany({ where: { profileId: id } }),
+    prisma.apiKey.deleteMany({ where: { createdById: id } }),
+    // ── Notifications & activity ─────────────────────────────────────────────
+    prisma.activityLog.deleteMany({ where: { actorId: id } }),
+    prisma.notification.deleteMany({
+      where: { OR: [{ recipientId: id }, { actorId: id }] },
+    }),
+    prisma.mention.deleteMany({ where: { mentionedUserId: id } }),
+    prisma.pushSubscription.deleteMany({ where: { userId: id } }),
+    // ── Join requests ────────────────────────────────────────────────────────
+    prisma.joinRequest.deleteMany({ where: { userId: id } }),
+    // ── Soft-delete the profile ──────────────────────────────────────────────
+    prisma.profile.update({
+      where: { id },
+      data: { deletedAt: new Date(), teamId: null },
+    }),
+  ])
+
+  // Broadcast join_request_resolved for every pending request that was deleted,
+  // so other admins' JoinRequestsSection removes the row in real time.
+  if (pendingJoinRequests.length > 0) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (supabaseUrl && serviceKey) {
+      const messages = pendingJoinRequests.flatMap((jr) =>
+        jr.notifications
+          .map((n) => n.recipientId)
+          .filter((rid) => rid !== profile!.id)
+          .map((recipientId) => ({
+            topic: `user-notifs:${recipientId}`,
+            event: "join_request_resolved",
+            payload: { requestId: jr.id, status: "rejected" },
+            private: false,
+          })),
+      )
+      if (messages.length > 0) {
+        await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ messages }),
+        }).catch(() => undefined)
+      }
+    }
+  }
+
+  // Keep the Supabase auth user so soft-deleted profiles can sign in again.
+
+  return NextResponse.json({ ok: true })
+}

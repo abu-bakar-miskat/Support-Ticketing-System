@@ -1,0 +1,1382 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  manager
+  lead
+  staff
+}
+
+// Scope levels for the canonical RoleAssignment authorization model (SRS D-06).
+enum RoleScopeType {
+  PLATFORM
+  TENANT
+  DEPARTMENT
+  SUB_DEPARTMENT
+}
+
+enum TicketType {
+  Bug
+  Feature
+  Task
+  Chore
+}
+
+enum ProjectKind {
+  standard
+  support
+}
+
+enum TicketPriority {
+  Low
+  Medium
+  High
+  Critical
+  Urgent
+}
+
+enum ActivityAction {
+  // ── Original actions ──────────────────────────────────────────────────────
+  STATUS_CHANGED
+  ASSIGNED
+  COMMENT_ADDED
+  ATTACHMENT_ADDED
+  MENTION
+  DATE_CHANGED
+  FORWARDED
+  TICKET_DELETED
+  TICKET_CREATED
+  // ── Event-sourcing actions (fine-grained field mutations) ─────────────────
+  TITLE_CHANGED
+  PRIORITY_CHANGED
+  DESCRIPTION_CHANGED
+  STORY_POINTS_CHANGED
+  ESTIMATED_TIME_CHANGED
+  SPRINT_CHANGED
+  PROJECT_CHANGED
+  LABELS_CHANGED
+  MODULE_CHANGED
+  CO_ASSIGNEE_ADDED
+  CO_ASSIGNEE_REMOVED
+  QA_ASSIGNEE_ADDED
+  QA_ASSIGNEE_REMOVED
+  SUBTICKET_ADDED
+  // ── Present in the database enum; kept in sync so the client can read them ──
+  PR_MERGED
+  FIELD_CHANGED
+  TIMER_RESET
+  QA_TIME_LOGGED
+}
+
+enum TimeEntryKind {
+  DEVELOPMENT
+  QA
+}
+
+enum SprintStatus {
+  planned
+  active
+  completed
+}
+
+enum ModuleStatus {
+  planned
+  in_progress
+  completed
+}
+
+enum NotificationType {
+  mention
+  assignment
+  qa_assignment
+  comment
+  status_change
+  review_request
+  join_request
+  access_granted
+  ticket_deleted
+  customer_reply
+  customer_reply_review
+  intake_manager_alert
+}
+
+enum JoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ApiKeyScope {
+  read
+  read_write
+  admin
+}
+
+enum IntakeFieldType {
+  text
+  richtext
+  email
+  number
+  select
+  file
+}
+
+enum GitHubPRState {
+  draft
+  open
+  merged
+  closed
+}
+
+// ─── Tenancy ──────────────────────────────────────────────────────────────────
+
+// Top-level isolation boundary. Every Department (and, denormalized for query
+// guards, every Team/Project/Ticket) belongs to exactly one Tenant. Users reach
+// a tenant through TenantMembership; super-admins (Profile.isSuperAdmin) transcend
+// tenant scope. See lib/tenant-scope.
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  // Category label (institution | agency | company | …). Extensible string, not
+  // an enum, so new types need no migration. See lib/tenant-types.
+  type      String   @default("company")
+  status    String   @default("active")
+  // Per-tenant branding (display name, logo, accent color) rendered in the app
+  // shell. See lib/tenant-branding.
+  branding           Json?
+  // Per-tenant settings, absorbed from the former global Workspace singleton.
+  // See lib/tenant-config + lib/email-config.
+  emailConfig        Json?
+  timeTrackingConfig Json?
+  approvalsConfig    Json?
+  createdAt DateTime @default(now())
+
+  departments Department[]
+  memberships TenantMembership[]
+  invites     TenantInvite[]
+  teams       Team[]
+  projects    Project[]
+  tickets     Ticket[]
+}
+
+// Grants a user access to a tenant with a role. A user may hold many (multi-tenant
+// access). `role == admin` marks a tenant-admin who controls that tenant's
+// departments. Mirrors DepartmentAccess one level up.
+model TenantMembership {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String   @db.Uuid
+  role      Role     @default(staff)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   Profile @relation("TenantMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+// Pending invite of an email into a tenant with a role. Accepting creates a
+// TenantMembership. Mirrors DepartmentInvite.
+model TenantInvite {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  tenantId   String
+  role       Role      @default(staff)
+  // Departments to assign on accept (manager → DepartmentManager, lead/staff →
+  // DepartmentMember). Empty/null for tenant-wide admins. See lib/tenant-membership.
+  departmentIds Json?
+  message    String?
+  invitedBy  String    @db.Uuid
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inviter Profile @relation("TenantInvitesSent", fields: [invitedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// ─── Org Structure ────────────────────────────────────────────────────────────
+
+model Department {
+  id                String               @id @default(cuid())
+  tenantId          String
+  tenant            Tenant               @relation(fields: [tenantId], references: [id])
+  name              String
+  // Template (development | support | hub | …). Drives per-type settings/UI.
+  // `isHub` is kept in sync (isHub == (type == "hub")). See lib/department-types.
+  type              String               @default("development")
+  isHub             Boolean              @default(false)
+  emailConfig       Json?
+  // Per-department overrides (label/placeholder) for the Classic Form's default
+  // static fields (name, email, title, issue type). See lib/intake-default-fields.
+  intakeDefaultFields Json?
+  teams             Team[]
+  projects          Project[]
+  joinRequests      JoinRequest[]
+  managers          DepartmentManager[]
+  accessGrants      DepartmentAccess[]
+  directMembers     DepartmentMember[]
+  invites           DepartmentInvite[]
+  intakeFormConfigs IntakeFormConfig[]
+  apiKeys           ApiKey[]
+  labels            Label[]
+  ticketTemplates   TicketTemplate[]
+  departmentHolidays DepartmentHoliday[]
+  departmentEvents  DepartmentEvent[]
+  recruitmentBoards RecruitmentBoard[]
+
+  @@index([tenantId])
+}
+
+// Department calendar event (birthday, anniversary, meeting, etc.). Display-only;
+// spans startDate..endDate inclusive.
+model DepartmentEvent {
+  id           String   @id @default(cuid())
+  departmentId String
+  title        String
+  type         String   @default("other")
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  createdBy    String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId, startDate])
+}
+
+// Department-wide holiday (display-only calendar entry; not consulted by
+// auto-assignment). Spans startDate..endDate inclusive.
+model DepartmentHoliday {
+  id           String   @id @default(cuid())
+  departmentId String
+  name         String
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  createdBy    String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId, startDate])
+}
+
+model DepartmentManager {
+  id           String     @id @default(cuid())
+  departmentId String
+  userId       String     @db.Uuid
+  assignedAt   DateTime   @default(now())
+  assignedBy   String     @db.Uuid
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       Profile    @relation("ManagedDepartments", fields: [userId], references: [id], onDelete: Cascade)
+  grantor    Profile    @relation("DeptMgrGrantors", fields: [assignedBy], references: [id])
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model DepartmentAccess {
+  id           String    @id @default(cuid())
+  departmentId String
+  userId       String    @db.Uuid
+  grantedBy    String    @db.Uuid
+  grantedAt    DateTime  @default(now())
+  expiresAt    DateTime?
+  reason       String?
+  fullAccess   Boolean   @default(false)
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       Profile    @relation("DeptAccessGrants", fields: [userId], references: [id], onDelete: Cascade)
+  grantor    Profile    @relation("DeptAccessGrantors", fields: [grantedBy], references: [id])
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model DepartmentMember {
+  id           String   @id @default(cuid())
+  departmentId String
+  userId       String   @db.Uuid
+  addedAt      DateTime @default(now())
+  addedBy      String   @db.Uuid
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       Profile    @relation("DeptDirectMembers", fields: [userId], references: [id], onDelete: Cascade)
+  adder      Profile    @relation("DeptDirectMemberAdders", fields: [addedBy], references: [id])
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+}
+
+model DepartmentInvite {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  email        String
+  departmentId String
+  teamId       String
+  role         Role      @default(staff)
+  message      String?
+  invitedBy    String    @db.Uuid
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  inviter    Profile    @relation("DepartmentInvitesSent", fields: [invitedBy], references: [id])
+
+  @@index([departmentId])
+  @@index([email])
+  @@index([teamId])
+  @@index([expiresAt])
+}
+
+model Team {
+  id                String             @id @default(cuid())
+  name              String
+  prefix            String             @unique
+  color             String?            @default("#0a76b9")
+  tenantId          String
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  departmentId      String
+  rotaPointer       Int                @default(0)
+  workloadThreshold Int                @default(5)
+  department        Department         @relation(fields: [departmentId], references: [id])
+  profiles          Profile[]
+  tickets           Ticket[]
+  counter           TeamTicketCounter?
+  githubStatusMap   TeamGitHubStatusMap?
+  routingRules      RoutingRule[]
+  statuses          TeamStatus[]
+  memberships       TeamMembership[]
+  joinRequests      JoinRequest[]
+  projects          Project[]
+  intakeFormConfigs IntakeFormConfig[]
+  intakeIssues      IntakeIssue[]
+  invites           DepartmentInvite[]
+
+  @@index([tenantId])
+}
+
+model TeamStatus {
+  id            String   @id @default(cuid())
+  teamId        String
+  team          Team     @relation(fields: [teamId], references: [id])
+  label         String
+  color         String   @default("#94a3b8")
+  order         Int
+  isComplete    Boolean  @default(false)
+  allowedLabels String[] @default([])
+
+  @@unique([teamId, label])
+  @@index([teamId, order])
+}
+
+model Profile {
+  id        String   @id @db.Uuid
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  role      Role     @default(staff)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
+
+  timezone          String?
+  location          String?
+  githubUsername    String?
+  isActive          Boolean   @default(true)
+  isSuperAdmin      Boolean   @default(false)
+  notificationPrefs Json?
+  preferences       Json?   @default("{}")
+  deletedAt         DateTime?
+
+  assignedTickets       Ticket[]         @relation("TicketAssignee")
+  createdTickets        Ticket[]         @relation("TicketCreator")
+  comments              Comment[]
+  attachments           Attachment[]
+  activityLogs          ActivityLog[]
+  mentions              Mention[]        @relation("MentionedUser")
+  timeEntries           TimeEntry[]
+  notificationsReceived Notification[]   @relation("NotificationRecipient")
+  notificationsSent     Notification[]   @relation("NotificationActor")
+  apiKeys               ApiKey[]
+  memberships           TeamMembership[] @relation("TeamMemberships")
+  joinRequests          JoinRequest[]    @relation("UserJoinRequests")
+  processedRequests     JoinRequest[]    @relation("ProcessedJoinRequests")
+  projectMemberships    ProjectMember[]
+  ticketAssignments     TicketAssignee[]
+  qaTicketAssignments   TicketQaAssignee[]
+  ticketEstimates       TicketEstimate[]
+  intakeIssueAssignments IntakeIssueAssignee[] @relation("IntakeIssueAssignments")
+  managedDepartments    DepartmentManager[] @relation("ManagedDepartments")
+  deptMgrGranted        DepartmentManager[] @relation("DeptMgrGrantors")
+  departmentAccesses    DepartmentAccess[]  @relation("DeptAccessGrants")
+  deptAccessGranted     DepartmentAccess[]  @relation("DeptAccessGrantors")
+  directDeptMemberships DepartmentMember[]  @relation("DeptDirectMembers")
+  deptMemberAdded       DepartmentMember[]  @relation("DeptDirectMemberAdders")
+  departmentInvitesSent DepartmentInvite[]  @relation("DepartmentInvitesSent")
+  createdSprints        Sprint[]
+  createdModules        ProjectModule[]     @relation("ModuleCreator")
+  pushSubscriptions     PushSubscription[]
+  createdTemplates      TicketTemplate[]
+  authoredMessages      TicketMessage[]     @relation("MessageAuthor")
+  acceptedMessages      TicketMessage[]     @relation("MessageAcceptor")
+  schedule              MemberSchedule?
+  holidays              MemberHoliday[]
+  tenantMemberships     TenantMembership[]  @relation("TenantMemberships")
+  tenantInvitesSent     TenantInvite[]      @relation("TenantInvitesSent")
+  roleAssignments       RoleAssignment[]    @relation("UserRoleAssignments")
+
+  @@index([name])
+}
+
+// Canonical authorization record (SRS D-06): a user's role at a given scope.
+// scopeId is null for PLATFORM (super-admin), else the tenant/department/
+// sub-department id. Populated by backfill + lib/role-assignment; becomes the
+// sole authz source of truth at the slice-03 cutover.
+model RoleAssignment {
+  id        String        @id @default(cuid())
+  userId    String        @db.Uuid
+  role      Role
+  scopeType RoleScopeType
+  scopeId   String?
+  createdAt DateTime      @default(now())
+
+  user Profile @relation("UserRoleAssignments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role, scopeType, scopeId])
+  @@index([userId])
+  @@index([scopeType, scopeId])
+}
+
+// ─── Team Membership & Join Requests ─────────────────────────────────────────
+
+model TeamMembership {
+  id          String   @id @default(cuid())
+  userId      String   @db.Uuid
+  teamId      String
+  role        Role     @default(staff)
+  nickname    String?
+  isActive    Boolean  @default(true)
+  doNotAssign Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+
+  user Profile @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  team Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+model MemberSchedule {
+  id            String   @id @default(cuid())
+  userId        String   @db.Uuid @unique
+  workingDays   Int[]    @default([1, 2, 3, 4, 5])
+  workStartTime String   @default("09:00")
+  workEndTime   String   @default("17:00")
+  updatedAt     DateTime @updatedAt
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MemberHoliday {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  date      DateTime @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model JoinRequest {
+  id           String            @id @default(cuid())
+  userId       String            @db.Uuid
+  teamId       String?
+  departmentId String?
+  status       JoinRequestStatus @default(pending)
+  message      String?
+  requestedAt  DateTime          @default(now())
+  processedAt  DateTime?
+  processedBy  String?           @db.Uuid
+
+  user          Profile      @relation("UserJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+  team          Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  department    Department?  @relation(fields: [departmentId], references: [id])
+  processor     Profile?     @relation("ProcessedJoinRequests", fields: [processedBy], references: [id])
+  notifications Notification[]
+
+  @@index([teamId, status])
+  @@index([departmentId, status])
+  @@index([userId])
+}
+
+// ─── Projects & Tickets ───────────────────────────────────────────────────────
+
+model Project {
+  id            String          @id @default(cuid())
+  tenantId      String
+  tenant        Tenant          @relation(fields: [tenantId], references: [id])
+  name          String
+  slug          String          @unique
+  kind          ProjectKind     @default(standard)
+  color         String?
+  avatarUrl     String?
+  description   String?
+  teamId        String?
+  departmentId  String?
+  projectStatus String?         @default("pipeline")
+  pipelineStartedAt    DateTime?
+  developmentStartedAt DateTime?
+  liveAt               DateTime?
+  lifecycleStages      Json?
+  githubRepo    String?
+  projectUrl    String?
+  analyticalLinks Json?         @default("[]")
+  guidelines    String?
+  assets        Json?           @default("[]")
+  enabledBoardTeamIds Json?
+  moduleSystemEnabled Boolean   @default(false)
+  createdAt     DateTime        @default(now())
+  team          Team?           @relation(fields: [teamId], references: [id])
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  tickets       Ticket[]
+  members       ProjectMember[]
+  sprints       Sprint[]
+  modules       ProjectModule[]
+
+  @@index([teamId])
+  @@index([departmentId])
+  @@index([tenantId])
+}
+
+model TicketAssignee {
+  ticketId String
+  userId   String @db.Uuid
+
+  ticket Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
+}
+
+model TicketQaAssignee {
+  ticketId String
+  userId   String @db.Uuid
+
+  ticket Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
+}
+
+model TicketEstimate {
+  ticketId         String
+  userId           String    @db.Uuid
+  estimatedMinutes Int?
+  targetDate       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  ticket Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String   @db.Uuid
+  addedAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+}
+
+model TeamTicketCounter {
+  teamId     String @id
+  lastNumber Int    @default(0)
+  team       Team   @relation(fields: [teamId], references: [id])
+}
+
+model TeamGitHubStatusMap {
+  teamId             String   @id
+  onPrOpened         String?
+  onPrReadyForReview String?
+  onPrMerged         String?
+  updatedAt          DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id])
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  ticketNumber Int
+  title        String
+  description  String?
+  type         TicketType
+  priority     TicketPriority
+  status       String         @default("Not Started")
+  labels       String[]       @default([])
+  assigneeId   String?        @db.Uuid
+  creatorId    String         @db.Uuid
+  projectId    String?
+  teamId       String
+  parentId     String?
+  sprintId     String?
+  moduleId     String?
+  storyPoints   Int?
+  estimatedTime Int?      // estimated time in minutes
+  assetLinks    Json      @default("[]")
+  templateId    String?
+  templateData  Json?
+  startDate     DateTime?
+  dueDate      DateTime?
+  cycleTime    Int?
+  closedAt     DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+  /** Personal draft — visible only to creator (and admins in dept-scoped lists). */
+  isDraft      Boolean        @default(false)
+
+  assignee      Profile?       @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  creator       Profile        @relation("TicketCreator", fields: [creatorId], references: [id])
+  project       Project?       @relation(fields: [projectId], references: [id])
+  team          Team           @relation(fields: [teamId], references: [id])
+  parent        Ticket?        @relation("SubTickets", fields: [parentId], references: [id])
+  subTickets    Ticket[]       @relation("SubTickets")
+  sprint        Sprint?        @relation(fields: [sprintId], references: [id])
+  module        ProjectModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  template      TicketTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  attachments   Attachment[]
+  activityLogs  ActivityLog[]
+  timeEntries   TimeEntry[]
+  notifications Notification[]
+  assignees     TicketAssignee[]
+  qaAssignees   TicketQaAssignee[]
+  estimates     TicketEstimate[]
+  intake        Intake?
+  messages      TicketMessage[]
+  pullRequests  TicketPullRequest[]
+  commits       GitHubCommit[]
+
+  @@unique([teamId, ticketNumber])
+  @@index([projectId])
+  @@index([teamId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([parentId])
+  @@index([sprintId])
+  @@index([moduleId])
+  @@index([templateId])
+  @@index([teamId, deletedAt, dueDate])
+  @@index([teamId, deletedAt, status])
+  @@index([creatorId, isDraft])
+  @@index([isDraft, deletedAt])
+  @@index([tenantId])
+}
+
+// ─── Collaboration ────────────────────────────────────────────────────────────
+
+model Comment {
+  id          String       @id @default(cuid())
+  body        String
+  ticketId    String
+  authorId    String       @db.Uuid
+  parentId    String?
+  // When set, this comment is an internal note attached to a specific customer
+  // email message rather than a general ticket comment. See lib/message notes.
+  messageId   String?
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  ticket      Ticket        @relation(fields: [ticketId], references: [id])
+  author      Profile       @relation(fields: [authorId], references: [id])
+  parent      Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[]     @relation("CommentReplies")
+  message     TicketMessage? @relation(fields: [messageId], references: [id])
+  attachments Attachment[]
+  mentions    Mention[]
+
+  @@index([ticketId])
+  @@index([parentId])
+  @@index([messageId])
+}
+
+model Attachment {
+  id                String   @id @default(cuid())
+  ticketId          String?
+  commentId         String?
+  messageId         String?
+  uploaderProfileId String   @db.Uuid
+  storageUrl        String
+  fileName          String
+  fileSize          Int
+  status            String   @default("attached")
+  createdAt         DateTime @default(now())
+
+  ticket   Ticket?        @relation(fields: [ticketId], references: [id])
+  comment  Comment?       @relation(fields: [commentId], references: [id])
+  message  TicketMessage? @relation(fields: [messageId], references: [id])
+  uploader Profile        @relation(fields: [uploaderProfileId], references: [id])
+
+  @@index([ticketId])
+  @@index([messageId])
+}
+
+// ─── Customer conversation (intake tickets) ───────────────────────────────────
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+enum MessageStatus {
+  trusted
+  quarantined
+  system
+}
+
+/// A message in the email conversation between staff and an intake submitter.
+/// Deliberately separate from Comment: physical separation prevents internal
+/// notes ever leaking to the customer.
+model TicketMessage {
+  id              String           @id @default(cuid())
+  ticketId        String
+  direction       MessageDirection
+  status          MessageStatus    @default(trusted)
+  // null authorProfileId = message is from the customer (inbound)
+  authorProfileId String?          @db.Uuid
+  fromName        String
+  fromEmail       String
+  bodyHtml        String
+  rawPayload      Json?
+  providerMessageId String?
+  inReplyTo         String?
+  acceptedById    String?          @db.Uuid
+  acceptedAt      DateTime?
+  throttled       Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  ticket      Ticket       @relation(fields: [ticketId], references: [id])
+  author      Profile?     @relation("MessageAuthor", fields: [authorProfileId], references: [id])
+  acceptedBy  Profile?     @relation("MessageAcceptor", fields: [acceptedById], references: [id])
+  attachments Attachment[]
+  notes       Comment[]
+
+  @@index([ticketId])
+  @@index([providerMessageId])
+}
+
+model Mention {
+  id              String    @id @default(cuid())
+  commentId       String
+  mentionedUserId String    @db.Uuid
+  notifiedAt      DateTime?
+  readAt          DateTime?
+
+  comment       Comment @relation(fields: [commentId], references: [id])
+  mentionedUser Profile @relation("MentionedUser", fields: [mentionedUserId], references: [id])
+
+  @@unique([commentId, mentionedUserId])
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  ticketId  String
+  actorId   String         @db.Uuid
+  action    ActivityAction
+  metadata  Json
+  createdAt DateTime       @default(now())
+
+  ticket Ticket  @relation(fields: [ticketId], references: [id])
+  actor  Profile @relation(fields: [actorId], references: [id])
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@index([ticketId, createdAt(sort: Desc)])
+}
+
+// ─── Planning & Time Tracking ─────────────────────────────────────────────────
+
+model Sprint {
+  id           String       @id @default(cuid())
+  name         String
+  goal         String?
+  status       SprintStatus @default(planned)
+  startDate    DateTime
+  endDate      DateTime
+  pointsTarget Int?
+  createdAt    DateTime     @default(now())
+
+  createdById  String?      @db.Uuid
+  projectId    String?
+
+  tickets   Ticket[]
+  createdBy Profile? @relation(fields: [createdById], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@index([status])
+  @@index([createdById])
+  @@index([projectId])
+}
+
+model ProjectModule {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  status      ModuleStatus @default(planned)
+  order       Int          @default(0)
+  projectId   String
+  createdById String?      @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy Profile? @relation("ModuleCreator", fields: [createdById], references: [id])
+  tickets   Ticket[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model TimeEntry {
+  id           String        @id @default(cuid())
+  profileId    String        @db.Uuid
+  ticketId     String?
+  startedAt    DateTime
+  endedAt      DateTime? // null = running timer
+  durationSecs Int?
+  billable     Boolean       @default(true)
+  note         String?
+  kind         TimeEntryKind @default(DEVELOPMENT)
+  createdAt    DateTime      @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id])
+  ticket  Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@index([profileId, startedAt])
+  @@index([ticketId])
+  @@index([ticketId, kind])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id             String           @id @default(cuid())
+  recipientId    String           @db.Uuid
+  actorId        String?          @db.Uuid
+  type           NotificationType
+  ticketId       String?
+  commentId      String?
+  joinRequestId  String?
+  message        String?
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  recipient   Profile      @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  actor       Profile?     @relation("NotificationActor", fields: [actorId], references: [id])
+  ticket      Ticket?      @relation(fields: [ticketId], references: [id])
+  joinRequest JoinRequest? @relation(fields: [joinRequestId], references: [id])
+
+  @@index([recipientId, readAt])
+  @@index([recipientId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Workspace Configuration ──────────────────────────────────────────────────
+
+model Workspace {
+  id                 String   @id @default(cuid())
+  name               String
+  emailConfig        Json?
+  timeTrackingConfig Json?
+  approvalsConfig    Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model SlaRule {
+  id                String         @id @default(cuid())
+  priority          TicketPriority @unique
+  firstResponseMins Int
+  resolutionMins    Int
+  enabled           Boolean        @default(true)
+}
+
+model RoutingRule {
+  id             String          @id @default(cuid())
+  position       Int             @default(0)
+  conditionType  String // subject_contains | from_domain | body_contains
+  conditionValue String
+  teamId         String?
+  priority       TicketPriority?
+  enabled        Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+
+  team Team? @relation(fields: [teamId], references: [id])
+
+  @@index([position])
+}
+
+model Institution {
+  id           String   @id @default(cuid())
+  name         String
+  domain       String   @unique
+  contactEmail String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model ApiKey {
+  id           String      @id @default(cuid())
+  name         String
+  keySuffix    String
+  hashedKey    String      @unique
+  scope        ApiKeyScope @default(read)
+  departmentId String?
+  createdById  String      @db.Uuid
+  lastUsedAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime    @default(now())
+
+  createdBy  Profile      @relation(fields: [createdById], references: [id])
+  department Department?  @relation(fields: [departmentId], references: [id])
+
+  @@index([departmentId])
+}
+
+// ─── Intake Forms ─────────────────────────────────────────────────────────────
+
+enum IntakeFormDisplayMode {
+  FORM
+  CHAT
+}
+
+model IntakeFormConfig {
+  id           String            @id @default(uuid())
+  name         String
+  departmentId String
+  intakeTeamId String
+  isActive             Boolean   @default(true)
+  allowCustomerReplies Boolean   @default(true)
+  autoAssign           Boolean   @default(true)
+  displayMode  IntakeFormDisplayMode @default(FORM)
+  // Per-form overrides (label/placeholder) for the default static fields
+  // (name, email, title, issue type). See lib/intake-default-fields.
+  intakeDefaultFields  Json?
+  // Per-form public-page branding (logo, header/background/accent colors,
+  // intro + confirmation text). Falls back to workspace branding. See
+  // lib/form-branding.
+  branding             Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  department Department        @relation(fields: [departmentId], references: [id])
+  intakeTeam Team              @relation(fields: [intakeTeamId], references: [id])
+  fields     IntakeFormField[]
+  intakes    Intake[]
+  issues     IntakeIssue[]
+  pendingIntakes PendingIntake[]
+}
+
+model IntakeFormField {
+  id           String          @id @default(cuid())
+  formConfigId String
+  label        String
+  type         IntakeFieldType
+  isRequired   Boolean         @default(false)
+  order        Int
+  options      String[]        @default([])
+  childOptions Json            @default("{}")
+  placeholder  String?
+  helperText   String?
+  validation   Json?
+
+  formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
+
+  @@index([formConfigId, order])
+}
+
+model IntakeIssue {
+  id             String         @id @default(cuid())
+  name           String
+  priority       TicketPriority
+  estimatedHours Int?
+  formConfigId   String
+  intakeTeamId   String?
+  // Round-robin cursor across `assignees` (department-scoped per-issue
+  // assignment). Advances only when an issue has 2+ assignees.
+  assigneeRotaPointer Int      @default(0)
+  createdAt      DateTime       @default(now())
+
+  formConfig IntakeFormConfig      @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
+  intakeTeam Team?                 @relation(fields: [intakeTeamId], references: [id])
+  assignees  IntakeIssueAssignee[]
+
+  @@index([formConfigId])
+}
+
+// Users assigned to a specific intake issue. One assignee → tickets from this
+// issue auto-assign to that user; multiple → round-robin (see assigneeRotaPointer).
+model IntakeIssueAssignee {
+  issueId String
+  userId  String @db.Uuid
+
+  issue IntakeIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  user  Profile     @relation("IntakeIssueAssignments", fields: [userId], references: [id])
+
+  @@id([issueId, userId])
+  @@index([userId])
+}
+
+model Intake {
+  id             String         @id @default(cuid())
+  formConfigId   String
+  submitterName  String
+  submitterEmail String
+  priority       TicketPriority
+  estimatedHours Int?
+  responses      Json
+  ticketId       String?        @unique
+  replyToken     String?        @unique
+  resolutionNote String?
+  createdAt      DateTime       @default(now())
+
+  formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id])
+  ticket     Ticket?          @relation(fields: [ticketId], references: [id])
+}
+
+// A support submission awaiting email verification (double opt-in). The ticket
+// is only created once the requester clicks the verification link, so an
+// unreachable email never produces a ticket. `payload` holds the full validated
+// submit body so verification can replay conversion without re-collecting input.
+model PendingIntake {
+  id           String    @id @default(cuid())
+  formConfigId String
+  token        String    @unique
+  email        String
+  payload      Json
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  ticketId     String?
+  createdAt    DateTime  @default(now())
+
+  formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id])
+
+  @@index([formConfigId])
+}
+
+// An external email that has completed double opt-in verification at least once.
+// Once present here, future support submissions from that address skip the
+// verification link and create the ticket immediately (like trusted org emails),
+// so a requester only ever confirms their address once.
+model VerifiedEmail {
+  email      String   @id
+  verifiedAt DateTime @default(now())
+}
+
+model Label {
+  id           String      @id @default(cuid())
+  name         String
+  color        String      @default("#94a3b8")
+  departmentId String?
+  createdAt    DateTime    @default(now())
+
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([name, departmentId])
+  @@index([departmentId])
+}
+
+model TicketTemplate {
+  id            String      @id @default(cuid())
+  name          String
+  departmentId  String?
+  customFields  Json        @default("[]")
+  createdById   String      @db.Uuid
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  department    Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  createdBy     Profile     @relation(fields: [createdById], references: [id])
+  tickets       Ticket[]
+
+  @@index([departmentId])
+}
+
+// ─── GitHub Integration ───────────────────────────────────────────────────────
+
+model GitHubPullRequest {
+  id          String        @id @default(cuid())
+  /// owner/name — required so PR numbers stay unique across multi-repo webhooks
+  repository  String
+  number      Int
+  title       String
+  url         String
+  branch      String
+  baseBranch  String? // target branch the PR merges into (e.g. "main")
+  authorLogin String
+  state       GitHubPRState
+  mergedAt    DateTime?
+  ghCreatedAt DateTime? // PR creation time reported by GitHub (distinct from row insert time)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tickets TicketPullRequest[]
+
+  @@unique([repository, number])
+}
+
+model TicketPullRequest {
+  ticketId String
+  prId     String
+
+  ticket Ticket            @relation(fields: [ticketId], references: [id])
+  pr     GitHubPullRequest @relation(fields: [prId], references: [id])
+
+  @@id([ticketId, prId])
+  @@index([prId])
+}
+
+model GitHubCommit {
+  id          String   @id @default(cuid())
+  sha         String
+  message     String
+  url         String
+  authorLogin String
+  ticketId    String
+  createdAt   DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@unique([sha, ticketId]) // one commit message may reference several tickets
+  @@index([ticketId])
+}
+
+// ── Recruitment boards (Notion-style candidate pipelines, manager+) ──────────
+
+enum RecruitmentFieldType {
+  text
+  select
+  multi_select
+  number
+  date
+  url
+  email
+  phone
+  rating
+  checkbox
+  file
+}
+
+model RecruitmentBoard {
+  id          String    @id @default(cuid())
+  name        String
+  createdById String    @db.Uuid
+  /** Department that owns this board. Recruitment is scoped per-department. */
+  departmentId String?
+  createdAt   DateTime  @default(now())
+  /** Set when the board is moved to History (archived); null = active. */
+  archivedAt  DateTime?
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  fields     RecruitmentField[]
+  candidates RecruitmentCandidate[]
+
+  @@index([departmentId])
+}
+
+model RecruitmentField {
+  id      String               @id @default(cuid())
+  boardId String
+  name    String
+  type    RecruitmentFieldType @default(text)
+  /** For select/multi_select: [{ id, label, color }] */
+  options   Json?
+  order     Int
+  hidden    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  board RecruitmentBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+}
+
+model RecruitmentCandidate {
+  id      String @id @default(cuid())
+  boardId String
+  /** Cell values keyed by RecruitmentField id */
+  values      Json     @default("{}")
+  order       Int      @default(0)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  board             RecruitmentBoard   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  screeningSessions ScreeningSession[]
+
+  @@index([boardId])
+}
+
+enum ScreeningStatus {
+  sent
+  started
+  submitted
+  scored
+  expired
+}
+
+/// One async video screening invite. The token is the candidate's only
+/// credential — these rows are never exposed through the Supabase anon key,
+/// only via server routes.
+model ScreeningSession {
+  id            String          @id @default(cuid())
+  candidateId   String?
+  candidateName String
+  email         String
+  roleTitle     String
+  token         String          @unique
+  status        ScreeningStatus @default(sent)
+  createdById   String?         @db.Uuid
+  createdAt     DateTime        @default(now())
+  expiresAt     DateTime
+  startedAt     DateTime?
+  submittedAt   DateTime?
+  /** Mean of answer scores once scoring completes, 0–5. */
+  overallScore  Float?
+  /** Reviewer sign-off: set when a manager marks the screening complete. */
+  completedAt   DateTime?
+  completedById String?         @db.Uuid
+  /** Resend email id of the invite, kept for delivery-status lookups. */
+  resendEmailId String?
+  /** Last Resend event (sent/delivered/opened/bounced/…), refreshed lazily. */
+  emailStatus   String?
+  /** When emailStatus was last refreshed from Resend — throttles lookups. */
+  emailStatusAt DateTime?
+  /** Last scoring attempt (initial or retry) — backs the stuck-scoring self-heal. */
+  scoringAttemptAt DateTime?
+  /** Reviewer integrity flag: a human's video-review verdict (e.g. reading answers off-screen). */
+  reviewerFlaggedAt   DateTime?
+  reviewerFlaggedById String?   @db.Uuid
+  reviewerFlagNote    String?
+
+  candidate RecruitmentCandidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  answers   ScreeningAnswer[]
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+/// Editable question bank for video screening. Sessions snapshot prompt/hint/
+/// rubric onto their answers at invite time, so editing a question never
+/// rewrites what an already-invited candidate was asked.
+model ScreeningQuestion {
+  id             String   @id @default(cuid())
+  position       Int
+  prompt         String
+  hint           String   @default("")
+  rubricFive     String   @default("")
+  rubricThree    String   @default("")
+  rubricOne      String   @default("")
+  rubricPenalise String   @default("")
+  active         Boolean  @default(true)
+  /** Always in every invite (e.g. the location/hours question); others are drawn randomly. */
+  alwaysInclude  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ScreeningAnswer {
+  id          String    @id @default(cuid())
+  sessionId   String
+  questionKey String
+  position    Int
+  /** Snapshot of the question as asked (survives later edits to the bank). */
+  prompt      String?
+  hint        String?
+  /** Snapshot rubric: { five, three, one, penalise }. */
+  rubric      Json?
+  /** R2 object key of the recorded video; null until uploaded. */
+  objectKey   String?
+  durationSec Int?
+  takesUsed   Int       @default(0)
+  transcript  String?
+  score       Int?
+  reasoning   String?
+  /** Verbatim quote from the transcript backing the score. */
+  evidence    String?
+  flags       String[]  @default([])
+  uploadedAt  DateTime?
+  scoredAt    DateTime?
+  /** Last transcription/scoring failure for this answer; cleared on success. */
+  scoringError String?
+  /** How many webcam frame sheets were uploaded alongside the recording. */
+  frameCount   Int       @default(0)
+  /** AI gaze-check verdict (no_concern / possible_reading / likely_reading) — verify-on-video signal, never affects the score. */
+  gazeVerdict   String?
+  gazeReasoning String?
+
+  session ScreeningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionKey])
+  @@index([sessionId])
+}

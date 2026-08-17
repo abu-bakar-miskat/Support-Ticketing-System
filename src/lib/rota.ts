@@ -123,15 +123,21 @@ export async function isMemberAvailableNow(userId: string, teamId: string): Prom
   return true
 }
 
-// ─── Core ROTA algorithm ──────────────────────────────────────────────────────
+// ─── Shared helpers (slice 11: also power lib/assignment-engine.ts's ─────────
+// ROUND_ROBIN / WORKLOAD_BASED methods, so the pool/counting logic lives in
+// exactly one place) ───────────────────────────────────────────────────────
 
-export async function resolveAssignee(
+/**
+ * Active team members, schedule-availability-aware, ordered consistently
+ * (joinedAt asc), excluding `excludeUserId` (typically the department
+ * manager, who doesn't work tickets). Falls back to all active members when
+ * none pass the "available right now" check, so a quiet moment (everyone
+ * outside working hours) never collapses the candidate pool to empty.
+ */
+export async function getEligibleMembers(
   teamId: string,
-  rotaPointer: number,
-  workloadThreshold: number,
   excludeUserId: string | null,
-): Promise<{ userId: string | null; nextPointer: number }> {
-  // Active members ordered consistently, excluding the department manager
+): Promise<{ userId: string }[]> {
   const allMembers = (
     await prisma.teamMembership.findMany({
       where: { teamId, isActive: true },
@@ -140,25 +146,28 @@ export async function resolveAssignee(
     })
   ).filter((m) => m.userId !== excludeUserId)
 
-  if (allMembers.length === 0) return { userId: null, nextPointer: rotaPointer }
+  if (allMembers.length === 0) return []
 
-  // Filter to schedule-available members; fall back to all if none pass
   const availabilityFlags = await Promise.all(
     allMembers.map((m) => isMemberAvailableNow(m.userId, teamId)),
   )
-  const members = allMembers.filter((_, i) => availabilityFlags[i])
-  const eligible = members.length > 0 ? members : allMembers
+  const available = allMembers.filter((_, i) => availabilityFlags[i])
+  return available.length > 0 ? available : allMembers
+}
 
-  // Completion status labels for open-ticket counting
+/** Open (non-deleted, non-completed-status) ticket count per user, for workload balancing. */
+export async function getOpenTicketCounts(
+  teamId: string,
+  userIds: string[],
+): Promise<{ userId: string; count: number }[]> {
   const completionStatuses = await prisma.teamStatus.findMany({
     where: { teamId, isComplete: true },
     select: { label: true },
   })
   const completedLabels = completionStatuses.map((s) => s.label)
 
-  // Count open tickets per eligible member
-  const openCounts = await Promise.all(
-    eligible.map(async ({ userId }) => {
+  return Promise.all(
+    userIds.map(async (userId) => {
       const count = await prisma.ticket.count({
         where: {
           teamId,
@@ -170,6 +179,26 @@ export async function resolveAssignee(
       return { userId, count }
     }),
   )
+}
+
+// ─── Core ROTA algorithm (hybrid round-robin + workload threshold) ───────────
+
+export async function resolveAssignee(
+  teamId: string,
+  rotaPointer: number,
+  workloadThreshold: number,
+  excludeUserId: string | null,
+): Promise<{ userId: string | null; nextPointer: number }> {
+  const allMembers = await prisma.teamMembership.findMany({
+    where: { teamId, isActive: true },
+    orderBy: { joinedAt: "asc" },
+    select: { userId: true },
+  }).then((rows) => rows.filter((m) => m.userId !== excludeUserId))
+
+  if (allMembers.length === 0) return { userId: null, nextPointer: rotaPointer }
+
+  const eligible = await getEligibleMembers(teamId, excludeUserId)
+  const openCounts = await getOpenTicketCounts(teamId, eligible.map((e) => e.userId))
 
   const total = eligible.length
   // rotaPointer is relative to allMembers; translate to eligible index

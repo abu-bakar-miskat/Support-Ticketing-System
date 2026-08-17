@@ -916,6 +916,17 @@ function DepartmentCard({
               )}
             </div>
           </div>
+          {!editing && (
+            <div className="flex items-center gap-0.5">
+              <a
+                href={`/settings/departments/${dept.id}/sla`}
+                title="SLA policies"
+                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              >
+                <Clock className="size-3.5" />
+              </a>
+            </div>
+          )}
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">
               <button

@@ -11,6 +11,7 @@ import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 
 type Status = string
 
@@ -127,6 +128,7 @@ export async function PATCH(
     nextLabels.some((label) => !ticket.labels.includes(label)) ||
     ticket.labels.some((label) => !nextLabels.includes(label))
 
+  const newClosedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
   const updated = await prisma.$transaction(async (tx) => {
     // Set session var so the trigger can stamp the correct actor on ActivityLog
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
@@ -134,7 +136,7 @@ export async function PATCH(
       where: { id, status: ticket.status as Status },
       data: {
         status: to as Status,
-        closedAt: isCompletion ? (ticket.closedAt ?? new Date()) : null,
+        closedAt: newClosedAt,
       },
     })
     if (count === 0) return null
@@ -172,6 +174,10 @@ export async function PATCH(
       added,
       removed,
     }).catch(() => undefined)
+  }
+
+  if (ticket.closedAt !== newClosedAt) {
+    await syncResolutionTimerOnClosedAtChange(id, newClosedAt).catch(() => undefined)
   }
 
   // Stop + persist any running timer if the ticket left "In Progress";

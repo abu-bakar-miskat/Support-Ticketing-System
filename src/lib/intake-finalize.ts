@@ -4,6 +4,7 @@ import { sendIntakeConfirmationEmail, sendAssignmentEmail, sendIntakeManagerAler
 import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
+import { startSlaTimers } from "@/lib/sla-engine"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -84,9 +85,14 @@ export async function createTicketFromPayload(
     createNotification({ recipientId: prep.assigneeId, type: "assignment", ticketId, message: prep.title }).catch(() => undefined)
   }
 
-  const team = await prisma.team.findUnique({ where: { id: prep.intakeTeamId }, select: { prefix: true } })
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { ticketNumber: true } })
+  const team = await prisma.team.findUnique({ where: { id: prep.intakeTeamId }, select: { prefix: true, tenantId: true } })
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { ticketNumber: true, createdAt: true } })
   const humanId = team && ticket ? `${team.prefix}-${ticket.ticketNumber}` : null
+
+  if (team && ticket) {
+    const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
+    startSlaTimers(ticketId, team.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+  }
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {
     sendAssignmentEmail({

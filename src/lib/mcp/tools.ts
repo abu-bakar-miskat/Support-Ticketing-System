@@ -8,6 +8,7 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
+import { startSlaTimers } from "@/lib/sla-engine"
 import { BASE_URL } from "@/lib/email-templates/_shared"
 import type { ApiKeyContext } from "@/lib/api-key-auth"
 import {
@@ -316,12 +317,23 @@ export async function createTicket(
       ticketNumber: true,
       title: true,
       status: true,
+      createdAt: true,
       team: { select: { prefix: true } },
       assignee: { select: { id: true, name: true, email: true } },
     },
   })
 
   const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+
+  if (team.departmentId) {
+    await startSlaTimers(
+      ticket.id,
+      team.tenantId,
+      team.departmentId,
+      { priority: input.priority, type: input.type, title: input.title },
+      ticket.createdAt,
+    )
+  }
 
   await appendTicketEvent(ticket.id, ctx.createdById, "TICKET_CREATED", {
     humanId,

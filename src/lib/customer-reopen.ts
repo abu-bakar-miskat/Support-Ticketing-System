@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 
 type TeamStatusRow = { label: string; isComplete: boolean; order: number }
 
@@ -50,6 +51,8 @@ export async function maybeReopenTicket(
     where: { id: ticketId },
     data: { status: targetLabel, closedAt: null },
   })
+
+  await syncResolutionTimerOnClosedAtChange(ticketId, null)
 
   await prisma.activityLog.create({
     data: {

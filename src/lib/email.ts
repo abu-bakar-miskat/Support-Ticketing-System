@@ -6,6 +6,7 @@ import { renderAssignment } from "./email-templates/assignment";
 import { renderIntakeConfirmation } from "./email-templates/intake-confirmation";
 import { renderIntakeVerification } from "./email-templates/intake-verification";
 import { renderIntakeManagerAlert } from "./email-templates/intake-manager-alert";
+import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed-alert";
 import { renderInvite } from "./email-templates/invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";

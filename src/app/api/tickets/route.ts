@@ -13,6 +13,7 @@ import { resolveMiscProjectForTeam } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveColumnIdForStatus } from "@/lib/board-columns"
+import { startSlaTimers } from "@/lib/sla-engine"
 
 const VALID_TYPES = ["Bug", "Feature", "Task", "Chore"] as const
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
@@ -370,6 +371,16 @@ export async function POST(request: Request) {
   }
 
   const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+
+  if (!isDraft && columnDeptId) {
+    await startSlaTimers(
+      ticket.id,
+      ticketTenantId,
+      columnDeptId,
+      { priority, type, title, description, labels },
+      ticket.createdAt,
+    )
+  }
 
   await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
     humanId,

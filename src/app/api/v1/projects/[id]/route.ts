@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireApiKey } from "@/lib/api-key-auth"
+import { requireApiKey, runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import {
   resolveCurrentStage,
@@ -51,6 +51,7 @@ export async function GET(
   const { ctx, error } = await requireApiKey(req)
   if (error) return error
 
+  return runWithApiKeyScope(ctx, async () => {
   const { id } = await params
 
   const project = await prisma.project.findUnique({
@@ -174,5 +175,6 @@ export async function GET(
         module: s.module ? { id: s.module.id, name: s.module.name } : null,
       })),
     })),
+  })
   })
 }

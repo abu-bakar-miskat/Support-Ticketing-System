@@ -66,6 +66,7 @@ const mockMisc = vi.mocked(resolveMiscProjectForTeam)
 const writeCtx: ApiKeyContext = {
   keyId: "key-1",
   departmentId: null,
+  tenantId: null,
   scope: "read_write",
   createdById: "user-1",
   creatorName: "Dumitru",

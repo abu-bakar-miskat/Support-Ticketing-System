@@ -2,6 +2,7 @@
 // Delete after use.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withSystemScope } from "@/lib/request-scope";
 import {
   getTicketDetailRecord,
   getTicketDetailPayload,
@@ -10,7 +11,11 @@ import {
   getAssignableUsersForTicketDepartment,
 } from "@/lib/ticket-detail-data";
 
-export async function GET() {
+// TEMPORARY debug route (see header) — wrap in system scope so its anonymous
+// ticket reads don't fail closed. Delete this route once diagnosis is done.
+export const GET = withSystemScope(handleGet)
+
+async function handleGet() {
   const steps: Record<string, string> = {};
   const time = async (label: string, fn: () => Promise<unknown>) => {
     const s = Date.now();

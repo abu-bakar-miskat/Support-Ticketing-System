@@ -3,6 +3,8 @@ import {
   shapeScope,
   decideDepartmentAccess,
   deriveEffectiveRole,
+  subDepartmentScopeForDepartment,
+  resolveEffectiveSubDepartmentManager,
   type ScopeRow,
   type UserScope,
 } from "./role-assignment";
@@ -145,5 +147,90 @@ describe("decideDepartmentAccess", () => {
 
   it("denies a user with no relevant scope", () => {
     expect(decideDepartmentAccess(scope({ departmentIds: ["d2"] }), "d1", "tA", [])).toBe(false);
+  });
+});
+
+describe("subDepartmentScopeForDepartment — SD-06", () => {
+  const deptTeams = ["teamA", "teamB", "teamC"];
+
+  it("returns null (all teams) for a platform admin", () => {
+    expect(subDepartmentScopeForDepartment(scope({ isPlatformAdmin: true }), "d1", deptTeams, "tA")).toBeNull();
+  });
+
+  it("returns null for a tenant admin of the department's tenant", () => {
+    expect(
+      subDepartmentScopeForDepartment(scope({ tenantAdminIds: ["tA"] }), "d1", deptTeams, "tA"),
+    ).toBeNull();
+  });
+
+  it("returns null for a whole-department (DEPARTMENT-scoped) caller", () => {
+    expect(
+      subDepartmentScopeForDepartment(scope({ departmentIds: ["d1"] }), "d1", deptTeams, "tA"),
+    ).toBeNull();
+  });
+
+  it("restricts a sub-department-only caller to their granted teams in this dept", () => {
+    const s = scope({ subDepartmentIds: ["teamA", "teamZ"] });
+    const allowed = subDepartmentScopeForDepartment(s, "d1", deptTeams, "tA");
+    expect(allowed).not.toBeNull();
+    expect([...allowed!]).toEqual(["teamA"]); // teamZ is not in this department
+  });
+
+  it("a caller granted only sub-department A does not get B or C (negative)", () => {
+    const allowed = subDepartmentScopeForDepartment(
+      scope({ subDepartmentIds: ["teamA"] }), "d1", deptTeams, "tA",
+    );
+    expect(allowed!.has("teamA")).toBe(true);
+    expect(allowed!.has("teamB")).toBe(false);
+    expect(allowed!.has("teamC")).toBe(false);
+  });
+
+  it("returns an empty set (sees nothing) for a caller with no grant in this dept", () => {
+    const allowed = subDepartmentScopeForDepartment(
+      scope({ subDepartmentIds: ["teamZ"] }), "d1", deptTeams, "tA",
+    );
+    expect(allowed!.size).toBe(0);
+  });
+
+  it("does not treat a tenant admin of a DIFFERENT tenant as whole-department", () => {
+    const allowed = subDepartmentScopeForDepartment(
+      scope({ tenantAdminIds: ["tOther"], subDepartmentIds: ["teamB"] }), "d1", deptTeams, "tA",
+    );
+    expect([...allowed!]).toEqual(["teamB"]);
+  });
+});
+
+describe("resolveEffectiveSubDepartmentManager — unassigned → parent dept admin", () => {
+  it("uses the sub-department's own managers when assigned", () => {
+    expect(
+      resolveEffectiveSubDepartmentManager({
+        subDepartmentManagerUserIds: ["u1", "u2"],
+        departmentAdminUserIds: ["admin1"],
+      }),
+    ).toEqual(["u1", "u2"]);
+  });
+
+  it("defaults to the parent department admins when the sub-department has none", () => {
+    expect(
+      resolveEffectiveSubDepartmentManager({
+        subDepartmentManagerUserIds: [],
+        departmentAdminUserIds: ["admin1", "admin2"],
+      }),
+    ).toEqual(["admin1", "admin2"]);
+  });
+
+  it("de-duplicates while preserving order", () => {
+    expect(
+      resolveEffectiveSubDepartmentManager({
+        subDepartmentManagerUserIds: ["u1", "u1", "u2"],
+        departmentAdminUserIds: [],
+      }),
+    ).toEqual(["u1", "u2"]);
+  });
+
+  it("returns empty when neither the sub-department nor the department has managers", () => {
+    expect(
+      resolveEffectiveSubDepartmentManager({ subDepartmentManagerUserIds: [], departmentAdminUserIds: [] }),
+    ).toEqual([]);
   });
 });

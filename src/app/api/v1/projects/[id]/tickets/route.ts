@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireApiKey } from "@/lib/api-key-auth"
+import { requireApiKey, runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 
 /**
@@ -14,6 +14,7 @@ export async function GET(
   const { ctx, error } = await requireApiKey(req)
   if (error) return error
 
+  return runWithApiKeyScope(ctx, async () => {
   const { id: projectId } = await params
   const statusFilter = req.nextUrl.searchParams.get("status")
 
@@ -84,5 +85,6 @@ export async function GET(
       sprint: t.sprint ? { id: t.sprint.id, name: t.sprint.name } : null,
       module: t.module ? { id: t.module.id, name: t.module.name } : null,
     })),
+  })
   })
 }

@@ -20,6 +20,13 @@ export type RequestScope = {
   isPlatformAdmin?: boolean;
   /** Tenants the caller may observe. Ignored when system/platform. */
   tenantIds: string[];
+  /**
+   * Sub-department (team) allowlist for SD-06. When present, ticket reads are
+   * additionally restricted to these team ids — a sub-department-scoped caller
+   * never observes tickets outside their granted sub-departments on any read
+   * path. Absent/undefined = whole-department access (no sub-department filter).
+   */
+  subDepartmentTeamIds?: string[];
 };
 
 const store = new AsyncLocalStorage<RequestScope>();
@@ -50,4 +57,19 @@ export function runWithScope<T>(scope: RequestScope, fn: () => T): T {
  */
 export function runAsSystem<T>(fn: () => T): T {
   return store.run({ system: true, tenantIds: [] }, fn);
+}
+
+/**
+ * Wrap an anonymous/background route handler (webhook, cron, public intake) so
+ * its whole body runs under {@link runAsSystem}. These paths have no
+ * authenticated caller, so without an explicit scope the tenant extension would
+ * throw (fail-closed) on the first tenant-scoped query. The wrapper is the
+ * sanctioned opt-out for genuinely cross-tenant system work.
+ *
+ *   export const POST = withSystemScope(handlePost)
+ */
+export function withSystemScope<A extends unknown[], R>(
+  handler: (...args: A) => R,
+): (...args: A) => R {
+  return (...args: A) => runAsSystem(() => handler(...args));
 }

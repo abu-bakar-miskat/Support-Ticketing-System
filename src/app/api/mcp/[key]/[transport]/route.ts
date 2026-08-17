@@ -1,7 +1,7 @@
 import { createMcpHandler } from "mcp-handler"
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { requireApiKeyRaw, type ApiKeyContext } from "@/lib/api-key-auth"
+import { requireApiKeyRaw, runWithApiKeyScope, type ApiKeyContext } from "@/lib/api-key-auth"
 import {
   listTeams,
   listProjects,
@@ -227,7 +227,8 @@ async function handle(request: Request, { params }: { params: Promise<{ key: str
   if (error) {
     return NextResponse.json({ error: error.message }, { status: error.status })
   }
-  return buildHandler(key, ctx)(request)
+  // Bind every tenant-scoped read the tools make to the key's tenant.
+  return runWithApiKeyScope(ctx, () => buildHandler(key, ctx)(request))
 }
 
 export { handle as GET, handle as POST, handle as DELETE }

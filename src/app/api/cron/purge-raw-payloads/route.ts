@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { purgeRawPayloads } from "@/lib/raw-payload-purge"
+import { withSystemScope } from "@/lib/request-scope"
 
 // Vercel Cron Jobs invoke routes via GET with an Authorization header.
-export async function GET(request: NextRequest) {
+// Cron job — no caller; runs cross-tenant under system scope.
+export const GET = withSystemScope(handleGet)
+
+async function handleGet(request: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret) {
     return NextResponse.json({ error: "Cron not configured" }, { status: 503 })

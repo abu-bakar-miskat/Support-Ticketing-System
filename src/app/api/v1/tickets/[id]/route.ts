@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireApiKey } from "@/lib/api-key-auth"
+import { requireApiKey, runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 
 /**
@@ -13,6 +13,7 @@ export async function GET(
   const { ctx, error } = await requireApiKey(req)
   if (error) return error
 
+  return runWithApiKeyScope(ctx, async () => {
   const { id } = await params
 
   const ticket = await prisma.ticket.findUnique({
@@ -80,5 +81,6 @@ export async function GET(
     creator: { id: ticket.creator.id, name: ticket.creator.name },
     sprint: ticket.sprint ? { id: ticket.sprint.id, name: ticket.sprint.name } : null,
     module: ticket.module ? { id: ticket.module.id, name: ticket.module.name } : null,
+  })
   })
 }

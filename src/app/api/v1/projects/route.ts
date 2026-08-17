@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireApiKey } from "@/lib/api-key-auth"
+import { requireApiKey, runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import {
   resolveCurrentStage,
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   const { ctx, error } = await requireApiKey(req)
   if (error) return error
 
+  return runWithApiKeyScope(ctx, async () => {
   const where = ctx.departmentId
     ? {
         OR: [
@@ -67,5 +68,6 @@ export async function GET(req: NextRequest) {
         memberCount: p._count.members,
       }
     }),
+  })
   })
 }

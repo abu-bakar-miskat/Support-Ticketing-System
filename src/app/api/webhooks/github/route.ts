@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { withSystemScope } from "@/lib/request-scope"
 import { verifyGitHubSignature } from "@/lib/github/verify-signature"
 import {
   upsertAndLinkPullRequest,
@@ -12,7 +13,11 @@ import type { GitHubStatusEvent } from "@/lib/github/status-map"
 import { parseTicketRefs } from "@/lib/github/parse-refs"
 import { resolveTicketIds } from "@/lib/github/resolve-refs"
 
-export async function POST(request: Request) {
+// Anonymous webhook — no authenticated caller, so run under system scope or the
+// tenant extension fails closed on the first tenant-scoped query.
+export const POST = withSystemScope(handlePost)
+
+async function handlePost(request: Request) {
   const secret = process.env.GITHUB_WEBHOOK_SECRET
   if (!secret) {
     return NextResponse.json(

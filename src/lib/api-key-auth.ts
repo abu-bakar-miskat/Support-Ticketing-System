@@ -1,13 +1,28 @@
 import { createHash } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { runAsSystem, runWithScope } from "@/lib/request-scope"
 
 export type ApiKeyContext = {
   keyId: string
   departmentId: string | null
+  /** Tenant that owns the key's department; null for department-less keys. */
+  tenantId: string | null
   scope: string
   createdById: string
   creatorName: string
+}
+
+/**
+ * Run `fn` under the API key's tenant scope so the non-bypassable extension
+ * enforces isolation on every tenant-scoped read the handler makes. A key bound
+ * to a department is scoped to that department's tenant; a department-less key
+ * falls back to system scope (it has no tenant to bind to). This is the
+ * API-key equivalent of a request establishing scope via `getProfile`.
+ */
+export function runWithApiKeyScope<T>(ctx: ApiKeyContext, fn: () => T): T {
+  if (!ctx.tenantId) return runAsSystem(fn)
+  return runWithScope({ tenantIds: [ctx.tenantId] }, fn)
 }
 
 function hashKey(raw: string): string {
@@ -75,6 +90,7 @@ export async function requireApiKeyRaw(
       revokedAt: true,
       scope: true,
       departmentId: true,
+      department: { select: { tenantId: true } },
       createdById: true,
       createdBy: { select: { name: true } },
     },
@@ -94,6 +110,7 @@ export async function requireApiKeyRaw(
     ctx: {
       keyId: key.id,
       departmentId: key.departmentId,
+      tenantId: key.department?.tenantId ?? null,
       scope: key.scope,
       createdById: key.createdById,
       creatorName: key.createdBy.name,

@@ -2,6 +2,7 @@ import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { getResendClient, processInboundEmail } from "@/lib/process-inbound-email"
+import { withSystemScope } from "@/lib/request-scope"
 
 type ReceivedEmailEventData = {
   email_id: string
@@ -9,7 +10,11 @@ type ReceivedEmailEventData = {
   to: string[]
 }
 
-export async function POST(request: Request) {
+// Anonymous inbound-email webhook — runs under system scope so cross-tenant
+// ticket/message writes don't trip the fail-closed tenant extension.
+export const POST = withSystemScope(handlePost)
+
+async function handlePost(request: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET
   if (!secret) {
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })

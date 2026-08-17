@@ -3,7 +3,7 @@ import { join } from "path"
 import { PrismaClient } from "@/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
-import { withTicketScope } from "@/lib/prisma-scope"
+import { withTenantScope } from "@/lib/prisma-scope"
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: InstanceType<typeof PrismaClient>
@@ -202,9 +202,17 @@ function getPrisma() {
   })
 
   globalForPrisma.prisma = prisma
-  // Scope extension is outermost so it rewrites ticket args before the inner
-  // connection-recovery hook runs the query against the DB.
-  globalForPrisma.prismaExtended = withTicketScope(withConnectionRecovery(prisma))
+  // Scope extension is outermost so it rewrites tenant-scoped args before the
+  // inner connection-recovery hook runs the query against the DB.
+  //
+  // ROLLOUT: anonymous/background paths that query tenant-scoped models are now
+  // wrapped in system/tenant scope (see withSystemScope + runWithApiKeyScope), so
+  // the extension is safe to enforce beyond `ticket`. Enabled incrementally.
+  const SCOPED_MODELS = ["ticket", "project", "team", "department"] as const
+  globalForPrisma.prismaExtended = withTenantScope(
+    withConnectionRecovery(prisma),
+    SCOPED_MODELS,
+  )
   globalForPrisma.schemaVersion = schemaVersion
   return globalForPrisma.prismaExtended
 }

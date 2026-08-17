@@ -6,12 +6,18 @@ import { isValidEmailFormat, domainAcceptsMail } from "@/lib/email-validation"
 import { generateReplyToken } from "@/lib/customer-conversation"
 import { createTicketFromPayload, type PendingPayload, type ResponseEntry } from "@/lib/intake-finalize"
 import { BASE_URL, ensureAbsoluteUrl } from "@/lib/email-templates/_shared"
+import { withSystemScope } from "@/lib/request-scope"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000
 
-export async function POST(
+// Public support-form submission — anonymous requester. Runs under system scope
+// so intake conversion (which reads team/dept and creates cross-tenant tickets)
+// doesn't fail closed on the tenant extension.
+export const POST = withSystemScope(handlePost)
+
+async function handlePost(
   request: Request,
   { params }: { params: Promise<{ uuid: string }> },
 ) {

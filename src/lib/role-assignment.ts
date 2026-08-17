@@ -105,6 +105,46 @@ export function decideDepartmentAccess(
   return false;
 }
 
+/**
+ * Pure: the set of sub-department (team) ids a caller may see *within one
+ * department* (SRS SD-06). Returns `null` when the caller has whole-department
+ * access — platform admin, an admin/manager of the department's tenant, or a
+ * direct DEPARTMENT-scoped role — meaning "no sub-department restriction, all
+ * teams". Otherwise returns exactly the caller's granted sub-departments that
+ * belong to this department; an empty set means the caller sees nothing here.
+ *
+ * `departmentTeamIds` is the department's full set of team (sub-department) ids;
+ * `deptTenantId` is the department's tenant. Unit-tested.
+ */
+export function subDepartmentScopeForDepartment(
+  scope: UserScope,
+  departmentId: string,
+  departmentTeamIds: string[],
+  deptTenantId: string | null,
+): Set<string> | null {
+  if (scope.isPlatformAdmin) return null;
+  if (deptTenantId && scope.tenantAdminIds.includes(deptTenantId)) return null;
+  if (scope.departmentIds.includes(departmentId)) return null;
+  // Sub-department-only caller: restrict to their granted teams inside this dept.
+  const allowed = new Set(departmentTeamIds.filter((t) => scope.subDepartmentIds.includes(t)));
+  return allowed;
+}
+
+/**
+ * Pure: the effective managers of a sub-department for authz + notification
+ * routing (SRS SD-06). A sub-department's own assigned managers win; when it has
+ * none, responsibility defaults up to the parent Department's admins/managers.
+ * Returns a de-duplicated, order-stable list. Unit-tested.
+ */
+export function resolveEffectiveSubDepartmentManager(params: {
+  subDepartmentManagerUserIds: string[];
+  departmentAdminUserIds: string[];
+}): string[] {
+  const own = uniq(params.subDepartmentManagerUserIds);
+  if (own.length > 0) return own;
+  return uniq(params.departmentAdminUserIds);
+}
+
 /** Derive the canonical assignments for a user from the existing role tables. */
 async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   const [profile, tenantM, deptMgr, deptMem, deptAcc, teamM] = await Promise.all([

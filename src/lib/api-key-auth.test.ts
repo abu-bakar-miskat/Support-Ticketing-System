@@ -19,6 +19,7 @@ const keyRow = {
   revokedAt: null,
   scope: "read_write",
   departmentId: "dept-1",
+  department: { tenantId: "tenant-1" },
   createdById: "user-1",
   createdBy: { name: "Dumitru" },
 }
@@ -56,6 +57,7 @@ describe("requireApiKeyRaw", () => {
     expect(res.ctx).toEqual({
       keyId: "key-1",
       departmentId: "dept-1",
+      tenantId: "tenant-1",
       scope: "read_write",
       createdById: "user-1",
       creatorName: "Dumitru",
@@ -67,6 +69,7 @@ describe("requireApiKeyRaw", () => {
         revokedAt: true,
         scope: true,
         departmentId: true,
+        department: { select: { tenantId: true } },
         createdById: true,
         createdBy: { select: { name: true } },
       },
@@ -75,5 +78,16 @@ describe("requireApiKeyRaw", () => {
       where: { id: "key-1" },
       data: { lastUsedAt: expect.any(Date) },
     })
+  })
+
+  it("resolves tenantId to null for a department-less key", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...keyRow,
+      departmentId: null,
+      department: null,
+    } as never)
+    const res = await requireApiKeyRaw(RAW)
+    expect(res.ctx?.tenantId).toBeNull()
+    expect(res.ctx?.departmentId).toBeNull()
   })
 })

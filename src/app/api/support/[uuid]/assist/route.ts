@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { domainAcceptsMail } from "@/lib/email-validation"
 import { aiConfigured, aiObject } from "@/lib/ai"
+import { withSystemScope } from "@/lib/request-scope"
 
 // Public endpoint: keep abuse surface small. Tight token caps + per-IP rate
 // limiting (best-effort in-memory; instances are reused under Fluid Compute so
@@ -23,7 +24,11 @@ function rateLimited(ip: string): boolean {
   return entry.count > RATE_LIMIT
 }
 
-export async function POST(
+// Public support-form AI assist — anonymous requester; system scope for any
+// form/department reads it performs.
+export const POST = withSystemScope(handlePost)
+
+async function handlePost(
   request: Request,
   { params }: { params: Promise<{ uuid: string }> },
 ) {

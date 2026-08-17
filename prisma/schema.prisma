@@ -24,6 +24,16 @@ enum RoleScopeType {
   SUB_DEPARTMENT
 }
 
+// Immutable category of a department board column (SRS C-03, DAT-02). All board
+// logic keys on this type, never the display label: OPEN (active work), PAUSED
+// (waiting/on-hold), ESCALATED (needs attention), RESOLVED (done/closed).
+enum StatusType {
+  OPEN
+  PAUSED
+  ESCALATED
+  RESOLVED
+}
+
 enum TicketType {
   Bug
   Feature
@@ -167,6 +177,7 @@ model Tenant {
   teams       Team[]
   projects    Project[]
   tickets     Ticket[]
+  boardColumns BoardColumn[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -243,6 +254,7 @@ model Department {
   departmentHolidays DepartmentHoliday[]
   departmentEvents  DepartmentEvent[]
   recruitmentBoards RecruitmentBoard[]
+  boardColumns      BoardColumn[]
 
   @@index([tenantId])
 }
@@ -394,6 +406,31 @@ model TeamStatus {
 
   @@unique([teamId, label])
   @@index([teamId, order])
+}
+
+// A column of a department's board (SRS DAT-03). The board is the set of columns
+// for a department — created atomically with the department (five status-typed
+// defaults) and edited via add/rename/reorder/delete-with-move. `statusType` is
+// chosen at creation and never mutated, so it stays immutable once the column
+// holds tickets (DAT-02); renaming only changes `label`. tenantId is denormalized
+// (like Team/Project/Ticket) so the non-bypassable scope extension can filter it.
+model BoardColumn {
+  id           String     @id @default(cuid())
+  tenantId     String
+  departmentId String
+  label        String
+  color        String     @default("#94a3b8")
+  statusType   StatusType
+  order        Int
+  createdAt    DateTime   @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  tickets    Ticket[]
+
+  @@unique([departmentId, label])
+  @@index([departmentId, order])
+  @@index([tenantId])
 }
 
 model Profile {
@@ -665,6 +702,10 @@ model Ticket {
   creatorId    String         @db.Uuid
   projectId    String?
   teamId       String
+  // The one column of the ticket's own department board it currently sits in
+  // (SRS DAT-03). Nullable during the board rollout/backfill; set on create and
+  // on status moves thereafter. The department is derived (see effectiveTicketDept).
+  boardColumnId String?
   parentId     String?
   sprintId     String?
   moduleId     String?
@@ -689,6 +730,7 @@ model Ticket {
   team          Team           @relation(fields: [teamId], references: [id])
   parent        Ticket?        @relation("SubTickets", fields: [parentId], references: [id])
   subTickets    Ticket[]       @relation("SubTickets")
+  boardColumn   BoardColumn?   @relation(fields: [boardColumnId], references: [id])
   sprint        Sprint?        @relation(fields: [sprintId], references: [id])
   module        ProjectModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   template      TicketTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
@@ -713,6 +755,7 @@ model Ticket {
   @@index([parentId])
   @@index([sprintId])
   @@index([moduleId])
+  @@index([boardColumnId])
   @@index([templateId])
   @@index([teamId, deletedAt, dueDate])
   @@index([teamId, deletedAt, status])

@@ -13,6 +13,7 @@ import { getTeamStatuses } from "@/lib/board-data";
 import { generateReplyToken } from "@/lib/customer-conversation";
 import { resolveAssignee } from "@/lib/rota";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
+import { resolveColumnIdForStatus } from "@/lib/board-columns";
 
 // Fixed UUID for the synthetic "System" profile used as the creator of
 // tickets auto-converted from intake form submissions.
@@ -41,6 +42,7 @@ type ResponseEntry = {
 
 export type ConversionPrep = {
   intakeTeamId: string;
+  departmentId: string;
   formName: string;
   title: string;
   description: string;
@@ -192,6 +194,7 @@ export async function prepareConversion({
 
   return {
     intakeTeamId,
+    departmentId,
     formName,
     title: resolveTitle(responses, formName, submitterName, title),
     description: buildDescription(responses, submitterName),
@@ -242,6 +245,12 @@ export async function runConversion(
     throw new Error(`Intake team ${prep.intakeTeamId} not found`);
   }
 
+  // Place the intake ticket in a column of its department's board (DAT-03).
+  const boardColumnId = await resolveColumnIdForStatus(tx, {
+    departmentId: prep.departmentId,
+    status: prep.status,
+  });
+
   const ticket = await tx.ticket.create({
     data: {
       title: prep.title,
@@ -255,6 +264,7 @@ export async function runConversion(
       teamId: prep.intakeTeamId,
       projectId: prep.projectId,
       assigneeId: prep.assigneeId,
+      ...(boardColumnId ? { boardColumnId } : {}),
       ...(estimatedHours !== null ? { estimatedTime: estimatedHours * 60 } : {}),
     },
     select: {

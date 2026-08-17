@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAdmin } from "../_guard"
 import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
 import { resolveSupportProjectForDepartment } from "@/lib/support-project"
+import { seedDepartmentBoard } from "@/lib/board-columns"
 
 export async function GET() {
   const { profile, error } = await requireAdmin()
@@ -37,9 +38,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No active tenant" }, { status: 400 })
   }
 
-  // Keep isHub in sync so the existing hub-scope logic keeps working.
-  const department = await prisma.department.create({
-    data: { name, tenantId, type, isHub: type === "hub" },
+  // Keep isHub in sync so the existing hub-scope logic keeps working. The board
+  // (five status-typed default columns) is created atomically with the
+  // department so a department always has a board (DAT-03, AC-1).
+  const department = await prisma.$transaction(async (tx) => {
+    const dept = await tx.department.create({
+      data: { name, tenantId, type, isHub: type === "hub" },
+    })
+    await seedDepartmentBoard(tx, { departmentId: dept.id, tenantId })
+    return dept
   })
 
   // A support department is intake-driven — give it its support project up front.

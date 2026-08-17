@@ -59,9 +59,8 @@ describe("getEligibleMembers", () => {
 
 describe("getOpenTicketCounts", () => {
   it("counts open tickets excluding completion statuses, in input order", async () => {
-    mockTicketCount.mockImplementation(async ({ where }: never) =>
-      (where as { assigneeId: string }).assigneeId === "a" ? 3 : 1,
-    )
+    mockTicketCount.mockImplementation(((args: { where: { assigneeId: string } }) =>
+      Promise.resolve(args.where.assigneeId === "a" ? 3 : 1)) as never)
     const result = await getOpenTicketCounts(TEAM_ID, ["a", "b"])
     expect(result).toEqual([{ userId: "a", count: 3 }, { userId: "b", count: 1 }])
     expect(mockTicketCount).toHaveBeenCalledWith(
@@ -80,18 +79,16 @@ describe("resolveAssignee — hybrid round-robin + workload threshold (regressio
 
   it("skips over-threshold members and picks the next eligible one", async () => {
     mockMembershipFindMany.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }] as never)
-    mockTicketCount.mockImplementation(async ({ where }: never) =>
-      (where as { assigneeId: string }).assigneeId === "a" ? 10 : 1,
-    )
+    mockTicketCount.mockImplementation(((args: { where: { assigneeId: string } }) =>
+      Promise.resolve(args.where.assigneeId === "a" ? 10 : 1)) as never)
     const result = await resolveAssignee(TEAM_ID, 0, 5, null)
     expect(result).toEqual({ userId: "b", nextPointer: 2 })
   })
 
   it("falls back to the least-loaded member when everyone is over threshold", async () => {
     mockMembershipFindMany.mockResolvedValue([{ userId: "a" }, { userId: "b" }] as never)
-    mockTicketCount.mockImplementation(async ({ where }: never) =>
-      (where as { assigneeId: string }).assigneeId === "a" ? 10 : 6,
-    )
+    mockTicketCount.mockImplementation(((args: { where: { assigneeId: string } }) =>
+      Promise.resolve(args.where.assigneeId === "a" ? 10 : 6)) as never)
     const result = await resolveAssignee(TEAM_ID, 0, 5, null)
     expect(result).toEqual({ userId: "b", nextPointer: 0 })
   })

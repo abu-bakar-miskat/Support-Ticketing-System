@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -924,6 +924,13 @@ function DepartmentCard({
                 className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
               >
                 <Clock className="size-3.5" />
+              </a>
+              <a
+                href={`/settings/departments/${dept.id}/assignment`}
+                title="Assignment methods"
+                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              >
+                <UserCog className="size-3.5" />
               </a>
             </div>
           )}

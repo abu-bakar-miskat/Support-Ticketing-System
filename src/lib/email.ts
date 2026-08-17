@@ -206,6 +206,38 @@ export async function sendIntakeManagerAlertEmail(args: {
   );
 }
 
+export async function sendAssignmentFailedAlertEmail(args: {
+  to: string;
+  managerId: string;
+  managerName: string;
+  ticketId: string;
+  humanId: string;
+  ticketTitle: string;
+  departmentId?: string | null;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(args.departmentId);
+  if (!config.notifyAssignmentFailed) return;
+  if (!await isEmailPrefEnabled(args.managerId, "emailOnAssignmentFailed")) return;
+
+  const { to, managerId, departmentId, ...rest } = args;
+  const { subject, html, text } = renderAssignmentFailedAlert({
+    ...rest,
+    branding: brandingFrom(config),
+  });
+  logIfRejected(
+    "assignment failed alert",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
 export async function sendResolutionEmail(args: {
   to: string;
   submitterName: string;

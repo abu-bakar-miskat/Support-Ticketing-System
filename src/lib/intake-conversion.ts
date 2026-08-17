@@ -11,7 +11,7 @@ import type { Prisma, TicketPriority } from "@/generated/prisma/client";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { getTeamStatuses } from "@/lib/board-data";
 import { generateReplyToken } from "@/lib/customer-conversation";
-import { resolveAssignee } from "@/lib/rota";
+import { autoAssignTicket } from "@/lib/assignment-engine";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { resolveColumnIdForStatus } from "@/lib/board-columns";
 
@@ -60,6 +60,10 @@ export type ConversionPrep = {
   // instead of the team ROTA.
   rotaIssueId?: string | null;
   newIssueRotaPointer?: number | null;
+  // ASG-02/03 (slice 11): true when the department's auto-assignment method
+  // found no eligible agent. The ticket is still created (unassigned) —
+  // callers must report the failure once the ticket exists.
+  assignmentFailed: boolean;
 };
 
 // ─── Build ticket title from responses ───────────────────────────────────────
@@ -154,6 +158,7 @@ export async function prepareConversion({
   let assigneeId: string | null = null;
   let nextPointer = team.rotaPointer;
   let newIssueRotaPointer: number | null = null;
+  let assignmentFailed = false;
 
   if (autoAssign) {
     if (issueAssigneeIds.length > 0) {
@@ -166,14 +171,18 @@ export async function prepareConversion({
         newIssueRotaPointer = (issueRotaPointer + 1) % issueAssigneeIds.length;
       }
     } else {
-      const result = await resolveAssignee(
-        intakeTeamId,
-        team.rotaPointer,
-        team.workloadThreshold,
-        managerId,
-      );
-      assigneeId = result.userId;
-      nextPointer = result.nextPointer;
+      // Slice 11 (ASG-01): the department's configured assignment method
+      // (rule-based / round-robin / workload-based / manual) picks the agent.
+      const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
+      const result = await autoAssignTicket({
+        departmentId,
+        teamId: intakeTeamId,
+        formValues,
+        excludeUserId: managerId,
+      });
+      assigneeId = result.assigneeId;
+      assignmentFailed = result.failed;
+      if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
     }
   }
 
@@ -209,6 +218,7 @@ export async function prepareConversion({
     newRotaPointer: nextPointer,
     rotaIssueId: newIssueRotaPointer !== null ? issueId : null,
     newIssueRotaPointer,
+    assignmentFailed,
   };
 }
 

@@ -5,6 +5,7 @@ import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
 import { startSlaTimers } from "@/lib/sla-engine"
+import { recordAssignmentFailure } from "@/lib/assignment-engine"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -92,6 +93,12 @@ export async function createTicketFromPayload(
   if (team && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
     startSlaTimers(ticketId, team.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+  }
+
+  // ASG-02/03 (slice 11): no eligible agent was found — the ticket exists,
+  // unassigned; report it immediately so it's never silently unrouted.
+  if (prep.assignmentFailed && humanId) {
+    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId).catch(() => undefined)
   }
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {

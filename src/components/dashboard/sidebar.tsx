@@ -38,6 +38,7 @@ import {
   Activity,
   KeyRound,
   BriefcaseBusiness,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useNotificationStore } from "@/store";
@@ -293,6 +294,7 @@ export function Sidebar({
     isManagerOfActiveDept,
     canAccessModules,
     userRole,
+    isSuperAdmin,
     pinnedProjectIds: initialPins,
   } = useDashboardContext();
   const pathname = usePathname();
@@ -391,7 +393,7 @@ export function Sidebar({
 
   const hasMultiDeptAccess = !isAdmin && allDepts.length > 1;
 
-  const navMain: NavItem[] = isAdminGlobalView
+  const navMainBase: NavItem[] = isAdminGlobalView
     ? [
         { label: "Departments", href: "/departments", icon: DepartmentIcon },
         {
@@ -451,6 +453,12 @@ export function Sidebar({
               ]
             : []),
         ];
+
+  // Super admins get a platform-level entry to the tenant management page,
+  // pinned above the context-specific nav in every view.
+  const navMain: NavItem[] = isSuperAdmin
+    ? [{ label: "All Tenants", href: "/tenants", icon: Building2 }, ...navMainBase]
+    : navMainBase;
 
   return (
     <>

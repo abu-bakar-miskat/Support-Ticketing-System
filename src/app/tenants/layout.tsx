@@ -1,30 +1,41 @@
 import { redirect } from "next/navigation"
+import type { Role } from "@/generated/prisma/enums"
 import { getProfile } from "@/lib/profile"
+import { getDashboardLayoutData } from "@/lib/dashboard-layout-data"
+import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
+import { UserHydrator } from "@/components/providers/user-hydrator"
 
 export const dynamic = "force-dynamic"
 
 /**
- * Platform-level layout for the super-admin tenants area. Deliberately neutral —
- * no tenant sidebar or branding. The tenant-scoped shell only appears once you
- * enter a tenant (the (dashboard) layout).
+ * Platform-level layout for the super-admin tenants area. Renders the standard
+ * dashboard shell (sidebar + top bar) so the "All Tenants" nav stays available,
+ * but deliberately neutral — no per-tenant branding is applied here.
  */
 export default async function TenantsLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile()
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
+  const layoutData = await getDashboardLayoutData(profile)
+
   return (
-    <div className="flex min-h-dvh flex-col bg-pen-bg">
-      <header className="flex h-12 items-center justify-between border-b border-pen-card-border bg-pen-card px-6">
-        <div className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/pen-dot.svg" alt="" width={18} height={18} className="size-[18px]" />
-          <span className="font-sans text-[13px] font-semibold text-pen-foreground">Platform</span>
-          <span className="font-sans text-[13px] text-pen-subtle">· Tenants</span>
-        </div>
-        <div className="font-sans text-[11.5px] text-pen-muted">{profile.email}</div>
-      </header>
-      <main className="flex-1">{children}</main>
-    </div>
+    <>
+      <UserHydrator
+        id={profile.id}
+        email={profile.email}
+        name={profile.name}
+        avatarUrl={profile.avatarUrl}
+        role={profile.role as Role}
+        teamId={profile.teamId}
+        teamIds={profile.teamIds}
+        memberships={(profile.memberships ?? []).map((m) => ({
+          teamId: m.teamId,
+          role: m.role,
+        }))}
+      />
+      {/* Neutral platform shell — no tenant branding on the /tenants area. */}
+      <DashboardLayout initialLayoutData={layoutData}>{children}</DashboardLayout>
+    </>
   )
 }

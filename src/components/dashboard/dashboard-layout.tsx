@@ -53,6 +53,7 @@ export type LayoutData = {
   mentionsCount: number;
   inboxCount: number;
   userRole: string;
+  isSuperAdmin: boolean;
   userId: string;
 };
 
@@ -76,6 +77,7 @@ const EMPTY: LayoutData = {
   mentionsCount: 0,
   inboxCount: 0,
   userRole: "",
+  isSuperAdmin: false,
   userId: "",
 };
 
@@ -168,6 +170,7 @@ export function DashboardLayout({
           data.isManagerOfActiveDept ?? EMPTY.isManagerOfActiveDept,
         canAccessModules: data.canAccessModules ?? EMPTY.canAccessModules,
         userRole: data.userRole ?? EMPTY.userRole,
+        isSuperAdmin: data.isSuperAdmin ?? EMPTY.isSuperAdmin,
         pinnedProjectIds: data.pinnedProjectIds ?? EMPTY.pinnedProjectIds,
         assignedProjectIds: data.assignedProjectIds ?? EMPTY.assignedProjectIds,
         sidebarCollapsed: collapsed,

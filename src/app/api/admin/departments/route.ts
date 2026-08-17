@@ -4,6 +4,7 @@ import { requireAdmin } from "../_guard"
 import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
 import { resolveSupportProjectForDepartment } from "@/lib/support-project"
 import { seedDepartmentBoard } from "@/lib/board-columns"
+import { runWithScope } from "@/lib/request-scope"
 
 export async function GET() {
   const { profile, error } = await requireAdmin()
@@ -41,13 +42,26 @@ export async function POST(request: Request) {
   // Keep isHub in sync so the existing hub-scope logic keeps working. The board
   // (five status-typed default columns) is created atomically with the
   // department so a department always has a board (DAT-03, AC-1).
-  const department = await prisma.$transaction(async (tx) => {
-    const dept = await tx.department.create({
-      data: { name, tenantId, type, isHub: type === "hub" },
-    })
-    await seedDepartmentBoard(tx, { departmentId: dept.id, tenantId })
-    return dept
-  })
+  //
+  // Establish the caller's scope up front from the already-resolved profile so
+  // the tenant-scope extension resolves it synchronously (getRequestScope) inside
+  // the transaction. Otherwise the extension falls back to getProfile() — a
+  // Supabase-auth call plus a multi-query batch — while the interactive
+  // transaction already holds a connection; on the small (2) pool that extra
+  // in-transaction connection checkout can stall up to connectionTimeoutMillis
+  // and blow the 20s transaction timeout (P2028).
+  const scope = profile.isSuperAdmin
+    ? { isPlatformAdmin: true, tenantIds: profile.tenantIds }
+    : { tenantIds: profile.tenantIds }
+  const department = await runWithScope(scope, () =>
+    prisma.$transaction(async (tx) => {
+      const dept = await tx.department.create({
+        data: { name, tenantId, type, isHub: type === "hub" },
+      })
+      await seedDepartmentBoard(tx, { departmentId: dept.id, tenantId })
+      return dept
+    }),
+  )
 
   // A support department is intake-driven — give it its support project up front.
   if (type === "support") {

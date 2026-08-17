@@ -191,7 +191,8 @@ export function TenantManageClient({
   const labelClass = "block font-sans text-[12.5px] font-medium text-pen-foreground"
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl px-6 py-8">
       <Link
         href="/tenants"
         className="inline-flex items-center gap-1 font-sans text-[12.5px] text-pen-muted transition-colors hover:text-pen-foreground"
@@ -436,6 +437,7 @@ export function TenantManageClient({
           )}
         </ul>
       </section>
+      </div>
     </div>
   )
 }

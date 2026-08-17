@@ -24,6 +24,7 @@ export type DashboardContextValue = {
   isManagerOfActiveDept: boolean;
   canAccessModules: boolean;
   userRole: string;
+  isSuperAdmin: boolean;
   pinnedProjectIds: string[];
   assignedProjectIds: string[];
   sidebarCollapsed: boolean;

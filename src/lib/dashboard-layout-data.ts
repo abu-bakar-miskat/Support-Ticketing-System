@@ -405,6 +405,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     mentionsCount: mentionCount,
     inboxCount,
     userRole: profile.role,
+    isSuperAdmin: profile.isSuperAdmin,
     userId: profile.id,
   };
 });

@@ -175,6 +175,14 @@ export async function POST(request: Request) {
     if (bodyTeam) resolvedTeamId = bodyTeamId
   }
 
+  // Any user may create on the team board they're currently viewing when that
+  // team is within their department scope — even if it isn't their primary
+  // `profile.teamId` (e.g. reached via department/multi-team membership). The
+  // teamAllowed check below re-verifies scope, so this doesn't widen access.
+  if (!resolvedTeamId && bodyTeamId && (await teamInScope(profile, bodyTeamId))) {
+    resolvedTeamId = bodyTeamId
+  }
+
   if (!resolvedTeamId && projectForTeam) {
     resolvedTeamId = await resolveTeamIdForProject(
       projectForTeam,

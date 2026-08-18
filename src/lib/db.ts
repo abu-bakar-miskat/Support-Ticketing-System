@@ -197,8 +197,10 @@ function getPrisma() {
     adapter: new PrismaPg(pool),
     // Under pooler contention the default 2s maxWait to *acquire* a connection
     // for a transaction is easily exceeded → P2028. Give transactions more room
-    // to queue for a connection before failing.
-    transactionOptions: { maxWait: 10_000, timeout: 20_000 },
+    // to queue for a connection before failing. `timeout` also needs headroom:
+    // a dev-server HMR recompile can pause an in-flight request for several
+    // seconds mid-transaction, which otherwise blows the execution budget too.
+    transactionOptions: { maxWait: 10_000, timeout: 30_000 },
   })
 
   globalForPrisma.prisma = prisma

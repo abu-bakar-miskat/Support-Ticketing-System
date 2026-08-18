@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { pickStatusMove, resolveTargetLabel, type GitHubStatusEvent } from "./status-map"
 
 /**
@@ -58,6 +59,7 @@ export async function advanceTicketStatus(
   // Optimistic guard: only update if the status hasn't changed since we read it.
   // Set the GUCs in the same transaction as the update so the ActivityLog
   // trigger stamps the automation source (and a FK-safe actor).
+  const newClosedAt = move.isComplete ? (ticket.closedAt ?? new Date()) : null
   const { count } = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${ticket.creatorId}, true)`
     await tx.$executeRaw`SELECT set_config('app.activity_source', ${activitySource}, true)`
@@ -65,11 +67,15 @@ export async function advanceTicketStatus(
       where: { id: ticket.id, status: ticket.status },
       data: {
         status: move.label,
-        closedAt: move.isComplete ? (ticket.closedAt ?? new Date()) : null,
+        closedAt: newClosedAt,
       },
     })
   })
-  if (count === 0 || !move.isComplete) return
+  if (count === 0) return
+
+  syncResolutionTimerOnClosedAtChange(ticket.id, newClosedAt).catch(() => undefined)
+
+  if (!move.isComplete) return
 
   notifyTicketCompletion({
     ticketId: ticket.id,

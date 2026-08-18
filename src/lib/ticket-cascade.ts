@@ -1,5 +1,6 @@
 import "server-only"
 import { prisma } from "@/lib/db"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 
 /**
  * When a parent ticket is moved to a complete status, automatically complete
@@ -38,13 +39,14 @@ export async function cascadeCompleteToSubtickets(
   await Promise.all(
     subTickets
       .filter((s) => !alreadyCompleteLabels.has(s.status))
-      .map((sub) => {
+      .map(async (sub) => {
         const completeStatus = firstCompleteBySubDepartment.get(sub.subDepartmentId)
-        if (!completeStatus) return Promise.resolve()
-        return prisma.ticket.update({
+        if (!completeStatus) return
+        await prisma.ticket.update({
           where: { id: sub.id },
           data: { status: completeStatus, closedAt: now },
         })
+        await syncResolutionTimerOnClosedAtChange(sub.id, now)
       }),
   )
 }

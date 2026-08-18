@@ -120,4 +120,16 @@ export async function reconcileProfileOnLogin(user: {
   await prisma.profile.create({
     data: { id: user.id, email: user.email, name },
   })
+
+  // First-time sign-in has no tenant to land in otherwise (no domain-based
+  // or invite-token assignment exists on this path) — default new accounts
+  // into the primary "pen" tenant so they're visible to admins/managers.
+  const defaultTenant = await prisma.tenant.findUnique({ where: { slug: "pen" } })
+  if (defaultTenant) {
+    await prisma.tenantMembership.upsert({
+      where: { tenantId_userId: { tenantId: defaultTenant.id, userId: user.id } },
+      update: {},
+      create: { tenantId: defaultTenant.id, userId: user.id, role: "staff", isActive: true },
+    })
+  }
 }

@@ -11,26 +11,35 @@ import type { Prisma, TicketPriority } from "@/generated/prisma/client";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { generateReplyToken } from "@/lib/customer-conversation";
-import { resolveAssignee } from "@/lib/rota";
+import { autoAssignTicket } from "@/lib/assignment-engine";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { resolveColumnIdForStatus } from "@/lib/board-columns";
+import { assertDepartmentOperational } from "@/lib/department-setup";
 
 // Fixed UUID for the synthetic "System" profile used as the creator of
 // tickets auto-converted from intake form submissions.
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
 
-async function ensureSystemUser(): Promise<string> {
-  await prisma.profile.upsert({
+const SYSTEM_USER_EMAIL = "system@internal.local";
+
+export async function ensureSystemUser(): Promise<string> {
+  const existing = await prisma.profile.findUnique({
+    where: { email: SYSTEM_USER_EMAIL },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.profile.upsert({
     where: { id: SYSTEM_USER_ID },
     update: {},
     create: {
       id: SYSTEM_USER_ID,
-      email: "system@internal.local",
+      email: SYSTEM_USER_EMAIL,
       name: "System",
       role: "admin",
     },
   });
-  return SYSTEM_USER_ID;
+  return created.id;
 }
 
 type ResponseEntry = {
@@ -60,6 +69,10 @@ export type ConversionPrep = {
   // instead of the team ROTA.
   rotaIssueId?: string | null;
   newIssueRotaPointer?: number | null;
+  // ASG-02/03 (slice 11): true when the department's auto-assignment method
+  // found no eligible agent. The ticket is still created (unassigned) —
+  // callers must report the failure once the ticket exists.
+  assignmentFailed: boolean;
 };
 
 // ─── Build ticket title from responses ───────────────────────────────────────
@@ -132,6 +145,10 @@ export async function prepareConversion({
     select: { rotaPointer: true, workloadThreshold: true },
   });
 
+  // DS-08: a department blocks ticket creation until its initial setup review is complete.
+  const setupCheck = await assertDepartmentOperational(departmentId);
+  if (!setupCheck.ok) throw new Error(setupCheck.error);
+
   // Every department manager is alerted (email + in-app notification) once the
   // ticket is created — separate from who the ticket's creator is. The
   // earliest-assigned manager is also excluded from ROTA auto-assignment below.
@@ -154,6 +171,7 @@ export async function prepareConversion({
   let assigneeId: string | null = null;
   let nextPointer = subDepartment.rotaPointer;
   let newIssueRotaPointer: number | null = null;
+  let assignmentFailed = false;
 
   if (autoAssign) {
     if (issueAssigneeIds.length > 0) {
@@ -166,14 +184,18 @@ export async function prepareConversion({
         newIssueRotaPointer = (issueRotaPointer + 1) % issueAssigneeIds.length;
       }
     } else {
-      const result = await resolveAssignee(
-        intakeSubDepartmentId,
-        subDepartment.rotaPointer,
-        subDepartment.workloadThreshold,
-        managerId,
-      );
-      assigneeId = result.userId;
-      nextPointer = result.nextPointer;
+      // Slice 11 (ASG-01): the department's configured assignment method
+      // (rule-based / round-robin / workload-based / manual) picks the agent.
+      const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
+      const result = await autoAssignTicket({
+        departmentId,
+        teamId: intakeSubDepartmentId,
+        formValues,
+        excludeUserId: managerId,
+      });
+      assigneeId = result.assigneeId;
+      assignmentFailed = result.failed;
+      if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
     }
   }
 
@@ -209,6 +231,7 @@ export async function prepareConversion({
     newRotaPointer: nextPointer,
     rotaIssueId: newIssueRotaPointer !== null ? issueId : null,
     newIssueRotaPointer,
+    assignmentFailed,
   };
 }
 

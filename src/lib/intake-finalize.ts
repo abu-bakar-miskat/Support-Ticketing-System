@@ -4,6 +4,8 @@ import { sendIntakeConfirmationEmail, sendAssignmentEmail, sendIntakeManagerAler
 import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
+import { startSlaTimers } from "@/lib/sla-engine"
+import { recordAssignmentFailure } from "@/lib/assignment-engine"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -84,9 +86,20 @@ export async function createTicketFromPayload(
     createNotification({ recipientId: prep.assigneeId, type: "assignment", ticketId, message: prep.title }).catch(() => undefined)
   }
 
-  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: prep.intakeSubDepartmentId }, select: { prefix: true } })
-  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { ticketNumber: true } })
+  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: prep.intakeSubDepartmentId }, select: { prefix: true, tenantId: true } })
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { ticketNumber: true, createdAt: true } })
   const humanId = subDepartment && ticket ? `${subDepartment.prefix}-${ticket.ticketNumber}` : null
+
+  if (subDepartment && ticket) {
+    const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
+    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+  }
+
+  // ASG-02/03 (slice 11): no eligible agent was found — the ticket exists,
+  // unassigned; report it immediately so it's never silently unrouted.
+  if (prep.assignmentFailed && humanId) {
+    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId).catch(() => undefined)
+  }
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {
     sendAssignmentEmail({
@@ -137,15 +150,23 @@ export async function createTicketFromPayload(
 }
 
 export type FinalizeResult =
-  | { status: "created" | "already"; humanId: string | null }
-  | { status: "expired" | "notfound" | "error" }
+  | { status: "created" | "already"; humanId: string | null; departmentId: string | null }
+  | { status: "expired" | "notfound" | "error"; departmentId: string | null }
 
 /** Verifies a pending intake by its token and creates the ticket. The claim is atomic so a mail
  * scanner pre-fetching the link and the real click can't both create a ticket — only the caller
  * that flips consumedAt from null wins; everyone else gets the same already-created ticket. */
 export async function finalizePendingIntake(token: string): Promise<FinalizeResult> {
   const pending = await prisma.pendingIntake.findUnique({ where: { token } })
-  if (!pending) return { status: "notfound" }
+  if (!pending) return { status: "notfound", departmentId: null }
+
+  // DS-01: so the verification landing page can apply the right department's
+  // branding — resolved once, up front, since every branch below needs it.
+  const form = await prisma.intakeFormConfig.findUnique({
+    where: { id: pending.formConfigId },
+    select: { departmentId: true },
+  })
+  const departmentId = form?.departmentId ?? null
 
   const humanIdFor = async (ticketId: string | null): Promise<string | null> => {
     if (!ticketId) return null
@@ -156,8 +177,10 @@ export async function finalizePendingIntake(token: string): Promise<FinalizeResu
     return ticket?.subDepartment ? `${ticket.subDepartment.prefix}-${ticket.ticketNumber}` : null
   }
 
-  if (pending.consumedAt) return { status: "already", humanId: await humanIdFor(pending.ticketId) }
-  if (pending.expiresAt.getTime() < Date.now()) return { status: "expired" }
+  if (pending.consumedAt) {
+    return { status: "already", humanId: await humanIdFor(pending.ticketId), departmentId }
+  }
+  if (pending.expiresAt.getTime() < Date.now()) return { status: "expired", departmentId }
 
   const claim = await prisma.pendingIntake.updateMany({
     where: { token, consumedAt: null },
@@ -166,7 +189,7 @@ export async function finalizePendingIntake(token: string): Promise<FinalizeResu
   // Lost the race to a concurrent click/scanner — return the ticket they already created.
   if (claim.count === 0) {
     const fresh = await prisma.pendingIntake.findUnique({ where: { token } })
-    return { status: "already", humanId: await humanIdFor(fresh?.ticketId ?? null) }
+    return { status: "already", humanId: await humanIdFor(fresh?.ticketId ?? null), departmentId }
   }
 
   try {
@@ -179,11 +202,11 @@ export async function finalizePendingIntake(token: string): Promise<FinalizeResu
     await prisma.verifiedEmail
       .upsert({ where: { email: pending.email }, create: { email: pending.email }, update: {} })
       .catch(() => undefined)
-    return { status: "created", humanId }
+    return { status: "created", humanId, departmentId }
   } catch (err) {
     console.error("[intake verify] ticket creation failed:", err)
     // Release the claim so the requester can retry by clicking the link again.
     await prisma.pendingIntake.update({ where: { token }, data: { consumedAt: null } }).catch(() => undefined)
-    return { status: "error" }
+    return { status: "error", departmentId }
   }
 }

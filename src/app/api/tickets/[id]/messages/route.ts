@@ -6,6 +6,7 @@ import { sendCustomerReplyEmail } from "@/lib/email"
 import { sanitizeInboundHtml } from "@/lib/inbound-email"
 import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
 import { normalizeStatus } from "@/components/board/board-types"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -237,6 +238,9 @@ export async function POST(
     },
     include: { author: { select: { id: true, name: true, avatarUrl: true } } },
   })
+
+  // SLA-03: the first PUBLIC agent message stops the first-response timer.
+  stopFirstResponseOnPublicAgentMessage(ticketId, message.createdAt).catch(() => undefined)
 
   // Link uploaded attachments to this message
   if (outboundAttachments.length > 0) {

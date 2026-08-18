@@ -12,6 +12,22 @@
     {
       "path": "/api/cron/purge-raw-payloads",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/sla-check",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/availability-sweep",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/bulk-reassign-sweep",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/mailbox-health-check",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

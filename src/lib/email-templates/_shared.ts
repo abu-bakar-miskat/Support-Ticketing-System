@@ -239,10 +239,16 @@ export function summaryTable(rows: { label: string; value: string }[]): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin:16px 0;">${rowsHtml}</table>`;
 }
 
-/** Replaces `{{key}}` tokens with pre-escaped values; unknown tokens are left untouched. */
+/**
+ * Replaces `{{key}}` tokens with pre-escaped values. An unresolved token (a
+ * typo, or a placeholder that isn't available for this event) renders as an
+ * empty string — never the raw `{{key}}` text (DS-04) — so an admin-authored
+ * template mistake degrades gracefully instead of leaking template syntax to
+ * a customer.
+ */
 export function applyPlaceholders(input: string, values: Record<string, string>): string {
-  return input.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key: string) =>
-    key in values ? values[key] : match,
+  return input.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, key: string) =>
+    key in values ? values[key] : "",
   );
 }
 
@@ -273,7 +279,7 @@ export function renderWithOverride({
   branding,
   showConfidentialityNotice,
 }: {
-  override: { subject?: string; heading?: string; bodyHtml?: string };
+  override: { subject?: string; heading?: string; bodyHtml?: string; footerText?: string };
   placeholders: Record<string, string>;
   fallbackSubject: string;
   fallbackHeading: string;
@@ -287,9 +293,13 @@ export function renderWithOverride({
     applyPlaceholders(override.bodyHtml || "", placeholders),
     branding,
   );
+  // DS-05/06: this template's own footer, if set, wins over the department/
+  // tenant/platform default carried on `branding.footerText` — falls through
+  // to that chain when the template hasn't customized its own footer.
+  const footerOverride = override.footerText ? applyPlaceholders(override.footerText, placeholders) : undefined;
   return {
     subject,
-    html: layout({ heading, bodyHtml, preheader: preheader ?? subject, branding, showConfidentialityNotice }),
+    html: layout({ heading, bodyHtml, preheader: preheader ?? subject, branding, showConfidentialityNotice, footerOverride }),
     text: stripHtml(bodyHtml),
   };
 }
@@ -300,19 +310,22 @@ export function layout({
   preheader = "",
   branding,
   showConfidentialityNotice = true,
+  footerOverride,
 }: {
   heading: string;
   bodyHtml: string;
   preheader?: string;
   branding?: Branding;
   showConfidentialityNotice?: boolean;
+  /** DS-05/06: a specific template's own footer, taking precedence over `branding.footerText`. */
+  footerOverride?: string;
 }): string {
   const brand = branding?.brandColor || BRAND;
   const headerBg = branding?.headerColor || HEADER_BG;
   const logo = branding?.logoUrl || LOGO_URL;
   const normalizedBodyHtml = normalizeTemplateBodyHtml(bodyHtml, branding);
   const year = new Date().getFullYear();
-  const footer = (branding?.footerText || `© ${year} PEN Global. This is an automated message.`).replace(
+  const footer = (footerOverride || branding?.footerText || `© ${year} PEN Global. This is an automated message.`).replace(
     /\{year\}/g,
     String(year),
   );

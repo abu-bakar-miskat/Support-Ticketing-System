@@ -44,6 +44,24 @@ async function signInWithMicrosoft(formData: FormData) {
   if (data.url) redirect(data.url);
 }
 
+async function signInWithPassword(formData: FormData) {
+  "use server";
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const next = safeNextPath(String(formData.get("next") ?? ""));
+  const nextQuery = next !== "/" ? `&next=${encodeURIComponent(next)}` : "";
+
+  if (!email || !password) {
+    redirect(`/login?error=${encodeURIComponent("Email and password are required")}${nextQuery}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
+  redirect(next);
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -111,6 +129,53 @@ export default async function LoginPage({
         </form>
 
         <div className="h-6" />
+
+        <div className="flex w-full items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[11.5px] text-pen-muted">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <div className="h-6" />
+
+        <form action={signInWithPassword} className="w-full space-y-3">
+          {next !== "/" && <input type="hidden" name="next" value={next} />}
+          <input
+            type="email"
+            name="email"
+            required
+            placeholder="Email"
+            autoComplete="email"
+            className={cn(
+              "h-11 w-full rounded-lg border bg-transparent px-3.5 text-[13.5px]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+            )}
+          />
+          <input
+            type="password"
+            name="password"
+            required
+            placeholder="Password"
+            autoComplete="current-password"
+            className={cn(
+              "h-11 w-full rounded-lg border bg-transparent px-3.5 text-[13.5px]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+            )}
+          />
+          <button
+            type="submit"
+            className={cn(
+              "flex h-11 w-full items-center justify-center rounded-lg border",
+              "text-[13.5px] font-medium",
+              "pen-pressable transition-colors hover:bg-pen-button/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+            )}
+          >
+            Sign in with email
+          </button>
+        </form>
+
+        <div className="h-8" />
 
         <div className="flex items-center justify-center gap-1.5">
           <span

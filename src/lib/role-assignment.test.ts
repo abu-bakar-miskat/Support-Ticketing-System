@@ -4,6 +4,7 @@ import {
   decideDepartmentAccess,
   deriveEffectiveRole,
   subDepartmentScopeForDepartment,
+  computeSubDepartmentTeamIds,
   resolveEffectiveSubDepartmentManager,
   type ScopeRow,
   type UserScope,
@@ -197,6 +198,54 @@ describe("subDepartmentScopeForDepartment — SD-06", () => {
       scope({ tenantAdminIds: ["tOther"], subDepartmentIds: ["teamB"] }), "d1", deptSubDepartments, "tA",
     );
     expect([...allowed!]).toEqual(["teamB"]);
+  });
+});
+
+describe("computeSubDepartmentTeamIds — global SD-06 allowlist for the Prisma scope extension", () => {
+  it("is unrestricted (null) for a platform admin", () => {
+    expect(computeSubDepartmentTeamIds(scope({ isPlatformAdmin: true }), {}, {})).toBeNull();
+  });
+
+  it("is unrestricted (null) when the caller admins every tenant they belong to", () => {
+    const s = scope({ tenantIds: ["t1", "t2"], tenantAdminIds: ["t1", "t2"] });
+    expect(computeSubDepartmentTeamIds(s, {}, {})).toBeNull();
+  });
+
+  it("is restricted when the caller admins only some of their tenants", () => {
+    const s = scope({ tenantIds: ["t1", "t2"], tenantAdminIds: ["t1"], subDepartmentIds: ["teamA"] });
+    // Not null — t2 access must still be bounded, even though t1 is fully open
+    // (t1's teams are included via the tenantAdminIds expansion below).
+    expect(computeSubDepartmentTeamIds(s, {}, { t1: ["team-t1-a", "team-t1-b"] })).toEqual(
+      expect.arrayContaining(["teamA", "team-t1-a", "team-t1-b"]),
+    );
+  });
+
+  it("is restricted to exactly the caller's direct team memberships when they hold no department/tenant-admin grants", () => {
+    const s = scope({ tenantIds: ["t1"], subDepartmentIds: ["teamA", "teamB"] });
+    expect(computeSubDepartmentTeamIds(s, {}, {})).toEqual(["teamA", "teamB"]);
+  });
+
+  it("returns an empty (non-null) array for a caller with no grants at all — sees nothing, not everything", () => {
+    const s = scope({ tenantIds: ["t1"] });
+    expect(computeSubDepartmentTeamIds(s, {}, {})).toEqual([]);
+  });
+
+  it("expands a DEPARTMENT-scoped grant into that department's full team list", () => {
+    const s = scope({ tenantIds: ["t1"], departmentIds: ["d1"], subDepartmentIds: ["teamC"] });
+    const result = computeSubDepartmentTeamIds(s, { d1: ["teamA", "teamB"] }, {});
+    expect(result?.sort()).toEqual(["teamA", "teamB", "teamC"]);
+  });
+
+  it("expands a tenant-admin grant into that tenant's full team list", () => {
+    const s = scope({ tenantIds: ["t1", "t2"], tenantAdminIds: ["t1"], subDepartmentIds: ["teamX"] });
+    const result = computeSubDepartmentTeamIds(s, {}, { t1: ["teamA", "teamB"] });
+    expect(result?.sort()).toEqual(["teamA", "teamB", "teamX"]);
+  });
+
+  it("de-duplicates overlapping team ids across the sources", () => {
+    const s = scope({ tenantIds: ["t1"], departmentIds: ["d1"], subDepartmentIds: ["teamA"] });
+    const result = computeSubDepartmentTeamIds(s, { d1: ["teamA", "teamB"] }, {});
+    expect(result?.sort()).toEqual(["teamA", "teamB"]);
   });
 });
 

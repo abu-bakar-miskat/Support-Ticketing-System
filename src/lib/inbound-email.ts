@@ -191,3 +191,19 @@ export function extractReferencedIds(
   }
   return [...ids]
 }
+
+/**
+ * EM-04's last-resort fallback: extract a human ticket reference (e.g.
+ * "SUP-42") from a subject line, for when neither the reply token nor the
+ * In-Reply-To/References headers matched — e.g. a client that drops custom
+ * headers, or a reply typed into a fresh compose window quoting the subject.
+ * Matches anywhere in the string (not anchored), case-insensitively.
+ */
+export function extractTicketReferenceFromSubject(
+  subject: string | null | undefined,
+): { prefix: string; number: number } | null {
+  if (!subject) return null
+  const m = subject.match(/\b([A-Za-z]{2,10})-(\d+)\b/)
+  if (!m) return null
+  return { prefix: m[1].toUpperCase(), number: parseInt(m[2], 10) }
+}

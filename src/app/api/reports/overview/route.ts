@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       _count: { _all: true },
     }),
     prisma.ticket.groupBy({
-      by: ["assigneeId", "teamId", "status"],
+      by: ["assigneeId", "subDepartmentId", "status"],
       where: createdWhere,
       _count: { _all: true },
     }),
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
         _count: { select: { comments: { where: { deletedAt: null } } } },
       },
     }),
-    prisma.ticket.groupBy({ by: ["teamId", "status"], where: createdWhere, _count: { _all: true } }),
+    prisma.ticket.groupBy({ by: ["subDepartmentId", "status"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({ by: ["priority"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({
       by: ["assigneeId"],

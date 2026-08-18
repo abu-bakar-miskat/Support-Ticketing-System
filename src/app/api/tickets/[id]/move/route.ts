@@ -12,6 +12,7 @@ import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { broadcastProjectBoardsChange } from "@/lib/project-boards-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 
 export async function PATCH(
   request: NextRequest,
@@ -115,11 +116,12 @@ export async function PATCH(
     nextLabels.some((label) => !ticket.labels.includes(label)) ||
     ticket.labels.some((label) => !nextLabels.includes(label))
 
+  const newClosedAt = validStatus.isComplete ? (ticket.closedAt ?? new Date()) : null
   const updated = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
     const result = await tx.ticket.update({
       where: { id },
-      data: { status, closedAt: validStatus.isComplete ? (ticket.closedAt ?? new Date()) : null },
+      data: { status, closedAt: newClosedAt },
       select: { id: true, status: true },
     })
     if (labelsChanged) {
@@ -149,6 +151,9 @@ export async function PATCH(
 
   // Heavy work after the response — keeps StatusSelect snappy
   after(async () => {
+    if (ticket.closedAt !== newClosedAt) {
+      await syncResolutionTimerOnClosedAtChange(id, newClosedAt).catch(() => undefined)
+    }
     await stopRunningTimersOnStatusChange(id, status).catch(() => undefined)
     await startTimerOnStatusChange(id, status, {
       id: profile.id,

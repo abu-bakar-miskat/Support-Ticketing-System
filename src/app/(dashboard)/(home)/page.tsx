@@ -13,10 +13,13 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
-  // Super-admins default to the platform-level tenants console — but only while
-  // at the platform level. Once they've entered a department (active dept set),
-  // Home behaves like the normal tenant dashboard with its usual layout.
-  if (profile.isSuperAdmin && !activeDeptId) redirect("/tenants");
+  // Super-admins and tenant admins default to the tenants console — but only
+  // while at the platform level. Once they've entered a department (active
+  // dept set), Home behaves like the normal tenant dashboard with its usual
+  // layout.
+  if ((profile.isSuperAdmin || profile.role === "admin") && !activeDeptId) {
+    redirect("/tenants");
+  }
 
   if (profile.role === "manager") {
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? [];
@@ -24,10 +27,6 @@ export default async function HomePage() {
     if (!activeDeptId || managedIds.includes(activeDeptId)) {
       redirect("/manager");
     }
-  }
-
-  if (profile.role === "admin") {
-    if (!activeDeptId) redirect("/departments");
   }
 
   // Paint greeting/clock immediately; HomeDashboard skeletons sections while fetching.

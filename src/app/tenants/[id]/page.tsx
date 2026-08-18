@@ -13,6 +13,9 @@ export default async function TenantManagePage({
 }) {
   const profile = await getProfile()
   if (!profile) redirect("/login")
+  // Branding/logo/status updates below are super-admin-only endpoints — keep
+  // this page gated the same way, even though tenant admins can now reach the
+  // /tenants list to enter their own tenant.
   if (!profile.isSuperAdmin) redirect("/")
 
   const { id } = await params

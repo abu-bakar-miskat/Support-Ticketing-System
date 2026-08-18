@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
+import { syncAgentUnavailableFlagForUser } from "@/lib/agent-unavailable"
 
 export async function GET(_req: NextRequest) {
   const { profile, error } = await requireAuth()
@@ -42,6 +43,8 @@ export async function PUT(req: NextRequest) {
     create: { userId: profile!.id, ...data },
     update: data,
   })
+
+  await syncAgentUnavailableFlagForUser(profile!.id)
 
   return NextResponse.json(schedule)
 }

@@ -13,6 +13,8 @@ import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveColumnIdForStatus } from "@/lib/board-columns"
+import { startSlaTimers } from "@/lib/sla-engine"
+import { assertDepartmentOperational } from "@/lib/department-setup"
 
 const VALID_TYPES = ["Bug", "Feature", "Task", "Chore"] as const
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
@@ -213,7 +215,7 @@ export async function POST(request: Request) {
 
   const subDepartmentRecord = await prisma.subDepartment.findUnique({
     where: { id: resolvedSubDepartmentId },
-    select: { id: true },
+    select: { id: true, departmentId: true },
   })
   if (!subDepartmentRecord) {
     return NextResponse.json(
@@ -228,6 +230,12 @@ export async function POST(request: Request) {
 
   if (!subDepartmentAllowed) {
     return NextResponse.json({ error: "Team not in current department" }, { status: 403 })
+  }
+
+  // DS-08: a department blocks ticket creation until its initial setup review is complete.
+  const setupCheck = await assertDepartmentOperational(subDepartmentRecord.departmentId)
+  if (!setupCheck.ok) {
+    return NextResponse.json({ error: setupCheck.error }, { status: 422 })
   }
 
   if (parentId) {
@@ -370,6 +378,16 @@ export async function POST(request: Request) {
   }
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
+
+  if (!isDraft && columnDeptId) {
+    await startSlaTimers(
+      ticket.id,
+      ticketTenantId,
+      columnDeptId,
+      { priority, type, title, description, labels },
+      ticket.createdAt,
+    )
+  }
 
   await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
     humanId,

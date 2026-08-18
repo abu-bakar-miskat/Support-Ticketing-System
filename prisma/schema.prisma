@@ -85,6 +85,15 @@ enum ActivityAction {
   FIELD_CHANGED
   TIMER_RESET
   QA_TIME_LOGGED
+  ASSIGNMENT_FAILED
+}
+
+// Per-department ticket-assignment method (slice 11, ASG-01).
+enum AssignmentMethod {
+  RULE_BASED
+  ROUND_ROBIN
+  WORKLOAD_BASED
+  MANUAL
 }
 
 enum TimeEntryKind {
@@ -117,6 +126,10 @@ enum NotificationType {
   customer_reply
   customer_reply_review
   intake_manager_alert
+  sla_at_risk
+  sla_breach
+  assignment_failed_alert
+  mailbox_connection_failed
 }
 
 enum JoinRequestStatus {
@@ -178,6 +191,11 @@ model Tenant {
   projects    Project[]
   tickets     Ticket[]
   boardColumns BoardColumn[]
+  slaPolicies SlaPolicy[]
+  assignmentRules AssignmentRule[]
+  bulkReassignJobs BulkReassignJob[]
+  mailboxConnections MailboxConnection[]
+  mailSuppressionLogs MailSuppressionLog[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -241,6 +259,21 @@ model Department {
   // static fields (name, email, title, issue type). See lib/intake-default-fields.
   intakeDefaultFields Json?
   subDepartments    SubDepartment[]
+  // SLA settings (slice 10, SLA-04): { pauseOutsideHours: boolean, atRiskPct: number }.
+  // Defaults (pauseOutsideHours: false, atRiskPct: 80) applied in code when absent.
+  slaConfig         Json?
+  // WH-05 fallback business calendar, consulted when a ticket's assignee has no
+  // MemberSchedule row (or the ticket is unassigned): { timezone, workingDays,
+  // workStartTime, workEndTime }. DepartmentHoliday supplies the holiday half.
+  businessHours     Json?
+  // Ticket-assignment method (slice 11, ASG-01). Default preserves the
+  // pre-existing round-robin-ish behavior of lib/rota.ts's resolveAssignee().
+  assignmentMethod  AssignmentMethod     @default(ROUND_ROBIN)
+  // DS-08: null blocks operational use (ticket creation on every path) until
+  // the initial setup review is completed — see lib/department-setup.ts.
+  // Existing departments are backfilled to non-null at migration time so this
+  // is additive, not retroactively blocking (see the migration's UPDATE).
+  setupCompletedAt  DateTime?
   projects          Project[]
   joinRequests      JoinRequest[]
   managers          DepartmentManager[]
@@ -254,7 +287,11 @@ model Department {
   departmentHolidays DepartmentHoliday[]
   departmentEvents  DepartmentEvent[]
   recruitmentBoards RecruitmentBoard[]
+  bulkReassignJobs  BulkReassignJob[]
   boardColumns      BoardColumn[]
+  slaPolicies       SlaPolicy[]
+  assignmentRules   AssignmentRule[]
+  mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
 }
@@ -276,8 +313,9 @@ model DepartmentEvent {
   @@index([departmentId, startDate])
 }
 
-// Department-wide holiday (display-only calendar entry; not consulted by
-// auto-assignment). Spans startDate..endDate inclusive.
+// Department-wide holiday (calendar display; also consulted as the holiday
+// component of the WH-05 SLA business-hours fallback — see Department.businessHours).
+// Not consulted by auto-assignment. Spans startDate..endDate inclusive.
 model DepartmentHoliday {
   id           String   @id @default(cuid())
   departmentId String
@@ -298,6 +336,9 @@ model DepartmentManager {
   userId       String     @db.Uuid
   assignedAt   DateTime   @default(now())
   assignedBy   String     @db.Uuid
+  // DS-09: null shows the dismissible setup overview once for a newly-assigned
+  // manager of an already-active department (see lib/department-setup.ts).
+  walkthroughDismissedAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   user       Profile    @relation("ManagedDepartments", fields: [userId], references: [id], onDelete: Cascade)
@@ -390,6 +431,7 @@ model SubDepartment {
   intakeFormConfigs IntakeFormConfig[]
   intakeIssues      IntakeIssue[]
   invites           DepartmentInvite[]
+  mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
   @@map("Team")
@@ -753,6 +795,9 @@ model Ticket {
   messages      TicketMessage[]
   pullRequests  TicketPullRequest[]
   commits       GitHubCommit[]
+  slaTimer      SlaTimer?
+  slaBreaches   SlaBreach[]
+  accessGrants  TicketAccessGrant[]
 
   @@unique([subDepartmentId, ticketNumber])
   @@index([projectId])
@@ -893,6 +938,103 @@ model ActivityLog {
   @@index([ticketId, createdAt(sort: Desc)])
 }
 
+// Retained read access (slice 13, ASG-06): a ticket transfer moves the ticket
+// out of the transferring user's team/sub-department, which would otherwise
+// drop their read access under SD-06 scoping. One row per (ticket, user) grant
+// carves out that exception — see subDepartmentAllowlist/rowSubDepartmentAllowed
+// in lib/prisma-scope.ts, the only place this table is consulted.
+model TicketAccessGrant {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String   @db.Uuid
+  reason    String?
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, userId])
+  @@index([userId])
+}
+
+enum MailboxScopeType {
+  DEPARTMENT
+  SUB_DEPARTMENT
+}
+
+// RESEND is the only functional provider today; the others are the D-10
+// provider-abstraction seam OAuth (M365/Google) and IMAP land behind later
+// (EM-05) — see lib/mail-providers.
+enum MailboxAuthType {
+  RESEND
+  OAUTH_M365
+  OAUTH_GOOGLE
+  IMAP
+}
+
+enum MailboxConnectionStatus {
+  ACTIVE
+  AUTH_ERROR
+  UNREACHABLE
+}
+
+// A department/sub-department inbound mailbox (slice 14, EM-01/02/03).
+// `teamId` is always the concrete sub-department (Team) new tickets are filed
+// into — even a DEPARTMENT-scoped connection needs one, since Team is the only
+// unit with a board/ticket counter (slice 04/05). `scopeType` is a management/
+// visibility attribute (who may edit it), mirroring the DEPARTMENT/
+// SUB_DEPARTMENT split already established by RoleAssignment (slice 01).
+// `credentialsRef` is an opaque AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts,
+// NFR-03) — null for RESEND, which still uses the platform-wide RESEND_API_KEY.
+// Never selected/returned by any API response.
+model MailboxConnection {
+  id               String                  @id @default(cuid())
+  tenantId         String
+  departmentId     String
+  subDepartmentId  String                  @map("teamId")
+  scopeType        MailboxScopeType
+  address          String                  @unique
+  authType         MailboxAuthType         @default(RESEND)
+  credentialsRef   String?
+  status           MailboxConnectionStatus @default(ACTIVE)
+  // EM-07 exponential-backoff bookkeeping for the health-check cron.
+  failureCount     Int                     @default(0)
+  lastCheckedAt    DateTime?
+  lastErrorAt      DateTime?
+  lastErrorMessage String?
+  nextCheckAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([departmentId])
+  @@index([subDepartmentId])
+  @@index([status])
+}
+
+// EM-06: an auto-generated inbound message (bounce/OOO/Auto-Submitted) that
+// was suppressed rather than turned into a ticket. Kept separately from
+// TicketMessage because there is, by definition, no ticket to attach it to.
+model MailSuppressionLog {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  mailboxConnectionId String?
+  providerMessageId   String?
+  fromEmail           String?
+  toAddress           String?
+  subject             String?
+  reason              String
+  createdAt           DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
 // ─── Planning & Time Tracking ─────────────────────────────────────────────────
 
 model Sprint {
@@ -1010,6 +1152,153 @@ model SlaRule {
   firstResponseMins Int
   resolutionMins    Int
   enabled           Boolean        @default(true)
+}
+
+// ─── SLA (slice 10) ─────────────────────────────────────────────────────────
+
+// Per-department SLA policy, matched against submitted form values (SLA-01/02).
+// `conditions` is a rules-engine `ConditionGroup` (see lib/rules-engine.ts); an
+// empty group matches unconditionally. Where multiple policies match a ticket,
+// lib/sla-policy-match.ts picks the most restrictive target per metric.
+model SlaPolicy {
+  id                String   @id @default(cuid())
+  tenantId          String
+  departmentId      String
+  name              String
+  conditions        Json
+  firstResponseMins Int
+  resolutionMins    Int
+  enabled           Boolean  @default(true)
+  order             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  timers     SlaTimer[]
+
+  @@index([departmentId])
+  @@index([tenantId])
+}
+
+// Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a
+// rules-engine `ConditionGroup` (lib/rules-engine.ts) matched against submitted
+// form values; rules are tried in `order`, first enabled match wins and its
+// `agentId` is the assignment target (see lib/assignment.ts's pickRuleBased).
+// Scoped to single-agent assignment only — team-level routing is the separate,
+// pre-existing RoutingRule model.
+model AssignmentRule {
+  id           String   @id @default(cuid())
+  tenantId     String
+  departmentId String
+  name         String
+  conditions   Json
+  agentId      String   @db.Uuid
+  enabled      Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([tenantId])
+}
+
+enum BulkReassignTargetType {
+  SINGLE_AGENT
+  GROUP
+  DEPARTMENT_POOL
+}
+
+enum BulkReassignJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// Async bulk reassignment (slice 13, ASG-05/C-05). Captures a snapshot of the
+// target ticket ids at creation time, then processes them off the request path
+// (see lib/bulk-reassign.ts). `succeededTicketIds` is the resumability ledger —
+// processing always skips ids already in it, so re-running a job (via the cron
+// sweep, if the initial `after()` run never finished) is a no-op for anything
+// already done, satisfying C-05's idempotent-on-retry requirement without a
+// queue library.
+model BulkReassignJob {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  departmentId       String
+  createdById        String                 @db.Uuid
+  sourceAssigneeId   String                 @db.Uuid
+  targetType         BulkReassignTargetType
+  // Exactly one of these is set, per targetType (SINGLE_AGENT / GROUP).
+  targetAgentId      String?                @db.Uuid
+  targetTeamId       String?
+  status             BulkReassignJobStatus  @default(PENDING)
+  ticketIds          String[]               @default([])
+  succeededTicketIds String[]               @default([])
+  resultSummary      Json?
+  createdAt          DateTime               @default(now())
+  startedAt          DateTime?
+  completedAt        DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+// One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).
+// Deliberately stores only start/stop instants, never accumulated pause
+// counters — elapsed *working* time is computed lazily and purely from
+// (startedAt, stoppedAt ?? now, calendar) on every read (see lib/sla-timer.ts).
+// On reopen (OQ-03) this same row is mutated in place — resolution resumes,
+// first-response restarts fresh — so no schema change is needed for that flow.
+model SlaTimer {
+  id                             String    @id @default(cuid())
+  ticketId                       String    @unique
+  tenantId                       String
+  policyId                       String?
+  firstResponseTargetMins        Int
+  resolutionTargetMins           Int
+  firstResponseStartedAt         DateTime
+  firstResponseStoppedAt         DateTime?
+  resolutionStartedAt            DateTime
+  resolutionStoppedAt            DateTime?
+  firstResponseAtRiskNotifiedAt  DateTime?
+  firstResponseBreachNotifiedAt  DateTime?
+  resolutionAtRiskNotifiedAt     DateTime?
+  resolutionBreachNotifiedAt     DateTime?
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
+
+  ticket Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  policy SlaPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([policyId])
+}
+
+// Immutable append-only SLA breach history (SLA-07) — rows are only ever
+// inserted, never updated or deleted, even across reopen cycles.
+model SlaBreach {
+  id         String   @id @default(cuid())
+  ticketId   String
+  tenantId   String
+  timerId    String
+  metric     String // "first_response" | "resolution"
+  targetMins Int
+  breachedAt DateTime
+  createdAt  DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([tenantId])
 }
 
 model RoutingRule {

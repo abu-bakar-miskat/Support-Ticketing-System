@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { managerCanManageUser } from "@/lib/dept-scope"
+import { syncAgentUnavailableFlagForUser } from "@/lib/agent-unavailable"
 
 async function assertMemberScope(targetUserId: string, caller: Parameters<typeof managerCanManageUser>[0]): Promise<NextResponse | null> {
   if (await managerCanManageUser(caller, targetUserId)) return null
@@ -23,6 +24,8 @@ export async function DELETE(
   await prisma.memberHoliday.deleteMany({
     where: { id: holidayId, userId },
   })
+
+  await syncAgentUnavailableFlagForUser(userId)
 
   return new NextResponse(null, { status: 204 })
 }

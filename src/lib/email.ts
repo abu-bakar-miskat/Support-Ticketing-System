@@ -6,6 +6,8 @@ import { renderAssignment } from "./email-templates/assignment";
 import { renderIntakeConfirmation } from "./email-templates/intake-confirmation";
 import { renderIntakeVerification } from "./email-templates/intake-verification";
 import { renderIntakeManagerAlert } from "./email-templates/intake-manager-alert";
+import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed-alert";
+import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-connection-failed-alert";
 import { renderInvite } from "./email-templates/invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
@@ -194,6 +196,65 @@ export async function sendIntakeManagerAlertEmail(args: {
   });
   logIfRejected(
     "intake manager alert",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
+export async function sendAssignmentFailedAlertEmail(args: {
+  to: string;
+  managerId: string;
+  managerName: string;
+  ticketId: string;
+  humanId: string;
+  ticketTitle: string;
+  departmentId?: string | null;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(args.departmentId);
+  if (!config.notifyAssignmentFailed) return;
+  if (!await isEmailPrefEnabled(args.managerId, "emailOnAssignmentFailed")) return;
+
+  const { to, managerId, departmentId, ...rest } = args;
+  const { subject, html, text } = renderAssignmentFailedAlert({
+    ...rest,
+    branding: brandingFrom(config),
+  });
+  logIfRejected(
+    "assignment failed alert",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
+export async function sendMailboxConnectionFailedAlertEmail(args: {
+  to: string;
+  managerName: string;
+  address: string;
+  error: string;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(null);
+
+  const { to, ...rest } = args;
+  const { subject, html, text } = renderMailboxConnectionFailedAlert({
+    ...rest,
+    branding: brandingFrom(config),
+  });
+  logIfRejected(
+    "mailbox connection failed alert",
     await resend.emails.send({
       from: fromHeader(config),
       to,

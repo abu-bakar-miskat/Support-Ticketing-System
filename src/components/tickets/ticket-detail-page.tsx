@@ -100,6 +100,7 @@ import type {
   UiPriority,
 } from "@/components/board/board-types";
 import { PriorityPill } from "@/components/board/priority-indicator";
+import { SlaIndicatorBadge } from "@/components/tickets/sla-indicator-badge";
 import { StatusPill as SharedStatusPill } from "@/components/board/status-pill";
 import { TagPill } from "@/components/board/tag-pill";
 import type { UserListPerson } from "@/lib/user-list-person";
@@ -2469,6 +2470,8 @@ export function TicketDetailPage({
                 status={liveStatus}
                 size="md"
               />
+
+              <SlaIndicatorBadge ticketId={dbId} size="md" />
 
               {/* Label pills */}
               {liveLabels.map((lbl) => (

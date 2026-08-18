@@ -10,6 +10,7 @@ import {
   pickBody,
   parseFromAddress,
   extractReferencedIds,
+  extractTicketReferenceFromSubject,
 } from "./inbound-email"
 
 // ── sanitizeInboundHtml ───────────────────────────────────────────────────────
@@ -247,5 +248,28 @@ describe("extractReferencedIds", () => {
 
   it("returns an empty array when both headers are null", () => {
     expect(extractReferencedIds(null, null)).toEqual([])
+  })
+})
+
+describe("extractTicketReferenceFromSubject", () => {
+  it("extracts a reference from a plain subject", () => {
+    expect(extractTicketReferenceFromSubject("SUP-42")).toEqual({ prefix: "SUP", number: 42 })
+  })
+
+  it("extracts a reference embedded in a reply subject", () => {
+    expect(extractTicketReferenceFromSubject("Re: [SUP-42] Login issue")).toEqual({ prefix: "SUP", number: 42 })
+  })
+
+  it("is case-insensitive and normalizes the prefix to uppercase", () => {
+    expect(extractTicketReferenceFromSubject("re: sup-7 password reset")).toEqual({ prefix: "SUP", number: 7 })
+  })
+
+  it("returns null when there is no reference", () => {
+    expect(extractTicketReferenceFromSubject("Just a question")).toBeNull()
+  })
+
+  it("returns null for null/undefined subjects", () => {
+    expect(extractTicketReferenceFromSubject(null)).toBeNull()
+    expect(extractTicketReferenceFromSubject(undefined)).toBeNull()
   })
 })

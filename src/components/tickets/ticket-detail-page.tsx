@@ -71,10 +71,9 @@ import {
   type ProjectTicketSummary,
 } from "@/lib/api/tickets";
 import { extractAttachmentIdsFromHtml } from "@/lib/tiptap/attachment-utils";
-import { CommentInput } from "@/components/tickets/comment-input";
 import { CommentItem } from "@/components/tickets/comment-item";
+import { UnifiedReplyComposer } from "@/components/tickets/unified-reply-composer";
 import {
-  CustomerReplyComposer,
   CustomerMessageItem,
   type MessageData,
   type MessageNote,
@@ -810,8 +809,8 @@ export function TicketDetailPage({
     setDraftBannerVisible(isDraft);
   }, [isDraft]);
   const [activeTab, setActiveTab] = useState<
-    "comments" | "customer-chat" | "activity"
-  >("comments");
+    "conversation" | "activity"
+  >("conversation");
   const [activityLimit, setActivityLimit] = useState(10);
   const [copied, setCopied] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
@@ -868,7 +867,6 @@ export function TicketDetailPage({
   const knownCommentIds = useRef(new Set(comments.map((c) => c.id)));
   const knownActivityIds = useRef(new Set(activity.map((a) => a.id)));
   const chatBottomRef = useRef<HTMLDivElement>(null);
-  const commentsBottomRef = useRef<HTMLDivElement>(null);
   const [liveMessages, setLiveMessages] = useState<MessageData[]>(messages);
   const [refreshingMessages, setRefreshingMessages] = useState(false);
   const pushSub = useDrawerStore((s) => s.pushSub);
@@ -969,16 +967,6 @@ export function TicketDetailPage({
     [liveMessages],
   );
 
-  // Jump to the newest message (bottom, by the sticky composer) whenever the
-  // chat tab opens or a message arrives.
-  useEffect(() => {
-    if (activeTab !== "customer-chat") return;
-    const id = requestAnimationFrame(() =>
-      chatBottomRef.current?.scrollIntoView({ block: "end" }),
-    );
-    return () => cancelAnimationFrame(id);
-  }, [activeTab, sortedMessages.length]);
-
   // "inbound" = last message from submitter → waiting for assignee
   // "outbound" = last message from assignee → waiting for customer
   // Hidden when the ticket status is marked complete (e.g. Live / Done).
@@ -1041,15 +1029,40 @@ export function TicketDetailPage({
     );
   }, [liveComments]);
 
-  // Jump to the newest comment (bottom, by the sticky composer) whenever the
-  // comments tab opens or a comment arrives.
+  // CM-01: comments and customer messages merged into one chronological feed.
+  const unifiedFeed = useMemo(() => {
+    type FeedItem =
+      | { kind: "comment"; key: string; createdAt: string; comment: CommentData; parentRef: (typeof flatComments)[number]["parentRef"] }
+      | { kind: "message"; key: string; createdAt: string; message: MessageData };
+    const items: FeedItem[] = [
+      ...flatComments.map(({ comment, parentRef }) => ({
+        kind: "comment" as const,
+        key: `c-${comment.id}`,
+        createdAt: comment.createdAt,
+        comment,
+        parentRef,
+      })),
+      ...sortedMessages.map((message) => ({
+        kind: "message" as const,
+        key: `m-${message.id}`,
+        createdAt: message.createdAt,
+        message,
+      })),
+    ];
+    return items.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [flatComments, sortedMessages]);
+
+  // Jump to the newest item (bottom, by the sticky composer) whenever the
+  // conversation tab opens or a comment/message arrives.
   useEffect(() => {
-    if (activeTab !== "comments") return;
+    if (activeTab !== "conversation") return;
     const id = requestAnimationFrame(() =>
-      commentsBottomRef.current?.scrollIntoView({ block: "end" }),
+      chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [activeTab, flatComments.length]);
+  }, [activeTab, unifiedFeed.length]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -1678,7 +1691,7 @@ export function TicketDetailPage({
             icon: <MessageSquare className="size-4 text-pen-blue" />,
             action: {
               label: "View",
-              onClick: () => setActiveTab("customer-chat"),
+              onClick: () => setActiveTab("conversation"),
             },
           });
         }
@@ -1691,7 +1704,7 @@ export function TicketDetailPage({
   // before Resend fires the webhook. 20s interval — low enough to catch stragglers,
   // high enough not to hammer the DB.
   useEffect(() => {
-    if (activeTab !== "customer-chat") return;
+    if (activeTab !== "conversation") return;
     const poll = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -1720,7 +1733,7 @@ export function TicketDetailPage({
   // are recovered the broadcast fires automatically, but we also refresh here
   // as a belt-and-suspenders measure.
   useEffect(() => {
-    if (activeTab !== "customer-chat") return;
+    if (activeTab !== "conversation") return;
     let cancelled = false;
     const reconcile = async () => {
       if (document.visibilityState !== "visible") return;
@@ -2202,11 +2215,9 @@ export function TicketDetailPage({
         <div
           className={cn(
             "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pt-[22px]",
-            // Comments + chat pin the composer to the bottom, so they need
-            // almost no trailing padding; other tabs keep breathing room.
-            activeTab === "customer-chat" || activeTab === "comments"
-              ? "pb-2"
-              : "pb-16",
+            // The conversation feed pins the composer to the bottom, so it
+            // needs almost no trailing padding; other tabs keep breathing room.
+            activeTab === "conversation" ? "pb-2" : "pb-16",
           )}
         >
           <div className="w-full space-y-3.5 px-8">
@@ -3345,16 +3356,10 @@ export function TicketDetailPage({
               <div className="flex items-center">
                 {[
                   {
-                    key: "comments" as const,
-                    label: "Comments",
-                    count: flatComments.length,
+                    key: "conversation" as const,
+                    label: "Conversation",
+                    count: unifiedFeed.length,
                     show: true,
-                  },
-                  {
-                    key: "customer-chat" as const,
-                    label: "Reply to User",
-                    count: liveMessages.length,
-                    show: !!intake,
                   },
                   {
                     key: "activity" as const,
@@ -3386,7 +3391,7 @@ export function TicketDetailPage({
                     </button>
                   ))}
                 <span className="flex-1" />
-                {activeTab === "customer-chat" && (
+                {activeTab === "conversation" && (
                   <button
                     type="button"
                     onClick={async () => {
@@ -3412,96 +3417,53 @@ export function TicketDetailPage({
             {/* Tab content */}
             {isHydrating ? (
               <TicketTabContentHydrating activeTab={activeTab} />
-            ) : activeTab === "customer-chat" ? (
+            ) : activeTab === "conversation" ? (
               <div className="flex flex-col">
-                {/* Message thread — oldest first, newest nearest the composer */}
-                {sortedMessages.length === 0 ? (
+                {/* CM-01: customer messages and staff comments/notes merged into
+                    one chronological feed, visually distinguished by kind. */}
+                {unifiedFeed.length === 0 ? (
                   <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border py-8 text-center">
                     <Mail className="size-5 text-pen-subtle/50" />
                     <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
-                      No messages yet
+                      Nothing here yet
                     </p>
                     <p className="font-sans text-[11.5px] text-pen-subtle">
-                      Send the first reply below.
+                      Post a note or send the first reply below.
                     </p>
                   </div>
                 ) : (
-                  // Even vertical breathing room top and bottom of every message,
-                  // with a hairline divider between them.
-                  <div className="divide-y divide-pen-card-border">
-                    {sortedMessages.map((m) => (
-                      <div key={m.id} className="py-8">
-                        <CustomerMessageItem
-                          message={m}
-                          ticketId={dbId}
-                          teamMembers={mentionableUsers}
-                          onNoteAdded={handleNoteAdded}
-                          onNoteChanged={handleNoteChanged}
-                          onNoteRemoved={handleNoteRemoved}
-                        />
-                      </div>
-                    ))}
+                  <div className="flex flex-col divide-y divide-pen-card-border">
+                    {unifiedFeed.map((item) =>
+                      item.kind === "message" ? (
+                        <div key={item.key} className="py-8">
+                          <CustomerMessageItem
+                            message={item.message}
+                            ticketId={dbId}
+                            teamMembers={mentionableUsers}
+                            onNoteAdded={handleNoteAdded}
+                            onNoteChanged={handleNoteChanged}
+                            onNoteRemoved={handleNoteRemoved}
+                          />
+                        </div>
+                      ) : (
+                        <div key={item.key} className="py-4">
+                          <CommentItem
+                            comment={item.comment}
+                            ticketId={dbId}
+                            teamMembers={mentionableUsers}
+                            parentRef={item.parentRef}
+                            onReplySubmitted={(reply) => handleReplyAdded(item.comment.id, reply)}
+                          />
+                        </div>
+                      ),
+                    )}
                   </div>
                 )}
 
-                {/* Composer pinned to the bottom, chat-style */}
-                {customerReply.enabled && customerReply.customerEmail ? (
-                  <div className="sticky bottom-0 z-10 -mx-1 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
-                    <CustomerReplyComposer
-                      ticketId={dbId}
-                      customerName={customerReply.customerName}
-                      customerEmail={customerReply.customerEmail}
-                      onSent={(m) => setLiveMessages((prev) => [...prev, m])}
-                      onSentConfirmed={(tempId, real) =>
-                        setLiveMessages((prev) =>
-                          prev.some((m) => m.id === real.id)
-                            ? prev.filter((m) => m.id !== tempId)
-                            : prev.map((m) => (m.id === tempId ? real : m)),
-                        )
-                      }
-                      onSentFailed={(tempId) =>
-                        setLiveMessages((prev) =>
-                          prev.filter((m) => m.id !== tempId),
-                        )
-                      }
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface px-4 py-3">
-                    <p className="font-sans text-[12.5px] text-pen-subtle">
-                      Submitter replies are not enabled for this ticket.
-                    </p>
-                  </div>
-                )}
-
-                {/* Bottom anchor — scrolled into view to reveal the newest message */}
-                <div ref={chatBottomRef} />
-              </div>
-            ) : activeTab === "comments" ? (
-              <div className="flex flex-col">
-                {/* Unified conversation — comments and their replies, oldest first */}
-                {flatComments.length === 0 ? (
-                  <p className="py-2 font-sans text-[12px] text-pen-subtle">
-                    No comments yet. Be the first to comment.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {flatComments.map(({ comment: c, parentRef }) => (
-                      <CommentItem
-                        key={c.id}
-                        comment={c}
-                        ticketId={dbId}
-                        teamMembers={mentionableUsers}
-                        parentRef={parentRef}
-                        onReplySubmitted={(reply) => handleReplyAdded(c.id, reply)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Comment input — internal notes, pinned to the bottom */}
-                <div className="sticky bottom-0 z-10 -mx-1 mt-4 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
-                  <CommentInput
+                {/* CM-02: one composer, author chooses Internal Note or Reply
+                    before posting — pinned to the bottom, chat-style. */}
+                <div className="sticky bottom-0 z-10 -mx-1 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
+                  <UnifiedReplyComposer
                     ticketId={dbId}
                     teamMembers={mentionableUsers}
                     onCommentAdded={(comment) => {
@@ -3514,11 +3476,25 @@ export function TicketDetailPage({
                         return next;
                       });
                     }}
+                    replyEnabled={customerReply.enabled}
+                    customerName={customerReply.customerName}
+                    customerEmail={customerReply.customerEmail}
+                    onSent={(m) => setLiveMessages((prev) => [...prev, m])}
+                    onSentConfirmed={(tempId, real) =>
+                      setLiveMessages((prev) =>
+                        prev.some((m) => m.id === real.id)
+                          ? prev.filter((m) => m.id !== tempId)
+                          : prev.map((m) => (m.id === tempId ? real : m)),
+                      )
+                    }
+                    onSentFailed={(tempId) =>
+                      setLiveMessages((prev) => prev.filter((m) => m.id !== tempId))
+                    }
                   />
                 </div>
 
-                {/* Bottom anchor — scrolled into view to reveal the newest comment */}
-                <div ref={commentsBottomRef} />
+                {/* Bottom anchor — scrolled into view to reveal the newest item */}
+                <div ref={chatBottomRef} />
               </div>
             ) : (
               <div className="space-y-1">

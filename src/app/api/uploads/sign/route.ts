@@ -9,6 +9,7 @@ import {
   maxLabelFor,
   uploadKind,
 } from "@/lib/mime";
+import { classifyCommentAttachment, COMMENT_ATTACHMENT_MAX_BYTES } from "@/lib/message-attachments";
 
 // Returns a short-lived signed URL so the browser uploads file bytes directly
 // to Supabase Storage, bypassing the ~4.5 MB Vercel function body limit. Only
@@ -32,13 +33,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid file size" }, { status: 400 });
     }
 
-    // Any file type is allowed in ticket descriptions; only size is capped.
     const contentType = contentTypeForFile(fileName, body.contentType);
-    if (size > maxBytesFor(contentType)) {
-      return NextResponse.json(
-        { error: `File must be under ${maxLabelFor(contentType)}` },
-        { status: 400 },
-      );
+
+    if (forceAttach) {
+      // CM-04: comment/reply attachments — 25 MB cap, MIME allowlist
+      // (images/PDF/office/text-CSV/zip), executables rejected outright.
+      const classification = classifyCommentAttachment(contentType, size, fileName);
+      if (classification === "too_large") {
+        return NextResponse.json(
+          { error: `File must be under ${COMMENT_ATTACHMENT_MAX_BYTES / 1024 / 1024} MB` },
+          { status: 400 },
+        );
+      }
+      if (classification === "blocked_type") {
+        return NextResponse.json(
+          { error: "This file type isn't supported for comment/reply attachments" },
+          { status: 400 },
+        );
+      }
+    } else {
+      // Ticket descriptions: any file type is allowed; only size is capped.
+      if (size > maxBytesFor(contentType)) {
+        return NextResponse.json(
+          { error: `File must be under ${maxLabelFor(contentType)}` },
+          { status: 400 },
+        );
+      }
     }
 
     const kind = uploadKind(contentType);

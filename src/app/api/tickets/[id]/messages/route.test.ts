@@ -19,9 +19,10 @@ vi.mock("@/lib/auth", () => ({
 }))
 vi.mock("@/lib/db", () => ({
   prisma: {
-    ticket: { findUnique: vi.fn() },
+    ticket: { findUnique: vi.fn(), update: vi.fn() },
     ticketMessage: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
+    teamStatus: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/email-config", () => ({
@@ -45,6 +46,7 @@ const mockCreate = vi.mocked(prisma.ticketMessage.create)
 const mockSend = vi.mocked(sendCustomerReplyEmail)
 const mockFindAttachments = vi.mocked(prisma.attachment.findMany)
 const mockUpdateAttachments = vi.mocked(prisma.attachment.updateMany)
+const mockTeamStatusFindFirst = vi.mocked(prisma.teamStatus.findFirst)
 
 const intakeTicket = {
   id: "ticket-1",
@@ -82,6 +84,8 @@ beforeEach(() => {
   mockSend.mockResolvedValue("provider-msg-id")
   mockFindAttachments.mockResolvedValue([] as never)
   mockUpdateAttachments.mockResolvedValue({ count: 0 } as never)
+  mockTeamStatusFindFirst.mockResolvedValue(null as never)
+  vi.mocked(prisma.ticket.update).mockResolvedValue({} as never)
   mockCreate.mockImplementation(
     (async ({ data }: never) =>
       ({
@@ -163,11 +167,26 @@ describe("POST /api/tickets/[id]/messages", () => {
     expect(mockSend).not.toHaveBeenCalled()
   })
 
-  it("409s when the ticket has no intake origin", async () => {
+  it("409s when there is no intake origin AND no prior inbound message to derive a customer address from", async () => {
     mockFindUnique.mockResolvedValue({ ...intakeTicket, intake: null } as never)
+    mockFindFirst.mockResolvedValue(null as never) // no prior inbound message either
     const res = await POST(makeRequest({ body: "hello" }), { params })
     expect(res.status).toBe(409)
     expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it("ticket #16: falls back to the most recent inbound message's address for a mailbox-originated ticket (no intake)", async () => {
+    mockFindUnique.mockResolvedValue({ ...intakeTicket, intake: null } as never)
+    // findFirst is called twice: once for the last inbound (fromEmail fallback),
+    // once for threading (last providerMessageId) — same mock, order doesn't matter here.
+    mockFindFirst.mockResolvedValueOnce({ fromName: "Jane Customer", fromEmail: "jane@example.com" } as never)
+    mockFindFirst.mockResolvedValueOnce(null as never)
+
+    const res = await POST(makeRequest({ body: "hello" }), { params })
+    expect(res.status).toBe(201)
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "jane@example.com", submitterName: "Jane Customer", replyToken: null }),
+    )
   })
 
   it("409s when the form disallows customer replies", async () => {

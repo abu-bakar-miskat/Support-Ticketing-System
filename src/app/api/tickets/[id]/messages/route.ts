@@ -101,23 +101,41 @@ export async function POST(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: true })
   if (accessError) return accessError
 
-  // Customer replies require: receiving configured, an intake origin with a
-  // token, and the form permitting replies.
+  // Customer replies require receiving to be configured, and the form (when
+  // the ticket came from one) permitting replies.
   if (!RESEND_RECEIVING_ENABLED) {
     return NextResponse.json(
       { error: "Customer replies are not enabled in this environment" },
       { status: 409 },
     )
   }
-  if (!ticket.intake || !ticket.intake.replyToken) {
+  if (ticket.intake && !ticket.intake.formConfig.allowCustomerReplies) {
     return NextResponse.json(
-      { error: "This ticket did not originate from a support form" },
+      { error: "This form does not allow customer replies" },
       { status: 409 },
     )
   }
-  if (!ticket.intake.formConfig.allowCustomerReplies) {
+
+  // Ticket #16: a mailbox-connection-originated ticket (#14) has no `intake`
+  // row, so there's no submitterEmail/replyToken to fall back on — resolve
+  // the customer's address from the most recent inbound message instead.
+  // Threading for these still works via In-Reply-To/References (and the
+  // subject-reference fallback), so a reply-token isn't required either.
+  let submitterName = ticket.intake?.submitterName ?? null
+  let submitterEmail = ticket.intake?.submitterEmail ?? null
+  const replyToken = ticket.intake?.replyToken ?? null
+  if (!submitterEmail) {
+    const lastInbound = await prisma.ticketMessage.findFirst({
+      where: { ticketId, direction: "inbound" },
+      orderBy: { createdAt: "desc" },
+      select: { fromName: true, fromEmail: true },
+    })
+    submitterEmail = lastInbound?.fromEmail ?? null
+    submitterName = lastInbound?.fromName ?? null
+  }
+  if (!submitterEmail) {
     return NextResponse.json(
-      { error: "This form does not allow customer replies" },
+      { error: "This ticket has no customer email address on file" },
       { status: 409 },
     )
   }
@@ -208,14 +226,14 @@ export async function POST(
   let providerMessageId: string | null = null
   try {
     providerMessageId = await sendCustomerReplyEmail({
-      to: ticket.intake.submitterEmail,
-      submitterName: ticket.intake.submitterName,
+      to: submitterEmail,
+      submitterName: submitterName ?? submitterEmail,
       agentName: profile.name,
       agentId: profile.id,
       humanId,
       ticketTitle: ticket.title,
       messageText: messageHtml,
-      replyToken: ticket.intake.replyToken,
+      replyToken,
       inReplyTo: lastMessage?.providerMessageId ?? null,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       departmentId: ticket.team.departmentId,

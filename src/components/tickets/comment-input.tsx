@@ -17,7 +17,7 @@ import {
   maxLabelFor,
 } from "@/lib/mime";
 
-type CommentShape = {
+export type CommentShape = {
   id: string; body: string; createdAt: string; editedAt: string | null;
   deletedAt: string | null; authorId: string; authorName: string;
   authorAvatarUrl: string | null;

@@ -651,16 +651,26 @@ export async function getTicketDetailPayload(
         editedAt: n.editedAt?.toISOString() ?? null,
       })),
     })),
-    customerReply: {
-      // Composer shown only when receiving is configured, the ticket came from
-      // an intake, and the form permits replies (issue 009 degrade rules).
-      enabled:
-        RESEND_RECEIVING_ENABLED &&
-        !!ticket.intake &&
-        ticket.intake.formConfig.allowCustomerReplies,
-      customerName: ticket.intake?.submitterName ?? null,
-      customerEmail: ticket.intake?.submitterEmail ?? null,
-    },
+    customerReply: (() => {
+      // Ticket #16: a mailbox-connection-originated ticket (#14) has no
+      // `intake` row — fall back to the most recent inbound message's
+      // sender so the Reply composer still works for those tickets.
+      const lastInbound = ticket.intake
+        ? null
+        : [...messages].reverse().find((m) => m.direction === "inbound");
+      const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? null;
+      const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? null;
+      return {
+        // Composer shown only when receiving is configured, the form (when
+        // there is one) permits replies, and there's a known customer address.
+        enabled:
+          RESEND_RECEIVING_ENABLED &&
+          (!ticket.intake || ticket.intake.formConfig.allowCustomerReplies) &&
+          !!customerEmail,
+        customerName,
+        customerEmail,
+      };
+    })(),
     intake: ticket.intake
       ? {
           submitterName: ticket.intake.submitterName,

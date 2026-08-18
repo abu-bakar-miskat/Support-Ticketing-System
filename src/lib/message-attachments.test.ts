@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { classifyAttachment, INBOUND_MAX_BYTES } from "./message-attachments"
+import {
+  classifyAttachment,
+  INBOUND_MAX_BYTES,
+  classifyCommentAttachment,
+  COMMENT_ATTACHMENT_MAX_BYTES,
+} from "./message-attachments"
 
 describe("classifyAttachment", () => {
   // ── size cap ──────────────────────────────────────────────────────────────
@@ -87,5 +92,51 @@ describe("classifyAttachment", () => {
   it("returns too_large before checking blocklist when file is over cap", () => {
     // Even a blocked type should report too_large (dropped, not stored blocked)
     expect(classifyAttachment("application/x-msdownload", INBOUND_MAX_BYTES + 1)).toBe("too_large")
+  })
+})
+
+describe("classifyCommentAttachment — CM-04", () => {
+  it("returns too_large above the 25 MB cap", () => {
+    expect(classifyCommentAttachment("image/png", COMMENT_ATTACHMENT_MAX_BYTES + 1)).toBe("too_large")
+  })
+
+  it("returns ok exactly at the 25 MB cap", () => {
+    expect(classifyCommentAttachment("application/pdf", COMMENT_ATTACHMENT_MAX_BYTES)).toBe("ok")
+  })
+
+  it("allows images", () => {
+    expect(classifyCommentAttachment("image/png", 1024)).toBe("ok")
+    expect(classifyCommentAttachment("image/jpeg", 1024)).toBe("ok")
+  })
+
+  it("allows PDF and office documents", () => {
+    expect(classifyCommentAttachment("application/pdf", 1024)).toBe("ok")
+    expect(classifyCommentAttachment("application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1024)).toBe("ok")
+    expect(classifyCommentAttachment("application/vnd.ms-excel", 1024)).toBe("ok")
+  })
+
+  it("allows text/csv and zip", () => {
+    expect(classifyCommentAttachment("text/csv", 1024)).toBe("ok")
+    expect(classifyCommentAttachment("application/zip", 1024)).toBe("ok")
+  })
+
+  it("rejects video — not on the comment allowlist even though it's a generally-safe type", () => {
+    expect(classifyCommentAttachment("video/mp4", 1024)).toBe("blocked_type")
+  })
+
+  it("rejects a type outside the allowlist entirely", () => {
+    expect(classifyCommentAttachment("application/octet-stream", 1024)).toBe("blocked_type")
+  })
+
+  it("rejects an executable MIME type even though it would otherwise fail only the allowlist check", () => {
+    expect(classifyCommentAttachment("application/x-msdownload", 1024)).toBe("blocked_type")
+  })
+
+  it("rejects an executable extension disguised with an allowed MIME type", () => {
+    expect(classifyCommentAttachment("image/png", 1024, "totally-a-picture.exe")).toBe("blocked_type")
+  })
+
+  it("size cap takes precedence over type rejection", () => {
+    expect(classifyCommentAttachment("application/x-msdownload", COMMENT_ATTACHMENT_MAX_BYTES + 1)).toBe("too_large")
   })
 })

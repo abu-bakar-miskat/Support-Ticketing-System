@@ -15,6 +15,8 @@ const PRIORITY_TO_UI: Record<string, UiPriority> = {
 import { avatarColorFor } from "@/lib/avatar"
 import { formatTicketDue, isBlockedStatus } from "@/lib/format"
 import { dueHasTime, formatTimeHM, formatCalendarDate } from "@/lib/ticket-datetime"
+import { resolveSubStatusTicketIds, resolveFormFieldTicketIds, resolveSearchTicketIds, type FormFieldFilter } from "@/lib/board-search"
+import type { SubStatus } from "@/lib/ticket-sub-status"
 
 export { avatarColorFor }
 
@@ -332,6 +334,16 @@ export type BoardCardWhere = {
   assigneeIdIn?: string[]
   moduleIdIn?: string[]
   labelsIn?: string[]
+  /** FLT-01: derived sub-status (WAITING_FOR_SUPPORT/WAITING_FOR_CUSTOMER) — resolved via lib/board-search.ts. */
+  subStatusIn?: SubStatus[]
+  /** FLT-01/02: department custom form-field value filters (AND across entries) — resolved via lib/board-search.ts. */
+  formFieldFilters?: FormFieldFilter[]
+  /**
+   * Internal: the id allowlist computed by `getBoardCards`/`countBoardCards`
+   * from `search`/`subStatusIn`/`formFieldFilters` before the real query runs.
+   * Not meant to be set directly by callers.
+   */
+  idIn?: string[]
   dateFrom?: Date
   dateTo?: Date
   /** Inclusive range against any assignee's personal target date (TicketEstimate.targetDate). */
@@ -430,19 +442,10 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
   }
 
   // ── Filter params ───────────────────────────────────────────────────────────
-  if (where.search) {
-    const humanIdMatch = where.search.match(/^([A-Za-z]+)-(\d+)$/i)
-    and.push({
-      OR: [
-        { title: { contains: where.search, mode: "insensitive" } },
-        ...(humanIdMatch
-          ? [{
-              team: { prefix: { equals: humanIdMatch[1], mode: "insensitive" } },
-              ticketNumber: parseInt(humanIdMatch[2], 10),
-            }]
-          : []),
-      ],
-    })
+  // search/subStatusIn/formFieldFilters are resolved to an id allowlist by the
+  // async wrappers below (getBoardCards/countBoardCards) — see lib/board-search.ts.
+  if (where.idIn) {
+    and.push({ id: { in: where.idIn } })
   }
 
   if (where.statusIn?.length) {
@@ -511,13 +514,44 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
   return { AND: and }
 }
 
+/**
+ * FLT-01/02/03: when `search`, `subStatusIn`, or `formFieldFilters` are set,
+ * resolves them to an `idIn` allowlist before the real query runs — those
+ * three need a related-table lookup (TicketMessage/Intake) that can't be
+ * expressed as a plain `where` clause. Phase A fetches every OTHER filter's
+ * (already fully-scoped) matching ids; each requested extra filter then only
+ * narrows that set (see lib/board-search.ts), so the final query stays
+ * scope-safe by construction. No-ops (returns `where` unchanged) when none of
+ * the three are set — zero extra round-trip for the common case.
+ */
+async function applyAdvancedFilters<T extends BoardCardWhere>(where: T): Promise<T> {
+  if (!where.search && !where.subStatusIn?.length && !where.formFieldFilters?.length) {
+    return where
+  }
+
+  const { search, subStatusIn, formFieldFilters, idIn: _ignored, ...rest } = where
+  const candidates = await prisma.ticket.findMany({
+    where: buildTicketWhere(rest),
+    select: { id: true },
+  })
+  let ids: string[] | undefined = candidates.map((t) => t.id)
+
+  if (search) ids = await resolveSearchTicketIds(search, ids)
+  if (subStatusIn?.length) ids = await resolveSubStatusTicketIds(subStatusIn, ids)
+  if (formFieldFilters?.length) ids = await resolveFormFieldTicketIds(formFieldFilters, ids)
+
+  return { ...where, idIn: ids }
+}
+
 export async function countBoardCards(where: Omit<BoardCardWhere, "skip" | "take" | "timeForUserId" | "sortKey"> = {}): Promise<number> {
-  return prisma.ticket.count({ where: buildTicketWhere(where) })
+  const resolved = await applyAdvancedFilters(where)
+  return prisma.ticket.count({ where: buildTicketWhere(resolved) })
 }
 
 export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCardData[]> {
+  const resolvedWhere = await applyAdvancedFilters(where)
   const tickets = await prisma.ticket.findMany({
-    where: buildTicketWhere(where),
+    where: buildTicketWhere(resolvedWhere),
     include: ticketInclude,
     orderBy: buildOrderBy(where.sortKey),
     ...(where.skip !== undefined ? { skip: where.skip } : {}),

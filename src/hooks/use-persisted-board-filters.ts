@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type {
   DateFilter,
   IntakeFilter,
@@ -13,6 +14,13 @@ import type { SortKey } from "@/components/tasks/task-filter-dropdown";
 import type { DateRange } from "@/components/ui/date-range-dropdown";
 
 const STORAGE_KEY = "pen.board.filters";
+// FLT-05: the client-side board filters, URL-encoded for bookmarking/sharing.
+// Written via `history.replaceState` directly (not next/navigation's router)
+// so every filter tweak doesn't trigger a server round-trip — these filters
+// are applied entirely in the browser against already-fetched cards, so the
+// server never needs to observe this param (see board/page.tsx, which only
+// reads `q`/`subStatus` for its own server-side query).
+const URL_PARAM = "boardFilters";
 
 export type BoardFiltersState = {
   assigneeFilter: string;
@@ -133,10 +141,23 @@ function sanitize(raw: unknown): BoardFiltersState {
 }
 
 export function usePersistedBoardFilters() {
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState<BoardFiltersState>(DEFAULT_FILTERS);
   const [ready, setReady] = useState(false);
 
+  // FLT-05: the URL wins on load (so a shared link reproduces the sender's
+  // view exactly); falls back to this browser's last-used filters otherwise.
   useEffect(() => {
+    const fromUrl = searchParams.get(URL_PARAM);
+    if (fromUrl) {
+      try {
+        setFilters(sanitize(JSON.parse(decodeURIComponent(fromUrl))));
+        setReady(true);
+        return;
+      } catch {
+        // fall through to localStorage
+      }
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setFilters(sanitize(JSON.parse(raw)));
@@ -144,6 +165,9 @@ export function usePersistedBoardFilters() {
       // ignore storage errors
     }
     setReady(true);
+    // Only ever read the URL/localStorage once, on mount — this hook owns
+    // `filters` from then on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -153,6 +177,19 @@ export function usePersistedBoardFilters() {
     } catch {
       // ignore storage errors
     }
+
+    // Direct history API — not next/navigation's router — so this never
+    // triggers a server round-trip. The board's data fetch doesn't depend on
+    // these filters (they're applied client-side to already-fetched cards);
+    // this is purely so the address bar reflects the current view.
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (JSON.stringify(filters) === JSON.stringify(DEFAULT_FILTERS)) {
+      url.searchParams.delete(URL_PARAM);
+    } else {
+      url.searchParams.set(URL_PARAM, encodeURIComponent(JSON.stringify(filters)));
+    }
+    window.history.replaceState(null, "", url.toString());
   }, [filters, ready]);
 
   const setAssigneeFilter = useCallback((assigneeFilter: string) => {

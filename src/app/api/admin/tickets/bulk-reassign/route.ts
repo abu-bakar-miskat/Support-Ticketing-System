@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { createBulkReassignJob, runBulkReassignJobAsSystem } from "@/lib/bulk-reassign"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 const TARGET_TYPES = ["SINGLE_AGENT", "GROUP", "DEPARTMENT_POOL"] as const
 type TargetType = (typeof TARGET_TYPES)[number]
@@ -45,6 +46,12 @@ export async function POST(req: NextRequest) {
   })
   if (!department) {
     return NextResponse.json({ error: "Department not found" }, { status: 404 })
+  }
+
+  // SA-04: a Super Admin can disable bulk-reassign per tenant.
+  const featureCheck = await assertFeatureEnabled(department.tenantId, "bulkReassign")
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
   }
 
   // Managers are restricted to their own department scope; admins are not.

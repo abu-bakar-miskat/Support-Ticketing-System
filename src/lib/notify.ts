@@ -205,6 +205,11 @@ async function buildAndBroadcast(
       body  = message ?? null
       break
 
+    case "agreement_expiring":
+      title = "Tenant agreement expiring soon"
+      body  = message ?? null
+      break
+
     default:
       title = message ? `${actorName} — ${message}` : `${actorName} sent a notification`
   }

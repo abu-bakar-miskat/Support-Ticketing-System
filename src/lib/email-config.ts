@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { BRAND, HEADER_BG, LOGO_URL } from "@/lib/email-templates/_shared";
 import { tenantEmailConfigForDepartment } from "@/lib/tenant-config";
+import { recordAuditEvent } from "@/lib/audit-log";
 
 export type EmailBranding = {
   brandColor: string;
@@ -553,18 +554,33 @@ export async function saveEmailTemplateOverride(
   key: EmailTemplateKey,
   override: EmailTemplateOverride | null,
   departmentId: string,
+  actorId: string,
 ): Promise<void> {
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { emailConfig: true },
+    select: { tenantId: true, emailConfig: true },
   });
   const existingConfig =
     department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
       ? (department.emailConfig as Record<string, unknown>)
       : {};
+  const before = readTemplateOverrides(existingConfig)[key] ?? null;
   const nextConfig = applyTemplateOverride(existingConfig, key, override);
   await prisma.department.update({
     where: { id: departmentId },
     data: { emailConfig: nextConfig as Prisma.InputJsonValue },
   });
+
+  // NFR-09/DAT-05 (slice 20): notification-template changes are audited.
+  if (department) {
+    await recordAuditEvent({
+      tenantId: department.tenantId,
+      actorId,
+      action: override ? "EMAIL_TEMPLATE_UPDATED" : "EMAIL_TEMPLATE_RESET",
+      targetType: "EmailTemplate",
+      targetId: `${departmentId}:${key}`,
+      before,
+      after: override,
+    });
+  }
 }

@@ -9,6 +9,7 @@ import { buildXlsx } from "@/lib/exports/to-xlsx";
 import { buildPdf } from "@/lib/exports/to-pdf";
 import type { FormFieldFilter } from "@/lib/board-search";
 import type { ReportExportFormat } from "@/generated/prisma/enums";
+import { assertFeatureEnabled } from "@/lib/feature-flags";
 
 // RPT-05: exports at or below this many rows return synchronously; above it,
 // the request kicks off a ReportExportJob and returns 202 + a job id instead.
@@ -63,6 +64,15 @@ export async function POST(request: NextRequest) {
   }
   if (reportType === "cross_department" && scope.kind !== "cross_department") {
     return NextResponse.json({ error: "Cross-department reports require Project Admin access" }, { status: 403 });
+  }
+
+  // SA-04: a Super Admin can disable report exports per tenant.
+  const exportTenantId = scope.kind === "cross_department" ? scope.tenantId : profile!.activeTenantId;
+  if (exportTenantId) {
+    const featureCheck = await assertFeatureEnabled(exportTenantId, "customReports");
+    if (!featureCheck.ok) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
   }
 
   let result: Awaited<ReturnType<typeof buildReportExportDoc>>;

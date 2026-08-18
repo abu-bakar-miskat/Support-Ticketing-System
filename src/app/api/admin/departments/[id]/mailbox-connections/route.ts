@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { listMailboxConnections, createMailboxConnection } from "@/lib/mailbox-connection"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 const AUTH_TYPES = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const
 const SCOPE_TYPES = ["DEPARTMENT", "SUB_DEPARTMENT"] as const
@@ -82,6 +83,12 @@ export async function POST(
   }
   if (!team || team.departmentId !== departmentId) {
     return NextResponse.json({ error: "teamId must belong to the given department" }, { status: 404 })
+  }
+
+  // SA-04: a Super Admin can disable mailbox connections per tenant.
+  const featureCheck = await assertFeatureEnabled(department.tenantId, "mailboxConnections")
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
   }
 
   try {

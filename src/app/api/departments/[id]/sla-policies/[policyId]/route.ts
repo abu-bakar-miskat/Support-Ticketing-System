@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canManageDeptCalendar } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 const POLICY_SELECT = {
   id: true,
@@ -28,7 +29,10 @@ function isConditionGroup(value: unknown): value is ConditionGroup {
 }
 
 async function loadPolicy(departmentId: string, policyId: string) {
-  return prisma.slaPolicy.findFirst({ where: { id: policyId, departmentId }, select: { id: true } })
+  return prisma.slaPolicy.findFirst({
+    where: { id: policyId, departmentId },
+    select: { tenantId: true, ...POLICY_SELECT },
+  })
 }
 
 /** PATCH /api/departments/:id/sla-policies/:policyId — edit or reorder a policy. */
@@ -100,6 +104,18 @@ export async function PATCH(
   }
 
   const updated = await prisma.slaPolicy.update({ where: { id: policyId }, data, select: POLICY_SELECT })
+
+  // NFR-09/DAT-05 (slice 20): SLA policy changes are audited.
+  await recordAuditEvent({
+    tenantId: policy.tenantId,
+    actorId: profile!.id,
+    action: "SLA_POLICY_UPDATED",
+    targetType: "SlaPolicy",
+    targetId: policyId,
+    before: policy,
+    after: updated,
+  })
+
   return NextResponse.json(updated)
 }
 
@@ -116,9 +132,24 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const policy = await loadPolicy(id, policyId)
+  if (!policy) return NextResponse.json({ error: "Policy not found" }, { status: 404 })
+
   const result = await prisma.slaPolicy.deleteMany({ where: { id: policyId, departmentId: id } })
   if (result.count === 0) {
     return NextResponse.json({ error: "Policy not found" }, { status: 404 })
   }
+
+  // NFR-09/DAT-05 (slice 20): SLA policy changes are audited.
+  await recordAuditEvent({
+    tenantId: policy.tenantId,
+    actorId: profile!.id,
+    action: "SLA_POLICY_DELETED",
+    targetType: "SlaPolicy",
+    targetId: policyId,
+    before: policy,
+    after: null,
+  })
+
   return NextResponse.json({ ok: true })
 }

@@ -153,6 +153,31 @@ export async function uploadProjectFile(
 }
 
 /**
+ * Upload a supporting document for a tenant Agreement record (slice 21, SA-02).
+ * Path: agreements/{agreementId}/{timestamp}-{sanitizedName}
+ */
+export async function uploadAgreementDocument(
+  agreementId: string,
+  file: File,
+): Promise<UploadResult> {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error("File must be under 50 MB");
+  }
+
+  const path = `agreements/${agreementId}/${Date.now()}-${sanitize(file.name)}`;
+  const supabase = await createClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { contentType: file.type });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+/**
  * Upload a description file (image, PDF, Excel, etc).
  * Path: description-files/{userId}/{timestamp}-{sanitizedName}.{ext}
  */

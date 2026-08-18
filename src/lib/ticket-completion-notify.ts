@@ -10,7 +10,7 @@ export async function notifyTicketCompletion({
   ticketId,
   ticketTitle,
   humanId,
-  teamId,
+  subDepartmentId,
   creatorId,
   actorId,
   actorName,
@@ -18,21 +18,21 @@ export async function notifyTicketCompletion({
   ticketId: string
   ticketTitle: string
   humanId: string
-  teamId: string
+  subDepartmentId: string
   creatorId: string
   actorId: string
   actorName: string
 }) {
   // Resolve the department for this team
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: subDepartmentId },
     select: { departmentId: true },
   })
-  if (!team) return
+  if (!subDepartment) return
 
   // Fetch department managers
   const deptManagers = await prisma.departmentManager.findMany({
-    where: { departmentId: team.departmentId },
+    where: { departmentId: subDepartment.departmentId },
     select: { user: { select: { id: true, name: true, email: true } } },
   })
 
@@ -71,7 +71,7 @@ export async function notifyTicketCompletion({
       humanId,
       ticketTitle,
       completedByName: actorName,
-      departmentId: team.departmentId,
+      departmentId: subDepartment.departmentId,
     }).catch(() => undefined)
   }
 }

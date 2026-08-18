@@ -71,7 +71,7 @@ export async function GET() {
         select: {
           title: true,
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
         },
       },
     },
@@ -99,7 +99,7 @@ export async function GET() {
     startedAtMs: running.startedAt.getTime(),
     kind: running.kind,
     ticketHumanId: running.ticket
-      ? `${running.ticket.team.prefix}-${running.ticket.ticketNumber}`
+      ? `${running.ticket.subDepartment.prefix}-${running.ticket.ticketNumber}`
       : null,
     ticketTitle: running.ticket?.title ?? running.note ?? null,
     todayTaskCount: todayTaskRows.length,

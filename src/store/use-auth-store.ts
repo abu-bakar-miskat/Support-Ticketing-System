@@ -9,9 +9,9 @@ type CurrentUser = {
   name: string
   avatarUrl: string | null
   role: Role
-  teamId: string | null
-  teamIds: string[]
-  memberships: { teamId: string; role: string }[]
+  subDepartmentId: string | null
+  subDepartmentIds: string[]
+  memberships: { subDepartmentId: string; role: string }[]
 }
 
 type AuthState = {

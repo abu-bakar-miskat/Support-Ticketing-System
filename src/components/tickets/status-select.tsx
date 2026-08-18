@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches"
-import { normalizeStatus, statusDotColor, type TeamStatusConfig } from "@/components/board/board-types"
+import { normalizeStatus, statusDotColor, type SubDepartmentStatusConfig } from "@/components/board/board-types"
 import {
   Select,
   SelectContent,
@@ -28,7 +28,7 @@ import {
   hasLinkedLabelSelection,
 } from "@/lib/status-label-choice"
 
-function resolveStatus(current: string, statuses: TeamStatusConfig[]): TeamStatusConfig | null {
+function resolveStatus(current: string, statuses: SubDepartmentStatusConfig[]): SubDepartmentStatusConfig | null {
   const exact = statuses.find((s) => s.label === current)
   if (exact) return exact
   const normalized = normalizeStatus(current)
@@ -38,7 +38,7 @@ function resolveStatus(current: string, statuses: TeamStatusConfig[]): TeamStatu
 type Props = {
   ticketId: string
   currentStatus: string
-  statuses: TeamStatusConfig[]
+  statuses: SubDepartmentStatusConfig[]
   onStatusChange?: (newStatus: string) => void
   disabled?: boolean
 }

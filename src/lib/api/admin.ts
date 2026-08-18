@@ -6,7 +6,7 @@ export type AdminProject = {
   color: string | null
   slug: string
   description: string | null
-  teamId: string | null
+  subDepartmentId: string | null
   _count?: { tickets: number }
 }
 
@@ -16,11 +16,11 @@ export type AdminUser = {
   email: string
   avatarUrl: string | null
   role: string
-  teamId: string | null
-  team: { id: string; name: string } | null
+  subDepartmentId: string | null
+  subDepartment: { id: string; name: string } | null
 }
 
-export type AdminTeam = {
+export type AdminSubDepartment = {
   id: string
   name: string
   prefix: string
@@ -108,7 +108,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 
 export async function updateAdminUser(
   id: string,
-  body: { role?: string; teamId?: string },
+  body: { role?: string; subDepartmentId?: string },
 ) {
   const res = await fetch(`/api/admin/users/${id}`, {
     method: "PATCH",
@@ -124,19 +124,19 @@ export async function deleteAdminUser(id: string) {
   if (!res.ok) throw new Error("Failed to delete user")
 }
 
-export async function getAdminTeams(): Promise<AdminTeam[]> {
-  const res = await fetch("/api/admin/teams")
+export async function getAdminSubDepartments(): Promise<AdminSubDepartment[]> {
+  const res = await fetch("/api/admin/sub-departments")
   if (!res.ok) throw new Error("Failed to fetch teams")
   return res.json()
 }
 
-export async function createAdminTeam(body: {
+export async function createAdminSubDepartment(body: {
   name: string
   prefix?: string
   color?: string
   departmentId?: string
 }) {
-  const res = await fetch("/api/admin/teams", {
+  const res = await fetch("/api/admin/sub-departments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -148,11 +148,11 @@ export async function createAdminTeam(body: {
   return res.json()
 }
 
-export async function updateAdminTeam(
+export async function updateAdminSubDepartment(
   id: string,
   body: { name?: string; prefix?: string; color?: string; departmentId?: string },
 ) {
-  const res = await fetch(`/api/admin/teams/${id}`, {
+  const res = await fetch(`/api/admin/sub-departments/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -164,24 +164,24 @@ export async function updateAdminTeam(
   return res.json()
 }
 
-export async function deleteAdminTeam(id: string) {
-  const res = await fetch(`/api/admin/teams/${id}`, { method: "DELETE" })
+export async function deleteAdminSubDepartment(id: string) {
+  const res = await fetch(`/api/admin/sub-departments/${id}`, { method: "DELETE" })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
     throw new Error(json.error ?? "Failed to delete team")
   }
 }
 
-export async function getAdminTeamMembers(
-  teamId: string,
+export async function getAdminSubDepartmentMembers(
+  subDepartmentId: string,
 ): Promise<AdminUser[]> {
-  const res = await fetch(`/api/admin/teams/${teamId}/members`)
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`)
   if (!res.ok) throw new Error("Failed to fetch team members")
   return res.json()
 }
 
-export async function addAdminTeamMember(teamId: string, userId: string, role?: string) {
-  const res = await fetch(`/api/admin/teams/${teamId}/members`, {
+export async function addAdminSubDepartmentMember(subDepartmentId: string, userId: string, role?: string) {
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, ...(role ? { role } : {}) }),
@@ -189,8 +189,8 @@ export async function addAdminTeamMember(teamId: string, userId: string, role?: 
   if (!res.ok) throw new Error("Failed to add team member")
 }
 
-export async function removeAdminTeamMember(teamId: string, userId: string) {
-  const res = await fetch(`/api/admin/teams/${teamId}/members`, {
+export async function removeAdminSubDepartmentMember(subDepartmentId: string, userId: string) {
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId }),
@@ -336,7 +336,7 @@ export type DepartmentInviteRow = {
   expiresAt: string
   acceptedAt: string | null
   revokedAt: string | null
-  team: { id: string; name: string }
+  subDepartment: { id: string; name: string }
   inviter: { id: string; name: string }
 }
 
@@ -348,7 +348,7 @@ export async function fetchDepartmentInvites(deptId: string): Promise<Department
 
 export async function createDepartmentInvite(
   deptId: string,
-  body: { email: string; teamId: string; role: string; message?: string },
+  body: { email: string; subDepartmentId: string; role: string; message?: string },
 ): Promise<DepartmentInviteRow> {
   const res = await fetch(`/api/admin/departments/${deptId}/invites`, {
     method: "POST",
@@ -408,7 +408,7 @@ export async function handleDepartmentJoinRequest(
   requestId: string,
   body: {
     action: "approve" | "reject"
-    teamId?: string
+    subDepartmentId?: string
     role?: string
     nickname?: string | null
     fullAccess?: boolean

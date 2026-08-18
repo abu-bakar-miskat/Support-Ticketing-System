@@ -32,7 +32,7 @@ import {
   createAdminDepartment,
   updateAdminDepartment,
   deleteAdminDepartment,
-  createAdminTeam,
+  createAdminSubDepartment,
 } from "@/lib/api/admin";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export type DepartmentRow = {
   name: string;
   isHub: boolean;
   type?: string;
-  _count: { teams: number; projects?: number; members?: number };
+  _count: { subDepartments: number; projects?: number; members?: number };
   managers: DeptManager[];
   accessGrants: AccessGrant[];
   directMembers: DeptMember[];
@@ -405,7 +405,7 @@ export function GrantAccessModal({
 
 // ── New Department Modal ──────────────────────────────────────────────────────
 
-type PendingTeam = { id: string; name: string; prefix: string };
+type PendingSubDepartment = { id: string; name: string; prefix: string };
 
 function autoPrefix(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -426,36 +426,36 @@ function NewDepartmentModal({
   const [name, setName] = useState("");
   const [type, setType] = useState<string>(DEFAULT_DEPARTMENT_TYPE);
   const [selectedManagers, setSelectedManagers] = useState<UserOption[]>([]);
-  const [teams, setTeams] = useState<PendingTeam[]>([]);
-  const [teamInput, setTeamInput] = useState("");
-  const [teamPrefix, setTeamPrefix] = useState("");
+  const [subDepartments, setSubDepartments] = useState<PendingSubDepartment[]>([]);
+  const [subDepartmentInput, setSubDepartmentInput] = useState("");
+  const [subDepartmentPrefix, setSubDepartmentPrefix] = useState("");
   const [prefixManuallyEdited, setPrefixManuallyEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleTeamNameChange(v: string) {
-    setTeamInput(v);
-    if (!prefixManuallyEdited) setTeamPrefix(autoPrefix(v));
+  function handleSubDepartmentNameChange(v: string) {
+    setSubDepartmentInput(v);
+    if (!prefixManuallyEdited) setSubDepartmentPrefix(autoPrefix(v));
   }
 
   function handlePrefixChange(v: string) {
-    setTeamPrefix(v.toUpperCase().replace(/[^A-Z]/g, ""));
+    setSubDepartmentPrefix(v.toUpperCase().replace(/[^A-Z]/g, ""));
     setPrefixManuallyEdited(true);
   }
 
-  function addTeam() {
-    const n = teamInput.trim();
-    const p = teamPrefix.trim() || autoPrefix(n);
+  function addSubDepartment() {
+    const n = subDepartmentInput.trim();
+    const p = subDepartmentPrefix.trim() || autoPrefix(n);
     if (!n) return;
-    if (teams.some((t) => t.name.toLowerCase() === n.toLowerCase())) return;
-    setTeams((prev) => [...prev, { id: crypto.randomUUID(), name: n, prefix: p }]);
-    setTeamInput("");
-    setTeamPrefix("");
+    if (subDepartments.some((t) => t.name.toLowerCase() === n.toLowerCase())) return;
+    setSubDepartments((prev) => [...prev, { id: crypto.randomUUID(), name: n, prefix: p }]);
+    setSubDepartmentInput("");
+    setSubDepartmentPrefix("");
     setPrefixManuallyEdited(false);
   }
 
-  function removeTeam(id: string) {
-    setTeams((prev) => prev.filter((t) => t.id !== id));
+  function removeSubDepartment(id: string) {
+    setSubDepartments((prev) => prev.filter((t) => t.id !== id));
   }
 
   function addManager(u: UserOption) {
@@ -475,7 +475,7 @@ function NewDepartmentModal({
       const dept = await createAdminDepartment({ name: deptName, type });
       await Promise.all([
         ...selectedManagers.map((m) => assignDepartmentManager(dept.id, m.id).catch(() => null)),
-        ...teams.map((t) => createAdminTeam({ name: t.name, prefix: t.prefix, departmentId: dept.id }).catch(() => null)),
+        ...subDepartments.map((t) => createAdminSubDepartment({ name: t.name, prefix: t.prefix, departmentId: dept.id }).catch(() => null)),
       ]);
       onCreated();
     } catch {
@@ -585,14 +585,14 @@ function NewDepartmentModal({
             </label>
             <div className="flex items-center gap-2">
               <input
-                value={teamInput}
-                onChange={(e) => handleTeamNameChange(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTeam(); } }}
+                value={subDepartmentInput}
+                onChange={(e) => handleSubDepartmentNameChange(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubDepartment(); } }}
                 placeholder="Team name…"
                 className="h-8 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
               />
               <input
-                value={teamPrefix}
+                value={subDepartmentPrefix}
                 onChange={(e) => handlePrefixChange(e.target.value)}
                 placeholder="PRE"
                 maxLength={4}
@@ -601,20 +601,20 @@ function NewDepartmentModal({
               />
               <button
                 type="button"
-                onClick={addTeam}
-                disabled={!teamInput.trim()}
+                onClick={addSubDepartment}
+                disabled={!subDepartmentInput.trim()}
                 className="flex h-8 items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-blue/40 hover:text-pen-blue disabled:opacity-40"
               >
                 <Plus className="size-3.5" /> Add
               </button>
             </div>
-            {teams.length > 0 && (
+            {subDepartments.length > 0 && (
               <div className="mt-2 flex flex-col gap-1">
-                {teams.map((t) => (
+                {subDepartments.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5">
                     <span className="font-mono text-[11.5px] text-pen-id">{t.prefix}</span>
                     <span className="font-sans text-[12.5px] text-pen-foreground flex-1">{t.name}</span>
-                    <button type="button" onClick={() => removeTeam(t.id)} className="rounded p-0.5 text-pen-subtle hover:text-red-500">
+                    <button type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-pen-subtle hover:text-red-500">
                       <X className="size-3" />
                     </button>
                   </div>
@@ -900,7 +900,7 @@ function DepartmentCard({
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
                 <Users className="size-3 shrink-0" />
-                {dept._count.teams} team{dept._count.teams !== 1 ? "s" : ""}
+                {dept._count.subDepartments} team{dept._count.subDepartments !== 1 ? "s" : ""}
               </span>
               {dept._count.projects !== undefined && (
                 <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">

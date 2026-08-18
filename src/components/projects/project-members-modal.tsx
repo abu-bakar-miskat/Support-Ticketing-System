@@ -155,9 +155,9 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                           </p>
                           <p className="font-sans text-[11.5px] text-pen-muted">
                             {m.role}
-                            {formatUserListSubtitle(m.departmentName, m.teamName) && (
+                            {formatUserListSubtitle(m.departmentName, m.subDepartmentName) && (
                               <span className="ml-1.5 text-pen-subtle">
-                                · {formatUserListSubtitle(m.departmentName, m.teamName)}
+                                · {formatUserListSubtitle(m.departmentName, m.subDepartmentName)}
                               </span>
                             )}
                           </p>

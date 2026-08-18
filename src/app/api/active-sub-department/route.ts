@@ -6,19 +6,19 @@ export async function POST(req: NextRequest) {
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const { teamId } = await req.json()
+  const { subDepartmentId } = await req.json()
 
-  let allowed = profile.teamIds.includes(teamId) || profile.role === "admin"
+  let allowed = profile.subDepartmentIds.includes(subDepartmentId) || profile.role === "admin"
 
   // Managers are virtual members of every team in their managed departments
   if (!allowed && profile.role === "manager") {
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? []
     if (managedIds.length > 0) {
-      const team = await prisma.team.findUnique({
-        where: { id: teamId },
+      const subDepartment = await prisma.subDepartment.findUnique({
+        where: { id: subDepartmentId },
         select: { departmentId: true },
       })
-      if (team?.departmentId && managedIds.includes(team.departmentId)) {
+      if (subDepartment?.departmentId && managedIds.includes(subDepartment.departmentId)) {
         allowed = true
       }
     }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const res = NextResponse.json({ ok: true })
-  res.cookies.set("pen_active_team", teamId, {
+  res.cookies.set("pen_active_team", subDepartmentId, {
     path: "/",
     httpOnly: true,
     sameSite: "lax",

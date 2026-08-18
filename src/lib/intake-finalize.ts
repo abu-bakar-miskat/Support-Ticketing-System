@@ -36,7 +36,7 @@ export async function createTicketFromPayload(
   // ── Resolve priority + estimatedHours (mirrors issue-based routing) ─────────
   let resolvedPriority: TicketPriority = TicketPriority.Medium
   let resolvedEstimatedHours: number | null = null
-  let routedTeamId: string | null = null
+  let routedSubDepartmentId: string | null = null
   let issueAssigneeIds: string[] = []
   let issueRotaPointer = 0
 
@@ -48,7 +48,7 @@ export async function createTicketFromPayload(
     if (issue) {
       resolvedPriority = issue.priority
       resolvedEstimatedHours = issue.estimatedHours
-      routedTeamId = issue.intakeTeamId
+      routedSubDepartmentId = issue.intakeSubDepartmentId
       issueAssigneeIds = issue.assignees.map((a) => a.userId)
       issueRotaPointer = issue.assigneeRotaPointer
     }
@@ -63,7 +63,7 @@ export async function createTicketFromPayload(
   const prep = await prepareConversion({
     formId: formConfigId,
     formName: form.name,
-    intakeTeamId: routedTeamId ?? form.intakeTeamId,
+    intakeSubDepartmentId: routedSubDepartmentId ?? form.intakeSubDepartmentId,
     departmentId: form.departmentId,
     responses,
     priority: resolvedPriority,
@@ -84,9 +84,9 @@ export async function createTicketFromPayload(
     createNotification({ recipientId: prep.assigneeId, type: "assignment", ticketId, message: prep.title }).catch(() => undefined)
   }
 
-  const team = await prisma.team.findUnique({ where: { id: prep.intakeTeamId }, select: { prefix: true } })
+  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: prep.intakeSubDepartmentId }, select: { prefix: true } })
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { ticketNumber: true } })
-  const humanId = team && ticket ? `${team.prefix}-${ticket.ticketNumber}` : null
+  const humanId = subDepartment && ticket ? `${subDepartment.prefix}-${ticket.ticketNumber}` : null
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {
     sendAssignmentEmail({
@@ -151,9 +151,9 @@ export async function finalizePendingIntake(token: string): Promise<FinalizeResu
     if (!ticketId) return null
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { ticketNumber: true, team: { select: { prefix: true } } },
+      select: { ticketNumber: true, subDepartment: { select: { prefix: true } } },
     })
-    return ticket?.team ? `${ticket.team.prefix}-${ticket.ticketNumber}` : null
+    return ticket?.subDepartment ? `${ticket.subDepartment.prefix}-${ticket.ticketNumber}` : null
   }
 
   if (pending.consumedAt) return { status: "already", humanId: await humanIdFor(pending.ticketId) }

@@ -429,7 +429,7 @@ export function SprintsListRowsSkeleton({ count = 6 }: { count?: number }) {
   );
 }
 
-export function TeamTimeStatsRowSkeleton({ count = 4 }: { count?: number }) {
+export function SubDepartmentTimeStatsRowSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="contents">
       {Array.from({ length: count }).map((_, i) => (
@@ -443,7 +443,7 @@ export function TeamTimeStatsRowSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
-export function TeamTimeTableRowsSkeleton({ count = 4 }: { count?: number }) {
+export function SubDepartmentTimeTableRowsSkeleton({ count = 4 }: { count?: number }) {
   return (
     <>
       <div className="flex min-w-[900px] items-center gap-4 border-b border-pen-card-border px-[18px] py-2.5">
@@ -1245,7 +1245,7 @@ export function MyTimePageSkeleton() {
   );
 }
 
-export function TeamTimePageSkeleton() {
+export function SubDepartmentTimePageSkeleton() {
   return (
     <div className="pen-page-pad flex h-full flex-col gap-4 overflow-y-auto">
       <PageHeader
@@ -1274,7 +1274,7 @@ export function ReportsSectionsSkeleton() {
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TeamTimeStatsRowSkeleton count={4} />
+        <SubDepartmentTimeStatsRowSkeleton count={4} />
       </div>
 
       <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-3">

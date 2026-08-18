@@ -10,9 +10,9 @@ type UserHydratorProps = {
   name: string | null;
   avatarUrl: string | null;
   role: Role;
-  teamId: string | null;
-  teamIds: string[];
-  memberships: { teamId: string; role: string }[];
+  subDepartmentId: string | null;
+  subDepartmentIds: string[];
+  memberships: { subDepartmentId: string; role: string }[];
 };
 
 export function UserHydrator(props: UserHydratorProps) {
@@ -25,8 +25,8 @@ export function UserHydrator(props: UserHydratorProps) {
       name: props.name ?? "",
       avatarUrl: props.avatarUrl,
       role: props.role,
-      teamId: props.teamId,
-      teamIds: props.teamIds,
+      subDepartmentId: props.subDepartmentId,
+      subDepartmentIds: props.subDepartmentIds,
       memberships: props.memberships,
     });
     return () => setUser(null);

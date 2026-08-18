@@ -13,11 +13,11 @@ export default async function SettingsImportRoute() {
   const isManager = profile.role === "manager"
   if (!isAdmin && !isManager) redirect("/settings")
 
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { tenantId: profile.activeTenantId ?? "__no_tenant__" },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   })
 
-  return <SettingsNotionImportPage teams={teams} />
+  return <SettingsNotionImportPage subDepartments={subDepartments} />
 }

@@ -824,11 +824,11 @@ export function PeopleReportsHeader({
 
 export function PeopleReportsGrid({
   reports,
-  noTeams,
+  noSubDepartments,
   rangeLabel,
 }: {
   reports: PersonReport[];
-  noTeams: boolean;
+  noSubDepartments: boolean;
   rangeLabel: string;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -848,7 +848,7 @@ export function PeopleReportsGrid({
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
 
-  if (noTeams) {
+  if (noSubDepartments) {
     return (
       <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-6 text-center">
         <p className="font-sans text-[12.5px] text-pen-muted">No teams in your scope.</p>

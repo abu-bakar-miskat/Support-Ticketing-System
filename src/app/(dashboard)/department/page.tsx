@@ -22,7 +22,7 @@ export default async function DepartmentRoute() {
   const activeDeptId = profileScope?.activeDeptId ?? null;
   if (!activeDeptId) redirect("/departments");
 
-  const [dept, managers, memberships, directMembers, accessGrants, availableTeams, allUsers, pendingInvites] =
+  const [dept, managers, memberships, directMembers, accessGrants, availableSubDepartments, allUsers, pendingInvites] =
     await Promise.all([
       prisma.department.findUnique({
         where: { id: activeDeptId },
@@ -31,7 +31,7 @@ export default async function DepartmentRoute() {
           name: true,
           isHub: true,
           type: true,
-          _count: { select: { teams: true, projects: true } },
+          _count: { select: { subDepartments: true, projects: true } },
         },
       }),
       prisma.departmentManager.findMany({
@@ -39,13 +39,13 @@ export default async function DepartmentRoute() {
         include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, location: true, timezone: true } } },
         orderBy: { assignedAt: "asc" },
       }),
-      prisma.teamMembership.findMany({
-        where: { isActive: true, team: { departmentId: activeDeptId } },
+      prisma.subDepartmentMembership.findMany({
+        where: { isActive: true, subDepartment: { departmentId: activeDeptId } },
         select: {
           userId: true,
           doNotAssign: true,
-          team: { select: { id: true, name: true } },
-          user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, teamId: true, location: true, timezone: true } },
+          subDepartment: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true } },
         },
       }),
       prisma.departmentMember.findMany({
@@ -61,7 +61,7 @@ export default async function DepartmentRoute() {
         },
         orderBy: { grantedAt: "desc" },
       }),
-      prisma.team.findMany({
+      prisma.subDepartment.findMany({
         where: { departmentId: activeDeptId },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
@@ -82,7 +82,7 @@ export default async function DepartmentRoute() {
           expiresAt: { gt: new Date() },
         },
         include: {
-          team: { select: { id: true, name: true } },
+          subDepartment: { select: { id: true, name: true } },
           inviter: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -95,17 +95,17 @@ export default async function DepartmentRoute() {
 
   // Team names (within this department) per user, and their team-membership id for the
   // team-change dropdown's "current" value.
-  const teamNamesByUser = new Map<string, string[]>();
-  const teamIdByUser = new Map<string, string>();
-  const teamMembershipsByUser = new Map<string, { teamId: string; teamName: string; doNotAssign: boolean }[]>();
+  const subDepartmentNamesByUser = new Map<string, string[]>();
+  const subDepartmentIdByUser = new Map<string, string>();
+  const subDepartmentMembershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
   for (const m of memberships) {
-    const list = teamNamesByUser.get(m.userId) ?? [];
-    list.push(m.team.name);
-    teamNamesByUser.set(m.userId, list);
-    if (!teamIdByUser.has(m.userId)) teamIdByUser.set(m.userId, m.team.id);
-    const dna = teamMembershipsByUser.get(m.userId) ?? [];
-    dna.push({ teamId: m.team.id, teamName: m.team.name, doNotAssign: m.doNotAssign ?? false });
-    teamMembershipsByUser.set(m.userId, dna);
+    const list = subDepartmentNamesByUser.get(m.userId) ?? [];
+    list.push(m.subDepartment.name);
+    subDepartmentNamesByUser.set(m.userId, list);
+    if (!subDepartmentIdByUser.has(m.userId)) subDepartmentIdByUser.set(m.userId, m.subDepartment.id);
+    const dna = subDepartmentMembershipsByUser.get(m.userId) ?? [];
+    dna.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
+    subDepartmentMembershipsByUser.set(m.userId, dna);
   }
 
   const nativeUserIds = new Set([
@@ -120,7 +120,7 @@ export default async function DepartmentRoute() {
     email: string;
     avatarUrl: string | null;
     role: string;
-    teamId: string | null;
+    subDepartmentId: string | null;
     location: string | null;
     timezone: string | null;
   }>();
@@ -138,7 +138,7 @@ export default async function DepartmentRoute() {
     memberProfilesById.set(d.userId, {
       ...d.user,
       avatarUrl: d.user.avatarUrl ?? null,
-      teamId: null,
+      subDepartmentId: null,
       location: d.user.location ?? null,
       timezone: d.user.timezone ?? null,
     });
@@ -148,11 +148,11 @@ export default async function DepartmentRoute() {
     id: dept.id,
     name: dept.name,
     isHub: dept.isHub,
-    teamCount: dept._count.teams,
+    subDepartmentCount: dept._count.subDepartments,
     projectCount: dept._count.projects,
     memberCount: memberProfilesById.size + managerUserIds.size,
     isAdmin,
-    availableTeams,
+    availableSubDepartments,
     allUsers: allUsers.map((u) => ({ ...u, avatarUrl: u.avatarUrl ?? null })),
     managers: managers.map((m) => ({
       id: m.id,
@@ -163,7 +163,7 @@ export default async function DepartmentRoute() {
       color: avatarColorFor(m.user.name),
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,
-      teamMemberships: teamMembershipsByUser.get(m.userId) ?? [],
+      subDepartmentMemberships: subDepartmentMembershipsByUser.get(m.userId) ?? [],
     })),
     members: [...memberProfilesById.values()].map((p) => ({
       userId: p.id,
@@ -172,12 +172,12 @@ export default async function DepartmentRoute() {
       avatarUrl: p.avatarUrl,
       color: avatarColorFor(p.name),
       role: p.role,
-      teamNames: teamNamesByUser.get(p.id) ?? [],
-      teamId: p.teamId ?? teamIdByUser.get(p.id) ?? null,
-      source: teamNamesByUser.has(p.id) ? "native" as const : "direct" as const,
+      subDepartmentNames: subDepartmentNamesByUser.get(p.id) ?? [],
+      subDepartmentId: p.subDepartmentId ?? subDepartmentIdByUser.get(p.id) ?? null,
+      source: subDepartmentNamesByUser.has(p.id) ? "native" as const : "direct" as const,
       location: p.location,
       timezone: p.timezone,
-      teamMemberships: teamMembershipsByUser.get(p.id) ?? [],
+      subDepartmentMemberships: subDepartmentMembershipsByUser.get(p.id) ?? [],
     })),
     accessGrants: accessGrants
       .filter((g) => !nativeUserIds.has(g.userId) && !managerUserIds.has(g.userId))
@@ -200,7 +200,7 @@ export default async function DepartmentRoute() {
       expiresAt: inv.expiresAt.toISOString(),
       acceptedAt: null,
       revokedAt: null,
-      team: inv.team,
+      subDepartment: inv.subDepartment,
       inviter: inv.inviter,
     })),
   };

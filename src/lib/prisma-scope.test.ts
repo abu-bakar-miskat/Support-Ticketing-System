@@ -165,7 +165,7 @@ describe("withTenantScope — model coverage", () => {
     const registered = registerScope();
     const row = { id: "t1", tenantId: "tenant-A" };
     const res = await runWithScope({ tenantIds: ["tenant-A"] }, () =>
-      registered.query.team.$allOperations({ operation: "findUnique", args: {}, query: () => Promise.resolve(row) } as never),
+      registered.query.subDepartment.$allOperations({ operation: "findUnique", args: {}, query: () => Promise.resolve(row) } as never),
     );
     expect(res).toEqual(row);
   });
@@ -186,7 +186,7 @@ describe("withSystemScope — anonymous/background route wrapper", () => {
 const tenantWithSub: TicketScope = {
   kind: "tenant",
   tenantIds: ["tenant-A"],
-  subDepartmentTeamIds: ["teamA"],
+  subDepartmentSubDepartmentIds: ["teamA"],
 };
 
 describe("subDepartmentAllowlist", () => {
@@ -210,37 +210,37 @@ describe("mergeScopeWhere — SD-06 sub-department predicate", () => {
   });
   it("ANDs tenant + sub-department predicates when an allowlist is present", () => {
     expect(mergeScopeWhere(undefined, ["tenant-A"], ["teamA"])).toEqual({
-      AND: [{ tenantId: { in: ["tenant-A"] } }, { teamId: { in: ["teamA"] } }],
+      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
     });
   });
   it("preserves a caller-supplied where alongside both predicates", () => {
     expect(mergeScopeWhere({ status: "open" }, ["tenant-A"], ["teamA"])).toEqual({
-      AND: [{ status: "open" }, { tenantId: { in: ["tenant-A"] } }, { teamId: { in: ["teamA"] } }],
+      AND: [{ status: "open" }, { tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
     });
   });
 });
 
 describe("rowSubDepartmentAllowed", () => {
   it("passes any row when the allowlist is null", () => {
-    expect(rowSubDepartmentAllowed({ teamId: "teamB" }, null)).toBe(true);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamB" }, null)).toBe(true);
   });
   it("keeps a row whose team is in the allowlist", () => {
-    expect(rowSubDepartmentAllowed({ teamId: "teamA" }, ["teamA"])).toBe(true);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamA" }, ["teamA"])).toBe(true);
   });
   it("drops a row from another sub-department (→ null → 404)", () => {
-    expect(rowSubDepartmentAllowed({ teamId: "teamB" }, ["teamA"])).toBe(false);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamB" }, ["teamA"])).toBe(false);
   });
   it("drops a null or team-less row under a restriction", () => {
     expect(rowSubDepartmentAllowed(null, ["teamA"])).toBe(false);
-    expect(rowSubDepartmentAllowed({ teamId: null }, ["teamA"])).toBe(false);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: null }, ["teamA"])).toBe(false);
   });
 });
 
 describe("scopeFromRequestScope — carries sub-department restriction", () => {
   it("propagates subDepartmentTeamIds into a tenant scope", () => {
     expect(
-      scopeFromRequestScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }),
-    ).toEqual({ kind: "tenant", tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] });
+      scopeFromRequestScope({ tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] }),
+    ).toEqual({ kind: "tenant", tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] });
   });
   it("omits it when absent", () => {
     expect(scopeFromRequestScope({ tenantIds: ["tenant-A"] })).toEqual({
@@ -258,11 +258,11 @@ describe("extension — SD-06 enforcement end to end", () => {
       calls.push(args);
       return Promise.resolve([]);
     };
-    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findMany", args: {}, query: run } as never),
     );
     expect(calls[0].where).toEqual({
-      AND: [{ tenantId: { in: ["tenant-A"] } }, { teamId: { in: ["teamA"] } }],
+      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
     });
   });
 
@@ -273,7 +273,7 @@ describe("extension — SD-06 enforcement end to end", () => {
       calls.push(args);
       return Promise.resolve([]);
     };
-    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] }, () =>
       registered.query.project.$allOperations({ operation: "findMany", args: {}, query: run } as never),
     );
     expect(calls[0].where).toEqual({ tenantId: { in: ["tenant-A"] } });
@@ -281,8 +281,8 @@ describe("extension — SD-06 enforcement end to end", () => {
 
   it("post-filters a ticket findUnique out of the caller's sub-department → null (negative)", async () => {
     const registered = registerScope();
-    const run = () => Promise.resolve({ id: "t1", tenantId: "tenant-A", teamId: "teamB" });
-    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    const run = () => Promise.resolve({ id: "t1", tenantId: "tenant-A", subDepartmentId: "teamB" });
+    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findUnique", args: {}, query: run } as never),
     );
     expect(res).toBeNull();
@@ -290,8 +290,8 @@ describe("extension — SD-06 enforcement end to end", () => {
 
   it("keeps a ticket findUnique inside the caller's sub-department", async () => {
     const registered = registerScope();
-    const row = { id: "t1", tenantId: "tenant-A", teamId: "teamA" };
-    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    const row = { id: "t1", tenantId: "tenant-A", subDepartmentId: "teamA" };
+    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentSubDepartmentIds: ["teamA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findUnique", args: {}, query: () => Promise.resolve(row) } as never),
     );
     expect(res).toEqual(row);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageTeam } from "@/lib/team-manage"
+import { canManageSubDepartment } from "@/lib/sub-department-manage"
 
 export async function PATCH(
   request: NextRequest,
@@ -11,7 +11,7 @@ export async function PATCH(
   if (error) return error
 
   const { id, statusId } = await params
-  if (!(await canManageTeam(profile, id))) {
+  if (!(await canManageSubDepartment(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const body = await request.json().catch(() => ({}))
@@ -27,12 +27,12 @@ export async function PATCH(
     return NextResponse.json({ error: "allowedLabels must be an array of strings" }, { status: 400 })
   }
 
-  const existing = await prisma.teamStatus.findFirst({
-    where: { id: statusId, teamId: id },
+  const existing = await prisma.subDepartmentStatus.findFirst({
+    where: { id: statusId, subDepartmentId: id },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const updated = await prisma.teamStatus.update({
+  const updated = await prisma.subDepartmentStatus.update({
     where: { id: statusId },
     data: {
       ...(label?.trim() ? { label: label.trim() } : {}),
@@ -55,19 +55,19 @@ export async function DELETE(
   if (error) return error
 
   const { id, statusId } = await params
-  if (!(await canManageTeam(profile, id))) {
+  if (!(await canManageSubDepartment(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const existing = await prisma.teamStatus.findFirst({
-    where: { id: statusId, teamId: id },
+  const existing = await prisma.subDepartmentStatus.findFirst({
+    where: { id: statusId, subDepartmentId: id },
     select: { id: true, label: true },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   // Block delete if any tickets still use this status
   const ticketCount = await prisma.ticket.count({
-    where: { teamId: id, status: existing.label, deletedAt: null },
+    where: { subDepartmentId: id, status: existing.label, deletedAt: null },
   })
   if (ticketCount > 0) {
     return NextResponse.json(
@@ -76,6 +76,6 @@ export async function DELETE(
     )
   }
 
-  await prisma.teamStatus.delete({ where: { id: statusId } })
+  await prisma.subDepartmentStatus.delete({ where: { id: statusId } })
   return new NextResponse(null, { status: 204 })
 }

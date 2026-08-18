@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { LabelChoiceModal } from "@/components/tickets/label-choice-modal";
 import { useLabels } from "@/hooks/queries/use-labels";
-import type { TeamStatusConfig } from "@/components/board/board-types";
+import type { SubDepartmentStatusConfig } from "@/components/board/board-types";
 import {
   buildLinkedLabelOptions,
   statusHasLinkedLabels,
@@ -14,15 +14,15 @@ import {
 type PendingMove = { dbId: string; toStatus: string };
 
 type Options = {
-  resolveStatusesForCard: (teamId: string) => TeamStatusConfig[];
-  getCardTeamId: (dbId: string) => string | undefined;
+  resolveStatusesForCard: (subDepartmentId: string) => SubDepartmentStatusConfig[];
+  getCardSubDepartmentId: (dbId: string) => string | undefined;
   onMove: (dbId: string, toStatus: string, chosenLabel?: string) => void;
 };
 
 /** Intercepts board drag-drops onto statuses with linked labels and shows the picker modal. */
 export function useLinkedLabelMovePrompt({
   resolveStatusesForCard,
-  getCardTeamId,
+  getCardSubDepartmentId,
   onMove,
 }: Options) {
   const [pending, setPending] = useState<PendingMove | null>(null);
@@ -32,8 +32,8 @@ export function useLinkedLabelMovePrompt({
 
   const tryMove = useCallback(
     (dbId: string, toStatus: string) => {
-      const teamId = getCardTeamId(dbId);
-      const statuses = teamId ? resolveStatusesForCard(teamId) : [];
+      const subDepartmentId = getCardSubDepartmentId(dbId);
+      const statuses = subDepartmentId ? resolveStatusesForCard(subDepartmentId) : [];
       const target = statuses.find((s) => s.label === toStatus);
       if (statusHasLinkedLabels(target?.allowedLabels)) {
         setPending({ dbId, toStatus });
@@ -42,15 +42,15 @@ export function useLinkedLabelMovePrompt({
       }
       onMove(dbId, toStatus);
     },
-    [getCardTeamId, resolveStatusesForCard, onMove],
+    [getCardSubDepartmentId, resolveStatusesForCard, onMove],
   );
 
   const pendingTarget = useMemo(() => {
     if (!pending) return null;
-    const teamId = getCardTeamId(pending.dbId);
-    const statuses = teamId ? resolveStatusesForCard(teamId) : [];
+    const subDepartmentId = getCardSubDepartmentId(pending.dbId);
+    const statuses = subDepartmentId ? resolveStatusesForCard(subDepartmentId) : [];
     return statuses.find((s) => s.label === pending.toStatus) ?? null;
-  }, [pending, getCardTeamId, resolveStatusesForCard]);
+  }, [pending, getCardSubDepartmentId, resolveStatusesForCard]);
 
   const pendingLabelOptions = useMemo(
     () => buildLinkedLabelOptions(pendingTarget?.allowedLabels, departmentLabels),

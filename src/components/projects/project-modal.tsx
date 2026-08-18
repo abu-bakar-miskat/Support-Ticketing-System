@@ -51,7 +51,7 @@ type DepartmentOption = { id: string; name: string };
 type UserOption = {
   id: string;
   name: string;
-  teamName: string | null;
+  subDepartmentName: string | null;
   departmentName?: string | null;
   avatarUrl?: string | null;
 };
@@ -222,7 +222,7 @@ function MemberPicker({
           ) : (
             filtered.map((u) => {
               const isSelected = selected.includes(u.id);
-              const subtitle = formatUserListSubtitle(u.departmentName, u.teamName);
+              const subtitle = formatUserListSubtitle(u.departmentName, u.subDepartmentName);
               return (
                 <button
                   key={u.id}
@@ -408,7 +408,7 @@ export function ProjectModal({
   const users: UserOption[] = rawUsers.map((u) => ({
     id: u.id,
     name: u.name,
-    teamName: u.teamName,
+    subDepartmentName: u.subDepartmentName,
     departmentName: u.departmentName,
     avatarUrl: u.avatarUrl,
   }));

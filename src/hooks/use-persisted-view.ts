@@ -9,7 +9,7 @@ export const VIEW_KEYS = {
   /** board | list — shared across Board, My Tasks, and project team boards */
   boardLayout: "board-layout",
   /** board | list — project profile team tabs (defaults to board) */
-  projectTeamLayout: "project-team-layout",
+  projectSubDepartmentLayout: "project-team-layout",
   /** mine | all | unassigned | drafts — Tasks page scope */
   tasksScope: "tasks-scope",
   /** mine | all — Projects page scope */

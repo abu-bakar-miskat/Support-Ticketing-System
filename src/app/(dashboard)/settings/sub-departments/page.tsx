@@ -5,14 +5,14 @@ import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
 import {
-  SettingsTeamsPage,
-  type TeamRow,
+  SettingsSubDepartmentsPage,
+  type SubDepartmentRow,
   type PendingRequest,
-} from "@/components/settings/settings-teams-page";
+} from "@/components/settings/settings-sub-departments-page";
 
 export const metadata = { title: "Teams & roles — Ticketing System" };
 
-export default async function SettingsTeamsRoute() {
+export default async function SettingsSubDepartmentsRoute() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
@@ -33,9 +33,9 @@ export default async function SettingsTeamsRoute() {
 
   // Leads: scope to the department of their primary team
   const leadDeptId = isLead
-    ? await prisma.team
+    ? await prisma.subDepartment
         .findFirst({
-          where: { id: profile.teamId ?? "" },
+          where: { id: profile.subDepartmentId ?? "" },
           select: { departmentId: true },
         })
         .then((t) => t?.departmentId ?? null)
@@ -66,8 +66,8 @@ export default async function SettingsTeamsRoute() {
     }
   }
 
-  const [teams, departments, joinRequests] = await Promise.all([
-    prisma.team.findMany({
+  const [subDepartments, departments, joinRequests] = await Promise.all([
+    prisma.subDepartment.findMany({
       where: isAdmin
         ? activeDeptId ? { departmentId: activeDeptId } : { tenantId }
         : deptScopeList?.length
@@ -93,7 +93,7 @@ export default async function SettingsTeamsRoute() {
           ? { id: { in: deptScopeList } }
           : { id: { in: [] } },
       orderBy: { name: "asc" },
-      include: { teams: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
+      include: { subDepartments: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
     }),
     isAdmin || isManager
       ? prisma.joinRequest.findMany({
@@ -108,7 +108,7 @@ export default async function SettingsTeamsRoute() {
               select: {
                 id: true,
                 name: true,
-                teams: { orderBy: { name: "asc" }, select: { id: true, name: true } },
+                subDepartments: { orderBy: { name: "asc" }, select: { id: true, name: true } },
               },
             },
           },
@@ -116,18 +116,18 @@ export default async function SettingsTeamsRoute() {
       : Promise.resolve([]),
   ]);
 
-  const rows: TeamRow[] = teams.map((team) => {
-    const explicitLeads = team.memberships
+  const rows: SubDepartmentRow[] = subDepartments.map((subDepartment) => {
+    const explicitLeads = subDepartment.memberships
       .filter((m) => m.role === "lead")
       .map((m) => ({ name: m.user.name, avatarUrl: m.user.avatarUrl ?? null }));
 
-    const teamManagerMember = team.memberships.find((m) => m.role === "manager" || m.role === "admin");
-    const deptManager = deptManagerMap.get(team.department.id);
+    const subDepartmentManagerMember = subDepartment.memberships.find((m) => m.role === "manager" || m.role === "admin");
+    const deptManager = deptManagerMap.get(subDepartment.department.id);
 
     const fallbackLead =
-      teamManagerMember?.user ??
+      subDepartmentManagerMember?.user ??
       (deptManager ? { name: deptManager.name, avatarUrl: deptManager.avatarUrl } : null) ??
-      team.memberships[0]?.user ??
+      subDepartment.memberships[0]?.user ??
       null;
 
     const leads =
@@ -138,16 +138,16 @@ export default async function SettingsTeamsRoute() {
           : [];
 
     const leadIds = new Set(
-      team.memberships.filter((m) => m.role === "lead").map((m) => m.user.id),
+      subDepartment.memberships.filter((m) => m.role === "lead").map((m) => m.user.id),
     );
-    const nonLeadMembers = team.memberships.filter((m) => !leadIds.has(m.user.id));
+    const nonLeadMembers = subDepartment.memberships.filter((m) => !leadIds.has(m.user.id));
 
     return {
-      id: team.id,
-      name: team.name,
-      prefix: team.prefix,
-      departmentId: team.department.id,
-      color: (team as any).color ?? avatarColorFor(team.name),
+      id: subDepartment.id,
+      name: subDepartment.name,
+      prefix: subDepartment.prefix,
+      departmentId: subDepartment.department.id,
+      color: (subDepartment as any).color ?? avatarColorFor(subDepartment.name),
       leads,
       memberColors: nonLeadMembers.slice(0, 3).map((m) => avatarColorFor(m.user.name)),
       members: nonLeadMembers.slice(0, 3).map((m) => ({
@@ -155,7 +155,7 @@ export default async function SettingsTeamsRoute() {
         avatarUrl: m.user.avatarUrl ?? null,
       })),
       extraMembers: Math.max(0, nonLeadMembers.length - 3),
-      department: team.department.name,
+      department: subDepartment.department.name,
     };
   });
 
@@ -165,7 +165,7 @@ export default async function SettingsTeamsRoute() {
       id: r.id,
       departmentId: r.department!.id,
       departmentName: r.department!.name,
-      teams: r.department!.teams,
+      subDepartments: r.department!.subDepartments,
       userId: r.user.id,
       userName: r.user.name,
       userEmail: r.user.email,
@@ -175,8 +175,8 @@ export default async function SettingsTeamsRoute() {
     }));
 
   return (
-    <SettingsTeamsPage
-      teams={rows}
+    <SettingsSubDepartmentsPage
+      subDepartments={rows}
       departments={departments}
       isAdmin={isAdmin}
       isManager={isManager || isLead}

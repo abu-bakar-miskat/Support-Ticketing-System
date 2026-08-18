@@ -24,8 +24,8 @@ export default async function DepartmentsPage() {
         where: { tenantId },
         orderBy: { name: "asc" },
         include: {
-          _count: { select: { teams: true, projects: true } },
-          teams: {
+          _count: { select: { subDepartments: true, projects: true } },
+          subDepartments: {
             select: {
               id: true,
               _count: { select: { memberships: { where: { isActive: true } } } },
@@ -65,20 +65,20 @@ export default async function DepartmentsPage() {
       }),
       Promise.all([
         prisma.department.count({ where: { tenantId } }),
-        prisma.team.count({ where: { tenantId } }),
+        prisma.subDepartment.count({ where: { tenantId } }),
         prisma.tenantMembership.count({ where: { tenantId, isActive: true } }),
         prisma.project.count({ where: { tenantId } }),
         prisma.ticket.count({ where: { tenantId, deletedAt: null, status: { not: "Live" } } }),
         prisma.joinRequest.count({
           where: {
             status: "pending",
-            OR: [{ department: { tenantId } }, { team: { tenantId } }],
+            OR: [{ department: { tenantId } }, { subDepartment: { tenantId } }],
           },
         }),
       ]),
     ]);
 
-    const [deptCount, teamCount, memberCount, projectCount, openTickets, pendingRequests] = orgStats;
+    const [deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests] = orgStats;
 
     const departments: DepartmentRow[] = rawDepts.map((d) => ({
       id: d.id,
@@ -86,9 +86,9 @@ export default async function DepartmentsPage() {
       isHub: d.isHub,
       type: d.type,
       _count: {
-        teams: d._count.teams,
+        subDepartments: d._count.subDepartments,
         projects: d._count.projects,
-        members: d.teams.reduce((sum, t) => sum + t._count.memberships, 0),
+        members: d.subDepartments.reduce((sum, t) => sum + t._count.memberships, 0),
       },
       managers: d.managers.map((m) => ({
         id: m.id,
@@ -113,8 +113,8 @@ export default async function DepartmentsPage() {
       nativeMembers: (() => {
         const seen = new Set<string>();
         const result: { userId: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }[] = [];
-        for (const team of d.teams) {
-          for (const ms of team.memberships) {
+        for (const subDepartment of d.subDepartments) {
+          for (const ms of subDepartment.memberships) {
             if (!seen.has(ms.userId)) {
               seen.add(ms.userId);
               result.push({ userId: ms.userId, user: { ...ms.user, avatarUrl: ms.user.avatarUrl ?? null } });
@@ -125,7 +125,7 @@ export default async function DepartmentsPage() {
       })(),
       memberIds: (() => {
         const seen = new Set<string>();
-        for (const team of d.teams) for (const ms of team.memberships) seen.add(ms.userId);
+        for (const subDepartment of d.subDepartments) for (const ms of subDepartment.memberships) seen.add(ms.userId);
         return [...seen];
       })(),
     }));
@@ -141,7 +141,7 @@ export default async function DepartmentsPage() {
       <DepartmentsClient
         departments={departments}
         allUsers={users}
-        orgStats={{ deptCount, teamCount, memberCount, projectCount, openTickets, pendingRequests }}
+        orgStats={{ deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests }}
         tenantName={tenantName}
         tenantId={profile.activeTenantId ?? null}
       />
@@ -153,7 +153,7 @@ export default async function DepartmentsPage() {
   const grantedIds: string[] = profile.grantedAccessDeptIds ?? [];
   const directMemberIds: string[] = profile.directMemberDeptIds ?? [];
   const membershipDeptIds = ((profile.memberships ?? []) as ProfileMembership[])
-    .map((m) => m.team?.department?.id)
+    .map((m) => m.subDepartment?.department?.id)
     .filter((id): id is string => Boolean(id));
 
   const allIds = [...new Set([...managedIds, ...grantedIds, ...directMemberIds, ...membershipDeptIds])];
@@ -165,8 +165,8 @@ export default async function DepartmentsPage() {
     where: { id: { in: allIds }, tenantId },
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { teams: true, projects: true } },
-      teams: {
+      _count: { select: { subDepartments: true, projects: true } },
+      subDepartments: {
         select: {
           _count: { select: { memberships: { where: { isActive: true } } } },
         },
@@ -178,9 +178,9 @@ export default async function DepartmentsPage() {
     id: d.id,
     name: d.name,
     isHub: d.isHub,
-    teamCount: d._count.teams,
+    subDepartmentCount: d._count.subDepartments,
     projectCount: d._count.projects,
-    memberCount: d.teams.reduce((sum, t) => sum + t._count.memberships, 0),
+    memberCount: d.subDepartments.reduce((sum, t) => sum + t._count.memberships, 0),
     accessType: managedIds.includes(d.id)
       ? "manager"
       : grantedIds.includes(d.id)

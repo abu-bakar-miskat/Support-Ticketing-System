@@ -7,15 +7,15 @@ const mockAdmin = {
   name: "Admin",
   avatarUrl: null,
   role: "admin" as const,
-  teamId: null,
-  teamIds: [], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: null,
+  subDepartmentIds: [], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
 vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
 vi.mock("@/lib/db", () => ({
   prisma: {
-    team: { create: vi.fn() },
+    subDepartment: { create: vi.fn() },
     project: { create: vi.fn() },
     department: { findUnique: vi.fn() },
   },
@@ -25,12 +25,12 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 
 const mockGetProfile = vi.mocked(getProfile)
-const mockCreate = vi.mocked(prisma.team.create)
+const mockCreate = vi.mocked(prisma.subDepartment.create)
 const mockProjectCreate = vi.mocked(prisma.project.create)
 const mockDepartmentFindUnique = vi.mocked(prisma.department.findUnique)
 
 function makeRequest(body: unknown) {
-  return new Request("http://localhost/api/admin/teams", {
+  return new Request("http://localhost/api/admin/sub-departments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -44,7 +44,7 @@ beforeEach(() => {
   mockDepartmentFindUnique.mockResolvedValue({ tenantId: "tenant-1" } as never)
 })
 
-describe("POST /api/admin/teams", () => {
+describe("POST /api/admin/sub-departments", () => {
   it("returns 201 with the created team on valid input", async () => {
     const created = { id: "team1", name: "Frontend", prefix: "FE", departmentId: "dept1" }
     mockCreate.mockResolvedValue(created as never)
@@ -60,7 +60,7 @@ describe("POST /api/admin/teams", () => {
     expect(mockProjectCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         name: "Frontend",
-        teamId: "team1",
+        subDepartmentId: "team1",
         departmentId: "dept1",
       }),
     })

@@ -27,8 +27,8 @@ type MatchedTicket = {
   ticketNumber: number
   assigneeId: string | null
   creatorId: string
-  teamId: string
-  team: { prefix: string }
+  subDepartmentId: string
+  subDepartment: { prefix: string }
 }
 
 /** Display shape returned to the realtime broadcast (mirrors MessageData.attachments). */
@@ -191,8 +191,8 @@ export async function processInboundEmail(
         ticket: {
           select: {
             id: true, title: true, ticketNumber: true,
-            assigneeId: true, creatorId: true, teamId: true,
-            team: { select: { prefix: true } },
+            assigneeId: true, creatorId: true, subDepartmentId: true,
+            subDepartment: { select: { prefix: true } },
           },
         },
       },
@@ -215,8 +215,8 @@ export async function processInboundEmail(
           ticket: {
             select: {
               id: true, title: true, ticketNumber: true,
-              assigneeId: true, creatorId: true, teamId: true,
-              team: { select: { prefix: true } },
+              assigneeId: true, creatorId: true, subDepartmentId: true,
+              subDepartment: { select: { prefix: true } },
               intake: { select: { submitterEmail: true } },
             },
           },
@@ -293,20 +293,20 @@ export async function processInboundEmail(
   if (isSystem || throttled) return true
 
   if (messageStatus === "trusted") {
-    await maybeReopenTicket(ticket.id, ticket.teamId, ticket.creatorId)
+    await maybeReopenTicket(ticket.id, ticket.subDepartmentId, ticket.creatorId)
   }
 
   if (messageStatus === "quarantined") {
     await notifyQuarantinedReply({
       ticketId: ticket.id, ticketTitle: ticket.title,
-      teamId: ticket.teamId, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId,
+      subDepartmentId: ticket.subDepartmentId, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId,
     })
     return true
   }
 
   await notifyCustomerReply({
     ticketId: ticket.id, ticketTitle: ticket.title,
-    teamId: ticket.teamId, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId,
+    subDepartmentId: ticket.subDepartmentId, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId,
   })
 
   return true

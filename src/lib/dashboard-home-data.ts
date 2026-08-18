@@ -51,7 +51,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
         where: {
           assigneeId: profile.id,
           deletedAt: null,
-          ...(deptScope ? { teamId: { in: deptScope.teamIds } } : {}),
+          ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
         },
         select: {
           id: true,
@@ -61,15 +61,15 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
           status: true,
           dueDate: true,
           createdAt: true,
-          teamId: true,
+          subDepartmentId: true,
           projectId: true,
           project: { select: { id: true, name: true, slug: true, color: true } },
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
           creator: { select: { name: true } },
           parent: {
             select: {
               ticketNumber: true,
-              team: { select: { prefix: true } },
+              subDepartment: { select: { prefix: true } },
             },
           },
         },
@@ -90,7 +90,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
             ? {
                 OR: [
                   { ticketId: null },
-                  { ticket: { teamId: { in: deptScope.teamIds }, deletedAt: null } },
+                  { ticket: { subDepartmentId: { in: deptScope.subDepartmentIds }, deletedAt: null } },
                 ],
               }
             : {}),
@@ -111,7 +111,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
             ? {
                 OR: [
                   { ticketId: null },
-                  { ticket: { teamId: { in: deptScope.teamIds }, deletedAt: null } },
+                  { ticket: { subDepartmentId: { in: deptScope.subDepartmentIds }, deletedAt: null } },
                 ],
               }
             : {}),
@@ -129,7 +129,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
         where: {
           AND: [
             deptScope
-              ? { ticket: { teamId: { in: deptScope.teamIds }, deletedAt: null } }
+              ? { ticket: { subDepartmentId: { in: deptScope.subDepartmentIds }, deletedAt: null } }
               : {},
             {
               OR: [
@@ -146,7 +146,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
         include: {
           actor: { select: { id: true, name: true, avatarUrl: true } },
           ticket: {
-            select: { ticketNumber: true, team: { select: { prefix: true } } },
+            select: { ticketNumber: true, subDepartment: { select: { prefix: true } } },
           },
         },
       }),
@@ -163,24 +163,24 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     qaSecsByDay[dayIdx] += entryDuration(e, now);
   }
 
-  const teamIds = [...new Set(myTickets.map((t) => t.teamId))];
-  const allTeamStatuses =
-    teamIds.length > 0
-      ? await prisma.teamStatus.findMany({
-          where: { teamId: { in: teamIds } },
-          select: { teamId: true, label: true, isComplete: true },
+  const subDepartmentIds = [...new Set(myTickets.map((t) => t.subDepartmentId))];
+  const allSubDepartmentStatuses =
+    subDepartmentIds.length > 0
+      ? await prisma.subDepartmentStatus.findMany({
+          where: { subDepartmentId: { in: subDepartmentIds } },
+          select: { subDepartmentId: true, label: true, isComplete: true },
           orderBy: { order: "asc" },
         })
       : [];
 
-  const completeByTeam = new Map<string, Set<string>>();
-  const inProgressByTeam = new Map<string, Set<string>>();
+  const completeBySubDepartment = new Map<string, Set<string>>();
+  const inProgressBySubDepartment = new Map<string, Set<string>>();
 
-  for (const s of allTeamStatuses) {
+  for (const s of allSubDepartmentStatuses) {
     if (s.isComplete) {
-      const set = completeByTeam.get(s.teamId) ?? new Set<string>();
+      const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>();
       set.add(s.label);
-      completeByTeam.set(s.teamId, set);
+      completeBySubDepartment.set(s.subDepartmentId, set);
     } else {
       const canonical = normalizeStatus(s.label);
       if (
@@ -188,19 +188,19 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
         canonical === "Pull Request" ||
         canonical === "Blocked"
       ) {
-        const set = inProgressByTeam.get(s.teamId) ?? new Set<string>();
+        const set = inProgressBySubDepartment.get(s.subDepartmentId) ?? new Set<string>();
         set.add(s.label);
-        inProgressByTeam.set(s.teamId, set);
+        inProgressBySubDepartment.set(s.subDepartmentId, set);
       }
     }
   }
 
-  const isTicketComplete = (t: { teamId: string; status: string }) =>
-    completeByTeam.get(t.teamId)?.has(t.status) || normalizeStatus(t.status) === "Live";
+  const isTicketComplete = (t: { subDepartmentId: string; status: string }) =>
+    completeBySubDepartment.get(t.subDepartmentId)?.has(t.status) || normalizeStatus(t.status) === "Live";
 
-  const isTicketInProgress = (t: { teamId: string; status: string }) =>
+  const isTicketInProgress = (t: { subDepartmentId: string; status: string }) =>
     !isTicketComplete(t) &&
-    (inProgressByTeam.get(t.teamId)?.has(t.status) ||
+    (inProgressBySubDepartment.get(t.subDepartmentId)?.has(t.status) ||
       normalizeStatus(t.status) === "In Progress" ||
       normalizeStatus(t.status) === "Pull Request" ||
       normalizeStatus(t.status) === "Blocked");
@@ -230,7 +230,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     kind: AttentionTask["kind"],
     dueLabel: string,
   ): AttentionTask => ({
-    id: `${t.team.prefix}-${t.ticketNumber}`,
+    id: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     dbId: t.id,
     title: t.title,
     priority: (PRIORITY_TO_UI[t.priority] ?? "medium") as AttentionTask["priority"],
@@ -282,7 +282,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     .sort((a, b) => b.openCount - a.openCount || a.name.localeCompare(b.name));
 
   const activity = activityRows.map((a, i) => {
-    const humanId = `${a.ticket.team.prefix}-${a.ticket.ticketNumber}`;
+    const humanId = `${a.ticket.subDepartment.prefix}-${a.ticket.ticketNumber}`;
     const meta = (a.metadata ?? {}) as Record<string, unknown>;
     let action: string;
     switch (a.action) {

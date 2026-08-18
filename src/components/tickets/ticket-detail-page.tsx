@@ -88,7 +88,7 @@ import { PrioritySelect } from "@/components/tickets/priority-select";
 import { ModuleSelect } from "@/components/tickets/module-select";
 import { SprintSelect } from "@/components/tickets/sprint-select";
 import { StatusSelect } from "@/components/tickets/status-select";
-import { useTeamStatuses } from "@/hooks/queries/use-team-statuses";
+import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses";
 import { useLabels } from "@/hooks/queries/use-labels";
 import { buildLinkedLabelOptions } from "@/lib/status-label-choice";
 import {
@@ -96,7 +96,7 @@ import {
   uiPriorityFromDb,
 } from "@/components/board/board-types";
 import type {
-  TeamStatusConfig,
+  SubDepartmentStatusConfig,
   UiPriority,
 } from "@/components/board/board-types";
 import { PriorityPill } from "@/components/board/priority-indicator";
@@ -644,7 +644,7 @@ export type TicketDetailProps = {
   dbId: string;
   ticketId: string;
   projectId: string;
-  teamId: string;
+  subDepartmentId: string;
   projectName: string;
   projectColor: string;
   /** Project kind — "support" tickets hide sub-tickets, story points, asset links. */
@@ -678,9 +678,9 @@ export type TicketDetailProps = {
   canChangeStatus?: boolean;
   canEditTicket?: boolean;
   canEditDescription?: boolean;
-  teamMembers: UserListPerson[];
+  subDepartmentMembers: UserListPerson[];
   mentionableUsers: MentionableUser[];
-  teamStatuses: TeamStatusConfig[];
+  subDepartmentStatuses: SubDepartmentStatusConfig[];
   subTickets: SubTicketData[];
   comments: CommentData[];
   messages?: MessageData[];
@@ -738,7 +738,7 @@ export function TicketDetailPage({
   dbId,
   ticketId,
   projectId,
-  teamId,
+  subDepartmentId,
   projectName,
   projectColor,
   projectKind = "standard",
@@ -769,9 +769,9 @@ export function TicketDetailPage({
   canChangeStatus = true,
   canEditTicket = false,
   canEditDescription = false,
-  teamMembers,
+  subDepartmentMembers,
   mentionableUsers,
-  teamStatuses,
+  subDepartmentStatuses,
   subTickets: initialSubTickets,
   comments,
   messages = EMPTY_MESSAGES,
@@ -887,10 +887,10 @@ export function TicketDetailPage({
     setLiveStatus(status);
   }, [status]);
 
-  const { data: cachedTeamStatuses } = useTeamStatuses(teamId);
-  const effectiveTeamStatuses = useMemo(
-    () => (cachedTeamStatuses?.length ? cachedTeamStatuses : teamStatuses),
-    [cachedTeamStatuses, teamStatuses],
+  const { data: cachedSubDepartmentStatuses } = useSubDepartmentStatuses(subDepartmentId);
+  const effectiveSubDepartmentStatuses = useMemo(
+    () => (cachedSubDepartmentStatuses?.length ? cachedSubDepartmentStatuses : subDepartmentStatuses),
+    [cachedSubDepartmentStatuses, subDepartmentStatuses],
   );
   useEffect(() => {
     setLiveAssigneeId(assigneeId);
@@ -985,7 +985,7 @@ export function TicketDetailPage({
     "awaiting-assignee" | "awaiting-customer" | null
   >(() => {
     if (liveMessages.length === 0) return null;
-    const statusConfig = effectiveTeamStatuses.find(
+    const statusConfig = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
     );
     if (statusConfig?.isComplete || liveStatus === "Live") return null;
@@ -996,7 +996,7 @@ export function TicketDetailPage({
     return last.direction === "inbound"
       ? "awaiting-assignee"
       : "awaiting-customer";
-  }, [liveMessages, liveStatus, effectiveTeamStatuses]);
+  }, [liveMessages, liveStatus, effectiveSubDepartmentStatuses]);
 
   // Unified conversation: top-level comments and their replies flattened into
   // one chronological timeline (oldest first, newest nearest the composer pinned
@@ -1323,7 +1323,7 @@ export function TicketDetailPage({
 
   const applyActivityLocally = useCallback(
     (event: TicketActivityEvent) => {
-      const people = [...teamMembers, ...mentionableUsers];
+      const people = [...subDepartmentMembers, ...mentionableUsers];
       const actorName = resolveActivityActorName(
         event.actorId,
         currentUserId,
@@ -1367,7 +1367,7 @@ export function TicketDetailPage({
           const toId = (payload.toId as string | null | undefined) ?? null;
           const toName = (payload.toName as string | null | undefined) ?? null;
           const member = toId
-            ? teamMembers.find((m) => m.id === toId)
+            ? subDepartmentMembers.find((m) => m.id === toId)
             : undefined;
           setLiveAssigneeId(toId);
           setLiveAssigneeName(toName);
@@ -1379,7 +1379,7 @@ export function TicketDetailPage({
           const userName =
             (payload.userName as string | undefined) ?? "Unknown";
           if (!userId) break;
-          const member = teamMembers.find((m) => m.id === userId);
+          const member = subDepartmentMembers.find((m) => m.id === userId);
           setLiveCoAssignees((prev) =>
             prev.some((c) => c.id === userId)
               ? prev
@@ -1406,7 +1406,7 @@ export function TicketDetailPage({
           const userName =
             (payload.userName as string | undefined) ?? "Unknown";
           if (!userId) break;
-          const member = teamMembers.find((m) => m.id === userId);
+          const member = subDepartmentMembers.find((m) => m.id === userId);
           setLiveQaAssignees((prev) =>
             prev.some((c) => c.id === userId)
               ? prev
@@ -1594,7 +1594,7 @@ export function TicketDetailPage({
       }
     },
     [
-      teamMembers,
+      subDepartmentMembers,
       mentionableUsers,
       currentUserId,
       currentUserName,
@@ -1822,14 +1822,14 @@ export function TicketDetailPage({
         title: t,
         priority: "Low",
         projectId,
-        teamId,
+        subDepartmentId,
         parentId: dbId,
       });
       setSubTickets((prev) => [
         ...prev,
         {
           dbId: created.id,
-          humanId: `${created.team?.prefix ?? "?"}-${created.ticketNumber}`,
+          humanId: `${created.subDepartment?.prefix ?? "?"}-${created.ticketNumber}`,
           title: created.title,
           status: created.status ?? "To Do",
           done: false,
@@ -1878,7 +1878,7 @@ export function TicketDetailPage({
       .filter((t) => t.id !== dbId && !existingSubIds.has(t.id))
       .filter((t) => {
         if (!q) return true;
-        const human = `${t.team.prefix}-${t.ticketNumber}`.toLowerCase();
+        const human = `${t.subDepartment.prefix}-${t.ticketNumber}`.toLowerCase();
         return human.includes(q) || t.title.toLowerCase().includes(q);
       })
       .slice(0, 20);
@@ -1893,7 +1893,7 @@ export function TicketDetailPage({
         ...prev,
         {
           dbId: candidate.id,
-          humanId: `${candidate.team.prefix}-${candidate.ticketNumber}`,
+          humanId: `${candidate.subDepartment.prefix}-${candidate.ticketNumber}`,
           title: candidate.title,
           status: candidate.status,
           done: false,
@@ -2068,8 +2068,8 @@ export function TicketDetailPage({
   const backProjectSlug = searchParams.get("projectSlug");
   const backProjectName = searchParams.get("projectName");
   const backTab = searchParams.get("tab");
-  const backTeamName = searchParams.get("teamName");
-  const backTeamId = searchParams.get("teamId");
+  const backSubDepartmentName = searchParams.get("teamName");
+  const backSubDepartmentId = searchParams.get("teamId");
 
   type Crumb = { label: string; href: string };
   const crumbs: Crumb[] = [];
@@ -2082,9 +2082,9 @@ export function TicketDetailPage({
       label: backProjectName ?? "Project",
       href: `/projects/${backProjectSlug}`,
     });
-    if (backTab === `team:${backTeamId}` && backTeamName) {
+    if (backTab === `team:${backSubDepartmentId}` && backSubDepartmentName) {
       crumbs.push({
-        label: backTeamName,
+        label: backSubDepartmentName,
         href: `/projects/${backProjectSlug}?tab=${encodeURIComponent(backTab)}`,
       });
     } else if (backTab === "tickets") {
@@ -2105,18 +2105,18 @@ export function TicketDetailPage({
   const { data: departmentLabelOptions } = useLabels();
 
   const statusColorMap = Object.fromEntries(
-    effectiveTeamStatuses.map((s) => [s.label, s.color]),
+    effectiveSubDepartmentStatuses.map((s) => [s.label, s.color]),
   );
 
   const currentStatusAllowedLabels = useMemo(() => {
-    const linked = effectiveTeamStatuses.find(
+    const linked = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
     )?.allowedLabels;
     const labels = Array.isArray(departmentLabelOptions)
       ? departmentLabelOptions
       : [];
     return buildLinkedLabelOptions(linked, labels).map((option) => option.name);
-  }, [effectiveTeamStatuses, liveStatus, departmentLabelOptions]);
+  }, [effectiveSubDepartmentStatuses, liveStatus, departmentLabelOptions]);
 
   // Time tracking is only available when the ticket is actively being worked on ("In Progress").
   const isTicketActive = normalizeStatus(liveStatus) === "In Progress";
@@ -3245,7 +3245,7 @@ export function TicketDetailPage({
                                 className="flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-pen-card-border/40 disabled:opacity-50"
                               >
                                 <span className="shrink-0 font-mono text-[11.5px] font-semibold text-pen-id">
-                                  {c.team.prefix}-{c.ticketNumber}
+                                  {c.subDepartment.prefix}-{c.ticketNumber}
                                 </span>
                                 <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
                                   {c.title}
@@ -3431,7 +3431,7 @@ export function TicketDetailPage({
                         <CustomerMessageItem
                           message={m}
                           ticketId={dbId}
-                          teamMembers={mentionableUsers}
+                          subDepartmentMembers={mentionableUsers}
                           onNoteAdded={handleNoteAdded}
                           onNoteChanged={handleNoteChanged}
                           onNoteRemoved={handleNoteRemoved}
@@ -3488,7 +3488,7 @@ export function TicketDetailPage({
                         key={c.id}
                         comment={c}
                         ticketId={dbId}
-                        teamMembers={mentionableUsers}
+                        subDepartmentMembers={mentionableUsers}
                         parentRef={parentRef}
                         onReplySubmitted={(reply) => handleReplyAdded(c.id, reply)}
                       />
@@ -3500,7 +3500,7 @@ export function TicketDetailPage({
                 <div className="sticky bottom-0 z-10 -mx-1 mt-4 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
                   <CommentInput
                     ticketId={dbId}
-                    teamMembers={mentionableUsers}
+                    subDepartmentMembers={mentionableUsers}
                     onCommentAdded={(comment) => {
                       knownCommentIds.current.add(comment.id);
                       setLiveComments((prev) => {
@@ -3618,7 +3618,7 @@ export function TicketDetailPage({
               <StatusSelect
                 ticketId={dbId}
                 currentStatus={liveStatus}
-                statuses={effectiveTeamStatuses}
+                statuses={effectiveSubDepartmentStatuses}
                 onStatusChange={setLiveStatus}
                 disabled={!canChangeStatus}
               />
@@ -3657,14 +3657,14 @@ export function TicketDetailPage({
                 assigneeId={liveAssigneeId}
                 assigneeName={liveAssigneeName}
                 assigneeAvatarUrl={liveAssigneeAvatarUrl}
-                teamMembers={teamMembers}
+                subDepartmentMembers={subDepartmentMembers}
                 onAssigneeChange={handleAssigneeChange}
                 disabled={!canEditTicket}
               />
               <CoAssigneeSelect
                 ticketId={dbId}
                 coAssignees={liveCoAssignees}
-                teamMembers={teamMembers}
+                subDepartmentMembers={subDepartmentMembers}
                 primaryAssigneeId={liveAssigneeId}
                 onCoAssigneesChange={handleCoAssigneesChange}
                 disabled={!canEditTicket}
@@ -3677,7 +3677,7 @@ export function TicketDetailPage({
               <QaAssigneeSelect
                 ticketId={dbId}
                 qaAssignees={liveQaAssignees}
-                teamMembers={teamMembers}
+                subDepartmentMembers={subDepartmentMembers}
                 onQaAssigneesChange={handleQaAssigneesChange}
                 disabled={!canEditTicket}
               />

@@ -42,9 +42,9 @@ export async function resolveMentionedProfiles(
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       select: {
-        teamId: true,
+        subDepartmentId: true,
         projectId: true,
-        team: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true } },
       },
     })
     if (ticket) {
@@ -53,8 +53,8 @@ export async function resolveMentionedProfiles(
       const mentionable = ticket.projectId
         ? await getMentionableProjectMembers(ticket.projectId)
         : await getMentionableUsersForTicketDept(
-            ticket.team.departmentId,
-            ticket.teamId,
+            ticket.subDepartment.departmentId,
+            ticket.subDepartmentId,
           )
       if (mentionable.length) {
         const profiles = await prisma.profile.findMany({
@@ -98,9 +98,9 @@ export async function processMentions({
   const notifiedSet = new Set(alreadyNotifiedIds)
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { team: { select: { departmentId: true } } },
+    select: { subDepartment: { select: { departmentId: true } } },
   })
-  const departmentId = ticket?.team.departmentId ?? null
+  const departmentId = ticket?.subDepartment.departmentId ?? null
 
   for (const profile of profiles) {
     const existingMention = await prisma.mention.findFirst({

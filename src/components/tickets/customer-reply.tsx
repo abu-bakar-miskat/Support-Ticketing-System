@@ -409,7 +409,7 @@ function MessageNotes({
   ticketId,
   messageId,
   notes,
-  teamMembers,
+  subDepartmentMembers,
   onAdded,
   onChanged,
   onRemoved,
@@ -417,7 +417,7 @@ function MessageNotes({
   ticketId: string;
   messageId: string;
   notes: MessageNote[];
-  teamMembers?: MentionableUser[];
+  subDepartmentMembers?: MentionableUser[];
   onAdded: (note: MessageNote) => void;
   onChanged: (noteId: string, body: string, editedAt: string) => void;
   onRemoved: (noteId: string) => void;
@@ -537,7 +537,7 @@ function MessageNotes({
                 <MentionTextarea
                   value={editValue}
                   onChange={setEditValue}
-                  teamMembers={teamMembers}
+                  subDepartmentMembers={subDepartmentMembers}
                   rows={2}
                   autoFocus
                   onSubmit={() => void saveEdit(n.id)}
@@ -575,7 +575,7 @@ function MessageNotes({
           <MentionTextarea
             value={draft}
             onChange={setDraft}
-            teamMembers={teamMembers}
+            subDepartmentMembers={subDepartmentMembers}
             rows={2}
             autoFocus
             placeholder="Add an internal note — use @ to mention a teammate…"
@@ -626,7 +626,7 @@ function MessageNotes({
 export function CustomerMessageItem({
   message,
   ticketId,
-  teamMembers,
+  subDepartmentMembers,
   onDelete,
   onNoteAdded,
   onNoteChanged,
@@ -634,7 +634,7 @@ export function CustomerMessageItem({
 }: {
   message: MessageData;
   ticketId?: string;
-  teamMembers?: MentionableUser[];
+  subDepartmentMembers?: MentionableUser[];
   onDelete?: (id: string) => void;
   onNoteAdded?: (messageId: string, note: MessageNote) => void;
   onNoteChanged?: (messageId: string, noteId: string, body: string, editedAt: string) => void;
@@ -840,7 +840,7 @@ export function CustomerMessageItem({
                 ticketId={ticketId}
                 messageId={message.id}
                 notes={message.notes ?? []}
-                teamMembers={teamMembers}
+                subDepartmentMembers={subDepartmentMembers}
                 onAdded={(note) => onNoteAdded(message.id, note)}
                 onChanged={(noteId, body, editedAt) =>
                   onNoteChanged(message.id, noteId, body, editedAt)

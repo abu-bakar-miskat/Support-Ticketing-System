@@ -29,16 +29,16 @@ export async function GET(
     return NextResponse.json({ error: "Invalid from/to date" }, { status: 400 })
   }
 
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId },
     select: { id: true },
   })
-  const teamIds = teams.map((t) => t.id)
+  const subDepartmentIds = subDepartments.map((t) => t.id)
 
-  const [teamMembers, directMembers] = await Promise.all([
-    teamIds.length > 0
-      ? prisma.teamMembership.findMany({
-          where: { teamId: { in: teamIds }, isActive: true },
+  const [subDepartmentMembers, directMembers] = await Promise.all([
+    subDepartmentIds.length > 0
+      ? prisma.subDepartmentMembership.findMany({
+          where: { subDepartmentId: { in: subDepartmentIds }, isActive: true },
           select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
         })
       : Promise.resolve([]),
@@ -49,7 +49,7 @@ export async function GET(
   ])
 
   const memberMap = new Map<string, { id: string; name: string; email: string; avatarUrl: string | null }>()
-  for (const row of [...teamMembers, ...directMembers]) {
+  for (const row of [...subDepartmentMembers, ...directMembers]) {
     if (row.user) memberMap.set(row.user.id, row.user)
   }
   const memberIds = [...memberMap.keys()]

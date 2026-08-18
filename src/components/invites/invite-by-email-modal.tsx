@@ -11,17 +11,17 @@ import {
 
 export function InviteByEmailModal({
   deptId,
-  teams,
+  subDepartments,
   onSent,
   onClose,
 }: {
   deptId: string;
-  teams: { id: string; name: string }[];
+  subDepartments: { id: string; name: string }[];
   onSent?: (invite: DepartmentInviteRow) => void;
   onClose: () => void;
 }) {
   const [email, setEmail] = useState("");
-  const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
+  const [subDepartmentId, setSubDepartmentId] = useState(subDepartments[0]?.id ?? "");
   const [role, setRole] = useState<"staff" | "lead">("staff");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,7 +30,7 @@ export function InviteByEmailModal({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim() || !teamId) {
+    if (!email.trim() || !subDepartmentId) {
       setError("Email and team are required");
       return;
     }
@@ -38,7 +38,7 @@ export function InviteByEmailModal({
     try {
       const invite = await createDepartmentInvite(deptId, {
         email: email.trim(),
-        teamId,
+        subDepartmentId,
         role,
         message: message.trim() || undefined,
       });
@@ -86,10 +86,10 @@ export function InviteByEmailModal({
             </label>
             <SearchableSelect
               aria-label="Team"
-              value={teamId}
-              onChange={setTeamId}
-              options={teams.map((t) => ({ value: t.id, label: t.name }))}
-              placeholder={teams.length === 0 ? "No teams available" : "Select a team…"}
+              value={subDepartmentId}
+              onChange={setSubDepartmentId}
+              options={subDepartments.map((t) => ({ value: t.id, label: t.name }))}
+              placeholder={subDepartments.length === 0 ? "No teams available" : "Select a team…"}
               searchPlaceholder="Search teams…"
               emptyLabel="No teams available"
               className="bg-pen-surface"
@@ -146,7 +146,7 @@ export function InviteByEmailModal({
             </button>
             <button
               type="submit"
-              disabled={saving || !teamId}
+              disabled={saving || !subDepartmentId}
               className="flex h-8 items-center gap-1.5 rounded-lg bg-pen-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}

@@ -71,29 +71,29 @@ function safeTimezone(tz: string | null | undefined): string {
  * of members) where filtering out anyone merely outside working hours right now
  * would collapse the candidate pool and break the round-robin distribution.
  */
-export async function isMemberActiveInRotation(userId: string, teamId: string): Promise<boolean> {
+export async function isMemberActiveInRotation(userId: string, subDepartmentId: string): Promise<boolean> {
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({
       where: { id: userId },
       select: { isActive: true },
     }),
-    (prisma.teamMembership as any).findUnique({
-      where: { userId_teamId: { userId, teamId } },
+    (prisma.subDepartmentMembership as any).findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
       select: { doNotAssign: true },
     }),
   ])
   return !((profile ? !profile.isActive : false) || membership?.doNotAssign)
 }
 
-export async function isMemberAvailableNow(userId: string, teamId: string): Promise<boolean> {
+export async function isMemberAvailableNow(userId: string, subDepartmentId: string): Promise<boolean> {
   // 1. availability — check both profile-level isActive (all roles) and team-level doNotAssign (per-team override)
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({
       where: { id: userId },
       select: { timezone: true, isActive: true },
     }),
-    prisma.teamMembership.findUnique({
-      where: { userId_teamId: { userId, teamId } },
+    prisma.subDepartmentMembership.findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
       select: { doNotAssign: true },
     }),
   ])
@@ -126,15 +126,15 @@ export async function isMemberAvailableNow(userId: string, teamId: string): Prom
 // ─── Core ROTA algorithm ──────────────────────────────────────────────────────
 
 export async function resolveAssignee(
-  teamId: string,
+  subDepartmentId: string,
   rotaPointer: number,
   workloadThreshold: number,
   excludeUserId: string | null,
 ): Promise<{ userId: string | null; nextPointer: number }> {
   // Active members ordered consistently, excluding the department manager
   const allMembers = (
-    await prisma.teamMembership.findMany({
-      where: { teamId, isActive: true },
+    await prisma.subDepartmentMembership.findMany({
+      where: { subDepartmentId, isActive: true },
       orderBy: { joinedAt: "asc" },
       select: { userId: true },
     })
@@ -144,14 +144,14 @@ export async function resolveAssignee(
 
   // Filter to schedule-available members; fall back to all if none pass
   const availabilityFlags = await Promise.all(
-    allMembers.map((m) => isMemberAvailableNow(m.userId, teamId)),
+    allMembers.map((m) => isMemberAvailableNow(m.userId, subDepartmentId)),
   )
   const members = allMembers.filter((_, i) => availabilityFlags[i])
   const eligible = members.length > 0 ? members : allMembers
 
   // Completion status labels for open-ticket counting
-  const completionStatuses = await prisma.teamStatus.findMany({
-    where: { teamId, isComplete: true },
+  const completionStatuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId, isComplete: true },
     select: { label: true },
   })
   const completedLabels = completionStatuses.map((s) => s.label)
@@ -161,7 +161,7 @@ export async function resolveAssignee(
     eligible.map(async ({ userId }) => {
       const count = await prisma.ticket.count({
         where: {
-          teamId,
+          subDepartmentId,
           assigneeId: userId,
           deletedAt: null,
           ...(completedLabels.length > 0 ? { status: { notIn: completedLabels } } : {}),

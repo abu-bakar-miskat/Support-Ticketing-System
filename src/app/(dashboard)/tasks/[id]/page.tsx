@@ -8,7 +8,7 @@ import { ActiveDeptSync } from "@/components/tickets/active-dept-sync";
 import { TicketAccessDenied } from "@/components/tickets/ticket-access-denied";
 import {
   getAssignableUsersForTicketDepartment,
-  getCachedTeamStatuses,
+  getCachedSubDepartmentStatuses,
   getCachedMentionableUsers,
 } from "@/lib/ticket-detail-data";
 import { getProfileDeptScope } from "@/lib/dept-scope";
@@ -53,7 +53,7 @@ export default async function TicketPage({
   const ticket = await prisma.ticket.findUnique({
     where: { id },
     include: {
-      team: {
+      subDepartment: {
         select: {
           id: true,
           prefix: true,
@@ -93,14 +93,14 @@ export default async function TicketPage({
           id: true,
           ticketNumber: true,
           title: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
         },
       },
       subTickets: {
         where: { deletedAt: null },
         orderBy: { createdAt: "asc" },
         include: {
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
           assignee: { select: { name: true, avatarUrl: true } },
         },
       },
@@ -159,9 +159,9 @@ export default async function TicketPage({
       return (
         <TicketAccessDenied
           reason="no_team_access"
-          ticketRef={`${ticket.team.prefix}-${ticket.ticketNumber}`}
-          deptName={ticket.team.department?.name ?? null}
-          teamName={ticket.team.name}
+          ticketRef={`${ticket.subDepartment.prefix}-${ticket.ticketNumber}`}
+          deptName={ticket.subDepartment.department?.name ?? null}
+          subDepartmentName={ticket.subDepartment.name}
         />
       );
     }
@@ -171,10 +171,10 @@ export default async function TicketPage({
   // Do NOT apply the active-workspace dept filter here — the user may have
   // clicked a link from a different department context. Instead, check their
   // actual permissions and surface a descriptive error when denied.
-  const ticketDeptId = ticket.team.departmentId;
-  const ticketDeptName = ticket.team.department?.name ?? null;
-  const ticketTeamName = ticket.team.name;
-  const humanTicketRef = `${ticket.team.prefix}-${ticket.ticketNumber}`;
+  const ticketDeptId = ticket.subDepartment.departmentId;
+  const ticketDeptName = ticket.subDepartment.department?.name ?? null;
+  const ticketSubDepartmentName = ticket.subDepartment.name;
+  const humanTicketRef = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`;
 
   if (profile.role !== "admin" && !ticket.isDraft) {
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? [];
@@ -182,14 +182,14 @@ export default async function TicketPage({
     // visibility of every ticket in the department. Limited/project-scoped
     // grants must instead prove project membership via canCrossAccessGuestViewTicket.
     const fullAccessIds: string[] = (profile as any).fullAccessGrantedDeptIds ?? [];
-    const teamIds: string[] =
-      (profile as any).teamIds ?? (profile.teamId ? [profile.teamId] : []);
+    const subDepartmentIds: string[] =
+      (profile as any).subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
 
     // View access is granted by ANY legitimate relationship to the ticket —
     // never just the caller's currently-active department. This is what a
     // notification link relies on: a mentioned/assigned/co-assigned user, a
     // team member, a dept manager, or a cross-access guest can all open it.
-    const onTeam = teamIds.includes(ticket.teamId);
+    const onSubDepartment = subDepartmentIds.includes(ticket.subDepartmentId);
     const isAssignee =
       ticket.assigneeId === profile.id ||
       ticket.assignees.some((a) => a.user.id === profile.id);
@@ -199,8 +199,8 @@ export default async function TicketPage({
       (managedIds.includes(ticketDeptId) || fullAccessIds.includes(ticketDeptId));
     const canViewViaCrossAccess = await canCrossAccessGuestViewTicket(profile, {
       projectId: ticket.projectId,
-      teamId: ticket.teamId,
-      team: ticket.team,
+      subDepartmentId: ticket.subDepartmentId,
+      subDepartment: ticket.subDepartment,
       projectDeptId: ticket.project?.departmentId ?? null,
     });
 
@@ -212,7 +212,7 @@ export default async function TicketPage({
     const deptScope = await getProfileDeptScope(profile);
     const hasAccess = deptScope?.isCrossAccessOnly
       ? isAssignee || isCreator || canViewViaCrossAccess
-      : onTeam || isAssignee || isCreator || managesDept || canViewViaCrossAccess;
+      : onSubDepartment || isAssignee || isCreator || managesDept || canViewViaCrossAccess;
 
     if (!hasAccess) {
       // A limited (non-full) cross-access grant that just lacks project
@@ -233,7 +233,7 @@ export default async function TicketPage({
           reason={reason}
           ticketRef={humanTicketRef}
           deptName={ticketDeptName}
-          teamName={ticketTeamName}
+          subDepartmentName={ticketSubDepartmentName}
         />
       );
     }
@@ -263,7 +263,7 @@ export default async function TicketPage({
       const membershipDeptIds: string[] = (
         (profile as any).memberships ?? []
       )
-        .map((m: any) => m?.team?.department?.id)
+        .map((m: any) => m?.subDepartment?.department?.id)
         .filter((v: unknown): v is string => typeof v === "string");
       const switchable = new Set<string>([
         ...((profile as any).managedDepartmentIds ?? []),
@@ -276,7 +276,7 @@ export default async function TicketPage({
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  const [teamMembers, teamStatuses, ticketTimeEntries, mentionableUsers, ticketMessages, ticketEditContext, github] =
+  const [subDepartmentMembers, subDepartmentStatuses, ticketTimeEntries, mentionableUsers, ticketMessages, ticketEditContext, github] =
     await Promise.all([
       getAssignableUsersForTicketDepartment(ticketDeptId, [
         ...(ticket.assignee
@@ -294,7 +294,7 @@ export default async function TicketPage({
           avatarUrl: a.user.avatarUrl ?? null,
         })),
       ]),
-      getCachedTeamStatuses(ticket.teamId),
+      getCachedSubDepartmentStatuses(ticket.subDepartmentId),
       prisma.timeEntry.findMany({
         where: { ticketId: ticket.id },
         include: {
@@ -302,7 +302,7 @@ export default async function TicketPage({
         },
         orderBy: { startedAt: "asc" },
       }),
-      getCachedMentionableUsers(ticketDeptId, ticket.teamId),
+      getCachedMentionableUsers(ticketDeptId, ticket.subDepartmentId),
       prisma.ticketMessage.findMany({
         where: { ticketId: ticket.id },
         orderBy: { createdAt: "asc" },
@@ -326,15 +326,15 @@ export default async function TicketPage({
 
   // A sub-ticket counts as complete when its status is one flagged `isComplete`
   // on its own team (sub-tickets may live on a different team than the parent).
-  const subTeamIds = [...new Set(ticket.subTickets.map((st) => st.teamId))];
-  const completeStatusRows = subTeamIds.length
-    ? await prisma.teamStatus.findMany({
-        where: { teamId: { in: subTeamIds }, isComplete: true },
-        select: { teamId: true, label: true },
+  const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
+  const completeStatusRows = subSubDepartmentIds.length
+    ? await prisma.subDepartmentStatus.findMany({
+        where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+        select: { subDepartmentId: true, label: true },
       })
     : [];
   const completeSubStatuses = new Set(
-    completeStatusRows.map((r) => `${r.teamId}::${r.label}`),
+    completeStatusRows.map((r) => `${r.subDepartmentId}::${r.label}`),
   );
 
   // Group time entries by user (completed secs only) — DEVELOPMENT vs QA
@@ -411,7 +411,7 @@ export default async function TicketPage({
   const subInfo = new Map(
     ticket.subTickets.map((s) => [
       s.id,
-      { humanId: `${s.team.prefix}-${s.ticketNumber}`, title: s.title },
+      { humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`, title: s.title },
     ]),
   );
   const subPerTicketSecs = new Map<string, number>();
@@ -438,7 +438,7 @@ export default async function TicketPage({
     perTicket: ticket.subTickets
       .map((s) => ({
         dbId: s.id,
-        humanId: `${s.team.prefix}-${s.ticketNumber}`,
+        humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`,
         title: s.title,
         totalSecs: subPerTicketSecs.get(s.id) ?? 0,
       }))
@@ -457,7 +457,7 @@ export default async function TicketPage({
     (a) => a.user.id === profile.id,
   );
 
-  const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`;
+  const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`;
   const { openedDaysAgo, dueOverdue } = ticketTimes(
     ticket.createdAt,
     ticket.dueDate,
@@ -482,7 +482,7 @@ export default async function TicketPage({
         dbId={ticket.id}
         ticketId={humanId}
         projectId={ticket.projectId ?? ""}
-        teamId={ticket.teamId}
+        subDepartmentId={ticket.subDepartmentId}
         projectName={ticket.project?.name ?? "Miscellaneous"}
         projectColor={ticket.project?.color ?? "#0a76b9"}
         projectKind={ticket.project?.kind ?? "standard"}
@@ -536,7 +536,7 @@ export default async function TicketPage({
           ticket.parent
             ? {
                 dbId: ticket.parent.id,
-                humanId: `${ticket.parent.team.prefix}-${ticket.parent.ticketNumber}`,
+                humanId: `${ticket.parent.subDepartment.prefix}-${ticket.parent.ticketNumber}`,
                 title: ticket.parent.title,
               }
             : null
@@ -558,9 +558,9 @@ export default async function TicketPage({
         assetLinks={(ticket.assetLinks as { label: string; url: string }[] | null) ?? []}
         github={github}
         templateData={(ticket.templateData as Record<string, any> | null) ?? null}
-        teamMembers={teamMembers}
+        subDepartmentMembers={subDepartmentMembers}
         mentionableUsers={mentionableUsers}
-        teamStatuses={teamStatuses}
+        subDepartmentStatuses={subDepartmentStatuses}
         messages={ticketMessages.map((m) => ({
           id: m.id,
           direction: m.direction as "inbound" | "outbound",
@@ -599,7 +599,7 @@ export default async function TicketPage({
         intake={
           ticket.intake
             ? (() => {
-                const deptName = ticket.team.department?.name ?? "";
+                const deptName = ticket.subDepartment.department?.name ?? "";
                 const deptSlug = deptName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
                 return {
                 submitterName: ticket.intake.submitterName,
@@ -628,10 +628,10 @@ export default async function TicketPage({
         }
         subTickets={ticket.subTickets.map((st) => ({
           dbId: st.id,
-          humanId: `${st.team.prefix}-${st.ticketNumber}`,
+          humanId: `${st.subDepartment.prefix}-${st.ticketNumber}`,
           title: st.title,
           status: st.status,
-          done: completeSubStatuses.has(`${st.teamId}::${st.status}`),
+          done: completeSubStatuses.has(`${st.subDepartmentId}::${st.status}`),
           priority: PRIORITY_TO_UI[st.priority] ?? "medium",
           assigneeName: st.assignee?.name ?? null,
           assigneeAvatarUrl: st.assignee?.avatarUrl ?? null,

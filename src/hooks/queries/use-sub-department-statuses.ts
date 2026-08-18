@@ -2,19 +2,19 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  getTeamStatuses,
-  createTeamStatus,
-  updateTeamStatus,
-  deleteTeamStatus,
-  reorderTeamStatuses,
-} from "@/lib/api/teams"
-import { teamKeys } from "./keys"
+  getSubDepartmentStatuses,
+  createSubDepartmentStatus,
+  updateSubDepartmentStatus,
+  deleteSubDepartmentStatus,
+  reorderSubDepartmentStatuses,
+} from "@/lib/api/sub-departments"
+import { subDepartmentKeys } from "./keys"
 
-export function useTeamStatuses(teamId: string) {
+export function useSubDepartmentStatuses(subDepartmentId: string) {
   return useQuery({
-    queryKey: teamKeys.statuses(teamId),
-    queryFn: () => getTeamStatuses(teamId),
-    enabled: !!teamId,
+    queryKey: subDepartmentKeys.statuses(subDepartmentId),
+    queryFn: () => getSubDepartmentStatuses(subDepartmentId),
+    enabled: !!subDepartmentId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -22,18 +22,18 @@ export function useTeamStatuses(teamId: string) {
   })
 }
 
-export function useCreateTeamStatus(teamId: string) {
+export function useCreateSubDepartmentStatus(subDepartmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: { label: string; color: string; order?: number }) =>
-      createTeamStatus(teamId, body),
+      createSubDepartmentStatus(subDepartmentId, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.statuses(teamId) })
+      queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) })
     },
   })
 }
 
-export function useUpdateTeamStatus(teamId: string) {
+export function useUpdateSubDepartmentStatus(subDepartmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
@@ -48,30 +48,30 @@ export function useUpdateTeamStatus(teamId: string) {
         isComplete?: boolean
         allowedLabels?: string[]
       }
-    }) => updateTeamStatus(teamId, statusId, body),
+    }) => updateSubDepartmentStatus(subDepartmentId, statusId, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.statuses(teamId) })
+      queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) })
     },
   })
 }
 
-export function useDeleteTeamStatus(teamId: string) {
+export function useDeleteSubDepartmentStatus(subDepartmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (statusId: string) => deleteTeamStatus(teamId, statusId),
+    mutationFn: (statusId: string) => deleteSubDepartmentStatus(subDepartmentId, statusId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.statuses(teamId) })
+      queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) })
     },
   })
 }
 
-export function useReorderTeamStatuses(teamId: string) {
+export function useReorderSubDepartmentStatuses(subDepartmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (statuses: { id: string; order: number }[]) =>
-      reorderTeamStatuses(teamId, statuses),
+      reorderSubDepartmentStatuses(subDepartmentId, statuses),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.statuses(teamId) })
+      queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) })
     },
   })
 }

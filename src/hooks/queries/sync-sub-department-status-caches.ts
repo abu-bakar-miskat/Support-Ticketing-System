@@ -1,39 +1,39 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { TeamStatusConfig } from "@/components/board/board-types";
+import type { SubDepartmentStatusConfig } from "@/components/board/board-types";
 import type { MyTasksResponse, TasksMetaResponse } from "@/lib/api/tasks";
-import type { TeamStatus } from "@/lib/api/teams";
-import { teamKeys, taskKeys } from "./keys";
+import type { SubDepartmentStatus } from "@/lib/api/sub-departments";
+import { subDepartmentKeys, taskKeys } from "./keys";
 
-type StatusPatch = Partial<TeamStatusConfig>;
+type StatusPatch = Partial<SubDepartmentStatusConfig>;
 
 function patchStatusList(
-  list: TeamStatusConfig[],
+  list: SubDepartmentStatusConfig[],
   statusId: string,
   patch: StatusPatch,
-): TeamStatusConfig[] {
+): SubDepartmentStatusConfig[] {
   return list.map((status) =>
     status.id === statusId ? { ...status, ...patch } : status,
   );
 }
 
 /** Optimistically sync a workflow status change across React Query caches. */
-export function patchTeamStatusInCaches(
+export function patchSubDepartmentStatusInCaches(
   queryClient: QueryClient,
-  teamId: string,
+  subDepartmentId: string,
   statusId: string,
   patch: StatusPatch,
 ) {
-  queryClient.setQueryData<TeamStatus[]>(teamKeys.statuses(teamId), (old) =>
-    old?.length ? (patchStatusList(old, statusId, patch) as TeamStatus[]) : old,
+  queryClient.setQueryData<SubDepartmentStatus[]>(subDepartmentKeys.statuses(subDepartmentId), (old) =>
+    old?.length ? (patchStatusList(old, statusId, patch) as SubDepartmentStatus[]) : old,
   );
 
   queryClient.setQueryData<MyTasksResponse>(taskKeys.my(), (old) => {
-    if (!old?.teamStatusMap?.[teamId]) return old;
+    if (!old?.subDepartmentStatusMap?.[subDepartmentId]) return old;
     return {
       ...old,
-      teamStatusMap: {
-        ...old.teamStatusMap,
-        [teamId]: patchStatusList(old.teamStatusMap[teamId], statusId, patch),
+      subDepartmentStatusMap: {
+        ...old.subDepartmentStatusMap,
+        [subDepartmentId]: patchStatusList(old.subDepartmentStatusMap[subDepartmentId], statusId, patch),
       },
     };
   });
@@ -41,38 +41,38 @@ export function patchTeamStatusInCaches(
   queryClient.setQueriesData<TasksMetaResponse>(
     { queryKey: ["tasks", "meta"] },
     (old) => {
-      if (!old?.teamStatuses?.length) return old;
-      const teamStatuses = patchStatusList(old.teamStatuses, statusId, patch);
-      if (teamStatuses === old.teamStatuses) return old;
-      return { ...old, teamStatuses };
+      if (!old?.subDepartmentStatuses?.length) return old;
+      const subDepartmentStatuses = patchStatusList(old.subDepartmentStatuses, statusId, patch);
+      if (subDepartmentStatuses === old.subDepartmentStatuses) return old;
+      return { ...old, subDepartmentStatuses };
     },
   );
 }
 
 /** Replace a team's full status list everywhere it is cached. */
-export function replaceTeamStatusesInCaches(
+export function replaceSubDepartmentStatusesInCaches(
   queryClient: QueryClient,
-  teamId: string,
-  statuses: TeamStatusConfig[],
+  subDepartmentId: string,
+  statuses: SubDepartmentStatusConfig[],
 ) {
-  queryClient.setQueryData(teamKeys.statuses(teamId), statuses);
+  queryClient.setQueryData(subDepartmentKeys.statuses(subDepartmentId), statuses);
 
   queryClient.setQueryData<MyTasksResponse>(taskKeys.my(), (old) => {
-    if (!old?.teamStatusMap) return old;
+    if (!old?.subDepartmentStatusMap) return old;
     return {
       ...old,
-      teamStatusMap: { ...old.teamStatusMap, [teamId]: statuses },
+      subDepartmentStatusMap: { ...old.subDepartmentStatusMap, [subDepartmentId]: statuses },
     };
   });
 }
 
 /** Refetch team workflow statuses after settings changes. */
-export function invalidateTeamStatusCaches(
+export function invalidateSubDepartmentStatusCaches(
   queryClient: QueryClient,
-  teamId?: string,
+  subDepartmentId?: string,
 ) {
-  if (teamId) {
-    void queryClient.invalidateQueries({ queryKey: teamKeys.statuses(teamId) });
+  if (subDepartmentId) {
+    void queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) });
   } else {
     void queryClient.invalidateQueries({ queryKey: ["teams"] });
   }

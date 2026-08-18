@@ -31,11 +31,11 @@ let _nextId = 0;
 
 export function CommentInput({
   ticketId,
-  teamMembers = [],
+  subDepartmentMembers = [],
   onCommentAdded,
 }: {
   ticketId: string;
-  teamMembers?: MentionableUser[];
+  subDepartmentMembers?: MentionableUser[];
   onCommentAdded?: (comment: CommentShape) => void;
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -98,7 +98,7 @@ export function CommentInput({
   const showAll = mentionQuery !== null && "all".startsWith(mentionQuery.toLowerCase());
   const filteredMembers =
     mentionQuery !== null
-      ? teamMembers.filter((m) => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+      ? subDepartmentMembers.filter((m) => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
       : [];
   const suggestionCount = (showAll ? 1 : 0) + filteredMembers.length;
 
@@ -435,7 +435,7 @@ export function CommentInput({
                 ].join(" ")}
               >
                 <span className="font-semibold text-pen-blue">@all</span>
-                <span className="ml-2 text-pen-subtle">— mention everyone ({teamMembers.length})</span>
+                <span className="ml-2 text-pen-subtle">— mention everyone ({subDepartmentMembers.length})</span>
               </button>
             </li>
           )}

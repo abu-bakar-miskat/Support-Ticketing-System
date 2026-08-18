@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import { useTeamTimeReport, useReportsOverview } from "@/hooks/queries/use-reports";
+import { useSubDepartmentTimeReport, useReportsOverview } from "@/hooks/queries/use-reports";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { ReportsExportMenu } from "@/components/time/reports-export-menu";
-import type { StatCard, TeamMember, NamedCount, ModuleSpeed, DistSlice, ProjectTickets, ModuleTickets, ProjectTimeRow, CrossDeptContribution } from "@/lib/api/reports";
+import type { StatCard, SubDepartmentMember, NamedCount, ModuleSpeed, DistSlice, ProjectTickets, ModuleTickets, ProjectTimeRow, CrossDeptContribution } from "@/lib/api/reports";
 import { formatCalendarDate } from "@/lib/ticket-datetime";
 import { ReportsSectionsSkeleton } from "@/components/skeletons/page-skeletons";
 
@@ -60,7 +60,7 @@ function formatRangeLabel(from: string, to: string): string {
   return `${fmt(from)} – ${fmt(to)}`;
 }
 
-export type { StatCard, TeamMember };
+export type { StatCard, SubDepartmentMember };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ function TopContributors({
   members,
   periodLabel,
 }: {
-  members: TeamMember[];
+  members: SubDepartmentMember[];
   periodLabel: string;
 }) {
   const top = members.slice(0, 5);
@@ -420,7 +420,7 @@ function CrossDeptPanel({ rows }: { rows: CrossDeptContribution[] }) {
   );
 }
 
-export function TeamTimePage() {
+export function SubDepartmentTimePage() {
   const [presetId, setPresetId] = useState<PresetId | "custom">("30d");
   const [range, setRange] = useState<{ from: string; to: string }>(() =>
     presetRange("30d"),
@@ -436,7 +436,7 @@ export function TeamTimePage() {
     presetId === "custom"
       ? formatRangeLabel(range.from, range.to)
       : RANGE_PRESETS.find((o) => o.id === presetId)?.label ?? "Last 30 days";
-  const { data, isLoading, isError, refetch } = useTeamTimeReport(
+  const { data, isLoading, isError, refetch } = useSubDepartmentTimeReport(
     range.from,
     range.to,
     projectFilter,
@@ -596,7 +596,7 @@ export function TeamTimePage() {
 
           {/* Export */}
           <ReportsExportMenu
-            teamTime={data}
+            subDepartmentTime={data}
             overview={overview}
             rangeLabel={selectedLabel}
             scopeLabel={

@@ -38,10 +38,10 @@ const TICKET_SELECT = {
       color: true,
       departmentId: true,
       department: { select: { id: true, name: true } },
-      team: { select: { department: { select: { id: true, name: true } } } },
+      subDepartment: { select: { department: { select: { id: true, name: true } } } },
     },
   },
-  team: {
+  subDepartment: {
     select: {
       id: true,
       prefix: true,
@@ -86,8 +86,8 @@ export type ProfileStatsDeptContribution = {
 type ViewerProfile = {
   id: string
   role: string
-  teamId?: string | null
-  teamIds?: string[]
+  subDepartmentId?: string | null
+  subDepartmentIds?: string[]
   managedDepartmentIds?: string[]
   grantedAccessDeptIds?: string[]
   activeTenantId?: string | null
@@ -100,7 +100,7 @@ export type ProfileStatsResult = {
     email: string
     role: string
     avatarUrl: string | null
-    teamName: string | null
+    subDepartmentName: string | null
     memberSince: string
     homeDepartmentNames: string[]
     githubUsername: string | null
@@ -185,27 +185,27 @@ export type ProfileStatsResult = {
 }
 
 async function getTargetHomeDepartmentIds(targetId: string): Promise<Set<string>> {
-  const memberships = await prisma.teamMembership.findMany({
+  const memberships = await prisma.subDepartmentMembership.findMany({
     where: { userId: targetId, isActive: true },
-    select: { team: { select: { departmentId: true } } },
+    select: { subDepartment: { select: { departmentId: true } } },
   })
-  const homeTeamDept = await prisma.profile.findUnique({
+  const homeSubDepartmentDept = await prisma.profile.findUnique({
     where: { id: targetId },
-    select: { team: { select: { departmentId: true } } },
+    select: { subDepartment: { select: { departmentId: true } } },
   })
 
   const ids = new Set<string>()
   for (const m of memberships) {
-    if (m.team.departmentId) ids.add(m.team.departmentId)
+    if (m.subDepartment.departmentId) ids.add(m.subDepartment.departmentId)
   }
-  if (homeTeamDept?.team?.departmentId) ids.add(homeTeamDept.team.departmentId)
+  if (homeSubDepartmentDept?.subDepartment?.departmentId) ids.add(homeSubDepartmentDept.subDepartment.departmentId)
   return ids
 }
 
 function toTicketSummary(
   t: TicketRow,
   homeDeptIds: Set<string>,
-  doneByTeam: Map<string, Set<string>>,
+  doneBySubDepartment: Map<string, Set<string>>,
 ): ProfileStatsTicketSummary {
   const dept = effectiveTicketDept(t)
   const deptId = dept?.id ?? null
@@ -214,7 +214,7 @@ function toTicketSummary(
 
   return {
     id: t.id,
-    humanId: `${t.team.prefix}-${t.ticketNumber}`,
+    humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title,
     status: t.status,
     priority: t.priority,
@@ -228,7 +228,7 @@ function toTicketSummary(
       : null,
     department: dept ? { id: dept.id, name: dept.name } : null,
     isOutsideContribution: isOutside,
-    isComplete: doneByTeam.get(t.team.id)?.has(t.status) ?? false,
+    isComplete: doneBySubDepartment.get(t.subDepartment.id)?.has(t.status) ?? false,
   }
 }
 
@@ -253,7 +253,7 @@ export async function fetchProfileStats(opts: {
 
   const targetProfile = await prisma.profile.findUnique({
     where: { id: targetId },
-    include: { team: { select: { id: true, name: true } } },
+    include: { subDepartment: { select: { id: true, name: true } } },
   })
   if (!targetProfile) {
     return { ok: false, status: 404, error: "Profile not found" }
@@ -286,18 +286,18 @@ export async function fetchProfileStats(opts: {
     createdAt: { gte: fromDate, lte: toDate },
   }
 
-  const managedTeamIds: string[] = targetIsManager
-    ? await prisma.teamMembership
+  const managedSubDepartmentIds: string[] = targetIsManager
+    ? await prisma.subDepartmentMembership
         .findMany({
           where: { userId: targetId, isActive: true },
-          select: { teamId: true },
+          select: { subDepartmentId: true },
         })
-        .then((r) => r.map((m) => m.teamId))
+        .then((r) => r.map((m) => m.subDepartmentId))
     : []
 
-  const reviewTeamIds = deptScope
-    ? managedTeamIds.filter((id) => deptScope.teamIds.includes(id))
-    : managedTeamIds
+  const reviewSubDepartmentIds = deptScope
+    ? managedSubDepartmentIds.filter((id) => deptScope.subDepartmentIds.includes(id))
+    : managedSubDepartmentIds
 
   const [
     assignedTickets,
@@ -306,15 +306,15 @@ export async function fetchProfileStats(opts: {
     createdTickets,
     activityLogs,
     allUserProjects,
-    teamMembersRaw,
+    subDepartmentMembersRaw,
   ] = await Promise.all([
     prisma.ticket.findMany({ where: baseWhere, select: TICKET_SELECT }),
 
-    targetIsManager && reviewTeamIds.length > 0
+    targetIsManager && reviewSubDepartmentIds.length > 0
       ? prisma.ticket.findMany({
           where: {
             deletedAt: null,
-            teamId: { in: reviewTeamIds },
+            subDepartmentId: { in: reviewSubDepartmentIds },
             updatedAt: { gte: fromDate, lte: toDate },
             ...(projectId ? { projectId } : {}),
             OR: [
@@ -361,7 +361,7 @@ export async function fetchProfileStats(opts: {
             id: true,
             title: true,
             ticketNumber: true,
-            team: { select: { prefix: true } },
+            subDepartment: { select: { prefix: true } },
           },
         },
       },
@@ -376,7 +376,7 @@ export async function fetchProfileStats(opts: {
     }),
 
     peopleWhere && isPrivileged
-      ? prisma.teamMembership.findMany({
+      ? prisma.subDepartmentMembership.findMany({
           where: peopleWhere,
           select: {
             user: { select: { id: true, name: true, avatarUrl: true } },
@@ -398,9 +398,9 @@ export async function fetchProfileStats(opts: {
 
   const people: { id: string; name: string; avatarUrl: string | null }[] =
     viewer.role === "admin" && !deptScope
-      ? (teamMembersRaw as { id: string; name: string; avatarUrl: string | null }[])
+      ? (subDepartmentMembersRaw as { id: string; name: string; avatarUrl: string | null }[])
       : (
-          teamMembersRaw as {
+          subDepartmentMembersRaw as {
             user: { id: string; name: string; avatarUrl: string | null }
           }[]
         ).map((m) => m.user)
@@ -461,10 +461,10 @@ export async function fetchProfileStats(opts: {
             select: {
               departmentId: true,
               department: { select: { id: true, name: true } },
-              team: { select: { department: { select: { id: true, name: true } } } },
+              subDepartment: { select: { department: { select: { id: true, name: true } } } },
             },
           },
-          team: {
+          subDepartment: {
             select: {
               department: { select: { id: true, name: true } },
             },
@@ -483,25 +483,25 @@ export async function fetchProfileStats(opts: {
 
   const allTickets = [...assignedTickets, ...coAssignedSubtickets]
 
-  const uniqueTeamIds = [
-    ...new Set([...allTickets, ...qaTickets, ...createdTickets].map((t) => t.team.id)),
+  const uniqueSubDepartmentIds = [
+    ...new Set([...allTickets, ...qaTickets, ...createdTickets].map((t) => t.subDepartment.id)),
   ]
-  const completeStatuses = uniqueTeamIds.length > 0
-    ? await prisma.teamStatus.findMany({
-        where: { teamId: { in: uniqueTeamIds }, isComplete: true },
-        select: { teamId: true, label: true },
+  const completeStatuses = uniqueSubDepartmentIds.length > 0
+    ? await prisma.subDepartmentStatus.findMany({
+        where: { subDepartmentId: { in: uniqueSubDepartmentIds }, isComplete: true },
+        select: { subDepartmentId: true, label: true },
       })
     : []
 
   // Per-team complete label sets for accurate classification
-  const doneByTeam = new Map<string, Set<string>>()
+  const doneBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
-    const set = doneByTeam.get(s.teamId) ?? new Set<string>()
+    const set = doneBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
-    doneByTeam.set(s.teamId, set)
+    doneBySubDepartment.set(s.subDepartmentId, set)
   }
-  const isDone = (t: { team: { id: string }; status: string }) =>
-    doneByTeam.get(t.team.id)?.has(t.status) ?? false
+  const isDone = (t: { subDepartment: { id: string }; status: string }) =>
+    doneBySubDepartment.get(t.subDepartment.id)?.has(t.status) ?? false
 
   const cats = {
     total: allTickets,
@@ -667,7 +667,7 @@ export async function fetchProfileStats(opts: {
       ticketId: a.ticket?.id ?? null,
       ticketTitle: a.ticket?.title ?? null,
       ticketHumanId: a.ticket
-        ? `${a.ticket.team.prefix}-${a.ticket.ticketNumber}`
+        ? `${a.ticket.subDepartment.prefix}-${a.ticket.ticketNumber}`
         : null,
       createdAt: a.createdAt.toISOString(),
       meta: {
@@ -699,7 +699,7 @@ export async function fetchProfileStats(opts: {
         email: targetProfile.email,
         role: targetProfile.role,
         avatarUrl: targetProfile.avatarUrl,
-        teamName: targetProfile.team?.name ?? null,
+        subDepartmentName: targetProfile.subDepartment?.name ?? null,
         memberSince: targetProfile.createdAt.toISOString(),
         homeDepartmentNames: homeDeptRecords.map((d) => d.name),
         githubUsername: targetProfile.githubUsername,
@@ -737,15 +737,15 @@ export async function fetchProfileStats(opts: {
         qaLabel: formatHm(qaSecs),
       },
       tickets: {
-        total: cats.total.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        completed: cats.completed.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        inProgress: cats.inProgress.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        overdue: cats.overdue.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        blocked: cats.blocked.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        review: cats.review.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        created: createdTickets.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        qaOpen: qaOpenTickets.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
-        qaDone: qaDoneTickets.map((t) => toTicketSummary(t, homeDeptIds, doneByTeam)),
+        total: cats.total.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        completed: cats.completed.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        inProgress: cats.inProgress.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        overdue: cats.overdue.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        blocked: cats.blocked.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        review: cats.review.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        created: createdTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        qaOpen: qaOpenTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        qaDone: qaDoneTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
       },
       byPriority,
       byProject: [...projMap.entries()].map(([id, v]) => ({ id, ...v })),

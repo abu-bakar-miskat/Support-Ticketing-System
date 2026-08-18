@@ -7,8 +7,8 @@ const mockProfile = {
   name: "Dev User",
   avatarUrl: null,
   role: "developer" as const,
-  teamId: "team-abc",
-  teamIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: "team-abc",
+  subDepartmentIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
@@ -61,7 +61,7 @@ function makeFile(name = "test.txt", content = "hello", type = "text/plain") {
 
 const accessibleTicket = {
   id: "ticket-1",
-  teamId: "team-abc",
+  subDepartmentId: "team-abc",
   assigneeId: null,
   creatorId: "00000000-0000-0000-0000-000000000009",
   deletedAt: null,
@@ -143,7 +143,7 @@ describe("POST /api/attachments", () => {
   })
 
   it("returns 403 when caller cannot access the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, teamId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" })
     const res = await POST(makeRequest({ file: makeFile(), ticketId: "ticket-1" }))
     expect(res.status).toBe(403)
     expect(mockAttachmentCreate).not.toHaveBeenCalled()

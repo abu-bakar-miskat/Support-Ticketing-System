@@ -119,14 +119,14 @@ export function decideDepartmentAccess(
 export function subDepartmentScopeForDepartment(
   scope: UserScope,
   departmentId: string,
-  departmentTeamIds: string[],
+  departmentSubDepartmentIds: string[],
   deptTenantId: string | null,
 ): Set<string> | null {
   if (scope.isPlatformAdmin) return null;
   if (deptTenantId && scope.tenantAdminIds.includes(deptTenantId)) return null;
   if (scope.departmentIds.includes(departmentId)) return null;
   // Sub-department-only caller: restrict to their granted teams inside this dept.
-  const allowed = new Set(departmentTeamIds.filter((t) => scope.subDepartmentIds.includes(t)));
+  const allowed = new Set(departmentSubDepartmentIds.filter((t) => scope.subDepartmentIds.includes(t)));
   return allowed;
 }
 
@@ -147,7 +147,7 @@ export function resolveEffectiveSubDepartmentManager(params: {
 
 /** Derive the canonical assignments for a user from the existing role tables. */
 async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
-  const [profile, tenantM, deptMgr, deptMem, deptAcc, teamM] = await Promise.all([
+  const [profile, tenantM, deptMgr, deptMem, deptAcc, subDepartmentM] = await Promise.all([
     prisma.profile.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
     prisma.tenantMembership.findMany({ where: { userId, isActive: true }, select: { role: true, tenantId: true } }),
     prisma.departmentManager.findMany({ where: { userId }, select: { departmentId: true } }),
@@ -156,7 +156,7 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
       where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: { departmentId: true },
     }),
-    prisma.teamMembership.findMany({ where: { userId, isActive: true }, select: { role: true, teamId: true } }),
+    prisma.subDepartmentMembership.findMany({ where: { userId, isActive: true }, select: { role: true, subDepartmentId: true } }),
   ]);
 
   const rows: ScopeRow[] = [];
@@ -165,7 +165,7 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   for (const d of deptMgr) rows.push({ role: "manager", scopeType: "DEPARTMENT", scopeId: d.departmentId });
   for (const d of deptMem) rows.push({ role: "staff", scopeType: "DEPARTMENT", scopeId: d.departmentId });
   for (const a of deptAcc) rows.push({ role: "staff", scopeType: "DEPARTMENT", scopeId: a.departmentId });
-  for (const tm of teamM) rows.push({ role: tm.role, scopeType: "SUB_DEPARTMENT", scopeId: tm.teamId });
+  for (const tm of subDepartmentM) rows.push({ role: tm.role, scopeType: "SUB_DEPARTMENT", scopeId: tm.subDepartmentId });
 
   const seen = new Set<string>();
   return rows.filter((r) => {
@@ -214,11 +214,11 @@ export async function canAccessDepartment(userId: string, departmentId: string):
 
   let subDeptDepartmentIds: string[] = [];
   if (scope.subDepartmentIds.length > 0) {
-    const teams = await prisma.team.findMany({
+    const subDepartments = await prisma.subDepartment.findMany({
       where: { id: { in: scope.subDepartmentIds } },
       select: { departmentId: true },
     });
-    subDeptDepartmentIds = teams.map((t) => t.departmentId);
+    subDeptDepartmentIds = subDepartments.map((t) => t.departmentId);
   }
   return decideDepartmentAccess(scope, departmentId, dept.tenantId, subDeptDepartmentIds);
 }

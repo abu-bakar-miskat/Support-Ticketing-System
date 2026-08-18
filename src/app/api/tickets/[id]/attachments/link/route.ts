@@ -21,13 +21,13 @@ export async function POST(
     where: { id },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
     },
   });

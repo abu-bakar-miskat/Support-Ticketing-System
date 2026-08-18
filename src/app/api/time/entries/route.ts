@@ -34,7 +34,7 @@ type RawEntry = {
   ticket: {
     title: string
     ticketNumber: number
-    team: { prefix: string }
+    subDepartment: { prefix: string }
     project: { name: string; color: string | null } | null
   } | null
 }
@@ -95,7 +95,7 @@ function buildKindBucket(
     )
     const totalSecs = group.reduce((sum, e) => sum + entrySeconds(e, now), 0)
     const humanId = latest.ticket
-      ? `${latest.ticket.team.prefix}-${latest.ticket.ticketNumber}`
+      ? `${latest.ticket.subDepartment.prefix}-${latest.ticket.ticketNumber}`
       : null
     const sessionCount = group.length
     const earliest = group.reduce((a, b) =>
@@ -186,7 +186,7 @@ export async function GET() {
         select: {
           title: true,
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
           project: { select: { name: true, color: true } },
         },
       },
@@ -220,7 +220,7 @@ export async function GET() {
     ? {
         entryId: running.id,
         ticketId: running.ticket
-          ? `${running.ticket.team.prefix}-${running.ticket.ticketNumber}`
+          ? `${running.ticket.subDepartment.prefix}-${running.ticket.ticketNumber}`
           : null,
         ticketDbId: running.ticketId ?? null,
         title: running.ticket?.title ?? running.note ?? "Untitled timer",

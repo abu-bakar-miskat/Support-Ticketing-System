@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { SidebarProject, TeamItem, DeptNode } from "@/components/dashboard/sidebar";
+import type { SidebarProject, SubDepartmentItem, DeptNode } from "@/components/dashboard/sidebar";
 import type { RecentTicket } from "@/components/dashboard/command-palette";
 
 export type DashboardContextValue = {
@@ -12,8 +12,8 @@ export type DashboardContextValue = {
   userId: string;
   recentTickets: RecentTicket[];
   projectNames: Record<string, string>;
-  teams: TeamItem[];
-  activeTeamId: string | null;
+  subDepartments: SubDepartmentItem[];
+  activeSubDepartmentId: string | null;
   departments: DeptNode[];
   allDepts: { id: string; name: string }[];
   activeDeptId: string | null;

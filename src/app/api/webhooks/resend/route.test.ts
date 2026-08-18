@@ -130,8 +130,8 @@ const intakeMatch = {
     ticketNumber: 7,
     assigneeId: "assignee-1",
     creatorId: "creator-1",
-    teamId: "team-1",
-    team: { prefix: "SUP" },
+    subDepartmentId: "team-1",
+    subDepartment: { prefix: "SUP" },
   },
 }
 
@@ -264,8 +264,8 @@ describe("POST /api/webhooks/resend", () => {
         ticketNumber: 7,
         assigneeId: "assignee-1",
         creatorId: "creator-1",
-        teamId: "team-1",
-        team: { prefix: "SUP" },
+        subDepartmentId: "team-1",
+        subDepartment: { prefix: "SUP" },
         intake: { submitterEmail: "jane@example.com" },
       },
     }

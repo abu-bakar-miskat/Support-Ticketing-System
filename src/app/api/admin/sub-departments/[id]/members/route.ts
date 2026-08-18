@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import type { AuthProfile } from "@/lib/auth"
 
-async function assertTeamScope(teamId: string, caller: AuthProfile): Promise<NextResponse | null> {
+async function assertSubDepartmentScope(subDepartmentId: string, caller: AuthProfile): Promise<NextResponse | null> {
   if (caller.role === "admin") return null
-  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { departmentId: true } })
-  if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId }, select: { departmentId: true } })
+  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
   // Write operations restricted to directly-managed departments — cross-access grants do not apply
   const directlyManages: string[] = (caller as any).managedDepartmentIds ?? []
-  if (!directlyManages.includes(team.departmentId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!directlyManages.includes(subDepartment.departmentId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   return null
 }
 
@@ -21,8 +21,8 @@ export async function POST(
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
 
-  const { id: teamId } = await params
-  const scopeError = await assertTeamScope(teamId, caller!)
+  const { id: subDepartmentId } = await params
+  const scopeError = await assertSubDepartmentScope(subDepartmentId, caller!)
   if (scopeError) return scopeError
 
   const body = await req.json()
@@ -37,27 +37,27 @@ export async function POST(
     return NextResponse.json({ error: "userId is required" }, { status: 400 })
   }
 
-  const [team, profile] = await Promise.all([
-    prisma.team.findUnique({ where: { id: teamId } }),
+  const [subDepartment, profile] = await Promise.all([
+    prisma.subDepartment.findUnique({ where: { id: subDepartmentId } }),
     prisma.profile.findUnique({ where: { id: userId } }),
   ])
 
-  if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
   if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
   const trimmedName = nickname?.trim() || null
 
   await prisma.$transaction([
-    (prisma.teamMembership as any).upsert({
-      where: { userId_teamId: { userId, teamId } },
-      create: { userId, teamId, role: (role as any) ?? "staff", nickname: trimmedName, isActive: isActive ?? true },
+    (prisma.subDepartmentMembership as any).upsert({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
+      create: { userId, subDepartmentId, role: (role as any) ?? "staff", nickname: trimmedName, isActive: isActive ?? true },
       update: { nickname: trimmedName, isActive: isActive ?? true, ...(role ? { role: role as any } : {}) },
     }),
-    prisma.profile.updateMany({ where: { id: userId, teamId: null }, data: { teamId } }),
+    prisma.profile.updateMany({ where: { id: userId, subDepartmentId: null }, data: { subDepartmentId } }),
   ])
 
-  const membership = await (prisma.teamMembership as any).findUnique({
-    where: { userId_teamId: { userId, teamId } },
+  const membership = await (prisma.subDepartmentMembership as any).findUnique({
+    where: { userId_subDepartmentId: { userId, subDepartmentId } },
   })
 
   return NextResponse.json(membership, { status: 201 })
@@ -71,12 +71,12 @@ export async function GET(
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
 
-  const { id: teamId } = await params
-  const scopeError = await assertTeamScope(teamId, caller!)
+  const { id: subDepartmentId } = await params
+  const scopeError = await assertSubDepartmentScope(subDepartmentId, caller!)
   if (scopeError) return scopeError
 
-  const members = await prisma.teamMembership.findMany({
-    where: { teamId },
+  const members = await prisma.subDepartmentMembership.findMany({
+    where: { subDepartmentId },
     orderBy: { joinedAt: "asc" },
     include: {
       user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
@@ -94,8 +94,8 @@ export async function PATCH(
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
 
-  const { id: teamId } = await params
-  const scopeError = await assertTeamScope(teamId, caller!)
+  const { id: subDepartmentId } = await params
+  const scopeError = await assertSubDepartmentScope(subDepartmentId, caller!)
   if (scopeError) return scopeError
 
   const body = await req.json()
@@ -113,8 +113,8 @@ export async function PATCH(
   if (doNotAssign !== undefined) data.doNotAssign = doNotAssign
   if (role) data.role = role
 
-  const updated = await (prisma.teamMembership as any).update({
-    where: { userId_teamId: { userId, teamId } },
+  const updated = await (prisma.subDepartmentMembership as any).update({
+    where: { userId_subDepartmentId: { userId, subDepartmentId } },
     data,
   })
 
@@ -129,14 +129,14 @@ export async function DELETE(
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
 
-  const { id: teamId } = await params
-  const scopeError = await assertTeamScope(teamId, caller!)
+  const { id: subDepartmentId } = await params
+  const scopeError = await assertSubDepartmentScope(subDepartmentId, caller!)
   if (scopeError) return scopeError
 
   const { userId } = await req.json()
 
-  await prisma.teamMembership.deleteMany({
-    where: { userId, teamId },
+  await prisma.subDepartmentMembership.deleteMany({
+    where: { userId, subDepartmentId },
   })
 
   return new NextResponse(null, { status: 204 })

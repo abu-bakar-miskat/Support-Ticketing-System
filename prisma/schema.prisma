@@ -150,7 +150,7 @@ enum GitHubPRState {
 // ─── Tenancy ──────────────────────────────────────────────────────────────────
 
 // Top-level isolation boundary. Every Department (and, denormalized for query
-// guards, every Team/Project/Ticket) belongs to exactly one Tenant. Users reach
+// guards, every SubDepartment/Project/Ticket) belongs to exactly one Tenant. Users reach
 // a tenant through TenantMembership; super-admins (Profile.isSuperAdmin) transcend
 // tenant scope. See lib/tenant-scope.
 model Tenant {
@@ -174,7 +174,7 @@ model Tenant {
   departments Department[]
   memberships TenantMembership[]
   invites     TenantInvite[]
-  teams       Team[]
+  subDepartments SubDepartment[]
   projects    Project[]
   tickets     Ticket[]
   boardColumns BoardColumn[]
@@ -240,7 +240,7 @@ model Department {
   // Per-department overrides (label/placeholder) for the Classic Form's default
   // static fields (name, email, title, issue type). See lib/intake-default-fields.
   intakeDefaultFields Json?
-  teams             Team[]
+  subDepartments    SubDepartment[]
   projects          Project[]
   joinRequests      JoinRequest[]
   managers          DepartmentManager[]
@@ -348,7 +348,7 @@ model DepartmentInvite {
   token        String    @unique
   email        String
   departmentId String
-  teamId       String
+  subDepartmentId String @map("teamId")
   role         Role      @default(staff)
   message      String?
   invitedBy    String    @db.Uuid
@@ -358,16 +358,16 @@ model DepartmentInvite {
   revokedAt    DateTime?
 
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
   inviter    Profile    @relation("DepartmentInvitesSent", fields: [invitedBy], references: [id])
 
   @@index([departmentId])
   @@index([email])
-  @@index([teamId])
+  @@index([subDepartmentId])
   @@index([expiresAt])
 }
 
-model Team {
+model SubDepartment {
   id                String             @id @default(cuid())
   name              String
   prefix            String             @unique
@@ -380,11 +380,11 @@ model Team {
   department        Department         @relation(fields: [departmentId], references: [id])
   profiles          Profile[]
   tickets           Ticket[]
-  counter           TeamTicketCounter?
-  githubStatusMap   TeamGitHubStatusMap?
+  counter           SubDepartmentTicketCounter?
+  githubStatusMap   SubDepartmentGitHubStatusMap?
   routingRules      RoutingRule[]
-  statuses          TeamStatus[]
-  memberships       TeamMembership[]
+  statuses          SubDepartmentStatus[]
+  memberships       SubDepartmentMembership[]
   joinRequests      JoinRequest[]
   projects          Project[]
   intakeFormConfigs IntakeFormConfig[]
@@ -392,20 +392,22 @@ model Team {
   invites           DepartmentInvite[]
 
   @@index([tenantId])
+  @@map("Team")
 }
 
-model TeamStatus {
+model SubDepartmentStatus {
   id            String   @id @default(cuid())
-  teamId        String
-  team          Team     @relation(fields: [teamId], references: [id])
+  subDepartmentId String @map("teamId")
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id])
   label         String
   color         String   @default("#94a3b8")
   order         Int
   isComplete    Boolean  @default(false)
   allowedLabels String[] @default([])
 
-  @@unique([teamId, label])
-  @@index([teamId, order])
+  @@unique([subDepartmentId, label])
+  @@index([subDepartmentId, order])
+  @@map("TeamStatus")
 }
 
 // A column of a department's board (SRS DAT-03). The board is the set of columns
@@ -413,7 +415,7 @@ model TeamStatus {
 // defaults) and edited via add/rename/reorder/delete-with-move. `statusType` is
 // chosen at creation and never mutated, so it stays immutable once the column
 // holds tickets (DAT-02); renaming only changes `label`. tenantId is denormalized
-// (like Team/Project/Ticket) so the non-bypassable scope extension can filter it.
+// (like SubDepartment/Project/Ticket) so the non-bypassable scope extension can filter it.
 model BoardColumn {
   id           String     @id @default(cuid())
   tenantId     String
@@ -439,8 +441,8 @@ model Profile {
   name      String
   avatarUrl String?
   role      Role     @default(staff)
-  teamId    String?
-  team      Team?    @relation(fields: [teamId], references: [id])
+  subDepartmentId String? @map("teamId")
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id])
   createdAt DateTime @default(now())
 
   timezone          String?
@@ -462,7 +464,7 @@ model Profile {
   notificationsReceived Notification[]   @relation("NotificationRecipient")
   notificationsSent     Notification[]   @relation("NotificationActor")
   apiKeys               ApiKey[]
-  memberships           TeamMembership[] @relation("TeamMemberships")
+  memberships           SubDepartmentMembership[] @relation("SubDepartmentMemberships")
   joinRequests          JoinRequest[]    @relation("UserJoinRequests")
   processedRequests     JoinRequest[]    @relation("ProcessedJoinRequests")
   projectMemberships    ProjectMember[]
@@ -511,24 +513,25 @@ model RoleAssignment {
   @@index([scopeType, scopeId])
 }
 
-// ─── Team Membership & Join Requests ─────────────────────────────────────────
+// ─── Sub Department Membership & Join Requests ───────────────────────────────
 
-model TeamMembership {
+model SubDepartmentMembership {
   id          String   @id @default(cuid())
   userId      String   @db.Uuid
-  teamId      String
+  subDepartmentId String @map("teamId")
   role        Role     @default(staff)
   nickname    String?
   isActive    Boolean  @default(true)
   doNotAssign Boolean  @default(false)
   joinedAt    DateTime @default(now())
 
-  user Profile @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
-  team Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user Profile @relation("SubDepartmentMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, teamId])
-  @@index([teamId])
+  @@unique([userId, subDepartmentId])
+  @@index([subDepartmentId])
   @@index([userId])
+  @@map("TeamMembership")
 }
 
 model MemberSchedule {
@@ -560,7 +563,7 @@ model MemberHoliday {
 model JoinRequest {
   id           String            @id @default(cuid())
   userId       String            @db.Uuid
-  teamId       String?
+  subDepartmentId String?        @map("teamId")
   departmentId String?
   status       JoinRequestStatus @default(pending)
   message      String?
@@ -569,12 +572,12 @@ model JoinRequest {
   processedBy  String?           @db.Uuid
 
   user          Profile      @relation("UserJoinRequests", fields: [userId], references: [id], onDelete: Cascade)
-  team          Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
   department    Department?  @relation(fields: [departmentId], references: [id])
   processor     Profile?     @relation("ProcessedJoinRequests", fields: [processedBy], references: [id])
   notifications Notification[]
 
-  @@index([teamId, status])
+  @@index([subDepartmentId, status])
   @@index([departmentId, status])
   @@index([userId])
 }
@@ -591,7 +594,7 @@ model Project {
   color         String?
   avatarUrl     String?
   description   String?
-  teamId        String?
+  subDepartmentId String?       @map("teamId")
   departmentId  String?
   projectStatus String?         @default("pipeline")
   pipelineStartedAt    DateTime?
@@ -603,17 +606,17 @@ model Project {
   analyticalLinks Json?         @default("[]")
   guidelines    String?
   assets        Json?           @default("[]")
-  enabledBoardTeamIds Json?
+  enabledBoardSubDepartmentIds Json? @map("enabledBoardTeamIds")
   moduleSystemEnabled Boolean   @default(false)
   createdAt     DateTime        @default(now())
-  team          Team?           @relation(fields: [teamId], references: [id])
+  subDepartment SubDepartment?  @relation(fields: [subDepartmentId], references: [id])
   department    Department?     @relation(fields: [departmentId], references: [id])
   tickets       Ticket[]
   members       ProjectMember[]
   sprints       Sprint[]
   modules       ProjectModule[]
 
-  @@index([teamId])
+  @@index([subDepartmentId])
   @@index([departmentId])
   @@index([tenantId])
 }
@@ -671,20 +674,24 @@ model ProjectMember {
   @@index([projectId])
 }
 
-model TeamTicketCounter {
-  teamId     String @id
+model SubDepartmentTicketCounter {
+  subDepartmentId String @id @map("teamId")
   lastNumber Int    @default(0)
-  team       Team   @relation(fields: [teamId], references: [id])
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id])
+
+  @@map("TeamTicketCounter")
 }
 
-model TeamGitHubStatusMap {
-  teamId             String   @id
+model SubDepartmentGitHubStatusMap {
+  subDepartmentId    String   @id @map("teamId")
   onPrOpened         String?
   onPrReadyForReview String?
   onPrMerged         String?
   updatedAt          DateTime @updatedAt
 
-  team Team @relation(fields: [teamId], references: [id])
+  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id])
+
+  @@map("TeamGitHubStatusMap")
 }
 
 model Ticket {
@@ -701,7 +708,7 @@ model Ticket {
   assigneeId   String?        @db.Uuid
   creatorId    String         @db.Uuid
   projectId    String?
-  teamId       String
+  subDepartmentId String @map("teamId")
   // The one column of the ticket's own department board it currently sits in
   // (SRS DAT-03). Nullable during the board rollout/backfill; set on create and
   // on status moves thereafter. The department is derived (see effectiveTicketDept).
@@ -727,7 +734,7 @@ model Ticket {
   assignee      Profile?       @relation("TicketAssignee", fields: [assigneeId], references: [id])
   creator       Profile        @relation("TicketCreator", fields: [creatorId], references: [id])
   project       Project?       @relation(fields: [projectId], references: [id])
-  team          Team           @relation(fields: [teamId], references: [id])
+  subDepartment SubDepartment  @relation(fields: [subDepartmentId], references: [id])
   parent        Ticket?        @relation("SubTickets", fields: [parentId], references: [id])
   subTickets    Ticket[]       @relation("SubTickets")
   boardColumn   BoardColumn?   @relation(fields: [boardColumnId], references: [id])
@@ -747,9 +754,9 @@ model Ticket {
   pullRequests  TicketPullRequest[]
   commits       GitHubCommit[]
 
-  @@unique([teamId, ticketNumber])
+  @@unique([subDepartmentId, ticketNumber])
   @@index([projectId])
-  @@index([teamId])
+  @@index([subDepartmentId])
   @@index([assigneeId])
   @@index([status])
   @@index([parentId])
@@ -757,8 +764,8 @@ model Ticket {
   @@index([moduleId])
   @@index([boardColumnId])
   @@index([templateId])
-  @@index([teamId, deletedAt, dueDate])
-  @@index([teamId, deletedAt, status])
+  @@index([subDepartmentId, deletedAt, dueDate])
+  @@index([subDepartmentId, deletedAt, status])
   @@index([creatorId, isDraft])
   @@index([isDraft, deletedAt])
   @@index([tenantId])
@@ -1010,12 +1017,12 @@ model RoutingRule {
   position       Int             @default(0)
   conditionType  String // subject_contains | from_domain | body_contains
   conditionValue String
-  teamId         String?
+  subDepartmentId String?        @map("teamId")
   priority       TicketPriority?
   enabled        Boolean         @default(true)
   createdAt      DateTime        @default(now())
 
-  team Team? @relation(fields: [teamId], references: [id])
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id])
 
   @@index([position])
 }
@@ -1058,7 +1065,7 @@ model IntakeFormConfig {
   id           String            @id @default(uuid())
   name         String
   departmentId String
-  intakeTeamId String
+  intakeSubDepartmentId String @map("intakeTeamId")
   isActive             Boolean   @default(true)
   allowCustomerReplies Boolean   @default(true)
   autoAssign           Boolean   @default(true)
@@ -1074,7 +1081,7 @@ model IntakeFormConfig {
   updatedAt    DateTime          @updatedAt
 
   department Department        @relation(fields: [departmentId], references: [id])
-  intakeTeam Team              @relation(fields: [intakeTeamId], references: [id])
+  intakeSubDepartment SubDepartment @relation(fields: [intakeSubDepartmentId], references: [id])
   fields     IntakeFormField[]
   intakes    Intake[]
   issues     IntakeIssue[]
@@ -1105,14 +1112,14 @@ model IntakeIssue {
   priority       TicketPriority
   estimatedHours Int?
   formConfigId   String
-  intakeTeamId   String?
+  intakeSubDepartmentId String? @map("intakeTeamId")
   // Round-robin cursor across `assignees` (department-scoped per-issue
   // assignment). Advances only when an issue has 2+ assignees.
   assigneeRotaPointer Int      @default(0)
   createdAt      DateTime       @default(now())
 
   formConfig IntakeFormConfig      @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
-  intakeTeam Team?                 @relation(fields: [intakeTeamId], references: [id])
+  intakeSubDepartment SubDepartment? @relation(fields: [intakeSubDepartmentId], references: [id])
   assignees  IntakeIssueAssignee[]
 
   @@index([formConfigId])

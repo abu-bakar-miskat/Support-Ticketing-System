@@ -6,7 +6,7 @@ import { withSystemScope } from "@/lib/request-scope";
 import {
   getTicketDetailRecord,
   getTicketDetailPayload,
-  getCachedTeamStatuses,
+  getCachedSubDepartmentStatuses,
   getCachedMentionableUsers,
   getAssignableUsersForTicketDepartment,
 } from "@/lib/ticket-detail-data";
@@ -38,12 +38,12 @@ async function handleGet() {
   if (!ticket) return NextResponse.json({ error: "record fetch failed" });
   steps["getTicketDetailRecord"] = "ok";
 
-  await time("getCachedTeamStatuses", () => getCachedTeamStatuses(ticket.teamId));
+  await time("getCachedTeamStatuses", () => getCachedSubDepartmentStatuses(ticket.subDepartmentId));
   await time("getCachedMentionableUsers", () =>
-    getCachedMentionableUsers(ticket.team.departmentId, ticket.teamId),
+    getCachedMentionableUsers(ticket.subDepartment.departmentId, ticket.subDepartmentId),
   );
   await time("getAssignableUsers", () =>
-    getAssignableUsersForTicketDepartment(ticket.team.departmentId),
+    getAssignableUsersForTicketDepartment(ticket.subDepartment.departmentId),
   );
 
   const profileRow = await prisma.profile.findFirst({

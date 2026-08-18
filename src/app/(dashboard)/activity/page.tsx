@@ -63,12 +63,12 @@ async function ActivityData({
   const { from, to } = resolveRange(preset, sp.from, sp.to);
 
   const deptScope = await getProfileDeptScope(profile);
-  const teamIds = deptScope?.teamIds ?? [];
+  const subDepartmentIds = deptScope?.subDepartmentIds ?? [];
 
   const now = new Date();
 
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
-  const activityWhere = buildActivityLogWhere(profile, teamIds, {
+  const activityWhere = buildActivityLogWhere(profile, subDepartmentIds, {
     from,
     to,
     projectId: projectId || null,
@@ -90,7 +90,7 @@ async function ActivityData({
             ticketNumber: true,
             status: true,
             priority: true,
-            team: { select: { id: true, name: true, prefix: true } },
+            subDepartment: { select: { id: true, name: true, prefix: true } },
             project: { select: { id: true, name: true, color: true } },
           },
         },
@@ -99,11 +99,11 @@ async function ActivityData({
     prisma.profile.findMany({
       where: ownOnly
         ? { id: profile.id, deletedAt: null }
-        : teamIds.length > 0
+        : subDepartmentIds.length > 0
           ? {
               deletedAt: null,
               OR: [
-                { memberships:         { some: { teamId: { in: teamIds }, isActive: true } } },
+                { memberships:         { some: { subDepartmentId: { in: subDepartmentIds }, isActive: true } } },
                 { managedDepartments:  { some: { departmentId: deptScope!.activeDeptId } } },
                 { directDeptMemberships: { some: { departmentId: deptScope!.activeDeptId } } },
                 { departmentAccesses:  { some: { departmentId: deptScope!.activeDeptId } } },
@@ -114,8 +114,8 @@ async function ActivityData({
       orderBy: { name: "asc" },
     }),
     prisma.project.findMany({
-      where: teamIds.length > 0
-        ? { OR: [{ teamId: { in: teamIds } }, { departmentId: deptScope?.activeDeptId }] }
+      where: subDepartmentIds.length > 0
+        ? { OR: [{ subDepartmentId: { in: subDepartmentIds } }, { departmentId: deptScope?.activeDeptId }] }
         : { tenantId },
       select: { id: true, name: true, color: true },
       orderBy: { name: "asc" },
@@ -156,12 +156,12 @@ async function ActivityData({
     },
     ticket: {
       id: row.ticket.id,
-      humanId: `${row.ticket.team.prefix}-${row.ticket.ticketNumber}`,
+      humanId: `${row.ticket.subDepartment.prefix}-${row.ticket.ticketNumber}`,
       title: row.ticket.title,
       status: row.ticket.status,
       priority: row.ticket.priority,
-      teamId: row.ticket.team.id,
-      teamName: row.ticket.team.name,
+      subDepartmentId: row.ticket.subDepartment.id,
+      subDepartmentName: row.ticket.subDepartment.name,
       projectId: row.ticket.project?.id ?? null,
       projectName: row.ticket.project?.name ?? null,
       projectColor: row.ticket.project?.color ?? null,

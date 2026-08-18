@@ -78,12 +78,12 @@ describe("parseMentionHandles", () => {
 describe("resolveMentionedProfiles", () => {
   it("expands @all to team/department members when the ticket has no project", async () => {
     mockTicketFindUnique.mockResolvedValue({
-      teamId: "team-1",
+      subDepartmentId: "team-1",
       projectId: null,
-      team: { departmentId: "dept-1" },
+      subDepartment: { departmentId: "dept-1" },
     } as never)
     mockGetMentionable.mockResolvedValue([
-      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, teamName: "Backend", role: "staff" },
+      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "staff" },
     ])
     mockProfileFindMany.mockResolvedValue([resolvedProfile] as never)
 
@@ -96,12 +96,12 @@ describe("resolveMentionedProfiles", () => {
 
   it("expands @all to project members when the ticket has a project", async () => {
     mockTicketFindUnique.mockResolvedValue({
-      teamId: "team-1",
+      subDepartmentId: "team-1",
       projectId: "project-1",
-      team: { departmentId: "dept-1" },
+      subDepartment: { departmentId: "dept-1" },
     } as never)
     mockGetProjectMembers.mockResolvedValue([
-      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, teamName: "Backend", role: "staff" },
+      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "staff" },
     ])
     mockProfileFindMany.mockResolvedValue([resolvedProfile] as never)
 

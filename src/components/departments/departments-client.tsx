@@ -16,7 +16,7 @@ type UserOption = { id: string; name: string; email: string; role: string };
 
 type OrgStats = {
   deptCount: number;
-  teamCount: number;
+  subDepartmentCount: number;
   memberCount: number;
   projectCount: number;
   openTickets: number;
@@ -124,11 +124,11 @@ export function DepartmentsClient({
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
-            <StatCard icon={Users}        label="Teams"             value={orgStats.teamCount} />
+            <StatCard icon={Users}        label="Teams"             value={orgStats.subDepartmentCount} />
             <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    href="/settings/members" />
             <StatCard icon={FolderKanban} label="Projects"          value={orgStats.projectCount}   href="/projects" />
             <StatCard icon={LayoutList}   label="Open tickets"      value={orgStats.openTickets}    href="/all-tasks" />
-            <StatCard icon={AlertCircle}  label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/teams" />
+            <StatCard icon={AlertCircle}  label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/sub-departments" />
           </div>
         </div>
       )}

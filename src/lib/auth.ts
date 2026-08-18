@@ -114,7 +114,7 @@ export function getNativeDepartmentIds(profile: AuthProfile): Set<string> {
   const managedIds: string[] = profile.managedDepartmentIds ?? [];
   const directMemberIds: string[] = profile.directMemberDeptIds ?? [];
   const memberDeptIds = (profile.memberships ?? [])
-    .map((m: ProfileMembership) => m.team.department?.id)
+    .map((m: ProfileMembership) => m.subDepartment.department?.id)
     .filter((id: string | null | undefined): id is string => !!id);
   return new Set([...managedIds, ...memberDeptIds, ...directMemberIds]);
 }
@@ -148,7 +148,7 @@ export function managerDeptScope(profile: AuthProfile): Set<string> | null {
 // the assignee, the creator, or on the ticket's team.
 
 type TicketAccessFields = {
-  teamId: string;
+  subDepartmentId: string;
   assigneeId: string | null;
   creatorId: string;
   deletedAt: Date | null;
@@ -157,7 +157,7 @@ type TicketAccessFields = {
   tenantId?: string | null;
   /** When true, only the creator (and admins via normal dept scope) may access. */
   isDraft?: boolean;
-  team?: { departmentId?: string | null } | null;
+  subDepartment?: { departmentId?: string | null } | null;
   assignees?: ({ userId: string } | { user: { id: string } })[];
 };
 
@@ -215,7 +215,7 @@ export function canAccessTicket(
   if (ticket.isDraft) {
     if (ticket.creatorId === profile.id) return true;
     if (profile.role !== "admin") return false;
-    if (deptScope && !deptScope.teamIds.includes(ticket.teamId)) return false;
+    if (deptScope && !deptScope.subDepartmentIds.includes(ticket.subDepartmentId)) return false;
     return true;
   }
 
@@ -228,12 +228,12 @@ export function canAccessTicket(
   // it must not deny a staff/lead who belongs to the ticket's team, or a manager
   // of its department, from opening a ticket (e.g. via a notification) while
   // they happen to be viewing a different department.
-  const nativeTeamIds: string[] =
-    (profile.teamIds as string[] | undefined) ??
-    (profile.teamId ? [profile.teamId] : []);
-  if (nativeTeamIds.includes(ticket.teamId)) return true;
+  const nativeSubDepartmentIds: string[] =
+    (profile.subDepartmentIds as string[] | undefined) ??
+    (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  if (nativeSubDepartmentIds.includes(ticket.subDepartmentId)) return true;
   if (profile.role === "manager") {
-    const deptId = ticket.team?.departmentId;
+    const deptId = ticket.subDepartment?.departmentId;
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? [];
     // Only full (or managed) access grants blanket cross-dept ticket visibility.
     // Limited/project-scoped grants must prove project membership (handled by
@@ -245,14 +245,14 @@ export function canAccessTicket(
   }
 
   // Active department workspace — hard boundary for every role (including admin)
-  if (deptScope && !deptScope.teamIds.includes(ticket.teamId)) {
+  if (deptScope && !deptScope.subDepartmentIds.includes(ticket.subDepartmentId)) {
     return false;
   }
 
   if (profile.role === "admin") return true;
 
   if (profile.role === "manager") {
-    const deptId = ticket.team?.departmentId;
+    const deptId = ticket.subDepartment?.departmentId;
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? [];
     // Limited/project-scoped cross-access is intentionally excluded here — those
     // managers only reach a ticket when they're a member of its project, which
@@ -264,22 +264,22 @@ export function canAccessTicket(
       // Manager has managed/granted depts — enforce dept-based access
       if (deptId) return allowedDepts.has(deptId);
       // Ticket's team has no dept — check direct team membership as fallback
-      const teamIds: string[] =
-        (profile.teamIds as string[] | undefined) ??
-        (profile.teamId ? [profile.teamId] : []);
-      return teamIds.some((id) => id === ticket.teamId);
+      const subDepartmentIds: string[] =
+        (profile.subDepartmentIds as string[] | undefined) ??
+        (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+      return subDepartmentIds.some((id) => id === ticket.subDepartmentId);
     }
     // Manager with no managed depts (edge case) — check team membership
-    const teamIds: string[] =
-      (profile.teamIds as string[] | undefined) ??
-      (profile.teamId ? [profile.teamId] : []);
-    return teamIds.some((id) => id === ticket.teamId);
+    const subDepartmentIds: string[] =
+      (profile.subDepartmentIds as string[] | undefined) ??
+      (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+    return subDepartmentIds.some((id) => id === ticket.subDepartmentId);
   }
 
-  const teamIds: string[] =
-    (profile.teamIds as string[] | undefined) ??
-    (profile.teamId ? [profile.teamId] : []);
-  return teamIds.some((id) => id === ticket.teamId);
+  const subDepartmentIds: string[] =
+    (profile.subDepartmentIds as string[] | undefined) ??
+    (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  return subDepartmentIds.some((id) => id === ticket.subDepartmentId);
 }
 
 /**

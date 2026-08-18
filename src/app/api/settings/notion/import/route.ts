@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!mapping?.projectsDatabaseId || !mapping?.tasksDatabaseId) {
     return NextResponse.json({ error: "projectsDatabaseId and tasksDatabaseId are required" }, { status: 400 })
   }
-  if (!mapping?.teamId) {
+  if (!mapping?.subDepartmentId) {
     return NextResponse.json({ error: "teamId is required" }, { status: 400 })
   }
   if (!mapping?.projectNameProp || !mapping?.taskTitleProp) {

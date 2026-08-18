@@ -10,7 +10,7 @@ import {
   SettingsIntakeFormsPage,
   type IntakeFormRow,
   type DeptOption,
-  type TeamOption,
+  type SubDepartmentOption,
 } from "@/components/settings/settings-intake-forms-page"
 
 export const metadata = { title: "Support forms — Ticketing System" }
@@ -46,7 +46,7 @@ export default async function SettingsIntakeFormsRoute() {
       orderBy: { createdAt: "desc" },
       include: {
         department: { select: { id: true, name: true } },
-        intakeTeam: { select: { id: true, name: true, workloadThreshold: true } },
+        intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true } },
         _count: { select: { intakes: true } },
       },
     }),
@@ -54,7 +54,7 @@ export default async function SettingsIntakeFormsRoute() {
       where: deptWhere,
       orderBy: { name: "asc" },
       include: {
-        teams: { orderBy: { name: "asc" }, select: { id: true, name: true } },
+        subDepartments: { orderBy: { name: "asc" }, select: { id: true, name: true } },
       },
     }),
   ])
@@ -67,9 +67,9 @@ export default async function SettingsIntakeFormsRoute() {
     displayMode: f.displayMode,
     departmentId: f.department.id,
     departmentName: f.department.name,
-    intakeTeamId: f.intakeTeam.id,
-    intakeTeamName: f.intakeTeam.name,
-    workloadThreshold: f.intakeTeam.workloadThreshold,
+    intakeSubDepartmentId: f.intakeSubDepartment.id,
+    intakeSubDepartmentName: f.intakeSubDepartment.name,
+    workloadThreshold: f.intakeSubDepartment.workloadThreshold,
     intakeCount: f._count.intakes,
     createdAt: f.createdAt.toISOString(),
     defaultFields: resolveIntakeDefaultFields(f.intakeDefaultFields),
@@ -85,15 +85,15 @@ export default async function SettingsIntakeFormsRoute() {
   const deptOptions: DeptOption[] = departments.map((d, i) => ({
     id: d.id,
     name: d.name,
-    teams: d.teams.map(
-      (t): TeamOption => ({ id: t.id, name: t.name }),
+    subDepartments: d.subDepartments.map(
+      (t): SubDepartmentOption => ({ id: t.id, name: t.name }),
     ),
     members: deptPeople[i].map((p) => ({
       id: p.id,
       name: p.name,
       avatarUrl: p.avatarUrl,
       departmentName: p.departmentName,
-      teamName: p.teamName,
+      subDepartmentName: p.subDepartmentName,
     })),
   }))
 

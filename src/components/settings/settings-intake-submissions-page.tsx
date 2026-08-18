@@ -16,7 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineAssigneePicker } from "@/components/ui/inline-pickers";
 import { AvatarVisual } from "@/components/ui/user-avatar";
 import { BulkAssignModal } from "@/components/tickets/bulk-assign-modal";
-import type { TeamMember } from "@/lib/api/teams";
+import type { SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar";
 
@@ -78,13 +78,13 @@ export function SettingsIntakeSubmissionsPage({
   formName,
   departmentName,
   submissions,
-  teamMembers,
+  subDepartmentMembers,
 }: {
   formId: string;
   formName: string;
   departmentName: string;
   submissions: SubmissionRow[];
-  teamMembers: TeamMember[];
+  subDepartmentMembers: SubDepartmentMember[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -143,7 +143,7 @@ export function SettingsIntakeSubmissionsPage({
     }
   }
 
-  async function handleAssign(s: SubmissionRow, member: TeamMember | null) {
+  async function handleAssign(s: SubmissionRow, member: SubDepartmentMember | null) {
     if (!s.ticketId) return;
     const prev = getAssignee(s);
     setLiveAssignees((a) => ({ ...a, [s.id]: { id: member?.id ?? null, name: member?.name ?? null, avatarUrl: member?.avatarUrl } }));
@@ -163,7 +163,7 @@ export function SettingsIntakeSubmissionsPage({
     const ticketIds = selectedWithTicket.map((s) => s.ticketId as string);
 
     // Optimistic update: compute which member gets each ticket
-    const memberMap = new Map(teamMembers.map((m) => [m.id, m]));
+    const memberMap = new Map(subDepartmentMembers.map((m) => [m.id, m]));
     if (mode === "single") {
       const m = memberMap.get(assigneeIds[0]);
       setLiveAssignees((prev) => {
@@ -391,7 +391,7 @@ export function SettingsIntakeSubmissionsPage({
                     <div className="flex h-[56px] items-center">
                       {s.ticketId ? (
                         <InlineAssigneePicker
-                          members={teamMembers}
+                          members={subDepartmentMembers}
                           currentId={getAssignee(s).id}
                           onSelect={(member) => handleAssign(s, member)}
                         >
@@ -463,7 +463,7 @@ export function SettingsIntakeSubmissionsPage({
       {assignModalOpen && (
         <BulkAssignModal
           count={selectedWithTicket.length}
-          teamMembers={teamMembers}
+          subDepartmentMembers={subDepartmentMembers}
           onClose={() => setAssignModalOpen(false)}
           onAssign={handleBulkAssign}
         />

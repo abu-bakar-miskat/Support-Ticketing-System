@@ -9,7 +9,7 @@ type CreatedTicket = {
   title: string;
   status: string;
   priority: string;
-  teamPrefix: string;
+  subDepartmentPrefix: string;
   ticketNumber: number;
   assigneeId: string | null;
   assigneeName: string | null;
@@ -46,7 +46,7 @@ export function useCardState(initialSubTicketCards: SubCardData[]) {
       ...prev,
       {
         dbId: ticket.id,
-        humanId: `${ticket.teamPrefix}-${ticket.ticketNumber}`,
+        humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
         title: ticket.title,
         status: ticket.status,
         done: false,

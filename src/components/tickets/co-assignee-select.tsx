@@ -16,14 +16,14 @@ type Member = UserListPerson;
 export function CoAssigneeSelect({
   ticketId,
   coAssignees,
-  teamMembers,
+  subDepartmentMembers,
   primaryAssigneeId,
   onCoAssigneesChange,
   disabled = false,
 }: {
   ticketId: string;
   coAssignees: Member[];
-  teamMembers: Member[];
+  subDepartmentMembers: Member[];
   primaryAssigneeId: string | null;
   onCoAssigneesChange?: (newList: Member[]) => void;
   disabled?: boolean;
@@ -82,7 +82,7 @@ export function CoAssigneeSelect({
   }, []);
 
   const currentIds = new Set(coAssignees.map((m) => m.id));
-  const candidates = teamMembers.filter((m) => m.id !== primaryAssigneeId);
+  const candidates = subDepartmentMembers.filter((m) => m.id !== primaryAssigneeId);
   const filtered = candidates.filter((m) => matchesUserListSearch(m, search));
 
   const hasChanges =
@@ -111,7 +111,7 @@ export function CoAssigneeSelect({
     if (failed > 0) toast.error(`${failed} assignment${failed > 1 ? "s" : ""} failed to save`);
 
     // Build new list from staged
-    const newList = teamMembers.filter((m) => staged.has(m.id));
+    const newList = subDepartmentMembers.filter((m) => staged.has(m.id));
     onCoAssigneesChange?.(newList);
     setSaving(false);
     setOpen(false);

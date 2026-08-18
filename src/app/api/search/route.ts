@@ -40,10 +40,10 @@ export async function GET(req: NextRequest) {
       : {}),
     // Department/team scope
     ...(deptScope
-      ? { teamId: { in: deptScope.teamIds } }
+      ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
       : profile.role === "admin"
         ? { tenantId: profile.activeTenantId ?? "__no_tenant__" }
-        : { team: { memberships: { some: { userId: profile.id } } } }),
+        : { subDepartment: { memberships: { some: { userId: profile.id } } } }),
   }
 
   const [tickets, projects] = await Promise.all([
@@ -52,13 +52,13 @@ export async function GET(req: NextRequest) {
         ? {
             ...baseTicketWhere,
             ticketNumber: parseInt(ticketNumMatch[2], 10),
-            team: { is: { prefix: { equals: ticketNumMatch[1], mode: "insensitive" } } },
+            subDepartment: { is: { prefix: { equals: ticketNumMatch[1], mode: "insensitive" } } },
           }
         : {
             ...baseTicketWhere,
             OR: [
               { title: { contains: q, mode: "insensitive" } },
-              { team: { is: { prefix: { contains: q, mode: "insensitive" } } } },
+              { subDepartment: { is: { prefix: { contains: q, mode: "insensitive" } } } },
               ...(numericQuery !== null ? [{ ticketNumber: numericQuery }] : []),
               ...(looksLikeReferenceId
                 ? [{ id: { startsWith: q, mode: "insensitive" as const } }]
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
         title: true,
         status: true,
         priority: true,
-        team: { select: { prefix: true } },
+        subDepartment: { select: { prefix: true } },
         project: { select: { name: true } },
       },
       take: 8,
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     tickets: tickets.map((t) => ({
       id: t.id,
-      humanId: `${t.team.prefix}-${t.ticketNumber}`,
+      humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
       title: t.title,
       status: t.status,
       priority: t.priority ?? null,

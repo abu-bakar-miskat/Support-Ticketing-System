@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/page-header"
 type Department = {
   id: string
   name: string
-  teamCount: number
+  subDepartmentCount: number
   memberCount: number
   isPending: boolean
   isMember: boolean
@@ -85,7 +85,7 @@ export function DepartmentsDiscoveryPage({
                     {dept.name}
                   </p>
                   <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
-                    {dept.teamCount} team{dept.teamCount !== 1 ? "s" : ""} · {dept.memberCount} member{dept.memberCount !== 1 ? "s" : ""}
+                    {dept.subDepartmentCount} team{dept.subDepartmentCount !== 1 ? "s" : ""} · {dept.memberCount} member{dept.memberCount !== 1 ? "s" : ""}
                   </p>
                 </div>
 

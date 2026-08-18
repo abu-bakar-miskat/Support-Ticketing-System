@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db"
 
-type TeamStatusRow = { label: string; isComplete: boolean; order: number }
+type SubDepartmentStatusRow = { label: string; isComplete: boolean; order: number }
 
 /**
  * Return the label of the first non-completion status from an already-ordered
  * (by `order` asc) list, or null when every status is a completion status.
  */
-export function resolveReopenStatus(statuses: TeamStatusRow[]): string | null {
+export function resolveReopenStatus(statuses: SubDepartmentStatusRow[]): string | null {
   return statuses.find((s) => !s.isComplete)?.label ?? null
 }
 
@@ -20,16 +20,16 @@ export function resolveReopenStatus(statuses: TeamStatusRow[]): string | null {
  */
 export async function maybeReopenTicket(
   ticketId: string,
-  teamId: string,
+  subDepartmentId: string,
   actorId: string,
 ): Promise<boolean> {
-  const [ticket, teamStatuses] = await Promise.all([
+  const [ticket, subDepartmentStatuses] = await Promise.all([
     prisma.ticket.findUnique({
       where: { id: ticketId },
       select: { status: true },
     }),
-    prisma.teamStatus.findMany({
-      where: { teamId },
+    prisma.subDepartmentStatus.findMany({
+      where: { subDepartmentId },
       orderBy: { order: "asc" },
       select: { label: true, isComplete: true, order: true },
     }),
@@ -37,10 +37,10 @@ export async function maybeReopenTicket(
 
   if (!ticket) return false
 
-  const currentStatus = teamStatuses.find((s) => s.label === ticket.status)
+  const currentStatus = subDepartmentStatuses.find((s) => s.label === ticket.status)
   if (!currentStatus?.isComplete) return false
 
-  const targetLabel = resolveReopenStatus(teamStatuses)
+  const targetLabel = resolveReopenStatus(subDepartmentStatuses)
   if (!targetLabel) {
     // All statuses are completion statuses — stay put
     return false

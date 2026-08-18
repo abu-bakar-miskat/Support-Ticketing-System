@@ -17,7 +17,7 @@ vi.mock("@/lib/db", () => ({
     projectMember: {
       findMany: vi.fn(async () => []),
     },
-    team: {
+    subDepartment: {
       findFirst: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => {
         const order: Record<string, string> = {
           "team-general": "dept-general",
@@ -44,10 +44,10 @@ describe("getProfileDeptScope — staff native department visits", () => {
     const scope = await getProfileDeptScope({
       id: "user-1",
       role: "staff",
-      teamIds: ["team-general", "team-web"],
+      subDepartmentIds: ["team-general", "team-web"],
       memberships: [
-        { team: { department: { id: "dept-general" } } },
-        { team: { department: { id: "dept-web" } } },
+        { subDepartment: { department: { id: "dept-general" } } },
+        { subDepartment: { department: { id: "dept-web" } } },
       ],
       grantedAccessDeptIds: ["dept-software"],
       directMemberDeptIds: ["dept-web"],
@@ -61,8 +61,8 @@ describe("getProfileDeptScope — staff native department visits", () => {
     const scope = await getProfileDeptScope({
       id: "user-2",
       role: "staff",
-      teamIds: ["team-support"],
-      memberships: [{ team: { department: { id: "dept-support" } } }],
+      subDepartmentIds: ["team-support"],
+      memberships: [{ subDepartment: { department: { id: "dept-support" } } }],
       grantedAccessDeptIds: ["dept-web"],
     });
 

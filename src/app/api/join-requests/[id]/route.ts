@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { departmentIdInScope, teamInScope } from "@/lib/dept-scope";
+import { departmentIdInScope, subDepartmentInScope } from "@/lib/dept-scope";
 
 // PATCH /api/join-requests/[id]  { action: "approve" | "reject", teamId?, role? }
 export async function PATCH(
@@ -20,8 +20,8 @@ export async function PATCH(
   const joinRequest = await prisma.joinRequest.findUnique({
     where: { id: requestId },
     include: {
-      user: { select: { name: true, teamId: true } },
-      team: { select: { id: true, name: true, departmentId: true } },
+      user: { select: { name: true, subDepartmentId: true } },
+      subDepartment: { select: { id: true, name: true, departmentId: true } },
       department: { select: { name: true } },
     },
   });
@@ -31,27 +31,27 @@ export async function PATCH(
     return NextResponse.json({ error: "Already processed" }, { status: 409 });
   }
 
-  const requestDeptId = joinRequest.team?.departmentId ?? joinRequest.departmentId;
+  const requestDeptId = joinRequest.subDepartment?.departmentId ?? joinRequest.departmentId;
   if (requestDeptId && !(await departmentIdInScope(profile, requestDeptId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
-  const { action, teamId } = body as { action: "approve" | "reject"; teamId?: string };
+  const { action, subDepartmentId } = body as { action: "approve" | "reject"; subDepartmentId?: string };
 
   if (action === "approve") {
-    const resolvedTeamId = teamId ?? joinRequest.team?.id;
-    if (!resolvedTeamId) {
+    const resolvedSubDepartmentId = subDepartmentId ?? joinRequest.subDepartment?.id;
+    if (!resolvedSubDepartmentId) {
       return NextResponse.json({ error: "teamId required to approve" }, { status: 400 });
     }
-    if (!(await teamInScope(profile, resolvedTeamId))) {
+    if (!(await subDepartmentInScope(profile, resolvedSubDepartmentId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.$transaction([
-      (prisma.teamMembership as any).upsert({
-        where: { userId_teamId: { userId: joinRequest.userId, teamId: resolvedTeamId } },
-        create: { userId: joinRequest.userId, teamId: resolvedTeamId, role: "staff", isActive: true },
+      (prisma.subDepartmentMembership as any).upsert({
+        where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId: resolvedSubDepartmentId } },
+        create: { userId: joinRequest.userId, subDepartmentId: resolvedSubDepartmentId, role: "staff", isActive: true },
         update: { role: "staff", isActive: true },
       }),
       prisma.joinRequest.update({
@@ -59,8 +59,8 @@ export async function PATCH(
         data: { status: "approved", processedAt: new Date(), processedBy: profile.id },
       }),
       prisma.profile.updateMany({
-        where: { id: joinRequest.userId, teamId: null },
-        data: { teamId: resolvedTeamId },
+        where: { id: joinRequest.userId, subDepartmentId: null },
+        data: { subDepartmentId: resolvedSubDepartmentId },
       }),
       prisma.notification.create({
         data: {

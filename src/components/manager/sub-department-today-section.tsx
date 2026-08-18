@@ -81,7 +81,7 @@ function MemberRow({ m, max }: { m: MemberWorkload; max: number }) {
   );
 }
 
-export function TeamTodaySection({ members }: { members: MemberWorkload[] }) {
+export function SubDepartmentTodaySection({ members }: { members: MemberWorkload[] }) {
   const [showIdle, setShowIdle] = useState(false);
   if (members.length === 0) return null;
 

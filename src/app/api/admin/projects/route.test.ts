@@ -8,8 +8,8 @@ const mockAdmin = {
   name: "Admin",
   avatarUrl: null,
   role: "admin" as const,
-  teamId: null,
-  teamIds: [], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: null,
+  subDepartmentIds: [], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 

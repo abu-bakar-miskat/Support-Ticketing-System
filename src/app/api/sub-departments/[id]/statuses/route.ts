@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canReadTeamData } from "@/lib/dept-scope"
-import { canManageTeam } from "@/lib/team-manage"
+import { canReadSubDepartmentData } from "@/lib/dept-scope"
+import { canManageSubDepartment } from "@/lib/sub-department-manage"
 
 export async function GET(
   _req: NextRequest,
@@ -12,11 +12,11 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
-  if (!(await canReadTeamData(profile, id))) {
+  if (!(await canReadSubDepartmentData(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
-  const statuses = await prisma.teamStatus.findMany({
-    where: { teamId: id },
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: id },
     orderBy: { order: "asc" },
     select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
   })
@@ -31,7 +31,7 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
-  if (!(await canManageTeam(profile, id))) {
+  if (!(await canManageSubDepartment(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const body = await request.json().catch(() => ({}))
@@ -44,17 +44,17 @@ export async function POST(
     return NextResponse.json({ error: "allowedLabels must be an array of strings" }, { status: 400 })
   }
 
-  const existing = await prisma.teamStatus.findMany({
-    where: { teamId: id },
+  const existing = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: id },
     orderBy: { order: "desc" },
     take: 1,
     select: { order: true },
   })
   const nextOrder = existing.length > 0 ? existing[0].order + 1 : 0
 
-  const status = await prisma.teamStatus.create({
+  const status = await prisma.subDepartmentStatus.create({
     data: {
-      teamId: id,
+      subDepartmentId: id,
       label: label.trim(),
       color: color ?? "#94a3b8",
       order: nextOrder,
@@ -74,8 +74,8 @@ export async function PATCH(
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const { id: teamId } = await params
-  if (!(await canManageTeam(profile, teamId))) {
+  const { id: subDepartmentId } = await params
+  if (!(await canManageSubDepartment(profile, subDepartmentId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const body = await request.json().catch(() => ({}))
@@ -87,15 +87,15 @@ export async function PATCH(
 
   await prisma.$transaction(
     order.map((statusId, idx) =>
-      prisma.teamStatus.updateMany({
-        where: { id: statusId, teamId },
+      prisma.subDepartmentStatus.updateMany({
+        where: { id: statusId, subDepartmentId },
         data: { order: idx },
       })
     )
   )
 
-  const updated = await prisma.teamStatus.findMany({
-    where: { teamId },
+  const updated = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId },
     orderBy: { order: "asc" },
     select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
   })

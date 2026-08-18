@@ -7,8 +7,8 @@ export type AcceptInviteResult =
       ok: true;
       departmentId: string;
       departmentName: string;
-      teamId: string;
-      teamName: string;
+      subDepartmentId: string;
+      subDepartmentName: string;
       role: Role;
     }
   | {
@@ -32,7 +32,7 @@ export async function acceptDepartmentInvite(
     where: { token },
     include: {
       department: { select: { id: true, name: true } },
-      team: { select: { id: true, name: true, departmentId: true } },
+      subDepartment: { select: { id: true, name: true, departmentId: true } },
     },
   });
 
@@ -65,16 +65,16 @@ export async function acceptDepartmentInvite(
     };
   }
 
-  if (invite.team.departmentId !== invite.departmentId) {
+  if (invite.subDepartment.departmentId !== invite.departmentId) {
     return { ok: false, code: "not_found", message: "This invitation link is invalid." };
   }
 
   await prisma.$transaction(async (tx) => {
-    await (tx.teamMembership as any).upsert({
-      where: { userId_teamId: { userId: profile.id, teamId: invite.teamId } },
+    await (tx.subDepartmentMembership as any).upsert({
+      where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId: invite.subDepartmentId } },
       create: {
         userId: profile.id,
-        teamId: invite.teamId,
+        subDepartmentId: invite.subDepartmentId,
         role: invite.role,
         isActive: true,
       },
@@ -82,8 +82,8 @@ export async function acceptDepartmentInvite(
     });
 
     await tx.profile.updateMany({
-      where: { id: profile.id, teamId: null },
-      data: { teamId: invite.teamId },
+      where: { id: profile.id, subDepartmentId: null },
+      data: { subDepartmentId: invite.subDepartmentId },
     });
 
     await tx.departmentInvite.update({
@@ -96,7 +96,7 @@ export async function acceptDepartmentInvite(
       where: {
         userId: profile.id,
         status: "pending",
-        OR: [{ teamId: invite.teamId }, { departmentId: invite.departmentId }],
+        OR: [{ subDepartmentId: invite.subDepartmentId }, { departmentId: invite.departmentId }],
       },
       data: {
         status: "approved",
@@ -110,8 +110,8 @@ export async function acceptDepartmentInvite(
     ok: true,
     departmentId: invite.department.id,
     departmentName: invite.department.name,
-    teamId: invite.team.id,
-    teamName: invite.team.name,
+    subDepartmentId: invite.subDepartment.id,
+    subDepartmentName: invite.subDepartment.name,
     role: invite.role,
   };
 }
@@ -127,7 +127,7 @@ export async function getInvitePreview(token: string) {
       acceptedAt: true,
       revokedAt: true,
       department: { select: { id: true, name: true } },
-      team: { select: { id: true, name: true } },
+      subDepartment: { select: { id: true, name: true } },
       inviter: { select: { name: true } },
     },
   });

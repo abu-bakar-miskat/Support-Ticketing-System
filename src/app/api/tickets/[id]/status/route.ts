@@ -29,7 +29,7 @@ export async function PATCH(
       id: true,
       title: true,
       status: true,
-      teamId: true,
+      subDepartmentId: true,
       ticketNumber: true,
       labels: true,
       projectId: true,
@@ -38,7 +38,7 @@ export async function PATCH(
       deletedAt: true,
       closedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { prefix: true, departmentId: true } },
+      subDepartment: { select: { prefix: true, departmentId: true } },
       intake: {
         select: {
           id: true,
@@ -74,14 +74,14 @@ export async function PATCH(
   }
 
   // Resolve the next status dynamically from the team's configured order
-  const teamStatuses = await prisma.teamStatus.findMany({
-    where: { teamId: ticket.teamId },
+  const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: ticket.subDepartmentId },
     orderBy: { order: "asc" },
     select: { label: true, isComplete: true, allowedLabels: true },
   })
 
-  const currentIdx = teamStatuses.findIndex((s) => s.label === ticket.status)
-  const nextStatus = currentIdx !== -1 ? teamStatuses[currentIdx + 1] : undefined
+  const currentIdx = subDepartmentStatuses.findIndex((s) => s.label === ticket.status)
+  const nextStatus = currentIdx !== -1 ? subDepartmentStatuses[currentIdx + 1] : undefined
 
   if (!nextStatus) {
     return NextResponse.json({ error: `Ticket is already at terminal status: ${ticket.status}` }, { status: 400 })
@@ -98,9 +98,9 @@ export async function PATCH(
   }
 
   const isCompletion = nextStatus.isComplete
-  const priorStatus = teamStatuses[currentIdx]
+  const priorStatus = subDepartmentStatuses[currentIdx]
 
-  const departmentId = ticket.team.departmentId
+  const departmentId = ticket.subDepartment.departmentId
   const [nextLinkedLabels, priorLinkedLabels] = await Promise.all([
     linkedLabelsForDepartment(nextStatus.allowedLabels, departmentId),
     linkedLabelsForDepartment(priorStatus.allowedLabels, departmentId),
@@ -184,12 +184,12 @@ export async function PATCH(
   })
 
   if (isCompletion) {
-    const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+    const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
     notifyTicketCompletion({
       ticketId: id,
       ticketTitle: ticket.title,
       humanId,
-      teamId: ticket.teamId,
+      subDepartmentId: ticket.subDepartmentId,
       creatorId: ticket.creatorId,
       actorId: profile.id,
       actorName: profile.name,
@@ -205,7 +205,7 @@ export async function PATCH(
       submitterName: ticket.intake.submitterName,
       formName: ticket.intake.formConfig.name,
       ticketTitle: ticket.title,
-      departmentId: ticket.team.departmentId,
+      departmentId: ticket.subDepartment.departmentId,
     }).catch((err) => console.error("[resolution email] failed:", err))
   }
 

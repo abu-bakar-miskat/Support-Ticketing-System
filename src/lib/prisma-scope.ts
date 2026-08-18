@@ -39,7 +39,7 @@ export type TicketScope =
        * SD-06 sub-department restriction (team-id allowlist). When set, ticket
        * reads are additionally bound to these teams. Undefined = no restriction.
        */
-      subDepartmentTeamIds?: string[];
+      subDepartmentSubDepartmentIds?: string[];
     };
 
 const LIST_READ = new Set([
@@ -82,7 +82,7 @@ export function mergeTenantWhere(where: Where, tenantIds: string[]): Record<stri
 export function subDepartmentAllowlist(modelLabel: string, scope: TicketScope): string[] | null {
   if (modelLabel !== "Ticket") return null;
   if (scope.kind !== "tenant") return null;
-  return scope.subDepartmentTeamIds ?? null;
+  return scope.subDepartmentSubDepartmentIds ?? null;
 }
 
 /**
@@ -93,12 +93,12 @@ export function subDepartmentAllowlist(modelLabel: string, scope: TicketScope): 
 export function mergeScopeWhere(
   where: Where,
   tenantIds: string[],
-  subDepartmentTeamIds: string[] | null,
+  subDepartmentSubDepartmentIds: string[] | null,
 ): Record<string, unknown> {
   const parts: Record<string, unknown>[] = [];
   if (where && Object.keys(where).length > 0) parts.push(where);
   parts.push({ tenantId: { in: tenantIds } });
-  if (subDepartmentTeamIds) parts.push({ teamId: { in: subDepartmentTeamIds } });
+  if (subDepartmentSubDepartmentIds) parts.push({ subDepartmentId: { in: subDepartmentSubDepartmentIds } });
   return parts.length === 1 ? parts[0] : { AND: parts };
 }
 
@@ -115,12 +115,12 @@ export function rowInScope(row: { tenantId?: string | null } | null, scope: Tick
  * `teamId` must be in the allowlist.
  */
 export function rowSubDepartmentAllowed(
-  row: { teamId?: string | null } | null,
+  row: { subDepartmentId?: string | null } | null,
   allowlist: string[] | null,
 ): boolean {
   if (allowlist == null) return true;
   if (row == null) return false;
-  return row.teamId != null && allowlist.includes(row.teamId);
+  return row.subDepartmentId != null && allowlist.includes(row.subDepartmentId);
 }
 
 /** Pure: map an explicit request scope to a ticket scope. */
@@ -130,7 +130,7 @@ export function scopeFromRequestScope(scope: RequestScope): TicketScope {
   return {
     kind: "tenant",
     tenantIds: scope.tenantIds,
-    ...(scope.subDepartmentTeamIds ? { subDepartmentTeamIds: scope.subDepartmentTeamIds } : {}),
+    ...(scope.subDepartmentSubDepartmentIds ? { subDepartmentSubDepartmentIds: scope.subDepartmentSubDepartmentIds } : {}),
   };
 }
 
@@ -189,30 +189,30 @@ async function applyTenantScope(
     // unchanged. `include`/no-projection already return all scalars.
     const select = args.select as Record<string, unknown> | undefined;
     const injectedTenantId = select != null && !("tenantId" in select);
-    const injectedTeamId = subAllow != null && select != null && !("teamId" in select);
+    const injectedSubDepartmentId = subAllow != null && select != null && !("teamId" in select);
     const runArgs =
-      injectedTenantId || injectedTeamId
+      injectedTenantId || injectedSubDepartmentId
         ? {
             ...args,
             select: {
               ...select,
               ...(injectedTenantId ? { tenantId: true } : {}),
-              ...(injectedTeamId ? { teamId: true } : {}),
+              ...(injectedSubDepartmentId ? { subDepartmentId: true } : {}),
             },
           }
         : args;
 
     const result = (await query(runArgs)) as
-      | { tenantId?: string | null; teamId?: string | null }
+      | { tenantId?: string | null; subDepartmentId?: string | null }
       | null;
     if (!rowInScope(result, scope) || !rowSubDepartmentAllowed(result, subAllow)) {
       if (operation === "findUniqueOrThrow") throw new Error(`No ${modelLabel} found`);
       return null;
     }
-    if (result != null && (injectedTenantId || injectedTeamId)) {
+    if (result != null && (injectedTenantId || injectedSubDepartmentId)) {
       const rest = { ...(result as Record<string, unknown>) };
       if (injectedTenantId) delete rest.tenantId;
-      if (injectedTeamId) delete rest.teamId;
+      if (injectedSubDepartmentId) delete rest.subDepartmentId;
       return rest;
     }
     return result;

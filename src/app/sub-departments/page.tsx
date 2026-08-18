@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
-import { DepartmentsDiscoveryPage } from "@/components/teams/teams-discovery-page"
+import { DepartmentsDiscoveryPage } from "@/components/sub-departments/sub-departments-discovery-page"
 
 export const metadata = { title: "Join a Department — Ticketing System" }
 
@@ -15,7 +15,7 @@ export default async function Page() {
     prisma.department.findMany({
       orderBy: { name: "asc" },
       include: {
-        teams: {
+        subDepartments: {
           orderBy: { name: "asc" },
           select: {
             id: true,
@@ -33,17 +33,17 @@ export default async function Page() {
 
   const pendingDeptIds = new Set(myRequests.map((r) => r.departmentId).filter(Boolean))
   const memberDeptIds = new Set(
-    (await prisma.teamMembership.findMany({
+    (await prisma.subDepartmentMembership.findMany({
       where: { userId: profile.id, isActive: true },
-      include: { team: { select: { departmentId: true } } },
-    })).map((m) => m.team.departmentId)
+      include: { subDepartment: { select: { departmentId: true } } },
+    })).map((m) => m.subDepartment.departmentId)
   )
 
   const deptList = departments.map((d) => ({
     id: d.id,
     name: d.name,
-    teamCount: d.teams.length,
-    memberCount: d.teams.reduce((sum, t) => sum + t._count.memberships, 0),
+    subDepartmentCount: d.subDepartments.length,
+    memberCount: d.subDepartments.reduce((sum, t) => sum + t._count.memberships, 0),
     isPending: pendingDeptIds.has(d.id),
     isMember: memberDeptIds.has(d.id),
   }))

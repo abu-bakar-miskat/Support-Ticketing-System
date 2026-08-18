@@ -1,7 +1,7 @@
 import "server-only"
 import { prisma } from "@/lib/db"
 import type { TicketGetPayload } from "@/generated/prisma/models/Ticket"
-import type { BoardCardData, UiPriority, TeamStatusConfig, TeamBoardGroup } from "@/components/board/board-types"
+import type { BoardCardData, UiPriority, SubDepartmentStatusConfig, SubDepartmentBoardGroup } from "@/components/board/board-types"
 import { DEFAULT_STATUSES } from "@/components/board/board-types"
 
 const PRIORITY_TO_UI: Record<string, UiPriority> = {
@@ -33,7 +33,7 @@ function formatDue(
 }
 
 const ticketInclude = {
-  team: { select: { id: true, prefix: true, name: true } },
+  subDepartment: { select: { id: true, prefix: true, name: true } },
   project: { select: { id: true, name: true, slug: true, color: true, avatarUrl: true, kind: true } },
   module: { select: { id: true, name: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
@@ -52,7 +52,7 @@ const ticketInclude = {
       ticketNumber: true,
       startDate: true,
       dueDate: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
       assignee: { select: { id: true, name: true, avatarUrl: true } },
     },
   },
@@ -79,12 +79,12 @@ export function toBoardCard(
   const subSecs = t.subTickets.reduce((sum, s) => sum + (timeByTicketId.get(s.id) ?? 0), 0)
   return {
     dbId: t.id,
-    humanId: `${t.team.prefix}-${t.ticketNumber}`,
+    humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title,
     priority: PRIORITY_TO_UI[t.priority] ?? "medium",
     status: t.status,
-    team: t.team.name,
-    teamId: t.team.id,
+    subDepartment: t.subDepartment.name,
+    subDepartmentId: t.subDepartment.id,
     project: t.project?.name ?? "Miscellaneous",
     projectId: t.project?.id ?? "",
     projectKind: t.project?.kind ?? "standard",
@@ -100,7 +100,7 @@ export function toBoardCard(
     subTotal: t.subTickets.length,
     subTicketCards: t.subTickets.map((s) => ({
       dbId: s.id,
-      humanId: `${s.team.prefix}-${s.ticketNumber}`,
+      humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`,
       title: s.title,
       status: s.status,
       done: completeLabels.has(s.status) || s.status === "Live",
@@ -156,8 +156,8 @@ export type AssignedSubtask = {
   projectId: string
   projectColor: string | null
   projectAvatarUrl?: string | null
-  team: string
-  teamId: string
+  subDepartment: string
+  subDepartmentId: string
   due: string | null
   dueUrgent: boolean
   dueOverdue: boolean
@@ -181,7 +181,7 @@ export async function getAssignedSubtasks(
       parentId: { not: null },
       assigneeId,
       ...(opts.allowedDeptIds
-        ? { team: { departmentId: { in: opts.allowedDeptIds } } }
+        ? { subDepartment: { departmentId: { in: opts.allowedDeptIds } } }
         : {}),
     },
     select: {
@@ -192,7 +192,7 @@ export async function getAssignedSubtasks(
       ticketNumber: true,
       dueDate: true,
       createdAt: true,
-      team: { select: { id: true, name: true, prefix: true } },
+      subDepartment: { select: { id: true, name: true, prefix: true } },
       project: { select: { id: true, name: true, color: true, avatarUrl: true } },
       estimatedTime: true,
       creator: { select: { name: true, avatarUrl: true } },
@@ -202,20 +202,20 @@ export async function getAssignedSubtasks(
           id: true,
           title: true,
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
         },
       },
     },
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
   })
 
-  const teamIds = [...new Set(subtasks.map((s) => s.team.id))]
+  const subDepartmentIds = [...new Set(subtasks.map((s) => s.subDepartment.id))]
   const subtaskIds = subtasks.filter((s) => s.parent !== null).map((s) => s.id)
   const [completeStatuses, userTimeAggs] = await Promise.all([
-    teamIds.length > 0
-      ? prisma.teamStatus.findMany({
-          where: { teamId: { in: teamIds }, isComplete: true },
-          select: { teamId: true, label: true },
+    subDepartmentIds.length > 0
+      ? prisma.subDepartmentStatus.findMany({
+          where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+          select: { subDepartmentId: true, label: true },
         })
       : Promise.resolve([]),
     subtaskIds.length > 0
@@ -226,11 +226,11 @@ export async function getAssignedSubtasks(
         })
       : Promise.resolve([]),
   ])
-  const completeByTeam = new Map<string, Set<string>>()
+  const completeBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
-    const set = completeByTeam.get(s.teamId) ?? new Set<string>()
+    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
-    completeByTeam.set(s.teamId, set)
+    completeBySubDepartment.set(s.subDepartmentId, set)
   }
   const toTimeMap = (aggs: { ticketId: string | null; _sum: { durationSecs: number | null } }[]) =>
     new Map(aggs.filter((a) => a.ticketId !== null).map((a) => [a.ticketId as string, a._sum.durationSecs ?? 0]))
@@ -239,23 +239,23 @@ export async function getAssignedSubtasks(
   return subtasks
     .filter((s) => s.parent !== null)
     .map((s) => {
-      const isStatusComplete = (completeByTeam.get(s.team.id) ?? new Set()).has(s.status)
+      const isStatusComplete = (completeBySubDepartment.get(s.subDepartment.id) ?? new Set()).has(s.status)
       const { due, dueUrgent, dueOverdue } = formatDue(s.dueDate, s.status, isStatusComplete)
       return {
         dbId: s.id,
-        humanId: `${s.team.prefix}-${s.ticketNumber}`,
+        humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`,
         title: s.title,
         status: s.status,
         priority: PRIORITY_TO_UI[s.priority] ?? "medium",
         parentDbId: s.parent!.id,
-        parentHumanId: `${s.parent!.team.prefix}-${s.parent!.ticketNumber}`,
+        parentHumanId: `${s.parent!.subDepartment.prefix}-${s.parent!.ticketNumber}`,
         parentTitle: s.parent!.title,
         project: s.project?.name ?? "Miscellaneous",
         projectId: s.project?.id ?? "",
         projectColor: s.project?.color ?? null,
         projectAvatarUrl: s.project?.avatarUrl ?? null,
-        team: s.team.name,
-        teamId: s.team.id,
+        subDepartment: s.subDepartment.name,
+        subDepartmentId: s.subDepartment.id,
         due,
         dueUrgent,
         dueOverdue,
@@ -420,13 +420,13 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
             members: { some: { userId: where.crossAccessUserId } },
             OR: [
               { departmentId: where.crossAccessDeptId },
-              { team: { departmentId: where.crossAccessDeptId } },
+              { subDepartment: { departmentId: where.crossAccessDeptId } },
             ],
           }
         : { members: { some: { userId: where.crossAccessUserId } } },
     })
   } else if (where.allowedDeptIds) {
-    and.push({ team: { departmentId: { in: where.allowedDeptIds } } })
+    and.push({ subDepartment: { departmentId: { in: where.allowedDeptIds } } })
   }
 
   // ── Filter params ───────────────────────────────────────────────────────────
@@ -437,7 +437,7 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
         { title: { contains: where.search, mode: "insensitive" } },
         ...(humanIdMatch
           ? [{
-              team: { prefix: { equals: humanIdMatch[1], mode: "insensitive" } },
+              subDepartment: { prefix: { equals: humanIdMatch[1], mode: "insensitive" } },
               ticketNumber: parseInt(humanIdMatch[2], 10),
             }]
           : []),
@@ -524,24 +524,24 @@ export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCa
     ...(where.take !== undefined ? { take: where.take } : {}),
   })
   const timeForUserId = where.timeForUserId ?? where.assigneeId ?? where.staffUserId
-  const teamIds = [...new Set(tickets.map((t) => t.team.id))]
+  const subDepartmentIds = [...new Set(tickets.map((t) => t.subDepartment.id))]
   const [{ totalMap, userMap }, completeStatuses] = await Promise.all([
     buildTimeMaps(tickets, timeForUserId),
-    teamIds.length > 0
-      ? prisma.teamStatus.findMany({
-          where: { teamId: { in: teamIds }, isComplete: true },
-          select: { teamId: true, label: true },
+    subDepartmentIds.length > 0
+      ? prisma.subDepartmentStatus.findMany({
+          where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+          select: { subDepartmentId: true, label: true },
         })
       : Promise.resolve([]),
   ])
-  const completeByTeam = new Map<string, Set<string>>()
+  const completeBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
-    const set = completeByTeam.get(s.teamId) ?? new Set<string>()
+    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
-    completeByTeam.set(s.teamId, set)
+    completeBySubDepartment.set(s.subDepartmentId, set)
   }
 
-  return tickets.map((t) => toBoardCard(t, totalMap, userMap, completeByTeam.get(t.team.id) ?? new Set()))
+  return tickets.map((t) => toBoardCard(t, totalMap, userMap, completeBySubDepartment.get(t.subDepartment.id) ?? new Set()))
 }
 
 /**
@@ -549,17 +549,17 @@ export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCa
  * "Pull Request" — used for the manager's My Tasks page so they can see
  * work from their teams that needs sign-off without leaving the page.
  */
-export async function getTeamReviewCards(
-  teamIds: string[],
+export async function getSubDepartmentReviewCards(
+  subDepartmentIds: string[],
   forUserId?: string,
 ): Promise<BoardCardData[]> {
-  if (teamIds.length === 0) return []
+  if (subDepartmentIds.length === 0) return []
   const tickets = await prisma.ticket.findMany({
     where: {
       deletedAt: null,
       isDraft: false,
       parentId: null,
-      teamId: { in: teamIds },
+      subDepartmentId: { in: subDepartmentIds },
       OR: [
         { status: { contains: "review", mode: "insensitive" } },
         { status: { contains: "pull request", mode: "insensitive" } },
@@ -571,88 +571,88 @@ export async function getTeamReviewCards(
   })
   const [{ totalMap, userMap }, completeStatuses] = await Promise.all([
     buildTimeMaps(tickets, forUserId),
-    prisma.teamStatus.findMany({
-      where: { teamId: { in: teamIds }, isComplete: true },
-      select: { teamId: true, label: true },
+    prisma.subDepartmentStatus.findMany({
+      where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+      select: { subDepartmentId: true, label: true },
     }),
   ])
-  const completeByTeam = new Map<string, Set<string>>()
+  const completeBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
-    const set = completeByTeam.get(s.teamId) ?? new Set<string>()
+    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
-    completeByTeam.set(s.teamId, set)
+    completeBySubDepartment.set(s.subDepartmentId, set)
   }
 
-  return tickets.map((t) => toBoardCard(t, totalMap, userMap, completeByTeam.get(t.team.id) ?? new Set()))
+  return tickets.map((t) => toBoardCard(t, totalMap, userMap, completeBySubDepartment.get(t.subDepartment.id) ?? new Set()))
 }
 
-export async function getTeamStatuses(teamId: string | null | undefined): Promise<TeamStatusConfig[]> {
-  if (!teamId) return DEFAULT_STATUSES
-  const statuses = await prisma.teamStatus.findMany({
-    where: { teamId },
+export async function getSubDepartmentStatuses(subDepartmentId: string | null | undefined): Promise<SubDepartmentStatusConfig[]> {
+  if (!subDepartmentId) return DEFAULT_STATUSES
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId },
     orderBy: { order: "asc" },
     select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
   })
   return statuses.length > 0 ? statuses : DEFAULT_STATUSES
 }
 
-export async function getTeamStatusesForTeamIds(
-  teamIds: string[],
-): Promise<Map<string, TeamStatusConfig[]>> {
-  if (teamIds.length === 0) return new Map()
-  const rows = await prisma.teamStatus.findMany({
-    where: { teamId: { in: teamIds } },
+export async function getSubDepartmentStatusesForSubDepartmentIds(
+  subDepartmentIds: string[],
+): Promise<Map<string, SubDepartmentStatusConfig[]>> {
+  if (subDepartmentIds.length === 0) return new Map()
+  const rows = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: { in: subDepartmentIds } },
     orderBy: { order: "asc" },
-    select: { id: true, teamId: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, subDepartmentId: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
   })
-  const map = new Map<string, TeamStatusConfig[]>()
+  const map = new Map<string, SubDepartmentStatusConfig[]>()
   for (const row of rows) {
-    const arr = map.get(row.teamId) ?? []
+    const arr = map.get(row.subDepartmentId) ?? []
     arr.push({ id: row.id, label: row.label, color: row.color, order: row.order, isComplete: row.isComplete, allowedLabels: row.allowedLabels })
-    map.set(row.teamId, arr)
+    map.set(row.subDepartmentId, arr)
   }
   return map
 }
 
-export async function getTeamBoardGroups(
+export async function getSubDepartmentBoardGroups(
   cards: BoardCardData[],
-  memberTeamIds: string[] = [],
-): Promise<TeamBoardGroup[]> {
-  const byTeam = new Map<string, BoardCardData[]>()
+  memberSubDepartmentIds: string[] = [],
+): Promise<SubDepartmentBoardGroup[]> {
+  const bySubDepartment = new Map<string, BoardCardData[]>()
   for (const card of cards) {
-    const list = byTeam.get(card.teamId) ?? []
+    const list = bySubDepartment.get(card.subDepartmentId) ?? []
     list.push(card)
-    byTeam.set(card.teamId, list)
+    bySubDepartment.set(card.subDepartmentId, list)
   }
 
   // Fetch all team metadata and statuses in two batched queries (no per-team round trips)
-  const allTeamIds = [...new Set([...byTeam.keys(), ...memberTeamIds])]
-  const [teamMeta, statusMap] = await Promise.all([
-    prisma.team.findMany({
-      where: { id: { in: allTeamIds } },
+  const allSubDepartmentIds = [...new Set([...bySubDepartment.keys(), ...memberSubDepartmentIds])]
+  const [subDepartmentMeta, statusMap] = await Promise.all([
+    prisma.subDepartment.findMany({
+      where: { id: { in: allSubDepartmentIds } },
       select: { id: true, name: true },
     }),
-    getTeamStatusesForTeamIds(allTeamIds),
+    getSubDepartmentStatusesForSubDepartmentIds(allSubDepartmentIds),
   ])
-  const teamMetaMap = new Map(teamMeta.map((t) => [t.id, t]))
+  const subDepartmentMetaMap = new Map(subDepartmentMeta.map((t) => [t.id, t]))
 
   // Ensure the user's own teams always appear, even with 0 cards
-  for (const id of memberTeamIds) {
-    if (!byTeam.has(id)) byTeam.set(id, [])
+  for (const id of memberSubDepartmentIds) {
+    if (!bySubDepartment.has(id)) bySubDepartment.set(id, [])
   }
 
-  const groups = [...byTeam.entries()].map(([teamId, teamCards]) => {
-    const meta = teamMetaMap.get(teamId)
-    const teamName = teamCards[0]?.team ?? meta?.name ?? teamId
-    const statuses = statusMap.get(teamId)
+  const groups = [...bySubDepartment.entries()].map(([subDepartmentId, subDepartmentCards]) => {
+    const meta = subDepartmentMetaMap.get(subDepartmentId)
+    const subDepartmentName = subDepartmentCards[0]?.subDepartment ?? meta?.name ?? subDepartmentId
+    const statuses = statusMap.get(subDepartmentId)
     return {
-      teamId,
-      teamName,
-      cards: teamCards,
+      subDepartmentId,
+      subDepartmentName,
+      cards: subDepartmentCards,
       statuses: statuses && statuses.length > 0 ? statuses : DEFAULT_STATUSES,
     }
   })
 
   // Sort by CUID (time-ordered) so the first-created team is always first
-  return groups.sort((a, b) => a.teamId.localeCompare(b.teamId))
+  return groups.sort((a, b) => a.subDepartmentId.localeCompare(b.subDepartmentId))
 }

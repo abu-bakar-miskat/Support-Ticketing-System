@@ -1,32 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/auth", () => ({ requireAuth: vi.fn() }))
-vi.mock("@/lib/team-manage", () => ({ canManageTeam: vi.fn() }))
-vi.mock("@/lib/dept-scope", () => ({ canReadTeamData: vi.fn() }))
+vi.mock("@/lib/sub-department-manage", () => ({ canManageSubDepartment: vi.fn() }))
+vi.mock("@/lib/dept-scope", () => ({ canReadSubDepartmentData: vi.fn() }))
 vi.mock("@/lib/db", () => ({
   prisma: {
-    teamStatus: { findMany: vi.fn() },
-    teamGitHubStatusMap: { findUnique: vi.fn(), upsert: vi.fn() },
+    subDepartmentStatus: { findMany: vi.fn() },
+    subDepartmentGitHubStatusMap: { findUnique: vi.fn(), upsert: vi.fn() },
   },
 }))
 
 import { requireAuth } from "@/lib/auth"
-import { canManageTeam } from "@/lib/team-manage"
-import { canReadTeamData } from "@/lib/dept-scope"
+import { canManageSubDepartment } from "@/lib/sub-department-manage"
+import { canReadSubDepartmentData } from "@/lib/dept-scope"
 import { prisma } from "@/lib/db"
 import { GET, PUT } from "./route"
 
 const mockAuth = vi.mocked(requireAuth)
-const mockManage = vi.mocked(canManageTeam)
-const mockRead = vi.mocked(canReadTeamData)
-const mockStatuses = vi.mocked(prisma.teamStatus.findMany)
-const mockFind = vi.mocked(prisma.teamGitHubStatusMap.findUnique)
-const mockUpsert = vi.mocked(prisma.teamGitHubStatusMap.upsert)
+const mockManage = vi.mocked(canManageSubDepartment)
+const mockRead = vi.mocked(canReadSubDepartmentData)
+const mockStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
+const mockFind = vi.mocked(prisma.subDepartmentGitHubStatusMap.findUnique)
+const mockUpsert = vi.mocked(prisma.subDepartmentGitHubStatusMap.upsert)
 
 const params = { params: Promise.resolve({ id: "team-1" }) }
 
 function putRequest(body: unknown) {
-  return new Request("http://localhost/api/teams/team-1/github-map", {
+  return new Request("http://localhost/api/sub-departments/team-1/github-map", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -48,7 +48,7 @@ beforeEach(() => {
   mockFind.mockResolvedValue(null as never)
 })
 
-describe("GET /api/teams/[id]/github-map", () => {
+describe("GET /api/sub-departments/[id]/github-map", () => {
   it("returns config and resolved defaults", async () => {
     const res = await GET(new Request("http://localhost"), params)
     const body = await res.json()
@@ -68,14 +68,14 @@ describe("GET /api/teams/[id]/github-map", () => {
   })
 })
 
-describe("PUT /api/teams/[id]/github-map", () => {
+describe("PUT /api/sub-departments/[id]/github-map", () => {
   it("upserts valid fields", async () => {
-    mockUpsert.mockResolvedValue({ teamId: "team-1", onPrOpened: "Blocked" } as never)
+    mockUpsert.mockResolvedValue({ subDepartmentId: "team-1", onPrOpened: "Blocked" } as never)
     const res = await PUT(putRequest({ onPrOpened: "In Progress", onPrReadyForReview: "", onPrMerged: null }), params)
     expect(res.status).toBe(200)
     expect(mockUpsert).toHaveBeenCalledWith({
-      where: { teamId: "team-1" },
-      create: { teamId: "team-1", onPrOpened: "In Progress", onPrReadyForReview: "", onPrMerged: null },
+      where: { subDepartmentId: "team-1" },
+      create: { subDepartmentId: "team-1", onPrOpened: "In Progress", onPrReadyForReview: "", onPrMerged: null },
       update: { onPrOpened: "In Progress", onPrReadyForReview: "", onPrMerged: null },
     })
   })

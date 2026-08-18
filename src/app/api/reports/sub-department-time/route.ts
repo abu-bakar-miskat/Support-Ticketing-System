@@ -5,7 +5,7 @@ import { avatarColorFor } from "@/lib/avatar"
 import { entrySeconds, formatHm, relativeAgo } from "@/lib/time-data"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { resolveReportRange } from "@/lib/report-period"
-import type { StatCard, TeamMember, TeamTimeResponse, ProjectTimeRow } from "@/lib/api/reports"
+import type { StatCard, SubDepartmentMember, SubDepartmentTimeResponse, ProjectTimeRow } from "@/lib/api/reports"
 
 const WEEK_TARGET_SECS = 40 * 3600
 const ROLE_LABEL: Record<string, string> = {
@@ -51,13 +51,13 @@ export async function GET(request: Request) {
 
   const memberWhere = {
     ...(deptScope
-      ? { teamId: { in: deptScope.teamIds } }
+      ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
       : { tenantMemberships: { some: { tenantId, isActive: true } } }),
     ...(personScoped ? { id: personId } : {}),
     deletedAt: null,
   }
   const ticketWhere = {
-    ...(deptScope ? { teamId: { in: deptScope.teamIds } } : { tenantId }),
+    ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : { tenantId }),
     ...(projectScoped ? { projectId } : {}),
     ...(personScoped ? { assigneeId: personId } : {}),
   }
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   // on this department's tickets. Scope QA by the *ticket's* team (not the
   // logger's) so cross-department QA work still surfaces in the ticket's report.
   const qaTicketWhere = {
-    ...(deptScope ? { teamId: { in: deptScope.teamIds } } : { tenantId }),
+    ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : { tenantId }),
     ...(projectScoped ? { projectId } : {}),
   }
   const qaTicketScoped = Object.keys(qaTicketWhere).length > 0
@@ -75,14 +75,14 @@ export async function GET(request: Request) {
     await Promise.all([
       prisma.profile.findMany({
         where: memberWhere,
-        include: { team: { select: { name: true } } },
+        include: { subDepartment: { select: { name: true } } },
         orderBy: { name: "asc" },
       }),
       prisma.timeEntry.findMany({
         where: {
           OR: [{ startedAt: { gte: weekStart, lt: weekEnd } }, { endedAt: null }],
           ...(deptScope
-            ? { profile: { teamId: { in: deptScope.teamIds } } }
+            ? { profile: { subDepartmentId: { in: deptScope.subDepartmentIds } } }
             : { profile: { tenantMemberships: { some: { tenantId, isActive: true } } } }),
           ...(projectScoped ? { ticket: { projectId } } : {}),
           ...(personScoped ? { profileId: personId } : {}),
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
               name: true,
               role: true,
               avatarUrl: true,
-              team: { select: { name: true } },
+              subDepartment: { select: { name: true } },
             },
           },
         },
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
   )
   const closedThisWeek = closedGroups.reduce((sum, g) => sum + g._count._all, 0)
 
-  const members: { row: TeamMember; weekSecs: number }[] = profiles.map((member) => {
+  const members: { row: SubDepartmentMember; weekSecs: number }[] = profiles.map((member) => {
     const entries = weekEntries.filter((e) => e.profileId === member.id)
     const weekSecs = entries.reduce((sum, e) => sum + entrySeconds(e, now), 0)
 
@@ -171,7 +171,7 @@ export async function GET(request: Request) {
         id: member.id,
         name: member.name,
         role: ROLE_LABEL[member.role] ?? member.role,
-        location: member.team?.name ?? "No team",
+        location: member.subDepartment?.name ?? "No team",
         avatarColor: avatarColorFor(member.name),
         avatarUrl: member.avatarUrl ?? null,
         weekHours: formatHm(weekSecs),
@@ -252,7 +252,7 @@ export async function GET(request: Request) {
       qaProfiles.set(entry.profileId, entry.profile)
     }
   }
-  const qaMembers: { row: TeamMember; weekSecs: number }[] = [...qaProfiles.values()].map((member) => {
+  const qaMembers: { row: SubDepartmentMember; weekSecs: number }[] = [...qaProfiles.values()].map((member) => {
     const entries = qaWeekEntries.filter((e) => e.profileId === member.id)
     const weekSecs = entries.reduce((sum, e) => sum + entrySeconds(e, now), 0)
     const daySecs = [0, 0, 0, 0, 0]
@@ -281,7 +281,7 @@ export async function GET(request: Request) {
         id: member.id,
         name: member.name,
         role: ROLE_LABEL[member.role] ?? member.role,
-        location: member.team?.name ?? "No team",
+        location: member.subDepartment?.name ?? "No team",
         avatarColor: avatarColorFor(member.name),
         avatarUrl: member.avatarUrl ?? null,
         weekHours: formatHm(weekSecs),
@@ -334,7 +334,7 @@ export async function GET(request: Request) {
     .filter((p) => p.secs > 0)
     .sort((a, b) => b.secs - a.secs)
 
-  const response: TeamTimeResponse = {
+  const response: SubDepartmentTimeResponse = {
     stats,
     members: members.map((m) => m.row),
     projects,

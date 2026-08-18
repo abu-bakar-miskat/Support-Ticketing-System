@@ -25,7 +25,7 @@ export type SprintDetail = SprintData & {
     priority: string
     storyPoints: number | null
     isDone: boolean
-    team: { prefix: string }
+    subDepartment: { prefix: string }
     assignee: { id: string; name: string; avatarUrl: string | null } | null
   }>
   _count: { tickets: number }
@@ -37,7 +37,7 @@ export type ProjectTicket = {
   ticketNumber: number
   status: string
   sprintId: string | null
-  team: { prefix: string }
+  subDepartment: { prefix: string }
 }
 
 export type CreateSprintBody = {

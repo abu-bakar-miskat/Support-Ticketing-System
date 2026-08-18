@@ -66,13 +66,13 @@ export type SidebarProject = {
   color: string;
   avatarUrl?: string | null;
   count: number;
-  teamId: string | null;
+  subDepartmentId: string | null;
   projectStatus?: string | null;
   departmentId?: string | null;
   departmentName?: string | null;
 };
 
-export type TeamItem = {
+export type SubDepartmentItem = {
   id: string;
   name: string;
   prefix: string;
@@ -282,8 +282,8 @@ export function Sidebar({
   const {
     projects,
     myTasksCount,
-    teams,
-    activeTeamId,
+    subDepartments,
+    activeSubDepartmentId,
     departments,
     allDepts,
     activeDeptId,
@@ -299,7 +299,7 @@ export function Sidebar({
   } = useDashboardContext();
   const pathname = usePathname();
   const router = useRouter();
-  const [switchingTeam, setSwitchingTeam] = useState<string | null>(null);
+  const [switchingSubDepartment, setSwitchingSubDepartment] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [switchingDept, setSwitchingDept] = useState(false);
   const { pins, togglePin } = usePinnedProjects(initialPins);
@@ -354,18 +354,18 @@ export function Sidebar({
     window.location.href = deptId ? "/" : "/departments";
   }
 
-  async function switchTeam(teamId: string) {
-    if (teamId === activeTeamId) return;
-    setSwitchingTeam(teamId);
+  async function switchSubDepartment(subDepartmentId: string) {
+    if (subDepartmentId === activeSubDepartmentId) return;
+    setSwitchingSubDepartment(subDepartmentId);
     try {
-      await fetch("/api/active-team", {
+      await fetch("/api/active-sub-department", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId }),
+        body: JSON.stringify({ subDepartmentId }),
       });
       router.refresh();
     } finally {
-      setSwitchingTeam(null);
+      setSwitchingSubDepartment(null);
     }
   }
 
@@ -374,18 +374,18 @@ export function Sidebar({
     "hover:border-pen-blue/40 hover:bg-pen-blue-tint data-popup-open:border-pen-blue/40 data-popup-open:bg-pen-blue-tint",
   );
 
-  const activeTeam = teams.find((t) => t.id === activeTeamId) ?? teams[0];
+  const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
   const isAdmin = userRole === "admin";
   const isManager = userRole === "manager";
   const activeDept = allDepts.find((d) => d.id === activeDeptId);
   // For staff/lead — department name comes from their team membership
   const staffDeptName =
     !isAdmin && !isManager
-      ? (activeTeam?.departmentName ?? teams[0]?.departmentName ?? null)
+      ? (activeSubDepartment?.departmentName ?? subDepartments[0]?.departmentName ?? null)
       : null;
   const staffDeptId =
     !isAdmin && !isManager
-      ? (activeTeam?.departmentId ?? teams[0]?.departmentId ?? null)
+      ? (activeSubDepartment?.departmentId ?? subDepartments[0]?.departmentId ?? null)
       : null;
   // Admin with no dept selected = on the dept overview page, not in a workspace
   const isAdminGlobalView = isAdmin && !activeDeptId;
@@ -921,12 +921,12 @@ export function Sidebar({
       {/* Create Project Modal */}
       {showCreateProject &&
         (() => {
-          const userTeam = teams.find((t) => t.id === user?.teamId);
+          const userSubDepartment = subDepartments.find((t) => t.id === user?.subDepartmentId);
           // Lock to active dept for everyone when in a dept context; non-admins always locked to their dept
           const lockedDeptId =
             activeDeptId ??
             (!isAdmin
-              ? (userTeam?.departmentId ?? departments[0]?.id ?? "")
+              ? (userSubDepartment?.departmentId ?? departments[0]?.id ?? "")
               : null);
           const lockedDept = lockedDeptId
             ? {
@@ -934,7 +934,7 @@ export function Sidebar({
                 name:
                   departments.find((d) => d.id === lockedDeptId)?.name ??
                   activeDept?.name ??
-                  userTeam?.departmentName ??
+                  userSubDepartment?.departmentName ??
                   "",
               }
             : null;

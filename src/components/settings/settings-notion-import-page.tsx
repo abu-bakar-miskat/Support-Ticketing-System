@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type NotionProperty = { id: string; name: string; type: string };
 type NotionDatabase = { id: string; title: string; properties: NotionProperty[] };
-type TeamOption = { id: string; name: string };
+type SubDepartmentOption = { id: string; name: string };
 type ImportResult = {
   projectsCreated: number;
   projectsSkipped: number;
@@ -127,7 +127,7 @@ function StepBar({ current }: { current: number }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function SettingsNotionImportPage({ teams }: { teams: TeamOption[] }) {
+export function SettingsNotionImportPage({ subDepartments }: { subDepartments: SubDepartmentOption[] }) {
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -139,7 +139,7 @@ export function SettingsNotionImportPage({ teams }: { teams: TeamOption[] }) {
   // Step 2
   const [projectsDbId, setProjectsDbId] = useState("");
   const [tasksDbId, setTasksDbId] = useState("");
-  const [teamId, setTeamId] = useState("");
+  const [subDepartmentId, setSubDepartmentId] = useState("");
   const [projectNameProp, setProjectNameProp] = useState("");
   const [projectStatusProp, setProjectStatusProp] = useState("");
   const [projectDescriptionProp, setProjectDescriptionProp] = useState("");
@@ -196,7 +196,7 @@ export function SettingsNotionImportPage({ teams }: { teams: TeamOption[] }) {
           mapping: {
             projectsDatabaseId: projectsDbId,
             tasksDatabaseId: tasksDbId,
-            teamId,
+            subDepartmentId,
             projectNameProp,
             projectStatusProp: projectStatusProp || undefined,
             projectDescriptionProp: projectDescriptionProp || undefined,
@@ -328,9 +328,9 @@ export function SettingsNotionImportPage({ teams }: { teams: TeamOption[] }) {
                   Assign to team <span className="text-pen-red">*</span>
                 </span>
                 <NativeSelect
-                  value={teamId}
-                  onChange={setTeamId}
-                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
+                  value={subDepartmentId}
+                  onChange={setSubDepartmentId}
+                  options={subDepartments.map((t) => ({ value: t.id, label: t.name }))}
                   placeholder="Select team…"
                 />
               </div>
@@ -396,7 +396,7 @@ export function SettingsNotionImportPage({ teams }: { teams: TeamOption[] }) {
             </Button>
             <Button
               onClick={() => setStep(3)}
-              disabled={!projectsDbId || !tasksDbId || !teamId || !projectNameProp || !taskTitleProp}
+              disabled={!projectsDbId || !tasksDbId || !subDepartmentId || !projectNameProp || !taskTitleProp}
               className="gap-1.5 bg-pen-blue font-sans text-[12.5px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
             >
               Continue

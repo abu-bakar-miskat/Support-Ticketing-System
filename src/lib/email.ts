@@ -335,7 +335,7 @@ export async function sendInviteEmail(args: {
   inviterId: string;
   departmentId: string;
   departmentName: string;
-  teamName: string;
+  subDepartmentName: string;
   role: string;
   message?: string | null;
   inviteToken: string;
@@ -348,7 +348,7 @@ export async function sendInviteEmail(args: {
     inviteeEmail: args.to,
     inviterName: args.inviterName,
     departmentName: args.departmentName,
-    teamName: args.teamName,
+    subDepartmentName: args.subDepartmentName,
     role: args.role,
     message: args.message,
     inviteToken: args.inviteToken,

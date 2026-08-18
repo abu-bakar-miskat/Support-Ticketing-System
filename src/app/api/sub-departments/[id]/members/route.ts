@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { teamInScope, canReadTeamData } from "@/lib/dept-scope"
+import { subDepartmentInScope, canReadSubDepartmentData } from "@/lib/dept-scope"
 
 export async function GET(
   _req: NextRequest,
@@ -10,10 +10,10 @@ export async function GET(
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const { id: teamId } = await params
+  const { id: subDepartmentId } = await params
 
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: subDepartmentId },
     select: {
       id: true,
       name: true,
@@ -21,16 +21,16 @@ export async function GET(
     },
   })
 
-  if (!team) {
+  if (!subDepartment) {
     return NextResponse.json({ error: "Team not found" }, { status: 404 })
   }
 
-  if (!(await canReadTeamData(profile, teamId))) {
+  if (!(await canReadSubDepartmentData(profile, subDepartmentId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const members = await prisma.teamMembership.findMany({
-    where: { teamId, isActive: true },
+  const members = await prisma.subDepartmentMembership.findMany({
+    where: { subDepartmentId, isActive: true },
     orderBy: { joinedAt: "asc" },
     include: {
       user: { select: { id: true, name: true, avatarUrl: true } },
@@ -42,8 +42,8 @@ export async function GET(
       id: m.user.id,
       name: m.user.name,
       avatarUrl: m.user.avatarUrl ?? null,
-      departmentName: team.department?.name ?? null,
-      teamName: team.name,
+      departmentName: subDepartment.department?.name ?? null,
+      subDepartmentName: subDepartment.name,
     })),
   )
 }

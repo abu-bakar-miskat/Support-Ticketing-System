@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
   // Managers can only reassign tickets within their department scope
   if (caller!.role === "manager") {
     const deptScope = await getProfileDeptScope(caller!)
-    const teamIds = deptScope?.teamIds ?? []
-    if (teamIds.length > 0) {
+    const subDepartmentIds = deptScope?.subDepartmentIds ?? []
+    if (subDepartmentIds.length > 0) {
       const outOfScope = await prisma.ticket.findFirst({
-        where: { id: { in: ticketIds }, teamId: { notIn: teamIds } },
+        where: { id: { in: ticketIds }, subDepartmentId: { notIn: subDepartmentIds } },
         select: { id: true },
       })
       if (outOfScope) {

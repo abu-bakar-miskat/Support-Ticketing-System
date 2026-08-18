@@ -9,8 +9,8 @@ import React, {
 } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useQueryClient, useQueries } from "@tanstack/react-query";
-import { ticketKeys, teamKeys } from "@/hooks/queries/keys";
-import { getTeamStatuses } from "@/lib/api/teams";
+import { ticketKeys, subDepartmentKeys } from "@/hooks/queries/keys";
+import { getSubDepartmentStatuses } from "@/lib/api/sub-departments";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { DrawerLink } from "@/components/tickets/drawer-link";
 import { useDrag, useDrop } from "react-dnd";
@@ -32,8 +32,8 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   type BoardCardData,
   type SubCardData,
-  type TeamStatusConfig,
-  type TeamBoardGroup,
+  type SubDepartmentStatusConfig,
+  type SubDepartmentBoardGroup,
   DEFAULT_STATUSES,
   normalizeStatus,
   UI_STATUS_DOT,
@@ -46,7 +46,7 @@ import { CardModuleSegment } from "@/components/board/module-label";
 import { BoardCardContextMenu } from "@/components/board/board-card-context-menu";
 import { ProjectDot } from "@/components/projects/project-avatar";
 import { useTasksMeta } from "@/hooks/queries/use-tasks";
-import { useTeamStatuses } from "@/hooks/queries/use-team-statuses";
+import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { useCardState } from "@/hooks/use-card-state";
 import { useLiveTimer } from "@/hooks/use-live-timer";
@@ -143,8 +143,8 @@ function BoardCard({
     toggleExpanded,
     onSubTicketCreated,
   } = useCardState(initialCard.subTicketCards);
-  const teamMembers = membersForCreate;
-  const { data: statuses = [] } = useTeamStatuses(initialCard.teamId);
+  const subDepartmentMembers = membersForCreate;
+  const { data: statuses = [] } = useSubDepartmentStatuses(initialCard.subDepartmentId);
   const [startingTimer, setStartingTimer] = useState(false);
   const [stoppingTimer, setStoppingTimer] = useState(false);
 
@@ -511,12 +511,12 @@ function BoardCard({
       {creatingSubTicket && (
         <NewTicketModal
           projects={[{ id: initialCard.projectId, name: initialCard.project }]}
-          teamMembers={teamMembers}
-          teamMembersForCreate={teamMembers}
+          subDepartmentMembers={subDepartmentMembers}
+          subDepartmentMembersForCreate={subDepartmentMembers}
           membersLoading={membersLoading}
           defaultProjectId={initialCard.projectId}
           defaultProjectName={initialCard.project}
-          defaultTeamId={initialCard.teamId}
+          defaultSubDepartmentId={initialCard.subDepartmentId}
           statuses={statuses}
           parentId={initialCard.dbId}
           parentHumanId={initialCard.humanId}
@@ -539,7 +539,7 @@ function BoardColumn({
   membersForCreate,
   membersLoading,
 }: {
-  status: TeamStatusConfig;
+  status: SubDepartmentStatusConfig;
   cards: BoardCardData[];
   onDrop: (dbId: string, toStatus: string) => void;
   onAdd?: (statusLabel: string) => void;
@@ -640,14 +640,14 @@ function BoardColumn({
 
 type Props = {
   cards: BoardCardData[];
-  teamBoardGroups: TeamBoardGroup[];
-  defaultTeamId?: string | null;
+  subDepartmentBoardGroups: SubDepartmentBoardGroup[];
+  defaultSubDepartmentId?: string | null;
 };
 
 export function BoardPage({
   cards: initialCards,
-  teamBoardGroups,
-  defaultTeamId,
+  subDepartmentBoardGroups,
+  defaultSubDepartmentId,
 }: Props) {
   const currentUser = useCurrentUser();
   const currentUserId = currentUser?.id ?? "";
@@ -697,13 +697,13 @@ export function BoardPage({
     ready: filtersReady,
   } = usePersistedBoardFilters();
 
-  const [activeTeamId, setActiveTeamId] = useState(() => {
+  const [activeSubDepartmentId, setActiveSubDepartmentId] = useState(() => {
     if (
-      defaultTeamId &&
-      teamBoardGroups.some((g) => g.teamId === defaultTeamId)
+      defaultSubDepartmentId &&
+      subDepartmentBoardGroups.some((g) => g.subDepartmentId === defaultSubDepartmentId)
     )
-      return defaultTeamId;
-    return teamBoardGroups[0]?.teamId ?? "";
+      return defaultSubDepartmentId;
+    return subDepartmentBoardGroups[0]?.subDepartmentId ?? "";
   });
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
 
@@ -736,39 +736,39 @@ export function BoardPage({
     window.addEventListener("mouseup", onUp);
   }
 
-  const boardTeamIds = useMemo(
-    () => teamBoardGroups.map((group) => group.teamId),
-    [teamBoardGroups],
+  const boardSubDepartmentIds = useMemo(
+    () => subDepartmentBoardGroups.map((group) => group.subDepartmentId),
+    [subDepartmentBoardGroups],
   );
 
-  const liveTeamStatusQueries = useQueries({
-    queries: boardTeamIds.map((teamId) => ({
-      queryKey: teamKeys.statuses(teamId),
-      queryFn: () => getTeamStatuses(teamId),
+  const liveSubDepartmentStatusQueries = useQueries({
+    queries: boardSubDepartmentIds.map((subDepartmentId) => ({
+      queryKey: subDepartmentKeys.statuses(subDepartmentId),
+      queryFn: () => getSubDepartmentStatuses(subDepartmentId),
       staleTime: 5 * 60 * 1000,
       gcTime: 15 * 60 * 1000,
       refetchOnWindowFocus: false,
     })),
   });
 
-  const teamStatusesByTeamId = useMemo(() => {
-    const map = new Map<string, TeamStatusConfig[]>();
-    boardTeamIds.forEach((teamId, index) => {
-      const live = liveTeamStatusQueries[index]?.data;
-      const fallback = teamBoardGroups.find((group) => group.teamId === teamId)?.statuses;
-      if (live?.length) map.set(teamId, live);
-      else if (fallback?.length) map.set(teamId, fallback);
+  const subDepartmentStatusesBySubDepartmentId = useMemo(() => {
+    const map = new Map<string, SubDepartmentStatusConfig[]>();
+    boardSubDepartmentIds.forEach((subDepartmentId, index) => {
+      const live = liveSubDepartmentStatusQueries[index]?.data;
+      const fallback = subDepartmentBoardGroups.find((group) => group.subDepartmentId === subDepartmentId)?.statuses;
+      if (live?.length) map.set(subDepartmentId, live);
+      else if (fallback?.length) map.set(subDepartmentId, fallback);
     });
     return map;
-  }, [boardTeamIds, liveTeamStatusQueries, teamBoardGroups]);
+  }, [boardSubDepartmentIds, liveSubDepartmentStatusQueries, subDepartmentBoardGroups]);
 
   // Merged group for department overview — unique statuses across all teams in order
-  const allTeamsMergedGroup = useMemo(() => {
-    if (teamBoardGroups.length <= 1) return null;
+  const allSubDepartmentsMergedGroup = useMemo(() => {
+    if (subDepartmentBoardGroups.length <= 1) return null;
     const seen = new Set<string>();
-    const mergedStatuses: TeamStatusConfig[] = [];
-    for (const teamId of boardTeamIds) {
-      for (const status of teamStatusesByTeamId.get(teamId) ?? []) {
+    const mergedStatuses: SubDepartmentStatusConfig[] = [];
+    for (const subDepartmentId of boardSubDepartmentIds) {
+      for (const status of subDepartmentStatusesBySubDepartmentId.get(subDepartmentId) ?? []) {
         if (!seen.has(status.label)) {
           seen.add(status.label);
           mergedStatuses.push(status);
@@ -776,66 +776,66 @@ export function BoardPage({
       }
     }
     return {
-      teamId: "all",
-      teamName: "All teams",
+      subDepartmentId: "all",
+      subDepartmentName: "All teams",
       cards: [],
       statuses: mergedStatuses,
     };
-  }, [teamBoardGroups.length, boardTeamIds, teamStatusesByTeamId]);
+  }, [subDepartmentBoardGroups.length, boardSubDepartmentIds, subDepartmentStatusesBySubDepartmentId]);
 
   const activeGroup = useMemo(
     () =>
-      activeTeamId === "all"
-        ? allTeamsMergedGroup
-        : (teamBoardGroups.find((g) => g.teamId === activeTeamId) ??
-          teamBoardGroups[0]),
-    [teamBoardGroups, activeTeamId, allTeamsMergedGroup],
+      activeSubDepartmentId === "all"
+        ? allSubDepartmentsMergedGroup
+        : (subDepartmentBoardGroups.find((g) => g.subDepartmentId === activeSubDepartmentId) ??
+          subDepartmentBoardGroups[0]),
+    [subDepartmentBoardGroups, activeSubDepartmentId, allSubDepartmentsMergedGroup],
   );
   const fallbackStatuses = activeGroup?.statuses ?? DEFAULT_STATUSES;
 
   const effectiveStatuses = useMemo(() => {
-    if (activeTeamId === "all") {
-      return allTeamsMergedGroup?.statuses.length
-        ? allTeamsMergedGroup.statuses
+    if (activeSubDepartmentId === "all") {
+      return allSubDepartmentsMergedGroup?.statuses.length
+        ? allSubDepartmentsMergedGroup.statuses
         : fallbackStatuses;
     }
-    const live = teamStatusesByTeamId.get(activeTeamId);
+    const live = subDepartmentStatusesBySubDepartmentId.get(activeSubDepartmentId);
     return live?.length ? live : fallbackStatuses;
   }, [
-    activeTeamId,
-    allTeamsMergedGroup,
-    teamStatusesByTeamId,
+    activeSubDepartmentId,
+    allSubDepartmentsMergedGroup,
+    subDepartmentStatusesBySubDepartmentId,
     fallbackStatuses,
   ]);
 
   const resolveStatusesForCard = useCallback(
-    (teamId: string) => teamStatusesByTeamId.get(teamId) ?? effectiveStatuses,
-    [teamStatusesByTeamId, effectiveStatuses],
+    (subDepartmentId: string) => subDepartmentStatusesBySubDepartmentId.get(subDepartmentId) ?? effectiveStatuses,
+    [subDepartmentStatusesBySubDepartmentId, effectiveStatuses],
   );
   const { activeDeptId } = useDashboardContext();
   const { data: tasksMeta, isPending: membersLoading } = useTasksMeta(true, activeDeptId);
-  const teamMembersForCreate = tasksMeta?.availableMembers ?? [];
+  const subDepartmentMembersForCreate = tasksMeta?.availableMembers ?? [];
 
-  const teamProjects = useMemo(() => {
+  const subDepartmentProjects = useMemo(() => {
     const seen = new Map<string, string>();
     for (const c of localCards) {
-      if (c.teamId !== activeTeamId || !c.projectId || !c.project) continue;
+      if (c.subDepartmentId !== activeSubDepartmentId || !c.projectId || !c.project) continue;
       if (c.projectKind === "support") continue;
       seen.set(c.projectId, c.project);
     }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [localCards, activeTeamId]);
+  }, [localCards, activeSubDepartmentId]);
 
   // Drop stale project filters that don't apply to the active team
   useEffect(() => {
     if (!filtersReady) return;
     if (
       projectFilter !== "all" &&
-      !teamProjects.some((p) => p.id === projectFilter)
+      !subDepartmentProjects.some((p) => p.id === projectFilter)
     ) {
       setProjectFilter("all");
     }
-  }, [filtersReady, teamProjects, projectFilter, setProjectFilter]);
+  }, [filtersReady, subDepartmentProjects, projectFilter, setProjectFilter]);
 
   const handleCreated = useCallback(
     (ticket: {
@@ -843,25 +843,25 @@ export function BoardPage({
       title: string;
       status: string;
       priority: string;
-      teamPrefix: string;
+      subDepartmentPrefix: string;
       ticketNumber: number;
       assigneeId: string | null;
       assigneeName: string | null;
       projectId: string | null;
       projectName: string | null;
     }) => {
-      const teamName = activeGroup?.teamName ?? "";
+      const subDepartmentName = activeGroup?.subDepartmentName ?? "";
       const projectFromList = ticket.projectId
-        ? teamProjects.find((p) => p.id === ticket.projectId)
+        ? subDepartmentProjects.find((p) => p.id === ticket.projectId)
         : undefined;
       const newCard: BoardCardData = {
         dbId: ticket.id,
-        humanId: `${ticket.teamPrefix}-${ticket.ticketNumber}`,
+        humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
         title: ticket.title,
         priority: uiPriorityFromDb(ticket.priority),
         status: ticket.status,
-        team: teamName,
-        teamId: activeTeamId,
+        subDepartment: subDepartmentName,
+        subDepartmentId: activeSubDepartmentId,
         project: ticket.projectName ?? projectFromList?.name ?? "",
         projectId: ticket.projectId ?? projectFromList?.id ?? "",
         projectKind: "standard",
@@ -905,7 +905,7 @@ export function BoardPage({
       setLocalCards((prev) => [...prev, newCard]);
       setCreateForStatus(null);
     },
-    [activeGroup?.teamName, activeTeamId, teamProjects],
+    [activeGroup?.subDepartmentName, activeSubDepartmentId, subDepartmentProjects],
   );
 
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
@@ -913,7 +913,7 @@ export function BoardPage({
     setLocalCards((prev) =>
       prev.map((c) => {
         if (c.dbId !== dbId) return c;
-        const target = resolveStatusesForCard(c.teamId).find((s) => s.label === toStatus);
+        const target = resolveStatusesForCard(c.subDepartmentId).find((s) => s.label === toStatus);
         const isComplete = !!target?.isComplete || toStatus === "Live";
         return { ...c, status: toStatus, isComplete };
       }),
@@ -946,24 +946,24 @@ export function BoardPage({
       });
   }, [localCards, timerTicketDbId, timerEntryId, stopTimerOnMove, queryClient, resolveStatusesForCard]);
 
-  const getCardTeamId = useCallback(
-    (dbId: string) => localCards.find((c) => c.dbId === dbId)?.teamId,
+  const getCardSubDepartmentId = useCallback(
+    (dbId: string) => localCards.find((c) => c.dbId === dbId)?.subDepartmentId,
     [localCards],
   );
 
   const { tryMove: moveCard, modal: labelChoiceModal } = useLinkedLabelMovePrompt({
     resolveStatusesForCard,
-    getCardTeamId,
+    getCardSubDepartmentId,
     onMove: doMove,
   });
 
   const scopedCards = useMemo(() => {
     let cards = localCards;
-    if (activeTeamId !== "all" && activeGroup) {
-      cards = cards.filter((c) => c.teamId === activeGroup.teamId);
+    if (activeSubDepartmentId !== "all" && activeGroup) {
+      cards = cards.filter((c) => c.subDepartmentId === activeGroup.subDepartmentId);
     }
     return cards;
-  }, [localCards, activeTeamId, activeGroup]);
+  }, [localCards, activeSubDepartmentId, activeGroup]);
 
   const people = useMemo(() => collectAssignees(scopedCards), [scopedCards]);
   const projects = useMemo(() => collectProjects(scopedCards), [scopedCards]);
@@ -1037,14 +1037,14 @@ export function BoardPage({
 
   const defaultCreateProjectId =
     projectFilter !== "all" &&
-    teamProjects.some((p) => p.id === projectFilter)
+    subDepartmentProjects.some((p) => p.id === projectFilter)
       ? projectFilter
       : undefined;
 
   // O(n) Map for team-count badges in the header — replaces per-team .filter() in render
-  const cardCountByTeam = useMemo(() => {
+  const cardCountBySubDepartment = useMemo(() => {
     const map = new Map<string, number>();
-    for (const c of localCards) map.set(c.teamId, (map.get(c.teamId) ?? 0) + 1);
+    for (const c of localCards) map.set(c.subDepartmentId, (map.get(c.subDepartmentId) ?? 0) + 1);
     return map;
   }, [localCards]);
 
@@ -1061,16 +1061,16 @@ export function BoardPage({
 
   return (
     <BoardDndProvider>
-      {createForStatus && activeTeamId && activeTeamId !== "all" && (
+      {createForStatus && activeSubDepartmentId && activeSubDepartmentId !== "all" && (
         <NewTicketModal
-          projects={teamProjects}
-          teamMembers={teamMembersForCreate}
-          defaultTeamId={activeTeamId}
+          projects={subDepartmentProjects}
+          subDepartmentMembers={subDepartmentMembersForCreate}
+          defaultSubDepartmentId={activeSubDepartmentId}
           defaultStatus={createForStatus}
           defaultProjectId={defaultCreateProjectId}
           lockProject={false}
           statuses={effectiveStatuses}
-          teamMembersForCreate={teamMembersForCreate}
+          subDepartmentMembersForCreate={subDepartmentMembersForCreate}
           membersLoading={membersLoading}
           onCreated={handleCreated}
           onClose={() => setCreateForStatus(null)}
@@ -1116,12 +1116,12 @@ export function BoardPage({
                 modules={modules}
                 moduleFilter={moduleFilter}
                 onModuleFilterChange={setModuleFilter}
-                teamBoardGroups={teamBoardGroups}
-                activeTeamId={activeTeamId}
-                onTeamChange={setActiveTeamId}
-                listTeamFilter="all"
-                onListTeamFilterChange={() => {}}
-                cardCountByTeam={cardCountByTeam}
+                subDepartmentBoardGroups={subDepartmentBoardGroups}
+                activeSubDepartmentId={activeSubDepartmentId}
+                onSubDepartmentChange={setActiveSubDepartmentId}
+                listSubDepartmentFilter="all"
+                onListSubDepartmentFilterChange={() => {}}
+                cardCountBySubDepartment={cardCountBySubDepartment}
                 priorityFilter={priorityFilter}
                 onPriorityFilterChange={setPriorityFilter}
                 dateFilter={dateFilter}
@@ -1199,8 +1199,8 @@ export function BoardPage({
                 status={status}
                 cards={filteredByStatus.get(status.label) ?? []}
                 onDrop={moveCard}
-                onAdd={activeTeamId === "all" ? undefined : setCreateForStatus}
-                membersForCreate={teamMembersForCreate}
+                onAdd={activeSubDepartmentId === "all" ? undefined : setCreateForStatus}
+                membersForCreate={subDepartmentMembersForCreate}
                 membersLoading={membersLoading}
               />
             ))}

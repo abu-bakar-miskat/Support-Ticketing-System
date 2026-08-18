@@ -27,7 +27,7 @@ export async function PATCH(
   const ticket = await prisma.ticket.findUnique({
     where: { id },
     include: {
-      team:    { select: { prefix: true, departmentId: true } },
+      subDepartment:    { select: { prefix: true, departmentId: true } },
       assignee:{ select: { id: true, name: true } },
       creator: { select: { id: true } },
       assignees: { select: { userId: true } },
@@ -142,11 +142,11 @@ export async function PATCH(
       return NextResponse.json({ error: "status must be a non-empty string" }, { status: 400 })
     }
     updateData.status = status.trim()
-    const teamStatus = await prisma.teamStatus.findFirst({
-      where: { teamId: ticket.teamId, label: updateData.status },
+    const subDepartmentStatus = await prisma.subDepartmentStatus.findFirst({
+      where: { subDepartmentId: ticket.subDepartmentId, label: updateData.status },
       select: { isComplete: true },
     })
-    updateData.closedAt = teamStatus?.isComplete ? (ticket.closedAt ?? new Date()) : null
+    updateData.closedAt = subDepartmentStatus?.isComplete ? (ticket.closedAt ?? new Date()) : null
   }
 
   if (hasPriority) {
@@ -259,13 +259,13 @@ export async function PATCH(
         select: {
           id: true,
           tenantId: true,
-          teamId: true,
+          subDepartmentId: true,
           projectId: true,
           parentId: true,
           assigneeId: true,
           creatorId: true,
           deletedAt: true,
-          team: { select: { departmentId: true } },
+          subDepartment: { select: { departmentId: true } },
           assignees: { select: { userId: true } },
         },
       })
@@ -307,8 +307,8 @@ export async function PATCH(
   // Moving off a status drops any labels linked to it (e.g. board drag-and-drop,
   // which changes status through this generic endpoint rather than /move).
   if (hasStatus && updateData.status !== ticket.status) {
-    const priorStatus = await prisma.teamStatus.findFirst({
-      where: { teamId: ticket.teamId, label: ticket.status },
+    const priorStatus = await prisma.subDepartmentStatus.findFirst({
+      where: { subDepartmentId: ticket.subDepartmentId, label: ticket.status },
       select: { allowedLabels: true },
     })
     if (priorStatus?.allowedLabels.length) {
@@ -344,7 +344,7 @@ export async function PATCH(
     where: { id },
     data: updateData as Prisma.TicketUncheckedUpdateInput,
     include: {
-      team:    { select: { prefix: true, name: true } },
+      subDepartment:    { select: { prefix: true, name: true } },
       assignee:{ select: { id: true, name: true, email: true } },
       project: { select: { id: true, name: true } },
       sprint:  { select: { id: true, name: true } },
@@ -482,7 +482,7 @@ export async function PATCH(
           ticketId: id,
           message: ticket.title,
         })
-        const humanId = `${updated.team.prefix}-${ticket.ticketNumber}`
+        const humanId = `${updated.subDepartment.prefix}-${ticket.ticketNumber}`
         sendAssignmentEmail({
           to: updated.assignee!.email,
           assigneeName: updated.assignee!.name,
@@ -492,7 +492,7 @@ export async function PATCH(
           ticketTitle: ticket.title,
           assignedByName: profile.name,
           assignedById: profile.id,
-          departmentId: ticket.team.departmentId,
+          departmentId: ticket.subDepartment.departmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       })
     }
@@ -500,13 +500,13 @@ export async function PATCH(
 
   if (publishing) {
     events.push(appendTicketEvent(id, profile.id, "TICKET_CREATED", {
-      humanId: `${updated.team.prefix}-${ticket.ticketNumber}`,
+      humanId: `${updated.subDepartment.prefix}-${ticket.ticketNumber}`,
       title: updated.title,
       status: updated.status,
     }))
 
     after(async () => {
-      const humanId = `${updated.team.prefix}-${ticket.ticketNumber}`
+      const humanId = `${updated.subDepartment.prefix}-${ticket.ticketNumber}`
       const primary = updated.assignee
       if (primary && primary.id !== profile.id) {
         await createNotification({
@@ -525,7 +525,7 @@ export async function PATCH(
           ticketTitle: updated.title,
           assignedByName: profile.name,
           assignedById: profile.id,
-          departmentId: ticket.team.departmentId,
+          departmentId: ticket.subDepartment.departmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }
 
@@ -552,7 +552,7 @@ export async function PATCH(
           ticketTitle: updated.title,
           assignedByName: profile.name,
           assignedById: profile.id,
-          departmentId: ticket.team.departmentId,
+          departmentId: ticket.subDepartment.departmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }
     })
@@ -562,7 +562,7 @@ export async function PATCH(
   // create-sub-ticket flow so linked and created sub-tickets look alike.
   if (hasParentId && updateData.parentId && updateData.parentId !== ticket.parentId) {
     events.push(appendTicketEvent(updateData.parentId, profile.id, "SUBTICKET_ADDED", {
-      humanId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+      humanId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
       title: ticket.title,
       subTicketId: id,
     }))
@@ -595,12 +595,12 @@ export async function DELETE(
       title: true,
       ticketNumber: true,
       tenantId: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true, prefix: true } },
+      subDepartment: { select: { departmentId: true, prefix: true } },
       assignees: { select: { userId: true } },
     },
   })
@@ -618,7 +618,7 @@ export async function DELETE(
   // Already deleted (e.g. a double-submit) — succeed idempotently.
   if (ticket.deletedAt) return NextResponse.json({ ok: true })
 
-  const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+  const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
   // Soft-delete is the only critical write. Keeping it outside a transaction
   // avoids P2028 (couldn't acquire a connection to start the tx) under pool

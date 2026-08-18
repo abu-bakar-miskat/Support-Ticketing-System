@@ -25,7 +25,7 @@ export async function POST(
           id: true,
           assigneeId: true,
           assignees: { select: { userId: true } },
-          team: { select: { departmentId: true } },
+          subDepartment: { select: { departmentId: true } },
         },
       },
     },
@@ -50,7 +50,7 @@ export async function POST(
   if (!isAssignee) {
     const managerRow = await prisma.departmentManager.findFirst({
       where: {
-        departmentId: message.ticket.team.departmentId,
+        departmentId: message.ticket.subDepartment.departmentId,
         userId: profile.id,
       },
       select: { userId: true },

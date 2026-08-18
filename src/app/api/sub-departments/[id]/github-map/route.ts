@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canReadTeamData } from "@/lib/dept-scope"
-import { canManageTeam } from "@/lib/team-manage"
+import { canReadSubDepartmentData } from "@/lib/dept-scope"
+import { canManageSubDepartment } from "@/lib/sub-department-manage"
 import {
   resolveTargetLabel,
   type GitHubStatusEvent,
-  type TeamGitHubMapRow,
+  type SubDepartmentGitHubMapRow,
 } from "@/lib/github/status-map"
 
 const EVENTS: GitHubStatusEvent[] = ["prOpened", "prReadyForReview", "prMerged"]
@@ -19,16 +19,16 @@ export async function GET(
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id } = await params
-  if (!(await canReadTeamData(profile, id))) {
+  if (!(await canReadSubDepartmentData(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const statuses = await prisma.teamStatus.findMany({
-    where: { teamId: id },
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: id },
     orderBy: { order: "asc" },
     select: { label: true, order: true, isComplete: true },
   })
-  const config = await prisma.teamGitHubStatusMap.findUnique({ where: { teamId: id } })
+  const config = await prisma.subDepartmentGitHubStatusMap.findUnique({ where: { subDepartmentId: id } })
 
   const defaults = Object.fromEntries(
     EVENTS.map((e) => [e, resolveTargetLabel(e, statuses, null)]),
@@ -43,17 +43,17 @@ export async function PUT(
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id } = await params
-  if (!(await canManageTeam(profile, id))) {
+  if (!(await canManageSubDepartment(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const body = (await request.json().catch(() => null)) as Partial<TeamGitHubMapRow> | null
+  const body = (await request.json().catch(() => null)) as Partial<SubDepartmentGitHubMapRow> | null
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const statuses = await prisma.teamStatus.findMany({
-    where: { teamId: id },
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: id },
     select: { label: true },
   })
   const labels = new Set(statuses.map((s) => s.label))
@@ -74,9 +74,9 @@ export async function PUT(
     }
   }
 
-  const saved = await prisma.teamGitHubStatusMap.upsert({
-    where: { teamId: id },
-    create: { teamId: id, ...data },
+  const saved = await prisma.subDepartmentGitHubStatusMap.upsert({
+    where: { subDepartmentId: id },
+    create: { subDepartmentId: id, ...data },
     update: data,
   })
   return NextResponse.json(saved)

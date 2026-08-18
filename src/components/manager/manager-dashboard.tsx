@@ -12,7 +12,7 @@ import {
   type AttentionTab,
   type OverdueGroup, type ReviewGroup, type SimpleTicket, type JoinRequest,
 } from "./attention-section";
-import { TeamTodaySection } from "./team-today-section";
+import { SubDepartmentTodaySection } from "./sub-department-today-section";
 import { ProjectsSection } from "./projects-section";
 import { ActivityTodaySection, type ActivityItem } from "./activity-today-section";
 import type { Distribution, MemberWorkload, ProjectHealth } from "./aggregate";
@@ -80,7 +80,7 @@ function StateOfPlay({ d }: { d: Distribution }) {
 export function ManagerDashboard({
   managerName, departmentName, digest, stats, distribution,
   overdueGroups, unassignedTickets, reviewGroups, joinRequests,
-  members, projects, activity, activityTotal, noTeams,
+  members, projects, activity, activityTotal, noSubDepartments,
 }: {
   managerName: string;
   departmentName?: string | null;
@@ -95,7 +95,7 @@ export function ManagerDashboard({
   projects: ProjectHealth[];
   activity: ActivityItem[];
   activityTotal: number;
-  noTeams: boolean;
+  noSubDepartments: boolean;
 }) {
   const firstName = managerName.split(" ")[0];
   const timeGreeting = useLondonGreeting();
@@ -174,7 +174,7 @@ export function ManagerDashboard({
         <StateOfPlay d={distribution} />
       </header>
 
-      {noTeams ? (
+      {noSubDepartments ? (
         <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-8 text-center">
           <p className="font-sans text-[13px] text-pen-muted">No teams in your scope.</p>
         </div>
@@ -191,7 +191,7 @@ export function ManagerDashboard({
 
           {/* Right rail — each card scrolls internally; avoid clipping headers */}
           <div className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-5 xl:self-start">
-            <TeamTodaySection members={members} />
+            <SubDepartmentTodaySection members={members} />
             <ProjectsSection projects={projects} />
             <ActivityTodaySection items={activity} total={activityTotal} />
           </div>

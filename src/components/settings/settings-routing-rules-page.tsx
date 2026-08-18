@@ -15,8 +15,8 @@ export type RoutingRule = {
   index: number;
   conditionType: string;
   conditionValue: string;
-  team: string;
-  teamDotClassName: string;
+  subDepartment: string;
+  subDepartmentDotClassName: string;
   priority: string | null;
   enabled: boolean;
 };
@@ -79,11 +79,11 @@ function RoutingRuleRow({ rule }: { rule: RoutingRule }) {
           aria-hidden
         />
         <span
-          className={cn("size-2 shrink-0 rounded-[2px]", rule.teamDotClassName)}
+          className={cn("size-2 shrink-0 rounded-[2px]", rule.subDepartmentDotClassName)}
           aria-hidden
         />
         <span className="min-w-0 truncate font-sans text-[11.5px] font-semibold text-pen-foreground">
-          {rule.team}
+          {rule.subDepartment}
         </span>
         <span className="min-w-0 flex-1 sm:flex-[1_0_0]" aria-hidden />
         <DropdownMenu>

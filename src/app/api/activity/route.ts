@@ -20,14 +20,14 @@ export async function GET(req: NextRequest) {
   const take = 50;
 
   const deptScope = await getProfileDeptScope(profile);
-  const teamIds = deptScope?.teamIds ?? [];
+  const subDepartmentIds = deptScope?.subDepartmentIds ?? [];
 
   function parseDate(s: string, endOfDay = false): Date {
     if (s.includes("T")) return new Date(s);
     return new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00.000"));
   }
 
-  const where = buildActivityLogWhere(profile, teamIds, {
+  const where = buildActivityLogWhere(profile, subDepartmentIds, {
     ...(from ? { from: parseDate(from, false) } : {}),
     ...(to ? { to: parseDate(to, true) } : {}),
     projectId,
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
           ticketNumber: true,
           status: true,
           priority: true,
-          team: { select: { id: true, name: true, prefix: true } },
+          subDepartment: { select: { id: true, name: true, prefix: true } },
           project: { select: { id: true, name: true, color: true } },
         },
       },
@@ -75,12 +75,12 @@ export async function GET(req: NextRequest) {
     },
     ticket: {
       id: row.ticket.id,
-      humanId: `${row.ticket.team.prefix}-${row.ticket.ticketNumber}`,
+      humanId: `${row.ticket.subDepartment.prefix}-${row.ticket.ticketNumber}`,
       title: row.ticket.title,
       status: row.ticket.status,
       priority: row.ticket.priority,
-      teamId: row.ticket.team.id,
-      teamName: row.ticket.team.name,
+      subDepartmentId: row.ticket.subDepartment.id,
+      subDepartmentName: row.ticket.subDepartment.name,
       projectId: row.ticket.project?.id ?? null,
       projectName: row.ticket.project?.name ?? null,
       projectColor: row.ticket.project?.color ?? null,

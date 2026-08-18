@@ -37,7 +37,7 @@ export type ModuleTicket = {
   createdAt: string
   closedAt: string | null
   isDone: boolean
-  team: { prefix: string }
+  subDepartment: { prefix: string }
   assignee: { id: string; name: string; avatarUrl: string | null } | null
 }
 

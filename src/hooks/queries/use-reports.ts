@@ -1,13 +1,13 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { fetchTeamTimeReport, fetchReportsOverview } from "@/lib/api/reports"
+import { fetchSubDepartmentTimeReport, fetchReportsOverview } from "@/lib/api/reports"
 import { reportKeys } from "./keys"
 
-export function useTeamTimeReport(from: string, to: string, projectId = "all", personId = "all") {
+export function useSubDepartmentTimeReport(from: string, to: string, projectId = "all", personId = "all") {
   return useQuery({
-    queryKey: reportKeys.teamTime(from, to, projectId, personId),
-    queryFn: () => fetchTeamTimeReport(from, to, projectId, personId),
+    queryKey: reportKeys.subDepartmentTime(from, to, projectId, personId),
+    queryFn: () => fetchSubDepartmentTimeReport(from, to, projectId, personId),
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,

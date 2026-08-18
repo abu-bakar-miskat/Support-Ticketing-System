@@ -44,19 +44,19 @@ import {
 import { cn } from "@/lib/utils";
 import {
   getAdminUsers,
-  getAdminTeamMembers,
+  getAdminSubDepartmentMembers,
   updateAdminUser,
-  addAdminTeamMember,
-  removeAdminTeamMember,
-  createAdminTeam,
-  updateAdminTeam,
-  deleteAdminTeam,
+  addAdminSubDepartmentMember,
+  removeAdminSubDepartmentMember,
+  createAdminSubDepartment,
+  updateAdminSubDepartment,
+  deleteAdminSubDepartment,
   handleDepartmentJoinRequest,
 } from "@/lib/api/admin";
 import { ProjectAccessPicker } from "@/components/settings/settings-departments-page";
 import { notifEvents } from "@/store";
 
-export type TeamRow = {
+export type SubDepartmentRow = {
   id: string;
   name: string;
   prefix: string;
@@ -73,7 +73,7 @@ export type PendingRequest = {
   id: string;
   departmentId: string;
   departmentName: string;
-  teams: { id: string; name: string }[];
+  subDepartments: { id: string; name: string }[];
   userId: string;
   userName: string;
   userEmail: string;
@@ -252,8 +252,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TeamAvatar({ name, avatarUrl, role, team }: { name: string; color?: string; avatarUrl?: string | null; role?: string; team?: string }) {
-  return <UserAvatar name={name} avatarUrl={avatarUrl} size={24} meta={{ role, team }} />;
+function SubDepartmentAvatar({ name, avatarUrl, role, subDepartment }: { name: string; color?: string; avatarUrl?: string | null; role?: string; subDepartment?: string }) {
+  return <UserAvatar name={name} avatarUrl={avatarUrl} size={24} meta={{ role, subDepartment }} />;
 }
 
 function LeadCell({ leads }: { leads: { name: string; avatarUrl: string | null }[] }) {
@@ -264,7 +264,7 @@ function LeadCell({ leads }: { leads: { name: string; avatarUrl: string | null }
     const lead = leads[0];
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <TeamAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
+        <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
         <span className="truncate font-sans text-xs text-pen-foreground">{lead.name}</span>
       </div>
     );
@@ -370,11 +370,11 @@ function RoleHeader({
 
 type ModalMode =
   | { type: "create" }
-  | { type: "edit"; team: TeamRow }
-  | { type: "assign"; team: TeamRow }
-  | { type: "members"; team: TeamRow };
+  | { type: "edit"; subDepartment: SubDepartmentRow }
+  | { type: "assign"; subDepartment: SubDepartmentRow }
+  | { type: "members"; subDepartment: SubDepartmentRow };
 
-function TeamModal({
+function SubDepartmentModal({
   mode,
   departments,
   onClose,
@@ -386,11 +386,11 @@ function TeamModal({
   onSuccess: () => void;
 }) {
   const isEdit = mode.type === "edit";
-  const [name, setName] = useState(isEdit ? mode.team.name : "");
-  const [prefix, setPrefix] = useState(isEdit ? mode.team.prefix : "");
-  const [color, setColor] = useState(isEdit ? mode.team.color : PRESET_COLORS[0]);
+  const [name, setName] = useState(isEdit ? mode.subDepartment.name : "");
+  const [prefix, setPrefix] = useState(isEdit ? mode.subDepartment.prefix : "");
+  const [color, setColor] = useState(isEdit ? mode.subDepartment.color : PRESET_COLORS[0]);
   const [departmentId, setDepartmentId] = useState(
-    isEdit ? mode.team.departmentId : (departments[0]?.id ?? ""),
+    isEdit ? mode.subDepartment.departmentId : (departments[0]?.id ?? ""),
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -411,9 +411,9 @@ function TeamModal({
     setSaving(true);
     try {
       if (isEdit) {
-        await updateAdminTeam(mode.team.id, { name, prefix, color, departmentId });
+        await updateAdminSubDepartment(mode.subDepartment.id, { name, prefix, color, departmentId });
       } else {
-        await createAdminTeam({ name, prefix, color, departmentId });
+        await createAdminSubDepartment({ name, prefix, color, departmentId });
       }
       onSuccess();
     } catch (err) {
@@ -561,12 +561,12 @@ type MemberEntry = {
   avatarUrl: string | null;
 };
 
-function TeamMembersModal({
-  team,
+function SubDepartmentMembersModal({
+  subDepartment,
   isAdmin,
   onClose,
 }: {
-  team: TeamRow;
+  subDepartment: SubDepartmentRow;
   isAdmin: boolean;
   onClose: () => void;
 }) {
@@ -583,7 +583,7 @@ function TeamMembersModal({
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
-    getAdminTeamMembers(team.id)
+    getAdminSubDepartmentMembers(subDepartment.id)
       .then((data: any[]) => {
         setMembers(
           data.map((m) => ({
@@ -600,7 +600,7 @@ function TeamMembersModal({
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [team.id]);
+  }, [subDepartment.id]);
 
   function startEdit(m: MemberEntry) {
     setEditingId(m.userId);
@@ -622,7 +622,7 @@ function TeamMembersModal({
       }
 
       try {
-        await addAdminTeamMember(team.id, userId);
+        await addAdminSubDepartmentMember(subDepartment.id, userId);
       } catch {
         setError("Failed to save");
         return;
@@ -649,7 +649,7 @@ function TeamMembersModal({
 
   async function doRemove(userId: string) {
     try {
-      await removeAdminTeamMember(team.id, userId);
+      await removeAdminSubDepartmentMember(subDepartment.id, userId);
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
       router.refresh();
     } catch {
@@ -671,9 +671,9 @@ function TeamMembersModal({
       open={!!confirmRemove}
       onOpenChange={(open) => { if (!open) setConfirmRemove(null); }}
       title="Remove member"
-      description={confirmRemove ? `Remove ${confirmRemove.name} from ${team.name}?` : ""}
+      description={confirmRemove ? `Remove ${confirmRemove.name} from ${subDepartment.name}?` : ""}
       confirmLabel="Remove"
-      successMessage={confirmRemove ? `${confirmRemove.name} removed from ${team.name}` : undefined}
+      successMessage={confirmRemove ? `${confirmRemove.name} removed from ${subDepartment.name}` : undefined}
       onConfirm={async () => { if (confirmRemove) await doRemove(confirmRemove.userId); }}
     />
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -686,14 +686,14 @@ function TeamMembersModal({
         <div className="flex shrink-0 items-center gap-3 border-b border-pen-card-border px-6 py-4">
           <div
             className="size-3 shrink-0 rounded-[3px]"
-            style={{ backgroundColor: team.color }}
+            style={{ backgroundColor: subDepartment.color }}
           />
           <div className="min-w-0 flex-1">
             <h2 className="pen-text-modal-title">
-              {team.name}
+              {subDepartment.name}
             </h2>
             <p className="font-sans text-[11.5px] text-pen-subtle">
-              {team.prefix} · {team.department}
+              {subDepartment.prefix} · {subDepartment.department}
             </p>
           </div>
           <span className="font-sans text-[11.5px] text-pen-subtle">
@@ -744,7 +744,7 @@ function TeamMembersModal({
                     className="border-b border-[#f0f4f8] bg-pen-bg/60 px-6 py-3 dark:border-[#3a3a37]"
                   >
                     <div className="mb-3 flex items-center gap-3">
-                      <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, team: team.name }} />
+                      <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, subDepartment: subDepartment.name }} />
                       <div className="min-w-0">
                         <p className="font-sans text-[13px] font-semibold text-pen-foreground">
                           {m.name}
@@ -851,7 +851,7 @@ function TeamMembersModal({
                   >
                     {/* Member */}
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, team: team.name }} />
+                      <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, subDepartment: subDepartment.name }} />
                       <div className="min-w-0">
                         <p className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
                           {m.nickname ?? m.name}
@@ -935,16 +935,16 @@ type ProfileOption = {
   name: string;
   email: string;
   role: string;
-  team: { id: string; name: string } | null;
+  subDepartment: { id: string; name: string } | null;
   avatarUrl?: string | null;
 };
 
 function AssignMemberModal({
-  team,
+  subDepartment,
   onClose,
   onSuccess,
 }: {
-  team: TeamRow;
+  subDepartment: SubDepartmentRow;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -961,7 +961,7 @@ function AssignMemberModal({
   useEffect(() => {
     Promise.all([
       getAdminUsers(),
-      getAdminTeamMembers(team.id),
+      getAdminSubDepartmentMembers(subDepartment.id),
     ])
       .then(([allUsers, currentMembers]: [ProfileOption[], { id: string; userId?: string }[]]) => {
         setProfiles(allUsers);
@@ -970,12 +970,12 @@ function AssignMemberModal({
         searchRef.current?.focus();
       })
       .catch(() => setLoading(false));
-  }, [team.id]);
+  }, [subDepartment.id]);
 
   const filtered = profiles.filter(
     (p) =>
       !existingIds.has(p.id) &&
-      p.team === null &&
+      p.subDepartment === null &&
       (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         p.email.toLowerCase().includes(debouncedSearch.toLowerCase())),
   );
@@ -999,7 +999,7 @@ function AssignMemberModal({
     try {
       try {
         await Promise.all(
-          [...selectedIds].map((userId) => addAdminTeamMember(team.id, userId)),
+          [...selectedIds].map((userId) => addAdminSubDepartmentMember(subDepartment.id, userId)),
         );
         onSuccess();
       } catch {
@@ -1029,7 +1029,7 @@ function AssignMemberModal({
             <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
               Team:{" "}
               <span className="font-semibold text-pen-foreground">
-                {team.name}
+                {subDepartment.name}
               </span>
             </p>
           </div>
@@ -1093,7 +1093,7 @@ function AssignMemberModal({
               ) : filtered.length === 0 ? (
                 <p className="px-3 py-4 text-center font-sans text-[11.5px] text-pen-subtle">
                   {profiles.every(
-                    (p) => p.team !== null || existingIds.has(p.id),
+                    (p) => p.subDepartment !== null || existingIds.has(p.id),
                   )
                     ? "All users are already assigned to a team"
                     : "No users found"}
@@ -1212,7 +1212,7 @@ function JoinRequestsSection({
   const router = useRouter();
   const [requests, setRequests] = useState(initialRequests);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState("");
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>("staff");
   const [nickname, setNickname] = useState("");
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -1243,13 +1243,13 @@ function JoinRequestsSection({
 
   if (requests.length === 0) return null;
 
-  const needsTeam = selectedRole === "lead" || selectedRole === "staff";
+  const needsSubDepartment = selectedRole === "lead" || selectedRole === "staff";
   const isCrossAccess = selectedRole === "cross-access";
 
   function openExpand(req: PendingRequest) {
     const id = req.id;
     setExpanded(id === expanded ? null : id);
-    setSelectedTeamId(req.teams[0]?.id ?? "");
+    setSelectedSubDepartmentId(req.subDepartments[0]?.id ?? "");
     setSelectedRole("staff");
     setNickname("");
     setApproveError(null);
@@ -1264,7 +1264,7 @@ function JoinRequestsSection({
     req: PendingRequest,
     action: "approve" | "reject",
   ) {
-    if (action === "approve" && needsTeam && !isCrossAccess && !selectedTeamId) {
+    if (action === "approve" && needsSubDepartment && !isCrossAccess && !selectedSubDepartmentId) {
       setApproveError("Please select a team");
       return;
     }
@@ -1281,7 +1281,7 @@ function JoinRequestsSection({
           ...(action === "approve"
             ? {
                 role: selectedRole,
-                ...(needsTeam ? { teamId: selectedTeamId } : {}),
+                ...(needsSubDepartment ? { subDepartmentId: selectedSubDepartmentId } : {}),
                 nickname: nickname.trim() || null,
                 ...(isCrossAccess
                   ? {
@@ -1372,8 +1372,8 @@ function JoinRequestsSection({
                             type="button"
                             onClick={() => {
                               setSelectedRole(r.value);
-                              if (r.value === "admin" || r.value === "manager" || r.value === "cross-access") setSelectedTeamId("");
-                              else setSelectedTeamId(req.teams[0]?.id ?? "");
+                              if (r.value === "admin" || r.value === "manager" || r.value === "cross-access") setSelectedSubDepartmentId("");
+                              else setSelectedSubDepartmentId(req.subDepartments[0]?.id ?? "");
                               setApproveError(null);
                             }}
                             className={cn(
@@ -1401,20 +1401,20 @@ function JoinRequestsSection({
                   {/* Team + Nickname row */}
                   <div className="flex flex-wrap items-end gap-3">
                     {/* Team — only for lead/staff */}
-                    {needsTeam && (
+                    {needsSubDepartment && (
                       <div className="flex flex-col gap-1.5">
                         <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
                           Team
                         </label>
                         <SearchableSelect
-                          value={selectedTeamId}
-                          onChange={setSelectedTeamId}
+                          value={selectedSubDepartmentId}
+                          onChange={setSelectedSubDepartmentId}
                           options={
-                            req.teams.length === 0
+                            req.subDepartments.length === 0
                               ? [{ value: "", label: "No teams available" }]
-                              : req.teams.map((t) => ({ value: t.id, label: t.name }))
+                              : req.subDepartments.map((t) => ({ value: t.id, label: t.name }))
                           }
-                          disabled={req.teams.length === 0}
+                          disabled={req.subDepartments.length === 0}
                           className="min-w-[160px] bg-pen-bg"
                           aria-label="Team"
                         />
@@ -1540,14 +1540,14 @@ function JoinRequestsSection({
   );
 }
 
-export function SettingsTeamsPage({
-  teams,
+export function SettingsSubDepartmentsPage({
+  subDepartments,
   departments,
   isAdmin,
   isManager = false,
   pendingRequests = [],
 }: {
-  teams: TeamRow[];
+  subDepartments: SubDepartmentRow[];
   departments: Department[];
   isAdmin: boolean;
   isManager?: boolean;
@@ -1557,15 +1557,15 @@ export function SettingsTeamsPage({
   const router = useRouter();
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [confirmDelete, setConfirmDelete] = useState<TeamRow | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<SubDepartmentRow | null>(null);
 
   function refresh() {
     setModal(null);
     startTransition(() => router.refresh());
   }
 
-  async function doDeleteTeam(team: TeamRow) {
-    await deleteAdminTeam(team.id);
+  async function doDeleteSubDepartment(subDepartment: SubDepartmentRow) {
+    await deleteAdminSubDepartment(subDepartment.id);
     startTransition(() => router.refresh());
     setConfirmDelete(null);
   }
@@ -1579,10 +1579,10 @@ export function SettingsTeamsPage({
         description={confirmDelete ? `Delete "${confirmDelete.name}"? This cannot be undone.` : ""}
         confirmLabel="Delete"
         successMessage={confirmDelete ? `"${confirmDelete.name}" deleted` : undefined}
-        onConfirm={async () => { if (confirmDelete) await doDeleteTeam(confirmDelete); }}
+        onConfirm={async () => { if (confirmDelete) await doDeleteSubDepartment(confirmDelete); }}
       />
       {modal && modal.type !== "assign" && modal.type !== "members" && (
-        <TeamModal
+        <SubDepartmentModal
           mode={modal}
           departments={departments}
           onClose={() => setModal(null)}
@@ -1591,14 +1591,14 @@ export function SettingsTeamsPage({
       )}
       {modal?.type === "assign" && (
         <AssignMemberModal
-          team={modal.team}
+          subDepartment={modal.subDepartment}
           onClose={() => setModal(null)}
           onSuccess={refresh}
         />
       )}
       {modal?.type === "members" && (
-        <TeamMembersModal
-          team={modal.team}
+        <SubDepartmentMembersModal
+          subDepartment={modal.subDepartment}
           isAdmin={isAdmin}
           onClose={() => setModal(null)}
         />
@@ -1647,7 +1647,7 @@ export function SettingsTeamsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {teams.length === 0 ? (
+              {subDepartments.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={5} className="px-[18px] py-0">
                     <div className="flex h-[52px] items-center">
@@ -1658,42 +1658,42 @@ export function SettingsTeamsPage({
                   </TableCell>
                 </TableRow>
               ) : null}
-              {teams.map((team) => (
+              {subDepartments.map((subDepartment) => (
                 <TableRow
-                  key={team.id}
+                  key={subDepartment.id}
                   className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
                 >
                   <TableCell className="px-[18px] py-0">
                     <div className="flex h-[52px] items-center gap-2.5">
                       <span
                         className="size-3 shrink-0 rounded-[3px]"
-                        style={{ backgroundColor: team.color }}
+                        style={{ backgroundColor: subDepartment.color }}
                         aria-hidden
                       />
                       <span className="font-sans text-[13px] font-semibold text-pen-foreground">
-                        {team.name}
+                        {subDepartment.name}
                       </span>
                       <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
-                        {team.prefix}
+                        {subDepartment.prefix}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="py-0">
                     <div className="flex h-[52px] min-w-0 items-center">
-                      <LeadCell leads={team.leads} />
+                      <LeadCell leads={subDepartment.leads} />
                     </div>
                   </TableCell>
                   <TableCell className="py-0">
                     <div className="flex h-[52px] items-center">
                       <MemberStack
-                        members={team.members}
-                        extra={team.extraMembers}
+                        members={subDepartment.members}
+                        extra={subDepartment.extraMembers}
                       />
                     </div>
                   </TableCell>
                   <TableCell className="py-0">
                     <div className="flex h-[52px] flex-wrap items-center gap-[5px]">
-                      <ProjectPill label={team.department} />
+                      <ProjectPill label={subDepartment.department} />
                     </div>
                   </TableCell>
                   <TableCell className="py-0 pr-[18px] text-right">
@@ -1703,7 +1703,7 @@ export function SettingsTeamsPage({
                           <DropdownMenuTrigger
                             type="button"
                             className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
-                            aria-label={`Actions for ${team.name}`}
+                            aria-label={`Actions for ${subDepartment.name}`}
                           >
                             <MoreHorizontal className="size-3.5" />
                           </DropdownMenuTrigger>
@@ -1711,7 +1711,7 @@ export function SettingsTeamsPage({
                             <DropdownMenuItem
                               className="font-sans text-xs"
                               onClick={() =>
-                                setModal({ type: "members", team })
+                                setModal({ type: "members", subDepartment })
                               }
                             >
                               View members
@@ -1721,7 +1721,7 @@ export function SettingsTeamsPage({
                                 <DropdownMenuItem
                                   className="font-sans text-xs"
                                   onClick={() =>
-                                    setModal({ type: "edit", team })
+                                    setModal({ type: "edit", subDepartment })
                                   }
                                 >
                                   Edit team
@@ -1729,7 +1729,7 @@ export function SettingsTeamsPage({
                                 <DropdownMenuItem
                                   className="font-sans text-xs"
                                   onClick={() =>
-                                    setModal({ type: "assign", team })
+                                    setModal({ type: "assign", subDepartment })
                                   }
                                 >
                                   Assign member
@@ -1737,7 +1737,7 @@ export function SettingsTeamsPage({
                                 <DropdownMenuItem
                                   variant="destructive"
                                   className="font-sans text-xs"
-                                  onClick={() => setConfirmDelete(team)}
+                                  onClick={() => setConfirmDelete(subDepartment)}
                                 >
                                   Delete team
                                 </DropdownMenuItem>

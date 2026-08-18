@@ -14,12 +14,12 @@ export function TicketAccessDenied({
   reason,
   ticketRef,
   deptName,
-  teamName,
+  subDepartmentName,
 }: {
   reason: Reason;
   ticketRef: string;
   deptName?: string | null;
-  teamName?: string | null;
+  subDepartmentName?: string | null;
 }) {
   const messages: Record<Reason, { title: string; body: string }> = {
     no_dept_access: {
@@ -28,10 +28,10 @@ export function TicketAccessDenied({
         ? `This ticket belongs to the "${deptName}" department. You are not a manager of that department and have not been granted cross-department access to it.`
         : "This ticket belongs to a department you don't have access to. Ask a manager of that department to grant you cross-department access.",
     },
-    no_team_access: {
+    no_subDepartment_access: {
       title: "Team access required",
-      body: teamName
-        ? `This ticket is managed by the "${teamName}" team. You are not a member of that team, not assigned to this ticket, and don't have cross-department access to view it.`
+      body: subDepartmentName
+        ? `This ticket is managed by the "${subDepartmentName}" team. You are not a member of that team, not assigned to this ticket, and don't have cross-department access to view it.`
         : "You are not a member of the team that owns this ticket, not assigned to it, and don't have cross-department access to view it.",
     },
     cross_access_needed: {

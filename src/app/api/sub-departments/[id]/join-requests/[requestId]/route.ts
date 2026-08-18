@@ -10,12 +10,12 @@ export async function PATCH(
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const { id: teamId, requestId } = await params
+  const { id: subDepartmentId, requestId } = await params
 
   // Must be admin or manager of this team
   if (profile.role !== "admin") {
-    const membership = await (prisma.teamMembership as any).findUnique({
-      where: { userId_teamId: { userId: profile.id, teamId } },
+    const membership = await (prisma.subDepartmentMembership as any).findUnique({
+      where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId } },
     })
     if (!membership || (membership.role !== "manager" && membership.role !== "lead")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -23,10 +23,10 @@ export async function PATCH(
   }
 
   const joinRequest = await prisma.joinRequest.findFirst({
-    where: { id: requestId, teamId },
+    where: { id: requestId, subDepartmentId },
     include: {
       user: { select: { name: true } },
-      team: { select: { name: true, departmentId: true } },
+      subDepartment: { select: { name: true, departmentId: true } },
     },
   })
   if (!joinRequest) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -43,7 +43,7 @@ export async function PATCH(
   }
 
   if (action === "approve" && crossAccess) {
-    const departmentId = joinRequest.team?.departmentId
+    const departmentId = joinRequest.subDepartment?.departmentId
     if (!departmentId) {
       return NextResponse.json({ error: "Team has no department" }, { status: 400 })
     }
@@ -63,7 +63,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `approved: Your request to join ${joinRequest.team?.name ?? "the team"} was approved. You've been granted cross-department access.`,
+          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was approved. You've been granted cross-department access.`,
         },
       }),
     ])
@@ -74,11 +74,11 @@ export async function PATCH(
     const trimmedName = nickname?.trim() || null
 
     await prisma.$transaction([
-      (prisma.teamMembership as any).upsert({
-        where: { userId_teamId: { userId: joinRequest.userId, teamId } },
+      (prisma.subDepartmentMembership as any).upsert({
+        where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId } },
         create: {
           userId: joinRequest.userId,
-          teamId,
+          subDepartmentId,
           role: "staff",
           nickname: trimmedName,
           isActive: isActive ?? true,
@@ -94,8 +94,8 @@ export async function PATCH(
       }),
       // Set Profile.teamId if unset
       prisma.profile.updateMany({
-        where: { id: joinRequest.userId, teamId: null },
-        data: { teamId },
+        where: { id: joinRequest.userId, subDepartmentId: null },
+        data: { subDepartmentId },
       }),
       prisma.notification.create({
         data: {
@@ -103,7 +103,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `approved: Your request to join ${joinRequest.team?.name ?? "the team"} was approved`,
+          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was approved`,
         },
       }),
     ])
@@ -119,7 +119,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `rejected: Your request to join ${joinRequest.team?.name ?? "the team"} was not approved`,
+          message: `rejected: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was not approved`,
         },
       }),
     ])

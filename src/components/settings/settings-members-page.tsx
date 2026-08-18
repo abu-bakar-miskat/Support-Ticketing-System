@@ -22,7 +22,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma/enums";
-import { updateAdminUser, deleteAdminUser, removeAdminTeamMember, removeAdminDeptMember, addAdminTeamMember, grantDepartmentAccess, revokeDepartmentAccess } from "@/lib/api/admin";
+import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, grantDepartmentAccess, revokeDepartmentAccess } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
@@ -34,8 +34,8 @@ export type MemberRow = {
   color: string;
   avatarUrl?: string | null;
   role: Role;
-  teams: string[];
-  teamId?: string | null;
+  subDepartments: string[];
+  subDepartmentId?: string | null;
   department?: string | null;
   departmentId?: string | null;
   location?: string | null;
@@ -45,7 +45,7 @@ export type MemberRow = {
   /** True when this person is from another department with a cross-access grant */
   isCrossAccess?: boolean;
   /** Per-team doNotAssign flags (used inside Configure Schedule panel) */
-  teamMemberships?: { teamId: string; teamName: string; doNotAssign: boolean }[];
+  subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
 };
 
 const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
@@ -80,8 +80,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MemberAvatar({ name, color, avatarUrl, role, team, userId }: { name: string; color: string; avatarUrl?: string | null; role?: string; team?: string; userId?: string }) {
-  return <UserAvatar name={name} avatarUrl={avatarUrl} size={28} userId={userId} meta={{ role, team }} />;
+function MemberAvatar({ name, color, avatarUrl, role, subDepartment, userId }: { name: string; color: string; avatarUrl?: string | null; role?: string; subDepartment?: string; userId?: string }) {
+  return <UserAvatar name={name} avatarUrl={avatarUrl} size={28} userId={userId} meta={{ role, subDepartment }} />;
 }
 
 type Candidate = {
@@ -94,13 +94,13 @@ type Candidate = {
 
 function AddMemberModal({
   departmentId,
-  availableTeams,
+  availableSubDepartments,
   isAdmin,
   isManager,
   onClose,
 }: {
   departmentId: string | null;
-  availableTeams: { id: string; name: string }[];
+  availableSubDepartments: { id: string; name: string }[];
   isAdmin: boolean;
   isManager: boolean;
   onClose: () => void;
@@ -111,7 +111,7 @@ function AddMemberModal({
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [accessType, setAccessType] = useState<"full" | "guest">("full");
-  const [teamId, setTeamId] = useState(availableTeams[0]?.id ?? "");
+  const [subDepartmentId, setSubDepartmentId] = useState(availableSubDepartments[0]?.id ?? "");
   const [role, setRole] = useState<string>("staff");
   const [guestPermanent, setGuestPermanent] = useState(true);
   const [guestExpiresAt, setGuestExpiresAt] = useState("");
@@ -151,12 +151,12 @@ function AddMemberModal({
     setSubmitting(true);
     try {
       if (accessType === "full") {
-        if (!teamId) {
+        if (!subDepartmentId) {
           setSubmitError("Please select a team.");
           setSubmitting(false);
           return;
         }
-        await addAdminTeamMember(teamId, selected.id, role);
+        await addAdminSubDepartmentMember(subDepartmentId, selected.id, role);
       } else {
         if (!departmentId) return;
         await grantDepartmentAccess(departmentId, {
@@ -302,9 +302,9 @@ function AddMemberModal({
                   <div className="flex-1 flex flex-col gap-1">
                     <label className="font-sans text-[11.5px] text-pen-subtle">Team</label>
                     <SearchableSelect
-                      value={teamId}
-                      onChange={setTeamId}
-                      options={availableTeams.map((t) => ({ value: t.id, label: t.name }))}
+                      value={subDepartmentId}
+                      onChange={setSubDepartmentId}
+                      options={availableSubDepartments.map((t) => ({ value: t.id, label: t.name }))}
                       placeholder="— Select team —"
                       className="bg-pen-bg"
                       aria-label="Team"
@@ -415,7 +415,7 @@ export function SettingsMembersPage({
   members,
   isAdmin,
   isManager = false,
-  availableTeams = [],
+  availableSubDepartments = [],
   currentUserId,
   departmentId = null,
   departmentName = null,
@@ -423,7 +423,7 @@ export function SettingsMembersPage({
   members: MemberRow[];
   isAdmin: boolean;
   isManager?: boolean;
-  availableTeams?: { id: string; name: string }[];
+  availableSubDepartments?: { id: string; name: string }[];
   currentUserId?: string;
   departmentId?: string | null;
   departmentName?: string | null;
@@ -433,9 +433,9 @@ export function SettingsMembersPage({
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localRoles, setLocalRoles] = useState<Record<string, Role>>({});
-  const [localTeams, setLocalTeams] = useState<Record<string, string>>({});
+  const [localSubDepartments, setLocalSubDepartments] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
-  const [confirmRemoveTeam, setConfirmRemoveTeam] = useState<MemberRow | null>(null);
+  const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
   const [liveMembers, setLiveMembers] = useState(members);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
@@ -451,20 +451,20 @@ export function SettingsMembersPage({
     return localRoles[m.id] ?? m.role;
   }
 
-  function currentTeamId(m: MemberRow): string {
-    return localTeams[m.id] ?? m.teamId ?? "";
+  function currentSubDepartmentId(m: MemberRow): string {
+    return localSubDepartments[m.id] ?? m.subDepartmentId ?? "";
   }
 
-  async function handleTeamChange(memberId: string, newTeamId: string) {
-    setLocalTeams((prev) => ({ ...prev, [memberId]: newTeamId }));
+  async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
+    setLocalSubDepartments((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
     setSaving(memberId);
     setError(null);
     try {
-      await updateAdminUser(memberId, { teamId: newTeamId });
+      await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
       startTransition(() => router.refresh());
     } catch {
       setError("Failed to update team");
-      setLocalTeams((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+      setLocalSubDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
     } finally {
       setSaving(null);
     }
@@ -476,12 +476,12 @@ export function SettingsMembersPage({
     startTransition(() => router.refresh());
   }
 
-  async function handleRemoveFromTeam(member: MemberRow) {
-    const teamId = member.teamId;
-    if (!teamId) return;
-    await removeAdminTeamMember(teamId, member.id);
+  async function handleRemoveFromSubDepartment(member: MemberRow) {
+    const subDepartmentId = member.subDepartmentId;
+    if (!subDepartmentId) return;
+    await removeAdminSubDepartmentMember(subDepartmentId, member.id);
     setLiveMembers((prev) =>
-      prev.map((m) => m.id === member.id ? { ...m, teamId: null, teams: [] } : m),
+      prev.map((m) => m.id === member.id ? { ...m, subDepartmentId: null, subDepartments: [] } : m),
     );
     startTransition(() => router.refresh());
   }
@@ -554,17 +554,17 @@ export function SettingsMembersPage({
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
       />
       <ConfirmDialog
-        open={!!confirmRemoveTeam}
-        onOpenChange={(open) => { if (!open) setConfirmRemoveTeam(null); }}
+        open={!!confirmRemoveSubDepartment}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveSubDepartment(null); }}
         title="Remove from team"
         description={
-          confirmRemoveTeam
-            ? `Remove ${confirmRemoveTeam.name} from ${confirmRemoveTeam.teams[0] ?? "this team"}? They will remain in the workspace.`
+          confirmRemoveSubDepartment
+            ? `Remove ${confirmRemoveSubDepartment.name} from ${confirmRemoveSubDepartment.subDepartments[0] ?? "this team"}? They will remain in the workspace.`
             : ""
         }
         confirmLabel="Remove"
-        successMessage={confirmRemoveTeam ? `${confirmRemoveTeam.name} removed from team` : undefined}
-        onConfirm={async () => { if (confirmRemoveTeam) await handleRemoveFromTeam(confirmRemoveTeam); }}
+        successMessage={confirmRemoveSubDepartment ? `${confirmRemoveSubDepartment.name} removed from team` : undefined}
+        onConfirm={async () => { if (confirmRemoveSubDepartment) await handleRemoveFromSubDepartment(confirmRemoveSubDepartment); }}
       />
       <ConfirmDialog
         open={!!confirmRemoveDept}
@@ -591,7 +591,7 @@ export function SettingsMembersPage({
     {addMemberOpen && (
       <AddMemberModal
         departmentId={departmentId}
-        availableTeams={availableTeams}
+        availableSubDepartments={availableSubDepartments}
         isAdmin={isAdmin}
         isManager={isManager}
         onClose={() => setAddMemberOpen(false)}
@@ -600,7 +600,7 @@ export function SettingsMembersPage({
     {inviteOpen && departmentId && (
       <InviteByEmailModal
         deptId={departmentId}
-        teams={availableTeams}
+        subDepartments={availableSubDepartments}
         onSent={() => {
           toast.success("Invitation sent");
           startTransition(() => router.refresh());
@@ -630,8 +630,8 @@ export function SettingsMembersPage({
             <button
               type="button"
               onClick={() => setInviteOpen(true)}
-              disabled={availableTeams.length === 0}
-              title={availableTeams.length === 0 ? "Create a team before inviting" : undefined}
+              disabled={availableSubDepartments.length === 0}
+              title={availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
               className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-pen-card-border bg-pen-surface px-3.5 font-sans text-[12.5px] font-medium text-pen-foreground hover:bg-pen-bg disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3.5" />
@@ -699,7 +699,7 @@ export function SettingsMembersPage({
                   {/* Member */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center gap-2.5">
-                      <MemberAvatar name={member.name} color={member.color} avatarUrl={member.avatarUrl} role={role} team={member.teams?.[0]} userId={member.id} />
+                      <MemberAvatar name={member.name} color={member.color} avatarUrl={member.avatarUrl} role={role} subDepartment={member.subDepartments?.[0]} userId={member.id} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
@@ -796,14 +796,14 @@ export function SettingsMembersPage({
                       or managers (they oversee the whole department, not a single team) */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center gap-1 flex-wrap">
-                      {(isAdmin || isManager) && availableTeams.length > 0 && !member.isCrossAccess && role !== "manager" ? (
+                      {(isAdmin || isManager) && availableSubDepartments.length > 0 && !member.isCrossAccess && role !== "manager" ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}
                             className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface pl-2.5 pr-2 font-sans text-[11.5px] text-pen-muted outline-none transition-opacity disabled:opacity-60 hover:border-pen-blue/50 hover:text-pen-foreground"
                           >
                             <span className="max-w-[120px] truncate">
-                              {availableTeams.find((t) => t.id === currentTeamId(member))?.name ?? "No team"}
+                              {availableSubDepartments.find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No team"}
                             </span>
                             {saving === member.id ? (
                               <Loader2 className="size-3 animate-spin opacity-70" />
@@ -813,23 +813,23 @@ export function SettingsMembersPage({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="min-w-[150px]">
                             <DropdownMenuItem
-                              onClick={() => handleTeamChange(member.id, "")}
+                              onClick={() => handleSubDepartmentChange(member.id, "")}
                               className={cn(
                                 "gap-2 font-sans text-[12px]",
-                                !currentTeamId(member) && "font-semibold",
+                                !currentSubDepartmentId(member) && "font-semibold",
                               )}
                             >
                               <span className="inline-flex rounded-full bg-pen-surface px-2 py-0.5 text-[11.5px] font-medium text-pen-subtle">
                                 No team
                               </span>
                             </DropdownMenuItem>
-                            {availableTeams.map((t) => (
+                            {availableSubDepartments.map((t) => (
                               <DropdownMenuItem
                                 key={t.id}
-                                onClick={() => handleTeamChange(member.id, t.id)}
+                                onClick={() => handleSubDepartmentChange(member.id, t.id)}
                                 className={cn(
                                   "gap-2 font-sans text-[12px]",
-                                  currentTeamId(member) === t.id && "font-semibold",
+                                  currentSubDepartmentId(member) === t.id && "font-semibold",
                                 )}
                               >
                                 <span className="inline-flex rounded-full bg-pen-blue/10 px-2 py-0.5 text-[11.5px] font-semibold text-pen-blue">
@@ -839,10 +839,10 @@ export function SettingsMembersPage({
                             ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      ) : member.teams.length === 0 ? (
+                      ) : member.subDepartments.length === 0 ? (
                         <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
                       ) : (
-                        member.teams.map((t) => (
+                        member.subDepartments.map((t) => (
                           <span
                             key={t}
                             className="inline-flex items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted"
@@ -912,11 +912,11 @@ export function SettingsMembersPage({
                                 </DropdownMenuItem>
                               )}
                               {/* Guests only get one action: revoke their cross-department access */}
-                              {member.teamId && !member.isCrossAccess && (
+                              {member.subDepartmentId && !member.isCrossAccess && (
                                 <DropdownMenuItem
                                   variant="destructive"
                                   className="gap-2 font-sans text-xs"
-                                  onClick={() => setConfirmRemoveTeam(member)}
+                                  onClick={() => setConfirmRemoveSubDepartment(member)}
                                 >
                                   <Trash2 className="size-3.5" />
                                   Remove from team

@@ -1,22 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
-  memberTeamIdsFromProject,
-  parseEnabledBoardTeamIds,
-  resolveEnabledBoardTeamIds,
+  memberSubDepartmentIdsFromProject,
+  parseEnabledBoardSubDepartmentIds,
+  resolveEnabledBoardSubDepartmentIds,
 } from "./project-boards";
 
 describe("project-boards", () => {
   it("collects member team ids from memberships and profile team", () => {
-    const ids = memberTeamIdsFromProject([
+    const ids = memberSubDepartmentIdsFromProject([
       {
         user: {
-          teamId: "team-a",
-          memberships: [{ team: { id: "team-b" } }],
+          subDepartmentId: "team-a",
+          memberships: [{ subDepartment: { id: "team-b" } }],
         },
       },
       {
         user: {
-          teamId: null,
+          subDepartmentId: null,
           memberships: [],
         },
       },
@@ -26,31 +26,31 @@ describe("project-boards", () => {
 
   it("defaults enabled boards to department teams", () => {
     expect(
-      resolveEnabledBoardTeamIds({
+      resolveEnabledBoardSubDepartmentIds({
         stored: null,
-        departmentTeamIds: ["team-a", "team-b"],
-        ticketTeamIds: [],
-        projectTeamId: null,
+        departmentSubDepartmentIds: ["team-a", "team-b"],
+        ticketSubDepartmentIds: [],
+        projectSubDepartmentId: null,
       }),
     ).toEqual(["team-a", "team-b"]);
   });
 
   it("always keeps ticket and project teams visible", () => {
     expect(
-      resolveEnabledBoardTeamIds({
+      resolveEnabledBoardSubDepartmentIds({
         stored: ["team-a"],
-        departmentTeamIds: ["team-a", "team-b"],
-        ticketTeamIds: ["team-c"],
-        projectTeamId: "team-main",
+        departmentSubDepartmentIds: ["team-a", "team-b"],
+        ticketSubDepartmentIds: ["team-c"],
+        projectSubDepartmentId: "team-main",
       }),
     ).toEqual(["team-a", "team-c", "team-main"]);
   });
 
   it("parses stored board ids", () => {
-    expect(parseEnabledBoardTeamIds(["team-a", "", 1, "team-b"])).toEqual([
+    expect(parseEnabledBoardSubDepartmentIds(["team-a", "", 1, "team-b"])).toEqual([
       "team-a",
       "team-b",
     ]);
-    expect(parseEnabledBoardTeamIds(null)).toBeNull();
+    expect(parseEnabledBoardSubDepartmentIds(null)).toBeNull();
   });
 });

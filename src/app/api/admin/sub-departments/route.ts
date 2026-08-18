@@ -21,19 +21,19 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-async function createBoardForTeam(teamId: string, name: string, color: string, departmentId: string, tenantId: string) {
-  const baseSlug = slugify(name) || teamId
+async function createBoardForSubDepartment(subDepartmentId: string, name: string, color: string, departmentId: string, tenantId: string) {
+  const baseSlug = slugify(name) || subDepartmentId
   for (let attempt = 0; attempt < 5; attempt++) {
     const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`
     try {
       return await prisma.project.create({
-        data: { name, slug, color, teamId, departmentId, tenantId },
+        data: { name, slug, color, subDepartmentId, departmentId, tenantId },
       })
     } catch (e) {
       if (!isUniqueViolation(e)) throw e
     }
   }
-  throw new Error(`Could not generate a unique project slug for team ${teamId}`)
+  throw new Error(`Could not generate a unique project slug for team ${subDepartmentId}`)
 }
 
 export async function GET() {
@@ -41,7 +41,7 @@ export async function GET() {
   if (error) return error
 
   const deptScope = managerDeptScope(profile!)
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: deptScope
       ? { departmentId: { in: [...deptScope] } }
       : { tenantId: profile!.activeTenantId ?? "__no_tenant__" },
@@ -51,7 +51,7 @@ export async function GET() {
       _count: { select: { tickets: true, profiles: true } },
     },
   })
-  return NextResponse.json(teams)
+  return NextResponse.json(subDepartments)
 }
 
 export async function POST(request: Request) {
@@ -93,15 +93,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const team = await prisma.team.create({
+    const subDepartment = await prisma.subDepartment.create({
       data: { name, prefix, color, departmentId, tenantId },
       include: { department: { select: { id: true, name: true } } },
     })
     // Every team gets its own board (project) automatically. No members are
     // assigned here — access is governed by team/department scope, not
     // explicit board membership.
-    await createBoardForTeam(team.id, name, color, departmentId, tenantId)
-    return NextResponse.json(team, { status: 201 })
+    await createBoardForSubDepartment(subDepartment.id, name, color, departmentId, tenantId)
+    return NextResponse.json(subDepartment, { status: 201 })
   } catch (e) {
     if (isUniqueViolation(e)) {
       return NextResponse.json({ error: "A team with that prefix already exists" }, { status: 409 })

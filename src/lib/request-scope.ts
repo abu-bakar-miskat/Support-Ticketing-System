@@ -26,7 +26,7 @@ export type RequestScope = {
    * never observes tickets outside their granted sub-departments on any read
    * path. Absent/undefined = whole-department access (no sub-department filter).
    */
-  subDepartmentTeamIds?: string[];
+  subDepartmentSubDepartmentIds?: string[];
 };
 
 const store = new AsyncLocalStorage<RequestScope>();

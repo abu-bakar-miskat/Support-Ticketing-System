@@ -20,7 +20,7 @@ describe("checkIsCrossAccessDept", () => {
       fullAccessGrantedDeptIds: ["dept-sw"],
       directMemberDeptIds: ["dept-web"],
       memberships: [
-        { team: { id: "t1", name: "T1", prefix: "T1", department: { id: "dept-web", name: "Web Development" } } },
+        { subDepartment: { id: "t1", name: "T1", prefix: "T1", department: { id: "dept-web", name: "Web Development" } } },
       ] as AuthProfile["memberships"],
     });
 
@@ -34,7 +34,7 @@ describe("checkIsCrossAccessDept", () => {
       role: "staff",
       grantedAccessDeptIds: ["dept-web"],
       memberships: [
-        { team: { id: "t1", name: "T1", prefix: "T1", department: { id: "dept-web", name: "Web Development" } } },
+        { subDepartment: { id: "t1", name: "T1", prefix: "T1", department: { id: "dept-web", name: "Web Development" } } },
       ] as AuthProfile["memberships"],
     });
 

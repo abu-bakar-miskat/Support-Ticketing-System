@@ -118,7 +118,7 @@ type ProfileData = {
   email: string;
   role: string;
   avatarUrl: string | null;
-  teamName: string | null;
+  subDepartmentName: string | null;
   memberSince: string;
   homeDepartmentNames: string[];
   githubUsername: string | null;
@@ -697,14 +697,14 @@ export function ProfileStatsPage({
                 <p className="mt-0.5 pen-text-page-desc">
                   {profileSubtitle(stats, isOwnProfile, viewingOther)}
                 </p>
-                {(profile.teamName || profile.homeDepartmentNames.length > 0) && (
+                {(profile.subDepartmentName || profile.homeDepartmentNames.length > 0) && (
                   <p className="mt-1 pen-text-page-desc text-pen-subtle">
                     {profile.homeDepartmentNames.length > 0 &&
                       profile.homeDepartmentNames.join(", ")}
-                    {profile.teamName &&
+                    {profile.subDepartmentName &&
                       (profile.homeDepartmentNames.length > 0
-                        ? ` · ${profile.teamName}`
-                        : profile.teamName)}
+                        ? ` · ${profile.subDepartmentName}`
+                        : profile.subDepartmentName)}
                   </p>
                 )}
               </div>

@@ -42,20 +42,20 @@ export async function GET(request: Request) {
 
   const deptScope = await getProfileDeptScope(profile)
   // No dept scope (admin global) still bounds to the active tenant.
-  const teamFilter = deptScope
-    ? { teamId: { in: deptScope.teamIds } }
+  const subDepartmentFilter = deptScope
+    ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
     : { tenantId: profile.activeTenantId ?? "__no_tenant__" }
   const projectFilter = projectId && projectId !== "all" ? { projectId } : {}
   // Person filter = tickets assigned to that person; every widget follows it.
   const personFilter = personId && personId !== "all" ? { assigneeId: personId } : {}
-  const base = { deletedAt: null, ...teamFilter, ...projectFilter, ...personFilter }
+  const base = { deletedAt: null, ...subDepartmentFilter, ...projectFilter, ...personFilter }
   // Cohort created within the selected period (for creation-based metrics).
   const createdWhere = { ...base, createdAt: { gte: start, lt: end } }
   // Tickets resolved (closed) within the selected period.
   const closedWhere = { ...base, closedAt: { gte: start, lt: end } }
   // QA is a separate axis (join table), so its widgets scope by team/project only,
   // independent of the dev-assignee person filter.
-  const qaBase = { deletedAt: null, ...teamFilter, ...projectFilter }
+  const qaBase = { deletedAt: null, ...subDepartmentFilter, ...projectFilter }
   const qaClosedTicketWhere = { ...qaBase, closedAt: { gte: start, lt: end } }
   const qaOpenTicketWhere = { ...qaBase, createdAt: { gte: start, lt: end }, closedAt: null }
 
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
       select: {
         ticketNumber: true,
         moduleId: true,
-        team: { select: { prefix: true } },
+        subDepartment: { select: { prefix: true } },
         _count: { select: { comments: { where: { deletedAt: null } } } },
       },
     }),
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
     // Full project list in scope (ignores period + project filter) for the picker.
     prisma.ticket.groupBy({
       by: ["projectId"],
-      where: { deletedAt: null, ...teamFilter },
+      where: { deletedAt: null, ...subDepartmentFilter },
       _count: { _all: true },
     }),
     // QA resolved: closed tickets grouped by QA assignee (via join table).
@@ -147,27 +147,27 @@ export async function GET(request: Request) {
       _count: { _all: true },
     }),
     // Statuses flagged complete per team — the source of truth for "done".
-    prisma.teamStatus.findMany({
+    prisma.subDepartmentStatus.findMany({
       where: {
         isComplete: true,
         ...(deptScope
-          ? { teamId: { in: deptScope.teamIds } }
-          : { team: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }),
+          ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
+          : { subDepartment: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }),
       },
-      select: { teamId: true, label: true },
+      select: { subDepartmentId: true, label: true },
     }),
   ])
 
   // A ticket is "done" when its current status is flagged isComplete on its team.
   // Teams with no configured statuses fall back to the default "Live" complete state.
-  const completeByTeam = new Map<string, Set<string>>()
+  const completeBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
-    const set = completeByTeam.get(s.teamId) ?? new Set<string>()
+    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
-    completeByTeam.set(s.teamId, set)
+    completeBySubDepartment.set(s.subDepartmentId, set)
   }
-  const isDone = (teamId: string, status: string): boolean => {
-    const set = completeByTeam.get(teamId)
+  const isDone = (subDepartmentId: string, status: string): boolean => {
+    const set = completeBySubDepartment.get(subDepartmentId)
     if (set && set.size > 0) return set.has(status)
     return normalizeStatus(status) === "Live"
   }
@@ -179,7 +179,7 @@ export async function GET(request: Request) {
         where: {
           deletedAt: null,
           ...(deptScope
-            ? { memberships: { some: { teamId: { in: deptScope.teamIds }, isActive: true } } }
+            ? { memberships: { some: { subDepartmentId: { in: deptScope.subDepartmentIds }, isActive: true } } }
             : { tenantMemberships: { some: { tenantId: profile.activeTenantId ?? "__no_tenant__", isActive: true } } }),
         },
         select: { id: true, name: true, avatarUrl: true },
@@ -215,7 +215,7 @@ export async function GET(request: Request) {
 
   const resolvedByPerson = new Map<string, number>()
   for (const g of resolvedGroups) {
-    if (!g.assigneeId || !isDone(g.teamId, g.status)) continue
+    if (!g.assigneeId || !isDone(g.subDepartmentId, g.status)) continue
     resolvedByPerson.set(g.assigneeId, (resolvedByPerson.get(g.assigneeId) ?? 0) + g._count._all)
   }
   const resolved: NamedCount[] = [...resolvedByPerson.entries()]
@@ -254,7 +254,7 @@ export async function GET(request: Request) {
   for (const t of moduleTickets) {
     if (!t.moduleId) continue
     const arr = byModule.get(t.moduleId) ?? []
-    arr.push({ humanId: `${t.team.prefix}-${t.ticketNumber}`, count: t._count.comments })
+    arr.push({ humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`, count: t._count.comments })
     byModule.set(t.moduleId, arr)
   }
   const commentLoad: CommentLoad[] = [...byModule.entries()]
@@ -271,7 +271,7 @@ export async function GET(request: Request) {
   // ── Status distribution (open statuses normalized; all done statuses → "Completed") ──
   const statusCountMap = new Map<string, number>()
   for (const g of statusGroups) {
-    const label = isDone(g.teamId, g.status) ? "Completed" : normalizeStatus(g.status)
+    const label = isDone(g.subDepartmentId, g.status) ? "Completed" : normalizeStatus(g.status)
     statusCountMap.set(label, (statusCountMap.get(label) ?? 0) + g._count._all)
   }
   const STATUS_ORDER = ["To Do", "In Progress", "Pull Request", "Live", "Blocked", "Completed"]
@@ -364,7 +364,7 @@ export async function GET(request: Request) {
 
   const totalTickets = statusGroups.reduce((s, g) => s + g._count._all, 0)
   const closedTickets = statusGroups.reduce(
-    (s, g) => s + (isDone(g.teamId, g.status) ? g._count._all : 0),
+    (s, g) => s + (isDone(g.subDepartmentId, g.status) ? g._count._all : 0),
     0,
   )
   const totals = {
@@ -380,11 +380,11 @@ export async function GET(request: Request) {
   // "other department" to compare against.
   let crossDept: CrossDeptContribution[] = []
   if (deptScope) {
-    const deptTeamIds = deptScope.teamIds
+    const deptSubDepartmentIds = deptScope.subDepartmentIds
     const deptMembers = await prisma.profile.findMany({
       where: {
         deletedAt: null,
-        memberships: { some: { teamId: { in: deptTeamIds }, isActive: true } },
+        memberships: { some: { subDepartmentId: { in: deptSubDepartmentIds }, isActive: true } },
       },
       select: { id: true, name: true, avatarUrl: true },
     })
@@ -400,10 +400,10 @@ export async function GET(request: Request) {
           select: {
             departmentId: true,
             department: { select: { id: true, name: true } },
-            team: { select: { department: { select: { id: true, name: true } } } },
+            subDepartment: { select: { department: { select: { id: true, name: true } } } },
           },
         },
-        team: { select: { department: { select: { id: true, name: true } } } },
+        subDepartment: { select: { department: { select: { id: true, name: true } } } },
       } as const
       const [crossCreated, crossCompleted, crossTime] = await Promise.all([
         prisma.ticket.findMany({

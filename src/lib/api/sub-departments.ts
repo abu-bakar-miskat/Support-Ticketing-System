@@ -1,13 +1,13 @@
-export type TeamMember = {
+export type SubDepartmentMember = {
   id: string
   name: string
   avatarUrl?: string | null
   departmentName?: string | null
-  teamName?: string | null
+  subDepartmentName?: string | null
   role?: string
 }
 
-export type TeamStatus = {
+export type SubDepartmentStatus = {
   id: string
   label: string
   color: string
@@ -16,23 +16,23 @@ export type TeamStatus = {
   allowedLabels: string[]
 }
 
-export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
-  const res = await fetch(`/api/teams/${teamId}/members`)
+export async function getSubDepartmentMembers(subDepartmentId: string): Promise<SubDepartmentMember[]> {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/members`)
   if (!res.ok) throw new Error("Failed to fetch team members")
   return res.json()
 }
 
-export async function getTeamStatuses(teamId: string): Promise<TeamStatus[]> {
-  const res = await fetch(`/api/teams/${teamId}/statuses`)
+export async function getSubDepartmentStatuses(subDepartmentId: string): Promise<SubDepartmentStatus[]> {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses`)
   if (!res.ok) throw new Error("Failed to fetch team statuses")
   return res.json()
 }
 
-export async function createTeamStatus(
-  teamId: string,
+export async function createSubDepartmentStatus(
+  subDepartmentId: string,
   body: { label: string; color: string; order?: number; allowedLabels?: string[] },
 ) {
-  const res = await fetch(`/api/teams/${teamId}/statuses`, {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -41,12 +41,12 @@ export async function createTeamStatus(
   return res.json()
 }
 
-export async function updateTeamStatus(
-  teamId: string,
+export async function updateSubDepartmentStatus(
+  subDepartmentId: string,
   statusId: string,
   body: { label?: string; color?: string; order?: number; isComplete?: boolean; allowedLabels?: string[] },
 ) {
-  const res = await fetch(`/api/teams/${teamId}/statuses/${statusId}`, {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses/${statusId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -55,19 +55,19 @@ export async function updateTeamStatus(
   return res.json()
 }
 
-export async function deleteTeamStatus(teamId: string, statusId: string) {
-  const res = await fetch(`/api/teams/${teamId}/statuses/${statusId}`, {
+export async function deleteSubDepartmentStatus(subDepartmentId: string, statusId: string) {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses/${statusId}`, {
     method: "DELETE",
   })
   if (!res.ok) throw new Error("Failed to delete status")
 }
 
 export async function handleJoinRequest(
-  teamId: string,
+  subDepartmentId: string,
   requestId: string,
   body: { action: "approve" | "reject"; role?: string; nickname?: string | null; isActive?: boolean; crossAccess?: boolean },
 ) {
-  const res = await fetch(`/api/teams/${teamId}/join-requests/${requestId}`, {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/join-requests/${requestId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -76,12 +76,12 @@ export async function handleJoinRequest(
   return res.json()
 }
 
-export async function reorderTeamStatuses(
-  teamId: string,
+export async function reorderSubDepartmentStatuses(
+  subDepartmentId: string,
   statuses: { id: string; order: number }[],
 ) {
   const order = statuses.map((s) => s.id)
-  const res = await fetch(`/api/teams/${teamId}/statuses`, {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ order }),
@@ -89,28 +89,28 @@ export async function reorderTeamStatuses(
   if (!res.ok) throw new Error("Failed to reorder statuses")
 }
 
-export type TeamGitHubMap = {
+export type SubDepartmentGitHubMap = {
   onPrOpened: string | null
   onPrReadyForReview: string | null
   onPrMerged: string | null
 }
 
-export type TeamGitHubMapResponse = {
-  config: TeamGitHubMap | null
+export type SubDepartmentGitHubMapResponse = {
+  config: SubDepartmentGitHubMap | null
   defaults: { prOpened: string | null; prReadyForReview: string | null; prMerged: string | null }
 }
 
-export async function getTeamGitHubMap(teamId: string): Promise<TeamGitHubMapResponse> {
-  const res = await fetch(`/api/teams/${teamId}/github-map`)
+export async function getSubDepartmentGitHubMap(subDepartmentId: string): Promise<SubDepartmentGitHubMapResponse> {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/github-map`)
   if (!res.ok) throw new Error("Failed to fetch GitHub status map")
   return res.json()
 }
 
-export async function updateTeamGitHubMap(
-  teamId: string,
-  body: Partial<TeamGitHubMap>,
-): Promise<TeamGitHubMap> {
-  const res = await fetch(`/api/teams/${teamId}/github-map`, {
+export async function updateSubDepartmentGitHubMap(
+  subDepartmentId: string,
+  body: Partial<SubDepartmentGitHubMap>,
+): Promise<SubDepartmentGitHubMap> {
+  const res = await fetch(`/api/sub-departments/${subDepartmentId}/github-map`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -27,24 +27,24 @@ export async function advanceTicketStatus(
       id: true,
       title: true,
       status: true,
-      teamId: true,
+      subDepartmentId: true,
       ticketNumber: true,
       creatorId: true,
       closedAt: true,
       deletedAt: true,
-      team: { select: { prefix: true, githubStatusMap: true } },
+      subDepartment: { select: { prefix: true, githubStatusMap: true } },
       intake: { select: { id: true } },
     },
   })
   if (!ticket || ticket.deletedAt !== null) return
 
-  const statuses = await prisma.teamStatus.findMany({
-    where: { teamId: ticket.teamId },
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: ticket.subDepartmentId },
     orderBy: { order: "asc" },
     select: { label: true, order: true, isComplete: true },
   })
 
-  const targetLabel = resolveTargetLabel(event, statuses, ticket.team.githubStatusMap)
+  const targetLabel = resolveTargetLabel(event, statuses, ticket.subDepartment.githubStatusMap)
   if (!targetLabel) return
 
   const move = pickStatusMove(ticket.status, targetLabel, statuses, ticket.intake !== null)
@@ -80,8 +80,8 @@ export async function advanceTicketStatus(
   notifyTicketCompletion({
     ticketId: ticket.id,
     ticketTitle: ticket.title,
-    humanId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
-    teamId: ticket.teamId,
+    humanId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
+    subDepartmentId: ticket.subDepartmentId,
     creatorId: ticket.creatorId,
     actorId: ticket.creatorId,
     actorName: "GitHub",

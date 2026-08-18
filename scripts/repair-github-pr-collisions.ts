@@ -28,7 +28,7 @@ async function unlinkMismatched() {
       ticket: {
         select: {
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
           commits: { select: { url: true } },
         },
       },
@@ -37,7 +37,7 @@ async function unlinkMismatched() {
 
   const toDelete: Array<{ ticketId: string; prId: string }> = []
   for (const link of links) {
-    const humanId = `${link.ticket.team.prefix}-${link.ticket.ticketNumber}`
+    const humanId = `${link.ticket.subDepartment.prefix}-${link.ticket.ticketNumber}`
     const mentioned = parseTicketRefs(link.pr.title, link.pr.branch).some(
       (r) => `${r.prefix}-${r.number}` === humanId,
     )
@@ -142,11 +142,11 @@ async function recreateFromMergeCommits() {
     select: {
       id: true,
       ticketNumber: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   })
   const idByHuman = new Map(
-    tickets.map((t) => [`${t.team.prefix}-${t.ticketNumber}`, t.id]),
+    tickets.map((t) => [`${t.subDepartment.prefix}-${t.ticketNumber}`, t.id]),
   )
 
   const draftList = [...drafts.values()]
@@ -217,7 +217,7 @@ async function main() {
   await recreateFromMergeCommits()
 
   const ticket = await prisma.ticket.findFirst({
-    where: { ticketNumber: 168, team: { prefix: "PHP" }, deletedAt: null },
+    where: { ticketNumber: 168, subDepartment: { prefix: "PHP" }, deletedAt: null },
     select: {
       status: true,
       pullRequests: {

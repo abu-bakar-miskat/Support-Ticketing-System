@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
-import { getBoardCards, getTeamBoardGroups } from "@/lib/board-data";
+import { getBoardCards, getSubDepartmentBoardGroups } from "@/lib/board-data";
 import { BoardPage } from "@/components/board/board-page";
 import { BoardPageSkeleton } from "@/components/skeletons/page-skeletons";
-import { getProfileDeptScope, resolveStatusTeamId } from "@/lib/dept-scope";
+import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
 
 export const metadata = { title: "Board — Ticketing System" };
 
@@ -33,8 +33,8 @@ async function BoardData({
   // params only ever narrow the same scoped query built below (SD-06).
   const boardSearchParams = parseBoardSearchParams(searchParams);
 
-  const cookieTeamId = cookieStore.get("pen_active_team")?.value ?? null;
-  const membershipIds = profile.teamIds ?? [];
+  const cookieSubDepartmentId = cookieStore.get("pen_active_team")?.value ?? null;
+  const membershipIds = profile.subDepartmentIds ?? [];
 
   const isManager = profile.role === "manager";
   const allowedDeptIds = isManager
@@ -43,11 +43,11 @@ async function BoardData({
 
   const deptScope = await getProfileDeptScope(profile);
 
-  const statusTeamId = resolveStatusTeamId({
+  const statusSubDepartmentId = resolveStatusSubDepartmentId({
     deptScope,
-    cookieTeamId,
+    cookieSubDepartmentId,
     membershipIds,
-    primaryTeamId: profile.teamId,
+    primarySubDepartmentId: profile.subDepartmentId,
   });
 
   const cards = deptScope?.isCrossAccessOnly && profile.id
@@ -64,14 +64,14 @@ async function BoardData({
           ? await getBoardCards({ ...boardSearchParams, allowedDeptIds })
           : await getBoardCards({ ...boardSearchParams, tenantId: profile.activeTenantId ?? "__no_tenant__" });
 
-  const forceTeamIds = [...new Set([...(deptScope?.teamIds ?? []), ...membershipIds])];
-  const teamBoardGroups = await getTeamBoardGroups(cards, forceTeamIds);
+  const forceSubDepartmentIds = [...new Set([...(deptScope?.subDepartmentIds ?? []), ...membershipIds])];
+  const subDepartmentBoardGroups = await getSubDepartmentBoardGroups(cards, forceSubDepartmentIds);
 
   return (
     <BoardPage
       cards={cards}
-      teamBoardGroups={teamBoardGroups}
-      defaultTeamId={statusTeamId}
+      subDepartmentBoardGroups={subDepartmentBoardGroups}
+      defaultSubDepartmentId={statusSubDepartmentId}
     />
   );
 }

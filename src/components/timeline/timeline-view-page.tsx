@@ -32,7 +32,7 @@ import { canEditTicket } from "@/lib/ticket-date-permissions";
 import { toast } from "sonner";
 import {
   type BoardCardData,
-  type TeamBoardGroup,
+  type SubDepartmentBoardGroup,
   UI_PRIORITY_DOT_HEX,
   normalizeStatus,
   statusDotColor,
@@ -74,7 +74,7 @@ import {
 
 type Props = {
   cards: BoardCardData[];
-  teamBoardGroups: TeamBoardGroup[];
+  subDepartmentBoardGroups: SubDepartmentBoardGroup[];
 };
 
 type TimelineGroupMode = "assignee" | "project";
@@ -183,9 +183,9 @@ function TimelineRowCell({
           <p className="line-clamp-2 font-sans text-[12px] font-semibold leading-snug text-pen-foreground">
             {displayName}
           </p>
-          {row.teamLabel && (
+          {row.subDepartmentLabel && (
             <p className="mt-0.5 truncate font-sans text-[11px] leading-snug text-pen-subtle">
-              {row.teamLabel}
+              {row.subDepartmentLabel}
             </p>
           )}
         </div>
@@ -226,9 +226,9 @@ function TimelineRowCell({
             <p className="truncate font-sans text-[12.5px] font-semibold leading-tight text-pen-foreground">
               {displayName}
             </p>
-            {row.teamLabel && (
+            {row.subDepartmentLabel && (
               <p className="truncate font-sans text-[11.5px] leading-tight text-pen-subtle">
-                {row.teamLabel}
+                {row.subDepartmentLabel}
               </p>
             )}
             <p className="truncate font-sans text-[11.5px] leading-tight text-pen-muted">
@@ -591,7 +591,7 @@ function TimelineBar({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export function TimelineViewPage({ cards, teamBoardGroups }: Props) {
+export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
   const timelineScrollRef = useRef<HTMLDivElement>(null);
@@ -625,14 +625,14 @@ export function TimelineViewPage({ cards, teamBoardGroups }: Props) {
 
   const statusColorMap = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const group of teamBoardGroups) {
+    for (const group of subDepartmentBoardGroups) {
       for (const s of group.statuses) {
         map[s.label] = s.color;
         map[normalizeStatus(s.label)] = s.color;
       }
     }
     return map;
-  }, [teamBoardGroups]);
+  }, [subDepartmentBoardGroups]);
 
   const scheduledTasks = useMemo(() => {
     const all = collectTimelineTasks(cards, localRanges);
@@ -741,7 +741,7 @@ export function TimelineViewPage({ cards, teamBoardGroups }: Props) {
         assigneeId: task.assigneeId,
         creatorId: task.creatorId,
         coAssigneeIds: task.coAssignees.map((a) => a.id),
-        teamId: task.teamId,
+        subDepartmentId: task.subDepartmentId,
       });
     },
     [currentUser],

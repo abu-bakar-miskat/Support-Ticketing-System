@@ -19,14 +19,14 @@ export async function POST(
     select: {
       id: true,
       title: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   })
   if (!ticket) {

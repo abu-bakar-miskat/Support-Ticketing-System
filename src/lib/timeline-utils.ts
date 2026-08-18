@@ -70,7 +70,7 @@ export type TimelineRelation = {
 export type AssigneeRow = {
   id: string;
   name: string;
-  teamLabel: string | null;
+  subDepartmentLabel: string | null;
   avatarUrl?: string | null;
   avatarColor: string | null;
   /** When set, the row represents a project (show color swatch instead of avatar). */
@@ -129,8 +129,8 @@ export function subCardToBoardCard(
     title: sub.title,
     priority: sub.priority,
     status: sub.status,
-    team: parent.team,
-    teamId: parent.teamId,
+    subDepartment: parent.subDepartment,
+    subDepartmentId: parent.subDepartmentId,
     project: parent.project,
     projectId: parent.projectId,
     projectKind: parent.projectKind,
@@ -597,7 +597,7 @@ export function groupByAssignee(tasks: TimelineTask[]): AssigneeRow[] {
       map.set(id, {
         id,
         name,
-        teamLabel: null,
+        subDepartmentLabel: null,
         avatarUrl: task.assigneeAvatarUrl,
         avatarColor: task.avatarColor,
         tasks: [task],
@@ -606,8 +606,8 @@ export function groupByAssignee(tasks: TimelineTask[]): AssigneeRow[] {
   }
 
   for (const row of map.values()) {
-    const teams = [...new Set(row.tasks.map((task) => task.team).filter(Boolean))].sort();
-    row.teamLabel = teams.length > 0 ? teams.join(", ") : null;
+    const subDepartments = [...new Set(row.tasks.map((task) => task.subDepartment).filter(Boolean))].sort();
+    row.subDepartmentLabel = subDepartments.length > 0 ? subDepartments.join(", ") : null;
   }
 
   return [...map.values()].sort((a, b) => {
@@ -632,7 +632,7 @@ export function groupByProject(tasks: TimelineTask[]): AssigneeRow[] {
       map.set(id, {
         id,
         name,
-        teamLabel: null,
+        subDepartmentLabel: null,
         avatarUrl: null,
         avatarColor: null,
         projectColor: task.projectColor ?? "#0a76b9",
@@ -650,7 +650,7 @@ export function groupByProject(tasks: TimelineTask[]): AssigneeRow[] {
           .filter((name): name is string => Boolean(name)),
       ),
     ].sort();
-    row.teamLabel =
+    row.subDepartmentLabel =
       assigneeNames.length > 0
         ? `${assigneeNames.length} assignee${assigneeNames.length === 1 ? "" : "s"}`
         : null;

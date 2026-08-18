@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine";
 import { resolveColumnIdForStatus } from "@/lib/board-columns";
-import { getTeamStatuses } from "@/lib/board-data";
+import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
@@ -42,8 +42,8 @@ export async function createTicketFromInboundEmail(params: {
   if (!setupCheck.ok) throw new Error(setupCheck.error);
 
   const [team, statuses, projectId, creatorId, managerRow] = await Promise.all([
-    prisma.team.findUniqueOrThrow({ where: { id: teamId }, select: { tenantId: true, prefix: true } }),
-    getTeamStatuses(teamId),
+    prisma.subDepartment.findUniqueOrThrow({ where: { id: teamId }, select: { tenantId: true, prefix: true } }),
+    getSubDepartmentStatuses(teamId),
     resolveSupportProjectForDepartment(departmentId),
     ensureSystemUser(),
     prisma.departmentManager.findFirst({ where: { departmentId }, select: { userId: true } }),
@@ -70,7 +70,7 @@ export async function createTicketFromInboundEmail(params: {
         ticketNumber: 0, // stamped by DB trigger
         creatorId,
         tenantId: team.tenantId,
-        teamId,
+        subDepartmentId: teamId,
         projectId,
         assigneeId: assignResult.assigneeId,
         ...(boardColumnId ? { boardColumnId } : {}),
@@ -88,7 +88,7 @@ export async function createTicketFromInboundEmail(params: {
     });
 
     if (assignResult.nextRotaPointer !== undefined) {
-      await tx.team.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
+      await tx.subDepartment.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
     }
 
     return created;

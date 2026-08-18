@@ -34,13 +34,13 @@ export async function transferTicket(params: {
       where: { id: ticketId },
       select: {
         id: true,
-        teamId: true,
+        subDepartmentId: true,
         assigneeId: true,
         deletedAt: true,
-        team: { select: { id: true, name: true, departmentId: true, tenantId: true } },
+        subDepartment: { select: { id: true, name: true, departmentId: true, tenantId: true } },
       },
     }),
-    prisma.team.findUnique({
+    prisma.subDepartment.findUnique({
       where: { id: targetTeamId },
       select: { id: true, name: true, departmentId: true, tenantId: true },
     }),
@@ -48,17 +48,17 @@ export async function transferTicket(params: {
 
   if (!ticket || ticket.deletedAt) return { ok: false, error: "Ticket not found" };
   if (!targetTeam) return { ok: false, error: "Destination team not found" };
-  if (targetTeam.tenantId !== ticket.team.tenantId) {
+  if (targetTeam.tenantId !== ticket.subDepartment.tenantId) {
     return { ok: false, error: "Destination team is outside this tenant" };
   }
-  if (targetTeam.id === ticket.teamId) {
+  if (targetTeam.id === ticket.subDepartmentId) {
     return { ok: false, error: "Ticket is already in that team" };
   }
 
   const [assigneeMembership, destColumns] = await Promise.all([
     ticket.assigneeId
-      ? prisma.teamMembership.findUnique({
-          where: { userId_teamId: { userId: ticket.assigneeId, teamId: targetTeam.id } },
+      ? prisma.subDepartmentMembership.findUnique({
+          where: { userId_subDepartmentId: { userId: ticket.assigneeId, subDepartmentId: targetTeam.id } },
           select: { isActive: true },
         })
       : Promise.resolve(null),
@@ -71,16 +71,16 @@ export async function transferTicket(params: {
   const destColumnId = firstColumnOfType(destColumns, "OPEN")?.id ?? null;
 
   const newTicketNumber = await prisma.$transaction(async (tx) => {
-    const counter = await tx.teamTicketCounter.upsert({
-      where: { teamId: targetTeam.id },
-      create: { teamId: targetTeam.id, lastNumber: 1 },
+    const counter = await tx.subDepartmentTicketCounter.upsert({
+      where: { subDepartmentId: targetTeam.id },
+      create: { subDepartmentId: targetTeam.id, lastNumber: 1 },
       update: { lastNumber: { increment: 1 } },
     });
 
     await tx.ticket.update({
       where: { id: ticketId },
       data: {
-        teamId: targetTeam.id,
+        subDepartmentId: targetTeam.id,
         ticketNumber: counter.lastNumber,
         assigneeId: nextAssigneeId,
         ...(destColumnId ? { boardColumnId: destColumnId } : {}),
@@ -93,9 +93,9 @@ export async function transferTicket(params: {
         actorId,
         action: "FORWARDED",
         metadata: {
-          fromTeamId: ticket.teamId,
-          fromTeamName: ticket.team.name,
-          fromDepartmentId: ticket.team.departmentId,
+          fromTeamId: ticket.subDepartmentId,
+          fromTeamName: ticket.subDepartment.name,
+          fromDepartmentId: ticket.subDepartment.departmentId,
           toTeamId: targetTeam.id,
           toTeamName: targetTeam.name,
           toDepartmentId: targetTeam.departmentId,
@@ -112,5 +112,5 @@ export async function transferTicket(params: {
     return counter.lastNumber;
   });
 
-  return { ok: true, ticketId, fromTeamId: ticket.teamId, toTeamId: targetTeam.id, newTicketNumber };
+  return { ok: true, ticketId, fromTeamId: ticket.subDepartmentId, toTeamId: targetTeam.id, newTicketNumber };
 }

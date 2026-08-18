@@ -5,7 +5,7 @@ export type MentionableUser = {
   name: string
   avatarUrl: string | null
   departmentName: string | null
-  teamName: string | null
+  subDepartmentName: string | null
   role: string
 }
 
@@ -23,7 +23,7 @@ export async function getMentionableProjectMembers(
             name: true,
             avatarUrl: true,
             role: true,
-            team: {
+            subDepartment: {
               select: {
                 name: true,
                 department: { select: { name: true } },
@@ -39,7 +39,7 @@ export async function getMentionableProjectMembers(
         name: string
         avatarUrl: string | null
         role: string
-        team: { name: string; department: { name: string } | null } | null
+        subDepartment: { name: string; department: { name: string } | null } | null
       }
     }>)
 
@@ -51,8 +51,8 @@ export async function getMentionableProjectMembers(
       id: u.id,
       name: u.name,
       avatarUrl: u.avatarUrl,
-      departmentName: u.team?.department?.name ?? null,
-      teamName: u.team?.name ?? null,
+      departmentName: u.subDepartment?.department?.name ?? null,
+      subDepartmentName: u.subDepartment?.name ?? null,
       role: u.role,
     })
   }
@@ -63,25 +63,25 @@ export async function getMentionableProjectMembers(
 /** Users who can be @mentioned on a ticket in this department. */
 export async function getMentionableUsersForTicketDept(
   departmentId: string | null,
-  ticketTeamId: string,
+  ticketSubDepartmentId: string,
 ): Promise<MentionableUser[]> {
   if (!departmentId) {
-    const memberships = await prisma.teamMembership
+    const memberships = await prisma.subDepartmentMembership
       .findMany({
         where: {
           isActive: true,
-          teamId: ticketTeamId,
+          subDepartmentId: ticketSubDepartmentId,
           user: { deletedAt: null },
         },
         select: {
           role: true,
-          team: { select: { name: true } },
+          subDepartment: { select: { name: true } },
           user: { select: { id: true, name: true, avatarUrl: true, role: true } },
         },
       })
       .catch(() => [] as Array<{
         role: string
-        team: { name: string }
+        subDepartment: { name: string }
         user: { id: string; name: string; avatarUrl: string | null; role: string }
       }>)
 
@@ -90,7 +90,7 @@ export async function getMentionableUsersForTicketDept(
       name: m.user.name,
       avatarUrl: m.user.avatarUrl,
       departmentName: null,
-      teamName: m.team.name,
+      subDepartmentName: m.subDepartment.name,
       role: m.role,
     }))
   }
@@ -103,26 +103,26 @@ export async function getMentionableUsersForTicketDept(
       })
     )?.name ?? null
 
-  const deptTeamIds = (
-    await prisma.team.findMany({
+  const deptSubDepartmentIds = (
+    await prisma.subDepartment.findMany({
       where: { departmentId },
       select: { id: true },
     })
   ).map((t) => t.id)
 
-  const [memberships, accessGrants, deptManagers, homeTeamProfiles] = await Promise.all([
-    prisma.teamMembership
+  const [memberships, accessGrants, deptManagers, homeSubDepartmentProfiles] = await Promise.all([
+    prisma.subDepartmentMembership
       .findMany({
         where: {
           isActive: true,
-          team: { departmentId },
+          subDepartment: { departmentId },
           user: { deletedAt: null },
         },
         select: {
           userId: true,
-          teamId: true,
+          subDepartmentId: true,
           role: true,
-          team: { select: { name: true } },
+          subDepartment: { select: { name: true } },
           user: { select: { id: true, name: true, avatarUrl: true, role: true } },
         },
       })
@@ -140,7 +140,7 @@ export async function getMentionableUsersForTicketDept(
             name: true,
             avatarUrl: true,
             role: true,
-            team: {
+            subDepartment: {
               select: {
                 name: true,
                 department: { select: { name: true } },
@@ -159,7 +159,7 @@ export async function getMentionableUsersForTicketDept(
             name: true,
             avatarUrl: true,
             role: true,
-            team: {
+            subDepartment: {
               select: {
                 name: true,
                 department: { select: { name: true } },
@@ -170,13 +170,13 @@ export async function getMentionableUsersForTicketDept(
       },
     }),
     prisma.profile.findMany({
-      where: { deletedAt: null, teamId: { in: deptTeamIds } },
+      where: { deletedAt: null, subDepartmentId: { in: deptSubDepartmentIds } },
       select: {
         id: true,
         name: true,
         avatarUrl: true,
         role: true,
-        team: { select: { name: true } },
+        subDepartment: { select: { name: true } },
       },
     }),
   ])
@@ -189,21 +189,21 @@ export async function getMentionableUsersForTicketDept(
       name: m.user.name,
       avatarUrl: m.user.avatarUrl,
       departmentName,
-      teamName: m.team.name,
+      subDepartmentName: m.subDepartment.name,
       role: m.role,
     }
     const existing = byUser.get(m.userId)
-    if (!existing || m.teamId === ticketTeamId) byUser.set(m.userId, entry)
+    if (!existing || m.subDepartmentId === ticketSubDepartmentId) byUser.set(m.userId, entry)
   }
 
-  for (const u of homeTeamProfiles) {
+  for (const u of homeSubDepartmentProfiles) {
     if (!byUser.has(u.id)) {
       byUser.set(u.id, {
         id: u.id,
         name: u.name,
         avatarUrl: u.avatarUrl,
         departmentName,
-        teamName: u.team?.name ?? null,
+        subDepartmentName: u.subDepartment?.name ?? null,
         role: u.role,
       })
     }
@@ -216,8 +216,8 @@ export async function getMentionableUsersForTicketDept(
         id: u.id,
         name: u.name,
         avatarUrl: u.avatarUrl,
-        departmentName: u.team?.department?.name ?? null,
-        teamName: u.team?.name ?? null,
+        departmentName: u.subDepartment?.department?.name ?? null,
+        subDepartmentName: u.subDepartment?.name ?? null,
         role: u.role,
       })
     }
@@ -230,8 +230,8 @@ export async function getMentionableUsersForTicketDept(
         id: u.id,
         name: u.name,
         avatarUrl: u.avatarUrl,
-        departmentName: u.team?.department?.name ?? departmentName,
-        teamName: u.team?.name ?? null,
+        departmentName: u.subDepartment?.department?.name ?? departmentName,
+        subDepartmentName: u.subDepartment?.name ?? null,
         role: u.role,
       })
     }

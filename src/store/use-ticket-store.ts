@@ -13,7 +13,7 @@ export type TicketRow = {
   assigneeId: string | null
   creatorId: string
   projectId: string
-  teamId: string
+  subDepartmentId: string
   cycleTime: number | null
   createdAt: Date
   updatedAt: Date

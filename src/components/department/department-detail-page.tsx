@@ -60,7 +60,7 @@ import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; location?: string | null; timezone?: string | null; teamMemberships?: { teamId: string; teamName: string; doNotAssign: boolean }[] };
+type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[] };
 
 type MemberRow = {
   userId: string;
@@ -69,23 +69,23 @@ type MemberRow = {
   avatarUrl: string | null;
   color: string;
   role: string;
-  teamNames: string[];
-  teamId: string | null;
+  subDepartmentNames: string[];
+  subDepartmentId: string | null;
   source: "native" | "direct";
   location?: string | null;
   timezone?: string | null;
-  teamMemberships?: { teamId: string; teamName: string; doNotAssign: boolean }[];
+  subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
 };
 
 export type DepartmentDetailData = {
   id: string;
   name: string;
   isHub: boolean;
-  teamCount: number;
+  subDepartmentCount: number;
   projectCount: number;
   memberCount: number;
   isAdmin: boolean;
-  availableTeams: { id: string; name: string }[];
+  availableSubDepartments: { id: string; name: string }[];
   allUsers: UserOption[];
   managers: ManagerRow[];
   members: MemberRow[];
@@ -297,7 +297,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(data.accessGrants);
   const [pendingInvites, setPendingInvites] = useState<DepartmentInviteRow[]>(data.pendingInvites);
   const [localRoles, setLocalRoles] = useState<Record<string, string>>({});
-  const [localTeamIds, setLocalTeamIds] = useState<Record<string, string>>({});
+  const [localSubDepartmentIds, setLocalSubDepartmentIds] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
   const [showGrantModal, setShowGrantModal] = useState(false);
@@ -321,7 +321,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     email: string;
     location?: string | null;
     timezone?: string | null;
-    teamMemberships?: { teamId: string; teamName: string; doNotAssign: boolean }[];
+    subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
   }): MemberConfigTarget {
     return {
       id: m.userId,
@@ -329,7 +329,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
       email: m.email,
       location: m.location ?? null,
       timezone: m.timezone ?? null,
-      teamMemberships: m.teamMemberships ?? [],
+      subDepartmentMemberships: m.subDepartmentMemberships ?? [],
     };
   }
   function refresh() {
@@ -369,7 +369,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     if (created) {
       setMembers((prev) => [...prev.filter((m) => m.userId !== u.id), {
         userId: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl ?? null, color: "",
-        role: u.role, teamNames: [], teamId: null, source: "direct",
+        role: u.role, subDepartmentNames: [], subDepartmentId: null, source: "direct",
       }]);
       refresh();
     }
@@ -396,11 +396,11 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     }
   }
 
-  async function handleTeamChange(memberId: string, newTeamId: string) {
-    setLocalTeamIds((prev) => ({ ...prev, [memberId]: newTeamId }));
+  async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
+    setLocalSubDepartmentIds((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
     setSaving(memberId);
     try {
-      await updateAdminUser(memberId, { teamId: newTeamId });
+      await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
       refresh();
     } finally {
       setSaving(null);
@@ -422,8 +422,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   function currentRole(m: MemberRow) {
     return localRoles[m.userId] ?? m.role;
   }
-  function currentTeamId(m: MemberRow) {
-    return localTeamIds[m.userId] ?? m.teamId ?? "";
+  function currentSubDepartmentId(m: MemberRow) {
+    return localSubDepartmentIds[m.userId] ?? m.subDepartmentId ?? "";
   }
 
   return (
@@ -450,7 +450,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-pen-muted">
-              <Users className="size-3.5 shrink-0" /> {data.teamCount} team{data.teamCount !== 1 ? "s" : ""}
+              <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} team{data.subDepartmentCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-pen-muted">
               <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
@@ -537,8 +537,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             <button
               type="button"
               onClick={() => setShowInviteModal(true)}
-              disabled={data.availableTeams.length === 0}
-              title={data.availableTeams.length === 0 ? "Create a team before inviting" : undefined}
+              disabled={data.availableSubDepartments.length === 0}
+              title={data.availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
               className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border px-3 font-sans text-[11.5px] font-medium text-pen-muted hover:border-pen-blue/40 hover:text-pen-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3" /> Invite by email
@@ -570,7 +570,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               ) : (
                 members.map((m) => {
                   const role = currentRole(m);
-                  const teamId = currentTeamId(m);
+                  const subDepartmentId = currentSubDepartmentId(m);
                   return (
                     <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
                       <TableCell className="py-0">
@@ -591,11 +591,11 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                         />
                       </TableCell>
                       <TableCell className="py-0">
-                        <TeamDropdown
-                          teamId={teamId}
-                          teams={data.availableTeams}
+                        <SubDepartmentDropdown
+                          subDepartmentId={subDepartmentId}
+                          subDepartments={data.availableSubDepartments}
                           saving={saving === m.userId}
-                          onChange={(v) => handleTeamChange(m.userId, v)}
+                          onChange={(v) => handleSubDepartmentChange(m.userId, v)}
                         />
                       </TableCell>
                       <TableCell className="py-0 text-right">
@@ -651,7 +651,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       </div>
                     </TableCell>
                     <TableCell className="py-0">
-                      <span className="font-sans text-[11.5px] text-pen-muted">{inv.team.name}</span>
+                      <span className="font-sans text-[11.5px] text-pen-muted">{inv.subDepartment.name}</span>
                     </TableCell>
                     <TableCell className="py-0">
                       <span className={cn("inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize", ROLE_COLORS[inv.role] ?? ROLE_COLORS.staff)}>
@@ -789,7 +789,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
       {showInviteModal && (
         <InviteByEmailModal
           deptId={data.id}
-          teams={data.availableTeams}
+          subDepartments={data.availableSubDepartments}
           onSent={(invite) => {
             setPendingInvites((prev) => [invite, ...prev.filter((p) => p.id !== invite.id)]);
           }}
@@ -880,19 +880,19 @@ function RoleDropdown({
   );
 }
 
-function TeamDropdown({
-  teamId,
-  teams,
+function SubDepartmentDropdown({
+  subDepartmentId,
+  subDepartments,
   saving,
   onChange,
 }: {
-  teamId: string;
-  teams: { id: string; name: string }[];
+  subDepartmentId: string;
+  subDepartments: { id: string; name: string }[];
   saving: boolean;
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const current = teams.find((t) => t.id === teamId)?.name ?? "No team";
+  const current = subDepartments.find((t) => t.id === subDepartmentId)?.name ?? "No team";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -910,16 +910,16 @@ function TeamDropdown({
         <button
           type="button"
           onClick={() => { onChange(""); setOpen(false); }}
-          className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", !teamId && "font-semibold")}
+          className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", !subDepartmentId && "font-semibold")}
         >
           <span className="inline-flex rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-subtle">No team</span>
         </button>
-        {teams.map((t) => (
+        {subDepartments.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => { onChange(t.id); setOpen(false); }}
-            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", teamId === t.id && "font-semibold")}
+            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", subDepartmentId === t.id && "font-semibold")}
           >
             <span className="inline-flex rounded-full bg-pen-blue/10 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-blue">{t.name}</span>
           </button>

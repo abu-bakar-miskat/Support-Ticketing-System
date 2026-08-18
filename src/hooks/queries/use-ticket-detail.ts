@@ -56,7 +56,7 @@ function resolvePlaceholder(
 
   if (shell) {
     return buildTicketDetailPlaceholder(shell, {
-      teamStatuses: meta?.teamStatuses,
+      subDepartmentStatuses: meta?.subDepartmentStatuses,
       availableMembers: meta?.availableMembers,
     })
   }
@@ -66,7 +66,7 @@ function resolvePlaceholder(
 
   const my = queryClient.getQueryData<MyTasksResponse>(taskKeys.my())
   return buildTicketDetailPlaceholder(card, {
-    teamStatuses: my?.teamStatusMap?.[card.teamId] ?? meta?.teamStatuses,
+    subDepartmentStatuses: my?.subDepartmentStatusMap?.[card.subDepartmentId] ?? meta?.subDepartmentStatuses,
     availableMembers: meta?.availableMembers,
   })
 }

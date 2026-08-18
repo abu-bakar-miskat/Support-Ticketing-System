@@ -33,7 +33,7 @@ export default async function SettingsTagsRoute() {
   const tickets = await prisma.ticket.findMany({
     where: {
       deletedAt: null,
-      ...(deptScope ? { teamId: { in: deptScope.teamIds } } : {}),
+      ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
     },
     select: { labels: true },
   });

@@ -19,8 +19,8 @@ export async function POST(
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
   // Already in a team under this department
-  const existing = await prisma.teamMembership.findFirst({
-    where: { userId: profile.id, team: { departmentId }, isActive: true },
+  const existing = await prisma.subDepartmentMembership.findFirst({
+    where: { userId: profile.id, subDepartment: { departmentId }, isActive: true },
   })
   if (existing) return NextResponse.json({ error: "Already a member of this department" }, { status: 409 })
 
@@ -89,7 +89,7 @@ export async function GET(
     orderBy: { requestedAt: "asc" },
     include: {
       user: { select: { id: true, name: true, email: true, avatarUrl: true } },
-      department: { select: { id: true, name: true, teams: { select: { id: true, name: true }, orderBy: { name: "asc" } } } },
+      department: { select: { id: true, name: true, subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } } } },
     },
   })
 

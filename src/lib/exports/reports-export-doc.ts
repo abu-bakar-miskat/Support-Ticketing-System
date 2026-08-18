@@ -1,5 +1,5 @@
 import type { ExportDoc, ExportSheet } from "./report-doc";
-import type { ReportsOverview, TeamTimeResponse } from "@/lib/api/reports";
+import type { ReportsOverview, SubDepartmentTimeResponse } from "@/lib/api/reports";
 
 type NamedCountLike = { name: string; count: number };
 
@@ -19,16 +19,16 @@ function namedCountSheet(name: string, rows: NamedCountLike[]): ExportSheet {
  * document. Only sheets with data are included. Runs in the browser.
  */
 export function buildReportsExportDoc(args: {
-  teamTime?: TeamTimeResponse;
+  subDepartmentTime?: SubDepartmentTimeResponse;
   overview?: ReportsOverview;
   rangeLabel: string;
   scopeLabel?: string;
 }): ExportDoc {
-  const { teamTime, overview, rangeLabel, scopeLabel } = args;
+  const { subDepartmentTime, overview, rangeLabel, scopeLabel } = args;
   const sheets: ExportSheet[] = [];
 
-  if (teamTime) {
-    if (teamTime.stats.length) {
+  if (subDepartmentTime) {
+    if (subDepartmentTime.stats.length) {
       sheets.push({
         name: "Dev Summary",
         columns: [
@@ -36,10 +36,10 @@ export function buildReportsExportDoc(args: {
           { key: "value", header: "Value", width: 14 },
           { key: "detail", header: "Detail", width: 30 },
         ],
-        rows: teamTime.stats.map((s) => ({ label: s.label, value: s.value, detail: s.detail })),
+        rows: subDepartmentTime.stats.map((s) => ({ label: s.label, value: s.value, detail: s.detail })),
       });
     }
-    if (teamTime.members.length) {
+    if (subDepartmentTime.members.length) {
       sheets.push({
         name: "Dev Members",
         columns: [
@@ -52,7 +52,7 @@ export function buildReportsExportDoc(args: {
           { key: "topProject", header: "Top Project", width: 22 },
           { key: "active", header: "Last Active", width: 14 },
         ],
-        rows: teamTime.members.map((m) => ({
+        rows: subDepartmentTime.members.map((m) => ({
           name: m.name,
           role: m.role,
           location: m.location,
@@ -64,7 +64,7 @@ export function buildReportsExportDoc(args: {
         })),
       });
     }
-    if (teamTime.projects.length) {
+    if (subDepartmentTime.projects.length) {
       sheets.push({
         name: "Dev Time by Project",
         columns: [
@@ -73,7 +73,7 @@ export function buildReportsExportDoc(args: {
           { key: "share", header: "Share %", width: 10 },
           { key: "contributors", header: "Contributors", width: 14 },
         ],
-        rows: teamTime.projects.map((p) => ({
+        rows: subDepartmentTime.projects.map((p) => ({
           name: p.name,
           hours: p.hours,
           share: p.share,
@@ -81,7 +81,7 @@ export function buildReportsExportDoc(args: {
         })),
       });
     }
-    if (teamTime.qaStats.length) {
+    if (subDepartmentTime.qaStats.length) {
       sheets.push({
         name: "QA Summary",
         columns: [
@@ -89,10 +89,10 @@ export function buildReportsExportDoc(args: {
           { key: "value", header: "Value", width: 14 },
           { key: "detail", header: "Detail", width: 30 },
         ],
-        rows: teamTime.qaStats.map((s) => ({ label: s.label, value: s.value, detail: s.detail })),
+        rows: subDepartmentTime.qaStats.map((s) => ({ label: s.label, value: s.value, detail: s.detail })),
       });
     }
-    if (teamTime.qaMembers.length) {
+    if (subDepartmentTime.qaMembers.length) {
       sheets.push({
         name: "QA Members",
         columns: [
@@ -102,7 +102,7 @@ export function buildReportsExportDoc(args: {
           { key: "weekHours", header: "Hours", width: 12 },
           { key: "topProject", header: "Top Project", width: 22 },
         ],
-        rows: teamTime.qaMembers.map((m) => ({
+        rows: subDepartmentTime.qaMembers.map((m) => ({
           name: m.name,
           role: m.role,
           location: m.location,
@@ -111,7 +111,7 @@ export function buildReportsExportDoc(args: {
         })),
       });
     }
-    if (teamTime.qaProjects.length) {
+    if (subDepartmentTime.qaProjects.length) {
       sheets.push({
         name: "QA Time by Project",
         columns: [
@@ -120,7 +120,7 @@ export function buildReportsExportDoc(args: {
           { key: "share", header: "Share %", width: 10 },
           { key: "contributors", header: "Contributors", width: 14 },
         ],
-        rows: teamTime.qaProjects.map((p) => ({
+        rows: subDepartmentTime.qaProjects.map((p) => ({
           name: p.name,
           hours: p.hours,
           share: p.share,

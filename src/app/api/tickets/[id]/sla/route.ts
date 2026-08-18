@@ -20,12 +20,12 @@ export async function GET(
     select: {
       id: true,
       tenantId: true,
-      teamId: true,
+      subDepartmentId: true,
       assigneeId: true,
       creatorId: true,
       deletedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })

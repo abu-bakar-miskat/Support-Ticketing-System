@@ -1,6 +1,6 @@
 import type { ExportDoc } from "@/lib/exports/report-doc"
 
-export type TeamMember = {
+export type SubDepartmentMember = {
   id: string
   name: string
   role: string
@@ -33,23 +33,23 @@ export type ProjectTimeRow = {
   contributors: number
 }
 
-export type TeamTimeResponse = {
+export type SubDepartmentTimeResponse = {
   stats: StatCard[]
-  members: TeamMember[]
+  members: SubDepartmentMember[]
   projects: ProjectTimeRow[]
   qaStats: StatCard[]
   qaProjects: ProjectTimeRow[]
-  qaMembers: TeamMember[]
+  qaMembers: SubDepartmentMember[]
 }
 
-export async function fetchTeamTimeReport(
+export async function fetchSubDepartmentTimeReport(
   from: string,
   to: string,
   projectId = "all",
   personId = "all",
-): Promise<TeamTimeResponse> {
+): Promise<SubDepartmentTimeResponse> {
   const res = await fetch(
-    `/api/reports/team-time?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}`,
+    `/api/reports/sub-department-time?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}`,
   )
   if (!res.ok) throw new Error("Failed to fetch team time report")
   return res.json()

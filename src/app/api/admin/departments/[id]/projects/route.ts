@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const projects = await prisma.project.findMany({
-    where: { OR: [{ departmentId: id }, { team: { departmentId: id } }] },
+    where: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   })

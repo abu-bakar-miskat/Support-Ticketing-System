@@ -3,15 +3,15 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { DeptScope, ProfileLike } from "@/lib/dept-scope";
 
-type ProjectTeamRow = {
-  teamId?: string | null;
+type ProjectSubDepartmentRow = {
+  subDepartmentId?: string | null;
   departmentId: string | null;
-  team?: { departmentId: string | null } | null;
+  subDepartment?: { departmentId: string | null } | null;
 };
 
 /** Effective department for a project row (direct field or via team). */
-export function projectEffectiveDeptId(project: ProjectTeamRow): string | null {
-  return project.departmentId ?? project.team?.departmentId ?? null;
+export function projectEffectiveDeptId(project: ProjectSubDepartmentRow): string | null {
+  return project.departmentId ?? project.subDepartment?.departmentId ?? null;
 }
 
 /**
@@ -19,90 +19,90 @@ export function projectEffectiveDeptId(project: ProjectTeamRow): string | null {
  * Legacy projects may have a null teamId, a deleted team reference, or a team
  * outside the project's department.
  */
-export async function resolveTeamIdForProject(
-  project: ProjectTeamRow,
+export async function resolveSubDepartmentIdForProject(
+  project: ProjectSubDepartmentRow,
   projectId?: string,
 ): Promise<string | null> {
   const deptId = projectEffectiveDeptId(project);
 
-  async function pickExistingTeamId(
+  async function pickExistingSubDepartmentId(
     candidates: Iterable<string | null | undefined>,
   ): Promise<string | null> {
     for (const id of candidates) {
       if (!id) continue;
-      const team = await prisma.team.findUnique({
+      const subDepartment = await prisma.subDepartment.findUnique({
         where: { id },
         select: { id: true },
       });
-      if (team) return team.id;
+      if (subDepartment) return subDepartment.id;
     }
     return null;
   }
 
   // Project team is valid when it exists and belongs to the project's department.
-  if (project.teamId && deptId) {
-    const team = await prisma.team.findUnique({
-      where: { id: project.teamId },
+  if (project.subDepartmentId && deptId) {
+    const subDepartment = await prisma.subDepartment.findUnique({
+      where: { id: project.subDepartmentId },
       select: { id: true, departmentId: true },
     });
-    if (team?.departmentId === deptId) return team.id;
-  } else if (project.teamId && !deptId) {
-    const direct = await pickExistingTeamId([project.teamId]);
+    if (subDepartment?.departmentId === deptId) return subDepartment.id;
+  } else if (project.subDepartmentId && !deptId) {
+    const direct = await pickExistingSubDepartmentId([project.subDepartmentId]);
     if (direct) return direct;
   }
 
   // Prefer a real team in the project's department.
   if (deptId) {
-    const deptTeam = await prisma.team.findFirst({
+    const deptSubDepartment = await prisma.subDepartment.findFirst({
       where: { departmentId: deptId },
       orderBy: { name: "asc" },
       select: { id: true },
     });
-    if (deptTeam) return deptTeam.id;
+    if (deptSubDepartment) return deptSubDepartment.id;
   }
 
   // Legacy projects — reuse a team that already hosts tickets for this project.
   if (projectId) {
-    const ticketTeams = await prisma.ticket.findMany({
+    const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId, deletedAt: null },
-      select: { teamId: true },
+      select: { subDepartmentId: true },
       distinct: ["teamId"],
     });
-    const fromTickets = await pickExistingTeamId(ticketTeams.map((t) => t.teamId));
+    const fromTickets = await pickExistingSubDepartmentId(ticketSubDepartments.map((t) => t.subDepartmentId));
     if (fromTickets) return fromTickets;
   }
 
   // Last resort: project.teamId if the row still exists (even in another dept).
-  return pickExistingTeamId([project.teamId]);
+  return pickExistingSubDepartmentId([project.subDepartmentId]);
 }
 
 /**
  * When creating a ticket from a project board tab, honor the board's teamId for any
  * user with project access — not only admins/managers.
  */
-export async function resolveBoardTeamForProjectTicket(
-  project: ProjectTeamRow,
+export async function resolveBoardSubDepartmentForProjectTicket(
+  project: ProjectSubDepartmentRow,
   projectId: string,
-  requestedTeamId: string | null,
+  requestedSubDepartmentId: string | null,
 ): Promise<string | null> {
-  if (!requestedTeamId) return null;
+  if (!requestedSubDepartmentId) return null;
 
-  const team = await prisma.team.findUnique({
-    where: { id: requestedTeamId },
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: requestedSubDepartmentId },
     select: { id: true, departmentId: true },
   });
-  if (!team) return null;
+  if (!subDepartment) return null;
 
-  if (project.teamId === requestedTeamId) return team.id;
+  if (project.subDepartmentId === requestedSubDepartmentId) return subDepartment.id;
 
   const deptId = projectEffectiveDeptId(project);
-  if (deptId && team.departmentId === deptId) return team.id;
+  if (deptId && subDepartment.departmentId === deptId) return subDepartment.id;
 
   const usedOnProject = await prisma.ticket.findFirst({
-    where: { projectId, teamId: requestedTeamId, deletedAt: null },
+    where: { projectId, subDepartmentId: requestedSubDepartmentId, deletedAt: null },
     select: { id: true },
   });
-  if (usedOnProject) return team.id;
+  if (usedOnProject) return subDepartment.id;
 
   return null;
 }
@@ -116,7 +116,7 @@ export async function getAssignedProjectIdsInDept(
     where: {
       userId,
       project: {
-        OR: [{ departmentId: deptId }, { team: { departmentId: deptId } }],
+        OR: [{ departmentId: deptId }, { subDepartment: { departmentId: deptId } }],
       },
     },
     select: { projectId: true },
@@ -151,22 +151,22 @@ export function isLimitedCrossAccessToDept(
 export function assignedProjectsInDeptWhere(userId: string, deptId: string) {
   return {
     members: { some: { userId } },
-    OR: [{ departmentId: deptId }, { team: { departmentId: deptId } }],
+    OR: [{ departmentId: deptId }, { subDepartment: { departmentId: deptId } }],
   };
 }
 
 /** Resolve a ticket's department from its team or project row. */
 export async function resolveTicketDeptId(ticket: {
   projectId?: string | null;
-  team?: { departmentId?: string | null } | null;
+  subDepartment?: { departmentId?: string | null } | null;
 }): Promise<string | null> {
-  if (ticket.team?.departmentId) return ticket.team.departmentId;
+  if (ticket.subDepartment?.departmentId) return ticket.subDepartment.departmentId;
   if (!ticket.projectId) return null;
   const project = await prisma.project.findUnique({
     where: { id: ticket.projectId },
     select: {
       departmentId: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   });
   return project ? projectEffectiveDeptId(project) : null;
@@ -180,19 +180,19 @@ export async function canCrossAccessGuestViewTicket(
   profile: ProfileLike,
   ticket: {
     projectId: string | null;
-    teamId: string;
-    team?: { departmentId?: string | null } | null;
+    subDepartmentId: string;
+    subDepartment?: { departmentId?: string | null } | null;
     projectDeptId?: string | null;
   },
 ): Promise<boolean> {
-  let deptId = ticket.projectDeptId ?? ticket.team?.departmentId ?? null;
+  let deptId = ticket.projectDeptId ?? ticket.subDepartment?.departmentId ?? null;
 
   if (!deptId && ticket.projectId) {
     const project = await prisma.project.findUnique({
       where: { id: ticket.projectId },
       select: {
         departmentId: true,
-        team: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true } },
       },
     });
     if (project) deptId = projectEffectiveDeptId(project);
@@ -221,9 +221,9 @@ export function buildCrossAccessTicketFilter(
 type TicketEditFields = {
   assigneeId?: string | null;
   creatorId: string;
-  teamId?: string;
+  subDepartmentId?: string;
   projectId?: string | null;
-  team?: { departmentId?: string | null } | null;
+  subDepartment?: { departmentId?: string | null } | null;
   assignees?: ({ userId: string } | { user: { id: string } })[];
 };
 
@@ -236,13 +236,13 @@ export async function buildTicketEditContext(
     ticket.assignees?.map((a) => ("userId" in a ? a.userId : a.user.id)) ?? [];
   const projectId = ticket.projectId ?? null;
 
-  let departmentId = ticket.team?.departmentId ?? null;
+  let departmentId = ticket.subDepartment?.departmentId ?? null;
   if (projectId) {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
         departmentId: true,
-        team: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true } },
       },
     });
     if (project) {
@@ -254,7 +254,7 @@ export async function buildTicketEditContext(
     assigneeId: ticket.assigneeId,
     creatorId: ticket.creatorId,
     coAssigneeIds,
-    teamId: ticket.teamId ?? null,
+    subDepartmentId: ticket.subDepartmentId ?? null,
     departmentId,
     projectId,
     viewerIsProjectMember:

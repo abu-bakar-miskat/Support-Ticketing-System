@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     ? {
         OR: [
           { departmentId: ctx.departmentId },
-          { team: { departmentId: ctx.departmentId } },
+          { subDepartment: { departmentId: ctx.departmentId } },
         ],
       }
     : {}

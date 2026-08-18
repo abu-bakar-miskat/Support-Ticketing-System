@@ -153,18 +153,18 @@ function isStalePrismaClient(client: InstanceType<typeof PrismaClient> | undefin
     const ticketFields =
       (client as { _runtimeDataModel?: { models?: { Ticket?: { fields?: { name: string }[] } } } })
         ._runtimeDataModel?.models?.Ticket?.fields ?? [];
-    const hasEnabledBoardTeamIds = projectFields.some(
+    const hasEnabledBoardSubDepartmentIds = projectFields.some(
       (f) => f.name === "enabledBoardTeamIds",
     );
     const hasTicketIsDraft = ticketFields.some((f) => f.name === "isDraft");
     return (
-      (client as any).teamMembership == null ||
+      (client as any).subDepartmentMembership == null ||
       (client as any).joinRequest == null ||
       (client as any).projectMember == null ||
       (client as any).department?.findMany == null ||
       (client as any).pushSubscription == null ||
       (client as any).memberSchedule == null ||
-      !hasEnabledBoardTeamIds ||
+      !hasEnabledBoardSubDepartmentIds ||
       !hasTicketIsDraft
     );
   } catch {

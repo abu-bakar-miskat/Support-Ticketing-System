@@ -26,14 +26,14 @@ async function ProjectDetailData({ params }: Props) {
       select: {
         name: true,
         department: { select: { name: true } },
-        team: { select: { department: { select: { name: true } } } },
+        subDepartment: { select: { department: { select: { name: true } } } },
       },
     });
     if (!existing) notFound();
     return (
       <ProjectAccessDenied
         projectName={existing.name}
-        deptName={existing.department?.name ?? existing.team?.department?.name ?? null}
+        deptName={existing.department?.name ?? existing.subDepartment?.department?.name ?? null}
       />
     );
   }

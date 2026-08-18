@@ -25,7 +25,7 @@ export async function POST(
     where: { id },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       assigneeId: true,
       creatorId: true,
       deletedAt: true,
@@ -33,7 +33,7 @@ export async function POST(
       projectId: true,
       tenantId: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   })
   if (!ticket || ticket.deletedAt) {

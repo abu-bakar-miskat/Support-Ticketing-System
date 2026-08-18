@@ -75,7 +75,7 @@ export type ActivityItem = {
   actor: { id: string; name: string; avatarUrl: string | null; color: string; role: string };
   ticket: {
     id: string; humanId: string; title: string; status: string; priority: string;
-    teamId: string; teamName: string;
+    subDepartmentId: string; subDepartmentName: string;
     projectId: string | null; projectName: string | null; projectColor: string | null;
   };
 };
@@ -188,7 +188,7 @@ function describeAction(action: ActivityAction, meta: Record<string, unknown>): 
     case "ATTACHMENT_ADDED":       return meta.fileName ? `attached "${meta.fileName}"` : "attached a file";
     case "MENTION":                return meta.mentionedName ? `mentioned ${String(meta.mentionedName)}` : "mentioned someone";
     case "DATE_CHANGED":           return meta.to ? `set due date to ${String(meta.to)}` : "changed the due date";
-    case "FORWARDED":              return meta.toTeamName ? `forwarded to ${String(meta.toTeamName)}` : "forwarded";
+    case "FORWARDED":              return meta.toSubDepartmentName ? `forwarded to ${String(meta.toSubDepartmentName)}` : "forwarded";
     case "TICKET_DELETED":         return "deleted the ticket";
     case "TICKET_CREATED":         return meta.humanId ? `created ticket ${meta.humanId}` : "created the ticket";
     case "TITLE_CHANGED":          return meta.to ? `renamed to "${meta.to}"` : "changed the title";
@@ -289,7 +289,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
             </>
           )}
           <span className="inline-flex shrink-0 items-center font-sans text-[10.5px] text-pen-subtle">
-            · {item.ticket.teamName}
+            · {item.ticket.subDepartmentName}
           </span>
         </div>
 

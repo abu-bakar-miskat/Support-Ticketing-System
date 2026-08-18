@@ -13,7 +13,7 @@ export function buildProjectDepartmentPeopleWhere(projectDeptId: string) {
         memberships: {
           some: {
             isActive: true,
-            team: { departmentId: projectDeptId },
+            subDepartment: { departmentId: projectDeptId },
           },
         },
       },
@@ -45,7 +45,7 @@ const personSelect = (projectDeptId: string) =>
     name: true,
     avatarUrl: true,
     role: true,
-    team: {
+    subDepartment: {
       select: {
         name: true,
         department: { select: { id: true, name: true } },
@@ -54,7 +54,7 @@ const personSelect = (projectDeptId: string) =>
     memberships: {
       where: { isActive: true },
       select: {
-        team: {
+        subDepartment: {
           select: {
             id: true,
             name: true,
@@ -82,12 +82,12 @@ type PersonRow = {
   name: string;
   avatarUrl: string | null;
   role: string;
-  team: {
+  subDepartment: {
     name: string;
     department: { id: string; name: string } | null;
   } | null;
   memberships: {
-    team: {
+    subDepartment: {
       id: string;
       name: string;
       department: { id: string; name: string } | null;
@@ -106,15 +106,15 @@ export function mapProjectDepartmentPerson(
   avatarUrl: string | null;
   role: string;
   departmentName: string | null;
-  teamName: string | null;
+  subDepartmentName: string | null;
 } {
-  const inDept = p.memberships.find((m) => m.team.department?.id === projectDeptId);
+  const inDept = p.memberships.find((m) => m.subDepartment.department?.id === projectDeptId);
   const outsideDept = p.memberships.find(
-    (m) => m.team.department?.id && m.team.department.id !== projectDeptId,
+    (m) => m.subDepartment.department?.id && m.subDepartment.department.id !== projectDeptId,
   );
-  const fallbackTeam = p.team ?? outsideDept?.team ?? p.memberships[0]?.team ?? null;
-  const homeDept = fallbackTeam?.department?.name ?? null;
-  const homeTeam = fallbackTeam?.name ?? null;
+  const fallbackSubDepartment = p.subDepartment ?? outsideDept?.subDepartment ?? p.memberships[0]?.subDepartment ?? null;
+  const homeDept = fallbackSubDepartment?.department?.name ?? null;
+  const homeSubDepartment = fallbackSubDepartment?.name ?? null;
 
   return {
     id: p.id,
@@ -122,11 +122,11 @@ export function mapProjectDepartmentPerson(
     avatarUrl: p.avatarUrl ?? null,
     role: p.role,
     departmentName:
-      inDept?.team.department?.name ??
+      inDept?.subDepartment.department?.name ??
       p.managedDepartments[0]?.department?.name ??
       p.directDeptMemberships[0]?.department?.name ??
       homeDept,
-    teamName: inDept?.team.name ?? homeTeam,
+    subDepartmentName: inDept?.subDepartment.name ?? homeSubDepartment,
   };
 }
 

@@ -42,7 +42,7 @@ export function BoardCardContextMenu({
     assigneeId: card.assigneeId,
     creatorId: card.creatorId,
     coAssigneeIds: card.coAssignees.map((c) => c.id),
-    teamId: card.teamId,
+    subDepartmentId: card.subDepartmentId,
   };
   const canEdit = user ? canEditTicket(user, ticketLike) : false;
   const canDelete = user ? canDeleteTicket(user, { creatorId: card.creatorId }) : false;

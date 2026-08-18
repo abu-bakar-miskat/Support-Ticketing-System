@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 const mockTx = {
-  teamTicketCounter: { upsert: vi.fn() },
+  subDepartmentTicketCounter: { upsert: vi.fn() },
   ticket: { update: vi.fn() },
   activityLog: { create: vi.fn() },
   ticketAccessGrant: { upsert: vi.fn() },
@@ -10,8 +10,8 @@ const mockTx = {
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn() },
-    team: { findUnique: vi.fn() },
-    teamMembership: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
+    subDepartmentMembership: { findUnique: vi.fn() },
     boardColumn: { findMany: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   },
@@ -21,16 +21,16 @@ import { prisma } from "@/lib/db"
 import { transferTicket } from "./ticket-transfer"
 
 const mockTicketFind = vi.mocked(prisma.ticket.findUnique)
-const mockTeamFind = vi.mocked(prisma.team.findUnique)
-const mockMembershipFind = vi.mocked(prisma.teamMembership.findUnique)
+const mockTeamFind = vi.mocked(prisma.subDepartment.findUnique)
+const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
 const mockBoardColumns = vi.mocked(prisma.boardColumn.findMany)
 
 const baseTicket = {
   id: "ticket-1",
-  teamId: "team-source",
+  subDepartmentId: "team-source",
   assigneeId: "agent-1",
   deletedAt: null,
-  team: { id: "team-source", name: "Billing", departmentId: "dept-A", tenantId: "tenant-1" },
+  subDepartment: { id: "team-source", name: "Billing", departmentId: "dept-A", tenantId: "tenant-1" },
 }
 
 const baseTargetTeam = {
@@ -50,7 +50,7 @@ beforeEach(() => {
     { id: "col-progress", statusType: "OPEN", order: 1 },
     { id: "col-done", statusType: "RESOLVED", order: 2 },
   ] as never)
-  mockTx.teamTicketCounter.upsert.mockResolvedValue({ teamId: "team-target", lastNumber: 7 } as never)
+  mockTx.subDepartmentTicketCounter.upsert.mockResolvedValue({ subDepartmentId: "team-target", lastNumber: 7 } as never)
 })
 
 describe("transferTicket", () => {
@@ -67,7 +67,7 @@ describe("transferTicket", () => {
     expect(mockTx.ticket.update).toHaveBeenCalledWith({
       where: { id: "ticket-1" },
       data: {
-        teamId: "team-target",
+        subDepartmentId: "team-target",
         ticketNumber: 7,
         assigneeId: null,
         boardColumnId: "col-todo",

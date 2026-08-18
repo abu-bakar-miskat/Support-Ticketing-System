@@ -143,7 +143,7 @@ export function patchTicketDetailFromActivity(
       const toId = (payload.toId as string | null | undefined) ?? null
       const toName = (payload.toName as string | null | undefined) ?? null
       const member = toId
-        ? detail.teamMembers.find((m) => m.id === toId)
+        ? detail.subDepartmentMembers.find((m) => m.id === toId)
         : undefined
       return {
         ...detail,
@@ -159,7 +159,7 @@ export function patchTicketDetailFromActivity(
       if (!userId) return { ...detail, activity }
       const coAssignees = detail.coAssignees ?? []
       if (coAssignees.some((c) => c.id === userId)) return { ...detail, activity }
-      const member = detail.teamMembers.find((m) => m.id === userId)
+      const member = detail.subDepartmentMembers.find((m) => m.id === userId)
       return {
         ...detail,
         activity,

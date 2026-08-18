@@ -16,13 +16,13 @@ type Member = UserListPerson;
 export function QaAssigneeSelect({
   ticketId,
   qaAssignees,
-  teamMembers,
+  subDepartmentMembers,
   onQaAssigneesChange,
   disabled = false,
 }: {
   ticketId: string;
   qaAssignees: Member[];
-  teamMembers: Member[];
+  subDepartmentMembers: Member[];
   onQaAssigneesChange?: (newList: Member[]) => void;
   disabled?: boolean;
 }) {
@@ -75,7 +75,7 @@ export function QaAssigneeSelect({
   }, []);
 
   const currentIds = new Set(qaAssignees.map((m) => m.id));
-  const filtered = teamMembers.filter((m) => matchesUserListSearch(m, search));
+  const filtered = subDepartmentMembers.filter((m) => matchesUserListSearch(m, search));
 
   const hasChanges =
     staged.size !== currentIds.size ||
@@ -102,7 +102,7 @@ export function QaAssigneeSelect({
     const failed = results.filter((r) => r.status === "rejected").length;
     if (failed > 0) toast.error(`${failed} QA assignment${failed > 1 ? "s" : ""} failed to save`);
 
-    const newList = teamMembers.filter((m) => staged.has(m.id));
+    const newList = subDepartmentMembers.filter((m) => staged.has(m.id));
     onQaAssigneesChange?.(newList);
     setSaving(false);
     setOpen(false);

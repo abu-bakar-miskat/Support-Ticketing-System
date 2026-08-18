@@ -18,7 +18,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn() },
-    teamStatus: { findMany: vi.fn() },
+    subDepartmentStatus: { findMany: vi.fn() },
     ticketMessage: { findFirst: vi.fn(), create: vi.fn() },
     $transaction: vi.fn(),
     intake: { update: vi.fn() },
@@ -48,7 +48,7 @@ import { sendCustomerReplyEmail } from "@/lib/email"
 
 const mockRequireAuth = vi.mocked(requireAuth)
 const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
-const mockFindStatuses = vi.mocked(prisma.teamStatus.findMany)
+const mockFindStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockFindLastMessage = vi.mocked(prisma.ticketMessage.findFirst)
 const mockCreateMessage = vi.mocked(prisma.ticketMessage.create)
 const mockTransaction = vi.mocked(prisma.$transaction)
@@ -59,13 +59,13 @@ const intakeTicket = {
   title: "Login broken",
   ticketNumber: 7,
   status: "In Progress",
-  teamId: "team-1",
+  subDepartmentId: "team-1",
   assigneeId: mockProfile.id,
   creatorId: mockProfile.id,
   deletedAt: null,
   closedAt: null,
   assignees: [],
-  team: { prefix: "SUP" },
+  subDepartment: { prefix: "SUP" },
   intake: {
     id: "intake-1",
     submitterName: "Jane Customer",

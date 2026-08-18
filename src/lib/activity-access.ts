@@ -19,14 +19,14 @@ export function resolveActivityActorId(
 }
 
 export function buildActivityTicketWhere(
-  teamIds: string[],
+  subDepartmentIds: string[],
   projectId?: string | null,
   tenantId?: string | null,
 ): Prisma.TicketWhereInput {
   return {
     // Bound by team when scoped; otherwise (admin global) bound by tenant so
     // activity never spans tenants.
-    ...(teamIds.length > 0 ? { teamId: { in: teamIds } } : tenantId ? { tenantId } : {}),
+    ...(subDepartmentIds.length > 0 ? { subDepartmentId: { in: subDepartmentIds } } : tenantId ? { tenantId } : {}),
     ...(projectId ? { projectId } : {}),
   };
 }
@@ -41,14 +41,14 @@ type ActivityLogFilters = {
 
 export function buildActivityLogWhere(
   profile: Pick<AuthProfile, "id" | "role">,
-  teamIds: string[],
+  subDepartmentIds: string[],
   filters: ActivityLogFilters,
   tenantId?: string | null,
 ): Prisma.ActivityLogWhereInput {
   const actorId = resolveActivityActorId(profile, filters.actorId);
 
   return {
-    ticket: buildActivityTicketWhere(teamIds, filters.projectId, tenantId),
+    ticket: buildActivityTicketWhere(subDepartmentIds, filters.projectId, tenantId),
     ...(filters.from || filters.to
       ? {
           createdAt: {

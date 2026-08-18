@@ -24,7 +24,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       pendingCount = await (prisma.joinRequest as any).count({
         where: {
           status: "pending",
-          ...(isAdmin ? {} : { teamId: { in: profile.teamIds } }),
+          ...(isAdmin ? {} : { subDepartmentId: { in: profile.subDepartmentIds } }),
         },
       });
     } catch {
@@ -33,7 +33,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   }
 
   const counts: Record<string, number> = {};
-  if (pendingCount > 0) counts["/settings/teams"] = pendingCount;
+  if (pendingCount > 0) counts["/settings/sub-departments"] = pendingCount;
 
   return (
     <SettingsLayout role={profile.role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={profile.isSuperAdmin}>

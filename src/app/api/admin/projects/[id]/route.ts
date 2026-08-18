@@ -33,7 +33,7 @@ export async function PATCH(
 
   const project = await prisma.project.findUnique({
     where: { id },
-    include: { team: { select: { departmentId: true } } },
+    include: { subDepartment: { select: { departmentId: true } } },
   })
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -41,7 +41,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const projectDeptId = project.departmentId ?? project.team?.departmentId ?? null
+  const projectDeptId = project.departmentId ?? project.subDepartment?.departmentId ?? null
   const deptScope = await getProfileDeptScope(profile)
   const isProjectMember =
     (await prisma.projectMember.count({
@@ -71,7 +71,7 @@ export async function PATCH(
     const addedIds = memberIds.filter((uid) => !existingIds.has(uid))
 
     if (addedIds.length > 0) {
-      const projectDeptId = project.departmentId ?? project.team?.departmentId ?? null
+      const projectDeptId = project.departmentId ?? project.subDepartment?.departmentId ?? null
       const eligibility = await assertUsersEligibleForProjectDepartment(
         projectDeptId,
         addedIds,
@@ -150,7 +150,7 @@ export async function DELETE(
 
   const project = await prisma.project.findUnique({
     where: { id },
-    include: { team: { select: { departmentId: true } } },
+    include: { subDepartment: { select: { departmentId: true } } },
   })
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 })
 

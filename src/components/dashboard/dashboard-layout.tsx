@@ -10,7 +10,7 @@ import {
 } from "@/components/dashboard/command-palette";
 import type {
   SidebarProject,
-  TeamItem,
+  SubDepartmentItem,
   DeptNode,
 } from "@/components/dashboard/sidebar";
 import type { RecentTicket } from "@/components/dashboard/command-palette";
@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 
 export type LayoutData = {
   projects: SidebarProject[];
-  teams: TeamItem[];
+  subDepartments: SubDepartmentItem[];
   departments: DeptNode[];
   allDepts: { id: string; name: string }[];
   activeDeptId: string | null;
@@ -59,7 +59,7 @@ export type LayoutData = {
 
 const EMPTY: LayoutData = {
   projects: [],
-  teams: [],
+  subDepartments: [],
   departments: [],
   allDepts: [],
   activeDeptId: null,
@@ -157,8 +157,8 @@ export function DashboardLayout({
         userId: data.userId ?? EMPTY.userId,
         recentTickets: data.recentTickets ?? EMPTY.recentTickets,
         projectNames: data.projectNames ?? EMPTY.projectNames,
-        teams: data.teams ?? EMPTY.teams,
-        activeTeamId: null,
+        subDepartments: data.subDepartments ?? EMPTY.subDepartments,
+        activeSubDepartmentId: null,
         departments: data.departments ?? EMPTY.departments,
         allDepts: data.allDepts ?? EMPTY.allDepts,
         activeDeptId: data.activeDeptId ?? EMPTY.activeDeptId,
@@ -251,9 +251,9 @@ export function DashboardLayout({
         {showCreateTask && (
           <NewTicketModal
             projects={taskMeta?.availableProjects ?? []}
-            teamMembers={taskMeta?.availableMembers ?? []}
-            defaultTeamId={taskMeta?.defaultTeamId ?? undefined}
-            statuses={(taskMeta?.teamStatuses ?? []).map((s) => ({
+            subDepartmentMembers={taskMeta?.availableMembers ?? []}
+            defaultSubDepartmentId={taskMeta?.defaultSubDepartmentId ?? undefined}
+            statuses={(taskMeta?.subDepartmentStatuses ?? []).map((s) => ({
               id: s.id,
               label: s.label,
               color: s.color,

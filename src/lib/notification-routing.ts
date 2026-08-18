@@ -8,7 +8,7 @@ export function getNotificationHref(
 ): string {
   if (payload.ticketDbId) return `/tickets/${payload.ticketDbId}`;
   if (payload.joinRequestId || payload.type === "join_request") {
-    return "/settings/teams";
+    return "/settings/sub-departments";
   }
   return "/inbox";
 }

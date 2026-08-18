@@ -1,4 +1,4 @@
-import type { BoardCardData, TeamStatusConfig } from "@/components/board/board-types"
+import type { BoardCardData, SubDepartmentStatusConfig } from "@/components/board/board-types"
 
 export type ProjectAsset = {
   id: string
@@ -33,7 +33,7 @@ export type TicketRow = {
   updatedAt: string
   commentCount: number
   labels: string[]
-  teamName: string
+  subDepartmentName: string
   lastMessageDirection: "inbound" | "outbound" | null
 }
 
@@ -55,30 +55,30 @@ export type ProjectMember = {
   bg: string
 }
 
-export type BoardTeamSource = "department" | "member"
+export type BoardSubDepartmentSource = "department" | "member"
 
-export type AddableBoardTeam = {
+export type AddableBoardSubDepartment = {
   id: string
   name: string
-  source: BoardTeamSource
+  source: BoardSubDepartmentSource
   memberNames: string[]
-  statuses: TeamStatusConfig[]
+  statuses: SubDepartmentStatusConfig[]
 }
 
-export type ProjectTeamBoardGroup = {
-  teamId: string
-  teamName: string
+export type ProjectSubDepartmentBoardGroup = {
+  subDepartmentId: string
+  subDepartmentName: string
   cards: BoardCardData[]
   members: ProjectMember[]
-  statuses: TeamStatusConfig[]
-  teamMembersForCreate: {
+  statuses: SubDepartmentStatusConfig[]
+  subDepartmentMembersForCreate: {
     id: string
     name: string
     avatarUrl?: string | null
     departmentName?: string | null
-    teamName?: string | null
+    subDepartmentName?: string | null
   }[]
-  boardSource: BoardTeamSource | "tickets"
+  boardSource: BoardSubDepartmentSource | "tickets"
   memberNames: string[]
 }
 
@@ -91,8 +91,8 @@ export type ProjectDetailsResponse = {
     color: string
     avatarUrl?: string | null
     description: string | null
-    teamName: string | null
-    teamId?: string | null
+    subDepartmentName: string | null
+    subDepartmentId?: string | null
     projectStatus: string | null
     pipelineStartedAt: string | null
     developmentStartedAt: string | null
@@ -135,34 +135,34 @@ export type ProjectDetailsResponse = {
   members: ProjectMember[]
   statusDist: { label: string; color: string; count: number }[]
   tickets: TicketRow[]
-  boardStatuses: TeamStatusConfig[]
-  teamBoardGroups: ProjectTeamBoardGroup[]
+  boardStatuses: SubDepartmentStatusConfig[]
+  subDepartmentBoardGroups: ProjectSubDepartmentBoardGroup[]
   recentActivity: ActivityItem[]
   allProjectAssignees: {
     id: string
     name: string
     avatarUrl: string | null
     departmentName: string | null
-    teamName: string | null
+    subDepartmentName: string | null
   }[]
   projectMemberUsers: {
     id: string
     name: string
     avatarUrl: string | null
     departmentName: string | null
-    teamName: string | null
+    subDepartmentName: string | null
   }[]
   currentUserIsProjectMember: boolean
   canSelfJoinProject: boolean
-  mainTeamId: string | null
-  enabledBoardTeamIds: string[]
-  addableBoardTeams: AddableBoardTeam[]
+  mainSubDepartmentId: string | null
+  enabledBoardSubDepartmentIds: string[]
+  addableBoardSubDepartments: AddableBoardSubDepartment[]
 }
 
 export async function updateProjectBoards(
   projectId: string,
-  body: { action: "add" | "remove"; teamId: string },
-): Promise<{ enabledBoardTeamIds: string[] }> {
+  body: { action: "add" | "remove"; subDepartmentId: string },
+): Promise<{ enabledBoardSubDepartmentIds: string[] }> {
   const res = await fetch(`/api/projects/${projectId}/boards`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -191,7 +191,7 @@ export async function fetchDepartmentPeople(departmentId: string): Promise<
     avatarUrl: string | null
     role: string
     departmentName: string | null
-    teamName: string | null
+    subDepartmentName: string | null
   }[]
 > {
   const res = await fetch(`/api/departments/${departmentId}/people`)

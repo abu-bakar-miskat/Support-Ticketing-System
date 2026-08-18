@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
     where: { id: ticketId },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
     },
   })

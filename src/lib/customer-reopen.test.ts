@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn(), update: vi.fn() },
-    teamStatus: { findMany: vi.fn() },
+    subDepartmentStatus: { findMany: vi.fn() },
     activityLog: { create: vi.fn() },
   },
 }))
@@ -13,7 +13,7 @@ import { prisma } from "@/lib/db"
 
 const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
 const mockUpdateTicket = vi.mocked(prisma.ticket.update)
-const mockFindStatuses = vi.mocked(prisma.teamStatus.findMany)
+const mockFindStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockCreateLog = vi.mocked(prisma.activityLog.create)
 
 // ── resolveReopenStatus ───────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ describe("resolveReopenStatus", () => {
 // ── maybeReopenTicket ─────────────────────────────────────────────────────────
 
 const TICKET_ID = "ticket-1"
-const TEAM_ID = "team-1"
+const SUB_DEPARTMENT_ID = "team-1"
 const ACTOR_ID = "creator-profile-id"
 
 const typicalStatuses = [
@@ -88,7 +88,7 @@ describe("maybeReopenTicket", () => {
     mockFindTicket.mockResolvedValue({ status: "Done" } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
-    const result = await maybeReopenTicket(TICKET_ID, TEAM_ID, ACTOR_ID)
+    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
 
     expect(result).toBe(true)
     expect(mockUpdateTicket).toHaveBeenCalledWith({
@@ -113,7 +113,7 @@ describe("maybeReopenTicket", () => {
     mockFindTicket.mockResolvedValue({ status: "In Progress" } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
-    const result = await maybeReopenTicket(TICKET_ID, TEAM_ID, ACTOR_ID)
+    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
 
     expect(result).toBe(false)
     expect(mockUpdateTicket).not.toHaveBeenCalled()
@@ -127,7 +127,7 @@ describe("maybeReopenTicket", () => {
       { label: "Closed", isComplete: true, order: 1 },
     ] as never)
 
-    const result = await maybeReopenTicket(TICKET_ID, TEAM_ID, ACTOR_ID)
+    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
 
     expect(result).toBe(false)
     expect(mockUpdateTicket).not.toHaveBeenCalled()
@@ -137,7 +137,7 @@ describe("maybeReopenTicket", () => {
     mockFindTicket.mockResolvedValue(null as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
-    const result = await maybeReopenTicket(TICKET_ID, TEAM_ID, ACTOR_ID)
+    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
 
     expect(result).toBe(false)
     expect(mockUpdateTicket).not.toHaveBeenCalled()
@@ -147,7 +147,7 @@ describe("maybeReopenTicket", () => {
     mockFindTicket.mockResolvedValue({ status: "Done" } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
-    await maybeReopenTicket(TICKET_ID, TEAM_ID, ACTOR_ID)
+    await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
 
     expect(mockUpdateTicket).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ closedAt: null }) }),

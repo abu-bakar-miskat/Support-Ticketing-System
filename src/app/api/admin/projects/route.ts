@@ -53,7 +53,7 @@ export async function GET() {
                   },
                 },
                 {
-                  team: {
+                  subDepartment: {
                     departmentId: {
                       in: [
                         ...new Set([
@@ -136,9 +136,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const departmentTeamIds = resolvedDeptId
+    const departmentSubDepartmentIds = resolvedDeptId
       ? (
-          await prisma.team.findMany({
+          await prisma.subDepartment.findMany({
             where: { departmentId: resolvedDeptId },
             select: { id: true },
             orderBy: { name: "asc" },
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
         projectUrl: (body.projectUrl as string | undefined)?.trim() || null,
         departmentId: resolvedDeptId,
         tenantId,
-        enabledBoardTeamIds: departmentTeamIds.length > 0 ? departmentTeamIds : undefined,
+        enabledBoardSubDepartmentIds: departmentSubDepartmentIds.length > 0 ? departmentSubDepartmentIds : undefined,
         members: memberIds.length > 0
           ? { create: memberIds.map((userId) => ({ userId })) }
           : undefined,

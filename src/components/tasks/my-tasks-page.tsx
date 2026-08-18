@@ -30,7 +30,7 @@ import {
   formatLoggedTime,
   type BoardCardData,
   type SubCardData,
-  type TeamStatusConfig,
+  type SubDepartmentStatusConfig,
   UI_STATUS_DOT,
   UI_PRIORITY_DOT_HEX,
 } from "@/components/board/board-types";
@@ -48,8 +48,8 @@ function truncateTitle(title: string, maxWords = 6): string {
   return words.slice(0, maxWords).join(" ") + "…";
 }
 import { sortCards } from "@/lib/sort-cards";
-import { useTeamMembers } from "@/hooks/queries/use-board"
-import { useTeamStatuses } from "@/hooks/queries/use-team-statuses"
+import { useSubDepartmentMembers } from "@/hooks/queries/use-board"
+import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses"
 import { useCardState } from "@/hooks/use-card-state"
 import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
@@ -99,11 +99,11 @@ type DragItem = { dbId: string; fromStatus: string };
  * this prevents completed tickets from falling through to "Not Started" when the
  * status label isn't present in the current teamStatuses list.
  */
-function resolveToTeamStatus(cardStatus: string, teamStatuses: TeamStatusConfig[], isComplete?: boolean): string {
-  if (teamStatuses.some((s) => s.label === cardStatus)) return cardStatus;
+function resolveToSubDepartmentStatus(cardStatus: string, subDepartmentStatuses: SubDepartmentStatusConfig[], isComplete?: boolean): string {
+  if (subDepartmentStatuses.some((s) => s.label === cardStatus)) return cardStatus;
   const normalized = normalizeStatus(cardStatus);
   if (isComplete && normalized === "To Do") return cardStatus;
-  const matched = teamStatuses.find((s) => normalizeStatus(s.label) === normalized);
+  const matched = subDepartmentStatuses.find((s) => normalizeStatus(s.label) === normalized);
   if (matched) return matched.label;
   return cardStatus;
 }
@@ -126,10 +126,10 @@ function QaBadge({ className }: { className?: string }) {
   );
 }
 
-function PersonCell({ name, avatarUrl, team }: { name: string; avatarUrl?: string | null; team?: string }) {
+function PersonCell({ name, avatarUrl, subDepartment }: { name: string; avatarUrl?: string | null; subDepartment?: string }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <UserAvatar name={name} avatarUrl={avatarUrl} size={18} meta={{ team }} />
+      <UserAvatar name={name} avatarUrl={avatarUrl} size={18} meta={{ subDepartment }} />
       <span className="truncate whitespace-nowrap font-sans text-[11.5px] text-pen-foreground" title={name}>{name.length > 10 ? name.slice(0, 10) + "…" : name}</span>
     </div>
   );
@@ -137,8 +137,8 @@ function PersonCell({ name, avatarUrl, team }: { name: string; avatarUrl?: strin
 
 function DraggableBoardCard({ task }: { task: BoardCardData }) {
   const { subTicketCards, expanded, creatingSubTicket, subTotal, subDone, subtasksDone, openSubTicketModal, closeSubTicketModal, toggleExpanded, onSubTicketCreated } = useCardState(task.subTicketCards);
-  const { data: teamMembers = [] } = useTeamMembers(task.teamId);
-  const { data: statuses = [] } = useTeamStatuses(task.teamId);
+  const { data: subDepartmentMembers = [] } = useSubDepartmentMembers(task.subDepartmentId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const [startingTimer, setStartingTimer] = useState(false);
   const [stoppingTimer, setStoppingTimer] = useState(false);
   const timerEntryId = useTimerStore((s) => s.entryId);
@@ -402,11 +402,11 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
       {creatingSubTicket && (
         <NewTicketModal
           projects={[{ id: task.projectId, name: task.project }]}
-          teamMembers={teamMembers}
-          teamMembersForCreate={teamMembers}
+          subDepartmentMembers={subDepartmentMembers}
+          subDepartmentMembersForCreate={subDepartmentMembers}
           defaultProjectId={task.projectId}
           defaultProjectName={task.project}
-          defaultTeamId={task.teamId}
+          defaultSubDepartmentId={task.subDepartmentId}
           statuses={statuses}
           parentId={task.dbId}
           parentHumanId={task.humanId}
@@ -425,7 +425,7 @@ function ReviewTaskRow({ task, colorMap }: { task: BoardCardData; colorMap: Reco
   const [liveStatus, setLiveStatus] = useState(task.status);
   useEffect(() => { setLiveStatus(task.status); }, [task.status]);
 
-  const { data: statuses = [] } = useTeamStatuses(task.teamId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const queryClient = useQueryClient();
 
   async function handleStatusChange(newStatus: string, chosenLabel?: string) {
@@ -478,7 +478,7 @@ function ReviewTaskRow({ task, colorMap }: { task: BoardCardData; colorMap: Reco
         )}
       </td>
       <td className={cn(COL_STATUS, "overflow-hidden", LIST_TD)}>
-        <InlineStatusPicker teamId={task.teamId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
+        <InlineStatusPicker subDepartmentId={task.subDepartmentId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
           {({ ref, onClick }) => (
             <button ref={ref} type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="rounded transition-opacity hover:opacity-80">
               <StatusPill status={liveStatus} color={dotColor} size="sm" />
@@ -523,8 +523,8 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
     setLiveAssigneeAvatarUrl(task.assigneeAvatarUrl ?? null);
   }, [task.assigneeId, task.assigneeName, task.assigneeAvatarUrl]);
 
-  const { data: statuses = [] } = useTeamStatuses(task.teamId);
-  const { data: members = [] } = useTeamMembers(task.teamId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
+  const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const isQaForMe = !!currentUser?.id && task.qaAssignees.some((a) => a.id === currentUser.id);
@@ -585,7 +585,7 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
           </div>
         </td>
         <td className={cn(COL_STATUS, "overflow-hidden", LIST_TD)}>
-          <InlineStatusPicker teamId={task.teamId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
+          <InlineStatusPicker subDepartmentId={task.subDepartmentId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
             {({ ref, onClick }) => (
               <button ref={ref} type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="rounded transition-opacity hover:opacity-80">
                 <StatusPill status={liveStatus} color={colorMap[liveStatus] ?? "#94a3b8"} size="sm" />
@@ -688,7 +688,7 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
 function SubtaskListRow({ task, colorMap }: { task: AssignedSubtask; colorMap: Record<string, string> }) {
   const [liveStatus, setLiveStatus] = useState(task.status);
   useEffect(() => { setLiveStatus(task.status); }, [task.status]);
-  const { data: statuses = [] } = useTeamStatuses(task.teamId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const statusColor = colorMap[liveStatus] ?? colorMap[task.status] ?? "#94a3b8";
   const queryClient = useQueryClient();
 
@@ -724,7 +724,7 @@ function SubtaskListRow({ task, colorMap }: { task: AssignedSubtask; colorMap: R
         </DrawerLink>
       </td>
       <td className={cn(COL_STATUS, "overflow-hidden", LIST_TD)}>
-        <InlineStatusPicker teamId={task.teamId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
+        <InlineStatusPicker subDepartmentId={task.subDepartmentId} statuses={statuses} current={liveStatus} onSelect={handleStatusChange}>
           {({ ref, onClick }) => (
             <button ref={ref} type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="rounded transition-opacity hover:opacity-80">
               <StatusPill status={liveStatus} color={statusColor} size="sm" />
@@ -777,7 +777,7 @@ function BoardColumn({
   onDrop,
   onAdd,
 }: {
-  status: TeamStatusConfig;
+  status: SubDepartmentStatusConfig;
   cards: BoardCardData[];
   onDrop: (dbId: string, toStatus: string) => void;
   onAdd: (statusLabel: string) => void;
@@ -848,8 +848,8 @@ function BoardColumn({
 
 type Props = {
   tasks: BoardCardData[];
-  teamStatuses: TeamStatusConfig[];
-  teamStatusMap?: Record<string, TeamStatusConfig[]>;
+  subDepartmentStatuses: SubDepartmentStatusConfig[];
+  subDepartmentStatusMap?: Record<string, SubDepartmentStatusConfig[]>;
   reviewTasks?: BoardCardData[];
   isManager?: boolean;
   subtasks?: AssignedSubtask[];
@@ -862,7 +862,7 @@ type FlatRow =
   | { kind: "task"; data: BoardCardData }
   | { kind: "subtask"; data: AssignedSubtask };
 
-export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap = {}, reviewTasks = [], isManager = false, subtasks = [], hideTitleBar = false }: Props) {
+export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDepartmentStatusMap = {}, reviewTasks = [], isManager = false, subtasks = [], hideTitleBar = false }: Props) {
   const [localTasks, setLocalTasks] = useState<BoardCardData[]>(initialTasks);
   const [sortKey, setSortKey] = useState<SortKey>("created");
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
@@ -903,11 +903,11 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
   }, [initialTasks]);
 
   const sortedStatuses = useMemo(() => {
-    const allStatuses = Object.values(teamStatusMap).flat()
-    if (allStatuses.length === 0) return [...teamStatuses].sort((a, b) => a.order - b.order)
+    const allStatuses = Object.values(subDepartmentStatusMap).flat()
+    if (allStatuses.length === 0) return [...subDepartmentStatuses].sort((a, b) => a.order - b.order)
     // Deduplicate by label — keep first occurrence
     const seen = new Set<string>()
-    const merged: TeamStatusConfig[] = []
+    const merged: SubDepartmentStatusConfig[] = []
     for (const s of allStatuses) {
       if (!seen.has(s.label)) {
         seen.add(s.label)
@@ -915,17 +915,17 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
       }
     }
     return merged.sort((a, b) => a.order - b.order)
-  }, [teamStatuses, teamStatusMap]);
+  }, [subDepartmentStatuses, subDepartmentStatusMap]);
 
   const colorMap = useMemo(() => {
     const map: Record<string, string> = {};
-    const allStatuses = [...Object.values(teamStatusMap).flat(), ...teamStatuses];
+    const allStatuses = [...Object.values(subDepartmentStatusMap).flat(), ...subDepartmentStatuses];
     for (const s of allStatuses) {
       map[s.label] = s.color;
       map[normalizeStatus(s.label)] = s.color;
     }
     return map;
-  }, [teamStatuses, teamStatusMap]);
+  }, [subDepartmentStatuses, subDepartmentStatusMap]);
 
   // Team review/PR list grouped by assignee so a large queue stays scannable —
   // the manager can see whose work is waiting, busiest person first.
@@ -953,11 +953,11 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
   const countsByStatus = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of localTasks) {
-      const key = resolveToTeamStatus(t.status, teamStatusMap[t.teamId] ?? sortedStatuses, t.isComplete);
+      const key = resolveToSubDepartmentStatus(t.status, subDepartmentStatusMap[t.subDepartmentId] ?? sortedStatuses, t.isComplete);
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
-  }, [localTasks, sortedStatuses, teamStatusMap]);
+  }, [localTasks, sortedStatuses, subDepartmentStatusMap]);
 
   const counts = useMemo(() => {
     const result: Record<string, number> = { all: localTasks.length };
@@ -972,11 +972,11 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
     const known = new Set(sortedStatuses.map((s) => s.label));
     const extras = new Set<string>();
     for (const t of localTasks) {
-      const key = resolveToTeamStatus(t.status, teamStatusMap[t.teamId] ?? sortedStatuses, t.isComplete);
+      const key = resolveToSubDepartmentStatus(t.status, subDepartmentStatusMap[t.subDepartmentId] ?? sortedStatuses, t.isComplete);
       if (!known.has(key)) extras.add(key);
     }
     return [...extras].sort((a, b) => a.localeCompare(b));
-  }, [localTasks, sortedStatuses, teamStatusMap]);
+  }, [localTasks, sortedStatuses, subDepartmentStatusMap]);
 
   const [filterProject, setFilterProject] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
@@ -1038,9 +1038,9 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
   const filteredTasks = useMemo(() => {
     const filtered = localTasks.filter((t) => {
       if (filterStatus.size > 0) {
-        const resolved = resolveToTeamStatus(
+        const resolved = resolveToSubDepartmentStatus(
           t.status,
-          teamStatusMap[t.teamId] ?? sortedStatuses,
+          subDepartmentStatusMap[t.subDepartmentId] ?? sortedStatuses,
           t.isComplete,
         );
         if (!filterStatus.has(resolved)) return false;
@@ -1064,7 +1064,7 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
       return true;
     });
     return sortCards(filtered, sortKey);
-  }, [localTasks, filterStatus, sortedStatuses, teamStatusMap, filterProject, filterPriority, filterDue, filterLabels, filterModule, today, endOfWeek, endOfMonth, sortKey]);
+  }, [localTasks, filterStatus, sortedStatuses, subDepartmentStatusMap, filterProject, filterPriority, filterDue, filterLabels, filterModule, today, endOfWeek, endOfMonth, sortKey]);
 
   const activeExtraFilters =
     filterStatus.size +
@@ -1109,17 +1109,17 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
   const filteredByStatus = useMemo(() => {
     const map = new Map<string, BoardCardData[]>();
     for (const t of filteredTasks) {
-      const key = resolveToTeamStatus(t.status, teamStatusMap[t.teamId] ?? sortedStatuses, t.isComplete);
+      const key = resolveToSubDepartmentStatus(t.status, subDepartmentStatusMap[t.subDepartmentId] ?? sortedStatuses, t.isComplete);
       const arr = map.get(key);
       if (arr) arr.push(t);
       else map.set(key, [t]);
     }
     return map;
-  }, [filteredTasks, sortedStatuses, teamStatusMap]);
+  }, [filteredTasks, sortedStatuses, subDepartmentStatusMap]);
 
   const resolveStatusesForCard = useCallback(
-    (teamId: string) => teamStatusMap[teamId] ?? sortedStatuses,
-    [teamStatusMap, sortedStatuses],
+    (subDepartmentId: string) => subDepartmentStatusMap[subDepartmentId] ?? sortedStatuses,
+    [subDepartmentStatusMap, sortedStatuses],
   );
 
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
@@ -1135,14 +1135,14 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
     });
   }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove]);
 
-  const getCardTeamId = useCallback(
-    (dbId: string) => localTasks.find((c) => c.dbId === dbId)?.teamId,
+  const getCardSubDepartmentId = useCallback(
+    (dbId: string) => localTasks.find((c) => c.dbId === dbId)?.subDepartmentId,
     [localTasks],
   );
 
   const { tryMove: moveCard, modal: labelChoiceModal } = useLinkedLabelMovePrompt({
     resolveStatusesForCard,
-    getCardTeamId,
+    getCardSubDepartmentId,
     onMove: doMove,
   });
 
@@ -1540,10 +1540,10 @@ export function MyTasksPage({ tasks: initialTasks, teamStatuses, teamStatusMap =
       {createForStatus && meta && (
         <NewTicketModal
           projects={meta.availableProjects}
-          teamMembers={meta.availableMembers}
-          defaultTeamId={meta.defaultTeamId ?? undefined}
+          subDepartmentMembers={meta.availableMembers}
+          defaultSubDepartmentId={meta.defaultSubDepartmentId ?? undefined}
           defaultStatus={createForStatus}
-          statuses={meta.teamStatuses.map((s) => ({ id: s.id, label: s.label, color: s.color }))}
+          statuses={meta.subDepartmentStatuses.map((s) => ({ id: s.id, label: s.label, color: s.color }))}
           onCreated={() => setCreateForStatus(null)}
           onClose={() => setCreateForStatus(null)}
         />

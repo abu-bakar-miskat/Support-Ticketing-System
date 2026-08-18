@@ -20,14 +20,14 @@ export async function POST(
     select: {
       id: true,
       title: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       ticketNumber: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true, prefix: true } },
+      subDepartment: { select: { departmentId: true, prefix: true } },
       assignees: { select: { userId: true } },
     },
   });
@@ -79,11 +79,11 @@ export async function POST(
         assigneeName: assignee.name,
         assigneeId: assignee.id,
         ticketId,
-        humanId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+        humanId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
         ticketTitle: ticket.title,
         assignedByName: profile.name,
         assignedById: profile.id,
-        departmentId: ticket.team.departmentId,
+        departmentId: ticket.subDepartment.departmentId,
       }).catch((err) => console.error("[qa assignment email] failed:", err));
     }
   }
@@ -103,13 +103,13 @@ export async function DELETE(
     where: { id: ticketId },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
     },
   });

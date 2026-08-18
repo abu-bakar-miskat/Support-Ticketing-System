@@ -7,8 +7,8 @@ const mockProfile = {
   name: "Dev User",
   avatarUrl: null,
   role: "developer" as const,
-  teamId: "team-abc",
-  teamIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: "team-abc",
+  subDepartmentIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 

@@ -192,11 +192,11 @@ function toTimerState(timer: {
 export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new Date()): Promise<SlaIndicator | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
-    include: { ticket: { select: { assigneeId: true, teamId: true, team: { select: { departmentId: true } } } } },
+    include: { ticket: { select: { assigneeId: true, subDepartmentId: true, subDepartment: { select: { departmentId: true } } } } },
   });
   if (!timer) return null;
 
-  const departmentId = timer.ticket.team.departmentId;
+  const departmentId = timer.ticket.subDepartment.departmentId;
   const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
   const calendar = await resolveCalendarForTicket(
     { departmentId, assigneeId: timer.ticket.assigneeId },
@@ -226,15 +226,15 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
           select: {
             id: true,
             assigneeId: true,
-            teamId: true,
-            team: { select: { departmentId: true } },
+            subDepartmentId: true,
+            subDepartment: { select: { departmentId: true } },
           },
         },
       },
     });
     if (!timer) return;
 
-    const departmentId = timer.ticket.team.departmentId;
+    const departmentId = timer.ticket.subDepartment.departmentId;
     const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
     const calendar = await resolveCalendarForTicket({ departmentId, assigneeId: timer.ticket.assigneeId }, rangeFrom, now);
     const department = await prisma.department.findUnique({ where: { id: departmentId }, select: { slaConfig: true } });

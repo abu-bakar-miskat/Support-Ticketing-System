@@ -38,7 +38,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       },
       {
         label: "Teams & roles",
-        href: "/settings/teams",
+        href: "/settings/sub-departments",
         managerOnly: true,
         deptSpecific: true,
       },

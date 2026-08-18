@@ -20,13 +20,13 @@ export async function GET() {
       if (deptScope.isCrossAccessOnly) {
         return prisma.project.findMany({
           where: assignedProjectsInDeptWhere(profile.id, id),
-          select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true },
+          select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },
           orderBy: { name: "asc" },
         })
       }
       return prisma.project.findMany({
-        where: { OR: [{ departmentId: id }, { team: { departmentId: id } }] },
-        select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true },
+        where: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
+        select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },
         orderBy: { name: "asc" },
       })
     }
@@ -34,37 +34,37 @@ export async function GET() {
       const allowedDeptIds = [...new Set([...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])])]
       if (allowedDeptIds.length > 0) {
         return prisma.project.findMany({
-          where: { OR: [{ departmentId: { in: allowedDeptIds } }, { team: { departmentId: { in: allowedDeptIds } } }] },
-          select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true },
+          where: { OR: [{ departmentId: { in: allowedDeptIds } }, { subDepartment: { departmentId: { in: allowedDeptIds } } }] },
+          select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },
           orderBy: { name: "asc" },
         })
       }
       if (isAdmin) {
         return prisma.project.findMany({
-          select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true },
+          select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },
           orderBy: { name: "asc" },
         })
       }
       return []
     }
-    if (profile.role === "lead" && profile.teamId) {
+    if (profile.role === "lead" && profile.subDepartmentId) {
       return prisma.project.findMany({
-        where: { teamId: profile.teamId },
-        select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true },
+        where: { subDepartmentId: profile.subDepartmentId },
+        select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },
         orderBy: { name: "asc" },
       })
     }
     const memberships = await prisma.projectMember.findMany({
       where: { userId: profile.id },
       select: {
-        project: { select: { id: true, name: true, color: true, slug: true, teamId: true, kind: true, departmentId: true } },
+        project: { select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true } },
       },
     })
     return memberships.map((m) => m.project)
   })()
 
   const projects = dedupeSupportProjects(dedupeMiscProjects(rawProjects)).map(
-    ({ slug: _slug, teamId, departmentId: _departmentId, ...p }) => ({ ...p, teamId }),
+    ({ slug: _slug, subDepartmentId, departmentId: _departmentId, ...p }) => ({ ...p, subDepartmentId }),
   )
 
   return NextResponse.json(projects)

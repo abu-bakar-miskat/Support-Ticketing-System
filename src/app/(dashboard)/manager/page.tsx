@@ -32,7 +32,7 @@ async function ManagerData() {
     if (!managedIds.includes(deptScope.activeDeptId)) redirect("/");
   }
 
-  const teamIds = deptScope?.teamIds ?? [];
+  const subDepartmentIds = deptScope?.subDepartmentIds ?? [];
 
   // Midnight in GMT+6 (Asia/Dhaka) so "today" matches what users see
   const nowDhaka = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" }));
@@ -44,18 +44,18 @@ async function ManagerData() {
 
   const FINISHED_STATUSES = ["Live", "Done", "Completed", "Closed"];
 
-  const [openTickets, allScopedTickets, teamMembers, todayActivity, pendingJoinRequests] = await Promise.all([
+  const [openTickets, allScopedTickets, subDepartmentMembers, todayActivity, pendingJoinRequests] = await Promise.all([
     // Every non-finished ticket in scope — feeds overdue groups, unassigned,
     // review groups, and member workloads in one query.
     prisma.ticket.findMany({
-      where: { deletedAt: null, teamId: { in: teamIds }, status: { notIn: FINISHED_STATUSES } },
+      where: { deletedAt: null, subDepartmentId: { in: subDepartmentIds }, status: { notIn: FINISHED_STATUSES } },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true, ticketNumber: true, title: true, priority: true, status: true,
         dueDate: true, updatedAt: true, assigneeId: true,
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         creator: { select: { id: true, name: true, avatarUrl: true } },
-        team: { select: { prefix: true } },
+        subDepartment: { select: { prefix: true } },
         project: { select: { id: true, name: true, color: true } },
         _count: { select: { comments: true } },
       },
@@ -63,13 +63,13 @@ async function ManagerData() {
 
     // Lightweight full-scope fetch for project health (includes done tickets).
     prisma.ticket.findMany({
-      where: { deletedAt: null, teamId: { in: teamIds } },
+      where: { deletedAt: null, subDepartmentId: { in: subDepartmentIds } },
       select: { status: true, dueDate: true, project: { select: { id: true, name: true, color: true } } },
     }),
 
     // Members of managed teams.
     prisma.profile.findMany({
-      where: { memberships: { some: { teamId: { in: teamIds }, isActive: true } } },
+      where: { memberships: { some: { subDepartmentId: { in: subDepartmentIds }, isActive: true } } },
       select: { id: true, name: true, avatarUrl: true },
       orderBy: { name: "asc" },
     }),
@@ -77,13 +77,13 @@ async function ManagerData() {
     // Today's activity in scope. Raw cap of 200 — UI shows 30, the rest feeds
     // last-activity and moved-today aggregates.
     prisma.activityLog.findMany({
-      where: { createdAt: { gte: startOfToday }, ticket: { teamId: { in: teamIds }, deletedAt: null } },
+      where: { createdAt: { gte: startOfToday }, ticket: { subDepartmentId: { in: subDepartmentIds }, deletedAt: null } },
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {
         id: true, action: true, createdAt: true, metadata: true,
         actor: { select: { id: true, name: true, avatarUrl: true } },
-        ticket: { select: { id: true, ticketNumber: true, title: true, team: { select: { prefix: true } } } },
+        ticket: { select: { id: true, ticketNumber: true, title: true, subDepartment: { select: { prefix: true } } } },
       },
     }),
 
@@ -94,13 +94,13 @@ async function ManagerData() {
         ...(deptScope
           ? {
               OR: [
-                ...(teamIds.length > 0 ? [{ teamId: { in: teamIds } }] : []),
+                ...(subDepartmentIds.length > 0 ? [{ subDepartmentId: { in: subDepartmentIds } }] : []),
                 { departmentId: deptScope.activeDeptId },
               ],
             }
           : {
               OR: [
-                { team: { tenantId: profile.activeTenantId ?? "__no_tenant__" } },
+                { subDepartment: { tenantId: profile.activeTenantId ?? "__no_tenant__" } },
                 { department: { tenantId: profile.activeTenantId ?? "__no_tenant__" } },
               ],
             }),
@@ -111,7 +111,7 @@ async function ManagerData() {
         message: true,
         requestedAt: true,
         user: { select: { id: true, name: true, email: true, avatarUrl: true } },
-        team: { select: { id: true, name: true } },
+        subDepartment: { select: { id: true, name: true } },
         department: { select: { id: true, name: true } },
       },
     }),
@@ -119,7 +119,7 @@ async function ManagerData() {
 
   const toRow = (t: (typeof openTickets)[number]): OpenTicketRow => ({
     id: t.id,
-    humanId: `${t.team.prefix}-${t.ticketNumber}`,
+    humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title, status: t.status, priority: t.priority,
     dueDate: t.dueDate?.toISOString() ?? null,
     updatedAt: t.updatedAt.toISOString(),
@@ -143,7 +143,7 @@ async function ManagerData() {
   const reviewRows = openTickets.filter((t) => IN_REVIEW_STATUSES.includes(t.status));
 
   const toSimple = (t: (typeof openTickets)[number]) => ({
-    id: t.id, humanId: `${t.team.prefix}-${t.ticketNumber}`, title: t.title,
+    id: t.id, humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`, title: t.title,
     priority: t.priority, status: t.status,
     dueDate: t.dueDate?.toISOString() ?? null, updatedAt: t.updatedAt.toISOString(),
     comments: t._count.comments,
@@ -201,7 +201,7 @@ async function ManagerData() {
     dueDate: t.dueDate?.toISOString() ?? null,
   }));
 
-  const members = buildMemberWorkloads(teamMembers, rows, lastActivityByActor, startOfToday);
+  const members = buildMemberWorkloads(subDepartmentMembers, rows, lastActivityByActor, startOfToday);
   const projects = buildProjectHealth(projectRows, startOfToday);
 
   const topOverdue = overdueGroups[0] ?? null;
@@ -245,8 +245,8 @@ async function ManagerData() {
         message: r.message ?? "",
         requestedAt: r.requestedAt.toISOString(),
         user: { name: r.user.name, email: r.user.email, avatarUrl: r.user.avatarUrl ?? null },
-        target: r.team?.name ?? r.department?.name ?? "—",
-        teamId: r.team?.id ?? null,
+        target: r.subDepartment?.name ?? r.department?.name ?? "—",
+        subDepartmentId: r.subDepartment?.id ?? null,
         departmentId: r.department?.id ?? null,
       }))}
       members={members}
@@ -262,12 +262,12 @@ async function ManagerData() {
         actor: { name: a.actor.name, avatarUrl: a.actor.avatarUrl ?? null },
         ticket: {
           id: a.ticket.id,
-          humanId: `${a.ticket.team.prefix}-${a.ticket.ticketNumber}`,
+          humanId: `${a.ticket.subDepartment.prefix}-${a.ticket.ticketNumber}`,
           title: a.ticket.title,
         },
       }))}
       activityTotal={todayActivity.length}
-      noTeams={teamIds.length === 0}
+      noSubDepartments={subDepartmentIds.length === 0}
     />
   );
 }

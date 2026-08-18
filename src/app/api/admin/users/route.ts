@@ -14,11 +14,11 @@ export async function GET() {
   let userIdFilter: string[] | undefined
 
   if (isManager) {
-    const teamIds = deptScope?.teamIds ?? []
+    const subDepartmentIds = deptScope?.subDepartmentIds ?? []
 
-    if (teamIds.length > 0) {
-      const memberships = await prisma.teamMembership.findMany({
-        where: { teamId: { in: teamIds }, isActive: true },
+    if (subDepartmentIds.length > 0) {
+      const memberships = await prisma.subDepartmentMembership.findMany({
+        where: { subDepartmentId: { in: subDepartmentIds }, isActive: true },
         select: { userId: true },
       })
       userIdFilter = memberships.map((m) => m.userId)
@@ -34,7 +34,7 @@ export async function GET() {
         ? undefined
         : { id: { in: userIdFilter } },
     orderBy: { name: "asc" },
-    include: { team: { select: { id: true, name: true } } },
+    include: { subDepartment: { select: { id: true, name: true } } },
   })
   return NextResponse.json(users)
 }

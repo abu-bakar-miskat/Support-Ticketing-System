@@ -6,10 +6,10 @@ import { assertTicketEditAccess } from "@/lib/auth"
 import { sendAssignmentEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
-import { projectInScope, teamInScope, getProfileDeptScope } from "@/lib/dept-scope"
-import { teamTenantId } from "@/lib/tenant-scope"
-import { resolveTeamIdForProject, resolveBoardTeamForProjectTicket, isProjectMember } from "@/lib/cross-access"
-import { resolveMiscProjectForTeam } from "@/lib/misc-project"
+import { projectInScope, subDepartmentInScope, getProfileDeptScope } from "@/lib/dept-scope"
+import { subDepartmentTenantId } from "@/lib/tenant-scope"
+import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTicket, isProjectMember } from "@/lib/cross-access"
+import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveColumnIdForStatus } from "@/lib/board-columns"
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
       sprintId: true,
       parentId: true,
       assignee: { select: { name: true, avatarUrl: true } },
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   })
 
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   const templateData = typeof body.templateData === "object" && body.templateData ? body.templateData : null
   const templateId = typeof body.templateId === "string" && body.templateId.trim() ? body.templateId.trim() : null
   // Allow admin/manager to specify which team's board this ticket belongs to
-  const bodyTeamId = (body.teamId as string | undefined) || null
+  const bodySubDepartmentId = (body.subDepartmentId as string | undefined) || null
 
   if (!title) {
     return NextResponse.json({ error: "title is required" }, { status: 400 })
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
   const hasGrantedAccess =
     (profile.grantedAccessDeptIds ?? []).length > 0 ||
     (profile.directMemberDeptIds ?? []).length > 0
-  const canPickTeam = profile.role === "admin" || profile.role === "manager" || hasGrantedAccess
+  const canPickSubDepartment = profile.role === "admin" || profile.role === "manager" || hasGrantedAccess
   const deptScope = await getProfileDeptScope(profile)
 
   // Cross-access-only visitors must create tickets against a project they're explicitly
@@ -137,72 +137,72 @@ export async function POST(request: Request) {
     )
   }
 
-  let resolvedTeamId: string | null = null
+  let resolvedSubDepartmentId: string | null = null
 
-  let projectForTeam: {
-    teamId: string | null
+  let projectForSubDepartment: {
+    subDepartmentId: string | null
     departmentId: string | null
-    team: { departmentId: string | null } | null
+    subDepartment: { departmentId: string | null } | null
   } | null = null
 
   if (projectId) {
-    projectForTeam = await prisma.project.findUnique({
+    projectForSubDepartment = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
-        teamId: true,
+        subDepartmentId: true,
         departmentId: true,
-        team: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true } },
       },
     })
-    if (!projectForTeam) {
+    if (!projectForSubDepartment) {
       return NextResponse.json({ error: "Project not found" }, { status: 400 })
     }
   }
 
   // Honor the board tab the user created from (any role with project access).
-  if (bodyTeamId && projectForTeam && projectId) {
-    resolvedTeamId = await resolveBoardTeamForProjectTicket(
-      projectForTeam,
+  if (bodySubDepartmentId && projectForSubDepartment && projectId) {
+    resolvedSubDepartmentId = await resolveBoardSubDepartmentForProjectTicket(
+      projectForSubDepartment,
       projectId,
-      bodyTeamId,
+      bodySubDepartmentId,
     )
   }
 
   // Admin/manager/cross-dept users may also pick any valid team when not on a project board.
-  if (!resolvedTeamId && canPickTeam && bodyTeamId) {
-    const bodyTeam = await prisma.team.findUnique({
-      where: { id: bodyTeamId },
+  if (!resolvedSubDepartmentId && canPickSubDepartment && bodySubDepartmentId) {
+    const bodySubDepartment = await prisma.subDepartment.findUnique({
+      where: { id: bodySubDepartmentId },
       select: { id: true },
     })
-    if (bodyTeam) resolvedTeamId = bodyTeamId
+    if (bodySubDepartment) resolvedSubDepartmentId = bodySubDepartmentId
   }
 
   // Any user may create on the team board they're currently viewing when that
   // team is within their department scope — even if it isn't their primary
   // `profile.teamId` (e.g. reached via department/multi-team membership). The
   // teamAllowed check below re-verifies scope, so this doesn't widen access.
-  if (!resolvedTeamId && bodyTeamId && (await teamInScope(profile, bodyTeamId))) {
-    resolvedTeamId = bodyTeamId
+  if (!resolvedSubDepartmentId && bodySubDepartmentId && (await subDepartmentInScope(profile, bodySubDepartmentId))) {
+    resolvedSubDepartmentId = bodySubDepartmentId
   }
 
-  if (!resolvedTeamId && projectForTeam) {
-    resolvedTeamId = await resolveTeamIdForProject(
-      projectForTeam,
+  if (!resolvedSubDepartmentId && projectForSubDepartment) {
+    resolvedSubDepartmentId = await resolveSubDepartmentIdForProject(
+      projectForSubDepartment,
       projectId ?? undefined,
     )
   }
 
-  if (!resolvedTeamId && canPickTeam && deptScope?.teamIds?.length) {
+  if (!resolvedSubDepartmentId && canPickSubDepartment && deptScope?.subDepartmentIds?.length) {
     // deptScope.teamIds already come from the DB — no need to re-verify each one
-    resolvedTeamId = deptScope.teamIds[0]
+    resolvedSubDepartmentId = deptScope.subDepartmentIds[0]
   }
 
   // Cross-access guests must not fall back to their home team in another department.
-  if (!resolvedTeamId && !deptScope?.isCrossAccessOnly) {
-    resolvedTeamId = profile.teamId
+  if (!resolvedSubDepartmentId && !deptScope?.isCrossAccessOnly) {
+    resolvedSubDepartmentId = profile.subDepartmentId
   }
 
-  if (!resolvedTeamId) {
+  if (!resolvedSubDepartmentId) {
     return NextResponse.json(
       {
         error: projectId
@@ -213,27 +213,27 @@ export async function POST(request: Request) {
     )
   }
 
-  const teamRecord = await prisma.team.findUnique({
-    where: { id: resolvedTeamId },
+  const subDepartmentRecord = await prisma.subDepartment.findUnique({
+    where: { id: resolvedSubDepartmentId },
     select: { id: true, departmentId: true },
   })
-  if (!teamRecord) {
+  if (!subDepartmentRecord) {
     return NextResponse.json(
       { error: "No valid team found for this project — contact a department admin" },
       { status: 422 },
     )
   }
 
-  const teamAllowed =
-    (await teamInScope(profile, resolvedTeamId)) ||
+  const subDepartmentAllowed =
+    (await subDepartmentInScope(profile, resolvedSubDepartmentId)) ||
     (projectId != null && (await projectInScope(profile, projectId)))
 
-  if (!teamAllowed) {
+  if (!subDepartmentAllowed) {
     return NextResponse.json({ error: "Team not in current department" }, { status: 403 })
   }
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
-  const setupCheck = await assertDepartmentOperational(teamRecord.departmentId)
+  const setupCheck = await assertDepartmentOperational(subDepartmentRecord.departmentId)
   if (!setupCheck.ok) {
     return NextResponse.json({ error: setupCheck.error }, { status: 422 })
   }
@@ -243,13 +243,13 @@ export async function POST(request: Request) {
       where: { id: parentId },
       select: {
         id: true,
-        teamId: true,
+        subDepartmentId: true,
         projectId: true,
         assigneeId: true,
         tenantId: true,
         creatorId: true,
         deletedAt: true,
-        team: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true } },
         assignees: { select: { userId: true } },
       },
     })
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
     }
     resolvedProjectId = projectId
   } else {
-    resolvedProjectId = await resolveMiscProjectForTeam(resolvedTeamId)
+    resolvedProjectId = await resolveMiscProjectForSubDepartment(resolvedSubDepartmentId)
   }
 
   // Module must belong to the resolved project and the project must have modules enabled
@@ -319,7 +319,7 @@ export async function POST(request: Request) {
     : null
 
   // A ticket lives in its team's tenant — the outermost isolation boundary.
-  const ticketTenantId = await teamTenantId(resolvedTeamId)
+  const ticketTenantId = await subDepartmentTenantId(resolvedSubDepartmentId)
   if (!ticketTenantId) {
     return NextResponse.json({ error: "Team not found" }, { status: 404 })
   }
@@ -329,9 +329,9 @@ export async function POST(request: Request) {
   // the board isn't seeded yet (pre-backfill).
   const columnProject = await prisma.project.findUnique({
     where: { id: resolvedProjectId },
-    select: { departmentId: true, team: { select: { departmentId: true } } },
+    select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
   })
-  const columnDeptId = columnProject?.departmentId ?? columnProject?.team?.departmentId ?? null
+  const columnDeptId = columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
   const boardColumnId = columnDeptId
     ? await resolveColumnIdForStatus(prisma, { departmentId: columnDeptId, status })
     : null
@@ -352,7 +352,7 @@ export async function POST(request: Request) {
         dueDate,
         creator: { connect: { id: profile.id } },
         tenant: { connect: { id: ticketTenantId } },
-        team: { connect: { id: resolvedTeamId } },
+        subDepartment: { connect: { id: resolvedSubDepartmentId } },
         project: { connect: { id: resolvedProjectId } },
         ...(assigneeId ? { assignee: { connect: { id: assigneeId } } } : {}),
         ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
@@ -367,7 +367,7 @@ export async function POST(request: Request) {
         ...(boardColumnId ? { boardColumn: { connect: { id: boardColumnId } } } : {}),
       },
       include: {
-        team: { select: { id: true, name: true, prefix: true, departmentId: true } },
+        subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
         assignee: { select: { id: true, name: true, email: true } },
         project: { select: { id: true, name: true } },
       },
@@ -377,7 +377,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create ticket" }, { status: 500 })
   }
 
-  const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+  const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
   if (!isDraft && columnDeptId) {
     await startSlaTimers(
@@ -427,7 +427,7 @@ export async function POST(request: Request) {
         ticketTitle: title,
         assignedByName: profile.name,
         assignedById: profile.id,
-        departmentId: ticket.team.departmentId,
+        departmentId: ticket.subDepartment.departmentId,
       }).catch((err) => console.error("[assignment email] failed:", err))
     }
   }

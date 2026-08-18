@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db", () => ({
   prisma: {
-    team: { findUnique: vi.fn(), findFirst: vi.fn() },
+    subDepartment: { findUnique: vi.fn(), findFirst: vi.fn() },
     ticket: { findMany: vi.fn() },
     project: { findUnique: vi.fn() },
     projectMember: { count: vi.fn() },
@@ -26,7 +26,7 @@ describe("assignedProjectsInDeptWhere", () => {
   it("requires membership and active department", () => {
     expect(assignedProjectsInDeptWhere("user-1", "dept-a")).toEqual({
       members: { some: { userId: "user-1" } },
-      OR: [{ departmentId: "dept-a" }, { team: { departmentId: "dept-a" } }],
+      OR: [{ departmentId: "dept-a" }, { subDepartment: { departmentId: "dept-a" } }],
     });
   });
 });
@@ -66,8 +66,8 @@ describe("projectEffectiveDeptId", () => {
     expect(
       projectEffectiveDeptId({
         departmentId: "dept-a",
-        teamId: "team-1",
-        team: { departmentId: "dept-b" },
+        subDepartmentId: "team-1",
+        subDepartment: { departmentId: "dept-b" },
       }),
     ).toBe("dept-a");
   });
@@ -76,8 +76,8 @@ describe("projectEffectiveDeptId", () => {
     expect(
       projectEffectiveDeptId({
         departmentId: null,
-        teamId: "team-1",
-        team: { departmentId: "dept-b" },
+        subDepartmentId: "team-1",
+        subDepartment: { departmentId: "dept-b" },
       }),
     ).toBe("dept-b");
   });
@@ -100,8 +100,8 @@ describe("canCrossAccessGuestViewTicket", () => {
       { ...limitedProfile, fullAccessGrantedDeptIds: ["dept-a"] },
       {
         projectId: "proj-1",
-        teamId: "team-1",
-        team: { departmentId: "dept-a" },
+        subDepartmentId: "team-1",
+        subDepartment: { departmentId: "dept-a" },
       },
     );
     expect(allowed).toBe(true);
@@ -112,8 +112,8 @@ describe("canCrossAccessGuestViewTicket", () => {
     mockProjectMemberCount.mockResolvedValue(1);
     const allowed = await canCrossAccessGuestViewTicket(limitedProfile, {
       projectId: "proj-1",
-      teamId: "team-1",
-      team: { departmentId: "dept-a" },
+      subDepartmentId: "team-1",
+      subDepartment: { departmentId: "dept-a" },
     });
     expect(allowed).toBe(true);
     expect(mockProjectMemberCount).toHaveBeenCalledWith({
@@ -125,8 +125,8 @@ describe("canCrossAccessGuestViewTicket", () => {
     mockProjectMemberCount.mockResolvedValue(0);
     const allowed = await canCrossAccessGuestViewTicket(limitedProfile, {
       projectId: "proj-1",
-      teamId: "team-1",
-      team: { departmentId: "dept-a" },
+      subDepartmentId: "team-1",
+      subDepartment: { departmentId: "dept-a" },
     });
     expect(allowed).toBe(false);
   });
@@ -134,14 +134,14 @@ describe("canCrossAccessGuestViewTicket", () => {
   it("resolves department from project when team dept is missing", async () => {
     mockProjectFindUnique.mockResolvedValue({
       departmentId: "dept-a",
-      team: { departmentId: null },
+      subDepartment: { departmentId: null },
     } as never);
     mockProjectMemberCount.mockResolvedValue(1);
 
     const allowed = await canCrossAccessGuestViewTicket(limitedProfile, {
       projectId: "proj-1",
-      teamId: "team-1",
-      team: { departmentId: null },
+      subDepartmentId: "team-1",
+      subDepartment: { departmentId: null },
       projectDeptId: null,
     });
     expect(allowed).toBe(true);
@@ -164,20 +164,20 @@ describe("buildTicketEditContext", () => {
   it("uses project department for cross-access edit checks when team dept differs", async () => {
     mockProjectFindUnique.mockResolvedValue({
       departmentId: "dept-a",
-      team: { departmentId: "dept-b" },
+      subDepartment: { departmentId: "dept-b" },
     } as never);
     mockProjectMemberCount.mockResolvedValue(1);
 
     const ctx = await buildTicketEditContext(limitedProfile, {
       creatorId: "other-user",
-      teamId: "team-1",
+      subDepartmentId: "team-1",
       projectId: "proj-1",
-      team: { departmentId: "dept-b" },
+      subDepartment: { departmentId: "dept-b" },
       assignees: [],
     });
 
     expect(ctx.departmentId).toBe("dept-a");
-    expect(ctx.teamId).toBe("team-1");
+    expect(ctx.subDepartmentId).toBe("team-1");
     expect(ctx.viewerIsProjectMember).toBe(true);
   });
 });

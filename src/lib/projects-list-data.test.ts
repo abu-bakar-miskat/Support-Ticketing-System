@@ -28,12 +28,12 @@ const MEMBER_WHERE = { members: { some: { userId: "user-1" } } };
 const staff = {
   id: "user-1",
   role: "staff",
-  memberships: [{ team: { department: { id: "dept-1" } } }],
+  memberships: [{ subDepartment: { department: { id: "dept-1" } } }],
 };
 const hubStaff = {
   id: "user-1",
   role: "staff",
-  memberships: [{ team: { department: { id: "hub-1" } } }],
+  memberships: [{ subDepartment: { department: { id: "hub-1" } } }],
 };
 const manager = {
   id: "user-1",
@@ -41,8 +41,8 @@ const manager = {
   managedDepartmentIds: ["dept-1"],
 };
 
-const hubScope = { activeDeptId: "hub-1", teamIds: ["team-h"], isHub: true };
-const deptScope = { activeDeptId: "dept-1", teamIds: ["team-1"], isHub: false };
+const hubScope = { activeDeptId: "hub-1", subDepartmentIds: ["team-h"], isHub: true };
+const deptScope = { activeDeptId: "dept-1", subDepartmentIds: ["team-1"], isHub: false };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -71,7 +71,7 @@ describe("fetchProjectsList — mine", () => {
       OR: [
         MEMBER_WHERE,
         { departmentId: { in: ["dept-1"] } },
-        { team: { departmentId: { in: ["dept-1"] } } },
+        { subDepartment: { departmentId: { in: ["dept-1"] } } },
       ],
     });
   });
@@ -88,7 +88,7 @@ describe("fetchProjectsList — mine", () => {
           OR: [
             MEMBER_WHERE,
             { departmentId: { in: ["dept-1"] } },
-            { team: { departmentId: { in: ["dept-1"] } } },
+            { subDepartment: { departmentId: { in: ["dept-1"] } } },
           ],
         },
         buildProjectDeptWhere(deptScope as never),
@@ -97,7 +97,7 @@ describe("fetchProjectsList — mine", () => {
   });
 
   it("manager viewing a dept they do NOT manage keeps that dept's filter ANDed in", async () => {
-    const otherDeptScope = { activeDeptId: "dept-2", teamIds: ["team-2"], isHub: false };
+    const otherDeptScope = { activeDeptId: "dept-2", subDepartmentIds: ["team-2"], isHub: false };
     mockDeptScope.mockResolvedValue(otherDeptScope as never);
     await fetchProjectsList(manager, "mine");
     // The managed-dept OR arm still names dept-1, but the AND with dept-2's
@@ -108,7 +108,7 @@ describe("fetchProjectsList — mine", () => {
           OR: [
             MEMBER_WHERE,
             { departmentId: { in: ["dept-1"] } },
-            { team: { departmentId: { in: ["dept-1"] } } },
+            { subDepartment: { departmentId: { in: ["dept-1"] } } },
           ],
         },
         buildProjectDeptWhere(otherDeptScope as never),
@@ -119,7 +119,7 @@ describe("fetchProjectsList — mine", () => {
   it("cross-access visitors see only member projects in the active department", async () => {
     const crossScope = {
       activeDeptId: "other-dept",
-      teamIds: ["team-x"],
+      subDepartmentIds: ["team-x"],
       allowedDeptIds: ["other-dept"],
       isHub: false,
       isCrossAccessOnly: true,
@@ -137,7 +137,7 @@ describe("fetchProjectsList — mine", () => {
   it("cross-access 'all' tab is also scoped to assigned projects in the active department", async () => {
     const crossScope = {
       activeDeptId: "other-dept",
-      teamIds: ["team-x"],
+      subDepartmentIds: ["team-x"],
       allowedDeptIds: ["other-dept"],
       isHub: false,
       isCrossAccessOnly: true,
@@ -167,7 +167,7 @@ describe("fetchProjectsList — all", () => {
     await fetchProjectsList(
       {
         ...staff,
-        memberships: [{ team: { department: { id: "dept-1" } } }],
+        memberships: [{ subDepartment: { department: { id: "dept-1" } } }],
       },
       "all",
     );

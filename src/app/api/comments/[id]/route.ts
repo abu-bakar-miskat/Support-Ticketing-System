@@ -20,8 +20,8 @@ export async function GET(
       attachments: { select: { id: true, storageUrl: true, fileName: true, fileSize: true } },
       ticket: {
         select: {
-          id: true, tenantId: true, teamId: true, projectId: true, assigneeId: true, creatorId: true, deletedAt: true,
-          team: { select: { departmentId: true } },
+          id: true, tenantId: true, subDepartmentId: true, projectId: true, assigneeId: true, creatorId: true, deletedAt: true,
+          subDepartment: { select: { departmentId: true } },
         },
       },
       replies: {

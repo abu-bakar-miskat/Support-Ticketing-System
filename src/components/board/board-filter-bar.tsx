@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import type { TeamBoardGroup } from "@/components/board/board-types";
+import type { SubDepartmentBoardGroup } from "@/components/board/board-types";
 import { labelStyle } from "@/components/board/board-types";
 import type { DateFilter, IntakeFilter, LabelFilter, PriorityFilter, ProjectFilter, ModuleFilter } from "@/components/board/board-filters";
 import { formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
@@ -459,12 +459,12 @@ type Props = {
   modules: { id: string; name: string }[];
   moduleFilter: ModuleFilter;
   onModuleFilterChange: (value: ModuleFilter) => void;
-  teamBoardGroups: TeamBoardGroup[];
-  activeTeamId: string;
-  onTeamChange: (teamId: string) => void;
-  listTeamFilter: string;
-  onListTeamFilterChange: (teamId: string) => void;
-  cardCountByTeam: Map<string, number>;
+  subDepartmentBoardGroups: SubDepartmentBoardGroup[];
+  activeSubDepartmentId: string;
+  onSubDepartmentChange: (subDepartmentId: string) => void;
+  listSubDepartmentFilter: string;
+  onListSubDepartmentFilterChange: (subDepartmentId: string) => void;
+  cardCountBySubDepartment: Map<string, number>;
   priorityFilter: PriorityFilter;
   onPriorityFilterChange: (value: PriorityFilter) => void;
   dateFilter: DateFilter;
@@ -500,12 +500,12 @@ export function BoardFilterBar({
   modules,
   moduleFilter,
   onModuleFilterChange,
-  teamBoardGroups,
-  activeTeamId,
-  onTeamChange,
-  listTeamFilter,
-  onListTeamFilterChange,
-  cardCountByTeam,
+  subDepartmentBoardGroups,
+  activeSubDepartmentId,
+  onSubDepartmentChange,
+  listSubDepartmentFilter,
+  onListSubDepartmentFilterChange,
+  cardCountBySubDepartment,
   priorityFilter,
   onPriorityFilterChange,
   dateFilter,
@@ -543,18 +543,18 @@ export function BoardFilterBar({
       : []),
   ].map(optionWithCount);
 
-  const teamOptions =
-    teamBoardGroups.length > 1
+  const subDepartmentOptions =
+    subDepartmentBoardGroups.length > 1
       ? [
           {
             value: "all",
             label: "All teams",
-            count: [...cardCountByTeam.values()].reduce((a, b) => a + b, 0),
+            count: [...cardCountBySubDepartment.values()].reduce((a, b) => a + b, 0),
           },
-          ...teamBoardGroups.map((g) => ({
-            value: g.teamId,
-            label: g.teamName,
-            count: cardCountByTeam.get(g.teamId) ?? 0,
+          ...subDepartmentBoardGroups.map((g) => ({
+            value: g.subDepartmentId,
+            label: g.subDepartmentName,
+            count: cardCountBySubDepartment.get(g.subDepartmentId) ?? 0,
           })),
         ].map(optionWithCount)
       : [];
@@ -588,15 +588,15 @@ export function BoardFilterBar({
       )}
 
       {/* Team */}
-      {teamOptions.length > 1 && (
+      {subDepartmentOptions.length > 1 && (
         <SearchableSelect
-          value={view === "list" ? listTeamFilter : activeTeamId}
-          onChange={view === "list" ? onListTeamFilterChange : onTeamChange}
-          options={teamOptions}
+          value={view === "list" ? listSubDepartmentFilter : activeSubDepartmentId}
+          onChange={view === "list" ? onListSubDepartmentFilterChange : onSubDepartmentChange}
+          options={subDepartmentOptions}
           aria-label="Filter by team"
           icon={Building2}
           size="sm"
-          highlightWhenSet={view === "list" ? listTeamFilter !== "all" : activeTeamId !== "all"}
+          highlightWhenSet={view === "list" ? listSubDepartmentFilter !== "all" : activeSubDepartmentId !== "all"}
           className="w-auto max-w-[11rem] shrink-0"
         />
       )}

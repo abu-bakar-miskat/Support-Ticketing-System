@@ -1,7 +1,7 @@
-import { TeamTimePage } from "@/components/time/team-time-page";
+import { SubDepartmentTimePage } from "@/components/time/sub-department-time-page";
 
 export const metadata = { title: "Reports — Ticketing System" };
 
 export default function ReportsPage() {
-  return <TeamTimePage />;
+  return <SubDepartmentTimePage />;
 }

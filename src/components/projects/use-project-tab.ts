@@ -23,7 +23,7 @@ function resolveProjectTab(
   return "overview";
 }
 
-type TeamGroup = { teamId: string; teamName: string };
+type SubDepartmentGroup = { subDepartmentId: string; subDepartmentName: string };
 
 const STATIC_PRELOAD: ProjectTab[] = ["overview", "tickets", "assets"];
 
@@ -31,13 +31,13 @@ export function useProjectTab({
   projectId,
   defaultTab,
   validTabs,
-  teamBoardGroups,
+  subDepartmentBoardGroups,
   isPrivileged,
 }: {
   projectId: string;
   defaultTab: string | null;
   validTabs: ProjectTab[];
-  teamBoardGroups: TeamGroup[];
+  subDepartmentBoardGroups: SubDepartmentGroup[];
   isPrivileged: boolean;
 }) {
   const searchParams = useSearchParams();
@@ -84,9 +84,9 @@ export function useProjectTab({
   }, [defaultTab, validTabs]);
 
   useEffect(() => {
-    const group = teamBoardGroups.find((g) => `team:${g.teamId}` === tab);
-    projectTabSync?.setProjectTab(tab, group?.teamName ?? null);
-  }, [tab, teamBoardGroups, projectTabSync]);
+    const group = subDepartmentBoardGroups.find((g) => `team:${g.subDepartmentId}` === tab);
+    projectTabSync?.setProjectTab(tab, group?.subDepartmentName ?? null);
+  }, [tab, subDepartmentBoardGroups, projectTabSync]);
 
   useEffect(() => () => projectTabSync?.setProjectTab(null, null), [projectTabSync]);
 
@@ -103,8 +103,8 @@ export function useProjectTab({
 
       const params = new URLSearchParams(window.location.search);
       params.set("tab", newTab);
-      const group = teamBoardGroups.find((g) => `team:${g.teamId}` === newTab);
-      if (group) params.set("tabName", group.teamName);
+      const group = subDepartmentBoardGroups.find((g) => `team:${g.subDepartmentId}` === newTab);
+      if (group) params.set("tabName", group.subDepartmentName);
       else params.delete("tabName");
 
       window.history.replaceState(
@@ -115,7 +115,7 @@ export function useProjectTab({
 
       saveTabPref.mutate({ projectId, tab: newTab });
     },
-    [tab, validTabs, teamBoardGroups, projectId, saveTabPref],
+    [tab, validTabs, subDepartmentBoardGroups, projectId, saveTabPref],
   );
 
   const isMounted = useCallback((t: ProjectTab) => mountedTabs.has(t), [mountedTabs]);

@@ -40,7 +40,7 @@ export default async function SettingsIntakeSubmissionsRoute({
     if (!managedIds.has(form.departmentId)) redirect("/settings/intake-forms")
   }
 
-  const [intakes, teamMemberships] = await Promise.all([
+  const [intakes, subDepartmentMemberships] = await Promise.all([
     prisma.intake.findMany({
       where: { formConfigId: formId },
       orderBy: { createdAt: "desc" },
@@ -63,14 +63,14 @@ export default async function SettingsIntakeSubmissionsRoute({
         },
       },
     }),
-    prisma.teamMembership.findMany({
-      where: { teamId: form.intakeTeamId, isActive: true },
+    prisma.subDepartmentMembership.findMany({
+      where: { subDepartmentId: form.intakeSubDepartmentId, isActive: true },
       select: { user: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { joinedAt: "asc" },
     }),
   ])
 
-  const teamMembers = teamMemberships.map((m) => ({
+  const subDepartmentMembers = subDepartmentMemberships.map((m) => ({
     id: m.user.id,
     name: m.user.name,
     avatarUrl: m.user.avatarUrl ?? null,
@@ -99,7 +99,7 @@ export default async function SettingsIntakeSubmissionsRoute({
       formName={form.name}
       departmentName={form.department.name}
       submissions={submissions}
-      teamMembers={teamMembers}
+      subDepartmentMembers={subDepartmentMembers}
     />
   )
 }

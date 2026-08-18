@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { Role } from "@/generated/prisma/enums"
-import { managerCanManageUser, teamInScope } from "@/lib/dept-scope"
+import { managerCanManageUser, subDepartmentInScope } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 
 const VALID_ROLES = Object.values(Role)
@@ -31,7 +31,7 @@ export async function PATCH(
 
   const data: {
     role?: Role
-    teamId?: string | null
+    subDepartmentId?: string | null
     location?: string | null
     timezone?: string | null
     isActive?: boolean
@@ -66,12 +66,12 @@ export async function PATCH(
     data.role = body.role
   }
 
-  if ("teamId" in body) {
-    const nextTeamId = body.teamId ?? null
-    if (isManager && nextTeamId && !(await teamInScope(profile!, nextTeamId))) {
+  if ("subDepartmentId" in body) {
+    const nextSubDepartmentId = body.subDepartmentId ?? null
+    if (isManager && nextSubDepartmentId && !(await subDepartmentInScope(profile!, nextSubDepartmentId))) {
       return NextResponse.json({ error: "Team is outside your department scope" }, { status: 403 })
     }
-    data.teamId = nextTeamId
+    data.subDepartmentId = nextSubDepartmentId
   }
 
   if (Object.keys(data).length === 0) {
@@ -80,7 +80,7 @@ export async function PATCH(
 
   const before = await prisma.profile.findUnique({
     where: { id },
-    select: { role: true, teamId: true, location: true, timezone: true, isActive: true },
+    select: { role: true, subDepartmentId: true, location: true, timezone: true, isActive: true },
   })
 
   const updatedProfile = await prisma.profile.update({ where: { id }, data })
@@ -102,7 +102,7 @@ export async function PATCH(
 
   // Keep TeamMembership.role in sync with Profile.role — non-fatal if it fails
   if (data.role) {
-    await prisma.teamMembership.updateMany({
+    await prisma.subDepartmentMembership.updateMany({
       where: { userId: id },
       data: { role: data.role },
     }).catch(() => {})
@@ -111,29 +111,29 @@ export async function PATCH(
   // Keep TeamMembership in sync with Profile.teamId. The department members list is
   // built from active TeamMembership rows, so a teamId change must move the user's
   // membership too — otherwise the change appears to save but never shows up.
-  if ("teamId" in data) {
-    const nextTeamId = data.teamId ?? null
-    if (nextTeamId) {
-      const team = await prisma.team.findUnique({
-        where: { id: nextTeamId },
+  if ("subDepartmentId" in data) {
+    const nextSubDepartmentId = data.subDepartmentId ?? null
+    if (nextSubDepartmentId) {
+      const subDepartment = await prisma.subDepartment.findUnique({
+        where: { id: nextSubDepartmentId },
         select: { departmentId: true },
       })
-      if (team) {
+      if (subDepartment) {
         await prisma.$transaction([
           // Deactivate the user's other active memberships in the same department
           // so this is a move (single-team dropdown), not an additive assignment.
-          (prisma.teamMembership as any).updateMany({
+          (prisma.subDepartmentMembership as any).updateMany({
             where: {
               userId: id,
               isActive: true,
-              teamId: { not: nextTeamId },
-              team: { departmentId: team.departmentId },
+              subDepartmentId: { not: nextSubDepartmentId },
+              subDepartment: { departmentId: subDepartment.departmentId },
             },
             data: { isActive: false },
           }),
-          (prisma.teamMembership as any).upsert({
-            where: { userId_teamId: { userId: id, teamId: nextTeamId } },
-            create: { userId: id, teamId: nextTeamId, role: updatedProfile.role, isActive: true },
+          (prisma.subDepartmentMembership as any).upsert({
+            where: { userId_subDepartmentId: { userId: id, subDepartmentId: nextSubDepartmentId } },
+            create: { userId: id, subDepartmentId: nextSubDepartmentId, role: updatedProfile.role, isActive: true },
             update: { isActive: true, role: updatedProfile.role },
           }),
         ])
@@ -188,7 +188,7 @@ export async function DELETE(
   // on Ticket.creatorId, Comment.authorId, and Attachment.uploaderProfileId remain intact.
   await prisma.$transaction([
     // ── Membership & access ──────────────────────────────────────────────────
-    (prisma.teamMembership as any).deleteMany({ where: { userId: id } }),
+    (prisma.subDepartmentMembership as any).deleteMany({ where: { userId: id } }),
     prisma.departmentManager.deleteMany({ where: { userId: id } }),
     prisma.departmentAccess.deleteMany({ where: { userId: id } }),
     (prisma.projectMember as any).deleteMany({ where: { userId: id } }),
@@ -214,7 +214,7 @@ export async function DELETE(
     // ── Soft-delete the profile ──────────────────────────────────────────────
     prisma.profile.update({
       where: { id },
-      data: { deletedAt: new Date(), teamId: null },
+      data: { deletedAt: new Date(), subDepartmentId: null },
     }),
   ])
 

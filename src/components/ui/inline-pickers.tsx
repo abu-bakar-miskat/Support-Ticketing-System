@@ -21,8 +21,8 @@ import {
   chosenLabelForApi,
   hasLinkedLabelSelection,
 } from "@/lib/status-label-choice";
-import type { TeamMember } from "@/lib/api/teams";
-import type { TeamStatus } from "@/lib/api/teams";
+import type { SubDepartmentMember } from "@/lib/api/sub-departments";
+import type { SubDepartmentStatus } from "@/lib/api/sub-departments";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,8 +46,8 @@ function DropdownBackdrop({ onClose }: { onClose: () => void }) {
 // ── Status picker ─────────────────────────────────────────────────────────────
 
 interface StatusPickerProps {
-  teamId: string;
-  statuses: TeamStatus[];
+  subDepartmentId: string;
+  statuses: SubDepartmentStatus[];
   current: string;
   /** Called with the new status label (and the chosen linked label, if the status requires one). */
   onSelect: (status: string, chosenLabel?: string) => void;
@@ -181,9 +181,9 @@ export function InlineStatusPicker({
 // ── Assignee picker ───────────────────────────────────────────────────────────
 
 interface AssigneePickerProps {
-  members: TeamMember[];
+  members: SubDepartmentMember[];
   currentId: string | null | undefined;
-  onSelect: (member: TeamMember | null) => void;
+  onSelect: (member: SubDepartmentMember | null) => void;
   children: (props: {
     ref: React.RefObject<HTMLButtonElement | null>;
     onClick: () => void;
@@ -222,7 +222,7 @@ export function InlineAssigneePicker({
   const close = useCallback(() => setPos(null), []);
 
   const select = useCallback(
-    (member: TeamMember | null) => {
+    (member: SubDepartmentMember | null) => {
       close();
       onSelect(member);
     },

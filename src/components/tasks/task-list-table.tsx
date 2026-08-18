@@ -16,9 +16,9 @@ import {
   InlineStatusPicker,
   InlineAssigneePicker,
 } from "@/components/ui/inline-pickers";
-import { useTeamStatuses } from "@/hooks/queries/use-team-statuses";
+import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses";
 import { ProjectAvatar } from "@/components/projects/project-avatar";
-import { useTeamMembers } from "@/hooks/queries/use-board";
+import { useSubDepartmentMembers } from "@/hooks/queries/use-board";
 import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { toast } from "sonner";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
@@ -53,8 +53,8 @@ export function TaskListRow({
     task.assigneeAvatarUrl ?? null,
   );
 
-  const { data: statuses = [] } = useTeamStatuses(task.teamId);
-  const { data: members = [] } = useTeamMembers(task.teamId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
+  const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
   const liveIsComplete =
     statuses.find((s) => s.label === liveStatus)?.isComplete === true ||
     liveStatus === "Live";
@@ -176,7 +176,7 @@ export function TaskListRow({
         </td>
         <td className={cn(COL_STATUS, "overflow-hidden py-2.5")}>
           <InlineStatusPicker
-            teamId={task.teamId}
+            subDepartmentId={task.subDepartmentId}
             statuses={statuses}
             current={liveStatus}
             onSelect={handleStatusChange}

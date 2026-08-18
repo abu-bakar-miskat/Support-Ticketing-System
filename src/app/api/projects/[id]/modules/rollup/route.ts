@@ -3,9 +3,9 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { getProfileDeptScope, projectInScope } from "@/lib/dept-scope"
 import { canAccessModulesArea } from "@/lib/module-permissions"
-import { getTeamStatusesForTeamIds } from "@/lib/board-data"
+import { getSubDepartmentStatusesForSubDepartmentIds } from "@/lib/board-data"
 import { DEFAULT_STATUSES } from "@/components/board/board-types"
-import { parseEnabledBoardTeamIds } from "@/lib/project-boards"
+import { parseEnabledBoardSubDepartmentIds } from "@/lib/project-boards"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -21,8 +21,8 @@ const ticketSelect = {
   parentId: true,
   createdAt: true,
   closedAt: true,
-  teamId: true,
-  team: { select: { prefix: true } },
+  subDepartmentId: true,
+  subDepartment: { select: { prefix: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
 } as const
 
@@ -47,8 +47,8 @@ export async function GET(_req: Request, { params }: Params) {
       id: true,
       name: true,
       moduleSystemEnabled: true,
-      enabledBoardTeamIds: true,
-      teamId: true,
+      enabledBoardSubDepartmentIds: true,
+      subDepartmentId: true,
     },
   })
   if (!project) {
@@ -75,31 +75,31 @@ export async function GET(_req: Request, { params }: Params) {
     }),
   ])
 
-  const ticketTeamIds = [
+  const ticketSubDepartmentIds = [
     ...new Set([
-      ...modules.flatMap((m) => m.tickets.map((t) => t.teamId)),
-      ...moduleZeroTickets.map((t) => t.teamId),
+      ...modules.flatMap((m) => m.tickets.map((t) => t.subDepartmentId)),
+      ...moduleZeroTickets.map((t) => t.subDepartmentId),
     ]),
   ]
-  const storedBoardTeamIds = parseEnabledBoardTeamIds(project.enabledBoardTeamIds)
-  const statusTeamIds = [
+  const storedBoardSubDepartmentIds = parseEnabledBoardSubDepartmentIds(project.enabledBoardSubDepartmentIds)
+  const statusSubDepartmentIds = [
     ...new Set([
-      ...ticketTeamIds,
-      ...(storedBoardTeamIds ?? []),
-      ...(project.teamId ? [project.teamId] : []),
+      ...ticketSubDepartmentIds,
+      ...(storedBoardSubDepartmentIds ?? []),
+      ...(project.subDepartmentId ? [project.subDepartmentId] : []),
     ]),
   ]
 
   // Stamp isDone + merge workflow columns across every team on the project
-  const statusMap = await getTeamStatusesForTeamIds(statusTeamIds)
+  const statusMap = await getSubDepartmentStatusesForSubDepartmentIds(statusSubDepartmentIds)
   const completeMap = new Map<string, Set<string>>()
   const seenLabels = new Set<string>()
   const statuses: { label: string; color: string }[] = []
-  for (const teamId of statusTeamIds) {
-    for (const s of statusMap.get(teamId) ?? []) {
+  for (const subDepartmentId of statusSubDepartmentIds) {
+    for (const s of statusMap.get(subDepartmentId) ?? []) {
       if (s.isComplete) {
-        if (!completeMap.has(teamId)) completeMap.set(teamId, new Set())
-        completeMap.get(teamId)!.add(s.label)
+        if (!completeMap.has(subDepartmentId)) completeMap.set(subDepartmentId, new Set())
+        completeMap.get(subDepartmentId)!.add(s.label)
       }
       if (!seenLabels.has(s.label)) {
         seenLabels.add(s.label)
@@ -126,9 +126,9 @@ export async function GET(_req: Request, { params }: Params) {
     }
   }
 
-  const stamp = <T extends { teamId: string; status: string }>({ teamId, ...t }: T) => ({
+  const stamp = <T extends { subDepartmentId: string; status: string }>({ subDepartmentId, ...t }: T) => ({
     ...t,
-    isDone: completeMap.get(teamId)?.has(t.status) ?? false,
+    isDone: completeMap.get(subDepartmentId)?.has(t.status) ?? false,
   })
 
   return NextResponse.json({

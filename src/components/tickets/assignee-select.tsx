@@ -23,15 +23,15 @@ import {
 } from "@/components/tickets/sidebar-field-styles"
 import { updateTicket } from "@/lib/api/tickets"
 
-export type TeamMemberOption = UserListPerson
+export type SubDepartmentMemberOption = UserListPerson
 
 type Props = {
   ticketId: string
   assigneeId: string | null
   assigneeName: string | null
   assigneeAvatarUrl?: string | null
-  teamMembers: TeamMemberOption[]
-  onAssigneeChange?: (member: TeamMemberOption | null) => void
+  subDepartmentMembers: SubDepartmentMemberOption[]
+  onAssigneeChange?: (member: SubDepartmentMemberOption | null) => void
   disabled?: boolean
 }
 
@@ -54,7 +54,7 @@ export function AssigneeSelect({
   assigneeId,
   assigneeName,
   assigneeAvatarUrl,
-  teamMembers,
+  subDepartmentMembers,
   onAssigneeChange,
   disabled = false,
 }: Props) {
@@ -65,8 +65,8 @@ export function AssigneeSelect({
   const [error, setError] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    return teamMembers.filter((m) => matchesUserListSearch(m, debouncedQuery))
-  }, [debouncedQuery, teamMembers])
+    return subDepartmentMembers.filter((m) => matchesUserListSearch(m, debouncedQuery))
+  }, [debouncedQuery, subDepartmentMembers])
 
   useEffect(() => {
     if (open) {
@@ -81,13 +81,13 @@ export function AssigneeSelect({
       return
     }
     setError(null)
-    const member = nextId ? (teamMembers.find((m) => m.id === nextId) ?? null) : null
+    const member = nextId ? (subDepartmentMembers.find((m) => m.id === nextId) ?? null) : null
     // Optimistic — other viewers get the same via ticket-activity broadcast
     onAssigneeChange?.(member)
     setOpen(false)
     void updateTicket(ticketId, { assigneeId: nextId }).catch(() => {
       const prev = assigneeId
-        ? (teamMembers.find((m) => m.id === assigneeId) ?? null)
+        ? (subDepartmentMembers.find((m) => m.id === assigneeId) ?? null)
         : null
       onAssigneeChange?.(prev)
       setError("Failed to update assignee")

@@ -3,11 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => ({
   prisma: {
-    team: { findMany: vi.fn(), findFirst: vi.fn() },
+    subDepartment: { findMany: vi.fn(), findFirst: vi.fn() },
     project: { findMany: vi.fn(), findFirst: vi.fn() },
     ticket: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
     profile: { findFirst: vi.fn() },
-    teamStatus: { findFirst: vi.fn(), findMany: vi.fn() },
+    subDepartmentStatus: { findFirst: vi.fn(), findMany: vi.fn() },
     sprint: { findFirst: vi.fn() },
     projectModule: { findFirst: vi.fn() },
     comment: { create: vi.fn() },
@@ -20,7 +20,7 @@ vi.mock("@/lib/email", () => ({
   sendAssignmentEmail: vi.fn().mockResolvedValue(undefined),
   sendResolutionEmail: vi.fn().mockResolvedValue(undefined),
 }))
-vi.mock("@/lib/misc-project", () => ({ resolveMiscProjectForTeam: vi.fn() }))
+vi.mock("@/lib/misc-project", () => ({ resolveMiscProjectForSubDepartment: vi.fn() }))
 vi.mock("@/lib/ticket-events", () => ({
   appendTicketEvent: vi.fn().mockResolvedValue(undefined),
   broadcastTicketEvent: vi.fn().mockResolvedValue(undefined),
@@ -37,31 +37,31 @@ vi.mock("@/lib/timer-autostop", () => ({ stopRunningTimersOnStatusChange: vi.fn(
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
-import { resolveMiscProjectForTeam } from "@/lib/misc-project"
+import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { appendTicketEvent, broadcastTicketEvent } from "@/lib/ticket-events"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveMentionedProfiles, processMentions } from "@/lib/mentions"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
-import { listTeams, searchTickets, getTicket, createTicket, updateTicket, addComment, deleteTicket } from "./tools"
+import { listSubDepartments, searchTickets, getTicket, createTicket, updateTicket, addComment, deleteTicket } from "./tools"
 import type { ApiKeyContext } from "@/lib/api-key-auth"
 
-const mockTeamFindMany = vi.mocked(prisma.team.findMany)
-const mockTeamFindFirst = vi.mocked(prisma.team.findFirst)
+const mockSubDepartmentFindMany = vi.mocked(prisma.subDepartment.findMany)
+const mockSubDepartmentFindFirst = vi.mocked(prisma.subDepartment.findFirst)
 const mockTicketFindMany = vi.mocked(prisma.ticket.findMany)
 const mockTicketFindFirst = vi.mocked(prisma.ticket.findFirst)
 const mockTicketCreate = vi.mocked(prisma.ticket.create)
 const mockTicketUpdate = vi.mocked(prisma.ticket.update)
 const mockProfileFindFirst = vi.mocked(prisma.profile.findFirst)
-const mockStatusFindFirst = vi.mocked(prisma.teamStatus.findFirst)
-const mockStatusFindMany = vi.mocked(prisma.teamStatus.findMany)
+const mockStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
+const mockStatusFindMany = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockProjectFindFirst = vi.mocked(prisma.project.findFirst)
 const mockSprintFindFirst = vi.mocked(prisma.sprint.findFirst)
 const mockModuleFindFirst = vi.mocked(prisma.projectModule.findFirst)
 const mockCommentCreate = vi.mocked(prisma.comment.create)
 const mockActivityLogCreate = vi.mocked(prisma.activityLog.create)
-const mockMisc = vi.mocked(resolveMiscProjectForTeam)
+const mockMisc = vi.mocked(resolveMiscProjectForSubDepartment)
 
 const writeCtx: ApiKeyContext = {
   keyId: "key-1",
@@ -74,7 +74,7 @@ const writeCtx: ApiKeyContext = {
 const readCtx: ApiKeyContext = { ...writeCtx, scope: "read" }
 const deptCtx: ApiKeyContext = { ...writeCtx, departmentId: "dept-1" }
 
-const webTeam = {
+const webSubDepartment = {
   id: "team-web",
   name: "Web Developers",
   prefix: "WEB",
@@ -87,15 +87,15 @@ beforeEach(() => {
 
 describe("listTeams", () => {
   it("filters by the key's department when scoped", async () => {
-    mockTeamFindMany.mockResolvedValue([] as never)
-    await listTeams(deptCtx)
-    expect(mockTeamFindMany.mock.calls[0][0]?.where).toEqual({ departmentId: "dept-1" })
+    mockSubDepartmentFindMany.mockResolvedValue([] as never)
+    await listSubDepartments(deptCtx)
+    expect(mockSubDepartmentFindMany.mock.calls[0][0]?.where).toEqual({ departmentId: "dept-1" })
   })
 
   it("returns all teams for unscoped keys", async () => {
-    mockTeamFindMany.mockResolvedValue([] as never)
-    await listTeams(writeCtx)
-    expect(mockTeamFindMany.mock.calls[0][0]?.where).toEqual({})
+    mockSubDepartmentFindMany.mockResolvedValue([] as never)
+    await listSubDepartments(writeCtx)
+    expect(mockSubDepartmentFindMany.mock.calls[0][0]?.where).toEqual({})
   })
 })
 
@@ -107,7 +107,7 @@ describe("searchTickets", () => {
     const where = mockTicketFindMany.mock.calls[0][0]?.where as Record<string, unknown>
     expect(where.deletedAt).toBeNull()
     expect(where.title).toEqual({ contains: "login", mode: "insensitive" })
-    expect(where.team).toEqual({ departmentId: "dept-1" })
+    expect(where.subDepartment).toEqual({ departmentId: "dept-1" })
   })
 
   it("caps limit at 50", async () => {
@@ -135,7 +135,7 @@ describe("createTicket", () => {
     title: "Fix login",
     type: "Bug" as const,
     priority: "High" as const,
-    teamPrefix: "WEB",
+    subDepartmentPrefix: "WEB",
   }
 
   it("rejects read-scope keys", async () => {
@@ -148,14 +148,14 @@ describe("createTicket", () => {
   })
 
   it("errors when the team prefix is unknown or out of the key's department", async () => {
-    mockTeamFindFirst.mockResolvedValue(null as never)
+    mockSubDepartmentFindFirst.mockResolvedValue(null as never)
     const res = await createTicket(writeCtx, input)
     expect(res.ok).toBe(false)
     expect(mockTicketCreate).not.toHaveBeenCalled()
   })
 
   it("errors when assigneeEmail matches nobody", async () => {
-    mockTeamFindFirst.mockResolvedValue(webTeam as never)
+    mockSubDepartmentFindFirst.mockResolvedValue(webSubDepartment as never)
     mockProfileFindFirst.mockResolvedValue(null as never)
     const res = await createTicket(writeCtx, { ...input, assigneeEmail: "ghost@pen.com" })
     expect(res.ok).toBe(false)
@@ -163,14 +163,14 @@ describe("createTicket", () => {
   })
 
   it("creates with trigger-stamped numbering, first team status, and the key owner as creator", async () => {
-    mockTeamFindFirst.mockResolvedValue(webTeam as never)
+    mockSubDepartmentFindFirst.mockResolvedValue(webSubDepartment as never)
     mockStatusFindFirst.mockResolvedValue({ label: "To Do" } as never)
     mockMisc.mockResolvedValue("proj-misc")
     mockTicketCreate.mockResolvedValue({
       id: "t-1",
       ticketNumber: 241,
       title: "Fix login",
-      team: { prefix: "WEB" },
+      subDepartment: { prefix: "WEB" },
       assignee: null,
     } as never)
 
@@ -186,7 +186,7 @@ describe("createTicket", () => {
   })
 
   it("notifies and emails an assignee who is not the creator", async () => {
-    mockTeamFindFirst.mockResolvedValue(webTeam as never)
+    mockSubDepartmentFindFirst.mockResolvedValue(webSubDepartment as never)
     mockStatusFindFirst.mockResolvedValue({ label: "To Do" } as never)
     mockMisc.mockResolvedValue("proj-misc")
     mockProfileFindFirst.mockResolvedValue({ id: "user-2", name: "Nur", email: "nur@pen.com" } as never)
@@ -194,7 +194,7 @@ describe("createTicket", () => {
       id: "t-2",
       ticketNumber: 242,
       title: "Fix login",
-      team: { prefix: "WEB" },
+      subDepartment: { prefix: "WEB" },
       assignee: { id: "user-2", name: "Nur", email: "nur@pen.com" },
     } as never)
 
@@ -220,13 +220,13 @@ const baseTicketRow = {
   labels: [],
   closedAt: null,
   ticketNumber: 7,
-  teamId: "team-web",
+  subDepartmentId: "team-web",
   projectId: "p-1",
   sprintId: null,
   moduleId: null,
   assigneeId: null,
   creatorId: "user-9",
-  team: { prefix: "WEB", departmentId: "dept-1" },
+  subDepartment: { prefix: "WEB", departmentId: "dept-1" },
   assignee: null,
   sprint: null,
   module: null,
@@ -384,7 +384,7 @@ describe("addComment", () => {
   const ticketRow = {
     id: "t-1", title: "Fix login", creatorId: "user-9", assigneeId: "user-2",
     assignees: [{ userId: "user-3" }],
-    team: { prefix: "WEB" },
+    subDepartment: { prefix: "WEB" },
   }
 
   it("rejects read-scope keys", async () => {
@@ -427,7 +427,7 @@ describe("deleteTicket", () => {
   const row = {
     id: "t-1", title: "Fix login", ticketNumber: 7, deletedAt: null,
     assigneeId: "user-2", assignees: [{ userId: "user-3" }],
-    team: { prefix: "WEB" },
+    subDepartment: { prefix: "WEB" },
   }
 
   it("requires an admin key", async () => {

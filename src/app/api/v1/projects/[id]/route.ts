@@ -70,7 +70,7 @@ export async function GET(
       pipelineStartedAt: true,
       developmentStartedAt: true,
       liveAt: true,
-      team: { select: { id: true, name: true, departmentId: true } },
+      subDepartment: { select: { id: true, name: true, departmentId: true } },
       members: {
         orderBy: { addedAt: "asc" },
         select: {
@@ -109,7 +109,7 @@ export async function GET(
   if (ctx.departmentId) {
     const inDept =
       project.departmentId === ctx.departmentId ||
-      project.team?.departmentId === ctx.departmentId
+      project.subDepartment?.departmentId === ctx.departmentId
     if (!inDept) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
     }
@@ -137,7 +137,7 @@ export async function GET(
     stages: toLifecycleStagesApi(stages),
     projectUrl: project.projectUrl,
     guidelines: project.guidelines,
-    team: project.team ? { id: project.team.id, name: project.team.name } : null,
+    subDepartment: project.subDepartment ? { id: project.subDepartment.id, name: project.subDepartment.name } : null,
     members: project.members.map((m) => ({
       id: m.user.id,
       name: m.user.name,

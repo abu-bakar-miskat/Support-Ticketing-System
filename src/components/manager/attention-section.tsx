@@ -31,7 +31,7 @@ export type ReviewGroup = {
 export type JoinRequest = {
   id: string; message: string; requestedAt: string;
   user: { name: string; email: string; avatarUrl: string | null };
-  target: string; teamId: string | null; departmentId: string | null;
+  target: string; subDepartmentId: string | null; departmentId: string | null;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
     const res = await fetch(`/api/join-requests/${req.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...(req.teamId ? { teamId: req.teamId } : {}) }),
+      body: JSON.stringify({ action, ...(req.subDepartmentId ? { subDepartmentId: req.subDepartmentId } : {}) }),
     });
     setLoading(null);
     if (res.ok) { onProcessed(req.id); startTransition(() => router.refresh()); }

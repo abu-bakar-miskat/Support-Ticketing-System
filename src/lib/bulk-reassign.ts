@@ -33,7 +33,7 @@ export type CreateBulkReassignJobParams = {
 export async function createBulkReassignJob(params: CreateBulkReassignJobParams) {
   const { tenantId, departmentId, createdById, sourceAssigneeId, targetType, targetAgentId, targetTeamId, scopeTeamIds } = params;
 
-  const teams = await prisma.team.findMany({
+  const teams = await prisma.subDepartment.findMany({
     where: { departmentId, ...(scopeTeamIds ? { id: { in: scopeTeamIds } } : {}) },
     select: { id: true },
   });
@@ -41,7 +41,7 @@ export async function createBulkReassignJob(params: CreateBulkReassignJobParams)
 
   const tickets = teamIds.length
     ? await prisma.ticket.findMany({
-        where: { assigneeId: sourceAssigneeId, teamId: { in: teamIds }, deletedAt: null, closedAt: null },
+        where: { assigneeId: sourceAssigneeId, subDepartmentId: { in: teamIds }, deletedAt: null, closedAt: null },
         select: { id: true },
       })
     : [];
@@ -77,11 +77,11 @@ export async function runBulkReassignJob(jobId: string): Promise<void> {
         select: {
           id: true,
           title: true,
-          teamId: true,
+          subDepartmentId: true,
           assigneeId: true,
           projectId: true,
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
         },
       })
     : [];
@@ -115,14 +115,14 @@ export async function runBulkReassignJob(jobId: string): Promise<void> {
         // method (RULE_BASED/ROUND_ROBIN/WORKLOAD_BASED/MANUAL) re-route it.
         const result = await autoAssignTicket({
           departmentId: job.departmentId,
-          teamId: ticket.teamId,
+          teamId: ticket.subDepartmentId,
           formValues: {},
           excludeUserId: null,
         });
         newAssigneeId = result.assigneeId;
         assignmentFailed = result.failed;
         if (result.nextRotaPointer !== undefined) {
-          await prisma.team.update({ where: { id: ticket.teamId }, data: { rotaPointer: result.nextRotaPointer } });
+          await prisma.subDepartment.update({ where: { id: ticket.subDepartmentId }, data: { rotaPointer: result.nextRotaPointer } });
         }
       }
 
@@ -135,7 +135,7 @@ export async function runBulkReassignJob(jobId: string): Promise<void> {
           job.departmentId,
           job.createdById,
           ticket.title,
-          `${ticket.team.prefix}-${ticket.ticketNumber}`,
+          `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
         );
       } else if (newAssigneeId && newAssigneeId !== previousAssigneeId) {
         await prisma.activityLog.create({

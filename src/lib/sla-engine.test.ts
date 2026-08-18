@@ -230,8 +230,8 @@ describe("checkAndNotifySla — SLA-05/06/07", () => {
   const ticketRelation = {
     id: "ticket-1",
     assigneeId: "assignee-1",
-    teamId: "team-1",
-    team: { departmentId: "dept-1" },
+    subDepartmentId: "team-1",
+    subDepartment: { departmentId: "dept-1" },
   }
 
   it("notifies at-risk once and stamps the flag (no calendar pausing)", async () => {

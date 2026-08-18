@@ -390,7 +390,7 @@ export function SprintDetailDialog({
                           >
                             {/* ID */}
                             <span className="shrink-0 font-mono text-[11.5px] text-pen-muted">
-                              {ticket.team.prefix}-{ticket.ticketNumber}
+                              {ticket.subDepartment.prefix}-{ticket.ticketNumber}
                             </span>
 
                             {/* Status pill */}

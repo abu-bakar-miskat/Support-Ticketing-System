@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    team: { findMany: vi.fn(), update: vi.fn() },
+    subDepartment: { findMany: vi.fn(), update: vi.fn() },
     ticket: { findMany: vi.fn(), update: vi.fn() },
     bulkReassignJob: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
     activityLog: { create: vi.fn() },
@@ -21,8 +21,8 @@ import { getEligibleMembers } from "@/lib/rota"
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine"
 import { createBulkReassignJob, runBulkReassignJob, sweepStuckBulkReassignJobs } from "./bulk-reassign"
 
-const mockTeamFindMany = vi.mocked(prisma.team.findMany)
-const mockTeamUpdate = vi.mocked(prisma.team.update)
+const mockTeamFindMany = vi.mocked(prisma.subDepartment.findMany)
+const mockTeamUpdate = vi.mocked(prisma.subDepartment.update)
 const mockTicketFindMany = vi.mocked(prisma.ticket.findMany)
 const mockTicketUpdate = vi.mocked(prisma.ticket.update)
 const mockJobCreate = vi.mocked(prisma.bulkReassignJob.create)
@@ -57,7 +57,7 @@ describe("createBulkReassignJob", () => {
     })
 
     expect(mockTicketFindMany).toHaveBeenCalledWith({
-      where: { assigneeId: "agent-1", teamId: { in: ["team-1", "team-2"] }, deletedAt: null, closedAt: null },
+      where: { assigneeId: "agent-1", subDepartmentId: { in: ["team-1", "team-2"] }, deletedAt: null, closedAt: null },
       select: { id: true },
     })
     expect(mockJobCreate).toHaveBeenCalledWith({
@@ -107,7 +107,7 @@ describe("runBulkReassignJob", () => {
   it("skips tickets already in succeededTicketIds (idempotent retry)", async () => {
     mockJobFindUnique.mockResolvedValue({ ...baseJob, succeededTicketIds: ["t1"] } as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t2", title: "Second", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, team: { prefix: "SUP" } },
+      { id: "t2", title: "Second", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockJobFindUnique.mockResolvedValueOnce({ ...baseJob, succeededTicketIds: ["t1"] } as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t1", "t2"], ticketIds: ["t1", "t2"] } as never)
@@ -121,8 +121,8 @@ describe("runBulkReassignJob", () => {
   it("SINGLE_AGENT assigns every remaining ticket to the target agent and logs + notifies changes", async () => {
     mockJobFindUnique.mockResolvedValueOnce(baseJob as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", title: "One", teamId: "team-1", assigneeId: "agent-1", projectId: "proj-1", ticketNumber: 1, team: { prefix: "SUP" } },
-      { id: "t2", title: "Two", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, team: { prefix: "SUP" } },
+      { id: "t1", title: "One", subDepartmentId: "team-1", assigneeId: "agent-1", projectId: "proj-1", ticketNumber: 1, subDepartment: { prefix: "SUP" } },
+      { id: "t2", title: "Two", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t1", "t2"], ticketIds: ["t1", "t2"] } as never)
 
@@ -142,9 +142,9 @@ describe("runBulkReassignJob", () => {
   it("GROUP round-robins across the target team's eligible members", async () => {
     mockJobFindUnique.mockResolvedValueOnce({ ...baseJob, targetType: "GROUP", targetAgentId: null, targetTeamId: "team-2" } as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", title: "One", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, team: { prefix: "SUP" } },
-      { id: "t2", title: "Two", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, team: { prefix: "SUP" } },
-      { id: "t3", title: "Three", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 3, team: { prefix: "SUP" } },
+      { id: "t1", title: "One", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, subDepartment: { prefix: "SUP" } },
+      { id: "t2", title: "Two", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, subDepartment: { prefix: "SUP" } },
+      { id: "t3", title: "Three", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 3, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockGetEligibleMembers.mockResolvedValue([{ userId: "m1" }, { userId: "m2" }] as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t1", "t2", "t3"], ticketIds: ["t1", "t2", "t3"] } as never)
@@ -159,7 +159,7 @@ describe("runBulkReassignJob", () => {
   it("GROUP with no eligible members marks every ticket ASSIGNMENT_FAILED", async () => {
     mockJobFindUnique.mockResolvedValueOnce({ ...baseJob, targetType: "GROUP", targetAgentId: null, targetTeamId: "team-2" } as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", title: "One", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, team: { prefix: "SUP" } },
+      { id: "t1", title: "One", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockGetEligibleMembers.mockResolvedValue([] as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t1"], ticketIds: ["t1"] } as never)
@@ -173,7 +173,7 @@ describe("runBulkReassignJob", () => {
   it("DEPARTMENT_POOL re-routes via autoAssignTicket and persists a returned rota pointer", async () => {
     mockJobFindUnique.mockResolvedValueOnce({ ...baseJob, targetType: "DEPARTMENT_POOL", targetAgentId: null } as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", title: "One", teamId: "team-1", assigneeId: "agent-1", projectId: null, ticketNumber: 1, team: { prefix: "SUP" } },
+      { id: "t1", title: "One", subDepartmentId: "team-1", assigneeId: "agent-1", projectId: null, ticketNumber: 1, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockAutoAssign.mockResolvedValue({ assigneeId: "agent-3", method: "ROUND_ROBIN", failed: false, nextRotaPointer: 4 } as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t1"], ticketIds: ["t1"] } as never)
@@ -193,8 +193,8 @@ describe("runBulkReassignJob", () => {
   it("continues past a per-ticket error and reports it in the result summary", async () => {
     mockJobFindUnique.mockResolvedValueOnce(baseJob as never)
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", title: "One", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, team: { prefix: "SUP" } },
-      { id: "t2", title: "Two", teamId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, team: { prefix: "SUP" } },
+      { id: "t1", title: "One", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 1, subDepartment: { prefix: "SUP" } },
+      { id: "t2", title: "Two", subDepartmentId: "team-1", assigneeId: null, projectId: null, ticketNumber: 2, subDepartment: { prefix: "SUP" } },
     ] as never)
     mockTicketUpdate.mockRejectedValueOnce(new Error("db blip")).mockResolvedValueOnce({} as never)
     mockJobFindUnique.mockResolvedValueOnce({ succeededTicketIds: ["t2"], ticketIds: ["t1", "t2"] } as never)

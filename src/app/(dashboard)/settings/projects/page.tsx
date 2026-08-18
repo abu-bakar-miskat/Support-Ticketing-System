@@ -31,16 +31,16 @@ export default async function SettingsProjectsRoute() {
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
 
   // Resolve team IDs within the scoped dept
-  const scopedTeamIds = profileScope?.teamIds ?? null;
+  const scopedSubDepartmentIds = profileScope?.subDepartmentIds ?? null;
 
   const [projects, departments] = await Promise.all([
     prisma.project.findMany({
       where: isAdmin
-        ? activeDeptId && scopedTeamIds
-          ? { OR: [{ departmentId: activeDeptId }, { teamId: { in: scopedTeamIds } }] }
+        ? activeDeptId && scopedSubDepartmentIds
+          ? { OR: [{ departmentId: activeDeptId }, { subDepartmentId: { in: scopedSubDepartmentIds } }] }
           : { tenantId }
         : profileScope
-          ? { OR: [{ departmentId: activeDeptId }, { teamId: { in: scopedTeamIds! } }] }
+          ? { OR: [{ departmentId: activeDeptId }, { subDepartmentId: { in: scopedSubDepartmentIds! } }] }
           : { members: { some: { userId: profile.id } } },
       orderBy: { name: "asc" },
       include: {

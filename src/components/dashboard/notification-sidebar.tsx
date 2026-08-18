@@ -62,7 +62,7 @@ function NotifRow({
     if (item.ticket) {
       router.push(`/tickets/${item.ticket.dbId}`);
     } else if (item.joinRequest) {
-      router.push("/settings/teams");
+      router.push("/settings/sub-departments");
     }
   }
 

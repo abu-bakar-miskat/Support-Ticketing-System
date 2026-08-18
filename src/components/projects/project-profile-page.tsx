@@ -8,8 +8,8 @@ import Link from "next/link";
 import { useProjectDetails, projectDetailsKeys } from "@/hooks/queries/use-project-details";
 import { useProjectBoardsRealtime } from "@/hooks/use-project-boards-realtime";
 import { useProjectRealtime } from "@/hooks/use-project-realtime";
-import { teamKeys } from "@/hooks/queries/keys";
-import { getTeamStatuses } from "@/lib/api/teams";
+import { subDepartmentKeys } from "@/hooks/queries/keys";
+import { getSubDepartmentStatuses } from "@/lib/api/sub-departments";
 import { useProjectTab, type ProjectTab } from "@/components/projects/use-project-tab";
 import { ProjectExportMenu } from "@/components/projects/project-export-menu";
 import { ProjectTabPanel } from "@/components/projects/project-tab-panel";
@@ -71,7 +71,7 @@ import {
   uiPriorityFromDb,
   normalizeStatus,
   type BoardCardData,
-  type TeamStatusConfig,
+  type SubDepartmentStatusConfig,
   type UiPriority,
 } from "@/components/board/board-types";
 import { ProjectBoardPage, MODULE_ZERO_FILTER_ID, type ProjectBoardFilters } from "@/components/projects/project-board-page";
@@ -100,9 +100,9 @@ import type {
   ActivityItem,
   TicketRow,
   ProjectMember as Member,
-  ProjectTeamBoardGroup as TeamBoardGroupData,
-  AddableBoardTeam,
-  BoardTeamSource,
+  ProjectSubDepartmentBoardGroup as SubDepartmentBoardGroupData,
+  AddableBoardSubDepartment,
+  BoardSubDepartmentSource,
 } from "@/lib/api/projects";
 import {
   ProjectDetailHeaderSkeleton,
@@ -216,8 +216,8 @@ function formatMemberNames(names: string[], max = 2): string {
   return `${names.slice(0, max).join(", ")} +${names.length - max}`;
 }
 
-function boardTeamSourceLabel(
-  source: BoardTeamSource | "tickets",
+function boardSubDepartmentSourceLabel(
+  source: BoardSubDepartmentSource | "tickets",
   memberNames: string[],
 ): string {
   if (source === "department") return "Department team";
@@ -228,8 +228,8 @@ function boardTeamSourceLabel(
   return "Has tickets on this project";
 }
 
-function boardTeamSourceBadge(
-  source: BoardTeamSource | "tickets",
+function boardSubDepartmentSourceBadge(
+  source: BoardSubDepartmentSource | "tickets",
 ): { label: string; className: string } {
   if (source === "department") {
     return {
@@ -397,7 +397,7 @@ function ProjectMembersSection({
                 name: u.name,
                 avatarUrl: u.avatarUrl ?? null,
                 departmentName: u.departmentName ?? null,
-                teamName: u.teamName ?? null,
+                subDepartmentName: u.subDepartmentName ?? null,
               }),
             ),
           ),
@@ -461,9 +461,9 @@ function ProjectMembersSection({
                 <p className="font-sans text-[12px] font-semibold text-pen-foreground">
                   {m.name}
                 </p>
-                {(m.departmentName || m.teamName) && (
+                {(m.departmentName || m.subDepartmentName) && (
                   <p className="font-sans text-[11.5px] text-pen-subtle">
-                    {[m.departmentName, m.teamName].filter(Boolean).join(" · ")}
+                    {[m.departmentName, m.subDepartmentName].filter(Boolean).join(" · ")}
                   </p>
                 )}
               </div>
@@ -580,12 +580,12 @@ function ProjectMembersSection({
   );
 }
 
-function TeamStatusBreakdown({
-  teamBoardGroups,
+function SubDepartmentStatusBreakdown({
+  subDepartmentBoardGroups,
 }: {
-  teamBoardGroups: TeamBoardGroup[];
+  subDepartmentBoardGroups: SubDepartmentBoardGroup[];
 }) {
-  if (teamBoardGroups.length === 0) return null;
+  if (subDepartmentBoardGroups.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
@@ -594,7 +594,7 @@ function TeamStatusBreakdown({
       </p>
 
       <div className="flex flex-col gap-3">
-        {teamBoardGroups.map((g) => {
+        {subDepartmentBoardGroups.map((g) => {
           const sortedStatuses = [...g.statuses].sort(
             (a, b) => a.order - b.order,
           );
@@ -605,21 +605,21 @@ function TeamStatusBreakdown({
           const done = g.cards.filter((c) => completeLabels.has(c.status)).length;
           const overdue = g.cards.filter((c) => c.due === "Overdue").length;
           const donePercent = total > 0 ? Math.round((done / total) * 100) : 0;
-          const teamColor = avatarColorFor(g.teamName);
+          const subDepartmentColor = avatarColorFor(g.subDepartmentName);
 
           return (
             <div
-              key={g.teamId}
+              key={g.subDepartmentId}
               className="rounded-xl border border-pen-card-border/60 bg-pen-surface/30 p-3 dark:bg-white/3"
             >
               {/* Header row */}
               <div className="mb-2.5 flex items-center gap-2">
                 <span
                   className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: teamColor }}
+                  style={{ backgroundColor: subDepartmentColor }}
                 />
                 <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
-                  {g.teamName}
+                  {g.subDepartmentName}
                 </p>
                 <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-pen-muted">
                   {done}/{total} done
@@ -632,7 +632,7 @@ function TeamStatusBreakdown({
                         ? "#059669"
                         : donePercent >= 40
                           ? "#f97316"
-                          : teamColor,
+                          : subDepartmentColor,
                   }}
                 >
                   {donePercent}%
@@ -723,21 +723,21 @@ function TicketList({
   projectId,
   projectSlug,
   projectName,
-  mainTeamId,
-  boardTeams = [],
-  teamMembersForCreate,
+  mainSubDepartmentId,
+  boardSubDepartments = [],
+  subDepartmentMembersForCreate,
   detailsQueryKey,
   supportProject = false,
   canModifyProject = false,
 }: {
   tickets: TicketRow[];
-  statuses: TeamStatusConfig[];
+  statuses: SubDepartmentStatusConfig[];
   projectId: string;
   projectSlug: string;
   projectName: string;
-  mainTeamId: string | null;
-  boardTeams?: { id: string; name: string }[];
-  teamMembersForCreate: UserListPerson[];
+  mainSubDepartmentId: string | null;
+  boardSubDepartments?: { id: string; name: string }[];
+  subDepartmentMembersForCreate: UserListPerson[];
   detailsQueryKey?: string;
   supportProject?: boolean;
   canModifyProject?: boolean;
@@ -788,26 +788,26 @@ function TicketList({
     return true;
   });
 
-  const defaultBoardTeamId =
-    boardTeams.find((t) => t.id === mainTeamId)?.id ??
-    boardTeams[0]?.id ??
-    mainTeamId;
-  const canCreate = canModifyProject && !supportProject && (boardTeams.length > 0 || !!mainTeamId);
+  const defaultBoardSubDepartmentId =
+    boardSubDepartments.find((t) => t.id === mainSubDepartmentId)?.id ??
+    boardSubDepartments[0]?.id ??
+    mainSubDepartmentId;
+  const canCreate = canModifyProject && !supportProject && (boardSubDepartments.length > 0 || !!mainSubDepartmentId);
   const singleBoardName =
-    boardTeams.length === 1 ? boardTeams[0].name : null;
+    boardSubDepartments.length === 1 ? boardSubDepartments[0].name : null;
 
   return (
     <div className="flex flex-col gap-3">
       {showCreate && canCreate && (
         <NewTicketModal
           projects={[{ id: projectId, name: projectName }]}
-          teamMembers={[]}
+          subDepartmentMembers={[]}
           defaultProjectId={projectId}
           defaultProjectName={projectName}
-          defaultBoardTeamId={defaultBoardTeamId ?? undefined}
-          defaultTeamId={defaultBoardTeamId ?? mainTeamId ?? undefined}
-          boardTeams={boardTeams.length > 0 ? boardTeams : undefined}
-          teamMembersForCreate={teamMembersForCreate}
+          defaultBoardSubDepartmentId={defaultBoardSubDepartmentId ?? undefined}
+          defaultSubDepartmentId={defaultBoardSubDepartmentId ?? mainSubDepartmentId ?? undefined}
+          boardSubDepartments={boardSubDepartments.length > 0 ? boardSubDepartments : undefined}
+          subDepartmentMembersForCreate={subDepartmentMembersForCreate}
           onCreated={() => {
             setShowCreate(false);
             refresh();
@@ -1040,7 +1040,7 @@ function OverviewTab({
   projectSlug,
   projectName,
   detailsQueryKey,
-  teamBoardGroups,
+  subDepartmentBoardGroups,
   recentActivity,
   timeStats,
   qaTimeStats,
@@ -1056,12 +1056,12 @@ function OverviewTab({
   stats: Stats;
   statusDist: StatusDist[];
   recentTickets: TicketRow[];
-  statuses: TeamStatusConfig[];
+  statuses: SubDepartmentStatusConfig[];
   projectId: string;
   projectSlug: string;
   projectName: string;
   detailsQueryKey?: string;
-  teamBoardGroups: TeamBoardGroup[];
+  subDepartmentBoardGroups: SubDepartmentBoardGroup[];
   recentActivity: ActivityItem[];
   timeStats?: ProjectTimeStats;
   qaTimeStats?: ProjectTimeStats;
@@ -1114,7 +1114,7 @@ function OverviewTab({
   const doneTickets = recentTickets.filter((t) =>
     completeStatusLabels.has(t.status),
   ).length;
-  const overdueTotal = teamBoardGroups.reduce(
+  const overdueTotal = subDepartmentBoardGroups.reduce(
     (n, g) => n + g.cards.filter((c) => c.due === "Overdue").length,
     0,
   );
@@ -1307,7 +1307,7 @@ function OverviewTab({
             supportProject={supportProject}
           />
 
-          <TeamStatusBreakdown teamBoardGroups={teamBoardGroups} />
+          <SubDepartmentStatusBreakdown subDepartmentBoardGroups={subDepartmentBoardGroups} />
 
           {/* Assets */}
           <button
@@ -1571,7 +1571,7 @@ function OverviewTab({
 
 // ── Team boards ───────────────────────────────────────────────────────────────
 
-type TeamBoardGroup = TeamBoardGroupData;
+type SubDepartmentBoardGroup = SubDepartmentBoardGroupData;
 
 function BoardTabContextMenu({
   menu,
@@ -1579,7 +1579,7 @@ function BoardTabContextMenu({
   onRemove,
   removing,
 }: {
-  menu: { teamId: string; teamName: string; ticketCount: number; x: number; y: number };
+  menu: { subDepartmentId: string; subDepartmentName: string; ticketCount: number; x: number; y: number };
   onClose: () => void;
   onRemove: () => void;
   removing: boolean;
@@ -1635,15 +1635,15 @@ function BoardTabContextMenu({
 }
 
 function AddBoardButton({
-  teams,
+  subDepartments,
   onAdd,
   adding,
-  creatingTeamId,
+  creatingSubDepartmentId,
 }: {
-  teams: AddableBoardTeam[];
-  onAdd: (teamId: string) => void | Promise<void>;
+  subDepartments: AddableBoardSubDepartment[];
+  onAdd: (subDepartmentId: string) => void | Promise<void>;
   adding: boolean;
-  creatingTeamId: string | null;
+  creatingSubDepartmentId: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -1685,7 +1685,7 @@ function AddBoardButton({
     setOpen(true);
   }
 
-  if (teams.length === 0) return null;
+  if (subDepartments.length === 0) return null;
 
   return (
     <>
@@ -1714,8 +1714,8 @@ function AddBoardButton({
             <p className="px-3 py-1.5 font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">
               Add board
             </p>
-            {teams.map((t) => {
-              const badge = boardTeamSourceBadge(t.source);
+            {subDepartments.map((t) => {
+              const badge = boardSubDepartmentSourceBadge(t.source);
               return (
                 <button
                   key={t.id}
@@ -1731,7 +1731,7 @@ function AddBoardButton({
                     <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-pen-foreground">
                       {t.name}
                     </span>
-                    {creatingTeamId === t.id ? (
+                    {creatingSubDepartmentId === t.id ? (
                       <Loader2 className="size-3 shrink-0 animate-spin text-pen-id" />
                     ) : (
                       <span
@@ -1745,7 +1745,7 @@ function AddBoardButton({
                     )}
                   </span>
                   <span className="font-sans text-[11px] text-pen-subtle">
-                    {boardTeamSourceLabel(t.source, t.memberNames)}
+                    {boardSubDepartmentSourceLabel(t.source, t.memberNames)}
                   </span>
                 </button>
               );
@@ -1785,7 +1785,7 @@ function HeaderMemberAvatars({
     id: m.id,
     name: m.name,
     avatarUrl: m.avatarUrl ?? null,
-    teamName: m.teamName ?? "",
+    subDepartmentName: m.subDepartmentName ?? "",
   }));
 
   // Optimistic local list — syncs when server data refreshes
@@ -1840,7 +1840,7 @@ function HeaderMemberAvatars({
         id: currentUser.id,
         name: currentUser.name,
         avatarUrl: currentUser.avatarUrl ?? null,
-        teamName: "",
+        subDepartmentName: "",
       },
     ]);
     try {
@@ -1871,7 +1871,7 @@ function HeaderMemberAvatars({
               name: u.name,
               avatarUrl: u.avatarUrl ?? null,
               departmentName: u.departmentName ?? null,
-              teamName: u.teamName ?? null,
+              subDepartmentName: u.subDepartmentName ?? null,
             })),
           ),
         )
@@ -1899,7 +1899,7 @@ function HeaderMemberAvatars({
         id: u.id,
         name: u.name,
         avatarUrl: u.avatarUrl ?? null,
-        teamName: u.teamName ?? "",
+        subDepartmentName: u.subDepartmentName ?? "",
       }));
     setLocalMembers((prev) => [...prev, ...added]);
     setAdding(false);
@@ -1939,7 +1939,7 @@ function HeaderMemberAvatars({
             avatarUrl={m.avatarUrl}
             size={28}
             className="relative shrink-0 ring-2 ring-pen-card"
-            meta={{ team: m.teamName || undefined }}
+            meta={{ subDepartment: m.subDepartmentName || undefined }}
           />
         ))}
       </div>
@@ -2138,7 +2138,7 @@ export function ProjectProfilePage({
     statusDist,
     tickets,
     boardStatuses,
-    teamBoardGroups = [],
+    subDepartmentBoardGroups = [],
     recentActivity = [],
     canEdit = false,
     canManageLifecycle = false,
@@ -2154,8 +2154,8 @@ export function ProjectProfilePage({
     projectMemberUsers = [],
     currentUserIsProjectMember = false,
     canSelfJoinProject = true,
-    mainTeamId = null,
-    addableBoardTeams = [],
+    mainSubDepartmentId = null,
+    addableBoardSubDepartments = [],
   } = data;
 
   return (
@@ -2166,7 +2166,7 @@ export function ProjectProfilePage({
       statusDist={statusDist}
       tickets={tickets}
       boardStatuses={boardStatuses}
-      teamBoardGroups={teamBoardGroups}
+      subDepartmentBoardGroups={subDepartmentBoardGroups}
       recentActivity={recentActivity}
       canEdit={canEdit}
       canManageLifecycle={canManageLifecycle}
@@ -2182,8 +2182,8 @@ export function ProjectProfilePage({
       projectMemberUsers={projectMemberUsers}
       currentUserIsProjectMember={currentUserIsProjectMember}
       canSelfJoinProject={canSelfJoinProject}
-      mainTeamId={mainTeamId}
-      addableBoardTeams={addableBoardTeams}
+      mainSubDepartmentId={mainSubDepartmentId}
+      addableBoardSubDepartments={addableBoardSubDepartments}
       detailsQueryKey={projectIdOrSlug}
       createDepartments={createDepartments}
       lockedDepartment={lockedDepartment}
@@ -2198,7 +2198,7 @@ function ProjectProfilePageInner({
   statusDist,
   tickets,
   boardStatuses,
-  teamBoardGroups = [],
+  subDepartmentBoardGroups = [],
   recentActivity = [],
   canEdit = false,
   canManageLifecycle = false,
@@ -2214,8 +2214,8 @@ function ProjectProfilePageInner({
   projectMemberUsers = [],
   currentUserIsProjectMember = false,
   canSelfJoinProject = true,
-  mainTeamId = null,
-  addableBoardTeams = [],
+  mainSubDepartmentId = null,
+  addableBoardSubDepartments = [],
   detailsQueryKey,
   createDepartments = [],
   lockedDepartment = null,
@@ -2225,8 +2225,8 @@ function ProjectProfilePageInner({
   members: Member[];
   statusDist: StatusDist[];
   tickets: TicketRow[];
-  boardStatuses: TeamStatusConfig[];
-  teamBoardGroups?: TeamBoardGroup[];
+  boardStatuses: SubDepartmentStatusConfig[];
+  subDepartmentBoardGroups?: SubDepartmentBoardGroup[];
   recentActivity?: ActivityItem[];
   canEdit?: boolean;
   canManageLifecycle?: boolean;
@@ -2242,8 +2242,8 @@ function ProjectProfilePageInner({
   projectMemberUsers?: UserListPerson[];
   currentUserIsProjectMember?: boolean;
   canSelfJoinProject?: boolean;
-  mainTeamId?: string | null;
-  addableBoardTeams?: AddableBoardTeam[];
+  mainSubDepartmentId?: string | null;
+  addableBoardSubDepartments?: AddableBoardSubDepartment[];
   detailsQueryKey?: string;
   createDepartments?: { id: string; name: string }[];
   lockedDepartment?: { id: string; name: string } | null;
@@ -2262,20 +2262,20 @@ function ProjectProfilePageInner({
     currentUser?.role === "admin" || currentUser?.role === "manager";
 
   const [boardView, setBoardView] = usePersistedView(
-    VIEW_KEYS.projectTeamLayout,
+    VIEW_KEYS.projectSubDepartmentLayout,
     "board",
     ["board", "list"] as const,
   );
   const boardScrollerRef = useRef<HTMLDivElement | null>(null);
   const [boardMenu, setBoardMenu] = useState<{
-    teamId: string;
-    teamName: string;
+    subDepartmentId: string;
+    subDepartmentName: string;
     ticketCount: number;
     x: number;
     y: number;
   } | null>(null);
   const [boardAction, setBoardAction] = useState(false);
-  const [creatingBoardTeamId, setCreatingBoardTeamId] = useState<string | null>(
+  const [creatingBoardSubDepartmentId, setCreatingBoardSubDepartmentId] = useState<string | null>(
     null,
   );
   const [filterPriority, setFilterPriority] = useState<Set<string>>(new Set());
@@ -2291,65 +2291,65 @@ function ProjectProfilePageInner({
     startTransition(() => router.refresh());
   }
 
-  async function handleAddBoard(teamId: string) {
+  async function handleAddBoard(subDepartmentId: string) {
     if (!detailsQueryKey) return;
-    const team = addableBoardTeams.find((t) => t.id === teamId);
-    if (!team) return;
+    const subDepartment = addableBoardSubDepartments.find((t) => t.id === subDepartmentId);
+    if (!subDepartment) return;
 
-    setCreatingBoardTeamId(teamId);
+    setCreatingBoardSubDepartmentId(subDepartmentId);
     setBoardAction(true);
 
     const queryKey = projectDetailsKeys.detail(detailsQueryKey);
     const previous = queryClient.getQueryData<ProjectDetailsResponse>(queryKey);
 
     try {
-      const teamStatuses =
-        team.statuses.length > 0
-          ? team.statuses
+      const subDepartmentStatuses =
+        subDepartment.statuses.length > 0
+          ? subDepartment.statuses
           : await queryClient.ensureQueryData({
-              queryKey: teamKeys.statuses(teamId),
-              queryFn: () => getTeamStatuses(teamId),
+              queryKey: subDepartmentKeys.statuses(subDepartmentId),
+              queryFn: () => getSubDepartmentStatuses(subDepartmentId),
             });
 
       queryClient.setQueryData<ProjectDetailsResponse>(queryKey, (old) => {
-        if (!old || old.enabledBoardTeamIds.includes(teamId)) return old;
+        if (!old || old.enabledBoardSubDepartmentIds.includes(subDepartmentId)) return old;
         return {
           ...old,
-          enabledBoardTeamIds: [...old.enabledBoardTeamIds, teamId].sort(),
-          addableBoardTeams: old.addableBoardTeams
-            .filter((t) => t.id !== teamId)
+          enabledBoardSubDepartmentIds: [...old.enabledBoardSubDepartmentIds, subDepartmentId].sort(),
+          addableBoardSubDepartments: old.addableBoardSubDepartments
+            .filter((t) => t.id !== subDepartmentId)
             .sort((a, b) => a.name.localeCompare(b.name)),
-          teamBoardGroups: [
-            ...old.teamBoardGroups,
+          subDepartmentBoardGroups: [
+            ...old.subDepartmentBoardGroups,
             {
-              teamId: team.id,
-              teamName: team.name,
+              subDepartmentId: subDepartment.id,
+              subDepartmentName: subDepartment.name,
               cards: [],
               members: [],
-              statuses: teamStatuses,
-              teamMembersForCreate: old.allProjectAssignees,
-              boardSource: team.source,
-              memberNames: team.memberNames,
+              statuses: subDepartmentStatuses,
+              subDepartmentMembersForCreate: old.allProjectAssignees,
+              boardSource: subDepartment.source,
+              memberNames: subDepartment.memberNames,
             },
-          ].sort((a, b) => a.teamName.localeCompare(b.teamName)),
+          ].sort((a, b) => a.subDepartmentName.localeCompare(b.subDepartmentName)),
         };
       });
 
       const result = await updateProjectBoards(project.id, {
         action: "add",
-        teamId,
+        subDepartmentId,
       });
       queryClient.setQueryData<ProjectDetailsResponse>(queryKey, (old) =>
-        old ? { ...old, enabledBoardTeamIds: result.enabledBoardTeamIds } : old,
+        old ? { ...old, enabledBoardSubDepartmentIds: result.enabledBoardSubDepartmentIds } : old,
       );
-      setCreatingBoardTeamId(null);
+      setCreatingBoardSubDepartmentId(null);
       setBoardAction(false);
       void queryClient.refetchQueries({ queryKey });
       startTransition(() => router.refresh());
     } catch (e) {
       if (previous) queryClient.setQueryData(queryKey, previous);
       toast.error(e instanceof Error ? e.message : "Failed to add board");
-      setCreatingBoardTeamId(null);
+      setCreatingBoardSubDepartmentId(null);
       setBoardAction(false);
     }
   }
@@ -2361,16 +2361,16 @@ function ProjectProfilePageInner({
       "tickets",
       // Support projects don't use sprints
       ...(isSupport ? [] : (["sprints"] as Tab[])),
-      ...teamBoardGroups.map((g) => `team:${g.teamId}` as Tab),
+      ...subDepartmentBoardGroups.map((g) => `team:${g.subDepartmentId}` as Tab),
     ],
-    [isPrivileged, teamBoardGroups, isSupport],
+    [isPrivileged, subDepartmentBoardGroups, isSupport],
   );
 
   const { tab, setTab, isMounted } = useProjectTab({
     projectId: project.id,
     defaultTab,
     validTabs,
-    teamBoardGroups,
+    subDepartmentBoardGroups,
     isPrivileged,
   });
 
@@ -2381,13 +2381,13 @@ function ProjectProfilePageInner({
     setFilterModule(new Set());
   }, [tab]);
 
-  const activeTeamBoard = useMemo(() => {
+  const activeSubDepartmentBoard = useMemo(() => {
     if (!tab.startsWith("team:")) return null;
-    const teamId = tab.slice(5);
-    return teamBoardGroups.find((g) => g.teamId === teamId) ?? null;
-  }, [tab, teamBoardGroups]);
+    const subDepartmentId = tab.slice(5);
+    return subDepartmentBoardGroups.find((g) => g.subDepartmentId === subDepartmentId) ?? null;
+  }, [tab, subDepartmentBoardGroups]);
 
-  const activeBoardCards = activeTeamBoard?.cards ?? [];
+  const activeBoardCards = activeSubDepartmentBoard?.cards ?? [];
 
   const boardLabelOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -2435,7 +2435,7 @@ function ProjectProfilePageInner({
   const activeBoardFilterCount =
     filterPriority.size + filterLabels.size + filterAssignee.size + filterModule.size;
 
-  async function handleRemoveBoard(teamId: string) {
+  async function handleRemoveBoard(subDepartmentId: string) {
     if (!detailsQueryKey) return;
 
     const queryKey = projectDetailsKeys.detail(detailsQueryKey);
@@ -2443,13 +2443,13 @@ function ProjectProfilePageInner({
 
     queryClient.setQueryData<ProjectDetailsResponse>(queryKey, (old) => {
       if (!old) return old;
-      const group = old.teamBoardGroups.find((g) => g.teamId === teamId);
+      const group = old.subDepartmentBoardGroups.find((g) => g.subDepartmentId === subDepartmentId);
       const nextAddable = group
         ? [
-            ...old.addableBoardTeams,
+            ...old.addableBoardSubDepartments,
             {
-              id: group.teamId,
-              name: group.teamName,
+              id: group.subDepartmentId,
+              name: group.subDepartmentName,
               source:
                 group.boardSource === "department"
                   ? ("department" as const)
@@ -2458,23 +2458,23 @@ function ProjectProfilePageInner({
               statuses: group.statuses,
             },
           ]
-        : old.addableBoardTeams;
+        : old.addableBoardSubDepartments;
       return {
         ...old,
-        enabledBoardTeamIds: old.enabledBoardTeamIds.filter((id) => id !== teamId),
-        teamBoardGroups: old.teamBoardGroups.filter((g) => g.teamId !== teamId),
-        addableBoardTeams: nextAddable.sort((a, b) =>
+        enabledBoardSubDepartmentIds: old.enabledBoardSubDepartmentIds.filter((id) => id !== subDepartmentId),
+        subDepartmentBoardGroups: old.subDepartmentBoardGroups.filter((g) => g.subDepartmentId !== subDepartmentId),
+        addableBoardSubDepartments: nextAddable.sort((a, b) =>
           a.name.localeCompare(b.name),
         ),
       };
     });
 
-    if (tab === `team:${teamId}`) setTab("overview");
+    if (tab === `team:${subDepartmentId}`) setTab("overview");
     setBoardMenu(null);
 
     setBoardAction(true);
     try {
-      await updateProjectBoards(project.id, { action: "remove", teamId });
+      await updateProjectBoards(project.id, { action: "remove", subDepartmentId });
       await queryClient.refetchQueries({ queryKey });
       startTransition(() => router.refresh());
     } catch (e) {
@@ -2485,9 +2485,9 @@ function ProjectProfilePageInner({
     }
   }
 
-  const teamBoardById = useMemo(
-    () => new Map(teamBoardGroups.map((g) => [g.teamId, g])),
-    [teamBoardGroups],
+  const subDepartmentBoardById = useMemo(
+    () => new Map(subDepartmentBoardGroups.map((g) => [g.subDepartmentId, g])),
+    [subDepartmentBoardGroups],
   );
 
   const PRIMARY_TABS: { id: Tab; label: string; icon: React.ElementType }[] =
@@ -2499,13 +2499,13 @@ function ProjectProfilePageInner({
         ...(isSupport
           ? []
           : [{ id: "sprints" as Tab, label: "Sprints", icon: Zap }]),
-        ...teamBoardGroups.map((g) => ({
-          id: `team:${g.teamId}` as Tab,
-          label: `${g.teamName} (${g.cards.length})`,
+        ...subDepartmentBoardGroups.map((g) => ({
+          id: `team:${g.subDepartmentId}` as Tab,
+          label: `${g.subDepartmentName} (${g.cards.length})`,
           icon: LayoutGrid,
         })),
       ],
-      [stats.total, teamBoardGroups, isSupport],
+      [stats.total, subDepartmentBoardGroups, isSupport],
     );
 
   const UTILITY_TABS: { id: Tab; label: string; icon: React.ElementType }[] =
@@ -2519,27 +2519,27 @@ function ProjectProfilePageInner({
   const renderTabButton = useCallback(
     (t: { id: Tab; label: string; icon: React.ElementType }) => {
       const Icon = t.icon;
-      const isTeamTab = t.id.startsWith("team:");
-      const teamId = isTeamTab ? t.id.slice(5) : null;
-      const boardGroup = teamId ? teamBoardById.get(teamId) : undefined;
-      const teamHint =
+      const isSubDepartmentTab = t.id.startsWith("team:");
+      const subDepartmentId = isSubDepartmentTab ? t.id.slice(5) : null;
+      const boardGroup = subDepartmentId ? subDepartmentBoardById.get(subDepartmentId) : undefined;
+      const subDepartmentHint =
         boardGroup &&
         boardGroup.boardSource !== "department"
-          ? boardTeamSourceLabel(boardGroup.boardSource, boardGroup.memberNames)
+          ? boardSubDepartmentSourceLabel(boardGroup.boardSource, boardGroup.memberNames)
           : undefined;
       return (
         <button
           key={t.id}
           type="button"
           onClick={() => setTab(t.id)}
-          title={teamHint}
+          title={subDepartmentHint}
           onContextMenu={
-            canManageBoards && isTeamTab && boardGroup
+            canManageBoards && isSubDepartmentTab && boardGroup
               ? (e) => {
                   e.preventDefault();
                   setBoardMenu({
-                    teamId: boardGroup.teamId,
-                    teamName: boardGroup.teamName,
+                    subDepartmentId: boardGroup.subDepartmentId,
+                    subDepartmentName: boardGroup.subDepartmentName,
                     ticketCount: boardGroup.cards.length,
                     x: e.clientX,
                     y: e.clientY,
@@ -2556,10 +2556,10 @@ function ProjectProfilePageInner({
         >
           <Icon className="size-3.5 shrink-0" />
           {t.label}
-          {isTeamTab && creatingBoardTeamId === teamId && (
+          {isSubDepartmentTab && creatingBoardSubDepartmentId === subDepartmentId && (
             <Loader2 className="size-3 shrink-0 animate-spin text-pen-id" />
           )}
-          {(!creatingBoardTeamId || creatingBoardTeamId !== teamId) &&
+          {(!creatingBoardSubDepartmentId || creatingBoardSubDepartmentId !== subDepartmentId) &&
             boardGroup &&
             boardGroup.boardSource === "member" && (
             <Users
@@ -2570,7 +2570,7 @@ function ProjectProfilePageInner({
         </button>
       );
     },
-    [canManageBoards, creatingBoardTeamId, setTab, tab, teamBoardById],
+    [canManageBoards, creatingBoardSubDepartmentId, setTab, tab, subDepartmentBoardById],
   );
 
   return (
@@ -2653,9 +2653,9 @@ function ProjectProfilePageInner({
                     </span>
                   );
                 })()}
-                {teamBoardGroups.length === 0 && project.teamName && (
+                {subDepartmentBoardGroups.length === 0 && project.subDepartmentName && (
                   <span className="shrink-0 rounded-full bg-pen-blue-tint px-2.5 py-0.5 font-sans text-[11.5px] font-medium whitespace-nowrap text-pen-id">
-                    {project.teamName}
+                    {project.subDepartmentName}
                   </span>
                 )}
                 <span className="shrink-0 whitespace-nowrap font-sans text-[11.5px] text-pen-subtle">
@@ -2694,17 +2694,17 @@ function ProjectProfilePageInner({
               {PRIMARY_TABS.map(renderTabButton)}
               {canManageBoards && (
                 <AddBoardButton
-                  teams={addableBoardTeams}
+                  subDepartments={addableBoardSubDepartments}
                   onAdd={handleAddBoard}
                   adding={boardAction}
-                  creatingTeamId={creatingBoardTeamId}
+                  creatingSubDepartmentId={creatingBoardSubDepartmentId}
                 />
               )}
               {boardMenu && (
                 <BoardTabContextMenu
                   menu={boardMenu}
                   onClose={() => setBoardMenu(null)}
-                  onRemove={() => handleRemoveBoard(boardMenu.teamId)}
+                  onRemove={() => handleRemoveBoard(boardMenu.subDepartmentId)}
                   removing={boardAction}
                 />
               )}
@@ -2855,7 +2855,7 @@ function ProjectProfilePageInner({
             projectSlug={project.slug}
             projectName={project.name}
             detailsQueryKey={detailsQueryKey}
-            teamBoardGroups={teamBoardGroups}
+            subDepartmentBoardGroups={subDepartmentBoardGroups}
             recentActivity={recentActivity}
             timeStats={timeStats}
             qaTimeStats={qaTimeStats}
@@ -2889,12 +2889,12 @@ function ProjectProfilePageInner({
             projectId={project.id}
             projectSlug={project.slug}
             projectName={project.name}
-            mainTeamId={mainTeamId}
-            boardTeams={teamBoardGroups.map((g) => ({
-              id: g.teamId,
-              name: g.teamName,
+            mainSubDepartmentId={mainSubDepartmentId}
+            boardSubDepartments={subDepartmentBoardGroups.map((g) => ({
+              id: g.subDepartmentId,
+              name: g.subDepartmentName,
             }))}
-            teamMembersForCreate={allProjectAssignees}
+            subDepartmentMembersForCreate={allProjectAssignees}
             detailsQueryKey={detailsQueryKey}
             supportProject={isSupport}
             canModifyProject={canModifyProject}
@@ -2908,17 +2908,17 @@ function ProjectProfilePageInner({
             />
           </ProjectTabPanel>
         )}
-        {teamBoardGroups.map((g) => {
-          const teamTab = `team:${g.teamId}` as Tab;
+        {subDepartmentBoardGroups.map((g) => {
+          const subDepartmentTab = `team:${g.subDepartmentId}` as Tab;
           return (
             <ProjectTabPanel
-              key={g.teamId}
-              active={tab === teamTab}
-              mounted={isMounted(teamTab)}
+              key={g.subDepartmentId}
+              active={tab === subDepartmentTab}
+              mounted={isMounted(subDepartmentTab)}
               layout="board"
             >
               <ProjectBoardPage
-                name={g.teamName}
+                name={g.subDepartmentName}
                 description=""
                 color={project.color}
                 members={g.members.slice(0, 4)}
@@ -2930,15 +2930,15 @@ function ProjectProfilePageInner({
                 projectId={project.id}
                 projectName={project.name}
                 projectSlug={project.slug}
-                teamId={g.teamId}
-                teamMembersForCreate={
+                subDepartmentId={g.subDepartmentId}
+                subDepartmentMembersForCreate={
                   allProjectAssignees.length > 0
                     ? allProjectAssignees
-                    : g.teamMembersForCreate
+                    : g.subDepartmentMembersForCreate
                 }
                 externalView={boardView}
-                scrollerRef={tab === teamTab ? boardScrollerRef : undefined}
-                boardFilters={tab === teamTab ? boardFilters : undefined}
+                scrollerRef={tab === subDepartmentTab ? boardScrollerRef : undefined}
+                boardFilters={tab === subDepartmentTab ? boardFilters : undefined}
                 supportProject={isSupport}
                 canModifyProject={canModifyProject}
               />

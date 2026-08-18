@@ -29,13 +29,13 @@ export async function POST(
     where: { id: ticketId },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       intake: { select: { replyToken: true } },
     },
   })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { pickStatusMove, resolveTargetLabel, type TeamGitHubMapRow } from "./status-map"
+import { pickStatusMove, resolveTargetLabel, type SubDepartmentGitHubMapRow } from "./status-map"
 
 const STATUSES = [
   { label: "Not Started", order: 0, isComplete: false },
@@ -126,7 +126,7 @@ describe("resolveTargetLabel — defaults (config null)", () => {
 })
 
 describe("resolveTargetLabel — overrides", () => {
-  const config: TeamGitHubMapRow = {
+  const config: SubDepartmentGitHubMapRow = {
     onPrOpened: "Blocked",
     onPrReadyForReview: "",
     onPrMerged: null,

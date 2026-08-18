@@ -66,7 +66,7 @@ type ParentRef = {
 type Props = {
   comment: CommentData
   ticketId: string
-  teamMembers?: MentionableUser[]
+  subDepartmentMembers?: MentionableUser[]
   /** Set when this comment is a reply — renders the "Replying to …" reference. */
   parentRef?: ParentRef | null
   /** Bubbles a newly-posted reply up so the flat timeline can show it. */
@@ -154,13 +154,13 @@ function renderBody(body: string | null | undefined) {
 function InlineReplyBox({
   ticketId,
   parentId,
-  teamMembers,
+  subDepartmentMembers,
   onSubmitted,
   onCancel,
 }: {
   ticketId: string
   parentId: string
-  teamMembers?: MentionableUser[]
+  subDepartmentMembers?: MentionableUser[]
   onSubmitted: (reply: CommentData) => void
   onCancel: () => void
 }) {
@@ -174,7 +174,7 @@ function InlineReplyBox({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const filtered = mentionQuery !== null
-    ? (teamMembers ?? []).filter((m) => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    ? (subDepartmentMembers ?? []).filter((m) => m.name.toLowerCase().includes(mentionQuery.toLowerCase()))
     : []
 
   // Revoke object URLs on unmount
@@ -488,7 +488,7 @@ function InlineReplyBox({
   )
 }
 
-export function CommentItem({ comment, ticketId, teamMembers, parentRef, onReplySubmitted }: Props) {
+export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef, onReplySubmitted }: Props) {
   const currentUser = useCurrentUser()
   const [localComment, setLocalComment] = useState(comment)
   const [mode, setMode] = useState<"view" | "editing">("view")
@@ -505,7 +505,7 @@ export function CommentItem({ comment, ticketId, teamMembers, parentRef, onReply
     mentionQuery !== null && "all".startsWith(mentionQuery.toLowerCase())
   const filteredMembers =
     mentionQuery !== null
-      ? (teamMembers ?? []).filter((m) =>
+      ? (subDepartmentMembers ?? []).filter((m) =>
           m.name.toLowerCase().includes(mentionQuery.toLowerCase()),
         )
       : []
@@ -744,7 +744,7 @@ export function CommentItem({ comment, ticketId, teamMembers, parentRef, onReply
                       >
                         <span className="font-semibold text-pen-blue">@all</span>
                         <span className="ml-2 text-pen-subtle">
-                          — mention everyone ({(teamMembers ?? []).length})
+                          — mention everyone ({(subDepartmentMembers ?? []).length})
                         </span>
                       </button>
                     </li>
@@ -820,7 +820,7 @@ export function CommentItem({ comment, ticketId, teamMembers, parentRef, onReply
           <InlineReplyBox
             ticketId={ticketId}
             parentId={localComment.id}
-            teamMembers={teamMembers}
+            subDepartmentMembers={subDepartmentMembers}
             onSubmitted={handleReplySubmitted}
             onCancel={() => setReplying(false)}
           />

@@ -14,7 +14,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     include: {
       department: { select: { id: true, name: true } },
-      intakeTeam: { select: { id: true, name: true } },
+      intakeSubDepartment: { select: { id: true, name: true } },
       _count: { select: { intakes: true } },
     },
   })
@@ -28,14 +28,14 @@ export async function POST(request: Request) {
   const body = await request.json()
   const name = (body.name as string)?.trim()
   const departmentId = (body.departmentId as string)?.trim()
-  const intakeTeamId = (body.intakeTeamId as string)?.trim()
+  const intakeSubDepartmentId = (body.intakeSubDepartmentId as string)?.trim()
   const workloadThreshold =
     typeof body.workloadThreshold === "number" ? body.workloadThreshold : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const displayMode =
     body.displayMode === "FORM" || body.displayMode === "CHAT" ? body.displayMode : undefined
 
-  if (!name || !departmentId || !intakeTeamId) {
+  if (!name || !departmentId || !intakeSubDepartmentId) {
     return NextResponse.json(
       { error: "name, departmentId, and intakeTeamId are required" },
       { status: 400 },
@@ -51,14 +51,14 @@ export async function POST(request: Request) {
   }
 
   // Verify the intake team belongs to the department
-  const team = await prisma.team.findUnique({
-    where: { id: intakeTeamId },
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: intakeSubDepartmentId },
     select: { departmentId: true },
   })
-  if (!team) {
+  if (!subDepartment) {
     return NextResponse.json({ error: "Intake team not found" }, { status: 404 })
   }
-  if (team.departmentId !== departmentId) {
+  if (subDepartment.departmentId !== departmentId) {
     return NextResponse.json(
       { error: "Intake team must belong to the selected department" },
       { status: 400 },
@@ -66,8 +66,8 @@ export async function POST(request: Request) {
   }
 
   if (workloadThreshold !== undefined) {
-    await prisma.team.update({
-      where: { id: intakeTeamId },
+    await prisma.subDepartment.update({
+      where: { id: intakeSubDepartmentId },
       data: { workloadThreshold },
     })
   }
@@ -76,13 +76,13 @@ export async function POST(request: Request) {
     data: {
       name,
       departmentId,
-      intakeTeamId,
+      intakeSubDepartmentId,
       ...(autoAssign !== undefined ? { autoAssign } : {}),
       ...(displayMode !== undefined ? { displayMode } : {}),
     },
     include: {
       department: { select: { id: true, name: true } },
-      intakeTeam: { select: { id: true, name: true } },
+      intakeSubDepartment: { select: { id: true, name: true } },
     },
   })
   return NextResponse.json(form, { status: 201 })

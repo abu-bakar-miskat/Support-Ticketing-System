@@ -3,7 +3,7 @@ import type { DataSourceObjectResponse, PageObjectResponse } from "@notionhq/cli
 import { prisma } from "@/lib/db"
 import type { TicketType, TicketPriority } from "@/generated/prisma/enums"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
-import { teamTenantId } from "@/lib/tenant-scope"
+import { subDepartmentTenantId } from "@/lib/tenant-scope"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ export type ImportMapping = {
   taskStartDateProp?: string
   taskProjectRelationProp?: string
 
-  teamId: string
+  subDepartmentId: string
   creatorId: string
   departmentId?: string
 }
@@ -181,9 +181,9 @@ export async function runNotionImport(token: string, mapping: ImportMapping): Pr
   }
 
   // Everything imported lands in the destination team's tenant.
-  const importTenantId = await teamTenantId(mapping.teamId)
+  const importTenantId = await subDepartmentTenantId(mapping.subDepartmentId)
   if (!importTenantId) {
-    result.errors.push(`Destination team ${mapping.teamId} not found`)
+    result.errors.push(`Destination team ${mapping.subDepartmentId} not found`)
     return result
   }
 
@@ -241,7 +241,7 @@ export async function runNotionImport(token: string, mapping: ImportMapping): Pr
 
   // ── 3. Build email → profileId cache ──────────────────────────────────────
   const profiles = await prisma.profile.findMany({
-    where: { teamId: mapping.teamId },
+    where: { subDepartmentId: mapping.subDepartmentId },
     select: { id: true, email: true },
   })
   const emailToProfileId = new Map(profiles.map((p) => [p.email.toLowerCase(), p.id]))
@@ -311,7 +311,7 @@ export async function runNotionImport(token: string, mapping: ImportMapping): Pr
           startDate,
           creator: { connect: { id: mapping.creatorId } },
           tenant: { connect: { id: importTenantId } },
-          team: { connect: { id: mapping.teamId } },
+          subDepartment: { connect: { id: mapping.subDepartmentId } },
           ...(projectId ? { project: { connect: { id: projectId } } } : {}),
           ...(assigneeId ? { assignee: { connect: { id: assigneeId } } } : {}),
         },

@@ -1,19 +1,19 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { getTeamMembers } from "@/lib/api/teams"
+import { getSubDepartmentMembers } from "@/lib/api/sub-departments"
 import { moveTicket, type MoveTicketBody } from "@/lib/api/tickets"
-import { ticketKeys, teamKeys } from "./keys"
+import { ticketKeys, subDepartmentKeys } from "./keys"
 
-export function useTeamMembers(teamId: string) {
+export function useSubDepartmentMembers(subDepartmentId: string) {
   return useQuery({
-    queryKey: teamKeys.members(teamId),
-    queryFn: () => getTeamMembers(teamId),
+    queryKey: subDepartmentKeys.members(subDepartmentId),
+    queryFn: () => getSubDepartmentMembers(subDepartmentId),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    enabled: !!teamId,
+    enabled: !!subDepartmentId,
   })
 }
 

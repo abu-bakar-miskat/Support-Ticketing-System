@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import {
   type BoardCardData,
   type SubCardData,
-  type TeamStatusConfig,
+  type SubDepartmentStatusConfig,
   normalizeStatus,
   UI_STATUS_DOT,
   uiPriorityFromDb,
@@ -38,8 +38,8 @@ import { DrawerLink } from "@/components/tickets/drawer-link";
 import { StatusPill } from "@/components/board/status-pill";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { avatarColorFor } from "@/lib/avatar";
-import { useTeamMembers } from "@/hooks/queries/use-board";
-import { useTeamStatuses } from "@/hooks/queries/use-team-statuses";
+import { useSubDepartmentMembers } from "@/hooks/queries/use-board";
+import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses";
 import { useCardState } from "@/hooks/use-card-state";
 import { moveTicket, updateTicket, type TicketDetailProps } from "@/lib/api/tickets";
 import { InlineStatusPicker, InlineAssigneePicker } from "@/components/ui/inline-pickers";
@@ -65,14 +65,14 @@ function truncateTitle(title: string, maxWords = 6): string {
 function PersonCell({
   name,
   avatarUrl,
-  team,
+  subDepartment,
   size = 20,
   className,
   userId,
 }: {
   name: string;
   avatarUrl?: string | null;
-  team?: string | null;
+  subDepartment?: string | null;
   size?: number;
   className?: string;
   userId?: string | null;
@@ -84,7 +84,7 @@ function PersonCell({
         avatarUrl={avatarUrl}
         userId={userId}
         size={size}
-        meta={team ? { team } : undefined}
+        meta={subDepartment ? { subDepartment } : undefined}
       />
       <span
         className="min-w-0 truncate font-sans text-[12px] text-pen-foreground"
@@ -138,8 +138,8 @@ function SubTicketRowInline({ sub }: { sub: SubCardData }) {
 
 function ProjectCard({ card: initialCard, href, canCreate = true }: { card: BoardCardData; href: string; canCreate?: boolean }) {
   const { subTicketCards, expanded, creatingSubTicket, subTotal, subDone, subtasksDone, openSubTicketModal, closeSubTicketModal, toggleExpanded, onSubTicketCreated } = useCardState(initialCard.subTicketCards);
-  const { data: effectiveMembers = [] } = useTeamMembers(initialCard.teamId);
-  const { data: statuses = [] } = useTeamStatuses(initialCard.teamId);
+  const { data: effectiveMembers = [] } = useSubDepartmentMembers(initialCard.subDepartmentId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(initialCard.subDepartmentId);
   const [startingTimer, setStartingTimer] = useState(false);
   const [stoppingTimer, setStoppingTimer] = useState(false);
   const timerEntryId = useTimerStore((s) => s.entryId);
@@ -430,12 +430,12 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
       {creatingSubTicket && (
         <NewTicketModal
           projects={[{ id: initialCard.projectId, name: initialCard.project }]}
-          teamMembers={effectiveMembers}
-          teamMembersForCreate={effectiveMembers}
+          subDepartmentMembers={effectiveMembers}
+          subDepartmentMembersForCreate={effectiveMembers}
           defaultProjectId={initialCard.projectId}
           defaultProjectName={initialCard.project}
-          defaultTeamId={initialCard.teamId}
-          lockTeamId
+          defaultSubDepartmentId={initialCard.subDepartmentId}
+          lockSubDepartmentId
           statuses={statuses}
           parentId={initialCard.dbId}
           parentHumanId={initialCard.humanId}
@@ -455,7 +455,7 @@ function ProjectColumn({
   makeCardHref,
   canCreate = true,
 }: {
-  status: TeamStatusConfig;
+  status: SubDepartmentStatusConfig;
   cards: BoardCardData[];
   onDrop: (dbId: string, toStatus: string) => void;
   onAdd: (statusLabel: string) => void;
@@ -557,8 +557,8 @@ function ListRow({
   const [liveAssigneeName, setLiveAssigneeName] = useState(card.assigneeName ?? null);
   const [liveAssigneeAvatarUrl, setLiveAssigneeAvatarUrl] = useState(card.assigneeAvatarUrl ?? null);
 
-  const { data: statuses = [] } = useTeamStatuses(card.teamId);
-  const { data: members = [] } = useTeamMembers(card.teamId);
+  const { data: statuses = [] } = useSubDepartmentStatuses(card.subDepartmentId);
+  const { data: members = [] } = useSubDepartmentMembers(card.subDepartmentId);
 
   const statusColor = statusColorMap[liveStatus] ?? UI_STATUS_DOT[normalizeStatus(liveStatus)] ?? "#94a3b8";
 
@@ -716,7 +716,7 @@ function ListRow({
         {/* Status — inline editable */}
         <td className="hidden align-middle px-2 py-2 md:table-cell">
           <InlineStatusPicker
-            teamId={card.teamId}
+            subDepartmentId={card.subDepartmentId}
             statuses={statuses}
             current={liveStatus}
             onSelect={handleStatusChange}
@@ -876,7 +876,7 @@ function ListRow({
 type Member = { initials: string; name: string; bg: string };
 import type { UserListPerson } from "@/lib/user-list-person";
 
-type TeamMemberForCreate = UserListPerson;
+type SubDepartmentMemberForCreate = UserListPerson;
 
 export type ProjectBoardFilters = {
   priority: Set<string>;
@@ -920,7 +920,7 @@ type Props = {
   members: Member[];
   extraMembers: number;
   cards: BoardCardData[];
-  statuses: TeamStatusConfig[];
+  statuses: SubDepartmentStatusConfig[];
   hideHeader?: boolean;
   /** Project context for inline ticket creation */
   projectId?: string;
@@ -929,9 +929,9 @@ type Props = {
   /** Project slug for back-navigation breadcrumb links */
   projectSlug?: string;
   /** Team context for inline ticket creation — tickets are stamped with this team */
-  teamId?: string;
+  subDepartmentId?: string;
   /** Members of this team to show in the assignee dropdown */
-  teamMembersForCreate?: TeamMemberForCreate[];
+  subDepartmentMembersForCreate?: SubDepartmentMemberForCreate[];
   /** Hides the list-view Module column when the project has no module system */
   moduleSystemEnabled?: boolean;
   /** When provided by a parent, the internal toggle is hidden and this controls the view */
@@ -959,8 +959,8 @@ export function ProjectBoardPage({
   projectId,
   projectName,
   projectSlug,
-  teamId,
-  teamMembersForCreate,
+  subDepartmentId,
+  subDepartmentMembersForCreate,
   externalView,
   scrollerRef,
   boardFilters,
@@ -972,13 +972,13 @@ export function ProjectBoardPage({
   const moveTimerEntryId = useTimerStore((s) => s.entryId);
   const moveTimerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const { stopTimer: stopTimerOnMove } = useTimerActions();
-  const { data: clientStatuses = [] } = useTeamStatuses(teamId ?? "");
+  const { data: clientStatuses = [] } = useSubDepartmentStatuses(subDepartmentId ?? "");
   const effectiveStatuses = useMemo(() => {
-    if (teamId && clientStatuses.length > 0) return clientStatuses;
+    if (subDepartmentId && clientStatuses.length > 0) return clientStatuses;
     if (statuses.length > 0) return statuses;
     if (clientStatuses.length > 0) return clientStatuses;
     return DEFAULT_STATUSES;
-  }, [teamId, statuses, clientStatuses]);
+  }, [subDepartmentId, statuses, clientStatuses]);
 
   const [localCards, setLocalCards] = useState<BoardCardData[]>(initialCards);
   const [sortKey, setSortKey] = useState<SortKey>("created");
@@ -1018,32 +1018,32 @@ export function ProjectBoardPage({
   }
 
   const makeCardHref = useCallback((dbId: string): string => {
-    if (!projectId || !teamId) return `/tickets/${dbId}`;
+    if (!projectId || !subDepartmentId) return `/tickets/${dbId}`;
     const params = new URLSearchParams({
       from: "project",
       projectId,
       projectSlug: projectSlug ?? projectId,
       projectName: projectName ?? name,
-      tab: `team:${teamId}`,
-      teamName: name,
-      teamId,
+      tab: `team:${subDepartmentId}`,
+      subDepartmentName: name,
+      subDepartmentId,
     });
     return `/tickets/${dbId}?${params.toString()}`;
-  }, [projectId, projectSlug, projectName, teamId, name]);
+  }, [projectId, projectSlug, projectName, subDepartmentId, name]);
 
   const handleCreated = useCallback((ticket: {
     id: string; title: string; status: string; priority: string;
-    teamPrefix: string; ticketNumber: number;
+    subDepartmentPrefix: string; ticketNumber: number;
     assigneeId: string | null; assigneeName: string | null;
   }) => {
     const newCard: BoardCardData = {
       dbId: ticket.id,
-      humanId: `${ticket.teamPrefix}-${ticket.ticketNumber}`,
+      humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
       title: ticket.title,
       priority: uiPriorityFromDb(ticket.priority),
       status: ticket.status,
-      team: name,
-      teamId: teamId ?? "",
+      subDepartment: name,
+      subDepartmentId: subDepartmentId ?? "",
       project: name,
       projectId: projectId ?? "",
       projectKind: "standard",
@@ -1085,12 +1085,12 @@ export function ProjectBoardPage({
 
   const handleSubCreated = useCallback((parentId: string, ticket: {
     id: string; title: string; status: string; priority: string;
-    teamPrefix: string; ticketNumber: number;
+    subDepartmentPrefix: string; ticketNumber: number;
     assigneeId: string | null; assigneeName: string | null;
   }) => {
     const newSub: SubCardData = {
       dbId: ticket.id,
-      humanId: `${ticket.teamPrefix}-${ticket.ticketNumber}`,
+      humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
       title: ticket.title,
       status: ticket.status,
       done: false,
@@ -1109,7 +1109,7 @@ export function ProjectBoardPage({
   }, []);
 
   const resolveStatusesForCard = useCallback(
-    (_teamId: string) => effectiveStatuses,
+    (_subDepartmentId: string) => effectiveStatuses,
     [effectiveStatuses],
   );
 
@@ -1145,14 +1145,14 @@ export function ProjectBoardPage({
     });
   }, [queryClient, moveTimerTicketDbId, moveTimerEntryId, stopTimerOnMove]);
 
-  const getCardTeamId = useCallback(
-    (dbId: string) => localCards.find((c) => c.dbId === dbId)?.teamId,
+  const getCardSubDepartmentId = useCallback(
+    (dbId: string) => localCards.find((c) => c.dbId === dbId)?.subDepartmentId,
     [localCards],
   );
 
   const { tryMove: moveCard, modal: labelChoiceModal } = useLinkedLabelMovePrompt({
     resolveStatusesForCard,
-    getCardTeamId,
+    getCardSubDepartmentId,
     onMove: doMove,
   });
 
@@ -1193,14 +1193,14 @@ export function ProjectBoardPage({
       {createForStatus && projectId && (
         <NewTicketModal
           projects={projects}
-          teamMembers={[]}
+          subDepartmentMembers={[]}
           defaultProjectId={projectId}
           defaultProjectName={projectName ?? name}
-          defaultTeamId={teamId}
-          lockTeamId
+          defaultSubDepartmentId={subDepartmentId}
+          lockSubDepartmentId
           defaultStatus={createForStatus}
           statuses={effectiveStatuses}
-          teamMembersForCreate={teamMembersForCreate}
+          subDepartmentMembersForCreate={subDepartmentMembersForCreate}
           onCreated={handleCreated}
           onClose={() => setCreateForStatus(null)}
         />
@@ -1208,13 +1208,13 @@ export function ProjectBoardPage({
       {createSubFor && projectId && (
         <NewTicketModal
           projects={projects}
-          teamMembers={[]}
+          subDepartmentMembers={[]}
           defaultProjectId={projectId}
           defaultProjectName={projectName ?? name}
-          defaultTeamId={teamId}
-          lockTeamId
+          defaultSubDepartmentId={subDepartmentId}
+          lockSubDepartmentId
           statuses={effectiveStatuses}
-          teamMembersForCreate={teamMembersForCreate}
+          subDepartmentMembersForCreate={subDepartmentMembersForCreate}
           parentId={createSubFor.parentId}
           parentHumanId={createSubFor.parentHumanId}
           onCreated={(ticket) => { handleSubCreated(createSubFor.parentId, ticket); setCreateSubFor(null); }}

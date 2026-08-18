@@ -100,7 +100,7 @@ export function UserAvatar({
   avatarUrl?: string | null;
   size?: number;
   className?: string;
-  meta?: { team?: string | null; role?: string | null; email?: string | null };
+  meta?: { subDepartment?: string | null; role?: string | null; email?: string | null };
   userId?: string | null;
   unavailable?: boolean;
   unavailableLabel?: string | null;
@@ -208,12 +208,12 @@ export function UserAvatar({
                     {meta.role}
                   </p>
                 )}
-                {meta.team && (
+                {meta.subDepartment && (
                   <p className="truncate font-sans text-[11.5px] text-pen-subtle">
-                    {meta.team}
+                    {meta.subDepartment}
                   </p>
                 )}
-                {meta.email && !meta.role && !meta.team && (
+                {meta.email && !meta.role && !meta.subDepartment && (
                   <p className="truncate font-sans text-[11.5px] text-pen-subtle">
                     {meta.email}
                   </p>

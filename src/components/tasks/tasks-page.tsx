@@ -94,8 +94,8 @@ export function TasksPage({
         {canRender && effectiveScope === "mine" ? (
           <MyTasksPage
             tasks={myData?.tasks ?? initialMyTasks?.tasks ?? []}
-            teamStatuses={metaReady.teamStatuses}
-            teamStatusMap={myData?.teamStatusMap ?? initialMyTasks?.teamStatusMap ?? {}}
+            subDepartmentStatuses={metaReady.subDepartmentStatuses}
+            subDepartmentStatusMap={myData?.subDepartmentStatusMap ?? initialMyTasks?.subDepartmentStatusMap ?? {}}
             reviewTasks={myData?.reviewTasks ?? initialMyTasks?.reviewTasks ?? []}
             isManager={myData?.isManager ?? initialMyTasks?.isManager ?? false}
             subtasks={myData?.subtasks ?? initialMyTasks?.subtasks ?? []}
@@ -106,7 +106,7 @@ export function TasksPage({
             effectiveScope === "unassigned" ||
             effectiveScope === "drafts") ? (
           <AllTasksPage
-            teamStatuses={metaReady.teamStatuses}
+            subDepartmentStatuses={metaReady.subDepartmentStatuses}
             availableProjects={metaReady.availableProjects}
             availableModules={metaReady.availableModules ?? []}
             availableMembers={metaReady.availableMembers}
@@ -122,9 +122,9 @@ export function TasksPage({
       {creating && metaReady && (
         <NewTicketModal
           projects={metaReady.availableProjects}
-          teamMembers={metaReady.availableMembers}
-          defaultTeamId={metaReady.defaultTeamId ?? undefined}
-          statuses={metaReady.teamStatuses.map((s) => ({ id: s.id, label: s.label, color: s.color }))}
+          subDepartmentMembers={metaReady.availableMembers}
+          defaultSubDepartmentId={metaReady.defaultSubDepartmentId ?? undefined}
+          statuses={metaReady.subDepartmentStatuses.map((s) => ({ id: s.id, label: s.label, color: s.color }))}
           onCreated={() => setCreating(false)}
           onClose={() => setCreating(false)}
         />

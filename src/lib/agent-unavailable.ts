@@ -39,11 +39,11 @@ export async function syncAgentUnavailableFlagForUser(
   try {
     const tickets = await prisma.ticket.findMany({
       where: { assigneeId: userId, deletedAt: null, closedAt: null },
-      select: { id: true, teamId: true, labels: true },
+      select: { id: true, subDepartmentId: true, labels: true },
     });
     if (tickets.length === 0) return { flagged: 0, cleared: 0 };
 
-    const teamIds = [...new Set(tickets.map((t) => t.teamId))];
+    const teamIds = [...new Set(tickets.map((t) => t.subDepartmentId))];
     const availabilityByTeam = new Map(
       await Promise.all(
         teamIds.map(async (teamId) => [teamId, await isMemberAvailableNow(userId, teamId)] as const),
@@ -54,7 +54,7 @@ export async function syncAgentUnavailableFlagForUser(
     let cleared = 0;
     await Promise.all(
       tickets.map(async (t) => {
-        const available = availabilityByTeam.get(t.teamId) ?? true;
+        const available = availabilityByTeam.get(t.subDepartmentId) ?? true;
         const hasLabel = t.labels.includes(AGENT_UNAVAILABLE_LABEL);
         if (!available && !hasLabel) {
           await prisma.ticket.update({ where: { id: t.id }, data: { labels: applyAgentUnavailableLabel(t.labels) } });

@@ -12,24 +12,24 @@ export async function cascadeCompleteToSubtickets(
 ): Promise<void> {
   const subTickets = await prisma.ticket.findMany({
     where: { parentId, deletedAt: null },
-    select: { id: true, teamId: true, status: true },
+    select: { id: true, subDepartmentId: true, status: true },
   })
 
   if (subTickets.length === 0) return
 
-  const subTeamIds = [...new Set(subTickets.map((s) => s.teamId))]
+  const subSubDepartmentIds = [...new Set(subTickets.map((s) => s.subDepartmentId))]
 
-  const completeStatuses = await prisma.teamStatus.findMany({
-    where: { teamId: { in: subTeamIds }, isComplete: true },
-    select: { teamId: true, label: true, order: true },
+  const completeStatuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+    select: { subDepartmentId: true, label: true, order: true },
     orderBy: { order: "asc" },
   })
 
   // First complete status per team (lowest order)
-  const firstCompleteByTeam = new Map<string, string>()
+  const firstCompleteBySubDepartment = new Map<string, string>()
   for (const s of completeStatuses) {
-    if (!firstCompleteByTeam.has(s.teamId)) {
-      firstCompleteByTeam.set(s.teamId, s.label)
+    if (!firstCompleteBySubDepartment.has(s.subDepartmentId)) {
+      firstCompleteBySubDepartment.set(s.subDepartmentId, s.label)
     }
   }
 
@@ -40,7 +40,7 @@ export async function cascadeCompleteToSubtickets(
     subTickets
       .filter((s) => !alreadyCompleteLabels.has(s.status))
       .map(async (sub) => {
-        const completeStatus = firstCompleteByTeam.get(sub.teamId)
+        const completeStatus = firstCompleteBySubDepartment.get(sub.subDepartmentId)
         if (!completeStatus) return
         await prisma.ticket.update({
           where: { id: sub.id },

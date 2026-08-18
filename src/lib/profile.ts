@@ -7,10 +7,10 @@ import { resolveActiveTenantId } from "@/lib/tenant-scope"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 
 export type ProfileMembership = {
-  teamId: string
+  subDepartmentId: string
   role: string
   nickname: string | null
-  team: { id: string; name: string; prefix: string; department: { id: string; name: string; isHub: boolean } | null }
+  subDepartment: { id: string; name: string; prefix: string; department: { id: string; name: string; isHub: boolean } | null }
 }
 
 /** Fetch the profile row and all of its relation lists for a given auth id in one parallel batch. */
@@ -18,13 +18,13 @@ function loadProfileAndRelations(userId: string) {
   return Promise.all([
     prisma.profile.findUnique({ where: { id: userId } }),
 
-    (prisma.teamMembership as any).findMany({
+    (prisma.subDepartmentMembership as any).findMany({
       where: { userId, isActive: true },
       select: {
-        teamId: true,
+        subDepartmentId: true,
         role: true,
         nickname: true,
-        team: { select: { id: true, name: true, prefix: true, department: { select: { id: true, name: true, isHub: true } } } },
+        subDepartment: { select: { id: true, name: true, prefix: true, department: { select: { id: true, name: true, isHub: true } } } },
       },
     }).catch(() => [] as ProfileMembership[]),
 
@@ -76,7 +76,7 @@ export const getProfile = cache(async () => {
       name: "Dev Admin",
       avatarUrl: null,
       role: "admin",
-      teamId: null,
+      subDepartmentId: null,
       createdAt: new Date(),
       timezone: null,
       location: null,
@@ -87,7 +87,7 @@ export const getProfile = cache(async () => {
       preferences: {},
       deletedAt: null,
       memberships: [] as ProfileMembership[],
-      teamIds: [] as string[],
+      subDepartmentIds: [] as string[],
       managedDepartmentIds: [] as string[],
       grantedAccessDeptIds: [] as string[],
       fullAccessGrantedDeptIds: [] as string[],
@@ -142,7 +142,7 @@ export const getProfile = cache(async () => {
 
     const typedMemberships = memberships as ProfileMembership[]
     // True when the user belongs to at least one hub department
-    const isHubMember = typedMemberships.some((m) => m.team?.department?.isHub === true)
+    const isHubMember = typedMemberships.some((m) => m.subDepartment?.department?.isHub === true)
 
     const tenantMemberships = tenantRaw as { tenantId: string; role: string }[]
     const tenantIds = tenantMemberships.map((t) => t.tenantId)
@@ -182,7 +182,7 @@ export const getProfile = cache(async () => {
       ...typedMemberships.map((m) => ({
         role: m.role as ScopeRow["role"],
         scopeType: "SUB_DEPARTMENT" as const,
-        scopeId: m.teamId,
+        scopeId: m.subDepartmentId,
       })),
     ]
     const effectiveRole = deriveEffectiveRole(roleRows)
@@ -191,7 +191,7 @@ export const getProfile = cache(async () => {
       ...profile,
       role: effectiveRole,
       memberships: typedMemberships,
-      teamIds: typedMemberships.map((m) => m.teamId),
+      subDepartmentIds: typedMemberships.map((m) => m.subDepartmentId),
       managedDepartmentIds,
       grantedAccessDeptIds,
       fullAccessGrantedDeptIds,

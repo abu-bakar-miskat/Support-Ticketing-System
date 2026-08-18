@@ -195,7 +195,7 @@ export function SprintFormDialog({
     (t) =>
       !ticketSearch ||
       t.title.toLowerCase().includes(ticketSearch.toLowerCase()) ||
-      `${t.team.prefix}-${t.ticketNumber}`.toLowerCase().includes(ticketSearch.toLowerCase()),
+      `${t.subDepartment.prefix}-${t.ticketNumber}`.toLowerCase().includes(ticketSearch.toLowerCase()),
   );
 
   return (
@@ -386,7 +386,7 @@ export function SprintFormDialog({
                               className="size-3.5 accent-pen-blue"
                             />
                             <span className="shrink-0 font-mono text-[11.5px] text-pen-muted">
-                              {ticket.team.prefix}-{ticket.ticketNumber}
+                              {ticket.subDepartment.prefix}-{ticket.ticketNumber}
                             </span>
                             <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
                               {ticket.title}

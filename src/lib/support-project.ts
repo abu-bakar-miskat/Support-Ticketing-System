@@ -8,7 +8,7 @@ export { deptProjectsForDeptWhere } from "@/lib/dept-scope";
 type Db = Prisma.TransactionClient | typeof prisma;
 
 export type ProfileWithNativeDepts = ProfileLike & {
-  memberships?: { team?: { department?: { id: string } | null } | null }[];
+  memberships?: { subDepartment?: { department?: { id: string } | null } | null }[];
 };
 
 /** Prisma filter: the Support project for a department (kind + dept match). */
@@ -21,14 +21,14 @@ export function supportProjectsForDeptWhere(deptId: string) {
 
 /** Department IDs the user natively belongs to or manages (not cross-access grants). */
 export function getNativeDepartmentIds(profile: ProfileWithNativeDepts): string[] {
-  const fromTeams = (profile.memberships ?? [])
-    .map((m) => m.team?.department?.id)
+  const fromSubDepartments = (profile.memberships ?? [])
+    .map((m) => m.subDepartment?.department?.id)
     .filter((id): id is string => !!id);
   return [
     ...new Set([
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.directMemberDeptIds ?? []),
-      ...fromTeams,
+      ...fromSubDepartments,
     ]),
   ];
 }

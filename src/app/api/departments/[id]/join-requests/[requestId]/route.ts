@@ -30,9 +30,9 @@ export async function PATCH(
   }
 
   const body = await req.json()
-  const { action, teamId, role, nickname, fullAccess, projectIds, expiresAt, reason } = body as {
+  const { action, subDepartmentId, role, nickname, fullAccess, projectIds, expiresAt, reason } = body as {
     action: "approve" | "reject"
-    teamId?: string
+    subDepartmentId?: string
     role?: string
     nickname?: string
     fullAccess?: boolean
@@ -88,7 +88,7 @@ export async function PATCH(
         const validProjects = await prisma.project.findMany({
           where: {
             id: { in: projectIds },
-            OR: [{ departmentId }, { team: { departmentId } }],
+            OR: [{ departmentId }, { subDepartment: { departmentId } }],
           },
           select: { id: true },
         })
@@ -149,30 +149,30 @@ export async function PATCH(
       ])
     } else {
       // lead or staff — team assignment required
-      if (!teamId) {
+      if (!subDepartmentId) {
         return NextResponse.json({ error: "teamId is required for lead/staff roles" }, { status: 400 })
       }
 
-      const team = await prisma.team.findFirst({
-        where: { id: teamId, departmentId },
+      const subDepartment = await prisma.subDepartment.findFirst({
+        where: { id: subDepartmentId, departmentId },
       })
-      if (!team) return NextResponse.json({ error: "Team not found in this department" }, { status: 404 })
+      if (!subDepartment) return NextResponse.json({ error: "Team not found in this department" }, { status: 404 })
 
       const memberRole: Role = effectiveRole === "lead" ? "lead" : "staff"
 
       await prisma.$transaction([
-        (prisma.teamMembership as any).upsert({
-          where: { userId_teamId: { userId: joinRequest.userId, teamId } },
-          create: { userId: joinRequest.userId, teamId, role: memberRole, nickname: trimmedName, isActive: true },
+        (prisma.subDepartmentMembership as any).upsert({
+          where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId } },
+          create: { userId: joinRequest.userId, subDepartmentId, role: memberRole, nickname: trimmedName, isActive: true },
           update: { role: memberRole, nickname: trimmedName, isActive: true },
         }),
         prisma.joinRequest.update({
           where: { id: requestId },
-          data: { status: "approved", teamId, processedAt: new Date(), processedBy: profile.id },
+          data: { status: "approved", subDepartmentId, processedAt: new Date(), processedBy: profile.id },
         }),
         prisma.profile.updateMany({
-          where: { id: joinRequest.userId, teamId: null },
-          data: { teamId },
+          where: { id: joinRequest.userId, subDepartmentId: null },
+          data: { subDepartmentId },
         }),
         prisma.notification.create({
           data: {
@@ -180,7 +180,7 @@ export async function PATCH(
             actorId: profile.id,
             type: "join_request",
             joinRequestId: requestId,
-            message: `approved: Your request to join ${deptName} was approved. You've been added to ${team.name}.`,
+            message: `approved: Your request to join ${deptName} was approved. You've been added to ${subDepartment.name}.`,
           },
         }),
       ])

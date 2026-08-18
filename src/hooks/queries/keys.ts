@@ -7,9 +7,9 @@ export const ticketKeys = {
   byProject: (projectId: string) => ["tickets", "project", projectId] as const,
 }
 
-export const teamKeys = {
-  members: (teamId: string) => ["teams", teamId, "members"] as const,
-  statuses: (teamId: string) => ["teams", teamId, "statuses"] as const,
+export const subDepartmentKeys = {
+  members: (subDepartmentId: string) => ["teams", subDepartmentId, "members"] as const,
+  statuses: (subDepartmentId: string) => ["teams", subDepartmentId, "statuses"] as const,
 }
 
 export const adminKeys = {
@@ -55,7 +55,7 @@ export const calendarKeys = {
 }
 
 export const reportKeys = {
-  teamTime: (from: string, to: string, projectId: string, personId: string) =>
+  subDepartmentTime: (from: string, to: string, projectId: string, personId: string) =>
     ["reports", "team-time", from, to, projectId, personId] as const,
   overview: (from: string, to: string, projectId: string, personId: string) =>
     ["reports", "overview", from, to, projectId, personId] as const,

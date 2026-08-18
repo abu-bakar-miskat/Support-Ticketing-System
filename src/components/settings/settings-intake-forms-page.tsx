@@ -149,8 +149,8 @@ export type IntakeFormRow = {
   displayMode: "FORM" | "CHAT";
   departmentId: string;
   departmentName: string;
-  intakeTeamId: string;
-  intakeTeamName: string;
+  intakeSubDepartmentId: string;
+  intakeSubDepartmentName: string;
   workloadThreshold: number;
   intakeCount: number;
   createdAt: string;
@@ -158,12 +158,12 @@ export type IntakeFormRow = {
   branding: FormBranding;
 };
 
-export type TeamOption = { id: string; name: string };
+export type SubDepartmentOption = { id: string; name: string };
 export type MemberOption = UserListPerson;
 export type DeptOption = {
   id: string;
   name: string;
-  teams: TeamOption[];
+  subDepartments: SubDepartmentOption[];
   members: MemberOption[];
 };
 
@@ -211,7 +211,7 @@ function CopyLinkButton({ url }: { url: string }) {
 type FormState = {
   name: string;
   departmentId: string;
-  intakeTeamId: string;
+  intakeSubDepartmentId: string;
   workloadThreshold: number;
   isActive: boolean;
   autoAssign: boolean;
@@ -220,7 +220,7 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   name: "",
   departmentId: "",
-  intakeTeamId: "",
+  intakeSubDepartmentId: "",
   workloadThreshold: 5,
   isActive: true,
   autoAssign: true,
@@ -244,8 +244,8 @@ function IntakeFormModal({
   const [departmentId, setDepartmentId] = useState(
     isEdit ? mode.form.departmentId : (departments[0]?.id ?? ""),
   );
-  const [intakeTeamId, setIntakeTeamId] = useState(
-    isEdit ? mode.form.intakeTeamId : "",
+  const [intakeSubDepartmentId, setIntakeSubDepartmentId] = useState(
+    isEdit ? mode.form.intakeSubDepartmentId : "",
   );
   const [workloadThreshold, setWorkloadThreshold] = useState(
     isEdit ? mode.form.workloadThreshold : 5,
@@ -258,8 +258,8 @@ function IntakeFormModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const availableTeams =
-    departments.find((d) => d.id === departmentId)?.teams ?? [];
+  const availableSubDepartments =
+    departments.find((d) => d.id === departmentId)?.subDepartments ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -269,7 +269,7 @@ function IntakeFormModal({
       setError("Form name is required.");
       return;
     }
-    if (!intakeTeamId) {
+    if (!intakeSubDepartmentId) {
       setError("Support team is required.");
       return;
     }
@@ -288,11 +288,11 @@ function IntakeFormModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           isEdit
-            ? { name: name.trim(), intakeTeamId, workloadThreshold, isActive, autoAssign, displayMode }
+            ? { name: name.trim(), intakeSubDepartmentId, workloadThreshold, isActive, autoAssign, displayMode }
             : {
                 name: name.trim(),
                 departmentId,
-                intakeTeamId,
+                intakeSubDepartmentId,
                 workloadThreshold,
                 autoAssign,
                 displayMode,
@@ -354,7 +354,7 @@ function IntakeFormModal({
                 value={departmentId}
                 onValueChange={(v) => {
                   setDepartmentId(v ?? "");
-                  setIntakeTeamId("");
+                  setIntakeSubDepartmentId("");
                 }}
               >
                 <SelectTrigger className="h-9 w-full rounded-lg border-pen-card-border bg-pen-surface font-sans text-[13px] text-pen-foreground">
@@ -387,22 +387,22 @@ function IntakeFormModal({
               Support team
             </label>
             <Select
-              value={intakeTeamId}
-              onValueChange={(v) => setIntakeTeamId(v ?? "")}
+              value={intakeSubDepartmentId}
+              onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
               disabled={!departmentId && !isEdit}
             >
               <SelectTrigger className="h-9 w-full rounded-lg border-pen-card-border bg-pen-surface font-sans text-[13px] text-pen-foreground">
                 <span
                   className={
-                    intakeTeamId ? "text-pen-foreground" : "text-pen-subtle"
+                    intakeSubDepartmentId ? "text-pen-foreground" : "text-pen-subtle"
                   }
                 >
-                  {availableTeams.find((t) => t.id === intakeTeamId)?.name ??
+                  {availableSubDepartments.find((t) => t.id === intakeSubDepartmentId)?.name ??
                     "Select team"}
                 </span>
               </SelectTrigger>
               <SelectContent>
-                {availableTeams.map((t) => (
+                {availableSubDepartments.map((t) => (
                   <SelectItem
                     key={t.id}
                     value={t.id}

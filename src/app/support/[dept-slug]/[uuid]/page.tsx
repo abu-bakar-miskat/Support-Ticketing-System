@@ -77,7 +77,11 @@ export default async function PublicIntakeFormPage({
 
   const isChat = form.displayMode === "CHAT"
 
-  const ws = brandingFrom(await getEmailConfig())
+  // DS-01: department branding is the fallback layer between the form's own
+  // override (most specific) and the workspace/tenant default (least specific)
+  // — passing departmentId here is what makes a department's logo/colors
+  // actually reach this customer-facing form when the form hasn't set its own.
+  const ws = brandingFrom(await getEmailConfig(form.department.id))
   const brand = resolveFormBranding(form.branding, {
     logoUrl: ws.logoUrl,
     headerColor: ws.headerColor,

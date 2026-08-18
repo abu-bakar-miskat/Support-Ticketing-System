@@ -14,6 +14,7 @@ import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveColumnIdForStatus } from "@/lib/board-columns"
 import { startSlaTimers } from "@/lib/sla-engine"
+import { assertDepartmentOperational } from "@/lib/department-setup"
 
 const VALID_TYPES = ["Bug", "Feature", "Task", "Chore"] as const
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
@@ -214,7 +215,7 @@ export async function POST(request: Request) {
 
   const teamRecord = await prisma.team.findUnique({
     where: { id: resolvedTeamId },
-    select: { id: true },
+    select: { id: true, departmentId: true },
   })
   if (!teamRecord) {
     return NextResponse.json(
@@ -229,6 +230,12 @@ export async function POST(request: Request) {
 
   if (!teamAllowed) {
     return NextResponse.json({ error: "Team not in current department" }, { status: 403 })
+  }
+
+  // DS-08: a department blocks ticket creation until its initial setup review is complete.
+  const setupCheck = await assertDepartmentOperational(teamRecord.departmentId)
+  if (!setupCheck.ok) {
+    return NextResponse.json({ error: setupCheck.error }, { status: 422 })
   }
 
   if (parentId) {

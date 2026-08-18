@@ -9,6 +9,7 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { startSlaTimers } from "@/lib/sla-engine";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
+import { assertDepartmentOperational } from "@/lib/department-setup";
 
 /**
  * EM-01/02/03: creates a brand-new ticket from an inbound email that matched
@@ -35,6 +36,10 @@ export async function createTicketFromInboundEmail(params: {
   subject: string | null;
 }): Promise<CreateTicketFromEmailResult> {
   const { departmentId, teamId, fromEmail, fromName, subject } = params;
+
+  // DS-08: a department blocks ticket creation until its initial setup review is complete.
+  const setupCheck = await assertDepartmentOperational(departmentId);
+  if (!setupCheck.ok) throw new Error(setupCheck.error);
 
   const [team, statuses, projectId, creatorId, managerRow] = await Promise.all([
     prisma.team.findUniqueOrThrow({ where: { id: teamId }, select: { tenantId: true, prefix: true } }),

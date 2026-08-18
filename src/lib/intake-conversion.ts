@@ -14,6 +14,7 @@ import { generateReplyToken } from "@/lib/customer-conversation";
 import { autoAssignTicket } from "@/lib/assignment-engine";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { resolveColumnIdForStatus } from "@/lib/board-columns";
+import { assertDepartmentOperational } from "@/lib/department-setup";
 
 // Fixed UUID for the synthetic "System" profile used as the creator of
 // tickets auto-converted from intake form submissions.
@@ -143,6 +144,10 @@ export async function prepareConversion({
     where: { id: intakeTeamId },
     select: { rotaPointer: true, workloadThreshold: true },
   });
+
+  // DS-08: a department blocks ticket creation until its initial setup review is complete.
+  const setupCheck = await assertDepartmentOperational(departmentId);
+  if (!setupCheck.ok) throw new Error(setupCheck.error);
 
   // Every department manager is alerted (email + in-app notification) once the
   // ticket is created — separate from who the ticket's creator is. The

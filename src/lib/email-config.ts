@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import { BRAND, HEADER_BG, LOGO_URL } from "@/lib/email-templates/_shared";
@@ -122,23 +123,69 @@ export async function getDepartmentNotifyOverrides(
   return readNotifyOverrides(department?.emailConfig);
 }
 
-export type EmailIdentityOverride = {
-  fromName?: string;
-  fromEmail?: string;
+/** DS-02: one of a department's configured send-from addresses. */
+export type EmailSender = {
+  id: string;
+  name: string;
+  email: string;
+  isDefault: boolean;
 };
 
-/** Parses a department's From name/email override out of its raw `emailConfig` JSON value. */
+export type EmailIdentityOverride = {
+  /** The default sender's name/email — derived from `senders`, kept for backward-compat reads. */
+  fromName?: string;
+  fromEmail?: string;
+  /** DS-02: the full list of configured senders, exactly one of which is the default. */
+  senders?: EmailSender[];
+};
+
+/** Pure: exactly one sender ends up `isDefault` — the first one marked, or the first sender if none were. */
+function ensureSingleDefault(senders: EmailSender[]): EmailSender[] {
+  if (senders.length === 0) return senders;
+  const winnerId = senders.find((s) => s.isDefault)?.id ?? senders[0].id;
+  return senders.map((s) => ({ ...s, isDefault: s.id === winnerId }));
+}
+
+/**
+ * Reads `identity.senders` (DS-02's multi-sender shape); falls back to the
+ * legacy single `fromName`/`fromEmail` pair (pre-slice-15 departments) as a
+ * single synthesized default sender when no `senders` array is present.
+ */
+function readSenders(identity: Record<string, unknown>): EmailSender[] {
+  const raw = identity.senders;
+  if (Array.isArray(raw)) {
+    const senders = raw
+      .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null && !Array.isArray(s))
+      .map((s) => ({
+        id: typeof s.id === "string" && s.id.trim() ? s.id.trim() : randomUUID(),
+        name: typeof s.name === "string" ? s.name.trim() : "",
+        email: typeof s.email === "string" ? s.email.trim().toLowerCase() : "",
+        isDefault: s.isDefault === true,
+      }))
+      .filter((s) => s.email);
+    if (senders.length > 0) return ensureSingleDefault(senders);
+  }
+
+  const fromName = typeof identity.fromName === "string" ? identity.fromName.trim() : "";
+  const fromEmail = typeof identity.fromEmail === "string" ? identity.fromEmail.trim() : "";
+  if (fromEmail) return [{ id: "legacy", name: fromName, email: fromEmail, isDefault: true }];
+  return [];
+}
+
+/** Parses a department's sender(s) override out of its raw `emailConfig` JSON value. */
 export function readIdentityOverride(emailConfig: unknown): EmailIdentityOverride {
   if (typeof emailConfig !== "object" || emailConfig === null || Array.isArray(emailConfig)) {
     return {};
   }
   const stored = (emailConfig as Record<string, unknown>).identity;
   if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
+
+  const senders = readSenders(stored as Record<string, unknown>);
+  const defaultSender = senders.find((s) => s.isDefault) ?? senders[0];
   const result: EmailIdentityOverride = {};
-  const fromName = (stored as Record<string, unknown>).fromName;
-  const fromEmail = (stored as Record<string, unknown>).fromEmail;
-  if (typeof fromName === "string" && fromName.trim()) result.fromName = fromName.trim();
-  if (typeof fromEmail === "string" && fromEmail.trim()) result.fromEmail = fromEmail.trim();
+  if (senders.length > 0) result.senders = senders;
+  if (defaultSender?.name) result.fromName = defaultSender.name;
+  if (defaultSender?.email) result.fromEmail = defaultSender.email;
   return result;
 }
 
@@ -184,6 +231,74 @@ export async function saveDepartmentEmailIdentity(
     where: { id: departmentId },
     data: { emailConfig: nextConfig as Prisma.InputJsonValue },
   });
+}
+
+/**
+ * DS-02: replaces a department's full list of sender/reply-to addresses.
+ * Exactly one ends up `isDefault` (the first one marked, or the first sender
+ * if none were) — see {@link ensureSingleDefault}. Passing an empty array
+ * clears every sender, falling back to the workspace-wide address.
+ */
+export async function saveDepartmentEmailSenders(
+  departmentId: string,
+  senders: { id?: string; name: string; email: string; isDefault?: boolean }[],
+): Promise<EmailSender[]> {
+  const department = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { emailConfig: true },
+  });
+  const existingConfig =
+    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
+      ? (department.emailConfig as Record<string, unknown>)
+      : {};
+  const existingIdentity: Record<string, unknown> =
+    existingConfig.identity && typeof existingConfig.identity === "object" && !Array.isArray(existingConfig.identity)
+      ? (existingConfig.identity as Record<string, unknown>)
+      : {};
+
+  const normalized = ensureSingleDefault(
+    senders
+      .map((s) => ({
+        id: s.id?.trim() || randomUUID(),
+        name: s.name.trim(),
+        email: s.email.trim().toLowerCase(),
+        isDefault: s.isDefault === true,
+      }))
+      .filter((s) => s.email),
+  );
+
+  // The senders list is now the sole source of truth — drop the legacy
+  // single-sender fields so a later read can't resurrect a stale default.
+  const nextIdentity: Record<string, unknown> = { ...existingIdentity, senders: normalized };
+  delete nextIdentity.fromName;
+  delete nextIdentity.fromEmail;
+
+  const nextConfig = { ...existingConfig, identity: nextIdentity };
+  await prisma.department.update({
+    where: { id: departmentId },
+    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
+  });
+  return normalized;
+}
+
+/**
+ * DS-02: resolves the sender a specific send should use — the explicitly
+ * requested one (`overrideSenderId`) when it exists among the department's
+ * configured senders, otherwise the department's default. Null when the
+ * department has no senders configured at all (caller falls back further,
+ * e.g. to the workspace-wide address via `getEmailConfig`).
+ */
+export async function resolveDepartmentSender(
+  departmentId: string,
+  overrideSenderId?: string | null,
+): Promise<{ name: string; email: string } | null> {
+  const { senders = [] } = await getDepartmentEmailIdentity(departmentId);
+  if (overrideSenderId) {
+    const chosen = senders.find((s) => s.id === overrideSenderId);
+    if (chosen) return { name: chosen.name, email: chosen.email };
+  }
+  const fallback = senders.find((s) => s.isDefault) ?? senders[0];
+  return fallback ? { name: fallback.name, email: fallback.email } : null;
 }
 
 const BRANDING_KEYS = ["brandColor", "headerColor", "logoUrl", "footerText"] as const;
@@ -353,13 +468,15 @@ export const EMAIL_TEMPLATE_KEYS = [
 
 export type EmailTemplateKey = (typeof EMAIL_TEMPLATE_KEYS)[number];
 
-/** An admin-authored override for one template's subject/heading/body. All three
- * fields may contain `{{placeholder}}` tokens; unset fields fall back to the
- * built-in default at render time. */
+/** An admin-authored override for one template's subject/heading/body/footer. All
+ * fields may contain `{{placeholder}}` tokens (unresolved ones render empty, DS-04);
+ * unset fields fall back to the built-in default (or, for `footerText`, the
+ * department/tenant/platform default chain — DS-05/06) at render time. */
 export type EmailTemplateOverride = {
   subject?: string;
   heading?: string;
   bodyHtml?: string;
+  footerText?: string;
 };
 
 function readTemplateOverrides(

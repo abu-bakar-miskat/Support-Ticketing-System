@@ -276,13 +276,23 @@ export async function processInboundEmail(
       return false
     }
 
-    const createdTicket = await createTicketFromInboundEmail({
-      departmentId: route.departmentId,
-      teamId: route.teamId,
-      fromEmail,
-      fromName,
-      subject: email.subject,
-    })
+    let createdTicket
+    try {
+      createdTicket = await createTicketFromInboundEmail({
+        departmentId: route.departmentId,
+        teamId: route.teamId,
+        fromEmail,
+        fromName,
+        subject: email.subject,
+      })
+    } catch (err) {
+      // DS-08: the department hasn't completed setup yet — drop the message
+      // rather than fail the whole webhook. Not logged as a suppression
+      // (that's specifically for auto-generated mail, EM-06); this is just
+      // "not accepting tickets yet".
+      console.log("[inbound] mailbox route's department isn't operational, dropping:", messageId, err)
+      return false
+    }
     ticket = {
       id: createdTicket.id,
       title: email.subject?.trim() || `Email from ${fromName || fromEmail}`,

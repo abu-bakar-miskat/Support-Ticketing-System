@@ -51,6 +51,9 @@ export async function PUT(
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const heading = typeof body?.heading === "string" ? body.heading.trim() : "";
   const bodyHtml = typeof body?.bodyHtml === "string" ? body.bodyHtml.trim() : "";
+  // DS-05/06: this template's own footer; omitted/empty falls back to the
+  // department/tenant/platform default chain.
+  const footerText = typeof body?.footerText === "string" ? body.footerText.trim() : "";
 
   if (!bodyHtml) {
     return NextResponse.json(
@@ -59,7 +62,11 @@ export async function PUT(
     );
   }
 
-  await saveEmailTemplateOverride(key, { subject, heading, bodyHtml }, departmentId!);
+  await saveEmailTemplateOverride(
+    key,
+    { subject, heading, bodyHtml, ...(footerText ? { footerText } : {}) },
+    departmentId!,
+  );
   return NextResponse.json({ ok: true });
 }
 

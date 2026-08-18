@@ -268,6 +268,11 @@ model Department {
   // Ticket-assignment method (slice 11, ASG-01). Default preserves the
   // pre-existing round-robin-ish behavior of lib/rota.ts's resolveAssignee().
   assignmentMethod  AssignmentMethod     @default(ROUND_ROBIN)
+  // DS-08: null blocks operational use (ticket creation on every path) until
+  // the initial setup review is completed — see lib/department-setup.ts.
+  // Existing departments are backfilled to non-null at migration time so this
+  // is additive, not retroactively blocking (see the migration's UPDATE).
+  setupCompletedAt  DateTime?
   teams             Team[]
   projects          Project[]
   joinRequests      JoinRequest[]
@@ -331,6 +336,9 @@ model DepartmentManager {
   userId       String     @db.Uuid
   assignedAt   DateTime   @default(now())
   assignedBy   String     @db.Uuid
+  // DS-09: null shows the dismissible setup overview once for a newly-assigned
+  // manager of an already-active department (see lib/department-setup.ts).
+  walkthroughDismissedAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   user       Profile    @relation("ManagedDepartments", fields: [userId], references: [id], onDelete: Cascade)

@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
     defaultFromEmail: workspaceConfig.fromEmail,
     overrideFromName: override.fromName ?? null,
     overrideFromEmail: override.fromEmail ?? null,
+    // DS-02: the full sender list (one flagged default) — empty when the
+    // department has no senders configured at all.
+    senders: override.senders ?? [],
   });
 }
 

@@ -13,7 +13,8 @@ export default async function VerifyIntakePage({
 }) {
   const { token } = await params
   const result = await finalizePendingIntake(token)
-  const brand = brandingFrom(await getEmailConfig())
+  // DS-01: department branding for this customer-facing confirmation page.
+  const brand = brandingFrom(await getEmailConfig(result.departmentId))
 
   const success = result.status === "created" || result.status === "already"
   const humanId = success ? result.humanId : null

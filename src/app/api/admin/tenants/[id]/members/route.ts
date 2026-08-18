@@ -25,6 +25,41 @@ function canManage(
   )
 }
 
+/** Search profiles by name/email for the "Add member" dropdown, excluding current members. */
+export async function GET(request: Request, { params }: Params) {
+  const { profile, error } = await requireAuth()
+  if (error) return error
+  const { id: tenantId } = await params
+
+  if (!canManage(profile, tenantId)) {
+    return forbidden("Only a super-admin or an admin of this tenant can view members.")
+  }
+
+  const url = new URL(request.url)
+  const q = (url.searchParams.get("q") ?? "").trim()
+  if (q.length < 2) return NextResponse.json({ users: [] })
+
+  const currentMembers = await prisma.tenantMembership.findMany({
+    where: { tenantId, isActive: true },
+    select: { userId: true },
+  })
+
+  const users = await prisma.profile.findMany({
+    where: {
+      deletedAt: null,
+      id: { notIn: currentMembers.map((m) => m.userId) },
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, name: true, email: true, avatarUrl: true },
+    orderBy: { name: "asc" },
+    take: 8,
+  })
+  return NextResponse.json({ users })
+}
+
 /**
  * Add or invite a user to a tenant. If a profile with the email already exists,
  * they're added immediately (membership upserted); otherwise a tenant invite is

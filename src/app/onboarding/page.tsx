@@ -1,5 +1,6 @@
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
+import { runAsSystem } from "@/lib/request-scope"
 import { OnboardingPage } from "@/components/onboarding/onboarding-page"
 
 export default async function Page() {
@@ -7,18 +8,24 @@ export default async function Page() {
   if (!profile) return null
 
   const [departments, pendingRequests] = await Promise.all([
-    prisma.department.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        _count: { select: { teams: true } },
-        managers: {
-          select: { user: { select: { name: true } } },
-          take: 2,
+    // A user with no tenant membership yet must still see every department to
+    // request one — the standard tenant-scoped query would return zero rows
+    // (empty `tenantIds` -> `tenantId IN ()`). Read-only, so the system bypass
+    // stays narrowly scoped to this one listing.
+    runAsSystem(() =>
+      prisma.department.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          _count: { select: { teams: true } },
+          managers: {
+            select: { user: { select: { name: true } } },
+            take: 2,
+          },
         },
-      },
-    }),
+      }),
+    ),
     prisma.joinRequest.findMany({
       where: { userId: profile.id, status: { in: ["pending", "approved"] } },
       select: { departmentId: true, status: true },

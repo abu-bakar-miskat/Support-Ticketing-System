@@ -454,11 +454,7 @@ export function Sidebar({
             : []),
         ];
 
-  // Super admins get a platform-level entry to the tenant management page,
-  // pinned above the context-specific nav in every view.
-  const navMain: NavItem[] = isSuperAdmin
-    ? [{ label: "All Tenants", href: "/tenants", icon: Building2 }, ...navMainBase]
-    : navMainBase;
+  const navMain: NavItem[] = navMainBase;
 
   return (
     <>
@@ -677,6 +673,21 @@ export function Sidebar({
               </div>
             )}
           </div>
+        )}
+        {isSuperAdmin && isAdminGlobalView && (
+          <Link
+            href="/tenants"
+            title={isCollapsed ? "All Tenants" : undefined}
+            className={cn(
+              "flex items-center rounded-lg text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground",
+              isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
+            )}
+          >
+            <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
+            {!isCollapsed && (
+              <span className="font-sans text-[11.5px] font-medium">All Tenants</span>
+            )}
+          </Link>
         )}
         {isAdmin && isAdminGlobalView && (
           <div

@@ -9,9 +9,13 @@ export const dynamic = "force-dynamic"
 export default async function TenantsPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  if (!profile.isSuperAdmin) redirect("/")
+  const adminTenantIds = (profile.tenantMemberships ?? [])
+    .filter((m) => m.role === "admin")
+    .map((m) => m.tenantId)
+  if (!profile.isSuperAdmin && adminTenantIds.length === 0) redirect("/")
 
   const rows = await prisma.tenant.findMany({
+    where: profile.isSuperAdmin ? undefined : { id: { in: adminTenantIds } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -38,5 +42,5 @@ export default async function TenantsPage() {
     }
   })
 
-  return <TenantsClient tenants={tenants} />
+  return <TenantsClient tenants={tenants} canManage={profile.isSuperAdmin} />
 }

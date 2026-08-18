@@ -21,7 +21,7 @@ const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 const SYSTEM_USER_EMAIL = "system@internal.local";
 
-async function ensureSystemUser(): Promise<string> {
+export async function ensureSystemUser(): Promise<string> {
   const existing = await prisma.profile.findUnique({
     where: { email: SYSTEM_USER_EMAIL },
     select: { id: true },

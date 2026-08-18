@@ -129,6 +129,7 @@ enum NotificationType {
   sla_at_risk
   sla_breach
   assignment_failed_alert
+  mailbox_connection_failed
 }
 
 enum JoinRequestStatus {
@@ -193,6 +194,8 @@ model Tenant {
   slaPolicies SlaPolicy[]
   assignmentRules AssignmentRule[]
   bulkReassignJobs BulkReassignJob[]
+  mailboxConnections MailboxConnection[]
+  mailSuppressionLogs MailSuppressionLog[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -283,6 +286,7 @@ model Department {
   boardColumns      BoardColumn[]
   slaPolicies       SlaPolicy[]
   assignmentRules   AssignmentRule[]
+  mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
 }
@@ -419,6 +423,7 @@ model Team {
   intakeFormConfigs IntakeFormConfig[]
   intakeIssues      IntakeIssue[]
   invites           DepartmentInvite[]
+  mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
 }
@@ -934,6 +939,85 @@ model TicketAccessGrant {
 
   @@unique([ticketId, userId])
   @@index([userId])
+}
+
+enum MailboxScopeType {
+  DEPARTMENT
+  SUB_DEPARTMENT
+}
+
+// RESEND is the only functional provider today; the others are the D-10
+// provider-abstraction seam OAuth (M365/Google) and IMAP land behind later
+// (EM-05) — see lib/mail-providers.
+enum MailboxAuthType {
+  RESEND
+  OAUTH_M365
+  OAUTH_GOOGLE
+  IMAP
+}
+
+enum MailboxConnectionStatus {
+  ACTIVE
+  AUTH_ERROR
+  UNREACHABLE
+}
+
+// A department/sub-department inbound mailbox (slice 14, EM-01/02/03).
+// `teamId` is always the concrete sub-department (Team) new tickets are filed
+// into — even a DEPARTMENT-scoped connection needs one, since Team is the only
+// unit with a board/ticket counter (slice 04/05). `scopeType` is a management/
+// visibility attribute (who may edit it), mirroring the DEPARTMENT/
+// SUB_DEPARTMENT split already established by RoleAssignment (slice 01).
+// `credentialsRef` is an opaque AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts,
+// NFR-03) — null for RESEND, which still uses the platform-wide RESEND_API_KEY.
+// Never selected/returned by any API response.
+model MailboxConnection {
+  id               String                  @id @default(cuid())
+  tenantId         String
+  departmentId     String
+  teamId           String
+  scopeType        MailboxScopeType
+  address          String                  @unique
+  authType         MailboxAuthType         @default(RESEND)
+  credentialsRef   String?
+  status           MailboxConnectionStatus @default(ACTIVE)
+  // EM-07 exponential-backoff bookkeeping for the health-check cron.
+  failureCount     Int                     @default(0)
+  lastCheckedAt    DateTime?
+  lastErrorAt      DateTime?
+  lastErrorMessage String?
+  nextCheckAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([departmentId])
+  @@index([teamId])
+  @@index([status])
+}
+
+// EM-06: an auto-generated inbound message (bounce/OOO/Auto-Submitted) that
+// was suppressed rather than turned into a ticket. Kept separately from
+// TicketMessage because there is, by definition, no ticket to attach it to.
+model MailSuppressionLog {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  mailboxConnectionId String?
+  providerMessageId   String?
+  fromEmail           String?
+  toAddress           String?
+  subject             String?
+  reason              String
+  createdAt           DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
 }
 
 // ─── Planning & Time Tracking ─────────────────────────────────────────────────

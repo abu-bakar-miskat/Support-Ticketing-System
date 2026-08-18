@@ -7,6 +7,7 @@ import { renderIntakeConfirmation } from "./email-templates/intake-confirmation"
 import { renderIntakeVerification } from "./email-templates/intake-verification";
 import { renderIntakeManagerAlert } from "./email-templates/intake-manager-alert";
 import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed-alert";
+import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-connection-failed-alert";
 import { renderInvite } from "./email-templates/invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
@@ -227,6 +228,33 @@ export async function sendAssignmentFailedAlertEmail(args: {
   });
   logIfRejected(
     "assignment failed alert",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
+export async function sendMailboxConnectionFailedAlertEmail(args: {
+  to: string;
+  managerName: string;
+  address: string;
+  error: string;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(null);
+
+  const { to, ...rest } = args;
+  const { subject, html, text } = renderMailboxConnectionFailedAlert({
+    ...rest,
+    branding: brandingFrom(config),
+  });
+  logIfRejected(
+    "mailbox connection failed alert",
     await resend.emails.send({
       from: fromHeader(config),
       to,

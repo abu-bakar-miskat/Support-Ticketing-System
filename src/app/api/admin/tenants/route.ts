@@ -35,7 +35,7 @@ export async function GET() {
 
 // Create a new, independent tenant seeded with a default department.
 export async function POST(request: Request) {
-  const { error } = await requireSuperAdmin()
+  const { profile, error } = await requireSuperAdmin()
   if (error) return error
 
   const body = await request.json().catch(() => ({}))
@@ -58,6 +58,10 @@ export async function POST(request: Request) {
       name,
       type,
       departments: { create: { name: "General" } },
+      // Seed the creating admin as a member so the tenant isn't born empty —
+      // otherwise nobody can be added to its departments (no bootstrap member
+      // to grant membership from).
+      memberships: { create: { userId: profile!.id, role: "admin", isActive: true } },
     },
     select: { id: true, slug: true, name: true, type: true, status: true, createdAt: true },
   })

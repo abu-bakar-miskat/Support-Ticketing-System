@@ -144,6 +144,7 @@ enum NotificationType {
   sla_breach
   assignment_failed_alert
   mailbox_connection_failed
+  agreement_expiring
 }
 
 enum JoinRequestStatus {
@@ -211,6 +212,9 @@ model Tenant {
   mailboxConnections MailboxConnection[]
   mailSuppressionLogs MailSuppressionLog[]
   reportExportJobs ReportExportJob[]
+  featureFlags FeatureFlag[]
+  auditEvents AuditEvent[]
+  agreements Agreement[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -1304,6 +1308,98 @@ model ReportExportJob {
   @@index([tenantId])
   @@index([status])
   @@index([createdById])
+}
+
+// SA-04 (slice 19): per-tenant opt-out switch for a named platform feature
+// (see lib/feature-keys.ts). Fail-open by design — a tenant with no row for
+// a given key has that feature enabled; a row only exists once a Super Admin
+// has explicitly toggled something, so shipping a new feature never requires
+// a backfill across every tenant.
+model FeatureFlag {
+  id           String   @id @default(cuid())
+  tenantId     String
+  key          String
+  enabled      Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+  updatedById  String?  @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+// Minimal system-wide audit trail (slice 19 needs SA-04's "flag changes are
+// audited"; slice 20, not yet built, is expected to broaden this into the
+// full audit-event-log feature — this table is deliberately generic so that
+// ticket can extend it rather than replace it). Distinct from the per-ticket
+// `ActivityLog`, which only ever concerns one ticket.
+model AuditEvent {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actorId    String   @db.Uuid
+  action     String
+  targetType String
+  targetId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+enum AgreementRenewalStatus {
+  ACTIVE
+  PENDING_RENEWAL
+  RENEWED
+  EXPIRED
+  CANCELLED
+}
+
+// SA-02 (slice 21): a Super-Admin-maintained administrative record of a
+// tenant's agreement term — deliberately NOT a billing/subscription model,
+// no amounts/invoices/payment fields, just dates, a Super-Admin-set status,
+// and supporting documents. A tenant can have several Agreement rows over
+// time (one per renewal term); the "current" one is whichever has the
+// latest endDate (see lib/agreements.ts).
+model Agreement {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  startDate          DateTime
+  endDate            DateTime
+  renewalStatus      AgreementRenewalStatus @default(ACTIVE)
+  // SA-06: days-before-expiry to remind the Super Admin at.
+  reminderDaysBefore Int[]                  @default([60, 30, 7])
+  // Idempotency ledger for the reminder cron — which of reminderDaysBefore
+  // have already fired for this term, so a sweep never re-notifies.
+  sentReminderDays   Int[]                  @default([])
+  createdById        String                 @db.Uuid
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documents AgreementDocument[]
+
+  @@index([tenantId])
+  @@index([endDate])
+}
+
+model AgreementDocument {
+  id           String   @id @default(cuid())
+  agreementId  String
+  storageUrl   String
+  fileName     String
+  fileSize     Int
+  uploadedById String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  @@index([agreementId])
 }
 
 // One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).

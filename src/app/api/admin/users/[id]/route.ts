@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { Role } from "@/generated/prisma/enums"
 import { managerCanManageUser, teamInScope } from "@/lib/dept-scope"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 const VALID_ROLES = Object.values(Role)
 // Managers can only assign these roles — not admin or manager
@@ -77,7 +78,27 @@ export async function PATCH(
     return NextResponse.json({ error: "No fields to update" }, { status: 400 })
   }
 
+  const before = await prisma.profile.findUnique({
+    where: { id },
+    select: { role: true, teamId: true, location: true, timezone: true, isActive: true },
+  })
+
   const updatedProfile = await prisma.profile.update({ where: { id }, data })
+
+  // NFR-09/DAT-05 (slice 20): user changes are audited with actor + before/after
+  // state. Awaited (not fire-and-forget) — an audit write failure should
+  // surface as a 500, not be silently swallowed.
+  if (profile!.activeTenantId) {
+    await recordAuditEvent({
+      tenantId: profile!.activeTenantId,
+      actorId: profile!.id,
+      action: "USER_UPDATED",
+      targetType: "Profile",
+      targetId: id,
+      before,
+      after: data,
+    })
+  }
 
   // Keep TeamMembership.role in sync with Profile.role — non-fatal if it fails
   if (data.role) {
@@ -196,6 +217,19 @@ export async function DELETE(
       data: { deletedAt: new Date(), teamId: null },
     }),
   ])
+
+  // NFR-09/DAT-05 (slice 20): user removal is audited.
+  if (profile!.activeTenantId) {
+    await recordAuditEvent({
+      tenantId: profile!.activeTenantId,
+      actorId: profile!.id,
+      action: "USER_DELETED",
+      targetType: "Profile",
+      targetId: id,
+      before: { deletedAt: null },
+      after: { deletedAt: new Date().toISOString() },
+    })
+  }
 
   // Broadcast join_request_resolved for every pending request that was deleted,
   // so other admins' JoinRequestsSection removes the row in real time.

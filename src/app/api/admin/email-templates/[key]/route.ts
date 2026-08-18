@@ -66,6 +66,7 @@ export async function PUT(
     key,
     { subject, heading, bodyHtml, ...(footerText ? { footerText } : {}) },
     departmentId!,
+    profile!.id,
   );
   return NextResponse.json({ ok: true });
 }
@@ -86,6 +87,6 @@ export async function DELETE(
   const scopeError = checkDepartmentScope(profile!, departmentId);
   if (scopeError) return scopeError;
 
-  await saveEmailTemplateOverride(key, null, departmentId!);
+  await saveEmailTemplateOverride(key, null, departmentId!, profile!.id);
   return NextResponse.json({ ok: true });
 }

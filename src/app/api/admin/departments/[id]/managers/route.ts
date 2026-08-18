@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -58,6 +59,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (user && (user.role === "staff" || user.role === "lead")) {
     await prisma.profile.update({ where: { id: userId }, data: { role: "manager" } })
   }
+
+  // NFR-09/DAT-05 (slice 20): permission grants (department manager) are audited.
+  await recordAuditEvent({
+    tenantId: dept.tenantId,
+    actorId: profile!.id,
+    action: "DEPARTMENT_MANAGER_GRANTED",
+    targetType: "DepartmentManager",
+    targetId: `${id}:${userId}`,
+    before: null,
+    after: { departmentId: id, userId },
+  })
 
   return NextResponse.json(manager, { status: 201 })
 }

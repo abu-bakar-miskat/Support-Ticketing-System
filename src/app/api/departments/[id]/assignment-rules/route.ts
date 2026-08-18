@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 const RULE_SELECT = {
   id: true,
@@ -94,5 +95,17 @@ export async function POST(
     },
     select: RULE_SELECT,
   })
+
+  // NFR-09/DAT-05 (slice 20): rule-based assignment-rule changes are audited.
+  await recordAuditEvent({
+    tenantId: dept.tenantId,
+    actorId: profile!.id,
+    action: "ASSIGNMENT_RULE_CREATED",
+    targetType: "AssignmentRule",
+    targetId: rule.id,
+    before: null,
+    after: rule,
+  })
+
   return NextResponse.json(rule, { status: 201 })
 }

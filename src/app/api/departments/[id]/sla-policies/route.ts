@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 const POLICY_SELECT = {
   id: true,
@@ -101,5 +102,17 @@ export async function POST(
     },
     select: POLICY_SELECT,
   })
+
+  // NFR-09/DAT-05 (slice 20): SLA policy changes are audited.
+  await recordAuditEvent({
+    tenantId: dept.tenantId,
+    actorId: profile!.id,
+    action: "SLA_POLICY_CREATED",
+    targetType: "SlaPolicy",
+    targetId: policy.id,
+    before: null,
+    after: policy,
+  })
+
   return NextResponse.json(policy, { status: 201 })
 }

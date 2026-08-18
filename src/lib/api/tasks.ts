@@ -1,4 +1,4 @@
-import type { BoardCardData, TeamStatusConfig } from "@/components/board/board-types";
+import type { BoardCardData, SubDepartmentStatusConfig } from "@/components/board/board-types";
 import type { AssignedSubtask } from "@/lib/board-data";
 
 export type MyTasksResponse = {
@@ -6,7 +6,7 @@ export type MyTasksResponse = {
   subtasks: AssignedSubtask[];
   reviewTasks: BoardCardData[];
   isManager: boolean;
-  teamStatusMap: Record<string, TeamStatusConfig[]>;
+  subDepartmentStatusMap: Record<string, SubDepartmentStatusConfig[]>;
 };
 
 export type AllTasksResponse = {
@@ -22,8 +22,8 @@ export type AllTasksResponse = {
 export type ExportFormat = "excel" | "pdf" | "csv";
 
 export type TasksMetaResponse = {
-  teamStatuses: TeamStatusConfig[];
-  availableProjects: { id: string; name: string; teamId: string | null; kind: string }[];
+  subDepartmentStatuses: SubDepartmentStatusConfig[];
+  availableProjects: { id: string; name: string; subDepartmentId: string | null; kind: string }[];
   availableModules: {
     id: string;
     name: string;
@@ -35,10 +35,10 @@ export type TasksMetaResponse = {
     name: string;
     avatarUrl: string | null;
     departmentName: string | null;
-    teamName: string | null;
+    subDepartmentName: string | null;
     role: string;
   }[];
-  defaultTeamId: string | null;
+  defaultSubDepartmentId: string | null;
 };
 
 export type AllTasksFilters = {

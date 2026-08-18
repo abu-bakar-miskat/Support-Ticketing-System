@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
-import { getTeamStatuses } from "@/lib/board-data";
+import { getSubDepartmentStatuses } from "@/lib/board-data";
 import {
   getMentionableProjectMembers,
   getMentionableUsersForTicketDept,
@@ -27,7 +27,7 @@ const PRIORITY_TO_UI: Record<string, string> = {
 };
 
 const ticketCoreInclude = {
-  team: {
+  subDepartment: {
     select: { id: true, prefix: true, name: true, departmentId: true },
   },
   project: { select: { name: true, color: true, kind: true, moduleSystemEnabled: true } },
@@ -53,14 +53,14 @@ const ticketCoreInclude = {
       id: true,
       ticketNumber: true,
       title: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   },
   subTickets: {
     where: { deletedAt: null },
     orderBy: { createdAt: "asc" as const },
     include: {
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
       assignee: { select: { name: true, avatarUrl: true } },
     },
   },
@@ -78,20 +78,20 @@ const ticketCoreInclude = {
 // ~200ms round-trips to the remote database per ticket open. Short revalidate
 // windows keep them fresh enough while making repeat opens fast.
 
-export const getCachedTeamStatuses = (teamId: string) =>
+export const getCachedSubDepartmentStatuses = (subDepartmentId: string) =>
   unstable_cache(
-    () => getTeamStatuses(teamId),
-    ["ticket-detail-team-statuses", teamId],
+    () => getSubDepartmentStatuses(subDepartmentId),
+    ["ticket-detail-team-statuses", subDepartmentId],
     { revalidate: 120 },
   )();
 
 export const getCachedMentionableUsers = (
   departmentId: string | null,
-  ticketTeamId: string,
+  ticketSubDepartmentId: string,
 ) =>
   unstable_cache(
-    () => getMentionableUsersForTicketDept(departmentId, ticketTeamId),
-    ["ticket-detail-mentionable", departmentId ?? "none", ticketTeamId],
+    () => getMentionableUsersForTicketDept(departmentId, ticketSubDepartmentId),
+    ["ticket-detail-mentionable", departmentId ?? "none", ticketSubDepartmentId],
     { revalidate: 300 },
   )();
 
@@ -106,11 +106,11 @@ const getCachedProjectMembers = (projectId: string) =>
 const getCachedTicketMentionable = (
   projectId: string | null,
   departmentId: string | null,
-  ticketTeamId: string,
+  ticketSubDepartmentId: string,
 ) =>
   projectId
     ? getCachedProjectMembers(projectId)
-    : getCachedMentionableUsers(departmentId, ticketTeamId);
+    : getCachedMentionableUsers(departmentId, ticketSubDepartmentId);
 
 const getCachedDeptPeople = (departmentId: string | null) =>
   unstable_cache(
@@ -124,7 +124,7 @@ export type AssignableUser = {
   name: string;
   avatarUrl: string | null;
   departmentName: string | null;
-  teamName: string | null;
+  subDepartmentName: string | null;
 };
 
 /** Dept members and cross-access grants eligible as assignees. */
@@ -142,7 +142,7 @@ export async function getAssignableUsersForTicketDepartment(
       name: u.name,
       avatarUrl: u.avatarUrl,
       departmentName: u.departmentName,
-      teamName: u.teamName,
+      subDepartmentName: u.subDepartmentName,
     });
   }
 
@@ -153,7 +153,7 @@ export async function getAssignableUsersForTicketDepartment(
         name: u.name,
         avatarUrl: u.avatarUrl ?? null,
         departmentName: null,
-        teamName: null,
+        subDepartmentName: null,
       });
     }
   }
@@ -162,18 +162,18 @@ export async function getAssignableUsersForTicketDepartment(
 }
 
 export async function assertAssigneeEligibleForTicket(
-  ticket: { teamId: string; team: { departmentId: string | null } },
+  ticket: { subDepartmentId: string; subDepartment: { departmentId: string | null } },
   assigneeId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const assigneeProfile = await prisma.profile.findUnique({
     where: { id: assigneeId },
-    select: { id: true, teamId: true, role: true },
+    select: { id: true, subDepartmentId: true, role: true },
   });
   if (!assigneeProfile) {
     return { ok: false, error: "Assignee not found" };
   }
 
-  const deptId = ticket.team.departmentId;
+  const deptId = ticket.subDepartment.departmentId;
   if (deptId) {
     const eligibility = await assertUsersEligibleForProjectDepartment(deptId, [
       assigneeId,
@@ -187,14 +187,14 @@ export async function assertAssigneeEligibleForTicket(
     return { ok: true };
   }
 
-  const onTicketTeam =
-    assigneeProfile.teamId === ticket.teamId ||
-    !!(await prisma.teamMembership.findFirst({
-      where: { userId: assigneeId, teamId: ticket.teamId, isActive: true },
+  const onTicketSubDepartment =
+    assigneeProfile.subDepartmentId === ticket.subDepartmentId ||
+    !!(await prisma.subDepartmentMembership.findFirst({
+      where: { userId: assigneeId, subDepartmentId: ticket.subDepartmentId, isActive: true },
       select: { userId: true },
     }));
 
-  if (!onTicketTeam) {
+  if (!onTicketSubDepartment) {
     return { ok: false, error: "Assignee must belong to the ticket's team" };
   }
 
@@ -276,15 +276,15 @@ export async function getTicketDetailPayload(
   ticketId: string,
   ticket: NonNullable<Awaited<ReturnType<typeof getTicketDetailRecord>>>,
 ) {
-  const ticketDeptId = ticket.team.departmentId;
+  const ticketDeptId = ticket.subDepartment.departmentId;
 
   const [
     comments,
     messages,
     activityLogs,
     mentionableUsers,
-    teamMembers,
-    teamStatuses,
+    subDepartmentMembers,
+    subDepartmentStatuses,
     ticketTimeEntries,
     ticketEditContext,
     github,
@@ -292,7 +292,7 @@ export async function getTicketDetailPayload(
     fetchTicketComments(ticketId),
     fetchTicketMessages(ticketId),
     fetchTicketActivity(ticketId),
-    getCachedTicketMentionable(ticket.projectId, ticketDeptId, ticket.teamId),
+    getCachedTicketMentionable(ticket.projectId, ticketDeptId, ticket.subDepartmentId),
     getAssignableUsersForTicketDepartment(ticketDeptId, [
       ...(ticket.assignee
         ? [
@@ -314,7 +314,7 @@ export async function getTicketDetailPayload(
         avatarUrl: a.user.avatarUrl ?? null,
       })),
     ]),
-    getCachedTeamStatuses(ticket.teamId),
+    getCachedSubDepartmentStatuses(ticket.subDepartmentId),
     prisma.timeEntry.findMany({
       where: { ticketId },
       include: {
@@ -325,9 +325,9 @@ export async function getTicketDetailPayload(
     buildTicketEditContext(profile, {
       assigneeId: ticket.assigneeId,
       creatorId: ticket.creatorId,
-      teamId: ticket.teamId,
+      subDepartmentId: ticket.subDepartmentId,
       projectId: ticket.projectId,
-      team: ticket.team,
+      subDepartment: ticket.subDepartment,
       assignees: ticket.assignees,
     }),
     buildGitHubDevData(ticket),
@@ -407,7 +407,7 @@ export async function getTicketDetailPayload(
   const subInfo = new Map(
     ticket.subTickets.map((s) => [
       s.id,
-      { humanId: `${s.team.prefix}-${s.ticketNumber}`, title: s.title },
+      { humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`, title: s.title },
     ]),
   );
   const subPerTicketSecs = new Map<string, number>();
@@ -447,7 +447,7 @@ export async function getTicketDetailPayload(
     perTicket: ticket.subTickets
       .map((s) => ({
         dbId: s.id,
-        humanId: `${s.team.prefix}-${s.ticketNumber}`,
+        humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`,
         title: s.title,
         totalSecs: subPerTicketSecs.get(s.id) ?? 0,
       }))
@@ -477,15 +477,15 @@ export async function getTicketDetailPayload(
   // A sub-ticket counts as complete when its status is one flagged
   // `isComplete` on its own team. Sub-tickets may live on a different team
   // than the parent, so resolve the complete-status labels per team.
-  const subTeamIds = [...new Set(ticket.subTickets.map((st) => st.teamId))];
-  const completeStatusRows = subTeamIds.length
-    ? await prisma.teamStatus.findMany({
-        where: { teamId: { in: subTeamIds }, isComplete: true },
-        select: { teamId: true, label: true },
+  const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
+  const completeStatusRows = subSubDepartmentIds.length
+    ? await prisma.subDepartmentStatus.findMany({
+        where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+        select: { subDepartmentId: true, label: true },
       })
     : [];
   const completeSubStatuses = new Set(
-    completeStatusRows.map((r) => `${r.teamId}::${r.label}`),
+    completeStatusRows.map((r) => `${r.subDepartmentId}::${r.label}`),
   );
 
   const canEdit = canEditTicket(profile, ticketEditContext);
@@ -493,9 +493,9 @@ export async function getTicketDetailPayload(
 
   return {
     dbId: ticket.id,
-    ticketId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+    ticketId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
     projectId: ticket.projectId,
-    teamId: ticket.teamId,
+    subDepartmentId: ticket.subDepartmentId,
     projectName: ticket.project?.name ?? "Miscellaneous",
     projectColor: ticket.project?.color ?? "#0a76b9",
     projectKind: ticket.project?.kind ?? "standard",
@@ -565,19 +565,19 @@ export async function getTicketDetailPayload(
     parentTicket: ticket.parent
       ? {
           dbId: ticket.parent.id,
-          humanId: `${ticket.parent.team.prefix}-${ticket.parent.ticketNumber}`,
+          humanId: `${ticket.parent.subDepartment.prefix}-${ticket.parent.ticketNumber}`,
           title: ticket.parent.title,
         }
       : null,
-    teamMembers,
+    subDepartmentMembers,
     mentionableUsers,
-    teamStatuses,
+    subDepartmentStatuses,
     subTickets: ticket.subTickets.map((st) => ({
       dbId: st.id,
-      humanId: `${st.team.prefix}-${st.ticketNumber}`,
+      humanId: `${st.subDepartment.prefix}-${st.ticketNumber}`,
       title: st.title,
       status: st.status,
-      done: completeSubStatuses.has(`${st.teamId}::${st.status}`),
+      done: completeSubStatuses.has(`${st.subDepartmentId}::${st.status}`),
       priority: PRIORITY_TO_UI[st.priority] ?? "medium",
       assigneeName: st.assignee?.name ?? null,
       assigneeAvatarUrl: st.assignee?.avatarUrl ?? null,

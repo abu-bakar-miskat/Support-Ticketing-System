@@ -34,7 +34,7 @@ export type MemberConfigTarget = {
   email: string;
   location?: string | null;
   timezone?: string | null;
-  teamMemberships?: { teamId: string; teamName: string; doNotAssign: boolean }[];
+  subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
 };
 
 export function MemberConfigPanel({
@@ -54,8 +54,8 @@ export function MemberConfigPanel({
   const [holidays, setHolidays] = useState<HolidayEntry[]>([]);
   const [location, setLocation] = useState(member.location ?? "");
   const [timezone, setTimezone] = useState(member.timezone ?? "Europe/London");
-  const [teamMemberships, setTeamMemberships] = useState(
-    member.teamMemberships ?? []
+  const [subDepartmentMemberships, setSubDepartmentMemberships] = useState(
+    member.subDepartmentMemberships ?? []
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -159,14 +159,14 @@ export function MemberConfigPanel({
     refreshAvailability();
   }
 
-  async function toggleDoNotAssign(teamId: string, current: boolean) {
+  async function toggleDoNotAssign(subDepartmentId: string, current: boolean) {
     const next = !current;
     // Optimistic update
-    setTeamMemberships((prev) =>
-      prev.map((t) => (t.teamId === teamId ? { ...t, doNotAssign: next } : t))
+    setSubDepartmentMemberships((prev) =>
+      prev.map((t) => (t.subDepartmentId === subDepartmentId ? { ...t, doNotAssign: next } : t))
     );
     try {
-      const res = await fetch(`/api/admin/teams/${teamId}/members`, {
+      const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: member.id, doNotAssign: next }),
@@ -178,8 +178,8 @@ export function MemberConfigPanel({
       router.refresh();
     } catch (err) {
       // Revert on failure and surface the reason
-      setTeamMemberships((prev) =>
-        prev.map((t) => (t.teamId === teamId ? { ...t, doNotAssign: current } : t))
+      setSubDepartmentMemberships((prev) =>
+        prev.map((t) => (t.subDepartmentId === subDepartmentId ? { ...t, doNotAssign: current } : t))
       );
       toast.error(
         err instanceof Error ? err.message : "Failed to update assignment blocking",
@@ -289,17 +289,17 @@ export function MemberConfigPanel({
                 </div>
               </section>
 
-              {teamMemberships.length > 0 && (
+              {subDepartmentMemberships.length > 0 && (
                 <section>
                   <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
                     Assignment blocking
                   </p>
                   <div className="flex flex-col gap-2">
-                    {teamMemberships.map((tm) => (
-                      <div key={tm.teamId} className="flex items-center justify-between rounded-[8px] border border-pen-card-border bg-pen-bg px-3 py-2.5">
+                    {subDepartmentMemberships.map((tm) => (
+                      <div key={tm.subDepartmentId} className="flex items-center justify-between rounded-[8px] border border-pen-card-border bg-pen-bg px-3 py-2.5">
                         <div>
                           <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
-                            {tm.teamName}
+                            {tm.subDepartmentName}
                           </p>
                           <p className="font-sans text-[11px] text-pen-subtle">
                             {tm.doNotAssign ? "Excluded from assignment" : "Active in rotation"}
@@ -307,7 +307,7 @@ export function MemberConfigPanel({
                         </div>
                         <button
                           type="button"
-                          onClick={() => toggleDoNotAssign(tm.teamId, tm.doNotAssign)}
+                          onClick={() => toggleDoNotAssign(tm.subDepartmentId, tm.doNotAssign)}
                           className={cn(
                             "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
                             tm.doNotAssign ? "bg-red-500" : "bg-pen-blue"

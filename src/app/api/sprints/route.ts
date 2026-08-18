@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     include: {
       tickets: {
         where: { deletedAt: null },
-        select: { status: true, storyPoints: true, teamId: true },
+        select: { status: true, storyPoints: true, subDepartmentId: true },
       },
       project: {
         select: { id: true, name: true, color: true },
@@ -33,24 +33,24 @@ export async function GET(request: Request) {
   })
 
   // Resolve isComplete per ticket using TeamStatus
-  const allTeamIds = [...new Set(sprints.flatMap((s) => s.tickets.map((t) => t.teamId)))]
-  const completeStatuses = allTeamIds.length
-    ? await prisma.teamStatus.findMany({
-        where: { teamId: { in: allTeamIds }, isComplete: true },
-        select: { teamId: true, label: true },
+  const allSubDepartmentIds = [...new Set(sprints.flatMap((s) => s.tickets.map((t) => t.subDepartmentId)))]
+  const completeStatuses = allSubDepartmentIds.length
+    ? await prisma.subDepartmentStatus.findMany({
+        where: { subDepartmentId: { in: allSubDepartmentIds }, isComplete: true },
+        select: { subDepartmentId: true, label: true },
       })
     : []
   const completeMap = new Map<string, Set<string>>()
   for (const cs of completeStatuses) {
-    if (!completeMap.has(cs.teamId)) completeMap.set(cs.teamId, new Set())
-    completeMap.get(cs.teamId)!.add(cs.label)
+    if (!completeMap.has(cs.subDepartmentId)) completeMap.set(cs.subDepartmentId, new Set())
+    completeMap.get(cs.subDepartmentId)!.add(cs.label)
   }
 
   const result = sprints.map((sprint) => ({
     ...sprint,
-    tickets: sprint.tickets.map(({ teamId, ...t }) => ({
+    tickets: sprint.tickets.map(({ subDepartmentId, ...t }) => ({
       ...t,
-      isDone: completeMap.get(teamId)?.has(t.status) ?? false,
+      isDone: completeMap.get(subDepartmentId)?.has(t.status) ?? false,
     })),
   }))
 

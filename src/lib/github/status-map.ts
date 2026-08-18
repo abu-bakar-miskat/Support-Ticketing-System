@@ -1,4 +1,4 @@
-export type TeamStatusRow = { label: string; order: number; isComplete: boolean }
+export type SubDepartmentStatusRow = { label: string; order: number; isComplete: boolean }
 
 /**
  * Decides whether a webhook may move a ticket to targetLabel.
@@ -9,7 +9,7 @@ export type TeamStatusRow = { label: string; order: number; isComplete: boolean 
 export function pickStatusMove(
   currentStatus: string,
   targetLabel: string,
-  statuses: TeamStatusRow[],
+  statuses: SubDepartmentStatusRow[],
   hasIntake: boolean,
 ): { label: string; isComplete: boolean } | null {
   const current = statuses.find((s) => s.label === currentStatus)
@@ -26,7 +26,7 @@ export type GitHubStatusEvent =
   | "prMerged"
   | "prMergedToDev"
 
-export type TeamGitHubMapRow = {
+export type SubDepartmentGitHubMapRow = {
   onPrOpened: string | null
   onPrReadyForReview: string | null
   onPrMerged: string | null
@@ -34,7 +34,7 @@ export type TeamGitHubMapRow = {
 
 const REVIEW_ALIASES = ["in review", "review", "code review", "pull request"]
 
-function resolveReviewLabel(statuses: TeamStatusRow[]): string | null {
+function resolveReviewLabel(statuses: SubDepartmentStatusRow[]): string | null {
   const lower = (l: string) => l.toLowerCase()
   for (const alias of REVIEW_ALIASES) {
     const match = statuses.find((s) => !s.isComplete && lower(s.label) === alias)
@@ -43,7 +43,7 @@ function resolveReviewLabel(statuses: TeamStatusRow[]): string | null {
   return null
 }
 
-function resolveLiveLabel(statuses: TeamStatusRow[]): string | null {
+function resolveLiveLabel(statuses: SubDepartmentStatusRow[]): string | null {
   const lower = (l: string) => l.toLowerCase()
   return (
     statuses.find((s) => lower(s.label) === "live")?.label ??
@@ -54,7 +54,7 @@ function resolveLiveLabel(statuses: TeamStatusRow[]): string | null {
 
 function overrideFor(
   event: GitHubStatusEvent,
-  config: TeamGitHubMapRow | null,
+  config: SubDepartmentGitHubMapRow | null,
 ): string | null | undefined {
   if (!config) return undefined
   if (event === "prOpened") return config.onPrOpened
@@ -74,8 +74,8 @@ function overrideFor(
  */
 export function resolveTargetLabel(
   event: GitHubStatusEvent,
-  statuses: TeamStatusRow[],
-  config: TeamGitHubMapRow | null,
+  statuses: SubDepartmentStatusRow[],
+  config: SubDepartmentGitHubMapRow | null,
 ): string | null {
   const override = overrideFor(event, config)
   if (override !== undefined) {

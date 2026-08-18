@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const validProjects = await prisma.project.findMany({
       where: {
         id: { in: projectIds },
-        OR: [{ departmentId: id }, { team: { departmentId: id } }],
+        OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
       },
       select: { id: true },
     })

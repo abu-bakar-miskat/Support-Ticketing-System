@@ -36,7 +36,7 @@ export default async function SettingsDepartmentsRoute() {
       where: deptWhere,
       orderBy: { name: "asc" },
       include: {
-        _count: { select: { teams: true } },
+        _count: { select: { subDepartments: true } },
         managers: {
           include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
           orderBy: { assignedAt: "asc" },
@@ -70,11 +70,11 @@ export default async function SettingsDepartmentsRoute() {
   // Fetch team memberships with user details for each department
   const deptIds = departments.map((d) => d.id);
   const memberships = deptIds.length > 0
-    ? await prisma.teamMembership.findMany({
-        where: { isActive: true, team: { departmentId: { in: deptIds } } },
+    ? await prisma.subDepartmentMembership.findMany({
+        where: { isActive: true, subDepartment: { departmentId: { in: deptIds } } },
         select: {
           userId: true,
-          team: { select: { departmentId: true } },
+          subDepartment: { select: { departmentId: true } },
           user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
         },
       })
@@ -83,7 +83,7 @@ export default async function SettingsDepartmentsRoute() {
   // Group member data by department
   const membersByDept = new Map<string, Map<string, { id: string; name: string; email: string; role: string; avatarUrl: string | null }>>();
   for (const m of memberships) {
-    const dId = m.team.departmentId;
+    const dId = m.subDepartment.departmentId;
     const map = membersByDept.get(dId) ?? new Map();
     map.set(m.userId, { ...m.user, avatarUrl: m.user.avatarUrl ?? null });
     membersByDept.set(dId, map);

@@ -16,15 +16,15 @@ describe("buildPeopleMembershipWhere — tenant bound", () => {
       { role: "admin", activeTenantId: "tenant-A" },
       null,
     )
-    expect(where).toEqual({ isActive: true, team: { tenantId: "tenant-A" } })
+    expect(where).toEqual({ isActive: true, subDepartment: { tenantId: "tenant-A" } })
   })
 
   it("prefers the active dept's teams when a dept scope is present", () => {
     const where = buildPeopleMembershipWhere(
       { role: "admin", activeTenantId: "tenant-A" },
-      { activeDeptId: "d1", teamIds: ["t1", "t2"], allowedDeptIds: ["d1"] },
+      { activeDeptId: "d1", subDepartmentIds: ["t1", "t2"], allowedDeptIds: ["d1"] },
     )
-    expect(where).toEqual({ isActive: true, teamId: { in: ["t1", "t2"] } })
+    expect(where).toEqual({ isActive: true, subDepartmentId: { in: ["t1", "t2"] } })
   })
 
   it("falls back to unbounded only when there is no tenant context at all", () => {

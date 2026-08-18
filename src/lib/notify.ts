@@ -98,12 +98,12 @@ async function buildAndBroadcast(
           select: {
             title: true,
             ticketNumber: true,
-            team: { select: { prefix: true } },
+            subDepartment: { select: { prefix: true } },
             project: { select: { name: true } },
             parent: {
               select: {
                 ticketNumber: true,
-                team: { select: { prefix: true } },
+                subDepartment: { select: { prefix: true } },
               },
             },
           },
@@ -115,7 +115,7 @@ async function buildAndBroadcast(
   ])
 
   const actorName  = actor?.name ?? "Someone"
-  const ticketRef  = ticket ? `${ticket.team.prefix}-${ticket.ticketNumber}` : null
+  const ticketRef  = ticket ? `${ticket.subDepartment.prefix}-${ticket.ticketNumber}` : null
   const ticketName = ticket?.title ?? null
   const project    = ticket?.project?.name ?? null
 
@@ -152,7 +152,7 @@ async function buildAndBroadcast(
 
     case "assignment": {
       const parentRef = ticket?.parent
-        ? ` (subtask of ${ticket.parent.team.prefix}-${ticket.parent.ticketNumber})`
+        ? ` (subtask of ${ticket.parent.subDepartment.prefix}-${ticket.parent.ticketNumber})`
         : ""
       title = `${actorName} assigned you to ${ticketLabel}${parentRef}${projectSuffix}`
       break
@@ -160,7 +160,7 @@ async function buildAndBroadcast(
 
     case "qa_assignment": {
       const parentRef = ticket?.parent
-        ? ` (subtask of ${ticket.parent.team.prefix}-${ticket.parent.ticketNumber})`
+        ? ` (subtask of ${ticket.parent.subDepartment.prefix}-${ticket.parent.ticketNumber})`
         : ""
       title = `${actorName} assigned you to QA ${ticketLabel}${parentRef}${projectSuffix}`
       break

@@ -20,7 +20,7 @@ export async function GET(
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { departmentId: true, team: { select: { departmentId: true } } },
+    select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
   })
 
   if (!project) {
@@ -30,7 +30,7 @@ export async function GET(
   if (ctx.departmentId) {
     const inDept =
       project.departmentId === ctx.departmentId ||
-      project.team?.departmentId === ctx.departmentId
+      project.subDepartment?.departmentId === ctx.departmentId
     if (!inDept) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
     }
@@ -57,7 +57,7 @@ export async function GET(
       closedAt: true,
       createdAt: true,
       updatedAt: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
       assignee: { select: { id: true, name: true, avatarUrl: true } },
       sprint: { select: { id: true, name: true } },
       module: { select: { id: true, name: true } },
@@ -67,7 +67,7 @@ export async function GET(
   return NextResponse.json({
     data: tickets.map((t) => ({
       id: t.id,
-      ticketId: `${t.team.prefix}-${t.ticketNumber}`,
+      ticketId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
       title: t.title,
       status: t.status,
       priority: t.priority,

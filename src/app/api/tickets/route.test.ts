@@ -7,8 +7,8 @@ const mockProfile = {
   name: "Dev User",
   avatarUrl: null,
   role: "developer" as const,
-  teamId: "team-abc",
-  teamIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: "team-abc",
+  subDepartmentIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
@@ -64,8 +64,8 @@ const createdTicketBase = {
   type: "Bug",
   priority: "High",
   status: "Backlog",
-  teamId: "team-abc",
-  team: { id: "team-abc", name: "Dev", prefix: "DEV" },
+  subDepartmentId: "team-abc",
+  subDepartment: { id: "team-abc", name: "Dev", prefix: "DEV" },
   project: { id: "proj-1", name: "PEN Platform" },
 }
 
@@ -73,7 +73,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetProfile.mockResolvedValue(mockProfile)
   mockProjectFindUnique.mockResolvedValue({ id: "proj-1" } as never)
-  mockProfileFindUnique.mockResolvedValue({ id: "user-2", teamId: "team-abc" } as never)
+  mockProfileFindUnique.mockResolvedValue({ id: "user-2", subDepartmentId: "team-abc" } as never)
 })
 
 describe("POST /api/tickets", () => {
@@ -85,12 +85,12 @@ describe("POST /api/tickets", () => {
 
     expect(res.status).toBe(201)
     expect(body.ticketNumber).toBe(7)
-    expect(body.team.prefix).toBe("DEV")
+    expect(body.subDepartment.prefix).toBe("DEV")
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           title: "Fix login redirect",
-          teamId: "team-abc",
+          subDepartmentId: "team-abc",
           creatorId: mockProfile.id,
           ticketNumber: 0,
         }),
@@ -151,7 +151,7 @@ describe("POST /api/tickets", () => {
   })
 
   it("returns 422 when the user has no team", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, teamId: null })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: null })
     const res = await POST(makeRequest(validBody))
     expect(res.status).toBe(422)
   })

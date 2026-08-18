@@ -30,7 +30,7 @@ export function renderInvite({
   inviteeEmail,
   inviterName,
   departmentName,
-  teamName,
+  subDepartmentName,
   role,
   message,
   inviteToken,
@@ -41,7 +41,7 @@ export function renderInvite({
   inviteeEmail: string;
   inviterName: string;
   departmentName: string;
-  teamName: string;
+  subDepartmentName: string;
   role: string;
   message?: string | null;
   inviteToken: string;
@@ -52,7 +52,7 @@ export function renderInvite({
   const inviter = escapeHtml(inviterName);
   const inviterFirst = escapeHtml(firstName(inviterName));
   const dept = escapeHtml(departmentName);
-  const team = escapeHtml(teamName);
+  const subDepartment = escapeHtml(subDepartmentName);
   const roleLabel = escapeHtml(role.charAt(0).toUpperCase() + role.slice(1));
   const email = escapeHtml(inviteeEmail);
   const url = ensureAbsoluteUrl(`${BASE_URL}/invite/${inviteToken}`);
@@ -71,7 +71,7 @@ export function renderInvite({
         inviterName: inviter,
         inviterFirstName: inviterFirst,
         departmentName: dept,
-        teamName: team,
+        subDepartmentName: subDepartment,
         role: roleLabel,
         message: escapeHtml(messageText),
         messageBlock,
@@ -88,7 +88,7 @@ export function renderInvite({
 
   const infoRows = [
     { label: "Department", value: departmentName },
-    { label: "Team", value: teamName },
+    { label: "Team", value: subDepartmentName },
     { label: "Role", value: role.charAt(0).toUpperCase() + role.slice(1) },
   ];
   const infoHtml = summaryTable(infoRows);
@@ -96,7 +96,7 @@ export function renderInvite({
   const heading = "You're invited to join a department";
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
-    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on PEN Platform as <strong>${roleLabel}</strong> on the <strong>${team}</strong> team.</p>
+    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on PEN Platform as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> team.</p>
     ${messageHtml}
     ${infoHtml}
     ${button({ href: url, label: "Accept invitation", branding })}
@@ -107,7 +107,7 @@ export function renderInvite({
   const textParts = [
     `Hello,`,
     "",
-    `${inviterName} has invited you to join ${departmentName} on PEN Platform as ${role} on the ${teamName} team.`,
+    `${inviterName} has invited you to join ${departmentName} on PEN Platform as ${role} on the ${subDepartmentName} team.`,
   ];
   if (messageText) {
     textParts.push("", messageText);
@@ -115,7 +115,7 @@ export function renderInvite({
   textParts.push(
     "",
     `Department: ${departmentName}`,
-    `Team: ${teamName}`,
+    `Team: ${subDepartmentName}`,
     `Role: ${role}`,
     "",
     `Accept invitation: ${url}`,

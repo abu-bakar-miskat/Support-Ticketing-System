@@ -19,7 +19,7 @@ const SAFE_SELECT = {
   id: true,
   tenantId: true,
   departmentId: true,
-  teamId: true,
+  subDepartmentId: true,
   scopeType: true,
   address: true,
   authType: true,
@@ -37,7 +37,7 @@ export type MailboxConnectionSafe = {
   id: string;
   tenantId: string;
   departmentId: string;
-  teamId: string;
+  subDepartmentId: string;
   scopeType: MailboxScopeType;
   address: string;
   authType: MailboxAuthType;
@@ -62,7 +62,7 @@ export async function listMailboxConnections(departmentId: string): Promise<Mail
 export async function createMailboxConnection(params: {
   tenantId: string;
   departmentId: string;
-  teamId: string;
+  subDepartmentId: string;
   scopeType: MailboxScopeType;
   address: string;
   authType: MailboxAuthType;
@@ -77,7 +77,7 @@ export async function createMailboxConnection(params: {
     data: {
       tenantId: params.tenantId,
       departmentId: params.departmentId,
-      teamId: params.teamId,
+      subDepartmentId: params.subDepartmentId,
       scopeType: params.scopeType,
       address: params.address.trim().toLowerCase(),
       authType: params.authType,
@@ -118,7 +118,7 @@ export type MailboxRoute = {
   address: string;
   tenantId: string;
   departmentId: string;
-  teamId: string;
+  subDepartmentId: string;
 };
 
 /**
@@ -134,7 +134,7 @@ export async function findMailboxRouteForRecipients(recipients: string[]): Promi
 
   return prisma.mailboxConnection.findFirst({
     where: { address: { in: candidates } },
-    select: { id: true, address: true, tenantId: true, departmentId: true, teamId: true },
+    select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true },
   });
 }
 

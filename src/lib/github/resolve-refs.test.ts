@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    team: { findMany: vi.fn() },
+    subDepartment: { findMany: vi.fn() },
     ticket: { findMany: vi.fn() },
   },
 }))
@@ -10,7 +10,7 @@ vi.mock("@/lib/db", () => ({
 import { prisma } from "@/lib/db"
 import { resolveTicketIds } from "./resolve-refs"
 
-const mockTeamFindMany = vi.mocked(prisma.team.findMany)
+const mockSubDepartmentFindMany = vi.mocked(prisma.subDepartment.findMany)
 const mockTicketFindMany = vi.mocked(prisma.ticket.findMany)
 
 beforeEach(() => {
@@ -20,11 +20,11 @@ beforeEach(() => {
 describe("resolveTicketIds", () => {
   it("returns [] without querying when there are no refs", async () => {
     expect(await resolveTicketIds([])).toEqual([])
-    expect(mockTeamFindMany).not.toHaveBeenCalled()
+    expect(mockSubDepartmentFindMany).not.toHaveBeenCalled()
   })
 
   it("resolves refs through team prefix and ticket number", async () => {
-    mockTeamFindMany.mockResolvedValue([{ id: "team-1", prefix: "DEV" }] as never)
+    mockSubDepartmentFindMany.mockResolvedValue([{ id: "team-1", prefix: "DEV" }] as never)
     mockTicketFindMany.mockResolvedValue([{ id: "ticket-1" }] as never)
 
     const ids = await resolveTicketIds([{ prefix: "DEV", number: 42 }])
@@ -32,7 +32,7 @@ describe("resolveTicketIds", () => {
     expect(ids).toEqual(["ticket-1"])
     expect(mockTicketFindMany).toHaveBeenCalledWith({
       where: {
-        OR: [{ teamId: "team-1", ticketNumber: 42 }],
+        OR: [{ subDepartmentId: "team-1", ticketNumber: 42 }],
         deletedAt: null,
       },
       select: { id: true },
@@ -40,7 +40,7 @@ describe("resolveTicketIds", () => {
   })
 
   it("drops refs whose prefix matches no team", async () => {
-    mockTeamFindMany.mockResolvedValue([] as never)
+    mockSubDepartmentFindMany.mockResolvedValue([] as never)
 
     const ids = await resolveTicketIds([{ prefix: "NOPE", number: 1 }])
 
@@ -49,7 +49,7 @@ describe("resolveTicketIds", () => {
   })
 
   it("resolves refs across multiple teams", async () => {
-    mockTeamFindMany.mockResolvedValue([
+    mockSubDepartmentFindMany.mockResolvedValue([
       { id: "team-1", prefix: "DEV" },
       { id: "team-2", prefix: "OPS" },
     ] as never)
@@ -64,8 +64,8 @@ describe("resolveTicketIds", () => {
     expect(mockTicketFindMany).toHaveBeenCalledWith({
       where: {
         OR: [
-          { teamId: "team-1", ticketNumber: 1 },
-          { teamId: "team-2", ticketNumber: 2 },
+          { subDepartmentId: "team-1", ticketNumber: 1 },
+          { subDepartmentId: "team-2", ticketNumber: 2 },
         ],
         deletedAt: null,
       },

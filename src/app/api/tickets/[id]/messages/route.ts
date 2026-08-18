@@ -20,7 +20,7 @@ export async function GET(
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { id: true, tenantId: true, teamId: true, assigneeId: true, creatorId: true, deletedAt: true, assignees: { select: { userId: true } }, team: { select: { departmentId: true } } },
+    select: { id: true, tenantId: true, subDepartmentId: true, assigneeId: true, creatorId: true, deletedAt: true, assignees: { select: { userId: true } }, subDepartment: { select: { departmentId: true } } },
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
 
@@ -76,14 +76,14 @@ export async function POST(
       id: true,
       title: true,
       ticketNumber: true,
-      teamId: true,
+      subDepartmentId: true,
       status: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true, prefix: true } },
+      subDepartment: { select: { departmentId: true, prefix: true } },
       intake: {
         select: {
           submitterName: true,
@@ -184,14 +184,14 @@ export async function POST(
   // Resolve the In Progress status early (runs concurrently with other setup)
   // so the DB update is ready to await before we respond.
   const inProgressStatusPromise = normalizeStatus(ticket.status) === "To Do"
-    ? prisma.teamStatus.findFirst({
-        where: { teamId: ticket.teamId, isComplete: false },
+    ? prisma.subDepartmentStatus.findFirst({
+        where: { subDepartmentId: ticket.subDepartmentId, isComplete: false },
         orderBy: { order: "asc" },
         skip: 1,
       })
     : Promise.resolve(null)
 
-  const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+  const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
   const config = await getEmailConfig()
 
   // Thread this send onto the conversation's most recent message so the
@@ -236,7 +236,7 @@ export async function POST(
       replyToken,
       inReplyTo: lastMessage?.providerMessageId ?? null,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
-      departmentId: ticket.team.departmentId,
+      departmentId: ticket.subDepartment.departmentId,
     })
   } catch (err) {
     console.error("[messages] send failed:", err)

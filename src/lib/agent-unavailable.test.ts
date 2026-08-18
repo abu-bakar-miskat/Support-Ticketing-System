@@ -45,8 +45,8 @@ describe("applyAgentUnavailableLabel / clearAgentUnavailableLabel", () => {
 describe("syncAgentUnavailableFlagForUser", () => {
   it("flags open tickets when the assignee is unavailable", async () => {
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", teamId: "team-1", labels: [] },
-      { id: "t2", teamId: "team-1", labels: ["Reopened"] },
+      { id: "t1", subDepartmentId: "team-1", labels: [] },
+      { id: "t2", subDepartmentId: "team-1", labels: ["Reopened"] },
     ] as never)
     mockIsAvailable.mockResolvedValue(false as never)
 
@@ -65,7 +65,7 @@ describe("syncAgentUnavailableFlagForUser", () => {
 
   it("clears the flag once the assignee is available again", async () => {
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", teamId: "team-1", labels: [AGENT_UNAVAILABLE_LABEL] },
+      { id: "t1", subDepartmentId: "team-1", labels: [AGENT_UNAVAILABLE_LABEL] },
     ] as never)
     mockIsAvailable.mockResolvedValue(true as never)
 
@@ -79,7 +79,7 @@ describe("syncAgentUnavailableFlagForUser", () => {
   })
 
   it("is a no-op when nothing needs to change", async () => {
-    mockTicketFindMany.mockResolvedValue([{ id: "t1", teamId: "team-1", labels: [] }] as never)
+    mockTicketFindMany.mockResolvedValue([{ id: "t1", subDepartmentId: "team-1", labels: [] }] as never)
     mockIsAvailable.mockResolvedValue(true as never)
 
     const result = await syncAgentUnavailableFlagForUser("user-1")
@@ -90,9 +90,9 @@ describe("syncAgentUnavailableFlagForUser", () => {
 
   it("checks availability once per distinct team, not once per ticket", async () => {
     mockTicketFindMany.mockResolvedValue([
-      { id: "t1", teamId: "team-1", labels: [] },
-      { id: "t2", teamId: "team-1", labels: [] },
-      { id: "t3", teamId: "team-2", labels: [] },
+      { id: "t1", subDepartmentId: "team-1", labels: [] },
+      { id: "t2", subDepartmentId: "team-1", labels: [] },
+      { id: "t3", subDepartmentId: "team-2", labels: [] },
     ] as never)
     mockIsAvailable.mockResolvedValue(false as never)
 
@@ -111,8 +111,8 @@ describe("sweepAgentUnavailableFlags", () => {
   it("syncs every distinct assignee with an open ticket", async () => {
     mockTicketFindMany
       .mockResolvedValueOnce([{ assigneeId: "user-1" }, { assigneeId: "user-2" }] as never)
-      .mockResolvedValueOnce([{ id: "t1", teamId: "team-1", labels: [] }] as never)
-      .mockResolvedValueOnce([{ id: "t2", teamId: "team-1", labels: [] }] as never)
+      .mockResolvedValueOnce([{ id: "t1", subDepartmentId: "team-1", labels: [] }] as never)
+      .mockResolvedValueOnce([{ id: "t2", subDepartmentId: "team-1", labels: [] }] as never)
     mockIsAvailable.mockResolvedValue(false as never)
 
     const result = await sweepAgentUnavailableFlags()

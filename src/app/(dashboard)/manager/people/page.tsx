@@ -40,7 +40,7 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
     if (!managedIds.includes(deptScope.activeDeptId)) redirect("/");
   }
 
-  const teamIds = deptScope?.teamIds ?? [];
+  const subDepartmentIds = deptScope?.subDepartmentIds ?? [];
   const activeDeptId = deptScope?.activeDeptId ?? null;
   // Tickets that BELONG to this department (by their project's department, not
   // just the ticket's team) — captures cross-dept-access work created on a
@@ -56,9 +56,9 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
   // Reporting window from the date filter (defaults to the last 7 days).
   const { start: rangeStart, end: rangeEnd } = range;
 
-  const members = teamIds.length > 0
+  const members = subDepartmentIds.length > 0
     ? await prisma.profile.findMany({
-        where: { memberships: { some: { teamId: { in: teamIds }, isActive: true } } },
+        where: { memberships: { some: { subDepartmentId: { in: subDepartmentIds }, isActive: true } } },
         select: { id: true, name: true, avatarUrl: true },
         orderBy: { name: "asc" },
       })
@@ -110,7 +110,7 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
           id: true,
           name: true,
           avatarUrl: true,
-          team: { select: { department: { select: { name: true } } } },
+          subDepartment: { select: { department: { select: { name: true } } } },
         },
         orderBy: { name: "asc" },
       })
@@ -120,15 +120,15 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
 
   const ticketSelect = {
     id: true, ticketNumber: true, title: true, priority: true, status: true,
-    dueDate: true, updatedAt: true, assigneeId: true, teamId: true,
-    team: { select: { id: true, prefix: true, department: { select: { id: true, name: true } } } },
+    dueDate: true, updatedAt: true, assigneeId: true, subDepartmentId: true,
+    subDepartment: { select: { id: true, prefix: true, department: { select: { id: true, name: true } } } },
     project: {
       select: {
         name: true,
         color: true,
         departmentId: true,
         department: { select: { id: true, name: true } },
-        team: { select: { department: { select: { id: true, name: true } } } },
+        subDepartment: { select: { department: { select: { id: true, name: true } } } },
       },
     },
   } as const;
@@ -227,7 +227,7 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
       take: 500,
       select: {
         id: true, action: true, createdAt: true, metadata: true, actorId: true,
-        ticket: { select: { id: true, ticketNumber: true, title: true, team: { select: { prefix: true } } } },
+        ticket: { select: { id: true, ticketNumber: true, title: true, subDepartment: { select: { prefix: true } } } },
       },
     }),
 
@@ -239,13 +239,13 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
         kind: true,
         ticket: {
           select: {
-            id: true, ticketNumber: true, title: true, teamId: true,
-            team: { select: { prefix: true, department: { select: { id: true, name: true } } } },
+            id: true, ticketNumber: true, title: true, subDepartmentId: true,
+            subDepartment: { select: { prefix: true, department: { select: { id: true, name: true } } } },
             project: {
               select: {
                 departmentId: true,
                 department: { select: { id: true, name: true } },
-                team: { select: { department: { select: { id: true, name: true } } } },
+                subDepartment: { select: { department: { select: { id: true, name: true } } } },
               },
             },
           },
@@ -254,33 +254,33 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
     }),
 
     // Complete statuses for every team we might classify tickets against
-    prisma.teamStatus.findMany({
+    prisma.subDepartmentStatus.findMany({
       where: { isComplete: true },
-      select: { teamId: true, label: true },
+      select: { subDepartmentId: true, label: true },
     }),
   ]);
 
   const qaAssigneeEver = new Set(qaAssigneeRows.map((r) => r.userId));
 
-  const doneByTeam = new Map<string, Set<string>>();
+  const doneBySubDepartment = new Map<string, Set<string>>();
   for (const row of completeStatusRows) {
-    const set = doneByTeam.get(row.teamId) ?? new Set<string>();
+    const set = doneBySubDepartment.get(row.subDepartmentId) ?? new Set<string>();
     set.add(row.label);
-    doneByTeam.set(row.teamId, set);
+    doneBySubDepartment.set(row.subDepartmentId, set);
   }
 
-  const isDone = (t: { teamId: string; status: string }) => {
-    const set = doneByTeam.get(t.teamId);
+  const isDone = (t: { subDepartmentId: string; status: string }) => {
+    const set = doneBySubDepartment.get(t.subDepartmentId);
     if (set && set.size > 0) return set.has(t.status);
     return FALLBACK_COMPLETE.includes(t.status);
   };
 
   /** Incomplete review/PR stages — only when that status is NOT marked complete for the team */
-  const isIncompleteReview = (t: { teamId: string; status: string }) =>
+  const isIncompleteReview = (t: { subDepartmentId: string; status: string }) =>
     !isDone(t) && IN_REVIEW_STATUSES.includes(t.status);
 
-  const humanId = (t: { ticketNumber: number; team: { prefix: string } }) =>
-    `${t.team.prefix}-${t.ticketNumber}`;
+  const humanId = (t: { ticketNumber: number; subDepartment: { prefix: string } }) =>
+    `${t.subDepartment.prefix}-${t.ticketNumber}`;
 
   type DeptRef = { id: string; name: string };
   const toTicket = (
@@ -292,16 +292,16 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
       status: string;
       dueDate: Date | null;
       updatedAt: Date;
-      teamId: string;
+      subDepartmentId: string;
       project:
         | {
             name: string;
             color: string | null;
             department?: DeptRef | null;
-            team?: { department?: DeptRef | null } | null;
+            subDepartment?: { department?: DeptRef | null } | null;
           }
         | null;
-      team: { prefix: string; department: DeptRef | null };
+      subDepartment: { prefix: string; department: DeptRef | null };
     },
     includeDepartment = false,
   ) => ({
@@ -331,7 +331,7 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
       name: m.name,
       avatarUrl: m.avatarUrl ?? null,
       isExternal: true,
-      homeDepartmentName: m.team?.department?.name ?? null,
+      homeDepartmentName: m.subDepartment?.department?.name ?? null,
     })),
   ];
 
@@ -449,7 +449,7 @@ async function PeopleReportsData({ range }: { range: ResolvedPeopleRange }) {
   return (
     <PeopleReportsGrid
       reports={reports}
-      noTeams={teamIds.length === 0}
+      noSubDepartments={subDepartmentIds.length === 0}
       rangeLabel={range.label}
     />
   );

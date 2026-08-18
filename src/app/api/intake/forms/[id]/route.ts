@@ -7,10 +7,10 @@ import { sanitizeFormBranding } from "@/lib/form-branding"
 async function assertFormScope(
   formId: string,
   deptScope: Set<string> | null,
-): Promise<{ form: { id: string; departmentId: string; intakeTeamId: string } } | NextResponse> {
+): Promise<{ form: { id: string; departmentId: string; intakeSubDepartmentId: string } } | NextResponse> {
   const form = await prisma.intakeFormConfig.findUnique({
     where: { id: formId },
-    select: { id: true, departmentId: true, intakeTeamId: true },
+    select: { id: true, departmentId: true, intakeSubDepartmentId: true },
   })
   if (!form) return NextResponse.json({ error: "Form not found" }, { status: 404 })
   if (deptScope && !deptScope.has(form.departmentId)) {
@@ -36,7 +36,7 @@ export async function PATCH(
 
   const body = await request.json()
   const name = (body.name as string | undefined)?.trim()
-  const intakeTeamId = (body.intakeTeamId as string | undefined)?.trim()
+  const intakeSubDepartmentId = (body.intakeSubDepartmentId as string | undefined)?.trim()
   const isActive = typeof body.isActive === "boolean" ? body.isActive : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const workloadThreshold =
@@ -52,13 +52,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 })
   }
 
-  if (intakeTeamId !== undefined) {
-    const team = await prisma.team.findUnique({
-      where: { id: intakeTeamId },
+  if (intakeSubDepartmentId !== undefined) {
+    const subDepartment = await prisma.subDepartment.findUnique({
+      where: { id: intakeSubDepartmentId },
       select: { departmentId: true },
     })
-    if (!team) return NextResponse.json({ error: "Intake team not found" }, { status: 404 })
-    if (team.departmentId !== result.form.departmentId) {
+    if (!subDepartment) return NextResponse.json({ error: "Intake team not found" }, { status: 404 })
+    if (subDepartment.departmentId !== result.form.departmentId) {
       return NextResponse.json(
         { error: "Intake team must belong to the form's department" },
         { status: 400 },
@@ -66,10 +66,10 @@ export async function PATCH(
     }
   }
 
-  const targetTeamId = intakeTeamId ?? result.form.intakeTeamId
+  const targetSubDepartmentId = intakeSubDepartmentId ?? result.form.intakeSubDepartmentId
   if (workloadThreshold !== undefined) {
-    await prisma.team.update({
-      where: { id: targetTeamId },
+    await prisma.subDepartment.update({
+      where: { id: targetSubDepartmentId },
       data: { workloadThreshold },
     })
   }
@@ -78,7 +78,7 @@ export async function PATCH(
     where: { id },
     data: {
       ...(name !== undefined ? { name } : {}),
-      ...(intakeTeamId !== undefined ? { intakeTeamId } : {}),
+      ...(intakeSubDepartmentId !== undefined ? { intakeSubDepartmentId } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
       ...(autoAssign !== undefined ? { autoAssign } : {}),
       ...(displayMode !== undefined ? { displayMode } : {}),
@@ -88,7 +88,7 @@ export async function PATCH(
     },
     include: {
       department: { select: { id: true, name: true } },
-      intakeTeam: { select: { id: true, name: true, workloadThreshold: true } },
+      intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true } },
     },
   })
   return NextResponse.json(form)

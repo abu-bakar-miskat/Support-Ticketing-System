@@ -26,7 +26,7 @@ export default async function SettingsFieldBuilderRoute({
     where: { id: formId },
     include: {
       department: { select: { id: true, name: true } },
-      intakeTeam: { select: { id: true, name: true } },
+      intakeSubDepartment: { select: { id: true, name: true } },
       fields: { orderBy: { order: "asc" } },
     },
   })

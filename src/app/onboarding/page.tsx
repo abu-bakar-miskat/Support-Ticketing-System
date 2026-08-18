@@ -18,7 +18,7 @@ export default async function Page() {
         select: {
           id: true,
           name: true,
-          _count: { select: { teams: true } },
+          _count: { select: { subDepartments: true } },
           managers: {
             select: { user: { select: { name: true } } },
             take: 2,
@@ -41,7 +41,7 @@ export default async function Page() {
       departments={departments.map((d) => ({
         id: d.id,
         name: d.name,
-        teamCount: d._count.teams,
+        subDepartmentCount: d._count.subDepartments,
         managers: d.managers.map((m) => m.user.name),
       }))}
       pendingDeptIds={[...pendingDeptIds]}

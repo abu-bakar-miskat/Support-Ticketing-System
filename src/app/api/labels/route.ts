@@ -20,7 +20,7 @@ export async function GET() {
   const tickets = await prisma.ticket.findMany({
     where: {
       deletedAt: null,
-      ...(deptScope ? { teamId: { in: deptScope.teamIds } } : {}),
+      ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
     },
     select: { labels: true },
   });

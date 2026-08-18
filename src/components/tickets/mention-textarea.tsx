@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 export function MentionTextarea({
   value,
   onChange,
-  teamMembers = [],
+  subDepartmentMembers = [],
   placeholder,
   onSubmit,
   onCancel,
@@ -24,7 +24,7 @@ export function MentionTextarea({
 }: {
   value: string;
   onChange: (value: string) => void;
-  teamMembers?: MentionableUser[];
+  subDepartmentMembers?: MentionableUser[];
   placeholder?: string;
   /** Enter (without Shift) submits. */
   onSubmit?: () => void;
@@ -42,7 +42,7 @@ export function MentionTextarea({
     mentionQuery !== null && "all".startsWith(mentionQuery.toLowerCase());
   const filtered =
     mentionQuery !== null
-      ? teamMembers.filter((m) =>
+      ? subDepartmentMembers.filter((m) =>
           m.name.toLowerCase().includes(mentionQuery.toLowerCase()),
         )
       : [];
@@ -143,7 +143,7 @@ export function MentionTextarea({
               >
                 <span className="font-semibold text-pen-blue">@all</span>
                 <span className="ml-2 text-pen-subtle">
-                  — mention everyone ({teamMembers.length})
+                  — mention everyone ({subDepartmentMembers.length})
                 </span>
               </button>
             </li>

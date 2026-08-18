@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn(), updateMany: vi.fn() },
-    teamStatus: { findMany: vi.fn() },
+    subDepartmentStatus: { findMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -21,7 +21,7 @@ import { advanceTicketStatus } from "./advance-status"
 
 const mockFindUnique = vi.mocked(prisma.ticket.findUnique)
 const mockUpdateMany = vi.mocked(prisma.ticket.updateMany)
-const mockStatusFindMany = vi.mocked(prisma.teamStatus.findMany)
+const mockStatusFindMany = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockTransaction = vi.mocked(prisma.$transaction)
 const mockNotify = vi.mocked(notifyTicketCompletion)
 const mockCascade = vi.mocked(cascadeCompleteToSubtickets)
@@ -30,12 +30,12 @@ const baseTicket = {
   id: "ticket-1",
   title: "Fix login",
   status: "Not Started",
-  teamId: "team-1",
+  subDepartmentId: "team-1",
   ticketNumber: 42,
   creatorId: "user-1",
   closedAt: null,
   deletedAt: null,
-  team: { prefix: "DEV", githubStatusMap: null },
+  subDepartment: { prefix: "DEV", githubStatusMap: null },
   intake: null,
 }
 
@@ -131,7 +131,7 @@ describe("advanceTicketStatus", () => {
   it("respects a team override from githubStatusMap", async () => {
     mockFindUnique.mockResolvedValue({
       ...baseTicket,
-      team: { prefix: "DEV", githubStatusMap: { onPrOpened: "Done", onPrReadyForReview: null, onPrMerged: null } },
+      subDepartment: { prefix: "DEV", githubStatusMap: { onPrOpened: "Done", onPrReadyForReview: null, onPrMerged: null } },
     } as never)
     await advanceTicketStatus("ticket-1", "prOpened")
     expect(mockUpdateMany.mock.calls[0][0].data.status).toBe("Done")
@@ -140,7 +140,7 @@ describe("advanceTicketStatus", () => {
   it("does nothing when the event is disabled by override", async () => {
     mockFindUnique.mockResolvedValue({
       ...baseTicket,
-      team: { prefix: "DEV", githubStatusMap: { onPrOpened: "", onPrReadyForReview: null, onPrMerged: null } },
+      subDepartment: { prefix: "DEV", githubStatusMap: { onPrOpened: "", onPrReadyForReview: null, onPrMerged: null } },
     } as never)
     await advanceTicketStatus("ticket-1", "prOpened")
     expect(mockUpdateMany).not.toHaveBeenCalled()

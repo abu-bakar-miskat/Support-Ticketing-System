@@ -9,7 +9,7 @@
 import { prisma } from "@/lib/db";
 import type { Prisma, TicketPriority } from "@/generated/prisma/client";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
-import { getTeamStatuses } from "@/lib/board-data";
+import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { generateReplyToken } from "@/lib/customer-conversation";
 import { autoAssignTicket } from "@/lib/assignment-engine";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
@@ -50,7 +50,7 @@ type ResponseEntry = {
 };
 
 export type ConversionPrep = {
-  intakeTeamId: string;
+  intakeSubDepartmentId: string;
   departmentId: string;
   formName: string;
   title: string;
@@ -113,7 +113,7 @@ function buildDescription(
 export async function prepareConversion({
   formId,
   formName,
-  intakeTeamId,
+  intakeSubDepartmentId,
   departmentId,
   responses,
   priority,
@@ -126,7 +126,7 @@ export async function prepareConversion({
 }: {
   formId: string;
   formName: string;
-  intakeTeamId: string;
+  intakeSubDepartmentId: string;
   departmentId: string;
   responses: ResponseEntry[];
   priority: TicketPriority;
@@ -140,8 +140,8 @@ export async function prepareConversion({
   /** Round-robin cursor stored on the issue. */
   issueRotaPointer?: number;
 }): Promise<ConversionPrep> {
-  const team = await prisma.team.findUniqueOrThrow({
-    where: { id: intakeTeamId },
+  const subDepartment = await prisma.subDepartment.findUniqueOrThrow({
+    where: { id: intakeSubDepartmentId },
     select: { rotaPointer: true, workloadThreshold: true },
   });
 
@@ -165,11 +165,11 @@ export async function prepareConversion({
   const managerId = managers[0]?.id ?? null;
 
   // Ticket starts in the team's first configured status.
-  const statuses = await getTeamStatuses(intakeTeamId);
+  const statuses = await getSubDepartmentStatuses(intakeSubDepartmentId);
   const status = statuses[0]?.label ?? "Not Started";
 
   let assigneeId: string | null = null;
-  let nextPointer = team.rotaPointer;
+  let nextPointer = subDepartment.rotaPointer;
   let newIssueRotaPointer: number | null = null;
   let assignmentFailed = false;
 
@@ -189,7 +189,7 @@ export async function prepareConversion({
       const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
       const result = await autoAssignTicket({
         departmentId,
-        teamId: intakeTeamId,
+        teamId: intakeSubDepartmentId,
         formValues,
         excludeUserId: managerId,
       });
@@ -215,7 +215,7 @@ export async function prepareConversion({
   const projectId = await resolveSupportProjectForDepartment(departmentId);
 
   return {
-    intakeTeamId,
+    intakeSubDepartmentId,
     departmentId,
     formName,
     title: resolveTitle(responses, formName, submitterName, title),
@@ -260,12 +260,12 @@ export async function runConversion(
     select: { id: true, replyToken: true },
   });
 
-  const intakeTeam = await tx.team.findUnique({
-    where: { id: prep.intakeTeamId },
+  const intakeSubDepartment = await tx.subDepartment.findUnique({
+    where: { id: prep.intakeSubDepartmentId },
     select: { tenantId: true },
   });
-  if (!intakeTeam) {
-    throw new Error(`Intake team ${prep.intakeTeamId} not found`);
+  if (!intakeSubDepartment) {
+    throw new Error(`Intake team ${prep.intakeSubDepartmentId} not found`);
   }
 
   // Place the intake ticket in a column of its department's board (DAT-03).
@@ -283,8 +283,8 @@ export async function runConversion(
       status: prep.status,
       ticketNumber: 0, // stamped by DB trigger
       creatorId: prep.creatorId,
-      tenantId: intakeTeam.tenantId,
-      teamId: prep.intakeTeamId,
+      tenantId: intakeSubDepartment.tenantId,
+      subDepartmentId: prep.intakeSubDepartmentId,
       projectId: prep.projectId,
       assigneeId: prep.assigneeId,
       ...(boardColumnId ? { boardColumnId } : {}),
@@ -293,7 +293,7 @@ export async function runConversion(
     select: {
       id: true,
       ticketNumber: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   });
 
@@ -303,7 +303,7 @@ export async function runConversion(
       actorId: prep.creatorId,
       action: "TICKET_CREATED",
       metadata: {
-        humanId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+        humanId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
         title: prep.title,
         status: prep.status,
       },
@@ -315,8 +315,8 @@ export async function runConversion(
     data: { ticketId: ticket.id },
   });
 
-  await tx.team.update({
-    where: { id: prep.intakeTeamId },
+  await tx.subDepartment.update({
+    where: { id: prep.intakeSubDepartmentId },
     data: { rotaPointer: prep.newRotaPointer },
   });
 

@@ -1,4 +1,4 @@
-import type { BoardCardData, SubCardData, TeamStatusConfig } from "@/components/board/board-types";
+import type { BoardCardData, SubCardData, SubDepartmentStatusConfig } from "@/components/board/board-types";
 import type { AssignedSubtask } from "@/lib/board-data";
 import type { TicketDetailProps } from "@/components/tickets/ticket-detail-page";
 import type { MentionableUser } from "@/lib/mentionable-users";
@@ -7,7 +7,7 @@ import type { UserListPerson } from "@/lib/user-list-person";
 export type TicketShellSource = BoardCardData | SubCardData | AssignedSubtask;
 
 type PlaceholderOpts = {
-  teamStatuses?: TeamStatusConfig[];
+  subDepartmentStatuses?: SubDepartmentStatusConfig[];
   availableMembers?: UserListPerson[];
 };
 
@@ -25,7 +25,7 @@ function toMentionable(members: UserListPerson[]): MentionableUser[] {
     name: m.name,
     avatarUrl: m.avatarUrl ?? null,
     departmentName: m.departmentName ?? null,
-    teamName: m.teamName ?? null,
+    subDepartmentName: m.subDepartmentName ?? null,
     role: "member",
   }));
 }
@@ -40,7 +40,7 @@ export function buildTicketDetailPlaceholder(
       name: m.name,
       avatarUrl: m.avatarUrl ?? null,
       departmentName: m.departmentName ?? null,
-      teamName: m.teamName ?? null,
+      subDepartmentName: m.subDepartmentName ?? null,
     })) ?? [];
   const mentionableUsers = toMentionable(opts.availableMembers ?? []);
 
@@ -56,7 +56,7 @@ export function buildTicketDetailPlaceholder(
       dbId: source.dbId,
       ticketId: source.humanId,
       projectId: source.projectId,
-      teamId: source.teamId,
+      subDepartmentId: source.subDepartmentId,
       projectName: source.project,
       projectColor: source.projectColor ?? "#0a76b9",
       projectKind: source.projectKind ?? "standard",
@@ -98,9 +98,9 @@ export function buildTicketDetailPlaceholder(
       isCurrentUserAssignee: false,
       isCurrentUserQa: false,
       parentTicket: null,
-      teamMembers: members,
+      subDepartmentMembers: members,
       mentionableUsers,
-      teamStatuses: opts.teamStatuses ?? [],
+      subDepartmentStatuses: opts.subDepartmentStatuses ?? [],
       subTickets: source.subTicketCards.map((st) => ({
         dbId: st.dbId,
         humanId: st.humanId,
@@ -124,7 +124,7 @@ export function buildTicketDetailPlaceholder(
       dbId: source.dbId,
       ticketId: source.humanId,
       projectId: source.projectId,
-      teamId: source.teamId,
+      subDepartmentId: source.subDepartmentId,
       projectName: source.project,
       projectColor: source.projectColor ?? "#0a76b9",
       projectKind: "standard",
@@ -166,9 +166,9 @@ export function buildTicketDetailPlaceholder(
         humanId: source.parentHumanId,
         title: source.parentTitle,
       },
-      teamMembers: members,
+      subDepartmentMembers: members,
       mentionableUsers,
-      teamStatuses: opts.teamStatuses ?? [],
+      subDepartmentStatuses: opts.subDepartmentStatuses ?? [],
       subTickets: [],
       comments: [],
       activity: [],
@@ -181,7 +181,7 @@ export function buildTicketDetailPlaceholder(
     dbId: source.dbId,
     ticketId: source.humanId,
     projectId: "",
-    teamId: "",
+    subDepartmentId: "",
     projectName: "Miscellaneous",
     projectColor: "#0a76b9",
     projectKind: "standard",
@@ -219,9 +219,9 @@ export function buildTicketDetailPlaceholder(
     isCurrentUserAssignee: false,
     isCurrentUserQa: false,
     parentTicket: null,
-    teamMembers: members,
+    subDepartmentMembers: members,
     mentionableUsers,
-    teamStatuses: opts.teamStatuses ?? [],
+    subDepartmentStatuses: opts.subDepartmentStatuses ?? [],
     subTickets: [],
     comments: [],
     activity: [],

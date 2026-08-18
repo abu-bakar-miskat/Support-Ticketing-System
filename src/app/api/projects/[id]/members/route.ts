@@ -20,7 +20,7 @@ export async function GET(
     select: {
       id: true,
       departmentId: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       members: {
         select: {
           user: { select: { id: true, name: true, avatarUrl: true, role: true } },
@@ -31,7 +31,7 @@ export async function GET(
 
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const projectDeptId = project.departmentId ?? project.team?.departmentId ?? null
+  const projectDeptId = project.departmentId ?? project.subDepartment?.departmentId ?? null
   const memberIds = new Set(project.members.map((m) => m.user.id))
   const eligible = await fetchProjectDepartmentPeople(projectDeptId)
   const eligibleById = new Map(eligible.map((p) => [p.id, p]))
@@ -44,7 +44,7 @@ export async function GET(
       avatarUrl: m.user.avatarUrl ?? null,
       role: m.user.role,
       departmentName: person?.departmentName ?? null,
-      teamName: person?.teamName ?? null,
+      subDepartmentName: person?.subDepartmentName ?? null,
     }
   })
 
@@ -69,17 +69,17 @@ export async function POST(
 
   const project = await prisma.project.findFirst({
     where: { OR: [{ slug: id }, { id }] },
-    select: { id: true, departmentId: true, team: { select: { departmentId: true } } },
+    select: { id: true, departmentId: true, subDepartment: { select: { departmentId: true } } },
   })
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const projectDeptId = project.departmentId ?? project.team?.departmentId ?? null
+  const projectDeptId = project.departmentId ?? project.subDepartment?.departmentId ?? null
 
   if (profile.role !== "admin" && profile.role !== "manager") {
     if (projectDeptId) {
       const callerInDept = profile.memberships?.some(
-        (m: { team: { department?: { id: string } | null } }) =>
-          m.team.department?.id === projectDeptId,
+        (m: { subDepartment: { department?: { id: string } | null } }) =>
+          m.subDepartment.department?.id === projectDeptId,
       )
       if (!callerInDept) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })

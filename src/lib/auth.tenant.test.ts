@@ -6,8 +6,8 @@ function profile(overrides: Partial<AuthProfile> = {}): AuthProfile {
   return {
     id: "user-1",
     role: "staff",
-    teamId: "team-1",
-    teamIds: ["team-1"],
+    subDepartmentId: "team-1",
+    subDepartmentIds: ["team-1"],
     activeTenantId: "tenant-A",
     isSuperAdmin: false,
     tenantIds: ["tenant-A"],
@@ -18,7 +18,7 @@ function profile(overrides: Partial<AuthProfile> = {}): AuthProfile {
 }
 
 const baseTicket = {
-  teamId: "team-1",
+  subDepartmentId: "team-1",
   assigneeId: "user-1",
   creatorId: "user-1",
   deletedAt: null,

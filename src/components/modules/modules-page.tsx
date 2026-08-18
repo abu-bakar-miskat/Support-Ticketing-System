@@ -202,7 +202,7 @@ function TicketRow({ ticket, indent }: { ticket: ModuleTicket; indent: boolean }
         title={ticket.type}
       />
       <span className="shrink-0 font-mono text-[12px] font-semibold text-pen-id">
-        {ticket.team.prefix}-{ticket.ticketNumber}
+        {ticket.subDepartment.prefix}-{ticket.ticketNumber}
       </span>
       <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-pen-foreground">
         {ticket.title}

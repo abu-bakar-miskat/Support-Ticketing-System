@@ -48,8 +48,8 @@ export function usePermissions(): Permissions {
     if (!user) return EMPTY
     const profile: ProjectPermissionProfile = {
       role: user.role,
-      teamId: user.teamId,
-      teamIds: user.teamIds,
+      subDepartmentId: user.subDepartmentId,
+      subDepartmentIds: user.subDepartmentIds,
       memberships: user.memberships,
     }
     return {

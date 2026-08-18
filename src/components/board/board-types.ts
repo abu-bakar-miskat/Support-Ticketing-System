@@ -167,7 +167,7 @@ export const UI_STATUS_DOT: Record<CanonicalStatus, string> = {
   Blocked: "#dc2626",
 }
 
-export type TeamStatusConfig = {
+export type SubDepartmentStatusConfig = {
   id: string
   label: string
   color: string
@@ -176,7 +176,7 @@ export type TeamStatusConfig = {
   allowedLabels?: string[]
 }
 
-export const DEFAULT_STATUSES: TeamStatusConfig[] = [
+export const DEFAULT_STATUSES: SubDepartmentStatusConfig[] = [
   { id: "not-started", label: "To Do", color: "#94a3b8", order: 0, isComplete: false },
   { id: "in-progress",  label: "In Progress",  color: "#0a76b9", order: 1, isComplete: false },
   { id: "pull-request", label: "Pull Request",  color: "#7c3aed", order: 2, isComplete: false },
@@ -206,8 +206,8 @@ export type BoardCardData = {
   title: string
   priority: UiPriority
   status: string
-  team: string
-  teamId: string
+  subDepartment: string
+  subDepartmentId: string
   project: string
   projectId: string
   projectKind: string
@@ -251,11 +251,11 @@ export type BoardCardData = {
   lastMessageDirection: "inbound" | "outbound" | null
 }
 
-export type TeamBoardGroup = {
-  teamId: string
-  teamName: string
+export type SubDepartmentBoardGroup = {
+  subDepartmentId: string
+  subDepartmentName: string
   cards: BoardCardData[]
-  statuses: TeamStatusConfig[]
+  statuses: SubDepartmentStatusConfig[]
 }
 
 export type StatusStyle = {

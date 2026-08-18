@@ -35,7 +35,7 @@ export async function PATCH(
       id: true,
       title: true,
       status: true,
-      teamId: true,
+      subDepartmentId: true,
       ticketNumber: true,
       labels: true,
       deletedAt: true,
@@ -44,7 +44,7 @@ export async function PATCH(
       assigneeId: true,
       creatorId: true,
       assignees: { select: { userId: true } },
-      team: { select: { prefix: true, departmentId: true } },
+      subDepartment: { select: { prefix: true, departmentId: true } },
       intake: {
         select: {
           id: true,
@@ -78,8 +78,8 @@ export async function PATCH(
   // Validate the status exists for this team, and look up the status being left
   // (in the same query) so its linked labels can be dropped from the ticket.
   const [validStatus, priorStatus] = await Promise.all([
-    prisma.teamStatus.findFirst({ where: { teamId: ticket.teamId, label: status } }),
-    prisma.teamStatus.findFirst({ where: { teamId: ticket.teamId, label: ticket.status } }),
+    prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: status } }),
+    prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: ticket.status } }),
   ])
   if (!validStatus) {
     return NextResponse.json({ error: `"${status}" is not a valid status for this team` }, { status: 400 })
@@ -87,7 +87,7 @@ export async function PATCH(
 
   const fromStatus = ticket.status
 
-  const departmentId = ticket.team.departmentId
+  const departmentId = ticket.subDepartment.departmentId
   const [nextLinkedLabels, priorLinkedLabels] = await Promise.all([
     linkedLabelsForDepartment(validStatus.allowedLabels, departmentId),
     priorStatus
@@ -167,12 +167,12 @@ export async function PATCH(
 
     if (validStatus.isComplete) {
       cascadeCompleteToSubtickets(id).catch(() => undefined)
-      const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+      const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
       notifyTicketCompletion({
         ticketId: id,
         ticketTitle: ticket.title,
         humanId,
-        teamId: ticket.teamId,
+        subDepartmentId: ticket.subDepartmentId,
         creatorId: ticket.creatorId,
         actorId: profile.id,
         actorName: profile.name,
@@ -185,7 +185,7 @@ export async function PATCH(
         submitterName: ticket.intake.submitterName,
         formName: ticket.intake.formConfig.name,
         ticketTitle: ticket.title,
-        departmentId: ticket.team.departmentId,
+        departmentId: ticket.subDepartment.departmentId,
       }).catch((err) => console.error("[resolution email] failed:", err))
     }
   })

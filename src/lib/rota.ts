@@ -71,29 +71,29 @@ function safeTimezone(tz: string | null | undefined): string {
  * of members) where filtering out anyone merely outside working hours right now
  * would collapse the candidate pool and break the round-robin distribution.
  */
-export async function isMemberActiveInRotation(userId: string, teamId: string): Promise<boolean> {
+export async function isMemberActiveInRotation(userId: string, subDepartmentId: string): Promise<boolean> {
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({
       where: { id: userId },
       select: { isActive: true },
     }),
-    (prisma.teamMembership as any).findUnique({
-      where: { userId_teamId: { userId, teamId } },
+    (prisma.subDepartmentMembership as any).findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
       select: { doNotAssign: true },
     }),
   ])
   return !((profile ? !profile.isActive : false) || membership?.doNotAssign)
 }
 
-export async function isMemberAvailableNow(userId: string, teamId: string): Promise<boolean> {
+export async function isMemberAvailableNow(userId: string, subDepartmentId: string): Promise<boolean> {
   // 1. availability — check both profile-level isActive (all roles) and team-level doNotAssign (per-team override)
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({
       where: { id: userId },
       select: { timezone: true, isActive: true },
     }),
-    prisma.teamMembership.findUnique({
-      where: { userId_teamId: { userId, teamId } },
+    prisma.subDepartmentMembership.findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
       select: { doNotAssign: true },
     }),
   ])
@@ -135,12 +135,12 @@ export async function isMemberAvailableNow(userId: string, teamId: string): Prom
  * outside working hours) never collapses the candidate pool to empty.
  */
 export async function getEligibleMembers(
-  teamId: string,
+  subDepartmentId: string,
   excludeUserId: string | null,
 ): Promise<{ userId: string }[]> {
   const allMembers = (
-    await prisma.teamMembership.findMany({
-      where: { teamId, isActive: true },
+    await prisma.subDepartmentMembership.findMany({
+      where: { subDepartmentId, isActive: true },
       orderBy: { joinedAt: "asc" },
       select: { userId: true },
     })
@@ -149,7 +149,7 @@ export async function getEligibleMembers(
   if (allMembers.length === 0) return []
 
   const availabilityFlags = await Promise.all(
-    allMembers.map((m) => isMemberAvailableNow(m.userId, teamId)),
+    allMembers.map((m) => isMemberAvailableNow(m.userId, subDepartmentId)),
   )
   const available = allMembers.filter((_, i) => availabilityFlags[i])
   return available.length > 0 ? available : allMembers
@@ -157,11 +157,11 @@ export async function getEligibleMembers(
 
 /** Open (non-deleted, non-completed-status) ticket count per user, for workload balancing. */
 export async function getOpenTicketCounts(
-  teamId: string,
+  subDepartmentId: string,
   userIds: string[],
 ): Promise<{ userId: string; count: number }[]> {
-  const completionStatuses = await prisma.teamStatus.findMany({
-    where: { teamId, isComplete: true },
+  const completionStatuses = await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId, isComplete: true },
     select: { label: true },
   })
   const completedLabels = completionStatuses.map((s) => s.label)
@@ -170,7 +170,7 @@ export async function getOpenTicketCounts(
     userIds.map(async (userId) => {
       const count = await prisma.ticket.count({
         where: {
-          teamId,
+          subDepartmentId,
           assigneeId: userId,
           deletedAt: null,
           ...(completedLabels.length > 0 ? { status: { notIn: completedLabels } } : {}),
@@ -184,21 +184,21 @@ export async function getOpenTicketCounts(
 // ─── Core ROTA algorithm (hybrid round-robin + workload threshold) ───────────
 
 export async function resolveAssignee(
-  teamId: string,
+  subDepartmentId: string,
   rotaPointer: number,
   workloadThreshold: number,
   excludeUserId: string | null,
 ): Promise<{ userId: string | null; nextPointer: number }> {
-  const allMembers = await prisma.teamMembership.findMany({
-    where: { teamId, isActive: true },
+  const allMembers = await prisma.subDepartmentMembership.findMany({
+    where: { subDepartmentId, isActive: true },
     orderBy: { joinedAt: "asc" },
     select: { userId: true },
   }).then((rows) => rows.filter((m) => m.userId !== excludeUserId))
 
   if (allMembers.length === 0) return { userId: null, nextPointer: rotaPointer }
 
-  const eligible = await getEligibleMembers(teamId, excludeUserId)
-  const openCounts = await getOpenTicketCounts(teamId, eligible.map((e) => e.userId))
+  const eligible = await getEligibleMembers(subDepartmentId, excludeUserId)
+  const openCounts = await getOpenTicketCounts(subDepartmentId, eligible.map((e) => e.userId))
 
   const total = eligible.length
   // rotaPointer is relative to allMembers; translate to eligible index

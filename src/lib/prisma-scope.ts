@@ -28,7 +28,7 @@ import { getRequestScope, type RequestScope } from "@/lib/request-scope";
  */
 
 /** Prisma model keys (camelCase delegate names) that carry a `tenantId`. */
-export const TENANT_SCOPED_MODELS = ["ticket", "project", "team", "department"] as const;
+export const TENANT_SCOPED_MODELS = ["ticket", "project", "subDepartment", "department"] as const;
 
 export type TicketScope =
   | { kind: "system" }
@@ -123,7 +123,7 @@ export function mergeScopeWhere(
   if (where && Object.keys(where).length > 0) parts.push(where);
   parts.push({ tenantId: { in: tenantIds } });
   if (subDepartmentTeamIds) {
-    const subPredicate = { teamId: { in: subDepartmentTeamIds } };
+    const subPredicate = { subDepartmentId: { in: subDepartmentTeamIds } };
     parts.push(
       grantedTicketIds
         ? { OR: [subPredicate, { id: { in: grantedTicketIds } }] }
@@ -146,12 +146,12 @@ export function rowInScope(row: { tenantId?: string | null } | null, scope: Tick
  * `teamId` must be in the allowlist.
  */
 export function rowSubDepartmentAllowed(
-  row: { teamId?: string | null } | null,
+  row: { subDepartmentId?: string | null } | null,
   allowlist: string[] | null,
 ): boolean {
   if (allowlist == null) return true;
   if (row == null) return false;
-  return row.teamId != null && allowlist.includes(row.teamId);
+  return row.subDepartmentId != null && allowlist.includes(row.subDepartmentId);
 }
 
 /**
@@ -270,33 +270,33 @@ async function applyTenantScope(
     // unchanged. `include`/no-projection already return all scalars.
     const select = args.select as Record<string, unknown> | undefined;
     const injectedTenantId = select != null && !("tenantId" in select);
-    const injectedTeamId = subAllow != null && select != null && !("teamId" in select);
+    const injectedSubDepartmentId = subAllow != null && select != null && !("subDepartmentId" in select);
     const injectedId = grantedIds != null && select != null && !("id" in select);
     const runArgs =
-      injectedTenantId || injectedTeamId || injectedId
+      injectedTenantId || injectedSubDepartmentId || injectedId
         ? {
             ...args,
             select: {
               ...select,
               ...(injectedTenantId ? { tenantId: true } : {}),
-              ...(injectedTeamId ? { teamId: true } : {}),
+              ...(injectedSubDepartmentId ? { subDepartmentId: true } : {}),
               ...(injectedId ? { id: true } : {}),
             },
           }
         : args;
 
     const result = (await query(runArgs)) as
-      | { id?: string | null; tenantId?: string | null; teamId?: string | null }
+      | { id?: string | null; tenantId?: string | null; subDepartmentId?: string | null }
       | null;
     const subOk = rowSubDepartmentAllowed(result, subAllow) || rowGrantedTicketAccess(result, grantedIds);
     if (!rowInScope(result, scope) || !subOk) {
       if (operation === "findUniqueOrThrow") throw new Error(`No ${modelLabel} found`);
       return null;
     }
-    if (result != null && (injectedTenantId || injectedTeamId || injectedId)) {
+    if (result != null && (injectedTenantId || injectedSubDepartmentId || injectedId)) {
       const rest = { ...(result as Record<string, unknown>) };
       if (injectedTenantId) delete rest.tenantId;
-      if (injectedTeamId) delete rest.teamId;
+      if (injectedSubDepartmentId) delete rest.subDepartmentId;
       if (injectedId) delete rest.id;
       return rest;
     }

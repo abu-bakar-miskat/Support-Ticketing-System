@@ -152,34 +152,34 @@ describe("decideDepartmentAccess", () => {
 });
 
 describe("subDepartmentScopeForDepartment — SD-06", () => {
-  const deptTeams = ["teamA", "teamB", "teamC"];
+  const deptSubDepartments = ["teamA", "teamB", "teamC"];
 
   it("returns null (all teams) for a platform admin", () => {
-    expect(subDepartmentScopeForDepartment(scope({ isPlatformAdmin: true }), "d1", deptTeams, "tA")).toBeNull();
+    expect(subDepartmentScopeForDepartment(scope({ isPlatformAdmin: true }), "d1", deptSubDepartments, "tA")).toBeNull();
   });
 
   it("returns null for a tenant admin of the department's tenant", () => {
     expect(
-      subDepartmentScopeForDepartment(scope({ tenantAdminIds: ["tA"] }), "d1", deptTeams, "tA"),
+      subDepartmentScopeForDepartment(scope({ tenantAdminIds: ["tA"] }), "d1", deptSubDepartments, "tA"),
     ).toBeNull();
   });
 
   it("returns null for a whole-department (DEPARTMENT-scoped) caller", () => {
     expect(
-      subDepartmentScopeForDepartment(scope({ departmentIds: ["d1"] }), "d1", deptTeams, "tA"),
+      subDepartmentScopeForDepartment(scope({ departmentIds: ["d1"] }), "d1", deptSubDepartments, "tA"),
     ).toBeNull();
   });
 
   it("restricts a sub-department-only caller to their granted teams in this dept", () => {
     const s = scope({ subDepartmentIds: ["teamA", "teamZ"] });
-    const allowed = subDepartmentScopeForDepartment(s, "d1", deptTeams, "tA");
+    const allowed = subDepartmentScopeForDepartment(s, "d1", deptSubDepartments, "tA");
     expect(allowed).not.toBeNull();
     expect([...allowed!]).toEqual(["teamA"]); // teamZ is not in this department
   });
 
   it("a caller granted only sub-department A does not get B or C (negative)", () => {
     const allowed = subDepartmentScopeForDepartment(
-      scope({ subDepartmentIds: ["teamA"] }), "d1", deptTeams, "tA",
+      scope({ subDepartmentIds: ["teamA"] }), "d1", deptSubDepartments, "tA",
     );
     expect(allowed!.has("teamA")).toBe(true);
     expect(allowed!.has("teamB")).toBe(false);
@@ -188,14 +188,14 @@ describe("subDepartmentScopeForDepartment — SD-06", () => {
 
   it("returns an empty set (sees nothing) for a caller with no grant in this dept", () => {
     const allowed = subDepartmentScopeForDepartment(
-      scope({ subDepartmentIds: ["teamZ"] }), "d1", deptTeams, "tA",
+      scope({ subDepartmentIds: ["teamZ"] }), "d1", deptSubDepartments, "tA",
     );
     expect(allowed!.size).toBe(0);
   });
 
   it("does not treat a tenant admin of a DIFFERENT tenant as whole-department", () => {
     const allowed = subDepartmentScopeForDepartment(
-      scope({ tenantAdminIds: ["tOther"], subDepartmentIds: ["teamB"] }), "d1", deptTeams, "tA",
+      scope({ tenantAdminIds: ["tOther"], subDepartmentIds: ["teamB"] }), "d1", deptSubDepartments, "tA",
     );
     expect([...allowed!]).toEqual(["teamB"]);
   });

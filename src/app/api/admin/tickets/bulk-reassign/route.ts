@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (!deptScope?.allowedDeptIds.includes(departmentId)) {
       return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
     }
-    scopeTeamIds = deptScope.teamIds
+    scopeTeamIds = deptScope.subDepartmentIds
   }
 
   if (targetType === "SINGLE_AGENT") {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
   }
   if (targetType === "GROUP") {
-    const team = await prisma.team.findUnique({ where: { id: targetTeamId }, select: { id: true, departmentId: true } })
+    const team = await prisma.subDepartment.findUnique({ where: { id: targetTeamId }, select: { id: true, departmentId: true } })
     if (!team || team.departmentId !== departmentId) {
       return NextResponse.json({ error: "targetTeamId must belong to the given department" }, { status: 404 })
     }

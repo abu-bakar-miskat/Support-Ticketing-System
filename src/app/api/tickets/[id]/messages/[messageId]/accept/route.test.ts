@@ -37,7 +37,7 @@ const quarantinedMessage = {
     id: TICKET_ID,
     assigneeId: ASSIGNEE_ID,
     assignees: [],
-    team: { departmentId: DEPT_ID },
+    subDepartment: { departmentId: DEPT_ID },
   },
 }
 

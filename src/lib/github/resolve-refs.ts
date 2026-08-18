@@ -10,15 +10,15 @@ export async function resolveTicketIds(refs: TicketRef[]): Promise<string[]> {
   if (refs.length === 0) return []
 
   const prefixes = [...new Set(refs.map((r) => r.prefix))]
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { prefix: { in: prefixes } },
     select: { id: true, prefix: true },
   })
-  const teamByPrefix = new Map(teams.map((t) => [t.prefix, t.id]))
+  const subDepartmentByPrefix = new Map(subDepartments.map((t) => [t.prefix, t.id]))
 
   const lookups = refs.flatMap((r) => {
-    const teamId = teamByPrefix.get(r.prefix)
-    return teamId ? [{ teamId, ticketNumber: r.number }] : []
+    const subDepartmentId = subDepartmentByPrefix.get(r.prefix)
+    return subDepartmentId ? [{ subDepartmentId, ticketNumber: r.number }] : []
   })
   if (lookups.length === 0) return []
 

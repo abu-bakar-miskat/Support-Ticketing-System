@@ -14,7 +14,7 @@ export async function GET(
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { id: true, teamId: true, assigneeId: true, creatorId: true, deletedAt: true, assignees: { select: { userId: true } }, team: { select: { departmentId: true } } },
+    select: { id: true, subDepartmentId: true, assigneeId: true, creatorId: true, deletedAt: true, assignees: { select: { userId: true } }, subDepartment: { select: { departmentId: true } } },
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
 
@@ -65,13 +65,13 @@ export async function DELETE(
     where: { id: ticketId },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
       assignees: { select: { userId: true } },
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   })
   if (!ticket) {

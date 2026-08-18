@@ -66,11 +66,11 @@ async function main() {
     m.set(c.label, c.id);
   }
 
-  const statuses = await prisma.teamStatus.findMany({
-    select: { teamId: true, label: true, isComplete: true },
+  const statuses = await prisma.subDepartmentStatus.findMany({
+    select: { subDepartmentId: true, label: true, isComplete: true },
   });
-  const completeByTeamLabel = new Map<string, boolean>();
-  for (const s of statuses) completeByTeamLabel.set(`${s.teamId}|${s.label}`, s.isComplete);
+  const completeBySubDepartmentLabel = new Map<string, boolean>();
+  for (const s of statuses) completeBySubDepartmentLabel.set(`${s.subDepartmentId}|${s.label}`, s.isComplete);
 
   // ── 3. Backfill tickets missing a column ────────────────────────────────────
   const tickets = await prisma.ticket.findMany({
@@ -78,10 +78,10 @@ async function main() {
     select: {
       id: true,
       status: true,
-      teamId: true,
-      team: { select: { departmentId: true } },
+      subDepartmentId: true,
+      subDepartment: { select: { departmentId: true } },
       project: {
-        select: { departmentId: true, team: { select: { departmentId: true } } },
+        select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
       },
     },
   });
@@ -94,8 +94,8 @@ async function main() {
   for (const t of tickets) {
     const deptId =
       t.project?.departmentId ??
-      t.project?.team?.departmentId ??
-      t.team?.departmentId ??
+      t.project?.subDepartment?.departmentId ??
+      t.subDepartment?.departmentId ??
       null;
     if (!deptId) {
       unresolvedDept++;
@@ -106,7 +106,7 @@ async function main() {
       unresolvedColumn++;
       continue;
     }
-    const isComplete = completeByTeamLabel.get(`${t.teamId}|${t.status}`) ?? false;
+    const isComplete = completeBySubDepartmentLabel.get(`${t.subDepartmentId}|${t.status}`) ?? false;
     // Prefer an exact column-label match, else the collapse-to-5 mapping.
     const targetLabel = labelMap.has(t.status)
       ? t.status

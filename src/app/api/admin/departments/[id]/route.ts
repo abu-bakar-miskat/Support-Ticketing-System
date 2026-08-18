@@ -36,10 +36,10 @@ export async function DELETE(
 
   const { id } = await params
 
-  const teamCount = await prisma.team.count({ where: { departmentId: id } })
-  if (teamCount > 0) {
+  const subDepartmentCount = await prisma.subDepartment.count({ where: { departmentId: id } })
+  if (subDepartmentCount > 0) {
     return NextResponse.json(
-      { error: `Cannot delete: this department has ${teamCount} team${teamCount === 1 ? "" : "s"}` },
+      { error: `Cannot delete: this department has ${subDepartmentCount} team${subDepartmentCount === 1 ? "" : "s"}` },
       { status: 409 }
     )
   }

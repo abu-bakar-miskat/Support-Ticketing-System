@@ -15,7 +15,7 @@ const CONDITION_LABELS: Record<string, string> = {
   otherwise: "otherwise",
 };
 
-const TEAM_DOT_CLASSES = [
+const SUB_DEPARTMENT_DOT_CLASSES = [
   "bg-[#1ba0e2]",
   "bg-[#7c3aed]",
   "bg-[#0a76b9]",
@@ -36,18 +36,18 @@ export default async function SettingsRoutingRoute() {
   // have no tenant link and would need a RoutingRule.tenantId to isolate fully.)
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
   const dbRules = await prisma.routingRule.findMany({
-    where: { team: { tenantId } },
+    where: { subDepartment: { tenantId } },
     orderBy: { position: "asc" },
-    include: { team: { select: { name: true } } },
+    include: { subDepartment: { select: { name: true } } },
   });
 
-  const teamDotClasses = new Map<string, string>();
+  const subDepartmentDotClasses = new Map<string, string>();
   const rules: RoutingRule[] = dbRules.map((rule, index) => {
-    const teamName = rule.team?.name ?? "Unassigned";
-    if (rule.team && !teamDotClasses.has(teamName)) {
-      teamDotClasses.set(
-        teamName,
-        TEAM_DOT_CLASSES[teamDotClasses.size % TEAM_DOT_CLASSES.length],
+    const subDepartmentName = rule.subDepartment?.name ?? "Unassigned";
+    if (rule.subDepartment && !subDepartmentDotClasses.has(subDepartmentName)) {
+      subDepartmentDotClasses.set(
+        subDepartmentName,
+        SUB_DEPARTMENT_DOT_CLASSES[subDepartmentDotClasses.size % SUB_DEPARTMENT_DOT_CLASSES.length],
       );
     }
     return {
@@ -57,8 +57,8 @@ export default async function SettingsRoutingRoute() {
         CONDITION_LABELS[rule.conditionType] ??
         rule.conditionType.replaceAll("_", " "),
       conditionValue: rule.conditionValue,
-      team: teamName,
-      teamDotClassName: teamDotClasses.get(teamName) ?? UNASSIGNED_DOT_CLASS,
+      subDepartment: subDepartmentName,
+      subDepartmentDotClassName: subDepartmentDotClasses.get(subDepartmentName) ?? UNASSIGNED_DOT_CLASS,
       priority: rule.priority,
       enabled: rule.enabled,
     };

@@ -14,7 +14,7 @@ import { resolveActiveTenantId, departmentInTenant } from "@/lib/tenant-scope";
 
 export type DeptScope = {
   activeDeptId: string;
-  teamIds: string[];
+  subDepartmentIds: string[];
   /** Pass directly to getBoardCards / prisma where clauses */
   allowedDeptIds: string[];
   /** True when the active department is a hub (cross-dept oversight) department */
@@ -32,8 +32,8 @@ type ActiveDeptScope = NonNullable<DeptScope>;
 export type ProfileLike = {
   id?: string;
   role: string;
-  teamId?: string | null;
-  teamIds?: string[];
+  subDepartmentId?: string | null;
+  subDepartmentIds?: string[];
   managedDepartmentIds?: string[];
   grantedAccessDeptIds?: string[];
   /** Subset of grantedAccessDeptIds where the DepartmentAccess grant has fullAccess: true */
@@ -61,14 +61,14 @@ export async function resolveProfileActiveTenantId(
 }
 
 async function buildScope(deptId: string): Promise<DeptScope> {
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     orderBy: { name: "asc" },
     select: { id: true },
   });
   return {
     activeDeptId: deptId,
-    teamIds: teams.map((t) => t.id),
+    subDepartmentIds: subDepartments.map((t) => t.id),
     allowedDeptIds: [deptId],
   };
 }
@@ -85,18 +85,18 @@ async function buildHubScope(
   profile: ProfileLike,
   isManagerOfDept: boolean,
 ): Promise<DeptScope> {
-  const hubTeams = await prisma.team.findMany({
+  const hubSubDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     select: { id: true },
   });
-  const hubTeamIds = hubTeams.map((t) => t.id);
+  const hubSubDepartmentIds = hubSubDepartments.map((t) => t.id);
 
   let projectMemberWhere: Record<string, unknown>;
 
   if (isManagerOfDept) {
     // Managers see all projects assigned to any member of the hub dept
-    const memberRows = await prisma.teamMembership.findMany({
-      where: { teamId: { in: hubTeamIds }, isActive: true },
+    const memberRows = await prisma.subDepartmentMembership.findMany({
+      where: { subDepartmentId: { in: hubSubDepartmentIds }, isActive: true },
       select: { userId: true },
     });
     const memberIds = [...new Set(memberRows.map((m) => m.userId))];
@@ -108,12 +108,12 @@ async function buildHubScope(
 
   const assignedProjects = await prisma.projectMember.findMany({
     where: projectMemberWhere,
-    select: { project: { select: { id: true, teamId: true, departmentId: true } } },
+    select: { project: { select: { id: true, subDepartmentId: true, departmentId: true } } },
   });
 
-  const crossTeamIds = [
+  const crossSubDepartmentIds = [
     ...new Set(
-      assignedProjects.map((pm) => pm.project.teamId).filter((id): id is string => Boolean(id)),
+      assignedProjects.map((pm) => pm.project.subDepartmentId).filter((id): id is string => Boolean(id)),
     ),
   ];
   const crossDeptIds = [
@@ -124,7 +124,7 @@ async function buildHubScope(
 
   return {
     activeDeptId: deptId,
-    teamIds: [...new Set([...hubTeamIds, ...crossTeamIds])],
+    subDepartmentIds: [...new Set([...hubSubDepartmentIds, ...crossSubDepartmentIds])],
     allowedDeptIds: [...new Set([deptId, ...crossDeptIds])],
     isHub: true,
   };
@@ -145,45 +145,45 @@ async function buildDeptCrossAccessScope(
         where: {
           userId: profile.id,
           project: {
-            OR: [{ departmentId: deptId }, { team: { departmentId: deptId } }],
+            OR: [{ departmentId: deptId }, { subDepartment: { departmentId: deptId } }],
           },
         },
         select: {
           projectId: true,
-          project: { select: { teamId: true, departmentId: true } },
+          project: { select: { subDepartmentId: true, departmentId: true } },
         },
       })
     : [];
 
   const projectIds = assignedProjects.map((pm) => pm.projectId);
-  const teamIdSet = new Set<string>();
+  const subDepartmentIdSet = new Set<string>();
 
   for (const pm of assignedProjects) {
-    if (pm.project.teamId) teamIdSet.add(pm.project.teamId);
+    if (pm.project.subDepartmentId) subDepartmentIdSet.add(pm.project.subDepartmentId);
   }
 
   // Legacy projects may have no teamId — include teams that already host their tickets.
   if (projectIds.length > 0) {
-    const ticketTeams = await prisma.ticket.findMany({
+    const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId: { in: projectIds }, deletedAt: null },
-      select: { teamId: true },
+      select: { subDepartmentId: true },
       distinct: ["teamId"],
     });
-    for (const row of ticketTeams) teamIdSet.add(row.teamId);
+    for (const row of ticketSubDepartments) subDepartmentIdSet.add(row.subDepartmentId);
   }
 
   // Still no teams — fall back to any team in the project's department.
-  if (teamIdSet.size === 0 && assignedProjects.length > 0) {
-    const deptTeams = await prisma.team.findMany({
+  if (subDepartmentIdSet.size === 0 && assignedProjects.length > 0) {
+    const deptSubDepartments = await prisma.subDepartment.findMany({
       where: { departmentId: deptId },
       select: { id: true },
     });
-    for (const t of deptTeams) teamIdSet.add(t.id);
+    for (const t of deptSubDepartments) subDepartmentIdSet.add(t.id);
   }
 
   return {
     activeDeptId: deptId,
-    teamIds: [...teamIdSet],
+    subDepartmentIds: [...subDepartmentIdSet],
     allowedDeptIds: [deptId],
     isCrossAccessOnly: true,
   };
@@ -221,46 +221,46 @@ async function buildScopeForDept(
  *    department's default team (first team in the dept, name-sorted).
  * 3. No department context → fall back to the user's active team.
  */
-export function resolveStatusTeamId(opts: {
+export function resolveStatusSubDepartmentId(opts: {
   deptScope: DeptScope | null;
-  cookieTeamId: string | null;
+  cookieSubDepartmentId: string | null;
   membershipIds: string[];
-  primaryTeamId?: string | null;
+  primarySubDepartmentId?: string | null;
 }): string | null {
-  const { deptScope, cookieTeamId, membershipIds, primaryTeamId } = opts;
-  const deptTeamIds = deptScope?.teamIds ?? [];
+  const { deptScope, cookieSubDepartmentId, membershipIds, primarySubDepartmentId } = opts;
+  const deptSubDepartmentIds = deptScope?.subDepartmentIds ?? [];
 
-  if (deptTeamIds.length === 0) {
+  if (deptSubDepartmentIds.length === 0) {
     return (
-      (cookieTeamId && membershipIds.includes(cookieTeamId)
-        ? cookieTeamId
+      (cookieSubDepartmentId && membershipIds.includes(cookieSubDepartmentId)
+        ? cookieSubDepartmentId
         : null) ??
       membershipIds[0] ??
-      primaryTeamId ??
+      primarySubDepartmentId ??
       null
     );
   }
 
-  const deptTeamIdSet = new Set(deptTeamIds);
+  const deptSubDepartmentIdSet = new Set(deptSubDepartmentIds);
 
-  const userTeamInDept =
-    (cookieTeamId && deptTeamIdSet.has(cookieTeamId) ? cookieTeamId : null) ??
-    membershipIds.find((id) => deptTeamIdSet.has(id)) ??
-    (primaryTeamId && deptTeamIdSet.has(primaryTeamId)
-      ? primaryTeamId
+  const userSubDepartmentInDept =
+    (cookieSubDepartmentId && deptSubDepartmentIdSet.has(cookieSubDepartmentId) ? cookieSubDepartmentId : null) ??
+    membershipIds.find((id) => deptSubDepartmentIdSet.has(id)) ??
+    (primarySubDepartmentId && deptSubDepartmentIdSet.has(primarySubDepartmentId)
+      ? primarySubDepartmentId
       : null) ??
     null;
 
-  if (userTeamInDept) return userTeamInDept;
+  if (userSubDepartmentInDept) return userSubDepartmentInDept;
 
   // Viewer is from another department — show the active department's default workflow
-  return deptTeamIds[0] ?? null;
+  return deptSubDepartmentIds[0] ?? null;
 }
 
 /** Prisma filter: all projects belonging to a department (direct or via team). */
 export function deptProjectsForDeptWhere(deptId: string) {
   return {
-    OR: [{ departmentId: deptId }, { team: { departmentId: deptId } }],
+    OR: [{ departmentId: deptId }, { subDepartment: { departmentId: deptId } }],
   };
 }
 
@@ -279,8 +279,8 @@ export function ticketInDeptWhere(deptId: string) {
   return {
     OR: [
       { project: { departmentId: deptId } },
-      { project: { departmentId: null, team: { departmentId: deptId } } },
-      { projectId: null, team: { departmentId: deptId } },
+      { project: { departmentId: null, subDepartment: { departmentId: deptId } } },
+      { projectId: null, subDepartment: { departmentId: deptId } },
     ],
   };
 }
@@ -292,10 +292,10 @@ export const TICKET_DEPT_SELECT = {
     select: {
       departmentId: true,
       department: { select: { id: true, name: true } },
-      team: { select: { department: { select: { id: true, name: true } } } },
+      subDepartment: { select: { department: { select: { id: true, name: true } } } },
     },
   },
-  team: { select: { department: { select: { id: true, name: true } } } },
+  subDepartment: { select: { department: { select: { id: true, name: true } } } },
 } as const;
 
 type DeptRef = { id: string; name: string };
@@ -304,16 +304,16 @@ type DeptRef = { id: string; name: string };
 export function effectiveTicketDept(t: {
   project?: {
     department?: DeptRef | null;
-    team?: { department?: DeptRef | null } | null;
+    subDepartment?: { department?: DeptRef | null } | null;
   } | null;
-  team?: { department?: DeptRef | null } | null;
+  subDepartment?: { department?: DeptRef | null } | null;
 }): DeptRef | null {
   const p = t.project;
   if (p) {
     if (p.department) return p.department;
-    if (p.team?.department) return p.team.department;
+    if (p.subDepartment?.department) return p.subDepartment.department;
   }
-  return t.team?.department ?? null;
+  return t.subDepartment?.department ?? null;
 }
 
 /** Prisma where: projects belonging to the active department. */
@@ -326,10 +326,10 @@ export function buildSprintDeptWhere(deptScope: ActiveDeptScope) {
   return {
     OR: [
       { project: { departmentId: deptScope.activeDeptId } },
-      { project: { teamId: { in: deptScope.teamIds } } },
+      { project: { subDepartmentId: { in: deptScope.subDepartmentIds } } },
       {
         tickets: {
-          some: { deletedAt: null, teamId: { in: deptScope.teamIds } },
+          some: { deletedAt: null, subDepartmentId: { in: deptScope.subDepartmentIds } },
         },
       },
     ],
@@ -357,10 +357,10 @@ export async function resolveSprintListWhere(profile: ProfileLike) {
   if (deptScope) return buildSprintDeptWhere(deptScope);
   // No active department. Admins see the whole *tenant* (not all tenants).
   if (profile.role === "admin") return sprintTenantWhere(profile);
-  const teamIds = profile.teamIds ?? (profile.teamId ? [profile.teamId] : []);
-  if (teamIds.length === 0) return { id: { in: [] as string[] } };
+  const subDepartmentIds = profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  if (subDepartmentIds.length === 0) return { id: { in: [] as string[] } };
   return {
-    tickets: { some: { deletedAt: null, teamId: { in: teamIds } } },
+    tickets: { some: { deletedAt: null, subDepartmentId: { in: subDepartmentIds } } },
   };
 }
 
@@ -390,11 +390,11 @@ export async function projectInScope(profile: ProfileLike, projectId: string) {
     select: {
       kind: true,
       departmentId: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
     },
   });
   if (projectRow) {
-    const deptId = projectRow.departmentId ?? projectRow.team?.departmentId ?? null;
+    const deptId = projectRow.departmentId ?? projectRow.subDepartment?.departmentId ?? null;
     if (deptId && isNativeDeptMemberOrManager(profile, deptId)) {
       const deptScope = await getProfileDeptScope(profile);
       // Cross-access guests only see projects they're explicitly assigned to.
@@ -415,7 +415,7 @@ export async function projectInScope(profile: ProfileLike, projectId: string) {
         members: { some: { userId: profile.id } },
         OR: [
           { departmentId: deptScope.activeDeptId },
-          { team: { departmentId: deptScope.activeDeptId } },
+          { subDepartment: { departmentId: deptScope.activeDeptId } },
         ],
       },
     });
@@ -458,7 +458,7 @@ export async function ticketsInScope(
           members: { some: { userId: profile.id } },
           OR: [
             { departmentId: deptScope.activeDeptId },
-            { team: { departmentId: deptScope.activeDeptId } },
+            { subDepartment: { departmentId: deptScope.activeDeptId } },
           ],
         },
       },
@@ -466,12 +466,12 @@ export async function ticketsInScope(
     return memberCount === ticketIds.length;
   }
 
-  const teamIds =
-    deptScope?.teamIds ??
-    profile.teamIds ??
-    (profile.teamId ? [profile.teamId] : []);
+  const subDepartmentIds =
+    deptScope?.subDepartmentIds ??
+    profile.subDepartmentIds ??
+    (profile.subDepartmentId ? [profile.subDepartmentId] : []);
 
-  if (profile.role !== "admin" && teamIds.length === 0) return false;
+  if (profile.role !== "admin" && subDepartmentIds.length === 0) return false;
 
   const count = await prisma.ticket.count({
     where: {
@@ -480,7 +480,7 @@ export async function ticketsInScope(
       isDraft: false,
       ...(projectId ? { projectId } : {}),
       ...(deptScope || profile.role !== "admin"
-        ? { teamId: { in: teamIds } }
+        ? { subDepartmentId: { in: subDepartmentIds } }
         : {}),
     },
   });
@@ -503,35 +503,35 @@ export async function ticketsInScope(
 }
 
 /** Returns true when a team belongs to the active department scope. */
-export async function teamInScope(profile: ProfileLike, teamId: string) {
+export async function subDepartmentInScope(profile: ProfileLike, subDepartmentId: string) {
   const deptScope = await getProfileDeptScope(profile);
   if (!deptScope) return profile.role === "admin";
-  return deptScope.teamIds.includes(teamId);
+  return deptScope.subDepartmentIds.includes(subDepartmentId);
 }
 
 /**
  * Can read team workflow data (statuses, members) — either in the active
  * department workspace, as a team member, or when assigned to tickets on that team.
  */
-export async function canReadTeamData(
+export async function canReadSubDepartmentData(
   profile: ProfileLike,
-  teamId: string,
+  subDepartmentId: string,
 ): Promise<boolean> {
-  if (await teamInScope(profile, teamId)) return true;
+  if (await subDepartmentInScope(profile, subDepartmentId)) return true;
 
   const membershipIds =
-    profile.teamIds ?? (profile.teamId ? [profile.teamId] : []);
-  if (membershipIds.includes(teamId)) return true;
+    profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  if (membershipIds.includes(subDepartmentId)) return true;
 
   // Managers are virtual members of every team in their managed departments
   if (profile.role === "manager") {
     const managed: string[] = profile.managedDepartmentIds ?? [];
     if (managed.length > 0) {
-      const team = await prisma.team.findUnique({
-        where: { id: teamId },
+      const subDepartment = await prisma.subDepartment.findUnique({
+        where: { id: subDepartmentId },
         select: { departmentId: true },
       });
-      if (team?.departmentId && managed.includes(team.departmentId)) return true;
+      if (subDepartment?.departmentId && managed.includes(subDepartment.departmentId)) return true;
     }
   }
 
@@ -539,7 +539,7 @@ export async function canReadTeamData(
 
   const assignedCount = await prisma.ticket.count({
     where: {
-      teamId,
+      subDepartmentId,
       deletedAt: null,
       OR: [
         { assigneeId: profile.id },
@@ -572,18 +572,18 @@ export function buildPeopleMembershipWhere(
   deptScope: ActiveDeptScope | null,
 ) {
   if (profile.role === "admin") {
-    if (deptScope) return { isActive: true, teamId: { in: deptScope.teamIds } };
+    if (deptScope) return { isActive: true, subDepartmentId: { in: deptScope.subDepartmentIds } };
     // Global (no active dept) still bounded to the active tenant via the team.
     return profile.activeTenantId
-      ? { isActive: true, team: { tenantId: profile.activeTenantId } }
+      ? { isActive: true, subDepartment: { tenantId: profile.activeTenantId } }
       : { isActive: true };
   }
   if (profile.role === "manager" || profile.role === "lead") {
-    const teamIds =
-      deptScope?.teamIds ??
-      profile.teamIds ??
-      (profile.teamId ? [profile.teamId] : []);
-    return { isActive: true, teamId: { in: teamIds } };
+    const subDepartmentIds =
+      deptScope?.subDepartmentIds ??
+      profile.subDepartmentIds ??
+      (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+    return { isActive: true, subDepartmentId: { in: subDepartmentIds } };
   }
   return null;
 }
@@ -640,7 +640,7 @@ async function resolveDeptScopeInner(
 
     // Also allow depts the manager belongs to as a team member
     const memberDeptIds: string[] = ((profile as any).memberships ?? [])
-      .map((m: any) => m.team?.department?.id)
+      .map((m: any) => m.subDepartment?.department?.id)
       .filter((id: unknown): id is string => typeof id === "string");
 
     const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
@@ -651,7 +651,7 @@ async function resolveDeptScopeInner(
 
     if (allowed.length === 0) {
       // Manager with no assigned departments — fall back to their team's dept
-      return getTeamDeptScope(profile);
+      return getSubDepartmentDeptScope(profile);
     }
 
     // Validate cookie: only trust it if it points to an allowed dept
@@ -669,7 +669,7 @@ async function resolveDeptScopeInner(
   const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
   const directMember = profile.directMemberDeptIds ?? [];
   const memberDeptIds: string[] = ((profile as any).memberships ?? [])
-    .map((m: any) => m.team?.department?.id)
+    .map((m: any) => m.subDepartment?.department?.id)
     .filter((id: unknown): id is string => typeof id === "string");
 
   const nativeIds = new Set([...memberDeptIds, ...directMember, ...fullAccessGranted]);
@@ -677,7 +677,7 @@ async function resolveDeptScopeInner(
     granted.length > 0 || directMember.length > 0 || memberDeptIds.length > 1;
 
   if (hasMultiDeptContext) {
-    const primaryScope = await getTeamDeptScope(profile);
+    const primaryScope = await getSubDepartmentDeptScope(profile);
     const primaryDeptId = primaryScope?.activeDeptId ?? null;
     if (primaryDeptId) nativeIds.add(primaryDeptId);
 
@@ -701,19 +701,19 @@ async function resolveDeptScopeInner(
   }
 
   // Single native department — scope to their active team's department
-  return getTeamDeptScope(profile);
+  return getSubDepartmentDeptScope(profile);
 }
 
 async function getHomeDepartmentIds(profile: ProfileLike): Promise<string[]> {
-  const teamIds: string[] =
-    profile.teamIds ?? (profile.teamId ? [profile.teamId] : []);
-  if (teamIds.length === 0) return [];
+  const subDepartmentIds: string[] =
+    profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  if (subDepartmentIds.length === 0) return [];
 
-  const teams = await prisma.team.findMany({
-    where: { id: { in: teamIds } },
+  const subDepartments = await prisma.subDepartment.findMany({
+    where: { id: { in: subDepartmentIds } },
     select: { departmentId: true },
   });
-  return [...new Set(teams.map((t) => t.departmentId))];
+  return [...new Set(subDepartments.map((t) => t.departmentId))];
 }
 
 /**
@@ -749,7 +749,7 @@ export async function getPersonalTaskDeptScope(
     return deptScope;
   }
 
-  const allTeams = await prisma.team.findMany({
+  const allSubDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: { in: allDeptIds } },
     select: { id: true },
     orderBy: { name: "asc" },
@@ -757,23 +757,23 @@ export async function getPersonalTaskDeptScope(
 
   return {
     activeDeptId: activeDeptId ?? homeDeptIds[0] ?? allDeptIds[0],
-    teamIds: allTeams.map((t) => t.id),
+    subDepartmentIds: allSubDepartments.map((t) => t.id),
     allowedDeptIds: allDeptIds,
   };
 }
 
-async function getTeamDeptScope(profile: ProfileLike): Promise<DeptScope> {
-  const teamIds: string[] =
-    profile.teamIds ?? (profile.teamId ? [profile.teamId] : []);
-  if (teamIds.length === 0) return null;
+async function getSubDepartmentDeptScope(profile: ProfileLike): Promise<DeptScope> {
+  const subDepartmentIds: string[] =
+    profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+  if (subDepartmentIds.length === 0) return null;
 
   // Find the department of the first team
-  const team = await prisma.team.findFirst({
-    where: { id: { in: teamIds } },
+  const subDepartment = await prisma.subDepartment.findFirst({
+    where: { id: { in: subDepartmentIds } },
     select: { departmentId: true },
   });
-  if (!team?.departmentId) return null;
-  return buildScope(team.departmentId);
+  if (!subDepartment?.departmentId) return null;
+  return buildScope(subDepartment.departmentId);
 }
 
 /**
@@ -814,11 +814,11 @@ export async function managerCanManageUser(
   const deptScope = await getProfileDeptScope(caller);
   if (!deptScope) return false;
 
-  const teamIds = deptScope.teamIds;
-  const [teamMember, deptMember] = await Promise.all([
-    teamIds.length > 0
-      ? prisma.teamMembership.findFirst({
-          where: { userId: targetUserId, teamId: { in: teamIds }, isActive: true },
+  const subDepartmentIds = deptScope.subDepartmentIds;
+  const [subDepartmentMember, deptMember] = await Promise.all([
+    subDepartmentIds.length > 0
+      ? prisma.subDepartmentMembership.findFirst({
+          where: { userId: targetUserId, subDepartmentId: { in: subDepartmentIds }, isActive: true },
           select: { id: true },
         })
       : Promise.resolve(null),
@@ -828,5 +828,5 @@ export async function managerCanManageUser(
     }),
   ]);
 
-  return Boolean(teamMember || deptMember);
+  return Boolean(subDepartmentMember || deptMember);
 }

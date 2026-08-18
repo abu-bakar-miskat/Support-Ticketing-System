@@ -7,8 +7,8 @@ const mockProfile = {
   name: "Dev User",
   avatarUrl: null,
   role: "developer" as const,
-  teamId: "team-abc",
-  teamIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: "team-abc",
+  subDepartmentIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
@@ -46,9 +46,9 @@ const existingTicket = {
   ticketNumber: 3,
   assigneeId: "00000000-0000-0000-0000-000000000002",
   creatorId: "00000000-0000-0000-0000-000000000009",
-  teamId: "team-abc",
+  subDepartmentId: "team-abc",
   deletedAt: null,
-  team: { prefix: "DEV", departmentId: "dept-1" },
+  subDepartment: { prefix: "DEV", departmentId: "dept-1" },
   assignee: { id: "00000000-0000-0000-0000-000000000002" },
 }
 
@@ -67,7 +67,7 @@ beforeEach(() => {
   // Default: target assignee exists and is on the ticket's team
   mockProfileFindUnique.mockResolvedValue({
     id: "user-3",
-    teamId: "team-abc",
+    subDepartmentId: "team-abc",
     role: "developer",
   } as never)
   mockAssertAssigneeEligible.mockResolvedValue({ ok: true })
@@ -79,7 +79,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
       ticketNumber: 3,
-      team: { prefix: "DEV", name: "Dev" },
+      subDepartment: { prefix: "DEV", name: "Dev" },
       project: { name: "PEN Platform" },
       assignee: { id: "user-3", name: "Sara", email: "sara@pen.com" },
     } as never)
@@ -108,7 +108,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockFindUnique.mockResolvedValue(existingTicket as never)
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
-      team: { prefix: "DEV", name: "Dev" },
+      subDepartment: { prefix: "DEV", name: "Dev" },
       project: { name: "PEN Platform" },
       assignee: { id: sameAssigneeId, name: "Same", email: "same@pen.com" },
     } as never)
@@ -123,7 +123,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockFindUnique.mockResolvedValue(existingTicket as never)
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
-      team: { prefix: "DEV", name: "Dev" },
+      subDepartment: { prefix: "DEV", name: "Dev" },
       project: { name: "PEN Platform" },
       assignee: null,
     } as never)
@@ -145,7 +145,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
       priority: "High",
-      team: { prefix: "DEV", name: "Dev" },
+      subDepartment: { prefix: "DEV", name: "Dev" },
       project: { name: "PEN Platform" },
       assignee: { id: "user-2", name: "Same", email: "same@pen.com" },
     } as never)
@@ -175,7 +175,7 @@ describe("PATCH /api/tickets/[id]", () => {
   })
 
   it("returns 403 when caller is not on the ticket's team (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, teamId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" })
     mockFindUnique.mockResolvedValue(existingTicket as never)
     const res = await PATCH(makeRequest({ assigneeId: "user-3" }), { params: mockParams })
     expect(res.status).toBe(403)
@@ -183,11 +183,11 @@ describe("PATCH /api/tickets/[id]", () => {
   })
 
   it("allows admins regardless of team", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, role: "admin", teamId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, role: "admin", subDepartmentId: "other-team" })
     mockFindUnique.mockResolvedValue(existingTicket as never)
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
-      team: { prefix: "DEV", name: "Dev" },
+      subDepartment: { prefix: "DEV", name: "Dev" },
       project: { name: "PEN Platform" },
       assignee: { id: "user-3", name: "Sara", email: "sara@pen.com" },
     } as never)

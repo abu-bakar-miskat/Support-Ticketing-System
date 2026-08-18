@@ -22,7 +22,7 @@ export default async function Page() {
           members: { some: { userId: profile.id } },
           OR: [
             { departmentId: deptScope.activeDeptId },
-            { team: { departmentId: deptScope.activeDeptId } },
+            { subDepartment: { departmentId: deptScope.activeDeptId } },
           ],
         }
       : buildProjectDeptWhere(deptScope)
@@ -44,7 +44,7 @@ export default async function Page() {
         avatarUrl: true,
         moduleSystemEnabled: true,
         department: { select: { id: true, name: true } },
-        team: { select: { department: { select: { id: true, name: true } } } },
+        subDepartment: { select: { department: { select: { id: true, name: true } } } },
       },
     })
     .then((rows) =>
@@ -55,7 +55,7 @@ export default async function Page() {
         color: p.color,
         avatarUrl: p.avatarUrl,
         moduleSystemEnabled: p.moduleSystemEnabled,
-        department: p.department ?? p.team?.department ?? null,
+        department: p.department ?? p.subDepartment?.department ?? null,
       })),
     );
 

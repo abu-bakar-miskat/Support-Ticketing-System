@@ -49,7 +49,7 @@ describe("createMailboxConnection", () => {
     mockCreate.mockResolvedValue({ id: "mc-1" } as never)
 
     await createMailboxConnection({
-      tenantId: "t1", departmentId: "d1", teamId: "team-1",
+      tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
       scopeType: "DEPARTMENT", address: "Support@Tickets.PenGroup.com",
       authType: "IMAP", plaintextCredentials: "super-secret",
     })
@@ -68,7 +68,7 @@ describe("createMailboxConnection", () => {
   it("stores null credentialsRef for RESEND (no plaintext supplied)", async () => {
     mockCreate.mockResolvedValue({ id: "mc-1" } as never)
     await createMailboxConnection({
-      tenantId: "t1", departmentId: "d1", teamId: "team-1",
+      tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
       scopeType: "DEPARTMENT", address: "support@tickets.pengroup.com", authType: "RESEND",
     })
     expect(encryptMailboxCredentials).not.toHaveBeenCalled()
@@ -102,7 +102,7 @@ describe("updateMailboxConnection", () => {
 
 describe("findMailboxRouteForRecipients", () => {
   it("matches on exact (case-insensitive) address, stripping angle brackets", async () => {
-    mockFindFirst.mockResolvedValue({ id: "mc-1", address: "support@tickets.pengroup.com", tenantId: "t1", departmentId: "d1", teamId: "team-1" } as never)
+    mockFindFirst.mockResolvedValue({ id: "mc-1", address: "support@tickets.pengroup.com", tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1" } as never)
 
     const route = await findMailboxRouteForRecipients(['"PEN" <Support@Tickets.PenGroup.com>'])
 

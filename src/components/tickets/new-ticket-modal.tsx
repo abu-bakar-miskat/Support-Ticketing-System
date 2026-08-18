@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
-import { teamKeys } from "@/hooks/queries/keys";
-import { getTeamStatuses } from "@/lib/api/teams";
+import { subDepartmentKeys } from "@/hooks/queries/keys";
+import { getSubDepartmentStatuses } from "@/lib/api/sub-departments";
 import { useSprints } from "@/hooks/queries/use-sprints";
 import { useProjectModules } from "@/hooks/queries/use-modules";
 import { getTemplates } from "@/lib/api/templates";
@@ -40,8 +40,8 @@ import { AvatarVisual } from "@/components/ui/user-avatar";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { getPortalRoot } from "@/lib/portal-root";
 
-type Project = { id: string; name: string; teamId?: string | null; kind?: string };
-type TeamMember = UserListPerson;
+type Project = { id: string; name: string; subDepartmentId?: string | null; kind?: string };
+type SubDepartmentMember = UserListPerson;
 type StatusOption = { id: string; label: string; color: string };
 type TicketTemplate = {
   id: string;
@@ -87,20 +87,20 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 interface NewTicketModalProps {
   projects: Project[];
-  teamMembers: TeamMember[];
+  subDepartmentMembers: SubDepartmentMember[];
   defaultProjectName?: string;
   /** Pre-select a specific project (used when opening from a project board) */
   defaultProjectId?: string;
   /** Pre-select a status (used when opening from a board column + button) */
   defaultStatus?: string;
   /** Lock the ticket to a specific team (used when opening from a team board tab) */
-  defaultTeamId?: string;
+  defaultSubDepartmentId?: string;
   /** Default board when creating from project All tasks (must be in boardTeams) */
-  defaultBoardTeamId?: string;
+  defaultBoardSubDepartmentId?: string;
   /** Project board tabs — when multiple, user picks which board the task belongs to */
-  boardTeams?: { id: string; name: string }[];
+  boardSubDepartments?: { id: string; name: string }[];
   /** When true, team/board cannot be changed */
-  lockTeamId?: boolean;
+  lockSubDepartmentId?: boolean;
   /**
    * When true, project is read-only. Defaults to true whenever `defaultProjectId`
    * is set (project boards). Pass `false` to preselect but still allow changing.
@@ -109,7 +109,7 @@ interface NewTicketModalProps {
   /** Team-specific statuses to show in the status dropdown */
   statuses?: StatusOption[];
   /** Team members to show in the assignee dropdown (overrides global teamMembers) */
-  teamMembersForCreate?: UserListPerson[];
+  subDepartmentMembersForCreate?: UserListPerson[];
   /** When true, the assignee list is still loading — avoids a flash of "No members found" */
   membersLoading?: boolean;
   /** When set, the created ticket is linked as a sub-ticket of this parent */
@@ -122,7 +122,7 @@ interface NewTicketModalProps {
     title: string;
     status: string;
     priority: string;
-    teamPrefix: string;
+    subDepartmentPrefix: string;
     ticketNumber: number;
     assigneeId: string | null;
     assigneeName: string | null;
@@ -134,17 +134,17 @@ interface NewTicketModalProps {
 
 export function NewTicketModal({
   projects,
-  teamMembers,
+  subDepartmentMembers,
   defaultProjectName,
   defaultProjectId,
   defaultStatus,
-  defaultTeamId,
-  defaultBoardTeamId,
-  boardTeams,
-  lockTeamId = false,
+  defaultSubDepartmentId,
+  defaultBoardSubDepartmentId,
+  boardSubDepartments,
+  lockSubDepartmentId = false,
   lockProject,
   statuses,
-  teamMembersForCreate,
+  subDepartmentMembersForCreate,
   membersLoading = false,
   parentId,
   parentHumanId,
@@ -153,9 +153,9 @@ export function NewTicketModal({
 }: NewTicketModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const effectiveMembers = teamMembersForCreate
-    ? teamMembersForCreate
-    : teamMembers;
+  const effectiveMembers = subDepartmentMembersForCreate
+    ? subDepartmentMembersForCreate
+    : subDepartmentMembers;
   const currentUserId = useAuthStore((s) => s.user?.id ?? "");
   const [submitting, setSubmitting] = useState<"draft" | "create" | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -176,13 +176,13 @@ export function NewTicketModal({
       : "";
   const [selectedProjectId, setSelectedProjectId] =
     useState<string>(initialProjectId);
-  const initialBoardTeamId =
-    defaultBoardTeamId ??
-    defaultTeamId ??
-    boardTeams?.[0]?.id ??
+  const initialBoardSubDepartmentId =
+    defaultBoardSubDepartmentId ??
+    defaultSubDepartmentId ??
+    boardSubDepartments?.[0]?.id ??
     null;
-  const [selectedBoardTeamId, setSelectedBoardTeamId] = useState(
-    () => initialBoardTeamId,
+  const [selectedBoardSubDepartmentId, setSelectedBoardSubDepartmentId] = useState(
+    () => initialBoardSubDepartmentId,
   );
   const listedProjects = projects.filter(
     (p) => !isMiscProjectName(p.name) && p.kind !== "support",
@@ -193,25 +193,25 @@ export function NewTicketModal({
       : null;
   const projectLocked =
     (lockProject ?? Boolean(defaultProjectId)) && Boolean(defaultProject);
-  const activeTeamId = lockTeamId
-    ? defaultTeamId ?? null
-    : boardTeams && boardTeams.length > 0
-      ? boardTeams.length === 1
-        ? boardTeams[0].id
-        : selectedBoardTeamId
-      : selectedProject?.teamId ?? defaultTeamId ?? null;
+  const activeSubDepartmentId = lockSubDepartmentId
+    ? defaultSubDepartmentId ?? null
+    : boardSubDepartments && boardSubDepartments.length > 0
+      ? boardSubDepartments.length === 1
+        ? boardSubDepartments[0].id
+        : selectedBoardSubDepartmentId
+      : selectedProject?.subDepartmentId ?? defaultSubDepartmentId ?? null;
   const propStatuses = statuses?.length ? statuses : undefined;
 
   // Fetch the real team statuses; fall back to prop or defaults while loading
   const { data: fetchedStatuses } = useQuery({
-    queryKey: teamKeys.statuses(activeTeamId ?? ""),
-    queryFn: () => getTeamStatuses(activeTeamId!),
-    enabled: !!activeTeamId && !propStatuses,
+    queryKey: subDepartmentKeys.statuses(activeSubDepartmentId ?? ""),
+    queryFn: () => getSubDepartmentStatuses(activeSubDepartmentId!),
+    enabled: !!activeSubDepartmentId && !propStatuses,
     staleTime: 5 * 60 * 1000,
     initialData: () => {
-      if (!activeTeamId) return undefined;
-      return queryClient.getQueryData<Awaited<ReturnType<typeof getTeamStatuses>>>(
-        teamKeys.statuses(activeTeamId),
+      if (!activeSubDepartmentId) return undefined;
+      return queryClient.getQueryData<Awaited<ReturnType<typeof getSubDepartmentStatuses>>>(
+        subDepartmentKeys.statuses(activeSubDepartmentId),
       );
     },
   });
@@ -404,7 +404,7 @@ export function NewTicketModal({
       })(),
       labels,
       assetLinks,
-      teamId: activeTeamId || defaultTeamId || undefined,
+      subDepartmentId: activeSubDepartmentId || defaultSubDepartmentId || undefined,
       parentId: parentId || undefined,
       storyPoints: storyPoints ?? undefined,
       estimatedTime: parseTimeInput(estInput) ?? undefined,
@@ -461,7 +461,7 @@ export function NewTicketModal({
         title: json.title,
         status: json.status,
         priority: json.priority,
-        teamPrefix: json.team?.prefix ?? "",
+        subDepartmentPrefix: json.subDepartment?.prefix ?? "",
         ticketNumber: json.ticketNumber ?? 0,
         assigneeId: json.assignee?.id ?? null,
         assigneeName: json.assignee?.name ?? null,
@@ -483,7 +483,7 @@ export function NewTicketModal({
     await createTicket(false);
   }
 
-  const showBoardField = Boolean(boardTeams && boardTeams.length > 0 && !lockTeamId);
+  const showBoardField = Boolean(boardSubDepartments && boardSubDepartments.length > 0 && !lockSubDepartmentId);
   const hasSprints = projectSprints.length > 0;
   const hasModules = moduleSystemEnabled;
 
@@ -891,19 +891,19 @@ export function NewTicketModal({
                 )}
 
                 {showBoardField ? (
-                  boardTeams!.length > 1 ? (
+                  boardSubDepartments!.length > 1 ? (
                     <StyledSelect
                       label="Board"
                       id="boardTeamId"
                       name="boardTeamId"
-                      value={selectedBoardTeamId ?? ""}
-                      onChange={setSelectedBoardTeamId}
-                      options={boardTeams!.map((t) => ({ value: t.id, label: t.name }))}
+                      value={selectedBoardSubDepartmentId ?? ""}
+                      onChange={setSelectedBoardSubDepartmentId}
+                      options={boardSubDepartments!.map((t) => ({ value: t.id, label: t.name }))}
                     />
                   ) : (
                     <FormField label="Board">
                       <div className={READONLY_CLASS}>
-                        {boardTeams![0].name}
+                        {boardSubDepartments![0].name}
                       </div>
                     </FormField>
                   )
@@ -1660,7 +1660,7 @@ function AssigneePicker({
   setAssigneeOpen: Dispatch<SetStateAction<boolean>>;
   assigneeSearch: string;
   setAssigneeSearch: (value: string) => void;
-  effectiveMembers: TeamMember[];
+  effectiveMembers: SubDepartmentMember[];
   defaultAssigneeId?: string;
   membersLoading?: boolean;
 }) {

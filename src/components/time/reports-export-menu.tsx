@@ -5,7 +5,7 @@ import { Download, ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { exportReports, type ReportExportFormat } from "@/lib/api/reports";
-import type { ReportsOverview, TeamTimeResponse } from "@/lib/api/reports";
+import type { ReportsOverview, SubDepartmentTimeResponse } from "@/lib/api/reports";
 import { buildReportsExportDoc } from "@/lib/exports/reports-export-doc";
 
 const EXPORT_OPTIONS: { format: ReportExportFormat; label: string }[] = [
@@ -15,25 +15,25 @@ const EXPORT_OPTIONS: { format: ReportExportFormat; label: string }[] = [
 ];
 
 export function ReportsExportMenu({
-  teamTime,
+  subDepartmentTime,
   overview,
   rangeLabel,
   scopeLabel,
 }: {
-  teamTime?: TeamTimeResponse;
+  subDepartmentTime?: SubDepartmentTimeResponse;
   overview?: ReportsOverview;
   rangeLabel: string;
   scopeLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const ready = !!teamTime || !!overview;
+  const ready = !!subDepartmentTime || !!overview;
 
   async function handleExport(format: ReportExportFormat) {
     setOpen(false);
     setBusy(true);
     try {
-      const doc = buildReportsExportDoc({ teamTime, overview, rangeLabel, scopeLabel });
+      const doc = buildReportsExportDoc({ subDepartmentTime, overview, rangeLabel, scopeLabel });
       if (doc.sheets.length === 0) {
         toast.error("Nothing to export yet");
         return;

@@ -322,7 +322,7 @@ function JoinRequestCard({
             wants to join
           </span>
           <span className="shrink-0 font-sans text-[11.5px] font-semibold text-pen-foreground">
-            {item.teamName}
+            {item.subDepartmentName}
           </span>
           <span className="ml-auto shrink-0 font-sans text-[11px] text-pen-subtle">
             {item.time}
@@ -451,7 +451,7 @@ export function InboxPage({
 
   function openJoinRequest(item: JoinRequestNotification) {
     markDone(item.id);
-    router.push("/settings/teams");
+    router.push("/settings/sub-departments");
   }
 
   function markAllRead() {

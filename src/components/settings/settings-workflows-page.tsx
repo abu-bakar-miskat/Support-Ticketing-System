@@ -18,27 +18,27 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  getTeamStatuses,
-  createTeamStatus,
-  updateTeamStatus,
-  deleteTeamStatus,
-  reorderTeamStatuses,
-  getTeamGitHubMap,
-  updateTeamGitHubMap,
-  type TeamGitHubMap,
-  type TeamGitHubMapResponse,
-} from "@/lib/api/teams";
+  getSubDepartmentStatuses,
+  createSubDepartmentStatus,
+  updateSubDepartmentStatus,
+  deleteSubDepartmentStatus,
+  reorderSubDepartmentStatuses,
+  getSubDepartmentGitHubMap,
+  updateSubDepartmentGitHubMap,
+  type SubDepartmentGitHubMap,
+  type SubDepartmentGitHubMapResponse,
+} from "@/lib/api/sub-departments";
 import { useLabels } from "@/hooks/queries/use-labels";
 import {
-  patchTeamStatusInCaches,
-  replaceTeamStatusesInCaches,
-} from "@/hooks/queries/sync-team-status-caches";
+  patchSubDepartmentStatusInCaches,
+  replaceSubDepartmentStatusesInCaches,
+} from "@/hooks/queries/sync-sub-department-status-caches";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-type TeamStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
-type Team = { id: string; name: string; prefix: string };
+type SubDepartmentStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
+type SubDepartment = { id: string; name: string; prefix: string };
 
-type GitHubMapField = keyof TeamGitHubMap;
+type GitHubMapField = keyof SubDepartmentGitHubMap;
 
 const SENTINEL_AUTO = "__auto__";
 const SENTINEL_NONE = "__none__";
@@ -46,7 +46,7 @@ const SENTINEL_NONE = "__none__";
 const GITHUB_MAP_ROWS: {
   field: GitHubMapField;
   label: string;
-  defaultKey: keyof TeamGitHubMapResponse["defaults"];
+  defaultKey: keyof SubDepartmentGitHubMapResponse["defaults"];
 }[] = [
   { field: "onPrOpened", label: "PR opened", defaultKey: "prOpened" },
   { field: "onPrReadyForReview", label: "Marked ready for review", defaultKey: "prReadyForReview" },
@@ -67,7 +67,7 @@ function CategoryLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function groupStatuses(statuses: TeamStatus[]) {
+function groupStatuses(statuses: SubDepartmentStatus[]) {
   const sorted = [...statuses].sort((a, b) => a.order - b.order);
   if (sorted.length === 0) return { unstarted: [], active: [], done: [] };
   const unstarted = [sorted[0]];
@@ -77,15 +77,15 @@ function groupStatuses(statuses: TeamStatus[]) {
 }
 
 type Props = {
-  teams: Team[];
-  defaultTeamId: string | null;
-  initialStatuses: TeamStatus[];
+  subDepartments: SubDepartment[];
+  defaultSubDepartmentId: string | null;
+  initialStatuses: SubDepartmentStatus[];
 };
 
-export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }: Props) {
+export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, initialStatuses }: Props) {
   const queryClient = useQueryClient();
-  const [selectedTeamId, setSelectedTeamId] = useState(defaultTeamId ?? "");
-  const [statuses, setStatuses] = useState<TeamStatus[]>(initialStatuses);
+  const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState(defaultSubDepartmentId ?? "");
+  const [statuses, setStatuses] = useState<SubDepartmentStatus[]>(initialStatuses);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editColor, setEditColor] = useState("");
@@ -97,26 +97,26 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [githubMap, setGithubMap] = useState<TeamGitHubMapResponse | null>(null);
+  const [githubMap, setGithubMap] = useState<SubDepartmentGitHubMapResponse | null>(null);
   const [githubMapLoading, setGithubMapLoading] = useState(false);
   const [githubMapError, setGithubMapError] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<GitHubMapField | null>(null);
   // Which team the GitHub automation card's state belongs to; guards late-resolving
   // requests started on one team from clobbering another team's state after a switch.
-  const githubMapTeamRef = useRef<string | null>(null);
+  const githubMapSubDepartmentRef = useRef<string | null>(null);
   const { data: labelOptions = [], isLoading: labelsLoading } = useLabels();
 
   useEffect(() => {
-    if (selectedTeamId && statuses.length > 0) {
-      replaceTeamStatusesInCaches(queryClient, selectedTeamId, statuses);
+    if (selectedSubDepartmentId && statuses.length > 0) {
+      replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, statuses);
     }
-  }, [selectedTeamId, statuses, queryClient]);
+  }, [selectedSubDepartmentId, statuses, queryClient]);
 
-  async function loadStatuses(teamId: string) {
-    getTeamStatuses(teamId)
+  async function loadStatuses(subDepartmentId: string) {
+    getSubDepartmentStatuses(subDepartmentId)
       .then((next) => {
         setStatuses(next);
-        replaceTeamStatusesInCaches(queryClient, teamId, next);
+        replaceSubDepartmentStatusesInCaches(queryClient, subDepartmentId, next);
       })
       .catch(() => null);
   }
@@ -126,27 +126,27 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
       ? current.filter((l) => l !== labelName)
       : [...current, labelName];
     setStatuses((prev) => prev.map((s) => (s.id === id ? { ...s, allowedLabels: next } : s)));
-    patchTeamStatusInCaches(queryClient, selectedTeamId, id, { allowedLabels: next });
+    patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, { allowedLabels: next });
     try {
-      const updated = (await updateTeamStatus(selectedTeamId, id, {
+      const updated = (await updateSubDepartmentStatus(selectedSubDepartmentId, id, {
         allowedLabels: next,
-      })) as TeamStatus;
-      patchTeamStatusInCaches(queryClient, selectedTeamId, id, {
+      })) as SubDepartmentStatus;
+      patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, {
         allowedLabels: updated.allowedLabels,
       });
     } catch {
       setStatuses((prev) => prev.map((s) => (s.id === id ? { ...s, allowedLabels: current } : s)));
-      patchTeamStatusInCaches(queryClient, selectedTeamId, id, { allowedLabels: current });
+      patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, { allowedLabels: current });
       toast.error("Failed to update linked labels");
     }
   }
 
   // Load the GitHub automation config whenever the selected team changes (including on mount).
   useEffect(() => {
-    if (!selectedTeamId) return;
+    if (!selectedSubDepartmentId) return;
     let cancelled = false;
-    async function loadGithubMap(teamId: string) {
-      githubMapTeamRef.current = teamId;
+    async function loadGithubMap(subDepartmentId: string) {
+      githubMapSubDepartmentRef.current = subDepartmentId;
       // Clear the previous team's card so it can't stay rendered/interactive
       // (and no per-field save can appear in-flight) while the new team loads.
       setGithubMap(null);
@@ -154,7 +154,7 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
       setGithubMapLoading(true);
       setGithubMapError(null);
       try {
-        const data = await getTeamGitHubMap(teamId);
+        const data = await getSubDepartmentGitHubMap(subDepartmentId);
         if (!cancelled) setGithubMap(data);
       } catch {
         if (!cancelled) setGithubMapError("Failed to load GitHub automation settings");
@@ -162,21 +162,21 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
         if (!cancelled) setGithubMapLoading(false);
       }
     }
-    void loadGithubMap(selectedTeamId);
+    void loadGithubMap(selectedSubDepartmentId);
     return () => {
       cancelled = true;
     };
-  }, [selectedTeamId]);
+  }, [selectedSubDepartmentId]);
 
   async function handleGitHubMapChange(field: GitHubMapField, raw: string) {
-    if (!selectedTeamId || !githubMap) return;
-    const teamId = selectedTeamId;
+    if (!selectedSubDepartmentId || !githubMap) return;
+    const subDepartmentId = selectedSubDepartmentId;
     const value = raw === SENTINEL_AUTO ? null : raw === SENTINEL_NONE ? "" : raw;
     const prevConfig = githubMap.config;
     const prevValue = prevConfig ? prevConfig[field] : null;
     if (value === prevValue) return;
 
-    const baseConfig: TeamGitHubMap = prevConfig ?? {
+    const baseConfig: SubDepartmentGitHubMap = prevConfig ?? {
       onPrOpened: null,
       onPrReadyForReview: null,
       onPrMerged: null,
@@ -186,32 +186,32 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
     );
     setSavingField(field);
     try {
-      const updated = await updateTeamGitHubMap(teamId, { [field]: value });
+      const updated = await updateSubDepartmentGitHubMap(subDepartmentId, { [field]: value });
       // Ignore late responses if the card now shows a different team.
-      if (githubMapTeamRef.current === teamId) {
+      if (githubMapSubDepartmentRef.current === subDepartmentId) {
         setGithubMap((current) => (current ? { ...current, config: updated } : current));
       }
     } catch {
-      if (githubMapTeamRef.current === teamId) {
+      if (githubMapSubDepartmentRef.current === subDepartmentId) {
         setGithubMap((current) => (current ? { ...current, config: prevConfig } : current));
       }
       toast.error("Failed to update GitHub automation setting");
     } finally {
-      if (githubMapTeamRef.current === teamId) {
+      if (githubMapSubDepartmentRef.current === subDepartmentId) {
         setSavingField(null);
       }
     }
   }
 
-  function handleTeamChange(teamId: string) {
-    setSelectedTeamId(teamId);
+  function handleSubDepartmentChange(subDepartmentId: string) {
+    setSelectedSubDepartmentId(subDepartmentId);
     setEditingId(null);
     setAdding(false);
     setError(null);
-    startTransition(() => { loadStatuses(teamId); });
+    startTransition(() => { loadStatuses(subDepartmentId); });
   }
 
-  function startEdit(s: TeamStatus) {
+  function startEdit(s: SubDepartmentStatus) {
     setEditingId(s.id);
     setEditLabel(s.label);
     setEditColor(s.color);
@@ -222,12 +222,12 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
     if (!editLabel.trim()) return;
     setError(null);
     try {
-      const updated = await updateTeamStatus(selectedTeamId, id, {
+      const updated = await updateSubDepartmentStatus(selectedSubDepartmentId, id, {
         label: editLabel.trim(),
         color: editColor,
-      }) as TeamStatus;
+      }) as SubDepartmentStatus;
       setStatuses((prev) => prev.map((s) => (s.id === id ? updated : s)));
-      patchTeamStatusInCaches(queryClient, selectedTeamId, id, updated);
+      patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, updated);
       setEditingId(null);
     } catch {
       setError("Failed to save");
@@ -237,10 +237,10 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
   async function deleteStatus(id: string) {
     setError(null);
     try {
-      await deleteTeamStatus(selectedTeamId, id);
+      await deleteSubDepartmentStatus(selectedSubDepartmentId, id);
       setStatuses((prev) => {
         const next = prev.filter((s) => s.id !== id);
-        replaceTeamStatusesInCaches(queryClient, selectedTeamId, next);
+        replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
         return next;
       });
     } catch {
@@ -249,16 +249,16 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
   }
 
   async function addStatus() {
-    if (!newLabel.trim() || !selectedTeamId) return;
+    if (!newLabel.trim() || !selectedSubDepartmentId) return;
     setError(null);
     try {
-      const created = await createTeamStatus(selectedTeamId, {
+      const created = await createSubDepartmentStatus(selectedSubDepartmentId, {
         label: newLabel.trim(),
         color: newColor,
-      }) as TeamStatus;
+      }) as SubDepartmentStatus;
       setStatuses((prev) => {
         const next = [...prev, created];
-        replaceTeamStatusesInCaches(queryClient, selectedTeamId, next);
+        replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
         return next;
       });
       setNewLabel("");
@@ -273,11 +273,11 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
     setError(null);
     setTogglingId(id);
     try {
-      const updated = await updateTeamStatus(selectedTeamId, id, { isComplete: !current }) as TeamStatus;
+      const updated = await updateSubDepartmentStatus(selectedSubDepartmentId, id, { isComplete: !current }) as SubDepartmentStatus;
       setStatuses((prev) =>
         prev.map((s) => (s.id === id ? { ...s, isComplete: updated.isComplete } : s))
       );
-      patchTeamStatusInCaches(queryClient, selectedTeamId, id, {
+      patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, {
         isComplete: updated.isComplete,
       });
     } catch {
@@ -298,10 +298,10 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
     reordered.splice(toIdx, 0, moved);
     const withNewOrders = reordered.map((s, i) => ({ ...s, order: i }));
     setStatuses(withNewOrders);
-    replaceTeamStatusesInCaches(queryClient, selectedTeamId, withNewOrders);
+    replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, withNewOrders);
 
-    await reorderTeamStatuses(
-      selectedTeamId,
+    await reorderSubDepartmentStatuses(
+      selectedSubDepartmentId,
       reordered.map((s, i) => ({ id: s.id, order: i })),
     ).catch(() => null);
   }
@@ -309,7 +309,7 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
   const { unstarted, active, done } = groupStatuses(statuses);
   const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
 
-  function renderRow(s: TeamStatus) {
+  function renderRow(s: SubDepartmentStatus) {
     const isEditing = editingId === s.id;
 
     if (isEditing) {
@@ -461,7 +461,7 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
     );
   }
 
-  const selectedTeam = teams.find((t) => t.id === selectedTeamId);
+  const selectedSubDepartment = subDepartments.find((t) => t.id === selectedSubDepartmentId);
 
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
@@ -476,16 +476,16 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
       {/* Team selector */}
       <div className="flex items-center gap-3">
         <label className="shrink-0 font-sans text-[12px] font-medium text-pen-muted">Team</label>
-        <Select value={selectedTeamId} onValueChange={(v) => v && handleTeamChange(v)}>
+        <Select value={selectedSubDepartmentId} onValueChange={(v) => v && handleSubDepartmentChange(v)}>
           <SelectTrigger className="h-8 min-w-48 rounded-[7px] border-pen-card-border bg-pen-card font-sans text-[12.5px] text-pen-foreground">
             <SelectValue>
-              {teams.find((t) => t.id === selectedTeamId)
-                ? `${teams.find((t) => t.id === selectedTeamId)!.prefix} — ${teams.find((t) => t.id === selectedTeamId)!.name}`
+              {subDepartments.find((t) => t.id === selectedSubDepartmentId)
+                ? `${subDepartments.find((t) => t.id === selectedSubDepartmentId)!.prefix} — ${subDepartments.find((t) => t.id === selectedSubDepartmentId)!.name}`
                 : "Select team"}
             </SelectValue>
           </SelectTrigger>
           <SelectContent align="start">
-            {teams.map((t) => (
+            {subDepartments.map((t) => (
               <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
                 {t.prefix} — {t.name}
               </SelectItem>
@@ -496,11 +496,11 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
       </div>
 
       {/* Status list */}
-      {selectedTeamId && (
+      {selectedSubDepartmentId && (
         <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pb-2 pt-4">
           <div className="pb-1.5">
             <h2 className="font-sans text-sm font-semibold text-pen-foreground">
-              {selectedTeam?.prefix} workflow
+              {selectedSubDepartment?.prefix} workflow
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
               Status columns shown on the board. First = starting, last = done.
@@ -579,7 +579,7 @@ export function SettingsWorkflowsPage({ teams, defaultTeamId, initialStatuses }:
       )}
 
       {/* GitHub automation */}
-      {selectedTeamId && (
+      {selectedSubDepartmentId && (
         <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pb-2 pt-4">
           <div className="pb-1.5">
             <h2 className="font-sans text-sm font-semibold text-pen-foreground">GitHub automation</h2>

@@ -25,33 +25,33 @@ export default async function SettingsWorkflowsRoute() {
   const allowedDeptIds = isManager
     ? [...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])]
     : [];
-  const leadTeamIds = isLead
-    ? (profile.teamIds?.length ? profile.teamIds : profile.teamId ? [profile.teamId] : [])
+  const leadSubDepartmentIds = isLead
+    ? (profile.subDepartmentIds?.length ? profile.subDepartmentIds : profile.subDepartmentId ? [profile.subDepartmentId] : [])
     : [];
 
   const activeDeptId = deptScope?.activeDeptId ?? null;
 
-  const teamWhere = isAdmin
+  const subDepartmentWhere = isAdmin
     ? activeDeptId ? { departmentId: activeDeptId } : { tenantId: profile.activeTenantId ?? "__no_tenant__" }   // admin: active dept, else whole tenant
     : isManager
-      ? deptScope?.teamIds?.length
-        ? { id: { in: deptScope.teamIds } }
+      ? deptScope?.subDepartmentIds?.length
+        ? { id: { in: deptScope.subDepartmentIds } }
         : allowedDeptIds.length
           ? { departmentId: { in: allowedDeptIds } }
           : { id: { in: [] as string[] } }
-      : { id: { in: leadTeamIds.length ? leadTeamIds : [] as string[] } };
+      : { id: { in: leadSubDepartmentIds.length ? leadSubDepartmentIds : [] as string[] } };
 
-  const teams = await prisma.team.findMany({
-    where: teamWhere,
+  const subDepartments = await prisma.subDepartment.findMany({
+    where: subDepartmentWhere,
     orderBy: { name: "asc" },
     select: { id: true, name: true, prefix: true },
   });
 
-  const defaultTeamId = teams[0]?.id ?? null;
+  const defaultSubDepartmentId = subDepartments[0]?.id ?? null;
 
-  const initialStatuses = defaultTeamId
-    ? await prisma.teamStatus.findMany({
-        where: { teamId: defaultTeamId },
+  const initialStatuses = defaultSubDepartmentId
+    ? await prisma.subDepartmentStatus.findMany({
+        where: { subDepartmentId: defaultSubDepartmentId },
         orderBy: { order: "asc" },
         select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
       })
@@ -59,8 +59,8 @@ export default async function SettingsWorkflowsRoute() {
 
   return (
     <SettingsWorkflowsPage
-      teams={teams}
-      defaultTeamId={defaultTeamId}
+      subDepartments={subDepartments}
+      defaultSubDepartmentId={defaultSubDepartmentId}
       initialStatuses={initialStatuses}
     />
   );

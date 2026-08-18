@@ -368,7 +368,7 @@ function ProjectListRow({
             </div>
             <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-subtle">
               {project.departmentName ?? "No department"}
-              {project.teamName ? ` · ${project.teamName}` : ""}
+              {project.subDepartmentName ? ` · ${project.subDepartmentName}` : ""}
             </p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 md:hidden">
               {!isSupport && <StatusPill status={status.label} color={status.color} size="sm" />}
@@ -556,7 +556,7 @@ function ProjectCard({
             </div>
             <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-subtle">
               {project.departmentName ?? "No department"}
-              {project.teamName ? ` · ${project.teamName}` : ""}
+              {project.subDepartmentName ? ` · ${project.subDepartmentName}` : ""}
             </p>
           </div>
         </Link>

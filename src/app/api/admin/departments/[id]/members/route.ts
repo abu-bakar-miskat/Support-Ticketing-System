@@ -28,30 +28,30 @@ export async function DELETE(
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 })
 
   // Find all teams in this department
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     select: { id: true },
   })
-  const teamIds = teams.map((t) => t.id)
+  const subDepartmentIds = subDepartments.map((t) => t.id)
 
-  if (teamIds.length === 0) return new NextResponse(null, { status: 204 })
+  if (subDepartmentIds.length === 0) return new NextResponse(null, { status: 204 })
 
   // Use an interactive transaction so we can find the remaining team after deletion
   await prisma.$transaction(async (tx) => {
     // 1. Remove only memberships for this department's teams
-    await tx.teamMembership.deleteMany({ where: { userId, teamId: { in: teamIds } } })
+    await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId: { in: subDepartmentIds } } })
 
     // 2. If profile.teamId was in this dept, point it to the next remaining active team
     //    (from any other department) rather than nulling it out entirely.
-    const remaining = await tx.teamMembership.findFirst({
+    const remaining = await tx.subDepartmentMembership.findFirst({
       where: { userId, isActive: true },
       orderBy: { joinedAt: "asc" },
-      select: { teamId: true },
+      select: { subDepartmentId: true },
     })
 
     await tx.profile.updateMany({
-      where: { id: userId, teamId: { in: teamIds } },
-      data: { teamId: remaining?.teamId ?? null },
+      where: { id: userId, subDepartmentId: { in: subDepartmentIds } },
+      data: { subDepartmentId: remaining?.subDepartmentId ?? null },
     })
   })
 

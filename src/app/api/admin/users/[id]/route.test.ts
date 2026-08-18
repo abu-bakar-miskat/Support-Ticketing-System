@@ -7,8 +7,8 @@ const mockAdmin = {
   name: "Admin",
   avatarUrl: null,
   role: "admin" as const,
-  teamId: null,
-  teamIds: [], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: null,
+  subDepartmentIds: [], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
@@ -58,9 +58,9 @@ describe("PATCH /api/admin/users/[id]", () => {
 
   it("returns 200 when assigning a team", async () => {
     const targetId = "00000000-0000-0000-0000-000000000002"
-    mockUpdate.mockResolvedValue({ ...mockAdmin, id: targetId, teamId: "team1" } as never)
+    mockUpdate.mockResolvedValue({ ...mockAdmin, id: targetId, subDepartmentId: "team1" } as never)
 
-    const { request, params } = makeRequest(targetId, { teamId: "team1" })
+    const { request, params } = makeRequest(targetId, { subDepartmentId: "team1" })
     const res = await PATCH(request, { params })
 
     expect(res.status).toBe(200)

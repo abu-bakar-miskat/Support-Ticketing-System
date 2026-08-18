@@ -23,10 +23,10 @@ const projectSelect = {
   kind: true,
   color: true,
   avatarUrl: true,
-  teamId: true,
+  subDepartmentId: true,
   departmentId: true,
   projectStatus: true,
-  team: { select: { department: { select: { id: true, name: true } } } },
+  subDepartment: { select: { department: { select: { id: true, name: true } } } },
   department: { select: { id: true, name: true } },
 } as const;
 
@@ -42,15 +42,15 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
   const grantedDeptIds: string[] = profile.grantedAccessDeptIds ?? [];
   const directMemberDeptIds: string[] = profile.directMemberDeptIds ?? [];
 
-  const membershipTeams = memberships.map((m) => ({
-    id: m.team.id,
-    name: m.team.name,
-    prefix: m.team.prefix,
-    departmentId: m.team.department?.id ?? null,
-    departmentName: m.team.department?.name ?? null,
+  const membershipSubDepartments = memberships.map((m) => ({
+    id: m.subDepartment.id,
+    name: m.subDepartment.name,
+    prefix: m.subDepartment.prefix,
+    departmentId: m.subDepartment.department?.id ?? null,
+    departmentName: m.subDepartment.department?.name ?? null,
   }));
 
-  const membershipDeptIds = membershipTeams
+  const membershipDeptIds = membershipSubDepartments
     .map((t) => t.departmentId)
     .filter((id): id is string => Boolean(id));
 
@@ -61,7 +61,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
       : null;
 
   // Primary dept for staff/lead (first team's department)
-  const primaryDeptId = membershipTeams[0]?.departmentId ?? null;
+  const primaryDeptId = membershipSubDepartments[0]?.departmentId ?? null;
   // Staff/lead with access to more than one department — via multiple team memberships,
   // a DepartmentAccess grant (cross-access), or a DepartmentMember grant (direct member)
   const crossDeptIds = !isDeptLevel
@@ -82,15 +82,15 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     getPersonalTaskDeptScope(profile),
   ]);
   const activeDeptId = deptScope?.activeDeptId ?? null;
-  const deptTeamIds = deptScope?.teamIds ?? null;
-  const personalTaskTeamIds = personalTaskScope?.teamIds ?? null;
+  const deptSubDepartmentIds = deptScope?.subDepartmentIds ?? null;
+  const personalTaskSubDepartmentIds = personalTaskScope?.subDepartmentIds ?? null;
 
   // True only when the user is a manager AND manages the currently active department.
   // A manager visiting a dept they're a member of (not managing) should get the member experience.
   const isManagerOfActiveDept =
     isManager && activeDeptId !== null && managedDeptIds.includes(activeDeptId);
 
-  const [allDeptsRaw, deptTeamsRaw] = await Promise.all([
+  const [allDeptsRaw, deptSubDepartmentsRaw] = await Promise.all([
     isDeptLevel
       ? prisma.department.findMany({
           where: isAdmin
@@ -107,7 +107,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           })
         : Promise.resolve([]),
     isDeptLevel
-      ? prisma.team.findMany({
+      ? prisma.subDepartment.findMany({
           where: deptScope
             ? { departmentId: deptScope.activeDeptId }
             : isAdmin
@@ -159,20 +159,20 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     .filter((d) => checkIsCrossAccessDept(profile, d.id))
     .map((d) => d.id);
 
-  const teams =
-    deptTeamsRaw.length > 0
-      ? deptTeamsRaw.map((t) => ({
+  const subDepartments =
+    deptSubDepartmentsRaw.length > 0
+      ? deptSubDepartmentsRaw.map((t) => ({
           id: t.id,
           name: t.name,
           prefix: t.prefix,
           departmentId: t.departmentId ?? null,
           departmentName: t.department?.name ?? null,
         }))
-      : membershipTeams;
+      : membershipSubDepartments;
 
-  const visibleTeamIds = isDeptLevel
-    ? teams.map((t) => t.id)
-    : membershipTeams.map((t) => t.id);
+  const visibleSubDepartmentIds = isDeptLevel
+    ? subDepartments.map((t) => t.id)
+    : membershipSubDepartments.map((t) => t.id);
 
   // Hub department: show only projects the user (or their dept members) are assigned to
   const isHubDept = deptScope?.isHub === true;
@@ -187,7 +187,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
   const restrictProjectsToOwn = isCrossAccessDept && deptScope?.isCrossAccessOnly === true;
   const projectWhereBase = isHubDept
     ? isManagerOfActiveDept
-      ? { teamId: { in: deptScope!.teamIds } }
+      ? { subDepartmentId: { in: deptScope!.subDepartmentIds } }
       : activeDeptId && isNativeDeptMemberOrManager(profile, activeDeptId)
         ? buildProjectDeptWhere(deptScope!)
         : crossDeptMemberWhere
@@ -201,12 +201,12 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           : isManager && allowedDeptIds
             ? {
                 OR: [
-                  { teamId: { in: visibleTeamIds } },
+                  { subDepartmentId: { in: visibleSubDepartmentIds } },
                   { departmentId: { in: allowedDeptIds } },
                   crossDeptMemberWhere,
                 ],
               }
-            : { teamId: { in: visibleTeamIds } };
+            : { subDepartmentId: { in: visibleSubDepartmentIds } };
 
   const projectWhere = restrictProjectsToOwn
     ? projectWhereBase
@@ -223,14 +223,14 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           members: { some: { userId: profile.id } },
           OR: [
             { departmentId: deptScope.activeDeptId },
-            { team: { departmentId: deptScope.activeDeptId } },
+            { subDepartment: { departmentId: deptScope.activeDeptId } },
           ],
         },
       }
     : deptScope
-      ? { deletedAt: null, teamId: { in: deptScope.teamIds } }
-      : visibleTeamIds.length > 0
-        ? { deletedAt: null, teamId: { in: visibleTeamIds } }
+      ? { deletedAt: null, subDepartmentId: { in: deptScope.subDepartmentIds } }
+      : visibleSubDepartmentIds.length > 0
+        ? { deletedAt: null, subDepartmentId: { in: visibleSubDepartmentIds } }
         : { deletedAt: null };
 
   const [
@@ -255,7 +255,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
         title: true,
         ticketNumber: true,
         status: true,
-        team: { select: { prefix: true } },
+        subDepartment: { select: { prefix: true } },
       },
     }),
     prisma.projectMember.findMany({
@@ -267,15 +267,15 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
         assigneeId: profile.id,
         deletedAt: null,
         status: { notIn: ["Live", "Done", "Completed", "Closed"] },
-        ...(personalTaskTeamIds ? { teamId: { in: personalTaskTeamIds } } : {}),
+        ...(personalTaskSubDepartmentIds ? { subDepartmentId: { in: personalTaskSubDepartmentIds } } : {}),
       },
     }),
     prisma.mention.count({
       where: {
         mentionedUserId: profile.id,
         readAt: null,
-        ...(deptTeamIds
-          ? { comment: { ticket: { teamId: { in: deptTeamIds } } } }
+        ...(deptSubDepartmentIds
+          ? { comment: { ticket: { subDepartmentId: { in: deptSubDepartmentIds } } } }
           : {}),
       },
     }),
@@ -283,11 +283,11 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
       where: {
         recipientId: profile.id,
         readAt: null,
-        ...(deptTeamIds
+        ...(deptSubDepartmentIds
           ? {
               OR: [
                 { ticketId: null },
-                { ticket: { teamId: { in: deptTeamIds } } },
+                { ticket: { subDepartmentId: { in: deptSubDepartmentIds } } },
               ],
             }
           : {}),
@@ -299,9 +299,9 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   const miscProjectIdRedirect = new Map<string, string>();
   for (const project of projects) {
-    if (project.name !== "Miscellaneous" || !project.teamId) continue;
+    if (project.name !== "Miscellaneous" || !project.subDepartmentId) continue;
     const canonical = dedupedProjects.find(
-      (row) => row.name === "Miscellaneous" && row.teamId === project.teamId,
+      (row) => row.name === "Miscellaneous" && row.subDepartmentId === project.subDepartmentId,
     );
     if (canonical && canonical.id !== project.id) {
       miscProjectIdRedirect.set(project.id, canonical.id);
@@ -337,16 +337,16 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     color: p.color ?? "#0a76b9",
     avatarUrl: p.avatarUrl ?? null,
     count: ticketCounts.get(p.id) ?? 0,
-    teamId: p.teamId ?? null,
+    subDepartmentId: p.subDepartmentId ?? null,
     kind: p.kind,
     projectStatus: p.projectStatus ?? "pipeline",
-    departmentId: p.department?.id ?? p.team?.department?.id ?? null,
-    departmentName: p.department?.name ?? p.team?.department?.name ?? null,
+    departmentId: p.department?.id ?? p.subDepartment?.department?.id ?? null,
+    departmentName: p.department?.name ?? p.subDepartment?.department?.name ?? null,
   }));
 
   const recentTickets = recentTicketRows.map((t) => ({
     dbId: t.id,
-    ticketId: `${t.team.prefix}-${t.ticketNumber}`,
+    ticketId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     label: t.title,
     meta: t.status,
   }));
@@ -385,7 +385,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   return {
     projects: visibleProjects,
-    teams,
+    subDepartments,
     departments: [...deptProjectMap.values()],
     allDepts,
     activeDeptId,

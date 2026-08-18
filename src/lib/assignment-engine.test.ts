@@ -3,10 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("@/lib/db", () => ({
   prisma: {
     department: { findUnique: vi.fn() },
-    team: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
     assignmentRule: { findMany: vi.fn() },
     profile: { findUnique: vi.fn() },
-    teamMembership: { findUnique: vi.fn() },
+    subDepartmentMembership: { findUnique: vi.fn() },
     activityLog: { create: vi.fn() },
     departmentManager: { findMany: vi.fn() },
   },
@@ -32,10 +32,10 @@ import { sendAssignmentFailedAlertEmail } from "@/lib/email"
 import { autoAssignTicket, recordAssignmentFailure } from "./assignment-engine"
 
 const mockDeptFind = vi.mocked(prisma.department.findUnique)
-const mockTeamFind = vi.mocked(prisma.team.findUnique)
+const mockTeamFind = vi.mocked(prisma.subDepartment.findUnique)
 const mockRulesFindMany = vi.mocked(prisma.assignmentRule.findMany)
 const mockProfileFind = vi.mocked(prisma.profile.findUnique)
-const mockMembershipFind = vi.mocked(prisma.teamMembership.findUnique)
+const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
 const mockActivityCreate = vi.mocked(prisma.activityLog.create)
 const mockDeptManagers = vi.mocked(prisma.departmentManager.findMany)
 const mockGetEligible = vi.mocked(getEligibleMembers)

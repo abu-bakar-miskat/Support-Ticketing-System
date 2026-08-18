@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const assigned = await prisma.projectMember.findMany({
     where: {
       userId,
-      project: { OR: [{ departmentId: id }, { team: { departmentId: id } }] },
+      project: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
     },
     select: { projectId: true },
   })
@@ -79,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const validProjects = await prisma.project.findMany({
       where: {
         id: { in: projectIds },
-        OR: [{ departmentId: id }, { team: { departmentId: id } }],
+        OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
       },
       select: { id: true },
     })
@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const current = await prisma.projectMember.findMany({
       where: {
         userId,
-        project: { OR: [{ departmentId: id }, { team: { departmentId: id } }] },
+        project: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
       },
       select: { projectId: true },
     })

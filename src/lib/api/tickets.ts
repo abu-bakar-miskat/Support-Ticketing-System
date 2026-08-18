@@ -4,7 +4,7 @@ import type {
   CommentData,
   ActivityData,
 } from "@/components/tickets/ticket-detail-page";
-import type { TeamStatusConfig } from "@/components/board/board-types";
+import type { SubDepartmentStatusConfig } from "@/components/board/board-types";
 
 export type { TicketDetailProps, SubTicketData, CommentData, ActivityData };
 
@@ -18,7 +18,7 @@ export type CreateTicketBody = {
   startDate?: string;
   dueDate?: string;
   parentId?: string;
-  teamId?: string;
+  subDepartmentId?: string;
 };
 
 export type UpdateTicketBody = {
@@ -43,7 +43,7 @@ export type ProjectTicketSummary = {
   priority: string;
   parentId: string | null;
   assignee: { name: string; avatarUrl: string | null } | null;
-  team: { prefix: string };
+  subDepartment: { prefix: string };
 };
 
 export type MoveTicketBody = {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefreshCw, User, Users, Check, X, Search } from "lucide-react";
 import { AvatarVisual } from "@/components/ui/user-avatar";
-import type { TeamMember } from "@/lib/api/teams";
+import type { SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 
 type AssignMode = "round-robin-all" | "single" | "round-robin-pick";
@@ -14,7 +14,7 @@ function MemberPickerList({
   selected,
   onSelect,
 }: {
-  members: TeamMember[];
+  members: SubDepartmentMember[];
   selected: Set<string>;
   onSelect: (id: string) => void;
 }) {
@@ -63,17 +63,17 @@ function MemberPickerList({
 
 export function BulkAssignModal({
   count,
-  teamMembers,
+  subDepartmentMembers,
   onClose,
   onAssign,
 }: {
   count: number;
-  teamMembers: TeamMember[];
+  subDepartmentMembers: SubDepartmentMember[];
   onClose: () => void;
   onAssign: (mode: "single" | "round-robin", assigneeIds: string[]) => Promise<void>;
 }) {
   // Managers are excluded from round-robin distribution — they're not meant to work tickets.
-  const rotationMembers = teamMembers.filter((m) => m.role !== "manager");
+  const rotationMembers = subDepartmentMembers.filter((m) => m.role !== "manager");
 
   const [mode, setMode] = useState<AssignMode>("round-robin-all");
   const [singleId, setSingleId] = useState<string>("");
@@ -192,7 +192,7 @@ export function BulkAssignModal({
           <div className="mt-4 flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-pen-foreground">Member</label>
             <MemberPickerList
-              members={teamMembers}
+              members={subDepartmentMembers}
               selected={singleId ? new Set([singleId]) : new Set()}
               onSelect={setSingleId}
             />

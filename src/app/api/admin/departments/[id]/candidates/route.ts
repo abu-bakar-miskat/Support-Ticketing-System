@@ -27,16 +27,16 @@ export async function GET(
   const q = searchParams.get("q")?.trim().toLowerCase() ?? ""
 
   // Find team IDs in this department
-  const teams = await prisma.team.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     select: { id: true },
   })
-  const teamIds = teams.map((t) => t.id)
+  const subDepartmentIds = subDepartments.map((t) => t.id)
 
   // Users already in this department (via team membership)
-  const existingMemberIds = teamIds.length > 0
-    ? (await prisma.teamMembership.findMany({
-        where: { teamId: { in: teamIds }, isActive: true },
+  const existingMemberIds = subDepartmentIds.length > 0
+    ? (await prisma.subDepartmentMembership.findMany({
+        where: { subDepartmentId: { in: subDepartmentIds }, isActive: true },
         select: { userId: true },
       })).map((m) => m.userId)
     : []

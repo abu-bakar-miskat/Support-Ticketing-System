@@ -26,8 +26,8 @@ export type AutoAssignResult = {
 async function isEligibleTeamMember(userId: string, teamId: string): Promise<boolean> {
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({ where: { id: userId }, select: { isActive: true } }),
-    prisma.teamMembership.findUnique({
-      where: { userId_teamId: { userId, teamId } },
+    prisma.subDepartmentMembership.findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId: teamId } },
       select: { isActive: true, doNotAssign: true },
     }),
   ]);
@@ -67,7 +67,7 @@ export async function autoAssignTicket(params: {
 
   const [department, team] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
-    prisma.team.findUnique({ where: { id: teamId }, select: { rotaPointer: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true } }),
   ]);
   const method: AssignmentMethod = department?.assignmentMethod ?? "ROUND_ROBIN";
 

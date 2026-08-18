@@ -9,7 +9,7 @@ import { FilterDropdown, SortDropdown, type SortKey } from "@/components/tasks/t
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import type { TeamStatusConfig } from "@/components/board/board-types";
+import type { SubDepartmentStatusConfig } from "@/components/board/board-types";
 import { TaskListRow, TaskListHead } from "@/components/tasks/task-list-table";
 import { ALL_TASKS_COLGROUP, TASK_TABLE_CLASS } from "@/components/tasks/task-list-cells";
 import { TasksTableSkeleton } from "@/components/skeletons/page-skeletons";
@@ -321,8 +321,8 @@ function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 type Props = {
-  teamStatuses: TeamStatusConfig[];
-  availableProjects: { id: string; name: string; teamId: string | null; kind: string }[];
+  subDepartmentStatuses: SubDepartmentStatusConfig[];
+  availableProjects: { id: string; name: string; subDepartmentId: string | null; kind: string }[];
   availableModules: {
     id: string;
     name: string;
@@ -334,7 +334,7 @@ type Props = {
     name: string;
     avatarUrl: string | null;
     departmentName: string | null;
-    teamName: string | null;
+    subDepartmentName: string | null;
     role: string;
   }[];
   hideTitleBar?: boolean;
@@ -344,7 +344,7 @@ type Props = {
 };
 
 export function AllTasksPage({
-  teamStatuses,
+  subDepartmentStatuses,
   availableProjects,
   availableModules,
   availableMembers,
@@ -531,7 +531,7 @@ export function AllTasksPage({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // ── Filter option lists for the dropdowns ──────────────────────────────────
-  const statusOptions = teamStatuses.map((s) => ({
+  const statusOptions = subDepartmentStatuses.map((s) => ({
     id: s.label,
     label: s.label,
     color: s.color,
@@ -558,8 +558,8 @@ export function AllTasksPage({
 
   // ── Color map for rendering rows ───────────────────────────────────────────
   const colorMap = useMemo(
-    () => Object.fromEntries(teamStatuses.map((s) => [s.label, s.color])),
-    [teamStatuses],
+    () => Object.fromEntries(subDepartmentStatuses.map((s) => [s.label, s.color])),
+    [subDepartmentStatuses],
   );
 
   // ── Select-all handler ──────────────────────────────────────────────────────
@@ -981,7 +981,7 @@ export function AllTasksPage({
     {assignModalOpen && (
       <BulkAssignModal
         count={selectedIds.size}
-        teamMembers={availableMembers}
+        subDepartmentMembers={availableMembers}
         onClose={() => setAssignModalOpen(false)}
         onAssign={handleBulkAssign}
       />

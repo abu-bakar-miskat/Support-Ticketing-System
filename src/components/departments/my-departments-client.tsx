@@ -11,7 +11,7 @@ export type MyDepartmentItem = {
   id: string;
   name: string;
   isHub: boolean;
-  teamCount: number;
+  subDepartmentCount: number;
   projectCount: number;
   memberCount: number;
   accessType: "manager" | "guest" | "member";
@@ -73,7 +73,7 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12px] text-pen-subtle">
               <Users className="size-3.5" />
-              {dept.teamCount} {dept.teamCount === 1 ? "team" : "teams"}
+              {dept.subDepartmentCount} {dept.subDepartmentCount === 1 ? "team" : "teams"}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12px] text-pen-subtle">
               <Users className="size-3.5" />

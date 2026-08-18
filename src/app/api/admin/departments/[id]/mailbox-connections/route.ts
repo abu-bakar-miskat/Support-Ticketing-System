@@ -75,7 +75,7 @@ export async function POST(
 
   const [department, team] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { id: true, tenantId: true } }),
-    prisma.team.findUnique({ where: { id: teamId }, select: { id: true, departmentId: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { id: true, departmentId: true } }),
   ])
   if (!department) {
     return NextResponse.json({ error: "Department not found" }, { status: 404 })
@@ -88,7 +88,7 @@ export async function POST(
     const connection = await createMailboxConnection({
       tenantId: department.tenantId,
       departmentId,
-      teamId,
+      subDepartmentId: teamId,
       scopeType: scopeType as never,
       address,
       authType: resolvedAuthType as never,

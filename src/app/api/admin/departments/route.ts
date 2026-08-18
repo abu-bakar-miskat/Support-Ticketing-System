@@ -13,7 +13,7 @@ export async function GET() {
   const departments = await prisma.department.findMany({
     where: { tenantId: profile.activeTenantId ?? "__no_tenant__" },
     orderBy: { name: "asc" },
-    include: { _count: { select: { teams: true } } },
+    include: { _count: { select: { subDepartments: true } } },
   })
   return NextResponse.json(departments)
 }

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
-import { resolveMiscProjectForTeam } from "@/lib/misc-project"
+import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { appendTicketEvent, broadcastTicketEvent } from "@/lib/ticket-events"
 import { resolveMentionedProfiles, processMentions } from "@/lib/mentions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
@@ -26,13 +26,13 @@ export const TICKET_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"]
 const REF_RE = /^([A-Za-z][A-Za-z0-9]*)-(\d+)$/
 
 /** Dept filter for teams: an API key scoped to a department sees only its teams. */
-function teamWhere(ctx: ApiKeyContext) {
+function subDepartmentWhere(ctx: ApiKeyContext) {
   return ctx.departmentId ? { departmentId: ctx.departmentId } : {}
 }
 
-export async function listTeams(ctx: ApiKeyContext): Promise<ToolResult> {
-  const teams = await prisma.team.findMany({
-    where: teamWhere(ctx),
+export async function listSubDepartments(ctx: ApiKeyContext): Promise<ToolResult> {
+  const subDepartments = await prisma.subDepartment.findMany({
+    where: subDepartmentWhere(ctx),
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -44,7 +44,7 @@ export async function listTeams(ctx: ApiKeyContext): Promise<ToolResult> {
   })
   return {
     ok: true,
-    data: teams.map((t) => ({
+    data: subDepartments.map((t) => ({
       id: t.id,
       name: t.name,
       prefix: t.prefix,
@@ -59,7 +59,7 @@ export async function listProjects(ctx: ApiKeyContext): Promise<ToolResult> {
     ? {
         OR: [
           { departmentId: ctx.departmentId },
-          { team: { departmentId: ctx.departmentId } },
+          { subDepartment: { departmentId: ctx.departmentId } },
         ],
       }
     : {}
@@ -74,7 +74,7 @@ export async function listProjects(ctx: ApiKeyContext): Promise<ToolResult> {
       pipelineStartedAt: true,
       developmentStartedAt: true,
       liveAt: true,
-      team: { select: { name: true, prefix: true } },
+      subDepartment: { select: { name: true, prefix: true } },
       department: { select: { name: true } },
     },
   })
@@ -89,8 +89,8 @@ export async function listProjects(ctx: ApiKeyContext): Promise<ToolResult> {
         status: p.projectStatus,
         currentStage: current ? toLifecycleStageApi(current) : null,
         stages: toLifecycleStagesApi(stages),
-        team: p.team?.name ?? null,
-        teamPrefix: p.team?.prefix ?? null,
+        subDepartment: p.subDepartment?.name ?? null,
+        subDepartmentPrefix: p.subDepartment?.prefix ?? null,
         department: p.department?.name ?? null,
       }
     }),
@@ -99,18 +99,18 @@ export async function listProjects(ctx: ApiKeyContext): Promise<ToolResult> {
 
 export async function searchTickets(
   ctx: ApiKeyContext,
-  input: { query?: string; status?: string; teamPrefix?: string; limit?: number },
+  input: { query?: string; status?: string; subDepartmentPrefix?: string; limit?: number },
 ): Promise<ToolResult> {
   const take = Math.min(Math.max(input.limit ?? 20, 1), 50)
   const where: Record<string, unknown> = { deletedAt: null }
   if (input.query) where.title = { contains: input.query, mode: "insensitive" }
   if (input.status) where.status = input.status
-  if (input.teamPrefix && ctx.departmentId) {
-    where.team = { departmentId: ctx.departmentId, prefix: input.teamPrefix.toUpperCase() }
-  } else if (input.teamPrefix) {
-    where.team = { prefix: input.teamPrefix.toUpperCase() }
+  if (input.subDepartmentPrefix && ctx.departmentId) {
+    where.subDepartment = { departmentId: ctx.departmentId, prefix: input.subDepartmentPrefix.toUpperCase() }
+  } else if (input.subDepartmentPrefix) {
+    where.subDepartment = { prefix: input.subDepartmentPrefix.toUpperCase() }
   } else if (ctx.departmentId) {
-    where.team = { departmentId: ctx.departmentId }
+    where.subDepartment = { departmentId: ctx.departmentId }
   }
 
   const tickets = await prisma.ticket.findMany({
@@ -122,7 +122,7 @@ export async function searchTickets(
       title: true,
       status: true,
       priority: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
       assignee: { select: { name: true } },
       project: { select: { name: true } },
       sprint: { select: { name: true } },
@@ -132,7 +132,7 @@ export async function searchTickets(
   return {
     ok: true,
     data: tickets.map((t) => ({
-      ref: `${t.team.prefix}-${t.ticketNumber}`,
+      ref: `${t.subDepartment.prefix}-${t.ticketNumber}`,
       title: t.title,
       status: t.status,
       priority: t.priority,
@@ -162,7 +162,7 @@ export async function getTicket(
     where: {
       ticketNumber: number,
       deletedAt: null,
-      team: { prefix, ...teamWhere(ctx) },
+      subDepartment: { prefix, ...subDepartmentWhere(ctx) },
     },
     select: {
       id: true,
@@ -175,7 +175,7 @@ export async function getTicket(
       startDate: true,
       dueDate: true,
       createdAt: true,
-      team: { select: { name: true, prefix: true } },
+      subDepartment: { select: { name: true, prefix: true } },
       project: { select: { name: true } },
       creator: { select: { name: true } },
       assignee: { select: { name: true } },
@@ -196,7 +196,7 @@ export async function getTicket(
   return {
     ok: true,
     data: {
-      ref: `${ticket.team.prefix}-${number}`,
+      ref: `${ticket.subDepartment.prefix}-${number}`,
       url: `${BASE_URL}/tasks/${ticket.id}`,
       title: ticket.title,
       description: ticket.description,
@@ -204,7 +204,7 @@ export async function getTicket(
       priority: ticket.priority,
       status: ticket.status,
       labels: ticket.labels,
-      team: ticket.team.name,
+      subDepartment: ticket.subDepartment.name,
       project: ticket.project?.name ?? null,
       sprint: ticket.sprint?.name ?? null,
       module: ticket.module?.name ?? null,
@@ -230,7 +230,7 @@ export async function createTicket(
     description?: string
     type: (typeof TICKET_TYPES)[number]
     priority: (typeof TICKET_PRIORITIES)[number]
-    teamPrefix: string
+    subDepartmentPrefix: string
     projectId?: string
     assigneeEmail?: string
   },
@@ -242,14 +242,14 @@ export async function createTicket(
     }
   }
 
-  const team = await prisma.team.findFirst({
-    where: { prefix: input.teamPrefix.toUpperCase(), ...teamWhere(ctx) },
+  const subDepartment = await prisma.subDepartment.findFirst({
+    where: { prefix: input.subDepartmentPrefix.toUpperCase(), ...subDepartmentWhere(ctx) },
     select: { id: true, name: true, prefix: true, departmentId: true, tenantId: true },
   })
-  if (!team) {
+  if (!subDepartment) {
     return {
       ok: false,
-      message: `No team with prefix "${input.teamPrefix}" in this key's scope — call list_teams for valid prefixes`,
+      message: `No team with prefix "${input.subDepartmentPrefix}" in this key's scope — call list_teams for valid prefixes`,
     }
   }
 
@@ -270,7 +270,7 @@ export async function createTicket(
       where: {
         id: projectId,
         ...(ctx.departmentId
-          ? { OR: [{ departmentId: ctx.departmentId }, { team: { departmentId: ctx.departmentId } }] }
+          ? { OR: [{ departmentId: ctx.departmentId }, { subDepartment: { departmentId: ctx.departmentId } }] }
           : {}),
       },
       select: { id: true, kind: true },
@@ -282,11 +282,11 @@ export async function createTicket(
       return { ok: false, message: "Support projects only accept tickets from the support form" }
     }
   } else {
-    projectId = await resolveMiscProjectForTeam(team.id)
+    projectId = await resolveMiscProjectForSubDepartment(subDepartment.id)
   }
 
-  const firstStatus = await prisma.teamStatus.findFirst({
-    where: { teamId: team.id },
+  const firstStatus = await prisma.subDepartmentStatus.findFirst({
+    where: { subDepartmentId: subDepartment.id },
     orderBy: { order: "asc" },
     select: { label: true },
   })
@@ -307,8 +307,8 @@ export async function createTicket(
       startDate: now,
       dueDate: endOfDay,
       creator: { connect: { id: ctx.createdById } },
-      tenant: { connect: { id: team.tenantId } },
-      team: { connect: { id: team.id } },
+      tenant: { connect: { id: subDepartment.tenantId } },
+      subDepartment: { connect: { id: subDepartment.id } },
       project: { connect: { id: projectId } },
       ...(assignee ? { assignee: { connect: { id: assignee.id } } } : {}),
     },
@@ -318,18 +318,18 @@ export async function createTicket(
       title: true,
       status: true,
       createdAt: true,
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
       assignee: { select: { id: true, name: true, email: true } },
     },
   })
 
-  const humanId = `${ticket.team.prefix}-${ticket.ticketNumber}`
+  const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
-  if (team.departmentId) {
+  if (subDepartment.departmentId) {
     await startSlaTimers(
       ticket.id,
-      team.tenantId,
-      team.departmentId,
+      subDepartment.tenantId,
+      subDepartment.departmentId,
       { priority: input.priority, type: input.type, title: input.title },
       ticket.createdAt,
     )
@@ -360,7 +360,7 @@ export async function createTicket(
         humanId,
         ticketTitle: ticket.title,
         assignedByName: ctx.creatorName,
-        departmentId: team.departmentId,
+        departmentId: subDepartment.departmentId,
       }).catch(() => undefined)
     }
   }
@@ -392,9 +392,9 @@ export type UpdateTicketInput = {
 const TICKET_SELECT_FOR_UPDATE = {
   id: true, title: true, description: true, type: true, priority: true,
   status: true, labels: true, closedAt: true, ticketNumber: true,
-  teamId: true, projectId: true, sprintId: true, moduleId: true,
+  subDepartmentId: true, projectId: true, sprintId: true, moduleId: true,
   assigneeId: true, creatorId: true,
-  team: { select: { prefix: true, departmentId: true } },
+  subDepartment: { select: { prefix: true, departmentId: true } },
   assignee: { select: { id: true, name: true } },
   sprint: { select: { id: true, name: true } },
   module: { select: { id: true, name: true } },
@@ -415,7 +415,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
   const number = parseInt(match[2], 10)
 
   const ticket = await prisma.ticket.findFirst({
-    where: { ticketNumber: number, deletedAt: null, team: { prefix, ...teamWhere(ctx) } },
+    where: { ticketNumber: number, deletedAt: null, subDepartment: { prefix, ...subDepartmentWhere(ctx) } },
     select: TICKET_SELECT_FOR_UPDATE,
   })
   if (!ticket) {
@@ -496,7 +496,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
       where: {
         id: input.projectId,
         ...(ctx.departmentId
-          ? { OR: [{ departmentId: ctx.departmentId }, { team: { departmentId: ctx.departmentId } }] }
+          ? { OR: [{ departmentId: ctx.departmentId }, { subDepartment: { departmentId: ctx.departmentId } }] }
           : {}),
       },
       select: { id: true, kind: true, name: true },
@@ -548,16 +548,16 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
 
   let statusChange: { to: string; isComplete: boolean } | null = null
   if (input.status !== undefined && input.status !== ticket.status) {
-    const teamStatuses = await prisma.teamStatus.findMany({
-      where: { teamId: ticket.teamId },
+    const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
+      where: { subDepartmentId: ticket.subDepartmentId },
       orderBy: { order: "asc" },
       select: { label: true, isComplete: true },
     })
-    const target = teamStatuses.find((s) => s.label === input.status)
+    const target = subDepartmentStatuses.find((s) => s.label === input.status)
     if (!target) {
       return {
         ok: false,
-        message: `Invalid status "${input.status}" for this team — valid: ${teamStatuses.map((s) => s.label).join(", ")}`,
+        message: `Invalid status "${input.status}" for this team — valid: ${subDepartmentStatuses.map((s) => s.label).join(", ")}`,
       }
     }
     statusChange = { to: target.label, isComplete: target.isComplete }
@@ -592,7 +592,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
       sendAssignmentEmail({
         to: newAssignee.email, assigneeName: newAssignee.name, assigneeId: newAssignee.id,
         ticketId: ticket.id, humanId: `${prefix}-${number}`, ticketTitle: ticket.title,
-        assignedByName: ctx.creatorName, departmentId: ticket.team.departmentId,
+        assignedByName: ctx.creatorName, departmentId: ticket.subDepartment.departmentId,
       }).catch(() => undefined)
     }
   } else if (newProject) {
@@ -608,7 +608,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
       const humanId = `${prefix}-${number}`
       notifyTicketCompletion({
         ticketId: ticket.id, ticketTitle: ticket.title, humanId,
-        teamId: ticket.teamId, creatorId: ticket.creatorId,
+        subDepartmentId: ticket.subDepartmentId, creatorId: ticket.creatorId,
         actorId, actorName: ctx.creatorName,
       }).catch(() => undefined)
       cascadeCompleteToSubtickets(ticket.id).catch(() => undefined)
@@ -616,7 +616,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
         sendResolutionEmail({
           to: ticket.intake.submitterEmail, submitterName: ticket.intake.submitterName,
           formName: ticket.intake.formConfig.name, ticketTitle: ticket.title,
-          departmentId: ticket.team.departmentId,
+          departmentId: ticket.subDepartment.departmentId,
         }).catch(() => undefined)
       }
     }
@@ -643,11 +643,11 @@ export async function addComment(
   const number = parseInt(match[2], 10)
 
   const ticket = await prisma.ticket.findFirst({
-    where: { ticketNumber: number, deletedAt: null, team: { prefix, ...teamWhere(ctx) } },
+    where: { ticketNumber: number, deletedAt: null, subDepartment: { prefix, ...subDepartmentWhere(ctx) } },
     select: {
       id: true, title: true, creatorId: true, assigneeId: true,
       assignees: { select: { userId: true } },
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   })
   if (!ticket) {
@@ -703,11 +703,11 @@ export async function deleteTicket(
 
   // No deletedAt filter — deletion is idempotent, mirroring DELETE /api/tickets/[id]
   const ticket = await prisma.ticket.findFirst({
-    where: { ticketNumber: number, team: { prefix, ...teamWhere(ctx) } },
+    where: { ticketNumber: number, subDepartment: { prefix, ...subDepartmentWhere(ctx) } },
     select: {
       id: true, title: true, ticketNumber: true, deletedAt: true, assigneeId: true,
       assignees: { select: { userId: true } },
-      team: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true } },
     },
   })
   if (!ticket) {

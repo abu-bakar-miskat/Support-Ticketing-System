@@ -39,7 +39,7 @@ export async function POST(
       type: true,
       priority: true,
       status: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
@@ -47,7 +47,7 @@ export async function POST(
       deletedAt: true,
       isDraft: true,
       labels: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
       intake: { select: { id: true } },
     },
@@ -92,7 +92,7 @@ type TicketCtx = {
   type: string
   priority: string
   status: string
-  teamId: string
+  subDepartmentId: string
   labels: string[]
   intake: { id: string } | null
 }

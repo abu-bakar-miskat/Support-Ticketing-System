@@ -31,7 +31,7 @@ function serializeInvite(invite: {
   expiresAt: Date;
   acceptedAt: Date | null;
   revokedAt: Date | null;
-  team: { id: string; name: string };
+  subDepartment: { id: string; name: string };
   inviter: { id: string; name: string };
 }) {
   return {
@@ -43,7 +43,7 @@ function serializeInvite(invite: {
     expiresAt: invite.expiresAt.toISOString(),
     acceptedAt: invite.acceptedAt?.toISOString() ?? null,
     revokedAt: invite.revokedAt?.toISOString() ?? null,
-    team: invite.team,
+    subDepartment: invite.subDepartment,
     inviter: invite.inviter,
   };
 }
@@ -64,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       expiresAt: { gt: new Date() },
     },
     include: {
-      team: { select: { id: true, name: true } },
+      subDepartment: { select: { id: true, name: true } },
       inviter: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const body = await req.json().catch(() => ({}));
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const teamId = typeof body.teamId === "string" ? body.teamId : "";
+  const subDepartmentId = typeof body.subDepartmentId === "string" ? body.subDepartmentId : "";
   const roleRaw = typeof body.role === "string" ? body.role : "staff";
   const message =
     typeof body.message === "string" ? body.message.trim().slice(0, 2000) || null : null;
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!email || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
   }
-  if (!teamId) {
+  if (!subDepartmentId) {
     return NextResponse.json({ error: "teamId required" }, { status: 400 });
   }
   if (!INVITE_ROLES.has(roleRaw as Role)) {
@@ -99,16 +99,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   const role = roleRaw as Role;
 
-  const [dept, team] = await Promise.all([
+  const [dept, subDepartment] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { id: true, name: true } }),
-    prisma.team.findUnique({
-      where: { id: teamId },
+    prisma.subDepartment.findUnique({
+      where: { id: subDepartmentId },
       select: { id: true, name: true, departmentId: true },
     }),
   ]);
 
   if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!team || team.departmentId !== departmentId) {
+  if (!subDepartment || subDepartment.departmentId !== departmentId) {
     return NextResponse.json({ error: "Team not found in this department" }, { status: 400 });
   }
 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const existingPending = await prisma.departmentInvite.findFirst({
     where: {
       departmentId,
-      teamId,
+      subDepartmentId,
       email,
       revokedAt: null,
       acceptedAt: null,
@@ -151,14 +151,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       token,
       email,
       departmentId,
-      teamId,
+      subDepartmentId,
       role,
       message,
       invitedBy: profile!.id,
       expiresAt,
     },
     include: {
-      team: { select: { id: true, name: true } },
+      subDepartment: { select: { id: true, name: true } },
       inviter: { select: { id: true, name: true } },
     },
   });
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       inviterId: profile!.id,
       departmentId,
       departmentName: dept.name,
-      teamName: team.name,
+      subDepartmentName: subDepartment.name,
       role,
       message,
       inviteToken: token,

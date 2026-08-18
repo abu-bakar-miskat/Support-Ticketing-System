@@ -1,15 +1,15 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { getProfileDeptScope, getPersonalTaskDeptScope, resolveStatusTeamId } from "@/lib/dept-scope";
+import { getProfileDeptScope, getPersonalTaskDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { assignedProjectsInDeptWhere } from "@/lib/cross-access";
 import {
   getBoardCards,
-  getTeamReviewCards,
+  getSubDepartmentReviewCards,
   getAssignedSubtasks,
-  getTeamStatusesForTeamIds,
-  getTeamStatuses,
+  getSubDepartmentStatusesForSubDepartmentIds,
+  getSubDepartmentStatuses,
 } from "@/lib/board-data";
 import type { MyTasksResponse, TasksMetaResponse } from "@/lib/api/tasks";
 import type { getProfile } from "@/lib/profile";
@@ -24,21 +24,21 @@ export async function getMyTasksData(profile: Profile): Promise<MyTasksResponse>
   const deptScope = await getProfileDeptScope(profile);
   const personalTaskScope = await getPersonalTaskDeptScope(profile);
 
-  let managedTeamIds: string[] = [];
+  let managedSubDepartmentIds: string[] = [];
   if (isMgrOrAdmin) {
-    if (deptScope?.teamIds?.length) {
-      managedTeamIds = deptScope.teamIds;
+    if (deptScope?.subDepartmentIds?.length) {
+      managedSubDepartmentIds = deptScope.subDepartmentIds;
     } else {
       const allowedDeptIds = [
         ...(profile.managedDepartmentIds ?? []),
         ...(profile.grantedAccessDeptIds ?? []),
       ];
       if (allowedDeptIds.length > 0) {
-        const teams = await prisma.team.findMany({
+        const subDepartments = await prisma.subDepartment.findMany({
           where: { departmentId: { in: allowedDeptIds } },
           select: { id: true },
         });
-        managedTeamIds = teams.map((t) => t.id);
+        managedSubDepartmentIds = subDepartments.map((t) => t.id);
       }
     }
   }
@@ -50,22 +50,22 @@ export async function getMyTasksData(profile: Profile): Promise<MyTasksResponse>
       ...(personalTaskScope ? { allowedDeptIds: personalTaskScope.allowedDeptIds } : {}),
       timeForUserId: profile.id,
     }),
-    isMgrOrAdmin ? getTeamReviewCards(managedTeamIds, profile.id) : Promise.resolve([]),
+    isMgrOrAdmin ? getSubDepartmentReviewCards(managedSubDepartmentIds, profile.id) : Promise.resolve([]),
     getAssignedSubtasks(
       profile.id,
       personalTaskScope ? { allowedDeptIds: personalTaskScope.allowedDeptIds } : {},
     ),
   ]);
 
-  const teamIds = [...new Set(myCards.map((c) => c.teamId))];
-  const teamStatusMap = await getTeamStatusesForTeamIds(teamIds);
+  const subDepartmentIds = [...new Set(myCards.map((c) => c.subDepartmentId))];
+  const subDepartmentStatusMap = await getSubDepartmentStatusesForSubDepartmentIds(subDepartmentIds);
 
   return {
     tasks: myCards,
     subtasks,
     reviewTasks: reviewCards,
     isManager: isMgrOrAdmin,
-    teamStatusMap: Object.fromEntries(teamStatusMap),
+    subDepartmentStatusMap: Object.fromEntries(subDepartmentStatusMap),
   };
 }
 
@@ -74,26 +74,26 @@ export async function getTasksMetaData(
   activeDeptId?: string | null,
 ): Promise<TasksMetaResponse> {
   const cookieStore = await cookies();
-  const cookieTeamId = cookieStore.get("pen_active_team")?.value ?? null;
-  const membershipIds = profile.teamIds ?? [];
+  const cookieSubDepartmentId = cookieStore.get("pen_active_team")?.value ?? null;
+  const membershipIds = profile.subDepartmentIds ?? [];
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
 
   const deptScope = await getProfileDeptScope(profile);
 
-  const statusTeamId = resolveStatusTeamId({
+  const statusSubDepartmentId = resolveStatusSubDepartmentId({
     deptScope,
-    cookieTeamId,
+    cookieSubDepartmentId,
     membershipIds,
-    primaryTeamId: profile.teamId,
+    primarySubDepartmentId: profile.subDepartmentId,
   });
 
   const projectsPromise = (async () => {
     if (deptScope?.isCrossAccessOnly && profile.id) {
       return prisma.project.findMany({
         where: assignedProjectsInDeptWhere(profile.id, deptScope.activeDeptId),
-        select: { id: true, name: true, teamId: true, kind: true },
+        select: { id: true, name: true, subDepartmentId: true, kind: true },
         orderBy: { name: "asc" },
       });
     }
@@ -104,10 +104,10 @@ export async function getTasksMetaData(
         where: {
           OR: [
             { departmentId: scopedDeptId },
-            { team: { departmentId: scopedDeptId } },
+            { subDepartment: { departmentId: scopedDeptId } },
           ],
         },
-        select: { id: true, name: true, teamId: true, kind: true },
+        select: { id: true, name: true, subDepartmentId: true, kind: true },
         orderBy: { name: "asc" },
       });
     }
@@ -125,31 +125,31 @@ export async function getTasksMetaData(
           where: {
             OR: [
               { departmentId: { in: allowedDeptIds } },
-              { team: { departmentId: { in: allowedDeptIds } } },
+              { subDepartment: { departmentId: { in: allowedDeptIds } } },
             ],
           },
-          select: { id: true, name: true, teamId: true, kind: true },
+          select: { id: true, name: true, subDepartmentId: true, kind: true },
           orderBy: { name: "asc" },
         });
       }
       if (isAdmin) {
         return prisma.project.findMany({
-          select: { id: true, name: true, teamId: true, kind: true },
+          select: { id: true, name: true, subDepartmentId: true, kind: true },
           orderBy: { name: "asc" },
         });
       }
       return [];
     }
-    if (profile.role === "lead" && profile.teamId) {
+    if (profile.role === "lead" && profile.subDepartmentId) {
       return prisma.project.findMany({
-        where: { teamId: profile.teamId },
-        select: { id: true, name: true, teamId: true, kind: true },
+        where: { subDepartmentId: profile.subDepartmentId },
+        select: { id: true, name: true, subDepartmentId: true, kind: true },
         orderBy: { name: "asc" },
       });
     }
     const memberships = await prisma.projectMember.findMany({
       where: { userId: profile.id },
-      select: { project: { select: { id: true, name: true, teamId: true, kind: true } } },
+      select: { project: { select: { id: true, name: true, subDepartmentId: true, kind: true } } },
     });
     return memberships.map((m) => m.project);
   })();
@@ -184,12 +184,12 @@ export async function getTasksMetaData(
   const membersPromise = (async () => {
     const deptId = activeDeptId ?? deptScope?.activeDeptId ?? null;
 
-    if (!deptId && profile.teamId) {
-      const team = await prisma.team.findUnique({
-        where: { id: profile.teamId },
+    if (!deptId && profile.subDepartmentId) {
+      const subDepartment = await prisma.subDepartment.findUnique({
+        where: { id: profile.subDepartmentId },
         select: { departmentId: true },
       });
-      return fetchProjectDepartmentPeople(team?.departmentId ?? null);
+      return fetchProjectDepartmentPeople(subDepartment?.departmentId ?? null);
     }
 
     if (!deptId) return [];
@@ -197,19 +197,19 @@ export async function getTasksMetaData(
     return fetchProjectDepartmentPeople(deptId);
   })();
 
-  const [availableProjects, availableModules, availableMembers, teamStatuses] =
+  const [availableProjects, availableModules, availableMembers, subDepartmentStatuses] =
     await Promise.all([
       projectsPromise,
       modulesPromise,
       membersPromise,
-      getTeamStatuses(statusTeamId),
+      getSubDepartmentStatuses(statusSubDepartmentId),
     ]);
 
   return {
-    teamStatuses,
+    subDepartmentStatuses,
     availableProjects,
     availableModules,
     availableMembers,
-    defaultTeamId: statusTeamId ?? profile.teamId ?? null,
+    defaultSubDepartmentId: statusSubDepartmentId ?? profile.subDepartmentId ?? null,
   };
 }

@@ -19,8 +19,8 @@ import {
 type ProfileForProjects = ProfileWithNativeDepts & {
   id: string;
   role: string;
-  teamId?: string | null;
-  teamIds?: string[];
+  subDepartmentId?: string | null;
+  subDepartmentIds?: string[];
   isHubMember?: boolean;
 };
 
@@ -37,7 +37,7 @@ export type ProjectListRow = {
   departmentName: string | null;
   moduleSystemEnabled: boolean;
   liveDomain: string | null;
-  teamName: string | null;
+  subDepartmentName: string | null;
   ticketCount: number;
   activeSprintCount: number;
   plannedSprintCount: number;
@@ -58,7 +58,7 @@ export type ProjectListRow = {
 
 const projectInclude = {
   department: { select: { id: true, name: true } },
-  team: { select: { id: true, name: true } },
+  subDepartment: { select: { id: true, name: true } },
   members: {
     include: {
       user: { select: { id: true, name: true, avatarUrl: true, role: true, email: true } },
@@ -100,7 +100,7 @@ function mapProjectRow(
     departmentName: p.department?.name ?? null,
     moduleSystemEnabled: p.moduleSystemEnabled ?? false,
     liveDomain: p.projectUrl ?? null,
-    teamName: p.team?.name ?? null,
+    subDepartmentName: p.subDepartment?.name ?? null,
     ticketCount: p._count.tickets,
     activeSprintCount: p.sprints.filter((s) => s.status === "active").length,
     plannedSprintCount: p.sprints.filter((s) => s.status === "planned").length,
@@ -146,7 +146,7 @@ export async function fetchProjectsList(
           OR: [
             memberWhere,
             { departmentId: { in: managedDeptIds } },
-            { team: { departmentId: { in: managedDeptIds } } },
+            { subDepartment: { departmentId: { in: managedDeptIds } } },
           ],
         }
       : memberWhere;

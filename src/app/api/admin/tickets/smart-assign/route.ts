@@ -55,10 +55,10 @@ export async function POST(req: NextRequest) {
   // Managers: scope check — only tickets within their department
   if (caller!.role === "manager") {
     const deptScope = await getProfileDeptScope(caller!)
-    const teamIds = deptScope?.teamIds ?? []
-    if (teamIds.length > 0) {
+    const subDepartmentIds = deptScope?.subDepartmentIds ?? []
+    if (subDepartmentIds.length > 0) {
       const outOfScope = await prisma.ticket.findFirst({
-        where: { id: { in: ticketIds }, teamId: { notIn: teamIds } },
+        where: { id: { in: ticketIds }, subDepartmentId: { notIn: subDepartmentIds } },
         select: { id: true },
       })
       if (outOfScope) {
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       ticketNumber: true,
       assigneeId: true,
       projectId: true,
-      team: { select: { prefix: true, departmentId: true } },
+      subDepartment: { select: { prefix: true, departmentId: true } },
     },
   })
   const ticketById = new Map(ticketsBefore.map((t) => [t.id, t]))
@@ -104,13 +104,13 @@ export async function POST(req: NextRequest) {
     // break the round-robin distribution across the tickets.
     const firstTicket = await prisma.ticket.findUnique({
       where: { id: ticketIds[0] },
-      select: { teamId: true },
+      select: { subDepartmentId: true },
     })
-    const teamId = firstTicket?.teamId ?? null
+    const subDepartmentId = firstTicket?.subDepartmentId ?? null
 
     let effectiveIds = assigneeIds
-    if (teamId) {
-      const flags = await Promise.all(assigneeIds.map((id) => isMemberActiveInRotation(id, teamId)))
+    if (subDepartmentId) {
+      const flags = await Promise.all(assigneeIds.map((id) => isMemberActiveInRotation(id, subDepartmentId)))
       const active = assigneeIds.filter((_, i) => flags[i])
       if (active.length > 0) effectiveIds = active
       // else: all members inactive in rotation — fall back to full list so no ticket is left unassigned
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
           message: before.title,
         })
 
-        const humanId = `${before.team.prefix}-${before.ticketNumber}`
+        const humanId = `${before.subDepartment.prefix}-${before.ticketNumber}`
         sendAssignmentEmail({
           to: assignee.email,
           assigneeName: assignee.name,
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
           ticketTitle: before.title,
           assignedByName: caller!.name,
           assignedById: caller!.id,
-          departmentId: before.team.departmentId,
+          departmentId: before.subDepartment.departmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }),
     )

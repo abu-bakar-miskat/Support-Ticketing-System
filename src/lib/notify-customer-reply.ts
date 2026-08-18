@@ -9,13 +9,13 @@ import { createNotification } from "@/lib/notify"
 export async function notifyCustomerReply({
   ticketId,
   ticketTitle,
-  teamId,
+  subDepartmentId,
   assigneeId,
   creatorId,
 }: {
   ticketId: string
   ticketTitle: string
-  teamId: string
+  subDepartmentId: string
   assigneeId: string | null
   creatorId: string
 }) {
@@ -33,14 +33,14 @@ export async function notifyCustomerReply({
   }
 
   // Unassigned: notify dept manager(s) + ticket creator (deduped)
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: subDepartmentId },
     select: { departmentId: true },
   })
-  if (!team) return
+  if (!subDepartment) return
 
   const managers = await prisma.departmentManager.findMany({
-    where: { departmentId: team.departmentId },
+    where: { departmentId: subDepartment.departmentId },
     select: { user: { select: { id: true } } },
   })
 

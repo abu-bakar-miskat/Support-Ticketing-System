@@ -33,7 +33,7 @@ export function UserListItem({
 }: Props) {
   const subtitle = formatUserListSubtitle(
     person.departmentName,
-    person.teamName,
+    person.subDepartmentName,
   );
 
   return (

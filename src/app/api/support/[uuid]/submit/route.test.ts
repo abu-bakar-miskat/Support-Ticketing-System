@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => ({
     intakeFormConfig: { findUnique: vi.fn() },
     $queryRaw: vi.fn().mockResolvedValue([]),
     $transaction: vi.fn(),
-    team: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
     ticket: { findUnique: vi.fn() },
     ticketMessage: { create: vi.fn() },
   },
@@ -43,14 +43,14 @@ const form = {
   id: "form-1",
   name: "IT Support",
   isActive: true,
-  intakeTeamId: "team-1",
+  intakeSubDepartmentId: "team-1",
   departmentId: "dept-1",
   allowCustomerReplies: true,
   fields: [],
 }
 
 const prep = {
-  intakeTeamId: "team-1",
+  intakeSubDepartmentId: "team-1",
   formName: "IT Support",
   title: "My issue",
   description: "<p>desc</p>",

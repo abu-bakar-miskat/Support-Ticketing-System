@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    teamMembership: { findMany: vi.fn(), findUnique: vi.fn() },
+    subDepartmentMembership: { findMany: vi.fn(), findUnique: vi.fn() },
     profile: { findUnique: vi.fn() },
     memberHoliday: { findFirst: vi.fn() },
     memberSchedule: { findUnique: vi.fn() },
-    teamStatus: { findMany: vi.fn() },
+    subDepartmentStatus: { findMany: vi.fn() },
     ticket: { count: vi.fn() },
   },
 }))
@@ -14,12 +14,12 @@ vi.mock("@/lib/db", () => ({
 import { prisma } from "@/lib/db"
 import { resolveAssignee, getEligibleMembers, getOpenTicketCounts } from "./rota"
 
-const mockMembershipFindMany = vi.mocked(prisma.teamMembership.findMany)
-const mockMembershipFindUnique = vi.mocked(prisma.teamMembership.findUnique)
+const mockMembershipFindMany = vi.mocked(prisma.subDepartmentMembership.findMany)
+const mockMembershipFindUnique = vi.mocked(prisma.subDepartmentMembership.findUnique)
 const mockProfileFind = vi.mocked(prisma.profile.findUnique)
 const mockHolidayFind = vi.mocked(prisma.memberHoliday.findFirst)
 const mockScheduleFind = vi.mocked(prisma.memberSchedule.findUnique)
-const mockTeamStatuses = vi.mocked(prisma.teamStatus.findMany)
+const mockTeamStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockTicketCount = vi.mocked(prisma.ticket.count)
 
 const TEAM_ID = "team-1"

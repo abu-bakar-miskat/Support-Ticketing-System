@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { cn } from "@/lib/utils"
 import type { Role } from "@/generated/prisma/enums"
-import { handleJoinRequest } from "@/lib/api/teams"
+import { handleJoinRequest } from "@/lib/api/sub-departments"
 
 export type JoinRequestNotification = {
   id: string
@@ -20,8 +20,8 @@ export type JoinRequestNotification = {
   createdAt: string
   unread: boolean
   section: "today" | "earlier"
-  teamName: string
-  teamId: string
+  subDepartmentName: string
+  subDepartmentId: string
   departmentId?: string | null
   requestId: string | null
   requestStatus: "pending" | "approved" | "rejected" | null
@@ -71,7 +71,7 @@ export function JoinRequestRow({
             {item.actor}
           </span>
           <span className="truncate font-sans text-[11.5px] font-normal text-pen-muted">
-            wants to join {item.teamName}
+            wants to join {item.subDepartmentName}
           </span>
         </div>
 
@@ -121,7 +121,7 @@ export function JoinRequestDetailPane({
     setSubmitting(action)
     try {
       try {
-        await handleJoinRequest(notification.teamId, notification.requestId, {
+        await handleJoinRequest(notification.subDepartmentId, notification.requestId, {
           action,
           ...(action === "approve" && accessType === "cross-access"
             ? { crossAccess: true }
@@ -186,7 +186,7 @@ export function JoinRequestDetailPane({
                 {notification.actor}
               </p>
               <p className="font-sans text-[11.5px] text-pen-subtle">
-                wants to join <span className="font-semibold text-pen-foreground">{notification.teamName}</span>
+                wants to join <span className="font-semibold text-pen-foreground">{notification.subDepartmentName}</span>
               </p>
             </div>
             {localStatus === "approved" && (

@@ -7,8 +7,8 @@ const mockProfile = {
   name: "Dev User",
   avatarUrl: null,
   role: "developer" as const,
-  teamId: "team-abc",
-  teamIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentId: "team-abc",
+  subDepartmentIds: ["team-abc"], memberships: [], timezone: null, notificationPrefs: null,
   createdAt: new Date(),
 }
 
@@ -48,7 +48,7 @@ const mockParams = Promise.resolve({ id: "ticket-1" })
 const accessibleTicket = {
   id: "ticket-1",
   title: "Fix login",
-  teamId: "team-abc",
+  subDepartmentId: "team-abc",
   assigneeId: null,
   creatorId: "00000000-0000-0000-0000-000000000009",
   deletedAt: null,
@@ -136,7 +136,7 @@ describe("POST /api/tickets/[id]/comments", () => {
   })
 
   it("returns 403 when caller cannot view the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, teamId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" })
     const res = await POST(makeRequest({ body: "hi" }), { params: mockParams })
     expect(res.status).toBe(403)
     expect(mockCommentCreate).not.toHaveBeenCalled()

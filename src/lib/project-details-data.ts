@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope, projectInScope } from "@/lib/dept-scope";
-import { getBoardCards, getTeamStatuses, avatarColorFor } from "@/lib/board-data";
+import { getBoardCards, getSubDepartmentStatuses, avatarColorFor } from "@/lib/board-data";
 import type { ProjectDetailsResponse, ProjectAsset } from "@/lib/api/projects";
 import { resolveLifecycleStages, visibleLifecycleStages } from "@/lib/project-lifecycle";
 import {
@@ -10,11 +10,11 @@ import {
   isPrivilegedProjectEditor,
 } from "@/lib/project-assets";
 import {
-  memberTeamIdsFromProject,
-  memberNamesByTeamId,
-  parseEnabledBoardTeamIds,
-  resolveBoardTeamSource,
-  resolveEnabledBoardTeamIds,
+  memberSubDepartmentIdsFromProject,
+  memberNamesBySubDepartmentId,
+  parseEnabledBoardSubDepartmentIds,
+  resolveBoardSubDepartmentSource,
+  resolveEnabledBoardSubDepartmentIds,
 } from "@/lib/project-boards";
 import {
   canAccessProjectSettings,
@@ -36,7 +36,7 @@ export async function getProjectDetailsData(
     where: { OR: [{ slug: idOrSlug }, { id: idOrSlug }] },
     include: {
       department: { select: { id: true, name: true } },
-      team: { select: { id: true, name: true, prefix: true, departmentId: true } },
+      subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
       members: {
         include: {
           user: {
@@ -44,10 +44,10 @@ export async function getProjectDetailsData(
               id: true,
               name: true,
               avatarUrl: true,
-              teamId: true,
+              subDepartmentId: true,
               memberships: {
                 where: { isActive: true },
-                select: { team: { select: { id: true, name: true, departmentId: true } } },
+                select: { subDepartment: { select: { id: true, name: true, departmentId: true } } },
                 take: 1,
               },
             },
@@ -59,14 +59,14 @@ export async function getProjectDetailsData(
 
   if (!project) return null;
 
-  const projectDeptId = project.departmentId ?? project.team?.departmentId ?? null;
+  const projectDeptId = project.departmentId ?? project.subDepartment?.departmentId ?? null;
   const hasNativeDeptViewAccess = hasNativeDeptProjectViewAccess(profile, projectDeptId);
 
   const deptScope = await getProfileDeptScope(profile);
   if (!hasNativeDeptViewAccess && deptScope) {
-    const teamDeptId = project.team?.departmentId ?? null;
+    const subDepartmentDeptId = project.subDepartment?.departmentId ?? null;
     const inActiveDept =
-      project.departmentId === deptScope.activeDeptId || teamDeptId === deptScope.activeDeptId;
+      project.departmentId === deptScope.activeDeptId || subDepartmentDeptId === deptScope.activeDeptId;
     const isMember = project.members.some((m) => m.user.id === profile.id);
 
     if (deptScope.isCrossAccessOnly) {
@@ -99,12 +99,12 @@ export async function getProjectDetailsData(
   })();
   const defaultTab = projectTabPrefs[project.id] ?? null;
 
-  const [tickets, cards, cardTeamIds, recentActivity, projectTimeEntries, projectModules] = await Promise.all([
+  const [tickets, cards, cardSubDepartmentIds, recentActivity, projectTimeEntries, projectModules] = await Promise.all([
     prisma.ticket.findMany({
       where: { projectId: project.id, deletedAt: null },
       orderBy: { updatedAt: "desc" },
       include: {
-        team: { select: { prefix: true, name: true } },
+        subDepartment: { select: { prefix: true, name: true } },
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         creator: { select: { id: true, name: true } },
         _count: { select: { comments: { where: { deletedAt: null } } } },
@@ -118,7 +118,7 @@ export async function getProjectDetailsData(
     getBoardCards({ projectId: project.id }),
     prisma.ticket.findMany({
       where: { projectId: project.id, deletedAt: null, parentId: null },
-      select: { id: true, teamId: true },
+      select: { id: true, subDepartmentId: true },
     }),
     prisma.activityLog.findMany({
       where: { ticket: { projectId: project.id, deletedAt: null } },
@@ -131,7 +131,7 @@ export async function getProjectDetailsData(
             id: true,
             title: true,
             ticketNumber: true,
-            team: { select: { prefix: true } },
+            subDepartment: { select: { prefix: true } },
           },
         },
       },
@@ -176,86 +176,86 @@ export async function getProjectDetailsData(
     byUser: [...projectQaTimeByUser.values()].sort((a, b) => b.totalSecs - a.totalSecs),
   };
 
-  const ticketTeamMap = new Map(cardTeamIds.map((t) => [t.id, t.teamId]));
+  const ticketSubDepartmentMap = new Map(cardSubDepartmentIds.map((t) => [t.id, t.subDepartmentId]));
 
   // Boards: department teams by default (set on project create). Managers can
   // remove empty boards and re-add from remaining department teams via +.
-  const boardTeamIdSet = new Set(cardTeamIds.map((t) => t.teamId));
-  if (project.teamId) boardTeamIdSet.add(project.teamId);
+  const boardSubDepartmentIdSet = new Set(cardSubDepartmentIds.map((t) => t.subDepartmentId));
+  if (project.subDepartmentId) boardSubDepartmentIdSet.add(project.subDepartmentId);
 
-  const membersByTeamId = new Map<string, Set<string>>();
+  const membersBySubDepartmentId = new Map<string, Set<string>>();
   for (const pm of project.members) {
-    const activeTeamId = pm.user.memberships[0]?.team?.id ?? pm.user.teamId;
-    if (!activeTeamId) continue;
-    if (!membersByTeamId.has(activeTeamId)) membersByTeamId.set(activeTeamId, new Set());
-    membersByTeamId.get(activeTeamId)!.add(pm.user.id);
+    const activeSubDepartmentId = pm.user.memberships[0]?.subDepartment?.id ?? pm.user.subDepartmentId;
+    if (!activeSubDepartmentId) continue;
+    if (!membersBySubDepartmentId.has(activeSubDepartmentId)) membersBySubDepartmentId.set(activeSubDepartmentId, new Set());
+    membersBySubDepartmentId.get(activeSubDepartmentId)!.add(pm.user.id);
   }
 
-  const departmentTeamRows = projectDeptId
-    ? await prisma.team.findMany({
+  const departmentSubDepartmentRows = projectDeptId
+    ? await prisma.subDepartment.findMany({
         where: { departmentId: projectDeptId },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       })
     : [];
-  const departmentTeamIds = departmentTeamRows.map((t) => t.id);
-  const memberNamesByTeam = memberNamesByTeamId(project.members);
+  const departmentSubDepartmentIds = departmentSubDepartmentRows.map((t) => t.id);
+  const memberNamesBySubDepartment = memberNamesBySubDepartmentId(project.members);
 
-  const storedBoardTeamIds = parseEnabledBoardTeamIds(project.enabledBoardTeamIds);
-  const enabledBoardTeamIds = resolveEnabledBoardTeamIds({
-    stored: storedBoardTeamIds,
-    departmentTeamIds,
-    ticketTeamIds: [...boardTeamIdSet],
-    projectTeamId: project.teamId,
+  const storedBoardSubDepartmentIds = parseEnabledBoardSubDepartmentIds(project.enabledBoardSubDepartmentIds);
+  const enabledBoardSubDepartmentIds = resolveEnabledBoardSubDepartmentIds({
+    stored: storedBoardSubDepartmentIds,
+    departmentSubDepartmentIds,
+    ticketSubDepartmentIds: [...boardSubDepartmentIdSet],
+    projectSubDepartmentId: project.subDepartmentId,
   });
 
-  const boardTeams = enabledBoardTeamIds.length
-    ? await prisma.team.findMany({
-        where: { id: { in: enabledBoardTeamIds } },
+  const boardSubDepartments = enabledBoardSubDepartmentIds.length
+    ? await prisma.subDepartment.findMany({
+        where: { id: { in: enabledBoardSubDepartmentIds } },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       })
     : [];
 
-  const addableTeamIdSet = new Set<string>();
-  const memberTeamIds = memberTeamIdsFromProject(project.members);
-  for (const id of [...departmentTeamIds, ...memberTeamIds]) {
-    if (!enabledBoardTeamIds.includes(id)) addableTeamIdSet.add(id);
+  const addableSubDepartmentIdSet = new Set<string>();
+  const memberSubDepartmentIds = memberSubDepartmentIdsFromProject(project.members);
+  for (const id of [...departmentSubDepartmentIds, ...memberSubDepartmentIds]) {
+    if (!enabledBoardSubDepartmentIds.includes(id)) addableSubDepartmentIdSet.add(id);
   }
 
-  const addableBoardTeams = addableTeamIdSet.size
+  const addableBoardSubDepartments = addableSubDepartmentIdSet.size
     ? await (async () => {
-        const rows = await prisma.team.findMany({
-          where: { id: { in: [...addableTeamIdSet] } },
+        const rows = await prisma.subDepartment.findMany({
+          where: { id: { in: [...addableSubDepartmentIdSet] } },
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         });
-        const statusesByTeam = await Promise.all(
-          rows.map((team) => getTeamStatuses(team.id)),
+        const statusesBySubDepartment = await Promise.all(
+          rows.map((subDepartment) => getSubDepartmentStatuses(subDepartment.id)),
         );
-        return rows.map((team, idx) => {
-          const source = departmentTeamIds.includes(team.id)
+        return rows.map((subDepartment, idx) => {
+          const source = departmentSubDepartmentIds.includes(subDepartment.id)
             ? ("department" as const)
             : ("member" as const);
           return {
-            id: team.id,
-            name: team.name,
+            id: subDepartment.id,
+            name: subDepartment.name,
             source,
-            memberNames: memberNamesByTeam.get(team.id) ?? [],
-            statuses: statusesByTeam[idx],
+            memberNames: memberNamesBySubDepartment.get(subDepartment.id) ?? [],
+            statuses: statusesBySubDepartment[idx],
           };
         });
       })()
     : [];
 
-  const groupStatuses = await Promise.all(boardTeams.map((t) => getTeamStatuses(t.id)));
+  const groupStatuses = await Promise.all(boardSubDepartments.map((t) => getSubDepartmentStatuses(t.id)));
 
   const deptPeople = await fetchProjectDepartmentPeople(projectDeptId);
   const personById = new Map(deptPeople.map((p) => [p.id, p]));
 
-  const teamBoardGroups = boardTeams.map((team, idx) => {
-    const groupCards = cards.filter((c) => ticketTeamMap.get(c.dbId) === team.id);
-    const memberIds = new Set(membersByTeamId.get(team.id) ?? []);
+  const subDepartmentBoardGroups = boardSubDepartments.map((subDepartment, idx) => {
+    const groupCards = cards.filter((c) => ticketSubDepartmentMap.get(c.dbId) === subDepartment.id);
+    const memberIds = new Set(membersBySubDepartmentId.get(subDepartment.id) ?? []);
     for (const card of groupCards) {
       if (card.assigneeId) memberIds.add(card.assigneeId);
     }
@@ -276,7 +276,7 @@ export async function getProjectDetailsData(
         },
       ];
     });
-    const teamMembersForCreate = [...memberIds].flatMap((uid) => {
+    const subDepartmentMembersForCreate = [...memberIds].flatMap((uid) => {
       const person = personById.get(uid);
       if (person) {
         return [
@@ -285,7 +285,7 @@ export async function getProjectDetailsData(
             name: person.name,
             avatarUrl: person.avatarUrl,
             departmentName: person.departmentName,
-            teamName: person.teamName ?? team.name,
+            subDepartmentName: person.subDepartmentName ?? subDepartment.name,
           },
         ];
       }
@@ -297,27 +297,27 @@ export async function getProjectDetailsData(
           name: pm.user.name,
           avatarUrl: pm.user.avatarUrl ?? null,
           departmentName: null,
-          teamName: team.name,
+          subDepartmentName: subDepartment.name,
         },
       ];
     });
     return {
-      teamId: team.id,
-      teamName: team.name,
+      subDepartmentId: subDepartment.id,
+      subDepartmentName: subDepartment.name,
       cards: groupCards,
       members: groupMembers,
       statuses: groupStatuses[idx],
-      teamMembersForCreate,
-      boardSource: resolveBoardTeamSource(
-        team.id,
-        departmentTeamIds,
-        memberNamesByTeam,
+      subDepartmentMembersForCreate,
+      boardSource: resolveBoardSubDepartmentSource(
+        subDepartment.id,
+        departmentSubDepartmentIds,
+        memberNamesBySubDepartment,
       ),
-      memberNames: memberNamesByTeam.get(team.id) ?? [],
+      memberNames: memberNamesBySubDepartment.get(subDepartment.id) ?? [],
     };
   });
 
-  const fallbackStatuses = await getTeamStatuses(project.team?.id ?? profile.teamId);
+  const fallbackStatuses = await getSubDepartmentStatuses(project.subDepartment?.id ?? profile.subDepartmentId);
 
   const byStatus: Record<string, number> = {};
   const byPriority: Record<string, number> = {};
@@ -359,7 +359,7 @@ export async function getProjectDetailsData(
 
   const ticketRows = tickets.map((t) => ({
     id: t.id,
-    humanId: `${t.team.prefix}-${t.ticketNumber}`,
+    humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title,
     status: t.status,
     priority: t.priority as string,
@@ -373,7 +373,7 @@ export async function getProjectDetailsData(
     updatedAt: t.updatedAt.toISOString(),
     commentCount: t._count.comments,
     labels: t.labels,
-    teamName: t.team.name,
+    subDepartmentName: t.subDepartment.name,
     lastMessageDirection: (t.messages[0]?.direction as "inbound" | "outbound") ?? null,
   }));
 
@@ -391,22 +391,22 @@ export async function getProjectDetailsData(
     name: p.name,
     avatarUrl: p.avatarUrl,
     departmentName: p.departmentName,
-    teamName: p.teamName,
+    subDepartmentName: p.subDepartmentName,
   }));
 
   const projectMemberUsers = project.members.map((pm) => {
     const person = personById.get(pm.user.id);
-    const teamName =
-      pm.user.memberships[0]?.team?.name ??
-      person?.teamName ??
-      project.team?.name ??
+    const subDepartmentName =
+      pm.user.memberships[0]?.subDepartment?.name ??
+      person?.subDepartmentName ??
+      project.subDepartment?.name ??
       null;
     return {
       id: pm.user.id,
       name: pm.user.name,
       avatarUrl: pm.user.avatarUrl ?? null,
       departmentName: person?.departmentName ?? null,
-      teamName,
+      subDepartmentName,
     };
   });
 
@@ -437,14 +437,14 @@ export async function getProjectDetailsData(
       color: project.color ?? "#0a76b9",
       avatarUrl: project.avatarUrl ?? null,
       description: project.description,
-      teamId: project.teamId ?? null,
-      teamName: project.team?.name ?? null,
+      subDepartmentId: project.subDepartmentId ?? null,
+      subDepartmentName: project.subDepartment?.name ?? null,
       projectStatus: project.projectStatus ?? "pipeline",
       pipelineStartedAt: project.pipelineStartedAt?.toISOString() ?? null,
       developmentStartedAt: project.developmentStartedAt?.toISOString() ?? null,
       liveAt: project.liveAt?.toISOString() ?? null,
       lifecycleStages,
-      departmentId: project.departmentId ?? project.team?.departmentId ?? null,
+      departmentId: project.departmentId ?? project.subDepartment?.departmentId ?? null,
       departmentName: project.department?.name ?? null,
       moduleSystemEnabled: project.moduleSystemEnabled ?? false,
       modules: projectModules,
@@ -472,14 +472,14 @@ export async function getProjectDetailsData(
     statusDist,
     tickets: ticketRows,
     boardStatuses: fallbackStatuses,
-    teamBoardGroups,
+    subDepartmentBoardGroups,
     allProjectAssignees,
     projectMemberUsers,
     currentUserIsProjectMember,
     canSelfJoinProject,
-    mainTeamId: project.teamId ?? profile.teamId ?? null,
-    enabledBoardTeamIds,
-    addableBoardTeams,
+    mainSubDepartmentId: project.subDepartmentId ?? profile.subDepartmentId ?? null,
+    enabledBoardSubDepartmentIds,
+    addableBoardSubDepartments,
     recentActivity: recentActivity.map((a) => ({
       id: a.id,
       actorName: a.actor.name,
@@ -489,7 +489,7 @@ export async function getProjectDetailsData(
       createdAt: a.createdAt.toISOString(),
       ticketId: a.ticket.id,
       ticketTitle: a.ticket.title,
-      ticketHumanId: `${a.ticket.team.prefix}-${a.ticket.ticketNumber}`,
+      ticketHumanId: `${a.ticket.subDepartment.prefix}-${a.ticket.ticketNumber}`,
     })),
   };
 }

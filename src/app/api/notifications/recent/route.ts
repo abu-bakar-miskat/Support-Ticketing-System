@@ -18,7 +18,7 @@ export async function GET() {
           id: true,
           title: true,
           ticketNumber: true,
-          team: { select: { prefix: true } },
+          subDepartment: { select: { prefix: true } },
         },
       },
       joinRequest: {
@@ -40,7 +40,7 @@ export async function GET() {
     ticket: n.ticket
       ? {
           dbId: n.ticket.id,
-          humanId: `${n.ticket.team.prefix}-${n.ticket.ticketNumber}`,
+          humanId: `${n.ticket.subDepartment.prefix}-${n.ticket.ticketNumber}`,
           title: n.ticket.title,
         }
       : null,

@@ -17,7 +17,7 @@ import type { MentionableUser } from "@/lib/mentionable-users";
  */
 export function UnifiedReplyComposer({
   ticketId,
-  teamMembers,
+  subDepartmentMembers,
   onCommentAdded,
   replyEnabled,
   customerName,
@@ -27,7 +27,7 @@ export function UnifiedReplyComposer({
   onSentFailed,
 }: {
   ticketId: string;
-  teamMembers?: MentionableUser[];
+  subDepartmentMembers?: MentionableUser[];
   onCommentAdded?: (comment: CommentShape) => void;
   replyEnabled: boolean;
   customerName: string | null;
@@ -39,7 +39,7 @@ export function UnifiedReplyComposer({
   const [mode, setMode] = useState<"note" | "reply">("note");
 
   if (!replyEnabled || !customerEmail) {
-    return <CommentInput ticketId={ticketId} teamMembers={teamMembers} onCommentAdded={onCommentAdded} />;
+    return <CommentInput ticketId={ticketId} subDepartmentMembers={subDepartmentMembers} onCommentAdded={onCommentAdded} />;
   }
 
   return (
@@ -68,7 +68,7 @@ export function UnifiedReplyComposer({
       </div>
 
       {mode === "note" ? (
-        <CommentInput ticketId={ticketId} teamMembers={teamMembers} onCommentAdded={onCommentAdded} />
+        <CommentInput ticketId={ticketId} subDepartmentMembers={subDepartmentMembers} onCommentAdded={onCommentAdded} />
       ) : (
         <CustomerReplyComposer
           ticketId={ticketId}

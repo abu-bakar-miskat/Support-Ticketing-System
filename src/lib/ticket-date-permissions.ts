@@ -1,9 +1,9 @@
 type ProfileLike = {
   id: string;
   role: string;
-  teamId?: string | null;
-  teamIds?: string[];
-  memberships?: { teamId: string; role: string }[];
+  subDepartmentId?: string | null;
+  subDepartmentIds?: string[];
+  memberships?: { subDepartmentId: string; role: string }[];
   grantedAccessDeptIds?: string[];
   fullAccessGrantedDeptIds?: string[];
   directMemberDeptIds?: string[];
@@ -14,7 +14,7 @@ type TicketLike = {
   assigneeId?: string | null;
   creatorId?: string | null;
   coAssigneeIds?: string[];
-  teamId?: string | null;
+  subDepartmentId?: string | null;
   departmentId?: string | null;
   projectId?: string | null;
   /** Set by callers that already resolved project membership (avoids async in sync helper). */
@@ -22,19 +22,19 @@ type TicketLike = {
 };
 
 /** Profile role or team membership role is lead on the ticket's team. */
-export function isLeadOnTicketTeam(
+export function isLeadOnTicketSubDepartment(
   profile: ProfileLike,
-  teamId: string | null | undefined,
+  subDepartmentId: string | null | undefined,
 ): boolean {
-  if (!teamId) return false;
+  if (!subDepartmentId) return false;
   const memberships = profile.memberships ?? [];
-  if (memberships.some((m) => m.teamId === teamId && m.role === "lead")) {
+  if (memberships.some((m) => m.subDepartmentId === subDepartmentId && m.role === "lead")) {
     return true;
   }
   if (profile.role === "lead") {
-    const teamIds =
-      profile.teamIds ?? (profile.teamId ? [profile.teamId] : []);
-    return teamIds.includes(teamId);
+    const subDepartmentIds =
+      profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
+    return subDepartmentIds.includes(subDepartmentId);
   }
   return false;
 }
@@ -54,7 +54,7 @@ export function canEditTicket(
   if (ticket.assigneeId === profile.id) return true;
   if (ticket.creatorId === profile.id) return true;
   if (ticket.coAssigneeIds?.includes(profile.id)) return true;
-  if (isLeadOnTicketTeam(profile, ticket.teamId)) return true;
+  if (isLeadOnTicketSubDepartment(profile, ticket.subDepartmentId)) return true;
   if (
     ticket.departmentId &&
     profile.fullAccessGrantedDeptIds?.includes(ticket.departmentId)

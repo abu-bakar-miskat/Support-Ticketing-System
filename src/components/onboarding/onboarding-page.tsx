@@ -28,7 +28,7 @@ function SignOutButton() {
 type Department = {
   id: string
   name: string
-  teamCount: number
+  subDepartmentCount: number
   managers: string[]
 }
 
@@ -235,7 +235,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                       <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-subtle">
                         <Users className="size-3" />
-                        {dept.teamCount} {dept.teamCount === 1 ? "team" : "teams"}
+                        {dept.subDepartmentCount} {dept.subDepartmentCount === 1 ? "team" : "teams"}
                       </span>
                       {dept.managers.length > 0 && (
                         <>

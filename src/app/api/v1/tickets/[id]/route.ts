@@ -36,7 +36,7 @@ export async function GET(
       createdAt: true,
       updatedAt: true,
       deletedAt: true,
-      team: { select: { id: true, name: true, prefix: true, departmentId: true } },
+      subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
       project: { select: { id: true, name: true, slug: true, color: true } },
       assignee: { select: { id: true, name: true, avatarUrl: true } },
       creator: { select: { id: true, name: true } },
@@ -50,13 +50,13 @@ export async function GET(
   }
 
   // Enforce department scope
-  if (ctx.departmentId && ticket.team.departmentId !== ctx.departmentId) {
+  if (ctx.departmentId && ticket.subDepartment.departmentId !== ctx.departmentId) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
 
   return NextResponse.json({
     id: ticket.id,
-    ticketId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+    ticketId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
     title: ticket.title,
     description: ticket.description,
     status: ticket.status,
@@ -71,7 +71,7 @@ export async function GET(
     cycleTimeDays: ticket.cycleTime != null ? +(ticket.cycleTime / 86_400).toFixed(2) : null,
     createdAt: ticket.createdAt,
     updatedAt: ticket.updatedAt,
-    team: { id: ticket.team.id, name: ticket.team.name },
+    subDepartment: { id: ticket.subDepartment.id, name: ticket.subDepartment.name },
     project: ticket.project
       ? { id: ticket.project.id, name: ticket.project.name, slug: ticket.project.slug }
       : null,

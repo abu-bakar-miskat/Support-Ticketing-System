@@ -8,7 +8,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     tenant: { count: vi.fn(), findFirst: vi.fn() },
     department: { count: vi.fn() },
-    team: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
   },
 }))
 

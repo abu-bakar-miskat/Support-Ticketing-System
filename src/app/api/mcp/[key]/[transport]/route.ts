@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { requireApiKeyRaw, runWithApiKeyScope, type ApiKeyContext } from "@/lib/api-key-auth"
 import {
-  listTeams,
+  listSubDepartments,
   listProjects,
   searchTickets,
   getTicket,
@@ -45,7 +45,7 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
             "Teams in the PEN ticketing system: id, name, prefix (used in ticket refs like WEB-123 and as create_ticket's teamPrefix), department, and the team's status labels in workflow order.",
           inputSchema: {},
         },
-        async () => toMcp(await listTeams(ctx)),
+        async () => toMcp(await listSubDepartments(ctx)),
       )
       server.registerTool(
         "list_projects",
@@ -65,7 +65,7 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
           inputSchema: {
             query: z.string().optional().describe("Case-insensitive title substring"),
             status: z.string().optional().describe("Exact status label, e.g. In Progress"),
-            teamPrefix: z.string().optional().describe("Team prefix, e.g. WEB"),
+            subDepartmentPrefix: z.string().optional().describe("Team prefix, e.g. WEB"),
             limit: z.number().int().min(1).max(50).optional().describe("Max results, default 20"),
           },
         },
@@ -91,7 +91,7 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
             description: z.string().optional().describe("Longer context, plain text"),
             type: z.enum(TICKET_TYPES).describe("Bug, Feature, Task, or Chore"),
             priority: z.enum(TICKET_PRIORITIES).describe("Low, Medium, High, Critical, or Urgent"),
-            teamPrefix: z.string().describe("Team prefix from list_teams, e.g. WEB"),
+            subDepartmentPrefix: z.string().describe("Team prefix from list_teams, e.g. WEB"),
             projectId: z.string().optional().describe("Project id from list_projects"),
             assigneeEmail: z.string().optional().describe("Assignee's work email; omit to leave unassigned"),
           },

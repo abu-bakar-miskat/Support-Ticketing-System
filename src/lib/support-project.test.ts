@@ -11,7 +11,7 @@ describe("support project native access", () => {
   const staffInDept = {
     id: "u1",
     role: "staff",
-    memberships: [{ team: { department: { id: "dept-1" } } }],
+    memberships: [{ subDepartment: { department: { id: "dept-1" } } }],
   };
 
   const managerOfDept = {
@@ -25,7 +25,7 @@ describe("support project native access", () => {
     id: "u3",
     role: "staff",
     grantedAccessDeptIds: ["dept-1"],
-    memberships: [{ team: { department: { id: "dept-home" } } }],
+    memberships: [{ subDepartment: { department: { id: "dept-home" } } }],
   };
 
   it("collects native department ids from teams, direct membership, and management", () => {

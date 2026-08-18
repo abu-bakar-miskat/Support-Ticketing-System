@@ -6,12 +6,12 @@ import { parseDueDatePayload } from "@/lib/ticket-datetime";
 
 type TicketForEstimate = {
   id: string;
-  teamId: string;
+  subDepartmentId: string;
   projectId: string | null;
   assigneeId: string | null;
   creatorId: string;
   deletedAt: Date | null;
-  team: { departmentId: string | null };
+  subDepartment: { departmentId: string | null };
   assignees: { userId: string }[];
   qaAssignees: { userId: string }[];
 };
@@ -21,13 +21,13 @@ async function loadTicket(ticketId: string): Promise<TicketForEstimate | null> {
     where: { id: ticketId },
     select: {
       id: true,
-      teamId: true,
+      subDepartmentId: true,
       projectId: true,
       assigneeId: true,
       tenantId: true,
       creatorId: true,
       deletedAt: true,
-      team: { select: { departmentId: true } },
+      subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
       qaAssignees: { select: { userId: true } },
     },

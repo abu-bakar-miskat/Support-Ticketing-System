@@ -52,8 +52,8 @@ async function acceptAndRespond(
       ok: true,
       departmentId: result.departmentId,
       departmentName: result.departmentName,
-      teamId: result.teamId,
-      teamName: result.teamName,
+      subDepartmentId: result.subDepartmentId,
+      subDepartmentName: result.subDepartmentName,
       role: result.role,
     });
     res.cookies.set("pen_active_dept", result.departmentId, {

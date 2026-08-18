@@ -25,7 +25,7 @@ export async function GET() {
     where: {
       mentionedUserId: profile.id,
       ...(deptScope
-        ? { comment: { ticket: { teamId: { in: deptScope.teamIds } } } }
+        ? { comment: { ticket: { subDepartmentId: { in: deptScope.subDepartmentIds } } } }
         : {}),
     },
     include: {
@@ -37,7 +37,7 @@ export async function GET() {
               id: true,
               title: true,
               ticketNumber: true,
-              team: { select: { prefix: true } },
+              subDepartment: { select: { prefix: true } },
             },
           },
         },
@@ -65,7 +65,7 @@ export async function GET() {
         avatarColor: avatarColorFor(author.name),
         avatarUrl: author.avatarUrl ?? null,
         role: ROLE_LABEL[author.role] ?? author.role,
-        ticketId: `${ticket.team.prefix}-${ticket.ticketNumber}`,
+        ticketId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
         ticketDbId: ticket.id,
         ticketTitle: ticket.title,
         body: m.comment.body,

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { managerCanManageUser } from "@/lib/dept-scope"
+import { syncAgentUnavailableFlagForUser } from "@/lib/agent-unavailable"
 
 async function assertMemberScope(targetUserId: string, caller: Parameters<typeof managerCanManageUser>[0]): Promise<NextResponse | null> {
   if (await managerCanManageUser(caller, targetUserId)) return null
@@ -54,6 +55,8 @@ export async function POST(
       }),
     ),
   )
+
+  await syncAgentUnavailableFlagForUser(userId)
 
   return NextResponse.json(holidays, { status: 201 })
 }

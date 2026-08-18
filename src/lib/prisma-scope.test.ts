@@ -4,8 +4,10 @@ import {
   mergeTenantWhere,
   mergeScopeWhere,
   subDepartmentAllowlist,
+  grantedTicketIdsFor,
   rowInScope,
   rowSubDepartmentAllowed,
+  rowGrantedTicketAccess,
   scopeFromRequestScope,
   resolveTicketScope,
   withTenantScope,
@@ -110,6 +112,69 @@ describe("resolveTicketScope — ambient resolution", () => {
     vi.doMock("@/lib/profile", () => ({ getProfile: vi.fn().mockResolvedValue(null) }));
     await expect(resolveTicketScope()).rejects.toThrow(/without a caller scope/);
     vi.doUnmock("@/lib/profile");
+  });
+
+  it("wires SD-06 subDepartmentTeamIds and ASG-06 grantedTicketIds from the live authenticated profile", async () => {
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({ id: "user-live-1", tenantIds: ["tenant-A"], isSuperAdmin: false }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({
+      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(["teamA"]),
+    }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) } },
+    }));
+
+    await expect(resolveTicketScope()).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      subDepartmentTeamIds: ["teamA"],
+      grantedTicketIds: ["t-granted"],
+    });
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
+  it("omits subDepartmentTeamIds for a live caller with no SD-06 restriction (null)", async () => {
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({ id: "user-live-2", tenantIds: ["tenant-A"], isSuperAdmin: false }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({
+      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(null),
+    }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) } },
+    }));
+
+    await expect(resolveTicketScope()).resolves.toEqual({ kind: "tenant", tenantIds: ["tenant-A"] });
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
+  it("preserves an empty (non-null) subDepartmentTeamIds — a live caller with no grants sees no tickets", async () => {
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({ id: "user-live-3", tenantIds: ["tenant-A"], isSuperAdmin: false }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({
+      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue([]),
+    }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) } },
+    }));
+
+    await expect(resolveTicketScope()).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      subDepartmentTeamIds: [],
+    });
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
   });
 });
 
@@ -295,5 +360,109 @@ describe("extension — SD-06 enforcement end to end", () => {
       registered.query.ticket.$allOperations({ operation: "findUnique", args: {}, query: () => Promise.resolve(row) } as never),
     );
     expect(res).toEqual(row);
+  });
+})
+
+describe("grantedTicketIdsFor — ASG-06 explicit grant allowlist", () => {
+  const tenantWithGrant: TicketScope = {
+    kind: "tenant",
+    tenantIds: ["tenant-A"],
+    subDepartmentTeamIds: ["teamA"],
+    grantedTicketIds: ["t-granted"],
+  };
+
+  it("returns the grants only for the Ticket model under a tenant scope", () => {
+    expect(grantedTicketIdsFor("Ticket", tenantWithGrant)).toEqual(["t-granted"]);
+    expect(grantedTicketIdsFor("Project", tenantWithGrant)).toBeNull();
+  });
+  it("is null when there are no grants, or an empty grant list", () => {
+    expect(grantedTicketIdsFor("Ticket", { kind: "tenant", tenantIds: ["tenant-A"] })).toBeNull();
+    expect(
+      grantedTicketIdsFor("Ticket", { kind: "tenant", tenantIds: ["tenant-A"], grantedTicketIds: [] }),
+    ).toBeNull();
+  });
+  it("is null for system and platform scopes", () => {
+    expect(grantedTicketIdsFor("Ticket", { kind: "system" })).toBeNull();
+    expect(grantedTicketIdsFor("Ticket", { kind: "platform" })).toBeNull();
+  });
+});
+
+describe("mergeScopeWhere — ASG-06 grant override", () => {
+  it("ORs the granted-id predicate alongside the sub-department predicate", () => {
+    expect(mergeScopeWhere(undefined, ["tenant-A"], ["teamA"], ["t-granted"])).toEqual({
+      AND: [
+        { tenantId: { in: ["tenant-A"] } },
+        { OR: [{ teamId: { in: ["teamA"] } }, { id: { in: ["t-granted"] } }] },
+      ],
+    });
+  });
+  it("is unaffected when there is no sub-department restriction to override", () => {
+    expect(mergeScopeWhere(undefined, ["tenant-A"], null, ["t-granted"])).toEqual({
+      tenantId: { in: ["tenant-A"] },
+    });
+  });
+});
+
+describe("rowGrantedTicketAccess", () => {
+  it("allows a row whose id is granted", () => {
+    expect(rowGrantedTicketAccess({ id: "t-granted" }, ["t-granted"])).toBe(true);
+  });
+  it("rejects a row not in the grant list", () => {
+    expect(rowGrantedTicketAccess({ id: "t-other" }, ["t-granted"])).toBe(false);
+  });
+  it("rejects when there are no grants", () => {
+    expect(rowGrantedTicketAccess({ id: "t-granted" }, null)).toBe(false);
+    expect(rowGrantedTicketAccess({ id: "t-granted" }, [])).toBe(false);
+  });
+});
+
+describe("extension — ASG-06 grant overrides SD-06 sub-department restriction", () => {
+  it("injects an OR(sub-department, grant) predicate into a ticket findMany", async () => {
+    const registered = registerScope();
+    const calls: { where?: unknown }[] = [];
+    const run = (args: { where?: unknown }) => {
+      calls.push(args);
+      return Promise.resolve([]);
+    };
+    await runWithScope(
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      () => registered.query.ticket.$allOperations({ operation: "findMany", args: {}, query: run } as never),
+    );
+    expect(calls[0].where).toEqual({
+      AND: [
+        { tenantId: { in: ["tenant-A"] } },
+        { OR: [{ teamId: { in: ["teamA"] } }, { id: { in: ["t-granted"] } }] },
+      ],
+    });
+  });
+
+  it("keeps a ticket findUnique outside the sub-department when the ticket is explicitly granted", async () => {
+    const registered = registerScope();
+    const row = { id: "t-granted", tenantId: "tenant-A", teamId: "teamB" };
+    const res = await runWithScope(
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      () =>
+        registered.query.ticket.$allOperations({
+          operation: "findUnique",
+          args: {},
+          query: () => Promise.resolve(row),
+        } as never),
+    );
+    expect(res).toEqual(row);
+  });
+
+  it("still drops an ungranted, out-of-sub-department ticket findUnique → null", async () => {
+    const registered = registerScope();
+    const row = { id: "t-other", tenantId: "tenant-A", teamId: "teamB" };
+    const res = await runWithScope(
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      () =>
+        registered.query.ticket.$allOperations({
+          operation: "findUnique",
+          args: {},
+          query: () => Promise.resolve(row),
+        } as never),
+    );
+    expect(res).toBeNull();
   });
 })

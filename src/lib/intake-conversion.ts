@@ -19,18 +19,26 @@ import { resolveColumnIdForStatus } from "@/lib/board-columns";
 // tickets auto-converted from intake form submissions.
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
 
+const SYSTEM_USER_EMAIL = "system@internal.local";
+
 async function ensureSystemUser(): Promise<string> {
-  await prisma.profile.upsert({
+  const existing = await prisma.profile.findUnique({
+    where: { email: SYSTEM_USER_EMAIL },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.profile.upsert({
     where: { id: SYSTEM_USER_ID },
     update: {},
     create: {
       id: SYSTEM_USER_ID,
-      email: "system@internal.local",
+      email: SYSTEM_USER_EMAIL,
       name: "System",
       role: "admin",
     },
   });
-  return SYSTEM_USER_ID;
+  return created.id;
 }
 
 type ResponseEntry = {

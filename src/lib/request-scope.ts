@@ -27,6 +27,12 @@ export type RequestScope = {
    * path. Absent/undefined = whole-department access (no sub-department filter).
    */
   subDepartmentTeamIds?: string[];
+  /**
+   * ASG-06 explicit per-ticket read-access grants (see lib/prisma-scope's
+   * `grantedTicketIds`) — carves an exception into the sub-department
+   * allowlist above for exactly these ticket ids.
+   */
+  grantedTicketIds?: string[];
 };
 
 const store = new AsyncLocalStorage<RequestScope>();

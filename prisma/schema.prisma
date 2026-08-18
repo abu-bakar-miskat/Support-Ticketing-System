@@ -192,6 +192,7 @@ model Tenant {
   boardColumns BoardColumn[]
   slaPolicies SlaPolicy[]
   assignmentRules AssignmentRule[]
+  bulkReassignJobs BulkReassignJob[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -278,6 +279,7 @@ model Department {
   departmentHolidays DepartmentHoliday[]
   departmentEvents  DepartmentEvent[]
   recruitmentBoards RecruitmentBoard[]
+  bulkReassignJobs  BulkReassignJob[]
   boardColumns      BoardColumn[]
   slaPolicies       SlaPolicy[]
   assignmentRules   AssignmentRule[]
@@ -775,6 +777,7 @@ model Ticket {
   commits       GitHubCommit[]
   slaTimer      SlaTimer?
   slaBreaches   SlaBreach[]
+  accessGrants  TicketAccessGrant[]
 
   @@unique([teamId, ticketNumber])
   @@index([projectId])
@@ -913,6 +916,24 @@ model ActivityLog {
   @@index([ticketId])
   @@index([createdAt])
   @@index([ticketId, createdAt(sort: Desc)])
+}
+
+// Retained read access (slice 13, ASG-06): a ticket transfer moves the ticket
+// out of the transferring user's team/sub-department, which would otherwise
+// drop their read access under SD-06 scoping. One row per (ticket, user) grant
+// carves out that exception — see subDepartmentAllowlist/rowSubDepartmentAllowed
+// in lib/prisma-scope.ts, the only place this table is consulted.
+model TicketAccessGrant {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String   @db.Uuid
+  reason    String?
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, userId])
+  @@index([userId])
 }
 
 // ─── Planning & Time Tracking ─────────────────────────────────────────────────
@@ -1084,6 +1105,52 @@ model AssignmentRule {
 
   @@index([departmentId])
   @@index([tenantId])
+}
+
+enum BulkReassignTargetType {
+  SINGLE_AGENT
+  GROUP
+  DEPARTMENT_POOL
+}
+
+enum BulkReassignJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// Async bulk reassignment (slice 13, ASG-05/C-05). Captures a snapshot of the
+// target ticket ids at creation time, then processes them off the request path
+// (see lib/bulk-reassign.ts). `succeededTicketIds` is the resumability ledger —
+// processing always skips ids already in it, so re-running a job (via the cron
+// sweep, if the initial `after()` run never finished) is a no-op for anything
+// already done, satisfying C-05's idempotent-on-retry requirement without a
+// queue library.
+model BulkReassignJob {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  departmentId       String
+  createdById        String                 @db.Uuid
+  sourceAssigneeId   String                 @db.Uuid
+  targetType         BulkReassignTargetType
+  // Exactly one of these is set, per targetType (SINGLE_AGENT / GROUP).
+  targetAgentId      String?                @db.Uuid
+  targetTeamId       String?
+  status             BulkReassignJobStatus  @default(PENDING)
+  ticketIds          String[]               @default([])
+  succeededTicketIds String[]               @default([])
+  resultSummary      Json?
+  createdAt          DateTime               @default(now())
+  startedAt          DateTime?
+  completedAt        DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([tenantId])
+  @@index([status])
 }
 
 // One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).

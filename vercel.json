@@ -16,6 +16,14 @@
     {
       "path": "/api/cron/sla-check",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/availability-sweep",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/bulk-reassign-sweep",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

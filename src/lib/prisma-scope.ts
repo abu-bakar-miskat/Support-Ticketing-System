@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getRequestScope, type RequestScope } from "@/lib/request-scope";
 
 /**
@@ -40,6 +41,14 @@ export type TicketScope =
        * reads are additionally bound to these teams. Undefined = no restriction.
        */
       subDepartmentTeamIds?: string[];
+      /**
+       * ASG-06 explicit per-ticket read-access grants (see `TicketAccessGrant`,
+       * granted by a ticket transfer to the transferring user). Overrides the
+       * sub-department allowlist above for exactly these ticket ids — everything
+       * else about tenant/sub-department scoping is unaffected. Undefined = no
+       * grants.
+       */
+      grantedTicketIds?: string[];
     };
 
 const LIST_READ = new Set([
@@ -86,19 +95,41 @@ export function subDepartmentAllowlist(modelLabel: string, scope: TicketScope): 
 }
 
 /**
+ * Pure: the ASG-06 explicit-grant ticket-id allowlist for this model under this
+ * scope, or null when none apply. Only `Ticket` carries grants.
+ */
+export function grantedTicketIdsFor(modelLabel: string, scope: TicketScope): string[] | null {
+  if (modelLabel !== "Ticket") return null;
+  if (scope.kind !== "tenant") return null;
+  const ids = scope.grantedTicketIds;
+  return ids && ids.length > 0 ? ids : null;
+}
+
+/**
  * Pure: AND the tenant predicate — and, for tickets, the SD-06 sub-department
  * predicate — into an existing (possibly undefined) where. A null allowlist adds
  * no sub-department constraint, so this reduces to {@link mergeTenantWhere}.
+ * ASG-06: when explicit grants are present, a granted ticket id satisfies the
+ * sub-department predicate even outside the allowlist (OR, not AND) — the grant
+ * carves out an exception rather than narrowing access further.
  */
 export function mergeScopeWhere(
   where: Where,
   tenantIds: string[],
   subDepartmentTeamIds: string[] | null,
+  grantedTicketIds: string[] | null = null,
 ): Record<string, unknown> {
   const parts: Record<string, unknown>[] = [];
   if (where && Object.keys(where).length > 0) parts.push(where);
   parts.push({ tenantId: { in: tenantIds } });
-  if (subDepartmentTeamIds) parts.push({ teamId: { in: subDepartmentTeamIds } });
+  if (subDepartmentTeamIds) {
+    const subPredicate = { teamId: { in: subDepartmentTeamIds } };
+    parts.push(
+      grantedTicketIds
+        ? { OR: [subPredicate, { id: { in: grantedTicketIds } }] }
+        : subPredicate,
+    );
+  }
   return parts.length === 1 ? parts[0] : { AND: parts };
 }
 
@@ -123,6 +154,45 @@ export function rowSubDepartmentAllowed(
   return row.teamId != null && allowlist.includes(row.teamId);
 }
 
+/**
+ * Pure: whether a fetched row is visible via an ASG-06 explicit grant,
+ * independent of the sub-department allowlist. A null/empty grant list never
+ * passes (there is nothing to override).
+ */
+export function rowGrantedTicketAccess(
+  row: { id?: string | null } | null,
+  grantedTicketIds: string[] | null,
+): boolean {
+  if (!grantedTicketIds || grantedTicketIds.length === 0) return false;
+  return row?.id != null && grantedTicketIds.includes(row.id);
+}
+
+/**
+ * ASG-06: a caller's explicit ticket-access grants, React-cached per request
+ * (mirrors `getProfile`'s caching) so repeated scope resolutions within one
+ * request cost a single query, not one per ticket-scoped operation.
+ */
+const getGrantedTicketIds = cache(async (userId: string): Promise<string[]> => {
+  const { prisma } = await import("@/lib/db");
+  const rows = await prisma.ticketAccessGrant.findMany({
+    where: { userId },
+    select: { ticketId: true },
+  });
+  return rows.map((r) => r.ticketId);
+});
+
+/**
+ * SD-06 sub-department allowlist, React-cached per request for the same
+ * reason as {@link getGrantedTicketIds}. `resolveSubDepartmentTeamIds` also
+ * resyncs the caller's `RoleAssignment` rows (see lib/role-assignment.ts) —
+ * caching this keeps that resync to once per request rather than once per
+ * ticket-scoped query.
+ */
+const getSubDepartmentTeamIds = cache(async (userId: string): Promise<string[] | null> => {
+  const { resolveSubDepartmentTeamIds } = await import("@/lib/role-assignment");
+  return resolveSubDepartmentTeamIds(userId);
+});
+
 /** Pure: map an explicit request scope to a ticket scope. */
 export function scopeFromRequestScope(scope: RequestScope): TicketScope {
   if (scope.system) return { kind: "system" };
@@ -131,6 +201,7 @@ export function scopeFromRequestScope(scope: RequestScope): TicketScope {
     kind: "tenant",
     tenantIds: scope.tenantIds,
     ...(scope.subDepartmentTeamIds ? { subDepartmentTeamIds: scope.subDepartmentTeamIds } : {}),
+    ...(scope.grantedTicketIds ? { grantedTicketIds: scope.grantedTicketIds } : {}),
   };
 }
 
@@ -158,9 +229,18 @@ export async function resolveTicketScope(): Promise<TicketScope> {
         "scope via getProfile; wrap system/background access in runAsSystem().",
     );
   }
-  return profile.isSuperAdmin
-    ? { kind: "platform" }
-    : { kind: "tenant", tenantIds: profile.tenantIds };
+  if (profile.isSuperAdmin) return { kind: "platform" };
+
+  const [subDepartmentTeamIds, grantedTicketIds] = await Promise.all([
+    getSubDepartmentTeamIds(profile.id),
+    getGrantedTicketIds(profile.id),
+  ]);
+  return {
+    kind: "tenant",
+    tenantIds: profile.tenantIds,
+    ...(subDepartmentTeamIds != null ? { subDepartmentTeamIds } : {}),
+    ...(grantedTicketIds.length > 0 ? { grantedTicketIds } : {}),
+  };
 }
 
 type QueryArgs = { where?: Where } & Record<string, unknown>;
@@ -178,9 +258,10 @@ async function applyTenantScope(
   const scope = await resolveTicketScope();
   const plan = planTicketOperation(operation, scope);
   const subAllow = subDepartmentAllowlist(modelLabel, scope);
+  const grantedIds = grantedTicketIdsFor(modelLabel, scope);
 
   if (plan.type === "inject" && scope.kind === "tenant") {
-    return query({ ...args, where: mergeScopeWhere(args.where, scope.tenantIds, subAllow) });
+    return query({ ...args, where: mergeScopeWhere(args.where, scope.tenantIds, subAllow, grantedIds) });
   }
 
   if (plan.type === "postfilter") {
@@ -190,29 +271,33 @@ async function applyTenantScope(
     const select = args.select as Record<string, unknown> | undefined;
     const injectedTenantId = select != null && !("tenantId" in select);
     const injectedTeamId = subAllow != null && select != null && !("teamId" in select);
+    const injectedId = grantedIds != null && select != null && !("id" in select);
     const runArgs =
-      injectedTenantId || injectedTeamId
+      injectedTenantId || injectedTeamId || injectedId
         ? {
             ...args,
             select: {
               ...select,
               ...(injectedTenantId ? { tenantId: true } : {}),
               ...(injectedTeamId ? { teamId: true } : {}),
+              ...(injectedId ? { id: true } : {}),
             },
           }
         : args;
 
     const result = (await query(runArgs)) as
-      | { tenantId?: string | null; teamId?: string | null }
+      | { id?: string | null; tenantId?: string | null; teamId?: string | null }
       | null;
-    if (!rowInScope(result, scope) || !rowSubDepartmentAllowed(result, subAllow)) {
+    const subOk = rowSubDepartmentAllowed(result, subAllow) || rowGrantedTicketAccess(result, grantedIds);
+    if (!rowInScope(result, scope) || !subOk) {
       if (operation === "findUniqueOrThrow") throw new Error(`No ${modelLabel} found`);
       return null;
     }
-    if (result != null && (injectedTenantId || injectedTeamId)) {
+    if (result != null && (injectedTenantId || injectedTeamId || injectedId)) {
       const rest = { ...(result as Record<string, unknown>) };
       if (injectedTenantId) delete rest.tenantId;
       if (injectedTeamId) delete rest.teamId;
+      if (injectedId) delete rest.id;
       return rest;
     }
     return result;

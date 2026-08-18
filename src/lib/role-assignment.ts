@@ -131,6 +131,69 @@ export function subDepartmentScopeForDepartment(
 }
 
 /**
+ * Pure: the caller's GLOBAL (cross-department) sub-department team-id
+ * allowlist for the non-bypassable Prisma scope extension (SD-06, see
+ * `lib/prisma-scope.ts`'s `TicketScope.subDepartmentTeamIds`). Unlike
+ * {@link subDepartmentScopeForDepartment}, which answers "which teams within
+ * *this* department", the scope extension applies one flat allowlist across
+ * every ticket read regardless of department — so this expands DEPARTMENT-
+ * and tenant-admin grants into their full team lists rather than leaving them
+ * implicit.
+ *
+ * Returns `null` when the caller has no restriction anywhere (platform admin,
+ * or admin of every tenant they belong to) — i.e. "whole-department access,
+ * all teams". Otherwise returns the finite set of every team id the caller
+ * may see: their direct team memberships, every team in a department they
+ * hold DEPARTMENT-scoped access to, and every team in a tenant they admin.
+ * An empty (non-null) array correctly means "sees no tickets anywhere" for a
+ * caller with no grants at all — callers must not collapse that to `null`.
+ */
+export function computeSubDepartmentTeamIds(
+  scope: UserScope,
+  departmentTeamIds: Record<string, string[]>,
+  tenantTeamIds: Record<string, string[]>,
+): string[] | null {
+  if (scope.isPlatformAdmin) return null;
+  if (scope.tenantIds.length > 0 && scope.tenantIds.every((t) => scope.tenantAdminIds.includes(t))) {
+    return null;
+  }
+
+  const allowed = new Set(scope.subDepartmentIds);
+  for (const deptId of scope.departmentIds) {
+    for (const teamId of departmentTeamIds[deptId] ?? []) allowed.add(teamId);
+  }
+  for (const tenantId of scope.tenantAdminIds) {
+    for (const teamId of tenantTeamIds[tenantId] ?? []) allowed.add(teamId);
+  }
+  return [...allowed];
+}
+
+/** DB layer for {@link computeSubDepartmentTeamIds}: fetches the team lists it needs. */
+export async function resolveSubDepartmentTeamIds(userId: string): Promise<string[] | null> {
+  const scope = await resolveUserScope(userId);
+  if (scope.isPlatformAdmin) return null;
+  if (scope.tenantIds.length > 0 && scope.tenantIds.every((t) => scope.tenantAdminIds.includes(t))) {
+    return null;
+  }
+
+  const [deptTeams, tenantTeams] = await Promise.all([
+    scope.departmentIds.length > 0
+      ? prisma.team.findMany({ where: { departmentId: { in: scope.departmentIds } }, select: { id: true, departmentId: true } })
+      : Promise.resolve([]),
+    scope.tenantAdminIds.length > 0
+      ? prisma.team.findMany({ where: { tenantId: { in: scope.tenantAdminIds } }, select: { id: true, tenantId: true } })
+      : Promise.resolve([]),
+  ]);
+
+  const departmentTeamIds: Record<string, string[]> = {};
+  for (const t of deptTeams) (departmentTeamIds[t.departmentId] ??= []).push(t.id);
+  const tenantTeamIds: Record<string, string[]> = {};
+  for (const t of tenantTeams) (tenantTeamIds[t.tenantId] ??= []).push(t.id);
+
+  return computeSubDepartmentTeamIds(scope, departmentTeamIds, tenantTeamIds);
+}
+
+/**
  * Pure: the effective managers of a sub-department for authz + notification
  * routing (SRS SD-06). A sub-department's own assigned managers win; when it has
  * none, responsibility defaults up to the parent Department's admins/managers.

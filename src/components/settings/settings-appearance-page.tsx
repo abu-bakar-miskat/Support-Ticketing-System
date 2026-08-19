@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useFontSize } from "@/components/font-size/font-size-provider";
-import { useTheme } from "@/components/theme/theme-provider";
-import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { FONT_SIZE_OPTIONS, type FontSize } from "@/lib/font-size";
-import { LIGHT_THEME_SWATCHES, DARK_THEME_SWATCHES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 type SettingsAppearanceProps = {
@@ -16,11 +13,6 @@ export function SettingsAppearancePage({
   initialFontSize = "default",
 }: SettingsAppearanceProps) {
   const { fontSize, setFontSize, ready: fontSizeReady } = useFontSize();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
@@ -39,93 +31,19 @@ export function SettingsAppearancePage({
           "px-[22px] py-5",
         )}
       >
-        <div className="flex flex-col gap-[5px]">
-          <p className="font-sans text-[13px] font-semibold text-pen-foreground">Theme</p>
-          <p className="font-sans text-[12px] text-pen-muted">Choose how the interface looks.</p>
-        </div>
-
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {mounted
-            ? `${LIGHT_THEME_SWATCHES.find((s) => s.id === theme)?.label ?? DARK_THEME_SWATCHES.find((s) => s.id === theme)?.label ?? "Dark"} theme active`
-            : null}
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4">
-          <div
-            role="radiogroup"
-            aria-label="Light themes"
-            className="flex flex-wrap gap-3"
-          >
-            {LIGHT_THEME_SWATCHES.map(({ id, label, gradient }) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={mounted ? theme === id : false}
-                aria-label={`${label} theme`}
-                onClick={(e) => setTheme(id, e)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-md p-0.5 transition-all",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent focus-visible:ring-offset-1",
-                  mounted && theme === id
-                    ? "ring-2 ring-pen-accent ring-offset-1 ring-offset-pen-bg"
-                    : "hover:ring-1 hover:ring-pen-card-border",
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className="block h-8 w-14 rounded-[5px] border border-pen-card-border"
-                  style={{ background: gradient }}
-                />
-                <span className="font-sans text-[11.5px] text-pen-muted">{label}</span>
-              </button>
-            ))}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-[5px]">
+            <p className="font-sans text-[13px] font-semibold text-pen-foreground">Theme</p>
+            <p className="font-sans text-[12px] text-pen-muted">
+              Switch between the light and dark appearance.
+            </p>
           </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2" aria-hidden="true">
-              <div className="h-px flex-1 bg-pen-card-border" />
-              <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-pen-subtle uppercase">
-                Dark
-              </span>
-              <div className="h-px flex-1 bg-pen-card-border" />
-            </div>
-            <div
-              role="radiogroup"
-              aria-label="Dark themes"
-              className="flex flex-wrap gap-3"
-            >
-              {DARK_THEME_SWATCHES.map(({ id, label, gradient }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={mounted ? theme === id : false}
-                  aria-label={`${label} theme`}
-                  onClick={(e) => setTheme(id, e)}
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-md p-0.5 transition-all",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent focus-visible:ring-offset-1",
-                    mounted && theme === id
-                      ? "ring-2 ring-pen-accent ring-offset-1 ring-offset-pen-bg"
-                      : "hover:ring-1 hover:ring-pen-card-border",
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="block h-8 w-14 rounded-[5px] border border-pen-card-border"
-                    style={{ background: gradient }}
-                  />
-                  <span className="font-sans text-[11.5px] text-pen-muted">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <ThemeToggle />
         </div>
 
-        <Separator className="my-5 bg-pen-card-border" />
+        <div className="mt-5 h-px bg-pen-card-border" />
 
-        <div className="flex flex-col gap-[5px]">
+        <div className="mt-5 flex flex-col gap-[5px]">
           <p className="font-sans text-[13px] font-semibold text-pen-foreground">Font size</p>
           <p className="font-sans text-[12px] text-pen-muted">
             Resize text to match your preference. Changes apply immediately.

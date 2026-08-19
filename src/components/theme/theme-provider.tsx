@@ -13,14 +13,12 @@ import { ThemeTransition } from "@/components/theme/theme-transition";
 import {
   Theme,
   THEME_STORAGE_KEY,
-  PREV_LIGHT_KEY,
-  isLightVariant,
-  isDarkVariant,
+  DEFAULT_THEME,
+  normalizeTheme,
   applyTheme as applyThemeFn,
+  applyNeutralLight,
   resolveTheme,
 } from "@/lib/theme";
-
-const PREV_DARK_KEY = "pen-prev-dark";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -29,7 +27,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "system",
+  theme: DEFAULT_THEME,
   resolvedTheme: "light",
   setTheme: () => {},
 });
@@ -38,17 +36,10 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem(THEME_STORAGE_KEY) as Theme) ?? "dark";
+    if (typeof window === "undefined") return DEFAULT_THEME;
+    return normalizeTheme(localStorage.getItem(THEME_STORAGE_KEY));
   });
 
   // Public support-form pages are always neutral light, never dark — see
@@ -60,42 +51,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Prevents the useEffect from re-applying the theme when VTA already did it
   const skipNextEffect = useRef(false);
 
-  const setTheme = useCallback(
-    (next: Theme, event?: React.MouseEvent) => {
-      // Persist the previous light/dark variant so the toggle can restore it
-      if (isDarkVariant(next) && isLightVariant(theme)) {
-        try { localStorage.setItem(PREV_LIGHT_KEY, theme) } catch {}
-      }
-      if (isLightVariant(next) && isDarkVariant(theme)) {
-        try { localStorage.setItem(PREV_DARK_KEY, theme) } catch {}
-      }
-      try { localStorage.setItem(THEME_STORAGE_KEY, next) } catch {}
+  const setTheme = useCallback((next: Theme, event?: React.MouseEvent) => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {}
 
-      const supportsVTA =
-        typeof document !== "undefined" && "startViewTransition" in document;
+    const supportsVTA =
+      typeof document !== "undefined" && "startViewTransition" in document;
 
-      if (supportsVTA) {
-        // Pin the click origin for the CSS clip-path animation
-        const x = event ? `${event.clientX}px` : "50%";
-        const y = event ? `${event.clientY}px` : "0%";
-        document.documentElement.style.setProperty("--pen-theme-origin-x", x);
-        document.documentElement.style.setProperty("--pen-theme-origin-y", y);
+    if (supportsVTA) {
+      // Pin the click origin for the CSS clip-path animation
+      const x = event ? `${event.clientX}px` : "50%";
+      const y = event ? `${event.clientY}px` : "0%";
+      document.documentElement.style.setProperty("--pen-theme-origin-x", x);
+      document.documentElement.style.setProperty("--pen-theme-origin-y", y);
 
-        skipNextEffect.current = true;
-        document.startViewTransition(() => {
-          applyThemeFn(next);
-          setThemeState(next);
-        });
-      } else {
+      skipNextEffect.current = true;
+      document.startViewTransition(() => {
+        applyThemeFn(next);
         setThemeState(next);
-      }
-    },
-    [theme],
-  );
+      });
+    } else {
+      setThemeState(next);
+    }
+  }, []);
 
   useEffect(() => {
     if (publicLight) {
-      applyThemeFn("light");
+      applyNeutralLight();
       return;
     }
     if (skipNextEffect.current) {
@@ -103,14 +86,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     applyThemeFn(theme);
-  }, [theme, publicLight]);
-
-  useEffect(() => {
-    if (publicLight || theme !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => applyThemeFn("system");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
   }, [theme, publicLight]);
 
   return (

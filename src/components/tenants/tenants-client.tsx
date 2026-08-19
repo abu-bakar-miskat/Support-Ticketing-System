@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Plus } from "lucide-react";
+import { ArrowRight, Building2, Layers, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,26 +144,34 @@ export function TenantsClient({
             return (
               <li
                 key={t.id}
-                className="flex flex-col rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card"
+                className="group flex flex-col rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card transition-all duration-200 hover:-translate-y-0.5 hover:border-pen-muted/40 hover:shadow-md"
               >
                 <div className="flex items-start gap-3">
-                  <TenantAvatar name={t.name} logoUrl={t.logoUrl} size={40} />
+                  <TenantAvatar name={t.name} logoUrl={t.logoUrl} size={44} />
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate font-sans text-[14px] font-semibold text-pen-foreground">
-                      {t.name}
-                    </span>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[11.5px] text-pen-muted">
-                      <span className="text-pen-subtle">/{t.slug}</span>
-                      <span className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-medium text-pen-blue">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-pen-foreground">
+                        {t.name}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue">
                         {tenantTypeLabel(t.type)}
                       </span>
-                      <span>
-                        {t.departments} dept{t.departments === 1 ? "" : "s"} ·{" "}
-                        {t.members} member
-                        {t.members === 1 ? "" : "s"}
-                      </span>
                     </div>
+                    <span className="mt-0.5 block truncate font-mono text-[11px] text-pen-subtle">
+                      /{t.slug}
+                    </span>
                   </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-4 border-t border-pen-card-border/60 pt-3 font-sans text-[12px] text-pen-muted">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="size-3.5 text-pen-subtle" />
+                    {t.departments} dept{t.departments === 1 ? "" : "s"}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Users className="size-3.5 text-pen-subtle" />
+                    {t.members} member{t.members === 1 ? "" : "s"}
+                  </span>
                 </div>
 
                 <div className="mt-4 flex items-center gap-2">
@@ -184,7 +192,14 @@ export function TenantsClient({
                     onClick={() => enterTenant(t.id)}
                     disabled={busy === `enter-${t.id}`}
                   >
-                    {busy === `enter-${t.id}` ? "Entering…" : "Enter"}
+                    {busy === `enter-${t.id}` ? (
+                      "Entering…"
+                    ) : (
+                      <>
+                        Enter
+                        <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </li>

@@ -210,6 +210,16 @@ async function buildAndBroadcast(
       body  = message ?? null
       break
 
+    case "template_request_submitted":
+      title = "New template request"
+      body  = message ?? null
+      break
+
+    case "template_request_reviewed":
+      title = "Template request reviewed"
+      body  = message ?? null
+      break
+
     default:
       title = message ? `${actorName} — ${message}` : `${actorName} sent a notification`
   }

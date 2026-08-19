@@ -5,6 +5,7 @@ import {
   getDepartmentEmailIdentity,
   saveDepartmentEmailIdentity,
 } from "@/lib/email-config";
+import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,6 +40,11 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const { profile, error } = await requireAdminOrManager();
   if (error) return error;
+
+  const featureCheck = await assertTemplateFeatureEnabled(profile!.activeTenantId ?? "__no_tenant__", "emailSettings");
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({}));
   const departmentId = typeof body?.departmentId === "string" ? body.departmentId : "";

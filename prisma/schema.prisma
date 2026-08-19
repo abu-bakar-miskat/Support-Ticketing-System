@@ -145,6 +145,8 @@ enum NotificationType {
   assignment_failed_alert
   mailbox_connection_failed
   agreement_expiring
+  template_request_submitted
+  template_request_reviewed
 }
 
 enum JoinRequestStatus {
@@ -222,6 +224,8 @@ model Tenant {
   featureFlags FeatureFlag[]
   auditEvents AuditEvent[]
   agreements Agreement[]
+  tenantTemplates  TenantTemplate[]
+  templateRequests TemplateRequest[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -1414,6 +1418,92 @@ model AgreementDocument {
   agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
 
   @@index([agreementId])
+}
+
+// Super-Admin-managed catalogue entry (e.g. "Support", "Development"). Name is
+// dynamic; the set of visible features is configured via TemplateFeature. A
+// tenant may run several templates at once (TenantTemplate).
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  // false = hidden from the catalogue for new requests; existing
+  // TenantTemplate grants keep working.
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  features        TemplateFeature[]
+  tenantTemplates TenantTemplate[]
+  requests        TemplateRequest[]
+}
+
+// One gated feature key (see lib/template-features.ts) bundled into a
+// Template.
+model TemplateFeature {
+  id         String   @id @default(cuid())
+  templateId String
+  key        String
+  createdAt  DateTime @default(now())
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, key])
+  @@index([templateId])
+}
+
+enum TenantTemplateStatus {
+  ACTIVE
+  REVOKED
+}
+
+// A tenant's grant to run a Template. Feature visibility for a tenant is the
+// union of features across all its ACTIVE TenantTemplate rows; a tenant with
+// zero rows is unrestricted (fail-open, see lib/template-catalogue.ts).
+model TenantTemplate {
+  id            String               @id @default(cuid())
+  tenantId      String
+  templateId    String
+  status        TenantTemplateStatus @default(ACTIVE)
+  activatedById String               @db.Uuid
+  activatedAt   DateTime             @default(now())
+  revokedAt     DateTime?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [templateId], references: [id])
+
+  @@unique([tenantId, templateId])
+  @@index([tenantId])
+  @@index([templateId])
+}
+
+enum TemplateRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A tenant's request to be granted a Template, reviewed by a Super Admin.
+model TemplateRequest {
+  id            String                @id @default(cuid())
+  tenantId      String
+  templateId    String
+  status        TemplateRequestStatus @default(PENDING)
+  message       String?
+  requestedById String                @db.Uuid
+  requestedAt   DateTime              @default(now())
+  reviewedById  String?               @db.Uuid
+  reviewedAt    DateTime?
+  reviewNote    String?
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [templateId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([templateId, status])
 }
 
 // One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).

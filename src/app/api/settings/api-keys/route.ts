@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { generateApiKey } from "@/lib/api-key-auth"
+import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 import type { ApiKeyScope } from "@/generated/prisma/enums"
 
 // GET /api/settings/api-keys — list keys visible to the caller
@@ -37,6 +38,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const { profile, isAdmin, error } = await requireAdminOrManager()
   if (error) return error
+
+  const featureCheck = await assertTemplateFeatureEnabled(profile.activeTenantId ?? "__no_tenant__", "apiKeys")
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
+  }
 
   const body = await request.json().catch(() => ({}))
   const { name, departmentId } = body as { name?: string; departmentId?: string }

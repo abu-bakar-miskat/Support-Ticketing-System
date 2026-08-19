@@ -4,6 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SettingsLayout } from "@/components/settings/settings-layout";
+import { getTenantActiveFeatureKeys } from "@/lib/template-catalogue";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -35,8 +36,19 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const counts: Record<string, number> = {};
   if (pendingCount > 0) counts["/settings/sub-departments"] = pendingCount;
 
+  const activeFeatureKeySet = profile.activeTenantId
+    ? await getTenantActiveFeatureKeys(profile.activeTenantId)
+    : "ALL";
+  const activeFeatureKeys = activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet);
+
   return (
-    <SettingsLayout role={profile.role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={profile.isSuperAdmin}>
+    <SettingsLayout
+      role={profile.role}
+      counts={counts}
+      isCrossAccess={isCrossAccess}
+      isSuperAdmin={profile.isSuperAdmin}
+      activeFeatureKeys={activeFeatureKeys}
+    >
       {children}
     </SettingsLayout>
   );

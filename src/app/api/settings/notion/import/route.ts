@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { runNotionImport, type ImportMapping } from "@/lib/notion-import"
+import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 
 export async function POST(req: NextRequest) {
   const { profile, error } = await requireAdminOrManager()
   if (error) return error
+
+  const featureCheck = await assertTemplateFeatureEnabled(profile.activeTenantId ?? "__no_tenant__", "importForm")
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
+  }
 
   const body = await req.json()
   const { token, mapping } = body as { token: string; mapping: ImportMapping }

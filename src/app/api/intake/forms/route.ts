@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
+import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 
 export async function GET() {
   const { profile, error } = await requireAdminOrManager()
@@ -24,6 +25,11 @@ export async function GET() {
 export async function POST(request: Request) {
   const { profile, error } = await requireAdminOrManager()
   if (error) return error
+
+  const featureCheck = await assertTemplateFeatureEnabled(profile!.activeTenantId ?? "__no_tenant__", "supportForm")
+  if (!featureCheck.ok) {
+    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
+  }
 
   const body = await request.json()
   const name = (body.name as string)?.trim()

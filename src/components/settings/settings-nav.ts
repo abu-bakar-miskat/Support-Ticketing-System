@@ -1,3 +1,5 @@
+import type { TemplateFeatureKey } from "@/lib/template-features";
+
 export type SettingsNavItem = {
   label: string;
   href: string;
@@ -9,6 +11,8 @@ export type SettingsNavItem = {
   managerOnly?: true;
   /** Hidden for cross-department-access outsiders — department-specific management only */
   deptSpecific?: true;
+  /** Hidden unless the tenant's active templates include this feature key (Template Catalogue) */
+  templateFeatureKey?: TemplateFeatureKey;
   count?: number;
 };
 
@@ -91,28 +95,37 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         label: "Support forms",
         href: "/settings/intake-forms",
         managerOnly: true,
+        templateFeatureKey: "supportForm",
       },
       {
         label: "API keys",
         href: "/settings/api-keys",
         managerOnly: true,
         deptSpecific: true,
+        templateFeatureKey: "apiKeys",
       },
       {
         label: "Import from Notion",
         href: "/settings/import",
         managerOnly: true,
+        templateFeatureKey: "importForm",
       },
       {
         label: "Email settings",
         href: "/settings/email",
         managerOnly: true,
+        templateFeatureKey: "emailSettings",
       },
     ],
   },
   {
     label: "PLATFORM",
     items: [
+      {
+        label: "Templates",
+        href: "/settings/templates-catalogue",
+        adminOnly: true,
+      },
       {
         label: "Tenants",
         href: "/tenants",
@@ -124,11 +137,19 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
 
 export const ALL_SETTINGS_NAV_ITEMS = SETTINGS_NAV.flatMap((g) => g.items);
 
+/**
+ * `activeFeatureKeys` is "ALL" when the tenant has adopted zero templates yet
+ * (fail-open, see lib/template-catalogue.ts) so existing tenants see every
+ * item exactly as before this feature shipped.
+ */
 export function getFilteredNav(
   role: string,
   counts: Partial<Record<string, number>> = {},
   isCrossAccess = false,
   isSuperAdmin = false,
+  // Array form (not Set) so this can flow straight through as a server→client
+  // component prop, which must be JSON-serializable.
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL" = "ALL",
 ): SettingsNavGroup[] {
   const isAdmin = role === "admin";
   const isManager = role === "manager";
@@ -147,6 +168,10 @@ export function getFilteredNav(
         // Cross-access outsiders only see personal settings, not department-specific ones
         if (isCrossAccess && item.deptSpecific) return false;
         return true;
+      })
+      .filter((item) => {
+        if (!item.templateFeatureKey) return true;
+        return activeFeatureKeys === "ALL" || activeFeatureKeys.includes(item.templateFeatureKey);
       })
       .map((item) => ({
         ...item,

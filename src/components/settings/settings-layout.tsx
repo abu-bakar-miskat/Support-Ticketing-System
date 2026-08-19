@@ -17,6 +17,7 @@ import {
   getFilteredNav,
   type SettingsNavItem,
 } from "@/components/settings/settings-nav";
+import type { TemplateFeatureKey } from "@/lib/template-features";
 
 
 function SettingsNavLink({
@@ -58,14 +59,16 @@ function SettingsSubNav({
   counts,
   isCrossAccess,
   isSuperAdmin,
+  activeFeatureKeys,
 }: {
   activeHref: string;
   role: string;
   counts: Record<string, number>;
   isCrossAccess: boolean;
   isSuperAdmin: boolean;
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL";
 }) {
-  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin);
+  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys);
   return (
     <nav
       aria-label="Settings"
@@ -104,15 +107,17 @@ function SettingsMobileNav({
   counts,
   isCrossAccess,
   isSuperAdmin,
+  activeFeatureKeys,
 }: {
   activeHref: string;
   role: string;
   counts: Record<string, number>;
   isCrossAccess: boolean;
   isSuperAdmin: boolean;
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL";
 }) {
   const router = useRouter();
-  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin);
+  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys);
   const allItems = nav.flatMap((g) => g.items);
   const activeItem =
     allItems.find((item) => item.href === activeHref) ?? allItems[0];
@@ -157,19 +162,21 @@ export function SettingsLayout({
   counts = {},
   isCrossAccess = false,
   isSuperAdmin = false,
+  activeFeatureKeys = "ALL",
 }: {
   children: React.ReactNode;
   role?: string;
   counts?: Record<string, number>;
   isCrossAccess?: boolean;
   isSuperAdmin?: boolean;
+  activeFeatureKeys?: TemplateFeatureKey[] | "ALL";
 }) {
   const pathname = usePathname();
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] min-h-0 w-full flex-col overflow-hidden lg:flex-row">
-      <SettingsMobileNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} />
-      <SettingsSubNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} />
+      <SettingsMobileNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} />
+      <SettingsSubNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         {children}
       </div>

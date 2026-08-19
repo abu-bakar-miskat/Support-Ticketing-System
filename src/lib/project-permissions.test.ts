@@ -10,7 +10,7 @@ import {
 
 describe("project-permissions", () => {
   it("treats profile lead role as project manager", () => {
-    const profile = { role: "lead", memberships: [] };
+    const profile = { role: "sub_manager", memberships: [] };
     expect(isProjectLead(profile)).toBe(true);
     expect(canManageProjects(profile)).toBe(true);
     expect(isPrivilegedProjectEditor(profile)).toBe(true);
@@ -20,7 +20,7 @@ describe("project-permissions", () => {
   it("treats team membership lead as project manager", () => {
     const profile = {
       role: "staff",
-      memberships: [{ role: "lead" }],
+      memberships: [{ role: "sub_manager" }],
     };
     expect(isProjectLead(profile)).toBe(true);
     expect(canManageProjects(profile)).toBe(true);
@@ -78,7 +78,7 @@ describe("project-permissions", () => {
     const staff = { role: "staff", memberships: [] };
     expect(canModifyProjectContent(staff, false)).toBe(false);
     expect(canModifyProjectContent(staff, true)).toBe(true);
-    const lead = { role: "lead", memberships: [] };
+    const lead = { role: "sub_manager", memberships: [] };
     expect(canModifyProjectContent(lead, false)).toBe(true);
   });
 });

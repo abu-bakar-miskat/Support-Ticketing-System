@@ -15,7 +15,7 @@ export default async function SettingsTagsRoute() {
   if (!profile) redirect("/login");
 
   // Only admins and managers can manage tags & labels
-  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "lead")
+  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "sub_manager")
     redirect("/settings");
 
   const deptScope = await getProfileDeptScope(profile);

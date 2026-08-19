@@ -655,7 +655,7 @@ export function BoardPage({
   const canFilterByAssignee =
     currentUser?.role === "admin" ||
     currentUser?.role === "manager" ||
-    currentUser?.role === "lead" ||
+    currentUser?.role === "sub_manager" ||
     currentUser?.role === "staff";
   const queryClient = useQueryClient();
   const [localCards, setLocalCards] = useState<BoardCardData[]>(initialCards);

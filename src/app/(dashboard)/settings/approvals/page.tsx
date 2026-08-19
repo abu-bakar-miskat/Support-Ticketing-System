@@ -28,7 +28,7 @@ export default async function SettingsTimeTrackingApprovalsRoute() {
     profile.activeTenantId ? getTenantConfig(profile.activeTenantId) : Promise.resolve(null),
     prisma.profile.findMany({
       where: {
-        role: { in: ["admin", "manager", "lead"] },
+        role: { in: ["admin", "manager", "sub_manager"] },
         tenantMemberships: { some: { tenantId: profile.activeTenantId ?? "__no_tenant__", isActive: true } },
       },
       orderBy: { name: "asc" },

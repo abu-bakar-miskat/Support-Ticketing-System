@@ -140,7 +140,7 @@ export async function getTasksMetaData(
       }
       return [];
     }
-    if (profile.role === "lead" && profile.subDepartmentId) {
+    if (profile.role === "sub_manager" && profile.subDepartmentId) {
       return prisma.project.findMany({
         where: { subDepartmentId: profile.subDepartmentId },
         select: { id: true, name: true, subDepartmentId: true, kind: true },

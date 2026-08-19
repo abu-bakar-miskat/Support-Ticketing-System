@@ -19,7 +19,7 @@ export default async function SettingsProjectsRoute() {
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
 
-  if (!isAdmin && !isManager && profile.role !== "lead") redirect("/settings");
+  if (!isAdmin && !isManager && profile.role !== "sub_manager") redirect("/settings");
 
   // Profile-aware scope — validates cookie, auto-derives for managers
   const profileScope = await getProfileDeptScope(profile);

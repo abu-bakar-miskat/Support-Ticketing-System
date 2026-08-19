@@ -578,7 +578,7 @@ export function buildPeopleMembershipWhere(
       ? { isActive: true, subDepartment: { tenantId: profile.activeTenantId } }
       : { isActive: true };
   }
-  if (profile.role === "manager" || profile.role === "lead") {
+  if (profile.role === "manager" || profile.role === "sub_manager") {
     const subDepartmentIds =
       deptScope?.subDepartmentIds ??
       profile.subDepartmentIds ??
@@ -729,7 +729,7 @@ export async function getPersonalTaskDeptScope(
   const directMember = profile.directMemberDeptIds ?? [];
   const hasCrossAccess =
     (granted.length > 0 || directMember.length > 0) &&
-    (profile.role === "staff" || profile.role === "lead");
+    (profile.role === "staff" || profile.role === "sub_manager");
 
   if (!hasCrossAccess) {
     return deptScope;

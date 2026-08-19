@@ -185,7 +185,7 @@ export function TopBar({
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <UpcomingCalendarBadges className="mr-0.5 hidden lg:flex" />
-        {!hideClock && <DualClock compact className="mr-1.5 hidden lg:flex" />}
+        {!hideClock && <DualClock compact hideBangladesh className="mr-1.5 hidden lg:flex" />}
         <button
           type="button"
           onClick={onOpenSearch}

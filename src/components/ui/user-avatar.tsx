@@ -205,7 +205,7 @@ export function UserAvatar({
                 )}
                 {meta.role && (
                   <p className="truncate font-sans text-[11.5px] capitalize text-pen-muted">
-                    {meta.role}
+                    {meta.role === "sub_manager" ? "Sub-manager" : meta.role}
                   </p>
                 )}
                 {meta.subDepartment && (

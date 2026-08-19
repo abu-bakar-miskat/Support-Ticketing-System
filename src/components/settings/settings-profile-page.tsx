@@ -56,28 +56,11 @@ type SettingsProfileProps = {
   timezone: string;
   avatarUrl: string | null;
   location: string;
-  githubUsername: string;
   workingDays: number[];
   workStartTime: string;
   workEndTime: string;
   signature: SignaturePrefs;
 };
-
-function MicrosoftSsoBadge() {
-  return (
-    <div className="inline-flex items-center gap-1.5 rounded-[5px] border border-pen-blue bg-pen-blue-tint px-[7px] py-[3px]">
-      <div className="relative size-3 shrink-0 overflow-hidden">
-        <div className="absolute top-0 left-0 size-[5px] bg-[#f25022]" />
-        <div className="absolute top-0 left-[7px] size-[5px] bg-[#7fba00]" />
-        <div className="absolute top-[7px] left-0 size-[5px] bg-[#00a4ef]" />
-        <div className="absolute top-[7px] left-[7px] size-[5px] bg-[#ffb900]" />
-      </div>
-      <span className="font-sans text-[11.5px] font-semibold text-pen-id">
-        Signed in via Microsoft SSO
-      </span>
-    </div>
-  );
-}
 
 function FieldLabel({
   children,
@@ -142,7 +125,6 @@ export function SettingsProfilePage({
   timezone: initialTimezone,
   avatarUrl,
   location: initialLocation,
-  githubUsername: initialGithubUsername,
   workingDays: initialWorkingDays,
   workStartTime: initialWorkStartTime,
   workEndTime: initialWorkEndTime,
@@ -157,7 +139,6 @@ export function SettingsProfilePage({
   const [fullName, setFullName] = useState(userName);
   const [timezone, setTimezone] = useState(initialTimezone);
   const [location, setLocation] = useState(initialLocation);
-  const [githubUsername, setGithubUsername] = useState(initialGithubUsername);
   const [workingDays, setWorkingDays] = useState<number[]>(initialWorkingDays);
   const [workStartTime, setWorkStartTime] = useState(initialWorkStartTime);
   const [workEndTime, setWorkEndTime] = useState(initialWorkEndTime);
@@ -188,7 +169,6 @@ export function SettingsProfilePage({
     fullName.trim() !== userName ||
     timezone !== initialTimezone ||
     location !== initialLocation ||
-    githubUsername.trim() !== initialGithubUsername ||
     JSON.stringify([...workingDays].sort()) !==
       JSON.stringify([...initialWorkingDays].sort()) ||
     workStartTime !== initialWorkStartTime ||
@@ -237,7 +217,6 @@ export function SettingsProfilePage({
     setFullName(userName);
     setTimezone(initialTimezone);
     setLocation(initialLocation);
-    setGithubUsername(initialGithubUsername);
     setWorkingDays(initialWorkingDays);
     setWorkStartTime(initialWorkStartTime);
     setWorkEndTime(initialWorkEndTime);
@@ -334,7 +313,6 @@ export function SettingsProfilePage({
           name: trimmedName,
           timezone,
           location: location.trim() || null,
-          githubUsername: githubUsername.trim().replace(/^@/, "") || null,
           signature: {
             enabled: sigEnabled,
             activeId: activeSignatureId,
@@ -363,7 +341,7 @@ export function SettingsProfilePage({
       <div className="flex flex-col gap-[5px]">
         <h1 className="pen-text-admin-title">Profile</h1>
         <p className="font-sans text-[13px] text-pen-muted">
-          Your personal information, signed in via Microsoft.
+          Your personal information.
         </p>
       </div>
 
@@ -416,7 +394,6 @@ export function SettingsProfilePage({
             <p className="truncate font-sans text-[12.5px] text-pen-muted">
               {userEmail}
             </p>
-            <MicrosoftSsoBadge />
           </div>
         </div>
 
@@ -466,25 +443,6 @@ export function SettingsProfilePage({
                 className="h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
               />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-4 lg:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
-              <FieldLabel>GitHub username</FieldLabel>
-              <Input
-                value={githubUsername}
-                onChange={(e) => setGithubUsername(e.target.value)}
-                placeholder="e.g. octocat"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                className="h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
-              />
-              <p className="font-sans text-[11px] text-pen-subtle">
-                Links your commits and pull requests on tracked repos to your profile&apos;s contribution graph.
-              </p>
-            </div>
-            <div className="hidden min-w-0 flex-1 lg:block" />
           </div>
 
           <div className="flex flex-col gap-[5px]">

@@ -20,11 +20,10 @@ export default async function SettingsPage() {
     <SettingsProfilePage
       name={profile.name}
       email={profile.email}
-      role={profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+      role={profile.role === "sub_manager" ? "Sub-manager" : profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
       timezone={profile.timezone ?? "Europe/London"}
       avatarUrl={profile.avatarUrl}
       location={profile.location ?? ""}
-      githubUsername={profile.githubUsername ?? ""}
       workingDays={schedule?.workingDays ?? [1, 2, 3, 4, 5]}
       workStartTime={schedule?.workStartTime ?? "09:00"}
       workEndTime={schedule?.workEndTime ?? "17:00"}

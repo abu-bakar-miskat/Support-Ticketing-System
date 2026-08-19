@@ -1779,7 +1779,7 @@ function HeaderMemberAvatars({
   const isPrivileged =
     currentUser?.role === "admin" ||
     currentUser?.role === "manager" ||
-    currentUser?.role === "lead";
+    currentUser?.role === "sub_manager";
 
   const serverMembers = projectMembers.map((m) => ({
     id: m.id,
@@ -1907,7 +1907,7 @@ function HeaderMemberAvatars({
     setUsers([]);
     try {
       if (isPrivileged) {
-        // Admin/manager/lead: full member replace via admin route
+        // Admin/manager/sub_manager: full member replace via admin route
         await updateAdminProject(projectId, {
           memberIds: [...currentIds, ...newIds],
         } as never);
@@ -2257,7 +2257,7 @@ function ProjectProfilePageInner({
   const isPrivileged =
     currentUser?.role === "admin" ||
     currentUser?.role === "manager" ||
-    currentUser?.role === "lead";
+    currentUser?.role === "sub_manager";
   const canExport =
     currentUser?.role === "admin" || currentUser?.role === "manager";
 

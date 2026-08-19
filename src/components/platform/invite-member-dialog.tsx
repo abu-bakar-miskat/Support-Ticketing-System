@@ -7,9 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
-const MEMBER_ROLES = ["admin", "manager", "lead", "staff"] as const
+const MEMBER_ROLES = ["admin", "manager", "sub_manager", "staff"] as const
 const roleLabel = (r: string) =>
-  r === "admin" ? "Admin (whole tenant)" : r.charAt(0).toUpperCase() + r.slice(1)
+  r === "admin"
+    ? "Admin (whole tenant)"
+    : r === "sub_manager"
+      ? "Sub-manager"
+      : r.charAt(0).toUpperCase() + r.slice(1)
 
 /**
  * Add-or-invite a member to a tenant. Existing users are added instantly; a new

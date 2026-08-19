@@ -9,7 +9,7 @@ describe("renderInvite", () => {
       inviterName: "Alex Rivera",
       departmentName: "Engineering",
       subDepartmentName: "Platform",
-      role: "lead",
+      role: "sub_manager",
       message: "Welcome aboard",
       inviteToken: "abc123",
       signature: { html: "<div>Sig</div>", text: "Sig" },
@@ -19,7 +19,7 @@ describe("renderInvite", () => {
     expect(subject).toContain("Engineering");
     expect(html).toContain("Welcome aboard");
     expect(html).toContain("Platform");
-    expect(html).toContain("Lead");
+    expect(html).toContain("Sub-manager");
     expect(html).toContain("/invite/abc123");
     expect(html).toContain("Accept invitation");
     expect(text).toContain("Welcome aboard");

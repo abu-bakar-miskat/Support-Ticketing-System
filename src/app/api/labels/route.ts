@@ -41,7 +41,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const { profile, error } = await requireAuth();
   if (error) return error;
-  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "lead") {
+  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "sub_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

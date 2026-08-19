@@ -22,7 +22,7 @@ export function InviteByEmailModal({
 }) {
   const [email, setEmail] = useState("");
   const [subDepartmentId, setSubDepartmentId] = useState(subDepartments[0]?.id ?? "");
-  const [role, setRole] = useState<"staff" | "lead">("staff");
+  const [role, setRole] = useState<"staff" | "sub_manager">("staff");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export function InviteByEmailModal({
               Role
             </label>
             <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
-              {(["staff", "lead"] as const).map((r) => (
+              {(["staff", "sub_manager"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"

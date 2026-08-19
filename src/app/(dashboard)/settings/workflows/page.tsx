@@ -13,7 +13,7 @@ export default async function SettingsWorkflowsRoute() {
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
-  const isLead = profile.role === "lead";
+  const isLead = profile.role === "sub_manager";
 
   if (!isAdmin && !isManager && !isLead) redirect("/settings");
 

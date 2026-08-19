@@ -2,7 +2,7 @@ import type { AuthProfile } from "@/lib/auth";
 import type { Prisma } from "@/generated/prisma/client";
 
 export function isOwnActivityOnly(profile: Pick<AuthProfile, "role">): boolean {
-  return profile.role === "staff" || profile.role === "lead";
+  return profile.role === "staff" || profile.role === "sub_manager";
 }
 
 export function canViewDeptActivity(profile: Pick<AuthProfile, "role">): boolean {

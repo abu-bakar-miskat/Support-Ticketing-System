@@ -12,7 +12,9 @@ datasource db {
 enum Role {
   admin
   manager
-  lead
+  // Renamed from `lead`; the DB value stays "lead" via @map so no data
+  // migration is needed. UI display label is "Sub-manager".
+  sub_manager @map("lead")
   staff
 }
 

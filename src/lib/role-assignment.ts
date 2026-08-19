@@ -52,7 +52,7 @@ export function deriveEffectiveRole(rows: ScopeRow[]): Role {
     return "manager";
   }
   if (has((r) => r.scopeType === "TENANT" && r.role === "manager")) return "manager";
-  if (has((r) => r.role === "lead")) return "lead";
+  if (has((r) => r.role === "sub_manager")) return "sub_manager";
   return "staff";
 }
 

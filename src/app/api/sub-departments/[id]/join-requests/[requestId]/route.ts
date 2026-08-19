@@ -17,7 +17,7 @@ export async function PATCH(
     const membership = await (prisma.subDepartmentMembership as any).findUnique({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId } },
     })
-    if (!membership || (membership.role !== "manager" && membership.role !== "lead")) {
+    if (!membership || (membership.role !== "manager" && membership.role !== "sub_manager")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
   }

@@ -28,10 +28,10 @@ export function isLeadOnTicketSubDepartment(
 ): boolean {
   if (!subDepartmentId) return false;
   const memberships = profile.memberships ?? [];
-  if (memberships.some((m) => m.subDepartmentId === subDepartmentId && m.role === "lead")) {
+  if (memberships.some((m) => m.subDepartmentId === subDepartmentId && m.role === "sub_manager")) {
     return true;
   }
-  if (profile.role === "lead") {
+  if (profile.role === "sub_manager") {
     const subDepartmentIds =
       profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
     return subDepartmentIds.includes(subDepartmentId);

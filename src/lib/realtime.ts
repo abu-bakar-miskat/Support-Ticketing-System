@@ -363,6 +363,10 @@ export function createNotificationsBroadcastSubscription(
   recipientId: string,
   onInsert: (payload: NotificationBroadcastPayload) => void,
   onResolved?: (payload: JoinRequestResolvedPayload) => void,
+  // SA-03: fires when this user or their tenant is suspended/restricted/
+  // soft-deleted — see lib/realtime-broadcast.ts. `reason` is the
+  // user-facing explanatory message.
+  onForceLogout?: (reason: string) => void,
 ): () => void {
   return autoReconnect((onStatus) => {
     // Broadcast routing requires the channel name to exactly match the topic
@@ -386,6 +390,12 @@ export function createNotificationsBroadcastSubscription(
       channel.on("broadcast", { event: "join_request_resolved" }, (raw: any) => {
         const p = raw?.payload ?? {};
         if (p.requestId) onResolved({ requestId: p.requestId, status: p.status });
+      });
+    }
+    if (onForceLogout) {
+      channel.on("broadcast", { event: "force_logout" }, (raw: any) => {
+        const p = raw?.payload ?? {};
+        onForceLogout(p.reason ?? "Your access has been revoked.");
       });
     }
     channel.subscribe((status: string, err?: Error) => {

@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth"
 import { Role } from "@/generated/prisma/enums"
 import { managerCanManageUser, subDepartmentInScope } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 
 const VALID_ROLES = Object.values(Role)
 // Managers can only assign these roles — not admin or manager
@@ -98,6 +99,13 @@ export async function PATCH(
       before,
       after: data,
     })
+  }
+
+  // SA-03: an individual user restriction (isActive: false) needs the same
+  // "invalidated within 60s" guarantee as a tenant suspension — getProfile()
+  // already blocks their next request, this covers an already-open tab.
+  if (data.isActive === false && before?.isActive !== false) {
+    await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
   }
 
   // Keep TeamMembership.role in sync with Profile.role — non-fatal if it fails

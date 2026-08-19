@@ -5,8 +5,28 @@ import { safeNextPath } from "@/lib/auth-redirect"
 import { acceptDepartmentInvite } from "@/lib/invites/accept-department-invite"
 import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope"
 import { prisma } from "@/lib/db"
+import { loginBlockReason } from "@/lib/tenant-lifecycle"
 
 const AUTH_NEXT_COOKIE = "pen_auth_next"
+
+/**
+ * SA-01/SA-03: reject sign-in with an explanatory message when the user is
+ * individually restricted or their tenant is suspended/soft-deleted — and
+ * sign the fresh Supabase session back out so it doesn't linger client-side.
+ */
+async function rejectIfBlocked(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  origin: string,
+  clearNextCookie: (res: NextResponse) => NextResponse,
+): Promise<NextResponse | null> {
+  const reason = await loginBlockReason(userId)
+  if (!reason) return null
+  await supabase.auth.signOut()
+  return clearNextCookie(
+    NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(reason)}`),
+  )
+}
 
 /**
  * Resolve the tenant to make active on login: the user's first active
@@ -135,6 +155,8 @@ export async function GET(request: Request) {
         select: { id: true, email: true, isSuperAdmin: true },
       })
       if (profile) {
+        const blocked = await rejectIfBlocked(supabase, profile.id, origin, clearNextCookie)
+        if (blocked) return blocked
         const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin)
         return finishLoginRedirect({
           origin,
@@ -172,6 +194,8 @@ export async function GET(request: Request) {
         select: { id: true, email: true, isSuperAdmin: true },
       })
       if (profile) {
+        const blocked = await rejectIfBlocked(supabase, profile.id, origin, clearNextCookie)
+        if (blocked) return blocked
         const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin)
         return finishLoginRedirect({
           origin,

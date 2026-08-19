@@ -68,6 +68,33 @@ export function NotificationsRealtime() {
     };
   }, [requestAndSetup]);
 
+  // SA-03: force-sign-out on either the near-instant broadcast or the ~25s
+  // poll fallback (covers a disconnected/reconnecting Realtime socket) —
+  // whichever fires first wins, forceLogoutRef prevents a double redirect.
+  const forceLoggedOut = useRef(false);
+  const forceLogout = useCallback(async (reason: string) => {
+    if (forceLoggedOut.current) return;
+    forceLoggedOut.current = true;
+    const supabase = createClient();
+    await supabase.auth.signOut().catch(() => undefined);
+    window.location.href = `/login?error=${encodeURIComponent(reason)}`;
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/session/status", { cache: "no-store" });
+        if (!res.ok) {
+          await forceLogout("Your session is no longer valid. Please sign in again.");
+        }
+      } catch {
+        // Network hiccup — don't force a logout on a transient fetch failure.
+      }
+    }, 25_000);
+    return () => clearInterval(interval);
+  }, [userId, forceLogout]);
+
   const openNotification = useCallback(async (payload: NotificationBroadcastPayload) => {
     if (!openedIds.current.has(payload.id)) {
       openedIds.current.add(payload.id);
@@ -114,8 +141,9 @@ export function NotificationsRealtime() {
       userId,
       handleBroadcast,
       (p) => notifEvents.emit(p.requestId, "join_request_resolved"),
+      (reason) => { forceLogout(reason).catch(() => undefined); },
     );
-  }, [userId, handleBroadcast]);
+  }, [userId, handleBroadcast, forceLogout]);
 
   return null;
 }

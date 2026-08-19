@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { reconcileProfileOnLogin } from "@/lib/reconcile-profile-on-login"
 import { resolveActiveTenantId } from "@/lib/tenant-scope"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
+import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
 
 export type ProfileMembership = {
   subDepartmentId: string
@@ -48,8 +49,12 @@ function loadProfileAndRelations(userId: string) {
 
     prisma.tenantMembership.findMany({
       where: { userId, isActive: true },
-      select: { tenantId: true, role: true },
-    }).catch(() => [] as { tenantId: string; role: string }[]),
+      select: {
+        tenantId: true,
+        role: true,
+        tenant: { select: { status: true, deletedAt: true } },
+      },
+    }).catch(() => [] as { tenantId: string; role: string; tenant: { status: string; deletedAt: Date | null } }[]),
   ] as const)
 }
 
@@ -132,6 +137,9 @@ export const getProfile = cache(async () => {
     }
 
     if (!profile || profile.deletedAt) return null
+    // SA-03: an individually restricted user is denied auth the same way a
+    // soft-deleted one is — their data is untouched, only login is blocked.
+    if (!profile.isActive) return null
 
     const managedDepartmentIds = (managedRaw as { departmentId: string }[]).map((m) => m.departmentId)
     const grantedAccessDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[]).map((g) => g.departmentId)
@@ -144,8 +152,25 @@ export const getProfile = cache(async () => {
     // True when the user belongs to at least one hub department
     const isHubMember = typedMemberships.some((m) => m.subDepartment?.department?.isHub === true)
 
-    const tenantMemberships = tenantRaw as { tenantId: string; role: string }[]
+    const rawTenantMemberships = tenantRaw as {
+      tenantId: string
+      role: string
+      tenant: { status: string; deletedAt: Date | null }
+    }[]
+    // SA-01: a suspended/soft-deleted tenant's memberships don't count toward
+    // access — filtered out here rather than in the query so a multi-tenant
+    // user only loses the affected tenant(s), not their whole session.
+    const tenantMemberships = rawTenantMemberships
+      .filter((t) => !tenantBlocksLogin(t.tenant))
+      .map((t) => ({ tenantId: t.tenantId, role: t.role }))
     const tenantIds = tenantMemberships.map((t) => t.tenantId)
+
+    // Denied entirely only when every tenant they belong to is blocked — a
+    // super-admin transcends tenant scope and is never denied this way.
+    if (!profile.isSuperAdmin && rawTenantMemberships.length > 0 && tenantIds.length === 0) {
+      return null
+    }
+
     const activeTenantId = await resolveActiveTenantId({
       id: profile.id,
       isSuperAdmin: profile.isSuperAdmin,

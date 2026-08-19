@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest } from "@/lib/api-response"
 import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
@@ -13,12 +13,17 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-// List every tenant (super-admin only) with a little structure count.
-export async function GET() {
+// List every tenant (super-admin only) with a little structure count. Soft-
+// deleted tenants (SA-01) are hidden by default — pass ?includeDeleted=true
+// for a "trash" view.
+export async function GET(request: NextRequest) {
   const { error } = await requireSuperAdmin()
   if (error) return error
 
+  const includeDeleted = request.nextUrl.searchParams.get("includeDeleted") === "true"
+
   const tenants = await prisma.tenant.findMany({
+    where: includeDeleted ? undefined : { deletedAt: null },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -26,6 +31,7 @@ export async function GET() {
       name: true,
       type: true,
       status: true,
+      deletedAt: true,
       createdAt: true,
       _count: { select: { departments: true, memberships: true } },
     },

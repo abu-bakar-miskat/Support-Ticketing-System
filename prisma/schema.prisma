@@ -188,6 +188,9 @@ model Tenant {
   // Category label (institution | agency | company | …). Extensible string, not
   // an enum, so new types need no migration. See lib/tenant-types.
   type      String   @default("company")
+  // SA-01: "active" | "suspended" — kept as a validated string (see
+  // lib/tenant-lifecycle.ts) rather than an enum so extending it never needs a
+  // migration, consistent with `type` above.
   status    String   @default("active")
   // Per-tenant branding (display name, logo, accent color) rendered in the app
   // shell. See lib/tenant-branding.
@@ -198,6 +201,10 @@ model Tenant {
   timeTrackingConfig Json?
   approvalsConfig    Json?
   createdAt DateTime @default(now())
+  // SA-01: soft-delete — reversible, data always retained intact. Distinct
+  // from `status: "suspended"` (a quick, temporary lock); this is the harder
+  // "remove this tenant" action. Both block login the same way.
+  deletedAt DateTime?
 
   departments Department[]
   memberships TenantMembership[]

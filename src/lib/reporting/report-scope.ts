@@ -11,7 +11,7 @@ import { getProfileDeptScope, type ProfileLike } from "@/lib/dept-scope";
  */
 export type ReportScope =
   | { kind: "cross_department"; tenantId: string }
-  | { kind: "department"; teamIds: string[] }
+  | { kind: "department"; subDepartmentIds: string[] }
   | { kind: "none" };
 
 export async function resolveReportScope(
@@ -28,7 +28,7 @@ export async function resolveReportScope(
   }
 
   const deptScope = await getProfileDeptScope(profile);
-  if (deptScope) return { kind: "department", teamIds: deptScope.teamIds };
+  if (deptScope) return { kind: "department", subDepartmentIds: deptScope.subDepartmentIds };
 
   return { kind: "none" };
 }

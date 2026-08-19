@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => ({
-  prisma: { ticket: { groupBy: vi.fn() }, team: { findMany: vi.fn() } },
+  prisma: { ticket: { groupBy: vi.fn() }, subDepartment: { findMany: vi.fn() } },
 }))
 
 import { prisma } from "@/lib/db"
 import { computeCrossDepartmentReport } from "./cross-department-report"
 
 const mockGroupBy = vi.mocked(prisma.ticket.groupBy)
-const mockTeamFindMany = vi.mocked(prisma.team.findMany)
+const mockTeamFindMany = vi.mocked(prisma.subDepartment.findMany)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -18,8 +18,8 @@ beforeEach(() => {
 describe("computeCrossDepartmentReport", () => {
   it("aggregates counts by department + category across teams", async () => {
     mockGroupBy.mockResolvedValue([
-      { teamId: "team-a", category: "Bug", _count: { _all: 3 } },
-      { teamId: "team-b", category: "Bug", _count: { _all: 2 } }, // same category, different dept
+      { subDepartmentId: "team-a", category: "Bug", _count: { _all: 3 } },
+      { subDepartmentId: "team-b", category: "Bug", _count: { _all: 2 } }, // same category, different dept
     ] as never)
     mockTeamFindMany.mockResolvedValue([
       { id: "team-a", departmentId: "dept-1", department: { name: "Support" } },
@@ -38,8 +38,8 @@ describe("computeCrossDepartmentReport", () => {
 
   it("merges rows from two teams in the SAME department under one bucket", async () => {
     mockGroupBy.mockResolvedValue([
-      { teamId: "team-a", category: "Bug", _count: { _all: 3 } },
-      { teamId: "team-a2", category: "Bug", _count: { _all: 4 } },
+      { subDepartmentId: "team-a", category: "Bug", _count: { _all: 3 } },
+      { subDepartmentId: "team-a2", category: "Bug", _count: { _all: 4 } },
     ] as never)
     mockTeamFindMany.mockResolvedValue([
       { id: "team-a", departmentId: "dept-1", department: { name: "Support" } },
@@ -52,7 +52,7 @@ describe("computeCrossDepartmentReport", () => {
   })
 
   it("normalizes a null category to 'Uncategorized'", async () => {
-    mockGroupBy.mockResolvedValue([{ teamId: "team-a", category: null, _count: { _all: 1 } }] as never)
+    mockGroupBy.mockResolvedValue([{ subDepartmentId: "team-a", category: null, _count: { _all: 1 } }] as never)
     mockTeamFindMany.mockResolvedValue([
       { id: "team-a", departmentId: "dept-1", department: { name: "Support" } },
     ] as never)

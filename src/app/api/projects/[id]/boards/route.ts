@@ -40,7 +40,7 @@ async function loadProjectBoardContext(projectId: string) {
     prisma.ticket.findMany({
       where: { projectId: project.id, deletedAt: null, parentId: null },
       select: { subDepartmentId: true },
-      distinct: ["teamId"],
+      distinct: ["subDepartmentId"],
     }),
     projectDeptId
       ? prisma.subDepartment.findMany({

@@ -39,7 +39,7 @@ function makeRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockAdmin)
+  mockGetProfile.mockResolvedValue(mockAdmin as never)
   mockProjectCreate.mockResolvedValue({ id: "project1" } as never)
   mockDepartmentFindUnique.mockResolvedValue({ tenantId: "tenant-1" } as never)
 })
@@ -88,7 +88,7 @@ describe("POST /api/admin/sub-departments", () => {
   })
 
   it("returns 403 when caller is not admin", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockAdmin, role: "developer" })
+    mockGetProfile.mockResolvedValue({ ...mockAdmin, role: "developer" } as never)
 
     const res = await POST(makeRequest({ name: "Ops", prefix: "OPS", departmentId: "dept1" }))
     expect(res.status).toBe(403)

@@ -66,7 +66,7 @@ export async function resolveSubDepartmentIdForProject(
     const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId, deletedAt: null },
       select: { subDepartmentId: true },
-      distinct: ["teamId"],
+      distinct: ["subDepartmentId"],
     });
     const fromTickets = await pickExistingSubDepartmentId(ticketSubDepartments.map((t) => t.subDepartmentId));
     if (fromTickets) return fromTickets;

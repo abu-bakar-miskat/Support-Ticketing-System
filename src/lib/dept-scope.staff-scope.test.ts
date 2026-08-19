@@ -51,7 +51,7 @@ describe("getProfileDeptScope — staff native department visits", () => {
       ],
       grantedAccessDeptIds: ["dept-software"],
       directMemberDeptIds: ["dept-web"],
-    });
+    } as never);
 
     expect(scope?.activeDeptId).toBe("dept-web");
     expect(scope?.isCrossAccessOnly).not.toBe(true);
@@ -64,7 +64,7 @@ describe("getProfileDeptScope — staff native department visits", () => {
       subDepartmentIds: ["team-support"],
       memberships: [{ subDepartment: { department: { id: "dept-support" } } }],
       grantedAccessDeptIds: ["dept-web"],
-    });
+    } as never);
 
     expect(scope?.activeDeptId).toBe("dept-web");
     expect(scope?.isCrossAccessOnly).toBe(true);

@@ -56,7 +56,7 @@ function deleteRequest() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockProfile)
+  mockGetProfile.mockResolvedValue(mockProfile as never)
 })
 
 describe("PATCH /api/comments/[id]", () => {

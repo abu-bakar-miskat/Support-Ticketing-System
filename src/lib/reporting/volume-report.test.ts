@@ -13,11 +13,11 @@ beforeEach(() => {
 })
 
 describe("computeVolumeReport", () => {
-  it("scopes by teamIds for a department scope", async () => {
+  it("scopes by subDepartmentIds for a department scope", async () => {
     mockGroupBy.mockResolvedValue([])
-    await computeVolumeReport({ kind: "department", teamIds: ["t1", "t2"] }, new Date("2026-02-01"), new Date("2026-03-01"))
+    await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1", "t2"] }, new Date("2026-02-01"), new Date("2026-03-01"))
     expect(mockGroupBy).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ teamId: { in: ["t1", "t2"] } }) }),
+      expect.objectContaining({ where: expect.objectContaining({ subDepartmentId: { in: ["t1", "t2"] } }) }),
     )
   })
 
@@ -41,7 +41,7 @@ describe("computeVolumeReport", () => {
     mockGroupBy.mockResolvedValue([])
     const start = new Date("2026-02-01T00:00:00.000Z")
     const end = new Date("2026-03-01T00:00:00.000Z")
-    const result = await computeVolumeReport({ kind: "department", teamIds: ["t1"] }, start, end)
+    const result = await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1"] }, start, end)
     expect(result.range).toEqual({ start, end })
     expect(result.precedingRange.end).toEqual(start)
     expect(mockGroupBy).toHaveBeenCalledTimes(2)
@@ -52,7 +52,7 @@ describe("computeVolumeReport", () => {
       { category: "Bug", type: "Bug", _count: { _all: 5 } },
       { category: null, type: "Task", _count: { _all: 2 } },
     ] as never)
-    const result = await computeVolumeReport({ kind: "department", teamIds: ["t1"] }, new Date("2026-02-01"), new Date("2026-03-01"))
+    const result = await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1"] }, new Date("2026-02-01"), new Date("2026-03-01"))
     expect(result.current).toEqual([
       { category: "Bug", type: "Bug", count: 5 },
       { category: "Uncategorized", type: "Task", count: 2 },

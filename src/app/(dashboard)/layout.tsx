@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Role } from "@/generated/prisma/enums";
 import { getProfile } from "@/lib/profile";
 import { getDashboardLayoutData } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
@@ -77,7 +78,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
         email={profile.email}
         name={profile.name}
         avatarUrl={profile.avatarUrl}
-        role={profile.role}
+        role={profile.role as Role}
         subDepartmentId={profile.subDepartmentId}
         subDepartmentIds={profile.subDepartmentIds}
         memberships={memberships.map((m) => ({

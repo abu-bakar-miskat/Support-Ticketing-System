@@ -51,7 +51,7 @@ function makeRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockProfile)
+  mockGetProfile.mockResolvedValue(mockProfile as never)
   mockFindUnique.mockResolvedValue(baseTicket as never)
   txMock.ticket.updateMany.mockResolvedValue({ count: 1 } as never)
   txMock.ticket.findUnique.mockResolvedValue({

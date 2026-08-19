@@ -167,7 +167,7 @@ async function buildDeptCrossAccessScope(
     const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId: { in: projectIds }, deletedAt: null },
       select: { subDepartmentId: true },
-      distinct: ["teamId"],
+      distinct: ["subDepartmentId"],
     });
     for (const row of ticketSubDepartments) subDepartmentIdSet.add(row.subDepartmentId);
   }
@@ -270,7 +270,7 @@ export function deptProjectsForDeptWhere(deptId: string) {
  * when the project has none — the project's team's department). Tickets with no
  * project fall back to their own team's department.
  *
- * This differs from `{ teamId: { in: deptScope.teamIds } }`: someone with
+ * This differs from `{ subDepartmentId: { in: deptScope.subDepartmentIds } }`: someone with
  * cross-dept access can create a ticket on their *own* team but inside another
  * department's project — that ticket belongs to the project's department, not
  * the team's. Use this for contribution/attribution, not raw board scoping.

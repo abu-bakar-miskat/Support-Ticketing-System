@@ -36,7 +36,7 @@ function makeRequest(id: string, body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockAdmin)
+  mockGetProfile.mockResolvedValue(mockAdmin as never)
 })
 
 describe("PATCH /api/admin/users/[id]", () => {
@@ -81,7 +81,7 @@ describe("PATCH /api/admin/users/[id]", () => {
   })
 
   it("returns 403 when caller is not admin", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockAdmin, role: "developer" })
+    mockGetProfile.mockResolvedValue({ ...mockAdmin, role: "developer" } as never)
 
     const { request, params } = makeRequest("some-id", { role: "admin" })
     const res = await PATCH(request, { params })

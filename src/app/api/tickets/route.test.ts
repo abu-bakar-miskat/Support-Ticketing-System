@@ -71,7 +71,7 @@ const createdTicketBase = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockProfile)
+  mockGetProfile.mockResolvedValue(mockProfile as never)
   mockProjectFindUnique.mockResolvedValue({ id: "proj-1" } as never)
   mockProfileFindUnique.mockResolvedValue({ id: "user-2", subDepartmentId: "team-abc" } as never)
 })
@@ -151,7 +151,7 @@ describe("POST /api/tickets", () => {
   })
 
   it("returns 422 when the user has no team", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: null })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: null } as never)
     const res = await POST(makeRequest(validBody))
     expect(res.status).toBe(422)
   })

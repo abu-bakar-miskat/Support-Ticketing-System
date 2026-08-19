@@ -56,7 +56,7 @@ const accessibleTicket = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockProfile)
+  mockGetProfile.mockResolvedValue(mockProfile as never)
   mockTicketFindUnique.mockResolvedValue(accessibleTicket as never)
   mockActivityLogCreate.mockResolvedValue({} as never)
   mockAttachmentFindMany.mockResolvedValue([] as never)
@@ -136,7 +136,7 @@ describe("POST /api/tickets/[id]/comments", () => {
   })
 
   it("returns 403 when caller cannot view the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" } as never)
     const res = await POST(makeRequest({ body: "hi" }), { params: mockParams })
     expect(res.status).toBe(403)
     expect(mockCommentCreate).not.toHaveBeenCalled()

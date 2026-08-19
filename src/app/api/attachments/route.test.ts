@@ -69,7 +69,7 @@ const accessibleTicket = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockProfile)
+  mockGetProfile.mockResolvedValue(mockProfile as never)
   mockTicketFindUnique.mockResolvedValue(accessibleTicket as never)
   mockCommentFindUnique.mockResolvedValue({ ticketId: "ticket-1" } as never)
   mockCreateClient.mockResolvedValue(mockStorageClient as never)
@@ -143,7 +143,7 @@ describe("POST /api/attachments", () => {
   })
 
   it("returns 403 when caller cannot access the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" })
+    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" } as never)
     const res = await POST(makeRequest({ file: makeFile(), ticketId: "ticket-1" }))
     expect(res.status).toBe(403)
     expect(mockAttachmentCreate).not.toHaveBeenCalled()

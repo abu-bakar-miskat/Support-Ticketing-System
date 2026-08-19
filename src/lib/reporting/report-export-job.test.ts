@@ -33,7 +33,7 @@ const mockFindMany = vi.mocked(prisma.reportExportJob.findMany)
 const mockBuildDoc = vi.mocked(buildReportExportDoc)
 const mockBuildCsv = vi.mocked(buildCsv)
 
-const deptScope = { kind: "department" as const, teamIds: ["t1"] }
+const deptScope = { kind: "department" as const, subDepartmentIds: ["t1"] }
 
 beforeEach(() => {
   vi.clearAllMocks()

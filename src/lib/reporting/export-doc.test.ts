@@ -17,7 +17,7 @@ const mockResolution = vi.mocked(computeResolutionTimeReport)
 const mockCustomField = vi.mocked(computeCustomFieldReport)
 const mockCrossDept = vi.mocked(computeCrossDepartmentReport)
 
-const deptScope = { kind: "department" as const, teamIds: ["t1"] }
+const deptScope = { kind: "department" as const, subDepartmentIds: ["t1"] }
 const params = { start: "2026-02-01", end: "2026-03-01" }
 
 beforeEach(() => {

@@ -12,7 +12,7 @@ export type VolumeReport = {
 };
 
 function scopeWhere(scope: ReportScope) {
-  if (scope.kind === "department") return { teamId: { in: scope.teamIds } };
+  if (scope.kind === "department") return { subDepartmentId: { in: scope.subDepartmentIds } };
   if (scope.kind === "cross_department") return { tenantId: scope.tenantId };
   return { id: "__none__" }; // matches nothing
 }

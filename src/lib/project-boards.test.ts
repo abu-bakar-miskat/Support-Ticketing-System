@@ -10,12 +10,14 @@ describe("project-boards", () => {
     const ids = memberSubDepartmentIdsFromProject([
       {
         user: {
+          name: "User A",
           subDepartmentId: "team-a",
           memberships: [{ subDepartment: { id: "team-b" } }],
         },
       },
       {
         user: {
+          name: "User B",
           subDepartmentId: null,
           memberships: [],
         },

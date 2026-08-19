@@ -11,7 +11,7 @@ export type CrossDepartmentBucket = {
 /**
  * RPT-06: Project Admin's cross-department view — ticket counts by
  * department + the standard category taxonomy (D-08) only. Deliberately
- * never touches TicketMessage/Comment — only `Ticket.category`/`teamId`
+ * never touches TicketMessage/Comment — only `Ticket.category`/`subDepartmentId`
  * counts are aggregated, so there is no code path here that could leak
  * message content into a cross-department report.
  */
@@ -21,22 +21,24 @@ export async function computeCrossDepartmentReport(
   end: Date,
 ): Promise<CrossDepartmentBucket[]> {
   const rows = await prisma.ticket.groupBy({
-    by: ["teamId", "category"],
+    by: ["subDepartmentId", "category"],
     where: { tenantId, deletedAt: null, createdAt: { gte: start, lt: end } },
     _count: { _all: true },
   });
   if (rows.length === 0) return [];
 
-  const teamIds = [...new Set(rows.map((r) => r.teamId))];
-  const teams = await prisma.team.findMany({
-    where: { id: { in: teamIds } },
+  const subDepartmentIds = [...new Set(rows.map((r) => r.subDepartmentId))];
+  const subDepartments = await prisma.subDepartment.findMany({
+    where: { id: { in: subDepartmentIds } },
     select: { id: true, departmentId: true, department: { select: { name: true } } },
   });
-  const teamToDept = new Map(teams.map((t) => [t.id, { id: t.departmentId, name: t.department.name }]));
+  const subDepartmentToDept = new Map(
+    subDepartments.map((t) => [t.id, { id: t.departmentId, name: t.department.name }]),
+  );
 
   const byDeptCategory = new Map<string, CrossDepartmentBucket>();
   for (const r of rows) {
-    const dept = teamToDept.get(r.teamId);
+    const dept = subDepartmentToDept.get(r.subDepartmentId);
     if (!dept) continue;
     const category = r.category ?? "Uncategorized";
     const key = `${dept.id}:${category}`;

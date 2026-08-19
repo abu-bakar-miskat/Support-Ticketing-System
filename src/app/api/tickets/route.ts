@@ -193,7 +193,7 @@ export async function POST(request: Request) {
   }
 
   if (!resolvedSubDepartmentId && canPickSubDepartment && deptScope?.subDepartmentIds?.length) {
-    // deptScope.teamIds already come from the DB — no need to re-verify each one
+    // deptScope.subDepartmentIds already come from the DB — no need to re-verify each one
     resolvedSubDepartmentId = deptScope.subDepartmentIds[0]
   }
 

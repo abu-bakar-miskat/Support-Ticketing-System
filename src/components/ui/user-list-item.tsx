@@ -14,7 +14,7 @@ export const userListPickerButtonClass =
 type Props = {
   person: Pick<
     UserListPerson,
-    "id" | "name" | "avatarUrl" | "departmentName" | "teamName"
+    "id" | "name" | "avatarUrl" | "departmentName" | "subDepartmentName"
   >;
   avatarSize?: number;
   className?: string;

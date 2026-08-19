@@ -22,7 +22,7 @@ vi.mock("@/lib/db", () => ({
     ticket: { findUnique: vi.fn(), update: vi.fn() },
     ticketMessage: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
-    teamStatus: { findFirst: vi.fn() },
+    subDepartmentStatus: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/email-config", () => ({
@@ -46,7 +46,7 @@ const mockCreate = vi.mocked(prisma.ticketMessage.create)
 const mockSend = vi.mocked(sendCustomerReplyEmail)
 const mockFindAttachments = vi.mocked(prisma.attachment.findMany)
 const mockUpdateAttachments = vi.mocked(prisma.attachment.updateMany)
-const mockTeamStatusFindFirst = vi.mocked(prisma.teamStatus.findFirst)
+const mockTeamStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
 
 const intakeTicket = {
   id: "ticket-1",

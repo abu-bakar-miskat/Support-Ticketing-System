@@ -57,16 +57,16 @@ async function seedTenant(opts: {
   const dept = (await prisma.department.findFirst({ where: { name: opts.deptName, tenantId: tenant.id } }))
     ?? (await prisma.department.create({ data: { name: opts.deptName, tenantId: tenant.id } }))
 
-  const team = await prisma.team.upsert({
+  const team = await prisma.subDepartment.upsert({
     where: { prefix: opts.teamPrefix },
     update: {},
     create: { name: opts.teamName, prefix: opts.teamPrefix, departmentId: dept.id, tenantId: tenant.id },
   })
   for (const s of STATUSES) {
-    await prisma.teamStatus.upsert({
-      where: { teamId_label: { teamId: team.id, label: s.label } },
+    await prisma.subDepartmentStatus.upsert({
+      where: { subDepartmentId_label: { subDepartmentId: team.id, label: s.label } },
       update: {},
-      create: { teamId: team.id, ...s },
+      create: { subDepartmentId: team.id, ...s },
     })
   }
 
@@ -76,7 +76,7 @@ async function seedTenant(opts: {
     create: {
       slug: opts.projectSlug,
       name: `${opts.name} Platform`,
-      teamId: team.id,
+      subDepartmentId: team.id,
       departmentId: dept.id,
       tenantId: tenant.id,
       projectStatus: "active",
@@ -94,7 +94,7 @@ async function seedTenant(opts: {
           status: "Not Started",
           ticketNumber: 0,
           tenantId: tenant.id,
-          teamId: team.id,
+          subDepartmentId: team.id,
           projectId: project.id,
           creatorId: opts.adminId,
         },

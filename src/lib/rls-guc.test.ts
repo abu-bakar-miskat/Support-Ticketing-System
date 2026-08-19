@@ -41,7 +41,7 @@ describe("runWithTenantGuc", () => {
     }
 
     const fn = vi.fn().mockResolvedValue("result")
-    const result = await runWithTenantGuc(prisma, { tenantId: "t1", isPlatformAdmin: false }, fn as never)
+    const result = await runWithTenantGuc(prisma as never, { tenantId: "t1", isPlatformAdmin: false }, fn as never)
 
     expect(result).toBe("result")
     expect(executeRaw).toHaveBeenCalledTimes(2)

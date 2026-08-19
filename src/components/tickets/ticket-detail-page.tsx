@@ -3465,7 +3465,7 @@ export function TicketDetailPage({
                 <div className="sticky bottom-0 z-10 -mx-1 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
                   <UnifiedReplyComposer
                     ticketId={dbId}
-                    teamMembers={mentionableUsers}
+                    subDepartmentMembers={mentionableUsers}
                     onCommentAdded={(comment) => {
                       knownCommentIds.current.add(comment.id);
                       setLiveComments((prev) => {

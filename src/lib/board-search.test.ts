@@ -120,7 +120,7 @@ describe("resolveSearchTicketIds", () => {
         where: expect.objectContaining({
           OR: expect.arrayContaining([
             expect.objectContaining({
-              team: { prefix: { equals: "SUP", mode: "insensitive" } },
+              subDepartment: { prefix: { equals: "SUP", mode: "insensitive" } },
               ticketNumber: 42,
             }),
           ]),

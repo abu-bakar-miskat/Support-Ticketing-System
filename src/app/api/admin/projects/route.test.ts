@@ -39,7 +39,7 @@ function postRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockAdmin)
+  mockGetProfile.mockResolvedValue(mockAdmin as never)
 })
 
 describe("POST /api/admin/projects", () => {

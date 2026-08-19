@@ -113,7 +113,7 @@ export async function resolveSearchTicketIds(
           ...(humanIdMatch
             ? [
                 {
-                  team: { prefix: { equals: humanIdMatch[1], mode: "insensitive" as const } },
+                  subDepartment: { prefix: { equals: humanIdMatch[1], mode: "insensitive" as const } },
                   ticketNumber: parseInt(humanIdMatch[2], 10),
                 },
               ]

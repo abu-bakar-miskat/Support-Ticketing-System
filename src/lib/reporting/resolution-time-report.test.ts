@@ -27,7 +27,7 @@ describe("computeResolutionTimeReport", () => {
     ] as never)
 
     const result = await computeResolutionTimeReport(
-      { kind: "department", teamIds: ["t1"] },
+      { kind: "department", subDepartmentIds: ["t1"] },
       new Date("2026-02-01"),
       new Date("2026-03-01"),
     )
@@ -45,7 +45,7 @@ describe("computeResolutionTimeReport", () => {
     ] as never)
 
     const result = await computeResolutionTimeReport(
-      { kind: "department", teamIds: ["t1"] },
+      { kind: "department", subDepartmentIds: ["t1"] },
       new Date("2026-02-01"),
       new Date("2026-03-01"),
     )
@@ -60,7 +60,7 @@ describe("computeResolutionTimeReport", () => {
     ] as never)
 
     const result = await computeResolutionTimeReport(
-      { kind: "department", teamIds: ["t1"] },
+      { kind: "department", subDepartmentIds: ["t1"] },
       new Date("2026-02-01"),
       new Date("2026-03-01"),
     )
@@ -72,7 +72,7 @@ describe("computeResolutionTimeReport", () => {
     mockFindMany.mockResolvedValue([])
     const start = new Date("2026-02-01T00:00:00Z")
     const end = new Date("2026-03-01T00:00:00Z")
-    await computeResolutionTimeReport({ kind: "department", teamIds: ["t1"] }, start, end)
+    await computeResolutionTimeReport({ kind: "department", subDepartmentIds: ["t1"] }, start, end)
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ closedAt: { gte: start, lt: end } }) }),
     )

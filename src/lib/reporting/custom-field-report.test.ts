@@ -24,7 +24,7 @@ describe("computeCustomFieldReport", () => {
     ] as never)
 
     const result = await computeCustomFieldReport({
-      scope: { kind: "department", teamIds: ["t1"] },
+      scope: { kind: "department", subDepartmentIds: ["t1"] },
       start: new Date("2026-02-01"),
       end: new Date("2026-03-01"),
       groupByFieldId: "severity",
@@ -42,7 +42,7 @@ describe("computeCustomFieldReport", () => {
     ] as never)
 
     const result = await computeCustomFieldReport({
-      scope: { kind: "department", teamIds: ["t1"] },
+      scope: { kind: "department", subDepartmentIds: ["t1"] },
       start: new Date("2026-02-01"),
       end: new Date("2026-03-01"),
       groupByFieldId: "severity",
@@ -59,7 +59,7 @@ describe("computeCustomFieldReport", () => {
     mockResolveFormFieldTicketIds.mockResolvedValue(["t1"])
 
     const result = await computeCustomFieldReport({
-      scope: { kind: "department", teamIds: ["t1"] },
+      scope: { kind: "department", subDepartmentIds: ["t1"] },
       start: new Date("2026-02-01"),
       end: new Date("2026-03-01"),
       groupByFieldId: "severity",

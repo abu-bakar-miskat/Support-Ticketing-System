@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutTemplate, History, Settings, PanelLeftClose } from "lucide-react";
+import { Building2, LayoutTemplate, History, Flag, ShieldCheck, PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
@@ -11,7 +11,8 @@ const PLATFORM_NAV = [
   { label: "Tenants", href: "/platform", icon: Building2 },
   { label: "Templates", href: "/platform/templates", icon: LayoutTemplate },
   { label: "Activity Log", href: "/platform/activity", icon: History },
-  { label: "Settings", href: "/platform/settings", icon: Settings },
+  { label: "Feature flags", href: "/platform/settings", icon: Flag },
+  { label: "Administrators", href: "/platform/administrators", icon: ShieldCheck },
 ] as const;
 
 /**

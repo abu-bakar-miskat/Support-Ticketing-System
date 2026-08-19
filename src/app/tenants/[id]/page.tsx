@@ -27,6 +27,7 @@ export default async function TenantManagePage({
       name: true,
       type: true,
       status: true,
+      deletedAt: true,
       branding: true,
       _count: { select: { departments: true, memberships: true } },
     },
@@ -64,6 +65,7 @@ export default async function TenantManagePage({
         name: tenant.name,
         type: tenant.type,
         status: tenant.status,
+        deleted: tenant.deletedAt != null,
         departments: tenant._count.departments,
         members: tenant._count.memberships,
       }}

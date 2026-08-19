@@ -30,6 +30,7 @@ type TenantInfo = {
   name: string;
   type: string;
   status: string;
+  deleted: boolean;
   departments: number;
   members: number;
 };
@@ -66,6 +67,11 @@ export function TenantManageClient({
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Lifecycle (SA-01): suspend/reactivate + soft-delete/restore.
+  const [tenantStatus, setTenantStatus] = useState(tenant.status);
+  const [deleted, setDeleted] = useState(tenant.deleted);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
@@ -247,6 +253,67 @@ export function TenantManageClient({
     if (res.ok) window.location.href = "/departments";
   }
 
+  async function updateStatus(next: "active" | "suspended") {
+    setLifecycleBusy(true);
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/tenants/${tenant.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    setLifecycleBusy(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Failed to update status");
+      return;
+    }
+    setTenantStatus(next);
+    setStatus(next === "suspended" ? "Tenant suspended." : "Tenant reactivated.");
+  }
+
+  async function softDeleteTenant() {
+    if (
+      !window.confirm(
+        "Soft-delete this tenant? Members lose access until it's restored. No data is removed.",
+      )
+    )
+      return;
+    setLifecycleBusy(true);
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/tenants/${tenant.id}`, {
+      method: "DELETE",
+    });
+    setLifecycleBusy(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Failed to delete tenant");
+      return;
+    }
+    setDeleted(true);
+    setStatus("Tenant soft-deleted. You can restore it anytime.");
+  }
+
+  async function restoreTenant() {
+    setLifecycleBusy(true);
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/tenants/${tenant.id}/restore`, {
+      method: "POST",
+    });
+    setLifecycleBusy(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Failed to restore tenant");
+      return;
+    }
+    setDeleted(false);
+    setStatus("Tenant restored.");
+  }
+
+  const canEnter = !deleted && tenantStatus === "active";
+
   const sectionCard =
     "rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card";
   const labelClass =
@@ -254,7 +321,7 @@ export function TenantManageClient({
 
   return (
     <div className="min-h-screen overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-6 py-8 mb-20">
+      <div className="w-full px-6 py-8 pb-20 lg:px-10">
         <Link
           href="/tenants"
           className="inline-flex items-center gap-1 font-sans text-[12.5px] text-pen-muted transition-colors hover:text-pen-foreground"
@@ -264,7 +331,7 @@ export function TenantManageClient({
         </Link>
 
         {/* Header */}
-        <header className="mt-4 flex items-center justify-between gap-4">
+        <header className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <TenantAvatar
               name={tenant.name}
@@ -272,9 +339,24 @@ export function TenantManageClient({
               size={44}
             />
             <div>
-              <h1 className="pen-text-page-title leading-none">
-                {tenant.name}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="pen-text-page-title leading-none">
+                  {tenant.name}
+                </h1>
+                {deleted ? (
+                  <span className="rounded-full bg-pen-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-red">
+                    Deleted
+                  </span>
+                ) : tenantStatus === "suspended" ? (
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-sans text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                    Suspended
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-pen-green/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-green">
+                    Active
+                  </span>
+                )}
+              </div>
               <div className="mt-1 font-sans text-[11.5px] text-pen-subtle">
                 /{tenant.slug} · {tenant.departments} dept
                 {tenant.departments === 1 ? "" : "s"} · {tenant.members} member
@@ -282,7 +364,7 @@ export function TenantManageClient({
               </div>
             </div>
           </div>
-          <Button size="lg" onClick={enterTenant}>
+          <Button size="lg" onClick={enterTenant} disabled={!canEnter}>
             Enter tenant
           </Button>
         </header>
@@ -298,8 +380,11 @@ export function TenantManageClient({
           </div>
         )}
 
-        {/* Type */}
-        <section className={cn("mt-6", sectionCard)}>
+        <div className="mt-6 grid gap-6 xl:grid-cols-3">
+          {/* Left: settings column */}
+          <div className="flex flex-col gap-6 xl:col-span-1">
+            {/* Type */}
+            <section className={sectionCard}>
           <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
             Type
           </h2>
@@ -321,88 +406,160 @@ export function TenantManageClient({
           </div>
         </section>
 
-        {/* Branding editor + live preview */}
-        <section className="mt-6 grid gap-4 md:grid-cols-[1fr_260px]">
-          <form
-            onSubmit={saveBranding}
-            className={cn("space-y-4", sectionCard)}
-          >
-            <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
-              Logo &amp; name
-            </h2>
+            {/* Branding editor + live preview */}
+            <section className={cn(sectionCard, "space-y-4")}>
+              <form onSubmit={saveBranding} className="space-y-4">
+                <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                  Logo &amp; name
+                </h2>
 
-            <div>
-              <label className={labelClass}>Display name</label>
-              <Input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={tenant.name}
-                className="mt-1 h-9"
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Logo</label>
-              <div className="mt-1 flex items-center gap-2">
-                <Input
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://example.com/logo.svg"
-                  className="h-9"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="relative shrink-0"
-                  disabled={uploading}
-                >
-                  {uploading ? "Uploading…" : "Upload"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                    disabled={uploading}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void uploadLogo(f);
-                      e.target.value = "";
-                    }}
+                <div>
+                  <label className={labelClass}>Display name</label>
+                  <Input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder={tenant.name}
+                    className="mt-1 h-9"
                   />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Logo</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.svg"
+                      className="h-9"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="relative shrink-0"
+                      disabled={uploading}
+                    >
+                      {uploading ? "Uploading…" : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        disabled={uploading}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void uploadLogo(f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </Button>
+                  </div>
+                  <p className="mt-1 font-sans text-[11px] text-pen-subtle">
+                    Paste a URL or upload an image (≤5 MB).
+                  </p>
+                </div>
+
+                <Button type="submit" size="lg" disabled={saving}>
+                  {saving ? "Saving…" : "Save branding"}
                 </Button>
+              </form>
+
+              {/* Live preview — how the tenant's logo + name appear in the sidebar. */}
+              <div className="rounded-lg border border-pen-card-border p-3">
+                <div className="mb-2 font-sans text-[11px] font-medium tracking-[0.6px] text-pen-subtle uppercase">
+                  Preview
+                </div>
+                <div className="flex items-center gap-2">
+                  <TenantAvatar
+                    name={tenant.name}
+                    logoUrl={logoUrl.trim() || null}
+                    size={32}
+                  />
+                  <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
+                    {previewName}
+                  </span>
+                </div>
               </div>
-              <p className="mt-1 font-sans text-[11px] text-pen-subtle">
-                Paste a URL or upload an image (≤5 MB).
+            </section>
+
+            {/* Status & lifecycle (SA-01) */}
+            <section className={sectionCard}>
+              <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                Status &amp; lifecycle
+              </h2>
+              <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
+                Suspend to temporarily block sign-in for every member. Soft-delete
+                is reversible — no data is ever removed.
               </p>
-            </div>
 
-            <Button type="submit" size="lg" disabled={saving}>
-              {saving ? "Saving…" : "Save branding"}
-            </Button>
-          </form>
+              {deleted ? (
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-pen-red/30 bg-pen-red/5 p-3">
+                  <p className="font-sans text-[12px] text-pen-foreground">
+                    This tenant is soft-deleted. Members cannot sign in.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-fit"
+                    onClick={restoreTenant}
+                    disabled={lifecycleBusy}
+                  >
+                    {lifecycleBusy ? "Restoring…" : "Restore tenant"}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-pen-card-border p-3">
+                    <div>
+                      <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                        {tenantStatus === "suspended" ? "Suspended" : "Active"}
+                      </p>
+                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                        {tenantStatus === "suspended"
+                          ? "Members are locked out."
+                          : "Members can sign in normally."}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="shrink-0"
+                      onClick={() =>
+                        updateStatus(
+                          tenantStatus === "suspended" ? "active" : "suspended",
+                        )
+                      }
+                      disabled={lifecycleBusy}
+                    >
+                      {tenantStatus === "suspended" ? "Reactivate" : "Suspend"}
+                    </Button>
+                  </div>
 
-          {/* Live preview — how the tenant's logo + name appear in the sidebar. */}
-          <div className={sectionCard}>
-            <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
-              Preview
-            </h2>
-            <div className="mt-3 rounded-lg border border-pen-card-border p-3">
-              <div className="flex items-center gap-2">
-                <TenantAvatar
-                  name={tenant.name}
-                  logoUrl={logoUrl.trim() || null}
-                  size={32}
-                />
-                <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
-                  {previewName}
-                </span>
-              </div>
-            </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-pen-red/25 bg-pen-red/5 p-3">
+                    <div>
+                      <p className="font-sans text-[12.5px] font-medium text-pen-red">
+                        Soft-delete tenant
+                      </p>
+                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                        Reversible — restore anytime.
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="lg"
+                      className="shrink-0"
+                      onClick={softDeleteTenant}
+                      disabled={lifecycleBusy}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </>
+              )}
+            </section>
           </div>
-        </section>
 
-        {/* Members */}
-        <section className={cn("mt-6", sectionCard)}>
+          {/* Members */}
+          <section className={cn(sectionCard, "h-fit xl:col-span-2")}>
           <div className="flex items-center justify-between">
             <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
               Members
@@ -618,7 +775,8 @@ export function TenantManageClient({
               </li>
             )}
           </ul>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );

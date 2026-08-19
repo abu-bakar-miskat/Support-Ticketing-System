@@ -26,6 +26,7 @@ type TenantRow = {
   name: string;
   type: string;
   status: string;
+  deleted: boolean;
   logoUrl: string | null;
   departments: number;
   members: number;
@@ -81,7 +82,7 @@ export function TenantsClient({
 
   return (
     <div className="min-h-screen overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="w-full px-6 py-8 lg:px-10">
         <PageHeader
           icon={Building2}
           title="Tenants"
@@ -139,7 +140,7 @@ export function TenantsClient({
         )}
 
         {/* List */}
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {tenants.map((t) => {
             return (
               <li
@@ -157,9 +158,20 @@ export function TenantsClient({
                         {tenantTypeLabel(t.type)}
                       </span>
                     </div>
-                    <span className="mt-0.5 block truncate font-mono text-[11px] text-pen-subtle">
-                      /{t.slug}
-                    </span>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className="truncate font-mono text-[11px] text-pen-subtle">
+                        /{t.slug}
+                      </span>
+                      {t.deleted ? (
+                        <span className="shrink-0 rounded-full bg-pen-red/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-pen-red">
+                          Deleted
+                        </span>
+                      ) : t.status === "suspended" ? (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          Suspended
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 

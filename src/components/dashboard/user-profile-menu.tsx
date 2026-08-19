@@ -76,11 +76,15 @@ function roleBadgeClass(role: string | undefined) {
 type UserProfileMenuProps = {
   variant?: "topbar" | "sidebar";
   collapsed?: boolean;
+  profileHref?: string;
+  hideSettings?: boolean;
 };
 
 export function UserProfileMenu({
   variant = "topbar",
   collapsed = false,
+  profileHref = "/profile",
+  hideSettings = false,
 }: UserProfileMenuProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -172,14 +176,16 @@ export function UserProfileMenu({
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
+        <DropdownMenuItem onClick={() => router.push(profileHref)}>
           <CircleUser />
           My profile
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/settings")}>
-          <Settings2 />
-          Settings
-        </DropdownMenuItem>
+        {!hideSettings && (
+          <DropdownMenuItem onClick={() => router.push("/settings")}>
+            <Settings2 />
+            Settings
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void signOut()}>
           <LogOut />

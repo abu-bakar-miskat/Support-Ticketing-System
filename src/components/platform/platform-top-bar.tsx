@@ -34,7 +34,7 @@ export function PlatformTopBar({ onNotifClick }: { onNotifClick: () => void }) {
             </span>
           )}
         </button>
-        <UserProfileMenu variant="topbar" />
+        <UserProfileMenu variant="topbar" profileHref="/platform/profile" hideSettings />
       </div>
     </header>
   );

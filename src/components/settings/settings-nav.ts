@@ -134,11 +134,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         href: "/settings/templates-catalogue",
         adminOnly: true,
       },
-      {
-        label: "Tenants",
-        href: "/platform",
-        superAdminOnly: true,
-      },
     ],
   },
 ];

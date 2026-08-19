@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TemplateFormModal } from "@/components/platform/template-form-modal";
-import { TEMPLATE_FEATURE_LABELS, type TemplateFeatureKey } from "@/lib/template-features";
+import { TEMPLATE_FEATURE_LABELS, TEMPLATE_FEATURE_GROUPS, type TemplateFeatureKey } from "@/lib/template-features";
 
 type TemplateRow = {
   id: string;
@@ -243,15 +243,30 @@ export function TemplatesCatalogueAdmin({
                 {t.description && (
                   <p className="mt-1 font-sans text-[12px] text-pen-muted">{t.description}</p>
                 )}
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {t.featureKeys.map((key) => (
-                    <span
-                      key={key}
-                      className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue"
-                    >
-                      {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
-                    </span>
-                  ))}
+                <div className="mt-2 flex flex-col gap-2">
+                  {TEMPLATE_FEATURE_GROUPS.map((group) => {
+                    const groupKeys = group.keys.filter((key) => t.featureKeys.includes(key));
+                    if (groupKeys.length === 0) return null;
+                    const Icon = group.icon;
+                    return (
+                      <div key={group.label}>
+                        <div className="flex items-center gap-1 font-sans text-[10px] font-semibold tracking-[0.5px] text-pen-subtle uppercase">
+                          <Icon className="size-3 text-pen-subtle" />
+                          {group.label}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {groupKeys.map((key) => (
+                            <span
+                              key={key}
+                              className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue"
+                            >
+                              {TEMPLATE_FEATURE_LABELS[key]}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 border-t border-pen-card-border/60 pt-3 font-sans text-[11.5px] text-pen-subtle">
                   {t.isActive ? (

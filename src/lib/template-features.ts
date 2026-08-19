@@ -1,3 +1,5 @@
+import { LayoutGrid, Users2, Puzzle, Wrench } from "lucide-react";
+
 /**
  * Named settings-nav and sidebar sections a Super Admin can bundle into a
  * Template (Template Catalogue). A plain const array (not a Prisma enum) so
@@ -87,3 +89,27 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   teamReports: "Team Reports",
   helpCenter: "Help Center",
 };
+
+/** Section grouping for the checklist in the Template Catalogue create/edit UI and cards. */
+export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; keys: TemplateFeatureKey[] }[] = [
+  {
+    label: "Sidebar",
+    icon: LayoutGrid,
+    keys: ["board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "recruitment", "teamReports", "helpCenter"],
+  },
+  {
+    label: "Workspace settings",
+    icon: Users2,
+    keys: ["members", "teamsRoles", "departmentsSettings", "branding"],
+  },
+  {
+    label: "Configuration settings",
+    icon: Wrench,
+    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows"],
+  },
+  {
+    label: "Integrations",
+    icon: Puzzle,
+    keys: ["supportForm", "apiKeys", "importForm", "emailSettings"],
+  },
+];

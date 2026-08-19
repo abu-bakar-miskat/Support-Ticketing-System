@@ -1,34 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Check, LayoutGrid, Users2, Puzzle, Wrench } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { TEMPLATE_FEATURE_KEYS, TEMPLATE_FEATURE_LABELS, type TemplateFeatureKey } from "@/lib/template-features";
-
-const FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; keys: TemplateFeatureKey[] }[] = [
-  {
-    label: "Sidebar",
-    icon: LayoutGrid,
-    keys: ["board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "recruitment", "teamReports", "helpCenter"],
-  },
-  {
-    label: "Workspace settings",
-    icon: Users2,
-    keys: ["members", "teamsRoles", "departmentsSettings", "branding"],
-  },
-  {
-    label: "Configuration settings",
-    icon: Wrench,
-    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows"],
-  },
-  {
-    label: "Integrations",
-    icon: Puzzle,
-    keys: ["supportForm", "apiKeys", "importForm", "emailSettings"],
-  },
-];
+import {
+  TEMPLATE_FEATURE_KEYS,
+  TEMPLATE_FEATURE_LABELS,
+  TEMPLATE_FEATURE_GROUPS as FEATURE_GROUPS,
+  type TemplateFeatureKey,
+} from "@/lib/template-features";
 
 const ALL_FEATURE_KEYS = TEMPLATE_FEATURE_KEYS as readonly TemplateFeatureKey[];
 

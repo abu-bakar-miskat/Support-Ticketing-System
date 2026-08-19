@@ -105,7 +105,7 @@ export function PlatformSidebar() {
       </nav>
 
       {/* User */}
-      <UserProfileMenu variant="sidebar" collapsed={isCollapsed} />
+      <UserProfileMenu variant="sidebar" collapsed={isCollapsed} profileHref="/platform/profile" hideSettings />
     </aside>
   );
 }

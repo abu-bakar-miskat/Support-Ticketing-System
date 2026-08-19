@@ -77,11 +77,11 @@ export async function POST(request: Request) {
   if (deptScope && !deptScope.has(departmentId)) {
     return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 })
   }
-  // Cross-access grants do not allow creating teams in another department
+  // Cross-access grants do not allow creating sub departments in another department
   if (!isAdmin && profile?.role === "manager") {
     const directlyManages = (profile.managedDepartmentIds ?? []).includes(departmentId)
     if (!directlyManages) {
-      return NextResponse.json({ error: "Forbidden: cross-access does not allow creating teams" }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden: cross-access does not allow creating sub departments" }, { status: 403 })
     }
   }
 

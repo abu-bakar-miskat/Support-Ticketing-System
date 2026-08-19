@@ -40,7 +40,7 @@ export async function POST(
   // Collect recipient IDs: team managers + all global admins (deduped, exclude requester)
   const [subDepartmentManagers, adminProfiles] = await Promise.all([
     prisma.subDepartmentMembership.findMany({
-      where: { subDepartmentId, role: { in: ["manager", "lead"] }, isActive: true },
+      where: { subDepartmentId, role: { in: ["manager", "sub_manager"] }, isActive: true },
       select: { userId: true },
     }),
     prisma.profile.findMany({
@@ -86,7 +86,7 @@ export async function GET(
     const membership = await prisma.subDepartmentMembership.findUnique({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId } },
     })
-    if (!membership || (membership.role !== "manager" && membership.role !== "lead")) {
+    if (!membership || (membership.role !== "manager" && membership.role !== "sub_manager")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
   }

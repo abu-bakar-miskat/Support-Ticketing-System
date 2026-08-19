@@ -53,7 +53,11 @@ export function renderInvite({
   const inviterFirst = escapeHtml(firstName(inviterName));
   const dept = escapeHtml(departmentName);
   const subDepartment = escapeHtml(subDepartmentName);
-  const roleLabel = escapeHtml(role.charAt(0).toUpperCase() + role.slice(1));
+  const roleLabel = escapeHtml(
+    role === "sub_manager"
+      ? "Sub-manager"
+      : role.charAt(0).toUpperCase() + role.slice(1),
+  );
   const email = escapeHtml(inviteeEmail);
   const url = ensureAbsoluteUrl(`${BASE_URL}/invite/${inviteToken}`);
   const sig = signatureBlock(signature);
@@ -96,7 +100,7 @@ export function renderInvite({
   const heading = "You're invited to join a department";
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
-    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on PEN Platform as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> team.</p>
+    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on PEN Platform as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>
     ${messageHtml}
     ${infoHtml}
     ${button({ href: url, label: "Accept invitation", branding })}

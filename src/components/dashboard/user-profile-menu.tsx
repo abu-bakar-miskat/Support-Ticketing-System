@@ -27,7 +27,7 @@ function roleAvatarRingColor(role: string | undefined) {
       return "ring-[#0a76b9]";
     case "manager":
       return "ring-[#a855f7]";
-    case "lead":
+    case "sub_manager":
       return "ring-[#10b981]";
     default:
       return "ring-[#94a3b8]";
@@ -68,7 +68,7 @@ function roleBadgeClass(role: string | undefined) {
     "shrink-0 rounded-sm px-1 py-px font-sans text-[11.5px] font-semibold uppercase tracking-wide",
     role === "admin" && "bg-pen-blue/15 text-pen-blue",
     role === "manager" && "bg-purple-500/15 text-purple-500",
-    role === "lead" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    role === "sub_manager" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
     role === "staff" && "bg-pen-surface text-pen-subtle",
   );
 }
@@ -130,7 +130,7 @@ export function UserProfileMenu({
                   {userName}
                 </span>
                 <span className={roleBadgeClass(user?.role)}>
-                  {user?.role ?? "staff"}
+                  {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "staff")}
                 </span>
               </div>
               <span className="truncate font-sans text-[11.5px] text-pen-subtle">
@@ -165,7 +165,7 @@ export function UserProfileMenu({
                     {userName}
                   </span>
                   <span className={roleBadgeClass(user?.role)}>
-                    {user?.role ?? "staff"}
+                    {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "staff")}
                   </span>
                 </div>
                 <span className="truncate font-sans text-xs text-pen-subtle">

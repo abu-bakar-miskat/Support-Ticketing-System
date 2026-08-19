@@ -10,7 +10,7 @@ describe("isLeadOnTicketTeam", () => {
     const profile = {
       id: "user-1",
       role: "staff",
-      memberships: [{ subDepartmentId: "team-a", role: "lead" }],
+      memberships: [{ subDepartmentId: "team-a", role: "sub_manager" }],
     };
     expect(isLeadOnTicketSubDepartment(profile, "team-a")).toBe(true);
     expect(isLeadOnTicketSubDepartment(profile, "team-b")).toBe(false);
@@ -19,7 +19,7 @@ describe("isLeadOnTicketTeam", () => {
   it("returns true when profile role is lead and user belongs to the team", () => {
     const profile = {
       id: "user-1",
-      role: "lead",
+      role: "sub_manager",
       subDepartmentIds: ["team-a", "team-b"],
       memberships: [],
     };
@@ -40,7 +40,7 @@ describe("canEditTicket", () => {
     const lead = {
       id: "lead-user",
       role: "staff",
-      memberships: [{ subDepartmentId: "team-a", role: "lead" }],
+      memberships: [{ subDepartmentId: "team-a", role: "sub_manager" }],
     };
     expect(canEditTicket(lead, otherTicket)).toBe(true);
   });
@@ -96,7 +96,7 @@ describe("canEditTicketDescription", () => {
     const lead = {
       id: "lead-user",
       role: "staff",
-      memberships: [{ subDepartmentId: "team-a", role: "lead" }],
+      memberships: [{ subDepartmentId: "team-a", role: "sub_manager" }],
     };
     expect(canEditTicketDescription(lead, ticket)).toBe(false);
     expect(canEditTicketDescription({ id: "admin-user", role: "admin" }, ticket)).toBe(false);

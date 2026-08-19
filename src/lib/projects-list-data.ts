@@ -125,7 +125,7 @@ export async function fetchProjectsList(
   scope: "mine" | "all",
 ): Promise<ProjectListRow[]> {
   const isPrivileged =
-    profile.role === "admin" || profile.role === "manager" || profile.role === "lead";
+    profile.role === "admin" || profile.role === "manager" || profile.role === "sub_manager";
 
   const deptScope = await getProfileDeptScope(profile);
 

@@ -246,7 +246,7 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
                 {data ? buildDigest(data.metrics) : "Loading your day…"}
               </p>
             </div>
-            <DualClock className="shrink-0 justify-end" />
+            <DualClock hideBangladesh className="shrink-0 justify-end" />
           </div>
 
           {data && (

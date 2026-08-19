@@ -42,7 +42,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "members",
       },
       {
-        label: "Teams & roles",
+        label: "Sub departments & roles",
         href: "/settings/sub-departments",
         managerOnly: true,
         deptSpecific: true,
@@ -156,7 +156,7 @@ export function getFilteredNav(
 ): SettingsNavGroup[] {
   const isAdmin = role === "admin";
   const isManager = role === "manager";
-  const isLead = role === "lead";
+  const isLead = role === "sub_manager";
 
   return SETTINGS_NAV.map((group) => ({
     ...group,

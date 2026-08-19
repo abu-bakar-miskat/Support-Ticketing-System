@@ -6,7 +6,7 @@ import { badRequest, forbidden } from "@/lib/api-response"
 import type { Role } from "@/generated/prisma/enums"
 
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
-const VALID_ROLES: Role[] = ["admin", "manager", "lead", "staff"]
+const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "staff"]
 
 type Params = { params: Promise<{ id: string }> }
 

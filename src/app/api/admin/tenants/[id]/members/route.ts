@@ -9,7 +9,7 @@ import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 import type { Role } from "@/generated/prisma/enums"
 
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
-const VALID_ROLES: Role[] = ["admin", "manager", "lead", "staff"]
+const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "staff"]
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: Params) {
     await applyTenantMembership(prisma, {
       tenantId,
       userId: existing.id,
-      role: role as "admin" | "manager" | "lead" | "staff",
+      role: role as "admin" | "manager" | "sub_manager" | "staff",
       departmentIds,
       actorId: profile.id,
     })

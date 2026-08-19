@@ -262,7 +262,15 @@ function ClockFace({
   );
 }
 
-function DualClockInner({ className, compact }: { className?: string; compact?: boolean }) {
+function DualClockInner({
+  className,
+  compact,
+  hideBangladesh,
+}: {
+  className?: string;
+  compact?: boolean;
+  hideBangladesh?: boolean;
+}) {
   const bdHours = useRef<HTMLSpanElement>(null);
   const bdMinutes = useRef<HTMLSpanElement>(null);
   const bdSeconds = useRef<HTMLSpanElement>(null);
@@ -317,13 +325,17 @@ function DualClockInner({ className, compact }: { className?: string; compact?: 
   if (compact) {
     return (
       <div className={cn("flex items-center gap-3 font-mono text-[13px] text-pen-muted select-none", className)} suppressHydrationWarning>
-        <span className="flex items-center gap-1.5">
-          <FlagBangladesh className="h-3" />
-          <span ref={bdHours} className="font-semibold tabular-nums text-pen-foreground">--</span>
-          <span ref={bdColon1} className="-mx-1 transition-opacity duration-150" style={{ color: "#f97316" }}>:</span>
-          <span ref={bdMinutes} className="font-semibold tabular-nums text-pen-foreground">--</span>
-        </span>
-        <span className="h-3.5 w-px bg-pen-card-border" />
+        {!hideBangladesh && (
+          <>
+            <span className="flex items-center gap-1.5">
+              <FlagBangladesh className="h-3" />
+              <span ref={bdHours} className="font-semibold tabular-nums text-pen-foreground">--</span>
+              <span ref={bdColon1} className="-mx-1 transition-opacity duration-150" style={{ color: "#f97316" }}>:</span>
+              <span ref={bdMinutes} className="font-semibold tabular-nums text-pen-foreground">--</span>
+            </span>
+            <span className="h-3.5 w-px bg-pen-card-border" />
+          </>
+        )}
         <span className="flex items-center gap-1.5">
           <FlagUk className="h-3" />
           <span ref={ukHours} className="font-semibold tabular-nums text-pen-foreground">--</span>
@@ -336,19 +348,23 @@ function DualClockInner({ className, compact }: { className?: string; compact?: 
 
   return (
     <div className={cn("flex items-start gap-4", className)}>
-      <ClockFace
-        flag={<FlagBangladesh />}
-        ariaLabel="Bangladesh"
-        color="#f97316"
-        hoursRef={bdHours}
-        minutesRef={bdMinutes}
-        secondsRef={bdSeconds}
-        dateRef={bdDate}
-        tzRef={bdTz}
-        colon1Ref={bdColon1}
-        colon2Ref={bdColon2}
-      />
-      <div className="mt-1 self-stretch w-px bg-pen-card-border" />
+      {!hideBangladesh && (
+        <>
+          <ClockFace
+            flag={<FlagBangladesh />}
+            ariaLabel="Bangladesh"
+            color="#f97316"
+            hoursRef={bdHours}
+            minutesRef={bdMinutes}
+            secondsRef={bdSeconds}
+            dateRef={bdDate}
+            tzRef={bdTz}
+            colon1Ref={bdColon1}
+            colon2Ref={bdColon2}
+          />
+          <div className="mt-1 self-stretch w-px bg-pen-card-border" />
+        </>
+      )}
       <ClockFace
         flag={<FlagUk />}
         ariaLabel="United Kingdom"

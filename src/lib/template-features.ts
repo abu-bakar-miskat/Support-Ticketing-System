@@ -71,7 +71,7 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   apiKeys: "API keys",
   importForm: "Import from Notion",
   members: "Members",
-  teamsRoles: "Teams & roles",
+  teamsRoles: "Sub departments & roles",
   departmentsSettings: "Departments",
   branding: "Branding",
   projects: "Projects",

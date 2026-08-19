@@ -52,7 +52,7 @@ export async function buildTaskListParams(
   // Access scope
   const isAdmin    = profile.role === "admin";
   const isManager  = profile.role === "manager";
-  const isElevated = isAdmin || isManager || profile.role === "lead";
+  const isElevated = isAdmin || isManager || profile.role === "sub_manager";
 
   // Unassigned-tickets tab: admin/manager only
   const unassignedOnly = (isAdmin || isManager) && url.searchParams.get("unassigned") === "true";

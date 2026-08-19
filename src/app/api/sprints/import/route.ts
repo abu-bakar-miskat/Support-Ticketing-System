@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const isPrivileged =
     profile.role === "admin" ||
     profile.role === "manager" ||
-    profile.role === "lead"
+    profile.role === "sub_manager"
 
   if (!isPrivileged) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })

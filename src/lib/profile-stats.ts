@@ -245,7 +245,7 @@ export async function fetchProfileStats(opts: {
   const { viewer, targetId, fromDate, toDate, projectId } = opts
 
   if (targetId !== viewer.id) {
-    const canViewOthers = ["admin", "manager", "lead"].includes(viewer.role)
+    const canViewOthers = ["admin", "manager", "sub_manager"].includes(viewer.role)
     if (!canViewOthers) {
       return { ok: false, status: 403, error: "Forbidden" }
     }
@@ -262,7 +262,7 @@ export async function fetchProfileStats(opts: {
   const isOwnProfile = targetId === viewer.id
   const targetIsManager =
     targetProfile.role === "manager" || targetProfile.role === "admin"
-  const isPrivileged = ["admin", "manager", "lead"].includes(viewer.role)
+  const isPrivileged = ["admin", "manager", "sub_manager"].includes(viewer.role)
 
   const deptScope = await getProfileDeptScope(viewer)
   const peopleWhere = buildPeopleMembershipWhere(viewer, deptScope)

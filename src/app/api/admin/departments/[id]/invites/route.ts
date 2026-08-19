@@ -7,7 +7,7 @@ import type { Role } from "@/generated/prisma/enums";
 
 type Params = { params: Promise<{ id: string }> };
 
-const INVITE_ROLES = new Set<Role>(["staff", "lead"]);
+const INVITE_ROLES = new Set<Role>(["staff", "sub_manager"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 

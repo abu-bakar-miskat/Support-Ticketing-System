@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Promote the user's role to manager if they're staff/lead
   const user = await prisma.profile.findUnique({ where: { id: userId }, select: { role: true } })
-  if (user && (user.role === "staff" || user.role === "lead")) {
+  if (user && (user.role === "staff" || user.role === "sub_manager")) {
     await prisma.profile.update({ where: { id: userId }, data: { role: "manager" } })
   }
 

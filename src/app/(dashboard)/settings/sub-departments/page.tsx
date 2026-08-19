@@ -10,7 +10,7 @@ import {
   type PendingRequest,
 } from "@/components/settings/settings-sub-departments-page";
 
-export const metadata = { title: "Teams & roles — Ticketing System" };
+export const metadata = { title: "Sub departments & roles — Ticketing System" };
 
 export default async function SettingsSubDepartmentsRoute() {
   const profile = await getProfile();
@@ -18,7 +18,7 @@ export default async function SettingsSubDepartmentsRoute() {
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
-  const isLead = profile.role === "lead";
+  const isLead = profile.role === "sub_manager";
 
   // Leads see the same view as managers (their own team's department).
   // Plain staff are redirected.
@@ -50,7 +50,7 @@ export default async function SettingsSubDepartmentsRoute() {
         : null;
 
   // Fetch department managers so we can display them as team leads when
-  // no explicit TeamMembership with role="lead" exists.
+  // no explicit TeamMembership with role="sub_manager" exists.
   const deptManagerMap = new Map<string, { name: string; avatarUrl: string | null }>();
   if (deptScopeList?.length) {
     const deptManagers = await prisma.departmentManager.findMany({
@@ -118,7 +118,7 @@ export default async function SettingsSubDepartmentsRoute() {
 
   const rows: SubDepartmentRow[] = subDepartments.map((subDepartment) => {
     const explicitLeads = subDepartment.memberships
-      .filter((m) => m.role === "lead")
+      .filter((m) => m.role === "sub_manager")
       .map((m) => ({ name: m.user.name, avatarUrl: m.user.avatarUrl ?? null }));
 
     const subDepartmentManagerMember = subDepartment.memberships.find((m) => m.role === "manager" || m.role === "admin");
@@ -138,7 +138,7 @@ export default async function SettingsSubDepartmentsRoute() {
           : [];
 
     const leadIds = new Set(
-      subDepartment.memberships.filter((m) => m.role === "lead").map((m) => m.user.id),
+      subDepartment.memberships.filter((m) => m.role === "sub_manager").map((m) => m.user.id),
     );
     const nonLeadMembers = subDepartment.memberships.filter((m) => !leadIds.has(m.user.id));
 

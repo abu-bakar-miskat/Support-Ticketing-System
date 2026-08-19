@@ -49,7 +49,7 @@ async function main() {
   if (manager.id !== admin.id)
     await prisma.profile.update({ where: { id: manager.id }, data: { role: "manager" } })
   if (lead.id !== admin.id)
-    await prisma.profile.update({ where: { id: lead.id },    data: { role: "lead"    } })
+    await prisma.profile.update({ where: { id: lead.id },    data: { role: "sub_manager"    } })
 
   // ── 1b. Tenant ────────────────────────────────────────────────────────────────
   // All seeded structure lives in a single "PEN" tenant. Every profile becomes a
@@ -109,10 +109,10 @@ async function main() {
   }
 
   // ── 6. Team memberships + primary team assignment ────────────────────────────
-  const memberDefs: Array<{ profile: typeof admin; team: typeof devTeam; role: "admin" | "manager" | "lead" | "staff" }> = [
+  const memberDefs: Array<{ profile: typeof admin; team: typeof devTeam; role: "admin" | "manager" | "sub_manager" | "staff" }> = [
     { profile: admin,   team: devTeam,  role: "admin"   },
     { profile: manager, team: devTeam,  role: "manager" },
-    { profile: lead,    team: techTeam, role: "lead"    },
+    { profile: lead,    team: techTeam, role: "sub_manager"    },
     { profile: dev1,    team: phpTeam,  role: "staff"   },
     { profile: dev2,    team: uiuxTeam, role: "staff"   },
   ]

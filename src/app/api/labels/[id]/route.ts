@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const { profile, error } = await requireAuth();
   if (error) return error;
-  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "lead") {
+  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "sub_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -59,7 +59,7 @@ export async function DELETE(
 ) {
   const { profile, error } = await requireAuth();
   if (error) return error;
-  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "lead") {
+  if (profile.role !== "admin" && profile.role !== "manager" && profile.role !== "sub_manager") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -51,20 +51,20 @@ export type MemberRow = {
 const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Manager" },
-  { value: "lead", label: "Lead" },
+  { value: "sub_manager", label: "Sub-manager" },
   { value: "staff", label: "Staff" },
 ];
 
 // Managers can only assign lead or staff — not admin/manager
 const ROLE_OPTIONS_MANAGER: { value: Role; label: string }[] = [
-  { value: "lead", label: "Lead" },
+  { value: "sub_manager", label: "Sub-manager" },
   { value: "staff", label: "Staff" },
 ];
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-pen-blue/10 text-pen-blue",
   manager: "bg-pen-purple/10 text-pen-purple",
-  lead: "bg-pen-green/10 text-pen-green",
+  sub_manager: "bg-pen-green/10 text-pen-green",
   staff: "bg-pen-surface text-pen-subtle",
 };
 
@@ -320,12 +320,12 @@ function AddMemberModal({
                         isAdmin
                           ? [
                               { value: "staff", label: "Staff" },
-                              { value: "lead", label: "Lead" },
+                              { value: "sub_manager", label: "Sub-manager" },
                               { value: "manager", label: "Manager" },
                             ]
                           : [
                               { value: "staff", label: "Staff" },
-                              { value: "lead", label: "Lead" },
+                              { value: "sub_manager", label: "Sub-manager" },
                             ]
                       }
                       searchable={false}
@@ -728,7 +728,7 @@ export function SettingsMembersPage({
                       lead and for guests (a cross-access grant doesn't carry role-management rights here) */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center">
-                      {!member.isCrossAccess && (isAdmin || (isManager && (role === "lead" || role === "staff"))) ? (
+                      {!member.isCrossAccess && (isAdmin || (isManager && (role === "sub_manager" || role === "staff"))) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}

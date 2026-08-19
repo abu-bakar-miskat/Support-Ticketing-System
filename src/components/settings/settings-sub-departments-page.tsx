@@ -90,7 +90,7 @@ type CapabilityRow = {
   label: string;
   admin: Permission;
   manager: Permission;
-  lead: Permission;
+  sub_manager: Permission;
   member: Permission;
 };
 
@@ -99,98 +99,98 @@ const CAPABILITIES: CapabilityRow[] = [
     label: "View own tasks & time",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "yes",
   },
   {
     label: "Create & edit tickets",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "yes",
   },
   {
     label: "Track time & log entries",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "yes",
   },
   {
-    label: "View team board & sprints",
+    label: "View sub department board & sprints",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "yes",
   },
   {
-    label: "View Team Time report",
+    label: "View sub department time report",
     admin: "yes",
     manager: "own",
-    lead: "own",
+    sub_manager: "own",
     member: "no",
   },
   {
     label: "Approve timesheets",
     admin: "yes",
     manager: "own",
-    lead: "no",
+    sub_manager: "no",
     member: "no",
   },
   {
-    label: "Manage team members",
+    label: "Manage sub department members",
     admin: "yes",
     manager: "own",
-    lead: "own",
+    sub_manager: "own",
     member: "no",
   },
   {
-    label: "Create / rename teams",
+    label: "Create / rename sub departments",
     admin: "yes",
     manager: "own",
-    lead: "no",
+    sub_manager: "no",
     member: "no",
   },
   {
     label: "Create & edit projects",
     admin: "yes",
     manager: "own",
-    lead: "own",
+    sub_manager: "own",
     member: "no",
   },
   {
     label: "Edit & delete project assets",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "no",
   },
   {
     label: "Upload project assets",
     admin: "yes",
     manager: "yes",
-    lead: "yes",
+    sub_manager: "yes",
     member: "yes",
   },
   {
     label: "Delete projects",
     admin: "yes",
     manager: "yes",
-    lead: "no",
+    sub_manager: "no",
     member: "no",
   },
   {
-    label: "Team settings (workflows, tags)",
+    label: "Sub department settings (workflows, tags)",
     admin: "yes",
     manager: "own",
-    lead: "own",
+    sub_manager: "own",
     member: "no",
   },
   {
     label: "Workspace settings & integrations",
     admin: "yes",
     manager: "no",
-    lead: "no",
+    sub_manager: "no",
     member: "no",
   },
 ];
@@ -214,9 +214,9 @@ const ROLES = [
     dotClassName: "bg-pen-purple",
   },
   {
-    key: "lead" as const,
-    label: "Lead",
-    hint: "own team",
+    key: "sub_manager" as const,
+    label: "Sub-manager",
+    hint: "own sub department",
     dotClassName: "bg-emerald-500",
   },
   {
@@ -435,7 +435,7 @@ function SubDepartmentModal({
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="pen-text-modal-title">
-            {isEdit ? "Edit team" : "New team"}
+            {isEdit ? "Edit sub department" : "New sub department"}
           </h2>
           <button
             type="button"
@@ -449,7 +449,7 @@ function SubDepartmentModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-              Team name
+              Sub department name
             </label>
             <input
               value={name}
@@ -539,7 +539,7 @@ function SubDepartmentModal({
               disabled={saving}
               className="h-8 rounded-lg bg-pen-id px-4 font-sans text-[12px] font-medium text-white hover:bg-pen-id/90 disabled:opacity-60"
             >
-              {saving ? "Saving…" : isEdit ? "Save changes" : "Create team"}
+              {saving ? "Saving…" : isEdit ? "Save changes" : "Create sub department"}
             </button>
           </div>
         </form>
@@ -548,7 +548,7 @@ function SubDepartmentModal({
   );
 }
 
-// ── Team Members Modal ────────────────────────────────────────────────────────
+// ── Sub Department Members Modal ────────────────────────────────────────────────────────
 
 type MemberEntry = {
   membershipId: string;
@@ -661,7 +661,7 @@ function SubDepartmentMembersModal({
   const ROLE_COLORS: Record<string, string> = {
     admin: "bg-pen-blue/10 text-pen-blue",
     manager: "bg-pen-purple/10 text-pen-purple",
-    lead: "bg-pen-green/10 text-pen-green",
+    sub_manager: "bg-pen-green/10 text-pen-green",
     staff: "bg-pen-surface text-pen-subtle",
   };
 
@@ -1027,7 +1027,7 @@ function AssignMemberModal({
               Add members
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
-              Team:{" "}
+              Sub department:{" "}
               <span className="font-semibold text-pen-foreground">
                 {subDepartment.name}
               </span>
@@ -1095,7 +1095,7 @@ function AssignMemberModal({
                   {profiles.every(
                     (p) => p.subDepartment !== null || existingIds.has(p.id),
                   )
-                    ? "All users are already assigned to a team"
+                    ? "All users are already assigned to a sub department"
                     : "No users found"}
                 </p>
               ) : (
@@ -1177,7 +1177,7 @@ function AssignMemberModal({
 
 const ROLE_OPTIONS_BASE: { value: Role; label: string }[] = [
   { value: "staff", label: "Staff" },
-  { value: "lead", label: "Lead" },
+  { value: "sub_manager", label: "Sub-manager" },
   { value: "manager", label: "Manager" },
 ];
 const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
@@ -1193,14 +1193,14 @@ function timeAgoShort(isoString: string) {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-type ApprovalRole = "admin" | "manager" | "lead" | "staff" | "cross-access";
+type ApprovalRole = "admin" | "manager" | "sub_manager" | "staff" | "cross-access";
 
 const APPROVAL_ROLES: { value: ApprovalRole; label: string; hint: string }[] = [
   { value: "admin",        label: "Admin",           hint: "Full workspace access" },
   { value: "manager",      label: "Manager",         hint: "Manages whole department" },
-  { value: "lead",         label: "Lead",            hint: "Team lead — pick a team" },
-  { value: "staff",        label: "Staff",           hint: "Team member — pick a team" },
-  { value: "cross-access", label: "Cross-dept access", hint: "Guest access, no team" },
+  { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub department" },
+  { value: "staff",        label: "Staff",           hint: "Member — pick a sub department" },
+  { value: "cross-access", label: "Cross-dept access", hint: "Guest access, no sub department" },
 ];
 
 function JoinRequestsSection({
@@ -1243,7 +1243,7 @@ function JoinRequestsSection({
 
   if (requests.length === 0) return null;
 
-  const needsSubDepartment = selectedRole === "lead" || selectedRole === "staff";
+  const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "staff";
   const isCrossAccess = selectedRole === "cross-access";
 
   function openExpand(req: PendingRequest) {
@@ -1265,7 +1265,7 @@ function JoinRequestsSection({
     action: "approve" | "reject",
   ) {
     if (action === "approve" && needsSubDepartment && !isCrossAccess && !selectedSubDepartmentId) {
-      setApproveError("Please select a team");
+      setApproveError("Please select a sub department");
       return;
     }
     if (action === "approve" && isCrossAccess && !crossFullAccess && crossSelectedProjectIds.size === 0) {
@@ -1398,25 +1398,25 @@ function JoinRequestsSection({
                     </div>
                   </div>
 
-                  {/* Team + Nickname row */}
+                  {/* Sub department + Nickname row */}
                   <div className="flex flex-wrap items-end gap-3">
-                    {/* Team — only for lead/staff */}
+                    {/* Sub department — only for sub_manager/staff */}
                     {needsSubDepartment && (
                       <div className="flex flex-col gap-1.5">
                         <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
-                          Team
+                          Sub department
                         </label>
                         <SearchableSelect
                           value={selectedSubDepartmentId}
                           onChange={setSelectedSubDepartmentId}
                           options={
                             req.subDepartments.length === 0
-                              ? [{ value: "", label: "No teams available" }]
+                              ? [{ value: "", label: "No sub departments available" }]
                               : req.subDepartments.map((t) => ({ value: t.id, label: t.name }))
                           }
                           disabled={req.subDepartments.length === 0}
                           className="min-w-[160px] bg-pen-bg"
-                          aria-label="Team"
+                          aria-label="Sub department"
                         />
                       </div>
                     )}
@@ -1486,7 +1486,7 @@ function JoinRequestsSection({
                         <input
                           value={crossReason}
                           onChange={(e) => setCrossReason(e.target.value)}
-                          placeholder="e.g. Cross-team ticket assignment"
+                          placeholder="e.g. Cross-sub-department ticket assignment"
                           className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
                         />
                       </div>
@@ -1575,7 +1575,7 @@ export function SettingsSubDepartmentsPage({
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
-        title="Delete team"
+        title="Delete sub department"
         description={confirmDelete ? `Delete "${confirmDelete.name}"? This cannot be undone.` : ""}
         confirmLabel="Delete"
         successMessage={confirmDelete ? `"${confirmDelete.name}" deleted` : undefined}
@@ -1608,10 +1608,10 @@ export function SettingsSubDepartmentsPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="pen-text-admin-title">
-              Teams & roles
+              Sub departments & roles
             </h1>
             <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
-              Teams can have multiple leads. Roles control what everyone can see
+              Sub departments can have multiple sub-managers. Roles control what everyone can see
               and do.
             </p>
           </div>
@@ -1622,7 +1622,7 @@ export function SettingsSubDepartmentsPage({
               className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[120px]"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
-              New team
+              New sub department
             </Button>
           )}
         </div>
@@ -1632,7 +1632,7 @@ export function SettingsSubDepartmentsPage({
             <TableHeader>
               <TableRow className="border-pen-card-border hover:bg-transparent">
                 <TableHead className="h-8 w-[29%] px-[18px]">
-                  <SectionLabel>Team</SectionLabel>
+                  <SectionLabel>Sub department</SectionLabel>
                 </TableHead>
                 <TableHead className="h-8 w-[25%]">
                   <SectionLabel>Leads</SectionLabel>
@@ -1652,7 +1652,7 @@ export function SettingsSubDepartmentsPage({
                   <TableCell colSpan={5} className="px-[18px] py-0">
                     <div className="flex h-[52px] items-center">
                       <span className="font-sans text-[11.5px] text-pen-muted">
-                        No teams yet
+                        No sub departments yet
                       </span>
                     </div>
                   </TableCell>
@@ -1724,7 +1724,7 @@ export function SettingsSubDepartmentsPage({
                                     setModal({ type: "edit", subDepartment })
                                   }
                                 >
-                                  Edit team
+                                  Edit sub department
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="font-sans text-xs"
@@ -1739,7 +1739,7 @@ export function SettingsSubDepartmentsPage({
                                   className="font-sans text-xs"
                                   onClick={() => setConfirmDelete(subDepartment)}
                                 >
-                                  Delete team
+                                  Delete sub department
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -1764,7 +1764,7 @@ export function SettingsSubDepartmentsPage({
           </h2>
           <p className="font-sans text-xs text-pen-muted">
             Roles map from Microsoft groups on sign-in; admins can override per
-            person. &ldquo;Own&rdquo; means scoped to your department or team.
+            person. &ldquo;Own&rdquo; means scoped to your department or sub department.
           </p>
         </div>
 

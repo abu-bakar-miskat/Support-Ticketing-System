@@ -52,9 +52,13 @@ type Member = {
   isActive: boolean;
 };
 
-const MEMBER_ROLES = ["admin", "manager", "lead", "staff"] as const;
+const MEMBER_ROLES = ["admin", "manager", "sub_manager", "staff"] as const;
 const roleLabel = (r: string) =>
-  r === "admin" ? "Tenant admin" : r.charAt(0).toUpperCase() + r.slice(1);
+  r === "admin"
+    ? "Tenant admin"
+    : r === "sub_manager"
+      ? "Sub-manager"
+      : r.charAt(0).toUpperCase() + r.slice(1);
 
 function DepartmentMultiSelect({
   label,

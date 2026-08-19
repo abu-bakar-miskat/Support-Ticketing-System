@@ -30,7 +30,7 @@ export type JoinRequestNotification = {
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "staff", label: "Staff" },
-  { value: "lead", label: "Lead" },
+  { value: "sub_manager", label: "Sub-manager" },
   { value: "manager", label: "Manager" },
 ]
 

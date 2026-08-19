@@ -158,7 +158,7 @@ export async function PATCH(
       })
       if (!subDepartment) return NextResponse.json({ error: "Team not found in this department" }, { status: 404 })
 
-      const memberRole: Role = effectiveRole === "lead" ? "lead" : "staff"
+      const memberRole: Role = effectiveRole === "sub_manager" ? "sub_manager" : "staff"
 
       await prisma.$transaction([
         (prisma.subDepartmentMembership as any).upsert({

@@ -47,7 +47,7 @@ export async function GET() {
       }
       return []
     }
-    if (profile.role === "lead" && profile.subDepartmentId) {
+    if (profile.role === "sub_manager" && profile.subDepartmentId) {
       return prisma.project.findMany({
         where: { subDepartmentId: profile.subDepartmentId },
         select: { id: true, name: true, color: true, slug: true, subDepartmentId: true, kind: true, departmentId: true },

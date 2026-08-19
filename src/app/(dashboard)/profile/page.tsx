@@ -16,7 +16,7 @@ async function ProfileData({
   if (!profile) redirect("/login")
 
   const sp = await searchParams
-  const isPrivileged = ["admin", "manager", "lead"].includes(profile.role)
+  const isPrivileged = ["admin", "manager", "sub_manager"].includes(profile.role)
 
   const targetId = isPrivileged ? (sp.userId ?? profile.id) : profile.id
   const projectId = sp.projectId || undefined

@@ -94,8 +94,8 @@ describe("deriveEffectiveRole", () => {
   });
 
   it("sub-department lead → lead", () => {
-    expect(deriveEffectiveRole([{ role: "lead", scopeType: "SUB_DEPARTMENT", scopeId: "team-1" }])).toBe(
-      "lead",
+    expect(deriveEffectiveRole([{ role: "sub_manager", scopeType: "SUB_DEPARTMENT", scopeId: "team-1" }])).toBe(
+      "sub_manager",
     );
   });
 
@@ -115,7 +115,7 @@ describe("deriveEffectiveRole", () => {
   it("admin outranks a concurrent lead/manager assignment", () => {
     expect(
       deriveEffectiveRole([
-        { role: "lead", scopeType: "SUB_DEPARTMENT", scopeId: "team-1" },
+        { role: "sub_manager", scopeType: "SUB_DEPARTMENT", scopeId: "team-1" },
         { role: "manager", scopeType: "DEPARTMENT", scopeId: "d1" },
         { role: "admin", scopeType: "TENANT", scopeId: "t1" },
       ]),

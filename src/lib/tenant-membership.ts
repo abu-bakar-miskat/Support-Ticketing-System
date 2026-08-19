@@ -5,7 +5,7 @@ import type { Prisma } from "@/generated/prisma/client";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
-export type MembershipRole = "admin" | "manager" | "lead" | "staff";
+export type MembershipRole = "admin" | "manager" | "sub_manager" | "staff";
 
 /**
  * Apply a member's tenant role + department scope. Used both when adding an
@@ -15,7 +15,7 @@ export type MembershipRole = "admin" | "manager" | "lead" | "staff";
  * - Sets `Profile.role` so the existing dept-scope logic treats them correctly.
  * - `admin`: tenant-wide — no department records.
  * - `manager`: a `DepartmentManager` for each selected department.
- * - `lead`/`staff`: a `DepartmentMember` (direct membership) for each department.
+ * - `sub_manager`/`staff`: a `DepartmentMember` (direct membership) for each department.
  *
  * Department ids are filtered to those that actually belong to `tenantId`.
  */

@@ -3,7 +3,9 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/auth", () => ({ requireAuth: vi.fn() }))
 vi.mock("@/lib/role-assignment", () => ({ resolveUserScope: vi.fn() }))
-vi.mock("@/lib/db", () => ({ prisma: { auditEvent: { findMany: vi.fn() } } }))
+vi.mock("@/lib/db", () => ({
+  prisma: { auditEvent: { findMany: vi.fn() }, profile: { findMany: vi.fn() } },
+}))
 
 import { requireAuth } from "@/lib/auth"
 import { resolveUserScope } from "@/lib/role-assignment"
@@ -13,6 +15,7 @@ import { GET } from "./route"
 const mockRequireAuth = vi.mocked(requireAuth)
 const mockResolveUserScope = vi.mocked(resolveUserScope)
 const mockFindMany = vi.mocked(prisma.auditEvent.findMany)
+const mockProfileFindMany = vi.mocked(prisma.profile.findMany)
 
 const baseUserScope = {
   isPlatformAdmin: false,
@@ -30,6 +33,7 @@ function makeRequest(qs: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockRequireAuth.mockResolvedValue({ profile: { id: "u1" }, error: null } as never)
+  mockProfileFindMany.mockResolvedValue([])
 })
 
 describe("GET /api/admin/audit-events", () => {

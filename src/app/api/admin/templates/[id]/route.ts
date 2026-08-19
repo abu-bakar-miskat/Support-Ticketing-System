@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest, notFound } from "@/lib/api-response"
-import { updateTemplate, archiveTemplate } from "@/lib/template-catalogue"
+import { updateTemplate, archiveTemplate, setTemplateFeatures } from "@/lib/template-catalogue"
+import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey } from "@/lib/template-features"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSuperAdmin()
@@ -16,6 +17,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const name = (body.name as string | undefined)?.trim()
   if (name === "") return badRequest("Name cannot be empty")
 
+  if ("featureKeys" in body) {
+    const featureKeys = Array.isArray(body.featureKeys) ? body.featureKeys : []
+    if (!featureKeys.every(isTemplateFeatureKey)) {
+      return badRequest(`featureKeys must only contain: ${TEMPLATE_FEATURE_KEYS.join(", ")}`)
+    }
+    await setTemplateFeatures(id, featureKeys)
+  }
+
   const updated = await updateTemplate({
     id,
     name: name || undefined,
@@ -23,7 +32,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     isActive: typeof body.isActive === "boolean" ? body.isActive : undefined,
   })
 
-  return NextResponse.json(updated)
+  const withFeatures = await prisma.template.findUnique({
+    where: { id: updated.id },
+    include: { features: { select: { key: true } } },
+  })
+
+  return NextResponse.json(withFeatures)
 }
 
 // Archive a template (isActive: false) rather than deleting it — existing

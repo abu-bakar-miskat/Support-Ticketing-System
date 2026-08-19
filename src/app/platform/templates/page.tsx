@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
-import { TemplatesCatalogueAdmin } from "@/components/tenants/templates-catalogue-admin"
+import { TemplatesCatalogueAdmin } from "@/components/platform/templates-catalogue-admin"
 
 export const dynamic = "force-dynamic"
 

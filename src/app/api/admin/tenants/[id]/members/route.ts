@@ -2,8 +2,10 @@ import { randomBytes } from "crypto"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
-import { badRequest, forbidden } from "@/lib/api-response"
+import { badRequest, forbidden, notFound } from "@/lib/api-response"
 import { applyTenantMembership } from "@/lib/tenant-membership"
+import { recordAuditEvent } from "@/lib/audit-log"
+import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 import type { Role } from "@/generated/prisma/enums"
 
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
@@ -129,6 +131,57 @@ export async function POST(request: Request, { params }: Params) {
     { invited: true, email, role, acceptPath: `/tenant-invite/${token}` },
     { status: 201 },
   )
+}
+
+/**
+ * Restrict or re-enable a member's account (Profile.isActive) without
+ * removing their tenant membership or any data — distinct from DELETE below,
+ * which drops the membership entirely. Mirrors the SA-03 pattern already
+ * used by PATCH /api/admin/users/[id]: force-logout within 60s on restrict.
+ */
+export async function PATCH(request: Request, { params }: Params) {
+  const { profile, error } = await requireAuth()
+  if (error) return error
+  const { id: tenantId } = await params
+
+  if (!canManage(profile, tenantId)) {
+    return forbidden("Only a super-admin or an admin of this tenant can restrict members.")
+  }
+
+  const body = await request.json().catch(() => ({}))
+  const userId = (body.userId as string | undefined)?.trim()
+  const isActive = body.isActive
+  if (!userId) return badRequest("userId is required")
+  if (typeof isActive !== "boolean") return badRequest("isActive must be a boolean")
+
+  const membership = await prisma.tenantMembership.findUnique({
+    where: { tenantId_userId: { tenantId, userId } },
+    select: { userId: true },
+  })
+  if (!membership) return notFound("This user is not a member of this tenant")
+
+  const before = await prisma.profile.findUnique({ where: { id: userId }, select: { isActive: true } })
+  const updated = await prisma.profile.update({
+    where: { id: userId },
+    data: { isActive },
+    select: { id: true, isActive: true },
+  })
+
+  await recordAuditEvent({
+    tenantId,
+    actorId: profile.id,
+    action: isActive ? "USER_REENABLED" : "USER_RESTRICTED",
+    targetType: "Profile",
+    targetId: userId,
+    before,
+    after: { isActive },
+  })
+
+  if (!isActive && before?.isActive !== false) {
+    await broadcastForceLogout([userId], "Your account has been restricted. Contact your administrator for access.")
+  }
+
+  return NextResponse.json(updated)
 }
 
 /** Remove a user from a tenant. */

@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { type TemplateFeatureKey } from "@/lib/template-features";
-
-const FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
-  supportForm: "Support forms",
-  emailSettings: "Email settings",
-  apiKeys: "API keys",
-  importForm: "Import from Notion",
-};
+import { type TemplateFeatureKey, TEMPLATE_FEATURE_LABELS } from "@/lib/template-features";
 
 export type CatalogueEntry = {
   id: string;
@@ -87,7 +80,7 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
                   key={key}
                   className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue"
                 >
-                  {FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
+                  {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
                 </span>
               ))}
             </div>

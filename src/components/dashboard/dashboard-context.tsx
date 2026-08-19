@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 import type { SidebarProject, SubDepartmentItem, DeptNode } from "@/components/dashboard/sidebar";
 import type { RecentTicket } from "@/components/dashboard/command-palette";
+import type { TemplateFeatureKey } from "@/lib/template-features";
 
 export type DashboardContextValue = {
   projects: SidebarProject[];
@@ -25,6 +26,7 @@ export type DashboardContextValue = {
   canAccessModules: boolean;
   userRole: string;
   isSuperAdmin: boolean;
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL";
   pinnedProjectIds: string[];
   assignedProjectIds: string[];
   sidebarCollapsed: boolean;

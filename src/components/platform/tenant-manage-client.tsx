@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,11 +11,19 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { TenantAvatar } from "@/components/tenants/tenant-avatar";
+import { TenantAvatar } from "@/components/platform/tenant-avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { TENANT_TYPES, tenantTypeLabel } from "@/lib/tenant-types";
 import type { TenantBranding } from "@/lib/tenant-branding";
+import {
+  TenantAgreements,
+  type AgreementRow,
+} from "@/components/platform/tenant-agreements";
+import {
+  TenantTemplates,
+  type CatalogueEntry,
+} from "@/components/platform/tenant-templates";
 
 type UserResult = {
   id: string;
@@ -41,28 +49,129 @@ type Member = {
   email: string;
   avatarUrl: string | null;
   role: string;
+  isActive: boolean;
 };
 
 const MEMBER_ROLES = ["admin", "manager", "lead", "staff"] as const;
 const roleLabel = (r: string) =>
   r === "admin" ? "Tenant admin" : r.charAt(0).toUpperCase() + r.slice(1);
 
+function DepartmentMultiSelect({
+  label,
+  departments,
+  selected,
+  onToggle,
+  compact = false,
+}: {
+  label: string;
+  departments: { id: string; name: string }[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerLabel =
+    selected.length === 0
+      ? "Select department(s)"
+      : selected.length === 1
+        ? (departments.find((d) => d.id === selected[0])?.name ?? "1 selected")
+        : `${selected.length} departments selected`;
+
+  return (
+    <div className={compact ? "shrink-0" : undefined}>
+      {!compact && (
+        <p className="font-sans text-[11.5px] font-medium text-pen-foreground">
+          {label}
+          <span className="ml-1 font-normal text-pen-subtle">— pick one or more</span>
+        </p>
+      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          title={label}
+          className={cn(
+            "flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5 text-left font-sans text-[12.5px] text-pen-foreground transition-colors hover:border-pen-muted",
+            compact ? "min-w-[190px]" : "mt-1.5 w-full",
+          )}
+        >
+          <span className="min-w-0 flex-1 truncate">{triggerLabel}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-pen-subtle" />
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="w-64 rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        >
+          <div className="flex items-center justify-between border-b border-pen-card-border px-3 py-2">
+            <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+              Departments
+            </span>
+            {selected.length > 0 && (
+              <button
+                type="button"
+                onClick={() => selected.forEach(onToggle)}
+                className="font-sans text-[11.5px] text-pen-muted hover:text-pen-red"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="max-h-56 overflow-y-auto p-1.5">
+            {departments.length === 0 ? (
+              <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                This tenant has no departments yet.
+              </p>
+            ) : (
+              departments.map((d) => {
+                const checked = selected.includes(d.id);
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => onToggle(d.id)}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
+                      checked ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                        checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border bg-transparent",
+                      )}
+                    >
+                      {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
+                    </span>
+                    <span className="truncate font-sans text-[12.5px] text-pen-foreground">{d.name}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export function TenantManageClient({
   tenant,
   initialBranding,
   initialMembers,
   departments,
+  initialAgreements,
+  initialCatalogue,
 }: {
   tenant: TenantInfo;
   initialBranding: TenantBranding;
   initialMembers: Member[];
   departments: { id: string; name: string }[];
+  initialAgreements: AgreementRow[];
+  initialCatalogue: CatalogueEntry[];
 }) {
   const [displayName, setDisplayName] = useState(
     initialBranding.displayName ?? "",
   );
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "");
-  const [type, setType] = useState(tenant.type);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -187,6 +296,32 @@ export function TenantManageClient({
     setMembers((prev) => prev.filter((m) => m.id !== userId));
   }
 
+  // Restrict/re-enable a member's account (Profile.isActive) — unlike
+  // removeMember, this keeps their membership and all data intact; it just
+  // blocks sign-in.
+  async function setMemberActive(userId: string, isActive: boolean) {
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/tenants/${tenant.id}/members`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, isActive }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Failed to update member access");
+      return;
+    }
+    setMembers((prev) =>
+      prev.map((m) => (m.id === userId ? { ...m, isActive } : m)),
+    );
+    setStatus(
+      isActive
+        ? "Access re-enabled."
+        : "Access restricted — the member is signed out.",
+    );
+  }
+
   async function uploadLogo(file: File) {
     setUploading(true);
     setError(null);
@@ -230,20 +365,6 @@ export function TenantManageClient({
     setStatus("Branding saved.");
   }
 
-  async function changeType(next: string) {
-    setType(next);
-    setError(null);
-    const res = await fetch(`/api/admin/tenants/${tenant.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: next }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to update type");
-    }
-  }
-
   async function enterTenant() {
     const res = await fetch("/api/active-tenant", {
       method: "POST",
@@ -269,7 +390,9 @@ export function TenantManageClient({
       return;
     }
     setTenantStatus(next);
-    setStatus(next === "suspended" ? "Tenant suspended." : "Tenant reactivated.");
+    setStatus(
+      next === "suspended" ? "Tenant suspended." : "Tenant reactivated.",
+    );
   }
 
   async function softDeleteTenant() {
@@ -323,7 +446,7 @@ export function TenantManageClient({
     <div className="min-h-screen overflow-y-auto">
       <div className="w-full px-6 py-8 pb-20 lg:px-10">
         <Link
-          href="/tenants"
+          href="/platform"
           className="inline-flex items-center gap-1 font-sans text-[12.5px] text-pen-muted transition-colors hover:text-pen-foreground"
         >
           <ArrowLeft className="size-3.5" />
@@ -383,28 +506,8 @@ export function TenantManageClient({
         <div className="mt-6 grid gap-6 xl:grid-cols-3">
           {/* Left: settings column */}
           <div className="flex flex-col gap-6 xl:col-span-1">
-            {/* Type */}
-            <section className={sectionCard}>
-          <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
-            Type
-          </h2>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TENANT_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => changeType(t)}
-                className={cn(
-                  "pen-pressable rounded-full border px-3 py-1 font-sans text-[12.5px] transition-colors",
-                  type === t
-                    ? "border-pen-blue bg-pen-blue-tint font-medium text-pen-blue"
-                    : "border-pen-card-border text-pen-muted hover:text-pen-foreground",
-                )}
-              >
-                {tenantTypeLabel(t)}
-              </button>
-            ))}
-          </div>
-        </section>
+            {/* Templates (dynamic, replaces the old static Tenant.type) */}
+            <TenantTemplates tenantId={tenant.id} initialCatalogue={initialCatalogue} />
 
             {/* Branding editor + live preview */}
             <section className={cn(sectionCard, "space-y-4")}>
@@ -487,8 +590,8 @@ export function TenantManageClient({
                 Status &amp; lifecycle
               </h2>
               <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
-                Suspend to temporarily block sign-in for every member. Soft-delete
-                is reversible — no data is ever removed.
+                Suspend to temporarily block sign-in for every member.
+                Soft-delete is reversible — no data is ever removed.
               </p>
 
               {deleted ? (
@@ -560,222 +663,209 @@ export function TenantManageClient({
 
           {/* Members */}
           <section className={cn(sectionCard, "h-fit xl:col-span-2")}>
-          <div className="flex items-center justify-between">
-            <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
-              Members
-            </h2>
-            <span className="font-sans text-[11.5px] text-pen-subtle">
-              {members.length} member{members.length === 1 ? "" : "s"}
-            </span>
-          </div>
+            <div className="flex items-center justify-between">
+              <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                Members
+              </h2>
+              <span className="font-sans text-[11.5px] text-pen-subtle">
+                {members.length} member{members.length === 1 ? "" : "s"}
+              </span>
+            </div>
 
-          {/* Add or invite */}
-          <form onSubmit={addMember} className="mt-3 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative min-w-[220px] flex-1">
-                {pickedUser ? (
-                  <div className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5">
-                    <UserAvatar
-                      name={pickedUser.name}
-                      avatarUrl={pickedUser.avatarUrl}
-                      size={20}
+            {/* Add or invite */}
+            <form onSubmit={addMember} className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-[220px] flex-1">
+                  {pickedUser ? (
+                    <div className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5">
+                      <UserAvatar
+                        name={pickedUser.name}
+                        avatarUrl={pickedUser.avatarUrl}
+                        size={20}
+                      />
+                      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                        {pickedUser.name || pickedUser.email}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Clear selected user"
+                        onClick={clearPickedUser}
+                        className="pen-pressable rounded-full p-0.5 text-pen-subtle hover:text-pen-foreground"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Input
+                      type="text"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onFocus={() => setSearchOpen(true)}
+                      onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                      placeholder="Search a name or email, or type a new email"
+                      className="h-9 w-full"
+                      autoComplete="off"
                     />
-                    <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
-                      {pickedUser.name || pickedUser.email}
+                  )}
+                  {!pickedUser &&
+                    searchOpen &&
+                    inviteEmail.trim().length >= 2 && (
+                      <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-xl">
+                        {searching ? (
+                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                            Searching…
+                          </p>
+                        ) : searchResults.length === 0 ? (
+                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                            No existing users match — an invite will be sent to
+                            this email.
+                          </p>
+                        ) : (
+                          <div className="max-h-56 overflow-y-auto p-1">
+                            {searchResults.map((u) => (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => pickUser(u)}
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-pen-surface"
+                              >
+                                <UserAvatar
+                                  name={u.name}
+                                  avatarUrl={u.avatarUrl}
+                                  size={22}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                                    {u.name || u.email}
+                                  </div>
+                                  <div className="truncate font-sans text-[11px] text-pen-subtle">
+                                    {u.email}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
+                <Select
+                  value={inviteRole}
+                  onValueChange={(v) => setInviteRole(v ?? "staff")}
+                >
+                  <SelectTrigger className="h-9! min-w-[150px] bg-pen-card! hover:bg-pen-surface!">
+                    <span className="font-sans text-[12.5px]">
+                      {roleLabel(inviteRole)}
                     </span>
-                    <button
-                      type="button"
-                      aria-label="Clear selected user"
-                      onClick={clearPickedUser}
-                      className="pen-pressable rounded-full p-0.5 text-pen-subtle hover:text-pen-foreground"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <Input
-                    type="text"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    onFocus={() => setSearchOpen(true)}
-                    onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-                    placeholder="Search a name or email, or type a new email"
-                    className="h-9 w-full"
-                    autoComplete="off"
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEMBER_ROLES.map((r) => (
+                      <SelectItem
+                        key={r}
+                        value={r}
+                        className="font-sans text-[12.5px]"
+                      >
+                        {roleLabel(r)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {needsDepartments && (
+                  <DepartmentMultiSelect
+                    label={inviteRole === "manager" ? "Manages department(s)" : "Member of department(s)"}
+                    departments={departments}
+                    selected={selectedDepts}
+                    onToggle={toggleDept}
+                    compact
                   />
                 )}
-                {!pickedUser &&
-                  searchOpen &&
-                  inviteEmail.trim().length >= 2 && (
-                    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-xl">
-                      {searching ? (
-                        <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
-                          Searching…
-                        </p>
-                      ) : searchResults.length === 0 ? (
-                        <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
-                          No existing users match — an invite will be sent to
-                          this email.
-                        </p>
-                      ) : (
-                        <div className="max-h-56 overflow-y-auto p-1">
-                          {searchResults.map((u) => (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => pickUser(u)}
-                              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-pen-surface"
-                            >
-                              <UserAvatar
-                                name={u.name}
-                                avatarUrl={u.avatarUrl}
-                                size={22}
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
-                                  {u.name || u.email}
-                                </div>
-                                <div className="truncate font-sans text-[11px] text-pen-subtle">
-                                  {u.email}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-              </div>
-              <Select
-                value={inviteRole}
-                onValueChange={(v) => setInviteRole(v ?? "staff")}
-              >
-                <SelectTrigger className="h-9 min-w-[150px]">
-                  <span className="font-sans text-[12.5px]">
-                    {roleLabel(inviteRole)}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {MEMBER_ROLES.map((r) => (
-                    <SelectItem
-                      key={r}
-                      value={r}
-                      className="font-sans text-[12.5px]"
-                    >
-                      {roleLabel(r)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={
-                  addingMember ||
-                  !inviteEmail.trim() ||
-                  (needsDepartments && selectedDepts.length === 0)
-                }
-              >
-                {addingMember ? "Adding…" : "Add member"}
-              </Button>
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
-                {error}
-              </div>
-            )}
-
-            {needsDepartments && (
-              <div className="rounded-lg border border-pen-card-border bg-pen-surface p-2.5">
-                <p className="font-sans text-[11.5px] font-medium text-pen-foreground">
-                  {inviteRole === "manager"
-                    ? "Manages department(s)"
-                    : "Member of department(s)"}
-                  <span className="ml-1 font-normal text-pen-subtle">
-                    — pick one or more
-                  </span>
-                </p>
-                {departments.length === 0 ? (
-                  <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
-                    This tenant has no departments yet.
-                  </p>
-                ) : (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {departments.map((d) => {
-                      const on = selectedDepts.includes(d.id);
-                      return (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => toggleDept(d.id)}
-                          className={cn(
-                            "pen-pressable rounded-full border px-2.5 py-1 font-sans text-[12px] transition-colors",
-                            on
-                              ? "border-pen-blue bg-pen-blue-tint font-medium text-pen-blue"
-                              : "border-pen-card-border text-pen-muted hover:text-pen-foreground",
-                          )}
-                        >
-                          {d.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </form>
-          <p className="mt-1 font-sans text-[11px] text-pen-subtle">
-            Admins get the whole tenant; managers/leads/staff are scoped to the
-            departments you pick. Existing users are added instantly; a new
-            email gets an invitation link.
-          </p>
-
-          {inviteLink && (
-            <div className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface p-2">
-              <p className="font-sans text-[11px] text-pen-muted">
-                Invitation link (share with the invitee):
-              </p>
-              <code className="mt-1 block truncate font-mono text-[11.5px] text-pen-foreground">
-                {typeof window !== "undefined" ? window.location.origin : ""}
-                {inviteLink}
-              </code>
-            </div>
-          )}
-
-          <ul className="mt-4 divide-y divide-pen-card-border">
-            {members.map((m) => (
-              <li key={m.id} className="flex items-center gap-3 py-2">
-                <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
-                    {m.name || m.email}
-                  </div>
-                  <div className="truncate font-sans text-[11px] text-pen-subtle">
-                    {m.email}
-                  </div>
-                </div>
-                <span className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[11px] font-medium text-pen-blue">
-                  {roleLabel(m.role)}
-                </span>
                 <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove ${m.name || m.email}`}
-                  onClick={() => removeMember(m.id)}
+                  type="submit"
+                  size="lg"
+                  disabled={
+                    addingMember ||
+                    !inviteEmail.trim() ||
+                    (needsDepartments && selectedDepts.length === 0)
+                  }
                 >
-                  <X className="size-3.5" />
+                  {addingMember ? "Adding…" : "Add member"}
                 </Button>
-              </li>
-            ))}
-            {members.length === 0 && (
-              <li className="py-3 font-sans text-[12px] text-pen-subtle">
-                No members yet.
-              </li>
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
+                  {error}
+                </div>
+              )}
+            </form>
+            <p className="mt-1 font-sans text-[11px] text-pen-subtle">
+              Admins get the whole tenant; managers/leads/staff are scoped to
+              the departments you pick. Existing users are added instantly; a
+              new email gets an invitation link.
+            </p>
+
+            {inviteLink && (
+              <div className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface p-2">
+                <p className="font-sans text-[11px] text-pen-muted">
+                  Invitation link (share with the invitee):
+                </p>
+                <code className="mt-1 block truncate font-mono text-[11.5px] text-pen-foreground">
+                  {typeof window !== "undefined" ? window.location.origin : ""}
+                  {inviteLink}
+                </code>
+              </div>
             )}
-          </ul>
+
+            <ul className="mt-4 max-h-[530px] divide-y divide-pen-card-border overflow-y-auto">
+              {members.map((m) => (
+                <li key={m.id} className="flex items-center gap-3 py-2">
+                  <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                      {m.name || m.email}
+                    </div>
+                    <div className="truncate font-sans text-[11px] text-pen-subtle">
+                      {m.email}
+                    </div>
+                  </div>
+                  {!m.isActive && (
+                    <span className="rounded-full bg-pen-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-red">
+                      Restricted
+                    </span>
+                  )}
+                  <span className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[11px] font-medium text-pen-blue">
+                    {roleLabel(m.role)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMemberActive(m.id, !m.isActive)}
+                  >
+                    {m.isActive ? "Restrict" : "Re-enable"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove ${m.name || m.email}`}
+                    onClick={() => removeMember(m.id)}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+              {members.length === 0 && (
+                <li className="py-3 font-sans text-[12px] text-pen-subtle">
+                  No members yet.
+                </li>
+              )}
+            </ul>
           </section>
+
+          <TenantAgreements
+            tenantId={tenant.id}
+            initialAgreements={initialAgreements}
+          />
         </div>
       </div>
     </div>

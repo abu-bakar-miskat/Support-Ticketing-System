@@ -2,7 +2,9 @@ import { redirect, notFound } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { readTenantBranding } from "@/lib/tenant-branding"
-import { TenantManageClient } from "@/components/tenants/tenant-manage-client"
+import { listAgreementsForTenant } from "@/lib/agreements"
+import { listCatalogueForTenant } from "@/lib/template-catalogue"
+import { TenantManageClient } from "@/components/platform/tenant-manage-client"
 
 export const dynamic = "force-dynamic"
 
@@ -15,7 +17,7 @@ export default async function TenantManagePage({
   if (!profile) redirect("/login")
   // Branding/logo/status updates below are super-admin-only endpoints — keep
   // this page gated the same way, even though tenant admins can now reach the
-  // /tenants list to enter their own tenant.
+  // /platform list to enter their own tenant.
   if (!profile.isSuperAdmin) redirect("/")
 
   const { id } = await params
@@ -34,13 +36,13 @@ export default async function TenantManagePage({
   })
   if (!tenant) notFound()
 
-  const [memberRows, departmentRows] = await Promise.all([
+  const [memberRows, departmentRows, agreements, catalogue] = await Promise.all([
     prisma.tenantMembership.findMany({
       where: { tenantId: id, isActive: true },
       orderBy: { createdAt: "asc" },
       select: {
         role: true,
-        user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        user: { select: { id: true, name: true, email: true, avatarUrl: true, isActive: true } },
       },
     }),
     prisma.department.findMany({
@@ -48,6 +50,8 @@ export default async function TenantManagePage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    listAgreementsForTenant(id),
+    listCatalogueForTenant(id),
   ])
   const members = memberRows.map((m) => ({
     id: m.user.id,
@@ -55,6 +59,7 @@ export default async function TenantManagePage({
     email: m.user.email,
     avatarUrl: m.user.avatarUrl ?? null,
     role: m.role,
+    isActive: m.user.isActive,
   }))
 
   return (
@@ -72,6 +77,15 @@ export default async function TenantManagePage({
       initialBranding={readTenantBranding(tenant.branding)}
       initialMembers={members}
       departments={departmentRows}
+      initialAgreements={agreements.map((a) => ({
+        ...a,
+        startDate: a.startDate.toISOString(),
+        endDate: a.endDate.toISOString(),
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString(),
+        documents: a.documents.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
+      }))}
+      initialCatalogue={catalogue}
     />
   )
 }

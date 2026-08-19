@@ -2,13 +2,17 @@ import { redirect } from "next/navigation"
 import type { Role } from "@/generated/prisma/enums"
 import { getProfile } from "@/lib/profile"
 import { UserHydrator } from "@/components/providers/user-hydrator"
+import { PlatformShell } from "@/components/platform/platform-shell"
 
 export const dynamic = "force-dynamic"
 
 /**
  * Tenant-selection layout, reachable by super admins (every tenant) and
- * tenant admins (their own tenants only). Renders bare — no sidebar/top bar —
- * since tenant management sits outside the per-tenant dashboard chrome.
+ * tenant admins (their own tenants only). Super admins get a dedicated
+ * platform-level shell (sidebar nav for Tenants / Templates / Activity /
+ * Settings, plus a top bar with notifications/theme/account) since they have
+ * several platform-wide pages to move between; tenant admins only ever see
+ * their own tenant list here, so they keep the bare layout.
  */
 export default async function TenantsLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile()
@@ -31,7 +35,11 @@ export default async function TenantsLayout({ children }: { children: React.Reac
           role: m.role,
         }))}
       />
-      {children}
+      {profile.isSuperAdmin ? (
+        <PlatformShell>{children}</PlatformShell>
+      ) : (
+        children
+      )}
     </>
   )
 }

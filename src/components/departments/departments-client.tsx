@@ -9,7 +9,7 @@ import {
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import { InviteMemberDialog } from "@/components/tenants/invite-member-dialog";
+import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
 import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
 
 type UserOption = { id: string; name: string; email: string; role: string };

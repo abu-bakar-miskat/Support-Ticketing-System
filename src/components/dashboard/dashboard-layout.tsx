@@ -30,6 +30,7 @@ import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { useTasksMeta } from "@/hooks/queries/use-tasks";
 import { useLabels } from "@/hooks/queries/use-labels";
 import { cn } from "@/lib/utils";
+import type { TemplateFeatureKey } from "@/lib/template-features";
 
 // ── Exported type — consumed by the API route ─────────────────────────────────
 
@@ -55,6 +56,7 @@ export type LayoutData = {
   userRole: string;
   isSuperAdmin: boolean;
   userId: string;
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL";
 };
 
 const EMPTY: LayoutData = {
@@ -79,6 +81,7 @@ const EMPTY: LayoutData = {
   userRole: "",
   isSuperAdmin: false,
   userId: "",
+  activeFeatureKeys: "ALL",
 };
 
 export function DashboardLayout({
@@ -171,6 +174,7 @@ export function DashboardLayout({
         canAccessModules: data.canAccessModules ?? EMPTY.canAccessModules,
         userRole: data.userRole ?? EMPTY.userRole,
         isSuperAdmin: data.isSuperAdmin ?? EMPTY.isSuperAdmin,
+        activeFeatureKeys: data.activeFeatureKeys ?? EMPTY.activeFeatureKeys,
         pinnedProjectIds: data.pinnedProjectIds ?? EMPTY.pinnedProjectIds,
         assignedProjectIds: data.assignedProjectIds ?? EMPTY.assignedProjectIds,
         sidebarCollapsed: collapsed,

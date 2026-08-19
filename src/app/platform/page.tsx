@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { readTenantBranding } from "@/lib/tenant-branding"
-import { TenantsClient } from "@/components/tenants/tenants-client"
+import { TenantsClient } from "@/components/platform/tenants-client"
 
 export const dynamic = "force-dynamic"
 

@@ -18,7 +18,7 @@ export default async function HomePage() {
   // dept set), Home behaves like the normal tenant dashboard with its usual
   // layout.
   if ((profile.isSuperAdmin || profile.role === "admin") && !activeDeptId) {
-    redirect("/tenants");
+    redirect("/platform");
   }
 
   if (profile.role === "manager") {

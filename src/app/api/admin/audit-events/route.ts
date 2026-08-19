@@ -40,5 +40,16 @@ export async function GET(request: NextRequest) {
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   })
 
-  return NextResponse.json({ events, nextCursor: events.length === take ? events[events.length - 1]?.id : null })
+  // actorId has no Prisma relation (same convention as Agreement.createdById,
+  // AuditEvent's own design) so resolve display names with a side lookup.
+  const actors = await prisma.profile.findMany({
+    where: { id: { in: [...new Set(events.map((e) => e.actorId))] } },
+    select: { id: true, name: true, email: true },
+  })
+  const actorById = new Map(actors.map((a) => [a.id, a]))
+
+  return NextResponse.json({
+    events: events.map((e) => ({ ...e, actor: actorById.get(e.actorId) ?? null })),
+    nextCursor: events.length === take ? events[events.length - 1]?.id : null,
+  })
 }

@@ -41,6 +41,7 @@ import {
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { TemplateFeatureKey } from "@/lib/template-features";
 import { useAuthStore, useNotificationStore } from "@/store";
 import {
   DropdownMenu,
@@ -96,19 +97,29 @@ type NavItem = {
   hideForSupport?: boolean;
   /** Only shown in support departments. */
   supportOnly?: boolean;
+  /** Hidden unless the tenant's active templates include this feature key (Template Catalogue) */
+  templateFeatureKey?: TemplateFeatureKey;
 };
 
 const navViews: NavItem[] = [
-  { label: "Board", href: "/board", icon: SquareKanban },
-  { label: "Timeline", href: "/timeline", icon: CalendarDays, hideForSupport: true },
-  { label: "Modules", href: "/modules", icon: Boxes, requiresModulesAccess: true, hideForSupport: true },
-  { label: "Support forms", href: "/settings/intake-forms", icon: LifeBuoy, supportOnly: true },
-  { label: "Reports", href: "/reports", icon: ChartColumn },
-  { label: "Calendar", href: "/calendar", icon: CalendarRange },
+  { label: "Board", href: "/board", icon: SquareKanban, templateFeatureKey: "board" },
+  { label: "Timeline", href: "/timeline", icon: CalendarDays, hideForSupport: true, templateFeatureKey: "timeline" },
+  { label: "Modules", href: "/modules", icon: Boxes, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
+  { label: "Support forms", href: "/settings/intake-forms", icon: LifeBuoy, supportOnly: true, templateFeatureKey: "supportForm" },
+  { label: "Reports", href: "/reports", icon: ChartColumn, templateFeatureKey: "reports" },
+  { label: "Calendar", href: "/calendar", icon: CalendarRange, templateFeatureKey: "calendar" },
   { label: "My Profile", href: "/profile", icon: CircleUser },
   { label: "Settings", href: "/settings", icon: Settings2 },
-  { label: "Help Center", href: "/docs", icon: LifeBuoy },
+  { label: "Help Center", href: "/docs", icon: LifeBuoy, templateFeatureKey: "helpCenter" },
 ];
+
+function isFeatureVisible(
+  key: TemplateFeatureKey | undefined,
+  activeFeatureKeys: TemplateFeatureKey[] | "ALL",
+): boolean {
+  if (!key) return true;
+  return activeFeatureKeys === "ALL" || activeFeatureKeys.includes(key);
+}
 
 type SidebarProps = {
   onClose?: () => void;
@@ -295,6 +306,7 @@ export function Sidebar({
     canAccessModules,
     userRole,
     isSuperAdmin,
+    activeFeatureKeys,
     pinnedProjectIds: initialPins,
   } = useDashboardContext();
   const pathname = usePathname();
@@ -410,14 +422,14 @@ export function Sidebar({
             ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
             : []),
           { label: "Tasks", href: "/tasks", icon: ListTodo },
-          { label: "Projects", href: "/projects", icon: FolderKanban },
+          { label: "Projects", href: "/projects", icon: FolderKanban, templateFeatureKey: "projects" },
           {
             label: "Notifications",
             href: "/inbox",
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "Activity", href: "/activity", icon: Activity },
+          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity" },
         ]
       : [
           ...(hasMultiDeptAccess
@@ -436,20 +448,20 @@ export function Sidebar({
               ? undefined
               : myTasksCount || undefined,
           },
-          { label: "Projects", href: "/projects", icon: FolderKanban },
+          { label: "Projects", href: "/projects", icon: FolderKanban, templateFeatureKey: "projects" },
           {
             label: "Notifications",
             href: "/inbox",
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "My Time", href: "/time", icon: Timer },
-          { label: "Activity", href: "/activity", icon: Activity },
+          { label: "My Time", href: "/time", icon: Timer, templateFeatureKey: "myTime" },
+          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity" },
           ...(isAdmin || isManager
             ? [
-                { label: "Members", href: "/department", icon: Users },
-                { label: "Team Reports", href: "/manager/people", icon: ChartPie },
-                { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness },
+                { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
+                { label: "Team Reports", href: "/manager/people", icon: ChartPie, templateFeatureKey: "teamReports" as const },
+                { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]
             : []),
         ];
@@ -676,8 +688,8 @@ export function Sidebar({
         )}
         {isSuperAdmin && isAdminGlobalView && (
           <Link
-            href="/tenants"
-            title={isCollapsed ? "All Tenants" : undefined}
+            href="/platform"
+            title={isCollapsed ? "Platform" : undefined}
             className={cn(
               "flex items-center rounded-lg text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
@@ -685,7 +697,7 @@ export function Sidebar({
           >
             <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
             {!isCollapsed && (
-              <span className="font-sans text-[11.5px] font-medium">All Tenants</span>
+              <span className="font-sans text-[11.5px] font-medium">Platform</span>
             )}
           </Link>
         )}
@@ -739,7 +751,9 @@ export function Sidebar({
         <div className="h-2" />
 
         {/* Personal nav items — not department-scoped */}
-        {navMain.map((item) => {
+        {navMain
+          .filter((item) => isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
+          .map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"
@@ -889,6 +903,7 @@ export function Sidebar({
         {!isAdminGlobalView &&
           navViews
             .filter((item) => {
+              if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys)) return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
               // Per-department-type interface: support departments hide dev-planning
               // views (Timeline, Modules) and surface Support forms; other types

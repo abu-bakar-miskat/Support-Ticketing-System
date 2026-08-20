@@ -2,11 +2,11 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope, canManageDeptCalendar } from "@/lib/dept-scope";
-import { SlaSettingsPage } from "@/components/settings/sla-settings-page";
+import { RulesSettingsPage } from "@/components/settings/rules-settings-page";
 
-export const metadata = { title: "SLA policies — Support Ticketing System" };
+export const metadata = { title: "Automation rules — Support Ticketing System" };
 
-export default async function SettingsSlaRoute() {
+export default async function SettingsRulesRoute() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
@@ -14,8 +14,8 @@ export default async function SettingsSlaRoute() {
   const isManager = profile.role === "manager";
   if (!isAdmin && !isManager) redirect("/settings");
 
-  // Resolve which department these SLA policies belong to: the active department
-  // when one is entered, otherwise the first the admin/manager can manage.
+  // Resolve which department these rules belong to: the active department when
+  // one is entered, otherwise the first the admin/manager can manage.
   const deptScope = await getProfileDeptScope(profile);
   let departmentId = deptScope?.activeDeptId ?? null;
 
@@ -41,5 +41,5 @@ export default async function SettingsSlaRoute() {
   if (!department) redirect("/settings/departments");
   if (!canManageDeptCalendar(profile, department.id)) redirect("/settings");
 
-  return <SlaSettingsPage departmentId={department.id} departmentName={department.name} />;
+  return <RulesSettingsPage departmentId={department.id} departmentName={department.name} />;
 }

@@ -94,6 +94,18 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         deptSpecific: true,
         templateFeatureKey: "workflows",
       },
+      {
+        label: "SLA policies",
+        href: "/settings/sla",
+        managerOnly: true,
+        deptSpecific: true,
+      },
+      {
+        label: "Automation rules",
+        href: "/settings/rules",
+        managerOnly: true,
+        deptSpecific: true,
+      },
     ],
   },
   {

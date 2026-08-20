@@ -84,147 +84,9 @@ export type PendingRequest = {
 
 type Department = { id: string; name: string };
 
-type Permission = "yes" | "own" | "no";
-
-type CapabilityRow = {
-  label: string;
-  admin: Permission;
-  manager: Permission;
-  sub_manager: Permission;
-  member: Permission;
-};
-
-const CAPABILITIES: CapabilityRow[] = [
-  {
-    label: "View own tasks & time",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Create & edit tickets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Track time & log entries",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "View sub department board & sprints",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "View sub department time report",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Approve timesheets",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Manage sub department members",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Create / rename sub departments",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Create & edit projects",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Edit & delete project assets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "no",
-  },
-  {
-    label: "Upload project assets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Delete projects",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Sub department settings (workflows, tags)",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Workspace settings & integrations",
-    admin: "yes",
-    manager: "no",
-    sub_manager: "no",
-    member: "no",
-  },
-];
-
 const PRESET_COLORS = [
   "#0a76b9", "#7c3aed", "#059669", "#dc2626",
   "#d97706", "#db2777", "#0891b2", "#65a30d",
-];
-
-const ROLES = [
-  {
-    key: "admin" as const,
-    label: "Admin",
-    hint: "full access",
-    dotClassName: "bg-pen-blue",
-  },
-  {
-    key: "manager" as const,
-    label: "Manager",
-    hint: "own dept",
-    dotClassName: "bg-pen-purple",
-  },
-  {
-    key: "sub_manager" as const,
-    label: "Sub-manager",
-    hint: "own sub department",
-    dotClassName: "bg-emerald-500",
-  },
-  {
-    key: "member" as const,
-    label: "Agent",
-    hint: "self",
-    dotClassName: "bg-pen-subtle",
-  },
 ];
 
 function initials(name: string) {
@@ -311,60 +173,6 @@ function ProjectPill({ label }: { label: string }) {
     <span className="inline-flex items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted">
       {label}
     </span>
-  );
-}
-
-function PermissionCell({ value }: { value: Permission }) {
-  if (value === "no") {
-    return (
-      <span
-        className="block h-0.5 w-3 rounded-sm bg-pen-subtle"
-        aria-label="No access"
-      />
-    );
-  }
-  if (value === "own") {
-    return (
-      <span className="inline-flex items-center gap-[5px]">
-        <Check
-          className="size-3.5 text-pen-green"
-          strokeWidth={2.5}
-          aria-hidden
-        />
-        <span className="font-sans text-[9.5px] text-[#c2410c] dark:text-[#e0a96a]">
-          own
-        </span>
-      </span>
-    );
-  }
-  return (
-    <Check
-      className="size-[15px] text-pen-green"
-      strokeWidth={2.5}
-      aria-label="Allowed"
-    />
-  );
-}
-
-function RoleHeader({
-  label,
-  hint,
-  dotClassName,
-}: {
-  label: string;
-  hint: string;
-  dotClassName: string;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-px">
-      <div className="flex items-center gap-1.5">
-        <span className={cn("size-[7px] rounded-full", dotClassName)} />
-        <span className="font-sans text-xs font-semibold text-pen-foreground">
-          {label}
-        </span>
-      </div>
-      <span className="font-sans text-[9.5px] text-pen-subtle">{hint}</span>
-    </div>
   );
 }
 
@@ -1619,7 +1427,7 @@ export function SettingsSubDepartmentsPage({
             <Button
               onClick={() => setModal({ type: "create" })}
               disabled={isPending}
-              className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[120px]"
+              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-pen-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-auto"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
               New sub department
@@ -1635,7 +1443,7 @@ export function SettingsSubDepartmentsPage({
                   <SectionLabel>Sub department</SectionLabel>
                 </TableHead>
                 <TableHead className="h-8 w-[25%]">
-                  <SectionLabel>Leads</SectionLabel>
+                  <SectionLabel>Sub-managers</SectionLabel>
                 </TableHead>
                 <TableHead className="h-8 w-[17%] min-w-[108px]">
                   <SectionLabel>Members</SectionLabel>
@@ -1757,63 +1565,6 @@ export function SettingsSubDepartmentsPage({
         {pendingRequests.length > 0 && (
           <JoinRequestsSection requests={pendingRequests} isAdmin={isAdmin} />
         )}
-
-        <div className="flex flex-col gap-0.5">
-          <h2 className="pen-text-modal-title">
-            Roles & permissions
-          </h2>
-          <p className="font-sans text-xs text-pen-muted">
-            Roles map from Microsoft groups on sign-in; admins can override per
-            person. &ldquo;Own&rdquo; means scoped to your department or sub department.
-          </p>
-        </div>
-
-        <TableSection>
-          <Table className="w-full table-fixed">
-            <TableHeader>
-              <TableRow className="border-pen-card-border hover:bg-transparent">
-                <TableHead className="h-[52px] px-[18px] align-middle">
-                  <SectionLabel>Capability</SectionLabel>
-                </TableHead>
-                {ROLES.map((role) => (
-                  <TableHead
-                    key={role.key}
-                    className="h-[52px] w-[92px] text-center align-middle sm:w-[96px]"
-                  >
-                    <RoleHeader
-                      label={role.label}
-                      hint={role.hint}
-                      dotClassName={role.dotClassName}
-                    />
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {CAPABILITIES.map((capability) => (
-                <TableRow
-                  key={capability.label}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
-                >
-                  <TableCell className="px-[18px] py-0">
-                    <div className="flex h-10 items-center">
-                      <span className="font-sans text-[12.5px] text-pen-foreground">
-                        {capability.label}
-                      </span>
-                    </div>
-                  </TableCell>
-                  {ROLES.map((role) => (
-                    <TableCell key={role.key} className="py-0 text-center">
-                      <div className="flex h-10 items-center justify-center">
-                        <PermissionCell value={capability[role.key]} />
-                      </div>
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSection>
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
@@ -432,6 +432,9 @@ function NewDepartmentModal({
   const [prefixManuallyEdited, setPrefixManuallyEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Holds the department id once created, so a retry (after a sub-department
+  // error) never creates a duplicate department.
+  const createdDeptIdRef = useRef<string | null>(null);
 
   function handleSubDepartmentNameChange(v: string) {
     setSubDepartmentInput(v);
@@ -471,17 +474,69 @@ function NewDepartmentModal({
     if (!deptName) return;
     setSaving(true);
     setError(null);
-    try {
-      const dept = await createAdminDepartment({ name: deptName, type });
-      await Promise.all([
-        ...selectedManagers.map((m) => assignDepartmentManager(dept.id, m.id).catch(() => null)),
-        ...subDepartments.map((t) => createAdminSubDepartment({ name: t.name, prefix: t.prefix, departmentId: dept.id }).catch(() => null)),
-      ]);
-      onCreated();
-    } catch {
-      setError("Failed to create department");
+
+    // Include a sub department that was typed but not yet "Added" so it isn't
+    // silently dropped when the user clicks Create.
+    const pendingName = subDepartmentInput.trim();
+    const subs: PendingSubDepartment[] =
+      pendingName && !subDepartments.some((t) => t.name.toLowerCase() === pendingName.toLowerCase())
+        ? [
+            ...subDepartments,
+            { id: "pending", name: pendingName, prefix: subDepartmentPrefix.trim() || autoPrefix(pendingName) },
+          ]
+        : subDepartments;
+
+    // Create the department once; reuse it on retry so we never duplicate it.
+    let deptId = createdDeptIdRef.current;
+    if (!deptId) {
+      try {
+        const dept = await createAdminDepartment({ name: deptName, type });
+        deptId = dept.id;
+        createdDeptIdRef.current = dept.id;
+      } catch {
+        setError("Failed to create department");
+        setSaving(false);
+        return;
+      }
+      await Promise.all(
+        selectedManagers.map((m) => assignDepartmentManager(deptId!, m.id).catch(() => null)),
+      );
     }
+    if (!deptId) {
+      setSaving(false);
+      return;
+    }
+
+    const succeeded: string[] = [];
+    const failures: string[] = [];
+    for (const t of subs) {
+      try {
+        await createAdminSubDepartment({ name: t.name, prefix: t.prefix, departmentId: deptId });
+        succeeded.push(t.name);
+      } catch (e) {
+        failures.push(`${t.name} — ${e instanceof Error ? e.message : "failed"}`);
+      }
+    }
+
+    // Drop successfully-created sub departments (and the pending input) so a
+    // retry only re-attempts the ones that failed.
+    if (succeeded.length > 0) {
+      setSubDepartments((prev) => prev.filter((t) => !succeeded.includes(t.name)));
+      if (succeeded.includes(pendingName)) {
+        setSubDepartmentInput("");
+        setSubDepartmentPrefix("");
+        setPrefixManuallyEdited(false);
+      }
+    }
+
     setSaving(false);
+    if (failures.length > 0) {
+      // Department already exists — keep the modal open so the error is visible
+      // and the remaining sub departments can be retried without duplicating.
+      setError(`Department created, but couldn't add: ${failures.join("; ")}`);
+      return;
+    }
+    onCreated();
   }
 
   const managerIds = selectedManagers.map((m) => m.id);

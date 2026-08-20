@@ -23,10 +23,6 @@ import {
   updateSubDepartmentStatus,
   deleteSubDepartmentStatus,
   reorderSubDepartmentStatuses,
-  getSubDepartmentGitHubMap,
-  updateSubDepartmentGitHubMap,
-  type SubDepartmentGitHubMap,
-  type SubDepartmentGitHubMapResponse,
 } from "@/lib/api/sub-departments";
 import { useLabels } from "@/hooks/queries/use-labels";
 import {
@@ -37,21 +33,6 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type SubDepartmentStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
 type SubDepartment = { id: string; name: string; prefix: string };
-
-type GitHubMapField = keyof SubDepartmentGitHubMap;
-
-const SENTINEL_AUTO = "__auto__";
-const SENTINEL_NONE = "__none__";
-
-const GITHUB_MAP_ROWS: {
-  field: GitHubMapField;
-  label: string;
-  defaultKey: keyof SubDepartmentGitHubMapResponse["defaults"];
-}[] = [
-  { field: "onPrOpened", label: "PR opened", defaultKey: "prOpened" },
-  { field: "onPrReadyForReview", label: "Marked ready for review", defaultKey: "prReadyForReview" },
-  { field: "onPrMerged", label: "PR merged into main/master/modifications", defaultKey: "prMerged" },
-];
 
 const PRESET_COLORS = [
   "#94a3b8", "#0a76b9", "#7c3aed", "#16a34a",
@@ -97,13 +78,6 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [githubMap, setGithubMap] = useState<SubDepartmentGitHubMapResponse | null>(null);
-  const [githubMapLoading, setGithubMapLoading] = useState(false);
-  const [githubMapError, setGithubMapError] = useState<string | null>(null);
-  const [savingField, setSavingField] = useState<GitHubMapField | null>(null);
-  // Which team the GitHub automation card's state belongs to; guards late-resolving
-  // requests started on one team from clobbering another team's state after a switch.
-  const githubMapSubDepartmentRef = useRef<string | null>(null);
   const { data: labelOptions = [], isLoading: labelsLoading } = useLabels();
 
   useEffect(() => {
@@ -138,68 +112,6 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       setStatuses((prev) => prev.map((s) => (s.id === id ? { ...s, allowedLabels: current } : s)));
       patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, { allowedLabels: current });
       toast.error("Failed to update linked labels");
-    }
-  }
-
-  // Load the GitHub automation config whenever the selected team changes (including on mount).
-  useEffect(() => {
-    if (!selectedSubDepartmentId) return;
-    let cancelled = false;
-    async function loadGithubMap(subDepartmentId: string) {
-      githubMapSubDepartmentRef.current = subDepartmentId;
-      // Clear the previous team's card so it can't stay rendered/interactive
-      // (and no per-field save can appear in-flight) while the new team loads.
-      setGithubMap(null);
-      setSavingField(null);
-      setGithubMapLoading(true);
-      setGithubMapError(null);
-      try {
-        const data = await getSubDepartmentGitHubMap(subDepartmentId);
-        if (!cancelled) setGithubMap(data);
-      } catch {
-        if (!cancelled) setGithubMapError("Failed to load GitHub automation settings");
-      } finally {
-        if (!cancelled) setGithubMapLoading(false);
-      }
-    }
-    void loadGithubMap(selectedSubDepartmentId);
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSubDepartmentId]);
-
-  async function handleGitHubMapChange(field: GitHubMapField, raw: string) {
-    if (!selectedSubDepartmentId || !githubMap) return;
-    const subDepartmentId = selectedSubDepartmentId;
-    const value = raw === SENTINEL_AUTO ? null : raw === SENTINEL_NONE ? "" : raw;
-    const prevConfig = githubMap.config;
-    const prevValue = prevConfig ? prevConfig[field] : null;
-    if (value === prevValue) return;
-
-    const baseConfig: SubDepartmentGitHubMap = prevConfig ?? {
-      onPrOpened: null,
-      onPrReadyForReview: null,
-      onPrMerged: null,
-    };
-    setGithubMap((current) =>
-      current ? { ...current, config: { ...baseConfig, [field]: value } } : current,
-    );
-    setSavingField(field);
-    try {
-      const updated = await updateSubDepartmentGitHubMap(subDepartmentId, { [field]: value });
-      // Ignore late responses if the card now shows a different team.
-      if (githubMapSubDepartmentRef.current === subDepartmentId) {
-        setGithubMap((current) => (current ? { ...current, config: updated } : current));
-      }
-    } catch {
-      if (githubMapSubDepartmentRef.current === subDepartmentId) {
-        setGithubMap((current) => (current ? { ...current, config: prevConfig } : current));
-      }
-      toast.error("Failed to update GitHub automation setting");
-    } finally {
-      if (githubMapSubDepartmentRef.current === subDepartmentId) {
-        setSavingField(null);
-      }
     }
   }
 
@@ -578,73 +490,6 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
         </div>
       )}
 
-      {/* GitHub automation */}
-      {selectedSubDepartmentId && (
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pb-2 pt-4">
-          <div className="pb-1.5">
-            <h2 className="font-sans text-sm font-semibold text-pen-foreground">GitHub automation</h2>
-            <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
-              Where tickets move when linked pull requests change on GitHub.
-            </p>
-          </div>
-
-          {githubMapError && (
-            <p className="mt-2 rounded-[6px] bg-pen-red-tint px-3 py-2 font-sans text-[11.5px] text-pen-red">{githubMapError}</p>
-          )}
-
-          {githubMapLoading && !githubMap ? (
-            <p className="py-4 font-sans text-[12px] text-pen-subtle">Loading…</p>
-          ) : (
-            GITHUB_MAP_ROWS.map((row) => {
-              const currentValue = githubMap?.config ? githubMap.config[row.field] : null;
-              const selectValue =
-                currentValue === null ? SENTINEL_AUTO : currentValue === "" ? SENTINEL_NONE : currentValue;
-              const defaultLabel = githubMap?.defaults[row.defaultKey] ?? null;
-              const autoLabel = defaultLabel ? `Auto — → ${defaultLabel}` : "Auto — no move";
-              const isSaving = savingField === row.field;
-
-              return (
-                <div
-                  key={row.field}
-                  className="flex h-12 items-center gap-3 border-t border-[#f0f4f8] dark:border-[#3a3a37]"
-                >
-                  <span className="w-48 shrink-0 truncate font-sans text-[12.5px] font-medium text-pen-foreground">
-                    {row.label}
-                  </span>
-                  <Select
-                    value={selectValue}
-                    onValueChange={(v) => v && handleGitHubMapChange(row.field, v)}
-                    disabled={isSaving || !githubMap}
-                  >
-                    <SelectTrigger className="h-8 min-w-56 rounded-[7px] border-pen-card-border bg-pen-bg font-sans text-[12.5px] text-pen-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="start">
-                      <SelectItem value={SENTINEL_AUTO} className="font-sans text-[12.5px]">
-                        {autoLabel}
-                      </SelectItem>
-                      <SelectItem value={SENTINEL_NONE} className="font-sans text-[12.5px]">
-                        No change
-                      </SelectItem>
-                      {sortedStatuses.map((s) => (
-                        <SelectItem key={s.id} value={s.label} className="font-sans text-[12.5px]">
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isSaving && (
-                    <span className="flex items-center gap-1.5 font-sans text-[11px] text-pen-subtle">
-                      <Loader2 className="size-3 animate-spin" />
-                      Saving…
-                    </span>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ import {
   type ProjectTicketRow,
 } from "@/components/manager/aggregate";
 
-export const metadata = { title: "Manager Dashboard — Ticketing System" };
+export const metadata = { title: "Manager Dashboard — Support Ticketing System" };
 
 async function ManagerData() {
   const profile = await getProfile();

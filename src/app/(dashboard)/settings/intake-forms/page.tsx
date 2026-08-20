@@ -13,7 +13,7 @@ import {
   type SubDepartmentOption,
 } from "@/components/settings/settings-intake-forms-page"
 
-export const metadata = { title: "Support forms — Ticketing System" }
+export const metadata = { title: "Support forms — Support Ticketing System" }
 
 export default async function SettingsIntakeFormsRoute() {
   const profile = await getProfile()

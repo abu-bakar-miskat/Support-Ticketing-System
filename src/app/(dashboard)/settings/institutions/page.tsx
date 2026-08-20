@@ -6,7 +6,7 @@ import {
   type InstitutionRow,
 } from "@/components/settings/settings-institutions-page";
 
-export const metadata = { title: "Institutions — Ticketing System" };
+export const metadata = { title: "Institutions — Support Ticketing System" };
 
 const INSTITUTION_COLORS = [
   "#0a76b9",

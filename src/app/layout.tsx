@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Ticketing System",
+  title: "Support Ticketing System",
   description: "Internal development ticketing for PEN",
   appleWebApp: {
     capable: true,

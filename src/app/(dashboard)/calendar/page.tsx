@@ -4,7 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope"
 import { prisma } from "@/lib/db"
 import { CalendarView } from "@/components/calendar/calendar-view"
 
-export const metadata = { title: "Calendar — Ticketing System" }
+export const metadata = { title: "Calendar — Support Ticketing System" }
 export const dynamic = "force-dynamic"
 
 export default async function CalendarPage() {

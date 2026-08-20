@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { canManageDeptCalendar } from "@/lib/dept-scope";
 import { SlaSettingsPage } from "@/components/settings/sla-settings-page";
 
-export const metadata = { title: "SLA policies — Ticketing System" };
+export const metadata = { title: "SLA policies — Support Ticketing System" };
 
 export default async function DepartmentSlaSettingsRoute({
   params,

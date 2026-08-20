@@ -5,7 +5,7 @@ import { buildProjectDeptWhere, getProfileDeptScope } from "@/lib/dept-scope";
 import { canAccessModulesArea, canManageModules } from "@/lib/module-permissions";
 import { ModulesPage } from "@/components/modules/modules-page";
 
-export const metadata = { title: "Modules — Ticketing System" };
+export const metadata = { title: "Modules — Support Ticketing System" };
 
 export default async function Page() {
   const profile = await getProfile();

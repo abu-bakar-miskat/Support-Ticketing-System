@@ -9,7 +9,7 @@ import {
 } from "@/components/settings/settings-api-keys-page"
 import type { ApiKeyScope } from "@/generated/prisma/enums"
 
-export const metadata = { title: "API keys — Ticketing System" }
+export const metadata = { title: "API keys — Support Ticketing System" }
 
 const SCOPE_LABELS: Record<ApiKeyScope, string> = {
   read: "read",

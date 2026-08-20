@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 
-export const metadata = { title: "Join a Department — Ticketing System" }
+export const metadata = { title: "Join a Department — Support Ticketing System" }
 
 export default async function OnboardingLayout({
   children,

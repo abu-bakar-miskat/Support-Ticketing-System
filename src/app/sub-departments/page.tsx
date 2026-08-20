@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { DepartmentsDiscoveryPage } from "@/components/sub-departments/sub-departments-discovery-page"
 
-export const metadata = { title: "Join a Department — Ticketing System" }
+export const metadata = { title: "Join a Department — Support Ticketing System" }
 
 export default async function Page() {
   const profile = await getProfile()

@@ -7,7 +7,7 @@ import { TimelineViewPage } from "@/components/timeline/timeline-view-page";
 import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
 import { TimelinePageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Timeline — Ticketing System" };
+export const metadata = { title: "Timeline — Support Ticketing System" };
 
 async function TimelineData() {
   const profile = await getProfile();

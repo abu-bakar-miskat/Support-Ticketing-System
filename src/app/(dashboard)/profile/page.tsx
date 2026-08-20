@@ -5,7 +5,7 @@ import { ProfileStatsPage } from "@/components/profile/profile-stats-page"
 import { fetchProfileStats } from "@/lib/profile-stats"
 import { ProfileStatsSkeleton } from "@/components/skeletons/page-skeletons"
 
-export const metadata = { title: "My Profile — Ticketing System" }
+export const metadata = { title: "My Profile — Support Ticketing System" }
 
 async function ProfileData({
   searchParams,

@@ -4,7 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
 
-export const metadata = { title: "Departments — Ticketing System" };
+export const metadata = { title: "Departments — Support Ticketing System" };
 
 export default async function SettingsDepartmentsRoute() {
   const profile = await getProfile();

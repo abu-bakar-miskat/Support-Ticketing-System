@@ -4,7 +4,7 @@ import { getTenantConfig } from "@/lib/tenant-config"
 import { readTenantBranding } from "@/lib/tenant-branding"
 import { SettingsBrandingPage } from "@/components/settings/settings-branding-page"
 
-export const metadata = { title: "Branding — Settings — Ticketing System" }
+export const metadata = { title: "Branding — Settings — Support Ticketing System" }
 
 export default async function SettingsBrandingRoute() {
   const profile = await getProfile()

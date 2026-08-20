@@ -2103,10 +2103,10 @@ export function ProjectProfilePage({
 
   useEffect(() => {
     if (data?.project.name) {
-      document.title = `${data.project.name} — Ticketing System`;
+      document.title = `${data.project.name} — Support Ticketing System`;
     }
     return () => {
-      document.title = "Ticketing System";
+      document.title = "Support Ticketing System";
     };
   }, [data?.project.name]);
 

@@ -8,7 +8,7 @@ import { avatarColorFor } from "@/lib/board-data";
 import { timeAgo, isToday } from "@/lib/format";
 import { InboxPageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Inbox — Ticketing System" };
+export const metadata = { title: "Inbox — Support Ticketing System" };
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin",

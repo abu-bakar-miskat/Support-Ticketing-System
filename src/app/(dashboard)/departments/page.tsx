@@ -7,7 +7,7 @@ import { MyDepartmentsClient, type MyDepartmentItem } from "@/components/departm
 import type { DepartmentRow } from "@/components/settings/settings-departments-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
 
-export const metadata = { title: "Departments — Ticketing System" };
+export const metadata = { title: "Departments — Support Ticketing System" };
 
 export default async function DepartmentsPage() {
   const profile = await getProfile();

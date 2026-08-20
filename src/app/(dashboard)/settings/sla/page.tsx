@@ -8,7 +8,7 @@ import {
 } from "@/components/settings/settings-sla-page";
 import type { TicketPriority } from "@/generated/prisma/enums";
 
-export const metadata = { title: "SLA policies — Ticketing System" };
+export const metadata = { title: "SLA policies — Support Ticketing System" };
 
 const PRIORITY_UI: Record<
   TicketPriority,

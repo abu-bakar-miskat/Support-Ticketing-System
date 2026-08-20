@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { HomeDashboard } from "@/components/dashboard/home-dashboard";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Home — Ticketing System" };
+export const metadata = { title: "Home — Support Ticketing System" };
 
 export default async function HomePage() {
   const profile = await getProfile();

@@ -8,7 +8,7 @@ import {
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 
-export const metadata = { title: "Tags & labels — Ticketing System" };
+export const metadata = { title: "Tags & labels — Support Ticketing System" };
 
 export default async function SettingsTagsRoute() {
   const profile = await getProfile();

@@ -6,7 +6,7 @@ import { PenLogo } from "@/components/auth/pen-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Invitation — Ticketing System" };
+export const metadata = { title: "Invitation — Support Ticketing System" };
 
 type PageProps = {
   params: Promise<{ token: string }>;

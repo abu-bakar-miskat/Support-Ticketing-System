@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { SettingsNotionImportPage } from "@/components/settings/settings-notion-import-page"
 
-export const metadata = { title: "Import from Notion — Ticketing System" }
+export const metadata = { title: "Import from Notion — Support Ticketing System" }
 
 export default async function SettingsImportRoute() {
   const profile = await getProfile()

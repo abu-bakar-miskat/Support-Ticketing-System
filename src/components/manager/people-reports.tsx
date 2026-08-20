@@ -783,7 +783,7 @@ export function PeopleReportsHeader({
 }) {
   return (
     <PageHeader
-      title="Team reports"
+      title="Sub Departments"
       icon={ChartPie}
       iconClassName="text-pen-blue"
       description="One card per person — workload, shipped work, cross-dept contributions, tracked time, and activity over the selected date range. Click a card for the full report."

@@ -86,7 +86,7 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   myTime: "My Time",
   activity: "Activity",
   recruitment: "Recruitment",
-  teamReports: "Team Reports",
+  teamReports: "Sub Departments",
   helpCenter: "Help Center",
 };
 

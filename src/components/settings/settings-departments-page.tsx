@@ -578,26 +578,26 @@ function NewDepartmentModal({
             )}
           </div>
 
-          {/* Teams */}
+          {/* Sub departments */}
           <div>
             <label className="mb-2 block font-sans text-[11.5px] font-medium text-pen-muted">
-              Teams <span className="text-pen-subtle font-normal">(optional)</span>
+              Sub departments <span className="text-pen-subtle font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-2">
               <input
                 value={subDepartmentInput}
                 onChange={(e) => handleSubDepartmentNameChange(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubDepartment(); } }}
-                placeholder="Team name…"
+                placeholder="Sub department name…"
                 className="h-8 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
               />
               <input
                 value={subDepartmentPrefix}
                 onChange={(e) => handlePrefixChange(e.target.value)}
-                placeholder="PRE"
-                maxLength={4}
-                className="h-8 w-16 rounded-lg border border-pen-card-border bg-pen-surface px-2 text-center font-mono text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
-                title="Prefix (auto-generated)"
+                placeholder="Prefix"
+                maxLength={5}
+                className="h-8 w-20 rounded-lg border border-pen-card-border bg-pen-surface px-2 text-center font-mono text-[12px] text-pen-foreground uppercase outline-none placeholder:text-pen-subtle placeholder:normal-case focus:border-pen-blue/60"
+                title="Custom prefix — 2–5 letters, used on this sub department's ticket IDs (auto-filled from the name, editable)"
               />
               <button
                 type="button"

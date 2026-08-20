@@ -13,11 +13,11 @@ import {
 describe("DEFAULT_BOARD_COLUMNS", () => {
   it("seeds exactly the five status-typed defaults in order", () => {
     expect(DEFAULT_BOARD_COLUMNS.map((c) => [c.label, c.statusType, c.order])).toEqual([
-      ["To Do", "OPEN", 0],
-      ["In Progress", "OPEN", 1],
-      ["On Hold", "PAUSED", 2],
-      ["Escalated", "ESCALATED", 3],
-      ["Done", "RESOLVED", 4],
+      ["OPEN", "OPEN", 0],
+      ["IN PROGRESS", "OPEN", 1],
+      ["PAUSED", "PAUSED", 2],
+      ["ESCALATED", "ESCALATED", 3],
+      ["RESOLVED", "RESOLVED", 4],
     ]);
   });
 

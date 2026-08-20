@@ -23,7 +23,7 @@ import {
   type ResolvedPeopleRange,
 } from "@/components/manager/people-range";
 
-export const metadata = { title: "Team Reports — Support Ticketing System" };
+export const metadata = { title: "Sub Departments — Support Ticketing System" };
 
 /** Fallback when a team has no isComplete statuses configured */
 const FALLBACK_COMPLETE = ["Live", "Done", "Completed", "Closed"];

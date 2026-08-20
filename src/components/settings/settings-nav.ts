@@ -112,12 +112,13 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         deptSpecific: true,
         templateFeatureKey: "apiKeys",
       },
-      {
-        label: "Import from Notion",
-        href: "/settings/import",
-        managerOnly: true,
-        templateFeatureKey: "importForm",
-      },
+      // Import from Notion is hidden from the UI (route/component/API retained).
+      // {
+      //   label: "Import from Notion",
+      //   href: "/settings/import",
+      //   managerOnly: true,
+      //   templateFeatureKey: "importForm",
+      // },
       {
         label: "Email settings",
         href: "/settings/email",

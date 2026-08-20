@@ -656,7 +656,7 @@ export function BoardPage({
     currentUser?.role === "admin" ||
     currentUser?.role === "manager" ||
     currentUser?.role === "sub_manager" ||
-    currentUser?.role === "staff";
+    currentUser?.role === "agent";
   const queryClient = useQueryClient();
   const [localCards, setLocalCards] = useState<BoardCardData[]>(initialCards);
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);

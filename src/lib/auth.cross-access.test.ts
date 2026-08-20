@@ -31,7 +31,7 @@ describe("checkIsCrossAccessDept", () => {
 
   it("does not treat granted native departments as cross-access", () => {
     const user = profile({
-      role: "staff",
+      role: "agent",
       grantedAccessDeptIds: ["dept-web"],
       memberships: [
         { subDepartment: { id: "t1", name: "T1", prefix: "T1", department: { id: "dept-web", name: "Web Development" } } },

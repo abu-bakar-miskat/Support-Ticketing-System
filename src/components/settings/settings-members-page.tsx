@@ -52,20 +52,20 @@ const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Manager" },
   { value: "sub_manager", label: "Sub-manager" },
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
 ];
 
 // Managers can only assign lead or staff — not admin/manager
 const ROLE_OPTIONS_MANAGER: { value: Role; label: string }[] = [
   { value: "sub_manager", label: "Sub-manager" },
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
 ];
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-pen-blue/10 text-pen-blue",
   manager: "bg-pen-purple/10 text-pen-purple",
   sub_manager: "bg-pen-green/10 text-pen-green",
-  staff: "bg-pen-surface text-pen-subtle",
+  agent: "bg-pen-surface text-pen-subtle",
 };
 
 function initials(name: string) {
@@ -112,7 +112,7 @@ function AddMemberModal({
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [accessType, setAccessType] = useState<"full" | "guest">("full");
   const [subDepartmentId, setSubDepartmentId] = useState(availableSubDepartments[0]?.id ?? "");
-  const [role, setRole] = useState<string>("staff");
+  const [role, setRole] = useState<string>("agent");
   const [guestPermanent, setGuestPermanent] = useState(true);
   const [guestExpiresAt, setGuestExpiresAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -319,12 +319,12 @@ function AddMemberModal({
                       options={
                         isAdmin
                           ? [
-                              { value: "staff", label: "Staff" },
+                              { value: "agent", label: "Agent" },
                               { value: "sub_manager", label: "Sub-manager" },
                               { value: "manager", label: "Manager" },
                             ]
                           : [
-                              { value: "staff", label: "Staff" },
+                              { value: "agent", label: "Agent" },
                               { value: "sub_manager", label: "Sub-manager" },
                             ]
                       }
@@ -728,7 +728,7 @@ export function SettingsMembersPage({
                       lead and for guests (a cross-access grant doesn't carry role-management rights here) */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center">
-                      {!member.isCrossAccess && (isAdmin || (isManager && (role === "sub_manager" || role === "staff"))) ? (
+                      {!member.isCrossAccess && (isAdmin || (isManager && (role === "sub_manager" || role === "agent"))) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}

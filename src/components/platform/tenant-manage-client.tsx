@@ -52,7 +52,7 @@ type Member = {
   isActive: boolean;
 };
 
-const MEMBER_ROLES = ["admin", "manager", "sub_manager", "staff"] as const;
+const MEMBER_ROLES = ["admin", "manager", "sub_manager", "agent"] as const;
 const roleLabel = (r: string) =>
   r === "admin"
     ? "Tenant admin"
@@ -189,7 +189,7 @@ export function TenantManageClient({
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("staff");
+  const [inviteRole, setInviteRole] = useState<string>("agent");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [addingMember, setAddingMember] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -756,7 +756,7 @@ export function TenantManageClient({
                 </div>
                 <Select
                   value={inviteRole}
-                  onValueChange={(v) => setInviteRole(v ?? "staff")}
+                  onValueChange={(v) => setInviteRole(v ?? "agent")}
                 >
                   <SelectTrigger className="h-9! min-w-[150px] bg-pen-card! hover:bg-pen-surface!">
                     <span className="font-sans text-[12.5px]">

@@ -97,17 +97,17 @@ const ROLE_OPTIONS_ADMIN = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Manager" },
   { value: "sub_manager", label: "Sub-manager" },
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
 ];
 const ROLE_OPTIONS_MANAGER = [
   { value: "sub_manager", label: "Sub-manager" },
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
 ];
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-pen-blue/10 text-pen-blue",
   manager: "bg-pen-purple/10 text-pen-purple",
   sub_manager: "bg-pen-green/10 text-pen-green",
-  staff: "bg-pen-surface text-pen-subtle",
+  agent: "bg-pen-surface text-pen-subtle",
 };
 
 // ── Edit Access Modal ────────────────────────────────────────────────────────

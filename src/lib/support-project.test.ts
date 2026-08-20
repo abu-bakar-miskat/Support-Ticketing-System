@@ -10,7 +10,7 @@ import { supportProjectsForDeptWhere } from "./support-project";
 describe("support project native access", () => {
   const staffInDept = {
     id: "u1",
-    role: "staff",
+    role: "agent",
     memberships: [{ subDepartment: { department: { id: "dept-1" } } }],
   };
 
@@ -23,7 +23,7 @@ describe("support project native access", () => {
 
   const crossAccessGuest = {
     id: "u3",
-    role: "staff",
+    role: "agent",
     grantedAccessDeptIds: ["dept-1"],
     memberships: [{ subDepartment: { department: { id: "dept-home" } } }],
   };

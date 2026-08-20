@@ -33,7 +33,7 @@ describe("assignedProjectsInDeptWhere", () => {
 
 describe("isLimitedCrossAccessToDept", () => {
   const profile = {
-    role: "staff",
+    role: "agent",
     grantedAccessDeptIds: ["dept-a"],
     fullAccessGrantedDeptIds: [] as string[],
     directMemberDeptIds: [] as string[],
@@ -55,7 +55,7 @@ describe("isLimitedCrossAccessToDept", () => {
   it("is true for direct member without full access", () => {
     expect(
       isLimitedCrossAccessToDept(
-        { role: "staff", grantedAccessDeptIds: [], directMemberDeptIds: ["dept-a"] },
+        { role: "agent", grantedAccessDeptIds: [], directMemberDeptIds: ["dept-a"] },
         "dept-a",
       ),
     ).toBe(true);
@@ -87,7 +87,7 @@ describe("projectEffectiveDeptId", () => {
 describe("canCrossAccessGuestViewTicket", () => {
   const limitedProfile = {
     id: "user-1",
-    role: "staff",
+    role: "agent",
     grantedAccessDeptIds: ["dept-a"],
     fullAccessGrantedDeptIds: [] as string[],
     directMemberDeptIds: [] as string[],
@@ -153,7 +153,7 @@ describe("canCrossAccessGuestViewTicket", () => {
 describe("buildTicketEditContext", () => {
   const limitedProfile = {
     id: "user-1",
-    role: "staff",
+    role: "agent",
     grantedAccessDeptIds: ["dept-a"],
     fullAccessGrantedDeptIds: [] as string[],
     directMemberDeptIds: [] as string[],

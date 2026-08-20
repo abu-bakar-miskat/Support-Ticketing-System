@@ -83,19 +83,19 @@ const GROUPS: { id: HelpGroup; label: string; managerOnly?: boolean }[] = [
 ];
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
-function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "staff" | "all" }) {
+function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agent" | "all" }) {
   const styles: Record<string, string> = {
     admin: "bg-pen-blue/15 text-pen-blue",
     manager: "bg-purple-500/15 text-purple-500",
     sub_manager: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    staff: "bg-pen-surface text-pen-subtle",
+    agent: "bg-pen-surface text-pen-subtle",
     all: "bg-pen-blue/10 text-pen-id",
   };
   const labels: Record<string, string> = {
     admin: "Admin",
     manager: "Manager",
     sub_manager: "Sub-manager",
-    staff: "Staff",
+    agent: "Agent",
     all: "All roles",
   };
   return (
@@ -159,7 +159,7 @@ function FeatureCard({
   icon: LucideIcon;
   title: string;
   description: string;
-  roles?: Array<"admin" | "manager" | "sub_manager" | "staff" | "all">;
+  roles?: Array<"admin" | "manager" | "sub_manager" | "agent" | "all">;
 }) {
   return (
     <div className="rounded-xl border border-pen-card-border bg-pen-surface p-4 transition-colors hover:border-pen-blue/30">
@@ -925,7 +925,7 @@ const SECTIONS: HelpSection[] = [
         <FeatureCard icon={Shield} title="Admin" description="Full access across all departments and every settings section, including SLA, approvals, routing." roles={["admin"]} />
         <FeatureCard icon={Users} title="Manager" description="Oversees assigned departments — members, sub departments, intake, calendar, recruitment, email, and reports." roles={["manager"]} />
         <FeatureCard icon={CircleUser} title="Sub-manager" description="Elevated within their own sub department; can manage its members/workflow and edit any ticket on it." roles={["sub_manager"]} />
-        <FeatureCard icon={ListTodo} title="Staff" description="Works tickets they're assigned/created within their sub departments; personal settings only." roles={["staff"]} />
+        <FeatureCard icon={ListTodo} title="Agent" description="Works tickets they're assigned/created within their sub departments; personal settings only." roles={["agent"]} />
       </div>
     ),
   },

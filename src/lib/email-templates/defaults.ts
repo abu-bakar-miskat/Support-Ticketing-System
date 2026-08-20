@@ -69,7 +69,7 @@ export const DEFAULT_TEMPLATES: Record<EmailTemplateKey, TemplateDefault> = {
       inviterFirstName: "Alex",
       departmentName: "Engineering",
       subDepartmentName: "Platform",
-      role: "Staff",
+      role: "Agent",
       message: "Looking forward to having you on the team.",
       messageBlock: `<div style="margin:0 0 24px 0;padding:14px 16px;background:#f8fafc;border-left:3px solid #0a76b9;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;">Looking forward to having you on the team.</div>`,
       inviteUrl: `${BASE_URL}/invite/sample`,

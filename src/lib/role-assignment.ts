@@ -53,7 +53,7 @@ export function deriveEffectiveRole(rows: ScopeRow[]): Role {
   }
   if (has((r) => r.scopeType === "TENANT" && r.role === "manager")) return "manager";
   if (has((r) => r.role === "sub_manager")) return "sub_manager";
-  return "staff";
+  return "agent";
 }
 
 /** Pure: fold RoleAssignment rows into a UserScope. Unit-tested. */
@@ -226,8 +226,8 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   if (profile?.isSuperAdmin) rows.push({ role: "admin", scopeType: "PLATFORM", scopeId: null });
   for (const t of tenantM) rows.push({ role: t.role, scopeType: "TENANT", scopeId: t.tenantId });
   for (const d of deptMgr) rows.push({ role: "manager", scopeType: "DEPARTMENT", scopeId: d.departmentId });
-  for (const d of deptMem) rows.push({ role: "staff", scopeType: "DEPARTMENT", scopeId: d.departmentId });
-  for (const a of deptAcc) rows.push({ role: "staff", scopeType: "DEPARTMENT", scopeId: a.departmentId });
+  for (const d of deptMem) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: d.departmentId });
+  for (const a of deptAcc) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: a.departmentId });
   for (const tm of subDepartmentM) rows.push({ role: tm.role, scopeType: "SUB_DEPARTMENT", scopeId: tm.subDepartmentId });
 
   const seen = new Set<string>();

@@ -43,7 +43,7 @@ describe("getProfileDeptScope — staff native department visits", () => {
   it("does not treat Web Development as cross-access when user has a team there", async () => {
     const scope = await getProfileDeptScope({
       id: "user-1",
-      role: "staff",
+      role: "agent",
       subDepartmentIds: ["team-general", "team-web"],
       memberships: [
         { subDepartment: { department: { id: "dept-general" } } },
@@ -60,7 +60,7 @@ describe("getProfileDeptScope — staff native department visits", () => {
   it("still restricts limited cross-access guests to assigned projects only", async () => {
     const scope = await getProfileDeptScope({
       id: "user-2",
-      role: "staff",
+      role: "agent",
       subDepartmentIds: ["team-support"],
       memberships: [{ subDepartment: { department: { id: "dept-support" } } }],
       grantedAccessDeptIds: ["dept-web"],

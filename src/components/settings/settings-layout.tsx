@@ -158,7 +158,7 @@ function SettingsMobileNav({
 
 export function SettingsLayout({
   children,
-  role = "staff",
+  role = "agent",
   counts = {},
   isCrossAccess = false,
   isSuperAdmin = false,

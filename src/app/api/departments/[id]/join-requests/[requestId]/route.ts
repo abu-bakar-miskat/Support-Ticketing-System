@@ -42,7 +42,7 @@ export async function PATCH(
   }
 
   const isCrossAccess = role === "cross-access"
-  const effectiveRole: Role = (isCrossAccess ? "staff" : (role ?? "staff")) as Role
+  const effectiveRole: Role = (isCrossAccess ? "agent" : (role ?? "agent")) as Role
   const trimmedName = nickname?.trim() || null
   const deptName = joinRequest.department?.name ?? "the department"
 
@@ -158,7 +158,7 @@ export async function PATCH(
       })
       if (!subDepartment) return NextResponse.json({ error: "Team not found in this department" }, { status: 404 })
 
-      const memberRole: Role = effectiveRole === "sub_manager" ? "sub_manager" : "staff"
+      const memberRole: Role = effectiveRole === "sub_manager" ? "sub_manager" : "agent"
 
       await prisma.$transaction([
         (prisma.subDepartmentMembership as any).upsert({

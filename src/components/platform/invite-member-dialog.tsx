@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
-const MEMBER_ROLES = ["admin", "manager", "sub_manager", "staff"] as const
+const MEMBER_ROLES = ["admin", "manager", "sub_manager", "agent"] as const
 const roleLabel = (r: string) =>
   r === "admin"
     ? "Admin (whole tenant)"
@@ -31,7 +31,7 @@ export function InviteMemberDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState("")
-  const [role, setRole] = useState<string>("staff")
+  const [role, setRole] = useState<string>("agent")
   const [selectedDepts, setSelectedDepts] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +42,7 @@ export function InviteMemberDialog({
 
   function reset() {
     setEmail("")
-    setRole("staff")
+    setRole("agent")
     setSelectedDepts([])
     setError(null)
     setInviteLink(null)
@@ -149,7 +149,7 @@ export function InviteMemberDialog({
 
               <div>
                 <label className="block font-sans text-[12px] font-medium text-pen-foreground">Role</label>
-                <Select value={role} onValueChange={(v) => setRole(v ?? "staff")}>
+                <Select value={role} onValueChange={(v) => setRole(v ?? "agent")}>
                   <SelectTrigger className="mt-1 h-9 w-full">
                     <span className="font-sans text-[12.5px]">{roleLabel(role)}</span>
                   </SelectTrigger>

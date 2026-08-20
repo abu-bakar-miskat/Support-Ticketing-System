@@ -31,7 +31,7 @@ describe("shapeScope", () => {
   it("collects tenant ids and flags tenant admins", () => {
     const rows: ScopeRow[] = [
       { role: "admin", scopeType: "TENANT", scopeId: "t1" },
-      { role: "staff", scopeType: "TENANT", scopeId: "t2" },
+      { role: "agent", scopeType: "TENANT", scopeId: "t2" },
     ];
     const s = shapeScope(rows);
     expect(s.tenantIds.sort()).toEqual(["t1", "t2"]);
@@ -41,7 +41,7 @@ describe("shapeScope", () => {
   it("flags department admins for admin and manager roles only", () => {
     const rows: ScopeRow[] = [
       { role: "manager", scopeType: "DEPARTMENT", scopeId: "d1" },
-      { role: "staff", scopeType: "DEPARTMENT", scopeId: "d2" },
+      { role: "agent", scopeType: "DEPARTMENT", scopeId: "d2" },
       { role: "admin", scopeType: "DEPARTMENT", scopeId: "d3" },
     ];
     const s = shapeScope(rows);
@@ -50,20 +50,20 @@ describe("shapeScope", () => {
   });
 
   it("collects sub-department ids", () => {
-    const rows: ScopeRow[] = [{ role: "staff", scopeType: "SUB_DEPARTMENT", scopeId: "team-9" }];
+    const rows: ScopeRow[] = [{ role: "agent", scopeType: "SUB_DEPARTMENT", scopeId: "team-9" }];
     expect(shapeScope(rows).subDepartmentIds).toEqual(["team-9"]);
   });
 
   it("dedupes repeated scope ids", () => {
     const rows: ScopeRow[] = [
-      { role: "staff", scopeType: "DEPARTMENT", scopeId: "d1" },
+      { role: "agent", scopeType: "DEPARTMENT", scopeId: "d1" },
       { role: "manager", scopeType: "DEPARTMENT", scopeId: "d1" },
     ];
     expect(shapeScope(rows).departmentIds).toEqual(["d1"]);
   });
 
   it("ignores scoped rows with a null scopeId", () => {
-    const rows: ScopeRow[] = [{ role: "staff", scopeType: "DEPARTMENT", scopeId: null }];
+    const rows: ScopeRow[] = [{ role: "agent", scopeType: "DEPARTMENT", scopeId: null }];
     expect(shapeScope(rows).departmentIds).toEqual([]);
   });
 });
@@ -102,14 +102,14 @@ describe("deriveEffectiveRole", () => {
   it("plain department/tenant membership → staff", () => {
     expect(
       deriveEffectiveRole([
-        { role: "staff", scopeType: "TENANT", scopeId: "t1" },
-        { role: "staff", scopeType: "DEPARTMENT", scopeId: "d1" },
+        { role: "agent", scopeType: "TENANT", scopeId: "t1" },
+        { role: "agent", scopeType: "DEPARTMENT", scopeId: "d1" },
       ]),
-    ).toBe("staff");
+    ).toBe("agent");
   });
 
   it("no assignments → staff", () => {
-    expect(deriveEffectiveRole([])).toBe("staff");
+    expect(deriveEffectiveRole([])).toBe("agent");
   });
 
   it("admin outranks a concurrent lead/manager assignment", () => {

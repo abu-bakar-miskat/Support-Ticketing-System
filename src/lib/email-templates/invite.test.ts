@@ -32,7 +32,7 @@ describe("renderInvite", () => {
       inviterName: "Alex",
       departmentName: "Ops",
       subDepartmentName: "Support",
-      role: "staff",
+      role: "agent",
       message: "   ",
       inviteToken: "tok",
     });

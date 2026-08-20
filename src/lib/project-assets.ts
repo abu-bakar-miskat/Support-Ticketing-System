@@ -19,7 +19,7 @@ export async function canAddProjectAssets(
     isProjectMemberRow ??
     (profile.id ? await isProjectMember(profile.id, projectId) : false);
   if (!isMember && !isPrivilegedProjectEditor(profile)) return false;
-  return isPrivilegedProjectEditor(profile) || profile.role === "staff";
+  return isPrivilegedProjectEditor(profile) || profile.role === "agent";
 }
 
 export function canDeleteProjectAssets(profile: ProjectPermissionProfile) {

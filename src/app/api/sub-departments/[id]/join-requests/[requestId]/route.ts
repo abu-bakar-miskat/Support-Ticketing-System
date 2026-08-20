@@ -79,7 +79,7 @@ export async function PATCH(
         create: {
           userId: joinRequest.userId,
           subDepartmentId,
-          role: "staff",
+          role: "agent",
           nickname: trimmedName,
           isActive: isActive ?? true,
         },

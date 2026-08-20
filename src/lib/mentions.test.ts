@@ -83,7 +83,7 @@ describe("resolveMentionedProfiles", () => {
       subDepartment: { departmentId: "dept-1" },
     } as never)
     mockGetMentionable.mockResolvedValue([
-      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "staff" },
+      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "agent" },
     ])
     mockProfileFindMany.mockResolvedValue([resolvedProfile] as never)
 
@@ -101,7 +101,7 @@ describe("resolveMentionedProfiles", () => {
       subDepartment: { departmentId: "dept-1" },
     } as never)
     mockGetProjectMembers.mockResolvedValue([
-      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "staff" },
+      { id: resolvedProfile.id, name: resolvedProfile.name, avatarUrl: null, departmentName: null, subDepartmentName: "Backend", role: "agent" },
     ])
     mockProfileFindMany.mockResolvedValue([resolvedProfile] as never)
 

@@ -5,7 +5,7 @@ import type { AuthProfile } from "./auth"
 function profile(overrides: Partial<AuthProfile> = {}): AuthProfile {
   return {
     id: "user-1",
-    role: "staff",
+    role: "agent",
     subDepartmentId: "team-1",
     subDepartmentIds: ["team-1"],
     activeTenantId: "tenant-A",

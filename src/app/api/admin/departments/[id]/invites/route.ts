@@ -7,7 +7,7 @@ import type { Role } from "@/generated/prisma/enums";
 
 type Params = { params: Promise<{ id: string }> };
 
-const INVITE_ROLES = new Set<Role>(["staff", "sub_manager"]);
+const INVITE_ROLES = new Set<Role>(["agent", "sub_manager"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json().catch(() => ({}));
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const subDepartmentId = typeof body.subDepartmentId === "string" ? body.subDepartmentId : "";
-  const roleRaw = typeof body.role === "string" ? body.role : "staff";
+  const roleRaw = typeof body.role === "string" ? body.role : "agent";
   const message =
     typeof body.message === "string" ? body.message.trim().slice(0, 2000) || null : null;
 

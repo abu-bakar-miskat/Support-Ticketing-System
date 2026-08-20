@@ -729,7 +729,7 @@ export async function getPersonalTaskDeptScope(
   const directMember = profile.directMemberDeptIds ?? [];
   const hasCrossAccess =
     (granted.length > 0 || directMember.length > 0) &&
-    (profile.role === "staff" || profile.role === "sub_manager");
+    (profile.role === "agent" || profile.role === "sub_manager");
 
   if (!hasCrossAccess) {
     return deptScope;

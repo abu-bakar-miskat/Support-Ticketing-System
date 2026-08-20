@@ -109,12 +109,12 @@ async function main() {
   }
 
   // ── 6. Team memberships + primary team assignment ────────────────────────────
-  const memberDefs: Array<{ profile: typeof admin; team: typeof devTeam; role: "admin" | "manager" | "sub_manager" | "staff" }> = [
+  const memberDefs: Array<{ profile: typeof admin; team: typeof devTeam; role: "admin" | "manager" | "sub_manager" | "agent" }> = [
     { profile: admin,   team: devTeam,  role: "admin"   },
     { profile: manager, team: devTeam,  role: "manager" },
     { profile: lead,    team: techTeam, role: "sub_manager"    },
-    { profile: dev1,    team: phpTeam,  role: "staff"   },
-    { profile: dev2,    team: uiuxTeam, role: "staff"   },
+    { profile: dev1,    team: phpTeam,  role: "agent"   },
+    { profile: dev2,    team: uiuxTeam, role: "agent"   },
   ]
   for (const { profile, team, role } of memberDefs) {
     await prisma.subDepartmentMembership.upsert({

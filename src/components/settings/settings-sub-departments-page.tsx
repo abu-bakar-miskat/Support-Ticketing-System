@@ -221,7 +221,7 @@ const ROLES = [
   },
   {
     key: "member" as const,
-    label: "Member",
+    label: "Agent",
     hint: "self",
     dotClassName: "bg-pen-subtle",
   },
@@ -662,7 +662,7 @@ function SubDepartmentMembersModal({
     admin: "bg-pen-blue/10 text-pen-blue",
     manager: "bg-pen-purple/10 text-pen-purple",
     sub_manager: "bg-pen-green/10 text-pen-green",
-    staff: "bg-pen-surface text-pen-subtle",
+    agent: "bg-pen-surface text-pen-subtle",
   };
 
   return (
@@ -1176,7 +1176,7 @@ function AssignMemberModal({
 }
 
 const ROLE_OPTIONS_BASE: { value: Role; label: string }[] = [
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
   { value: "sub_manager", label: "Sub-manager" },
   { value: "manager", label: "Manager" },
 ];
@@ -1193,13 +1193,13 @@ function timeAgoShort(isoString: string) {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-type ApprovalRole = "admin" | "manager" | "sub_manager" | "staff" | "cross-access";
+type ApprovalRole = "admin" | "manager" | "sub_manager" | "agent" | "cross-access";
 
 const APPROVAL_ROLES: { value: ApprovalRole; label: string; hint: string }[] = [
   { value: "admin",        label: "Admin",           hint: "Full workspace access" },
   { value: "manager",      label: "Manager",         hint: "Manages whole department" },
   { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub department" },
-  { value: "staff",        label: "Staff",           hint: "Member — pick a sub department" },
+  { value: "agent",        label: "Agent",           hint: "Member — pick a sub department" },
   { value: "cross-access", label: "Cross-dept access", hint: "Guest access, no sub department" },
 ];
 
@@ -1213,7 +1213,7 @@ function JoinRequestsSection({
   const [requests, setRequests] = useState(initialRequests);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState("");
-  const [selectedRole, setSelectedRole] = useState<ApprovalRole>("staff");
+  const [selectedRole, setSelectedRole] = useState<ApprovalRole>("agent");
   const [nickname, setNickname] = useState("");
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -1243,14 +1243,14 @@ function JoinRequestsSection({
 
   if (requests.length === 0) return null;
 
-  const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "staff";
+  const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "agent";
   const isCrossAccess = selectedRole === "cross-access";
 
   function openExpand(req: PendingRequest) {
     const id = req.id;
     setExpanded(id === expanded ? null : id);
     setSelectedSubDepartmentId(req.subDepartments[0]?.id ?? "");
-    setSelectedRole("staff");
+    setSelectedRole("agent");
     setNickname("");
     setApproveError(null);
     setCrossPermanent(true);

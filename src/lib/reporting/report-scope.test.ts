@@ -53,14 +53,14 @@ describe("resolveReportScope", () => {
   it("falls back to department scope for a regular staff/manager", async () => {
     mockResolveUserScope.mockResolvedValue(baseUserScope)
     mockGetProfileDeptScope.mockResolvedValue({ activeDeptId: "d1", subDepartmentIds: ["team1", "team2"], allowedDeptIds: ["d1"] })
-    const result = await resolveReportScope({ id: "u1", role: "staff", activeTenantId: "t1" })
+    const result = await resolveReportScope({ id: "u1", role: "agent", activeTenantId: "t1" })
     expect(result).toEqual({ kind: "department", subDepartmentIds: ["team1", "team2"] })
   })
 
   it("gives none when there is no dept scope at all", async () => {
     mockResolveUserScope.mockResolvedValue(baseUserScope)
     mockGetProfileDeptScope.mockResolvedValue(null)
-    const result = await resolveReportScope({ id: "u1", role: "staff", activeTenantId: "t1" })
+    const result = await resolveReportScope({ id: "u1", role: "agent", activeTenantId: "t1" })
     expect(result).toEqual({ kind: "none" })
   })
 })

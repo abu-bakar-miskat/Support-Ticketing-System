@@ -27,12 +27,12 @@ const MEMBER_WHERE = { members: { some: { userId: "user-1" } } };
 
 const staff = {
   id: "user-1",
-  role: "staff",
+  role: "agent",
   memberships: [{ subDepartment: { department: { id: "dept-1" } } }],
 };
 const hubStaff = {
   id: "user-1",
-  role: "staff",
+  role: "agent",
   memberships: [{ subDepartment: { department: { id: "hub-1" } } }],
 };
 const manager = {

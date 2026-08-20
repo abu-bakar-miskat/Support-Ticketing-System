@@ -195,12 +195,12 @@ export const getProfile = cache(async () => {
         scopeId: id,
       })),
       ...directMemberDeptIds.map((id) => ({
-        role: "staff" as const,
+        role: "agent" as const,
         scopeType: "DEPARTMENT" as const,
         scopeId: id,
       })),
       ...grantedAccessDeptIds.map((id) => ({
-        role: "staff" as const,
+        role: "agent" as const,
         scopeType: "DEPARTMENT" as const,
         scopeId: id,
       })),

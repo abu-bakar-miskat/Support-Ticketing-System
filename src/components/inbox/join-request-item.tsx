@@ -29,7 +29,7 @@ export type JoinRequestNotification = {
 }
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "staff", label: "Staff" },
+  { value: "agent", label: "Agent" },
   { value: "sub_manager", label: "Sub-manager" },
   { value: "manager", label: "Manager" },
 ]
@@ -108,7 +108,7 @@ export function JoinRequestDetailPane({
 }) {
   const router = useRouter()
   const [accessType, setAccessType] = useState<"full" | "cross-access">("full")
-  const [selectedRole, setSelectedRole] = useState<Role>("staff")
+  const [selectedRole, setSelectedRole] = useState<Role>("agent")
   const [nickname, setNickname] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [submitting, setSubmitting] = useState<"approve" | "reject" | null>(null)

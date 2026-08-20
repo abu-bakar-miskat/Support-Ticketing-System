@@ -22,7 +22,7 @@ export function InviteByEmailModal({
 }) {
   const [email, setEmail] = useState("");
   const [subDepartmentId, setSubDepartmentId] = useState(subDepartments[0]?.id ?? "");
-  const [role, setRole] = useState<"staff" | "sub_manager">("staff");
+  const [role, setRole] = useState<"agent" | "sub_manager">("agent");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,14 +100,14 @@ export function InviteByEmailModal({
               Role
             </label>
             <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
-              {(["staff", "sub_manager"] as const).map((r) => (
+              {(["agent", "sub_manager"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setRole(r)}
                   className={cn(
                     "flex flex-1 items-center justify-center font-sans text-[12px] font-medium capitalize transition-colors",
-                    r !== "staff" && "border-l border-pen-card-border",
+                    r !== "agent" && "border-l border-pen-card-border",
                     role === r
                       ? "bg-pen-blue text-white dark:text-gray-900"
                       : "bg-pen-surface text-pen-muted hover:text-pen-foreground",

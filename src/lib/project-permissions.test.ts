@@ -19,7 +19,7 @@ describe("project-permissions", () => {
 
   it("treats team membership lead as project manager", () => {
     const profile = {
-      role: "staff",
+      role: "agent",
       memberships: [{ role: "sub_manager" }],
     };
     expect(isProjectLead(profile)).toBe(true);
@@ -28,13 +28,13 @@ describe("project-permissions", () => {
   });
 
   it("staff without lead membership cannot manage projects", () => {
-    const profile = { role: "staff", memberships: [{ role: "staff" }] };
+    const profile = { role: "agent", memberships: [{ role: "agent" }] };
     expect(canManageProjects(profile)).toBe(false);
     expect(isPrivilegedProjectEditor(profile)).toBe(false);
   });
 
   it("allows project settings for assigned members", () => {
-    const profile = { role: "staff", memberships: [] };
+    const profile = { role: "agent", memberships: [] };
     expect(
       canAccessProjectSettings(profile, {
         projectDeptId: "dept-a",
@@ -46,7 +46,7 @@ describe("project-permissions", () => {
 
   it("allows project settings for full-access cross-dept guests in that dept", () => {
     const profile = {
-      role: "staff",
+      role: "agent",
       memberships: [],
       fullAccessGrantedDeptIds: ["dept-a"],
     };
@@ -61,7 +61,7 @@ describe("project-permissions", () => {
 
   it("denies project settings for limited cross-access guests who are not assigned", () => {
     const profile = {
-      role: "staff",
+      role: "agent",
       memberships: [],
       fullAccessGrantedDeptIds: [],
     };
@@ -75,7 +75,7 @@ describe("project-permissions", () => {
   });
 
   it("allows native dept staff to modify only when they are project members", () => {
-    const staff = { role: "staff", memberships: [] };
+    const staff = { role: "agent", memberships: [] };
     expect(canModifyProjectContent(staff, false)).toBe(false);
     expect(canModifyProjectContent(staff, true)).toBe(true);
     const lead = { role: "sub_manager", memberships: [] };

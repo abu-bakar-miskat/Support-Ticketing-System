@@ -50,7 +50,7 @@ export async function POST(
   await prisma.$transaction([
     (prisma.subDepartmentMembership as any).upsert({
       where: { userId_subDepartmentId: { userId, subDepartmentId } },
-      create: { userId, subDepartmentId, role: (role as any) ?? "staff", nickname: trimmedName, isActive: isActive ?? true },
+      create: { userId, subDepartmentId, role: (role as any) ?? "agent", nickname: trimmedName, isActive: isActive ?? true },
       update: { nickname: trimmedName, isActive: isActive ?? true, ...(role ? { role: role as any } : {}) },
     }),
     prisma.profile.updateMany({ where: { id: userId, subDepartmentId: null }, data: { subDepartmentId } }),

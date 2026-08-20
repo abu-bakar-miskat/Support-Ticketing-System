@@ -59,7 +59,7 @@ export async function acceptTenantInvite(
     await applyTenantMembership(tx, {
       tenantId: invite.tenantId,
       userId: profile.id,
-      role: invite.role as "admin" | "manager" | "sub_manager" | "staff",
+      role: invite.role as "admin" | "manager" | "sub_manager" | "agent",
       departmentIds,
       actorId: invite.invitedBy,
     });

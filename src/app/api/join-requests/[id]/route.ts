@@ -51,8 +51,8 @@ export async function PATCH(
     await prisma.$transaction([
       (prisma.subDepartmentMembership as any).upsert({
         where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId: resolvedSubDepartmentId } },
-        create: { userId: joinRequest.userId, subDepartmentId: resolvedSubDepartmentId, role: "staff", isActive: true },
-        update: { role: "staff", isActive: true },
+        create: { userId: joinRequest.userId, subDepartmentId: resolvedSubDepartmentId, role: "agent", isActive: true },
+        update: { role: "agent", isActive: true },
       }),
       prisma.joinRequest.update({
         where: { id: requestId },

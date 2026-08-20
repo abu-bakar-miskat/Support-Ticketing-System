@@ -97,7 +97,7 @@ export async function reconcileProfileOnLogin(user: {
           deletedAt: null,
           name,
           email: user.email,
-          role: "staff",
+          role: "agent",
           subDepartmentId: null,
           avatarUrl: null,
           timezone: null,
@@ -129,7 +129,7 @@ export async function reconcileProfileOnLogin(user: {
     await prisma.tenantMembership.upsert({
       where: { tenantId_userId: { tenantId: defaultTenant.id, userId: user.id } },
       update: {},
-      create: { tenantId: defaultTenant.id, userId: user.id, role: "staff", isActive: true },
+      create: { tenantId: defaultTenant.id, userId: user.id, role: "agent", isActive: true },
     })
   }
 }

@@ -8,7 +8,7 @@ import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 
 const VALID_ROLES = Object.values(Role)
 // Managers can only assign these roles — not admin or manager
-const MANAGER_ALLOWED_ROLES: Role[] = ["sub_manager", "staff"]
+const MANAGER_ALLOWED_ROLES: Role[] = ["sub_manager", "agent"]
 
 export async function PATCH(
   request: Request,

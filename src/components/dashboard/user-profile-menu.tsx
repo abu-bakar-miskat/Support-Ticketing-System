@@ -69,7 +69,7 @@ function roleBadgeClass(role: string | undefined) {
     role === "admin" && "bg-pen-blue/15 text-pen-blue",
     role === "manager" && "bg-purple-500/15 text-purple-500",
     role === "sub_manager" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    role === "staff" && "bg-pen-surface text-pen-subtle",
+    role === "agent" && "bg-pen-surface text-pen-subtle",
   );
 }
 
@@ -130,7 +130,7 @@ export function UserProfileMenu({
                   {userName}
                 </span>
                 <span className={roleBadgeClass(user?.role)}>
-                  {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "staff")}
+                  {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "agent")}
                 </span>
               </div>
               <span className="truncate font-sans text-[11.5px] text-pen-subtle">
@@ -165,7 +165,7 @@ export function UserProfileMenu({
                     {userName}
                   </span>
                   <span className={roleBadgeClass(user?.role)}>
-                    {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "staff")}
+                    {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "agent")}
                   </span>
                 </div>
                 <span className="truncate font-sans text-xs text-pen-subtle">

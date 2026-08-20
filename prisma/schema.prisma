@@ -15,7 +15,9 @@ enum Role {
   // Renamed from `lead`; the DB value stays "lead" via @map so no data
   // migration is needed. UI display label is "Sub-manager".
   sub_manager @map("lead")
-  staff
+  // Renamed from `staff`; DB value stays "staff" via @map (no data migration).
+  // UI display label is "Agent".
+  agent @map("staff")
 }
 
 // Scope levels for the canonical RoleAssignment authorization model (SRS D-06).
@@ -237,7 +239,7 @@ model TenantMembership {
   id        String   @id @default(cuid())
   tenantId  String
   userId    String   @db.Uuid
-  role      Role     @default(staff)
+  role      Role     @default(agent)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -256,7 +258,7 @@ model TenantInvite {
   token      String    @unique
   email      String
   tenantId   String
-  role       Role      @default(staff)
+  role       Role      @default(agent)
   // Departments to assign on accept (manager → DepartmentManager, lead/staff →
   // DepartmentMember). Empty/null for tenant-wide admins. See lib/tenant-membership.
   departmentIds Json?
@@ -422,7 +424,7 @@ model DepartmentInvite {
   email        String
   departmentId String
   subDepartmentId String @map("teamId")
-  role         Role      @default(staff)
+  role         Role      @default(agent)
   message      String?
   invitedBy    String    @db.Uuid
   createdAt    DateTime  @default(now())
@@ -514,7 +516,7 @@ model Profile {
   email     String   @unique
   name      String
   avatarUrl String?
-  role      Role     @default(staff)
+  role      Role     @default(agent)
   subDepartmentId String? @map("teamId")
   subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id])
   createdAt DateTime @default(now())
@@ -593,7 +595,7 @@ model SubDepartmentMembership {
   id          String   @id @default(cuid())
   userId      String   @db.Uuid
   subDepartmentId String @map("teamId")
-  role        Role     @default(staff)
+  role        Role     @default(agent)
   nickname    String?
   isActive    Boolean  @default(true)
   doNotAssign Boolean  @default(false)

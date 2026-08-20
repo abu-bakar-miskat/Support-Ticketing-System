@@ -6,7 +6,7 @@ import { badRequest, forbidden } from "@/lib/api-response"
 import type { Role } from "@/generated/prisma/enums"
 
 const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
-const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "staff"]
+const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "agent"]
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const body = await request.json().catch(() => ({}))
   const email = (body.email as string | undefined)?.trim().toLowerCase()
-  const role = (body.role as Role | undefined) ?? "staff"
+  const role = (body.role as Role | undefined) ?? "agent"
   const message = (body.message as string | undefined)?.trim() || null
 
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {

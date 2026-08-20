@@ -1,5 +1,5 @@
-import { DashboardShellLayout } from "@/components/dashboard/dashboard-shell-layout";
+import { DepartmentsShellLayout } from "@/components/departments/departments-shell-layout";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <DashboardShellLayout>{children}</DashboardShellLayout>;
+  return <DepartmentsShellLayout>{children}</DepartmentsShellLayout>;
 }

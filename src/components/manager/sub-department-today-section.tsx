@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { DrawerLink } from "@/components/tickets/drawer-link";
 import { RailCard } from "./rail-card";
@@ -38,13 +37,9 @@ function MemberRow({ m, max }: { m: MemberWorkload; max: number }) {
     <div className="flex flex-col gap-1.5 border-b border-pen-card-border/40 px-4 py-3 last:border-b-0">
       <div className="flex items-center gap-2.5">
         <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={26} />
-        <Link
-          href={`/manager/people#p-${m.id}`}
-          className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground transition-colors hover:text-pen-blue"
-          title={`Open ${m.name}'s report`}
-        >
+        <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
           {m.name}
-        </Link>
+        </span>
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-pen-muted">
           {m.open + m.inReview > 0 ? (
             <>
@@ -119,14 +114,6 @@ export function SubDepartmentTodaySection({ members }: { members: MemberWorkload
           </>
         )}
       </div>
-
-      <Link
-        href="/manager/people"
-        className="flex items-center justify-center gap-1.5 border-t border-pen-card-border/60 px-4 py-2.5 font-sans text-[11.5px] font-semibold text-pen-blue transition-colors hover:bg-pen-surface/50"
-      >
-        View reports
-        <ArrowRight className="size-3" />
-      </Link>
     </RailCard>
   );
 }

@@ -9,8 +9,11 @@ import {
   ChevronUp,
   Clock,
   MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Shield,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -33,14 +36,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
   getAdminUsers,
@@ -96,22 +91,6 @@ function initials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-}
-
-function TableSection({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
-      <div className="overflow-x-auto">{children}</div>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-sans text-[9.5px] font-medium tracking-[0.95px] text-pen-subtle uppercase">
-      {children}
-    </span>
-  );
 }
 
 function SubDepartmentAvatar({ name, avatarUrl, role, subDepartment }: { name: string; color?: string; avatarUrl?: string | null; role?: string; subDepartment?: string }) {
@@ -1348,6 +1327,138 @@ function JoinRequestsSection({
   );
 }
 
+function SubDepartmentCard({
+  subDepartment,
+  canManage,
+  onEdit,
+  onAssign,
+  onViewMembers,
+  onDelete,
+}: {
+  subDepartment: SubDepartmentRow;
+  canManage: boolean;
+  onEdit: () => void;
+  onAssign: () => void;
+  onViewMembers: () => void;
+  onDelete: () => void;
+}) {
+  const [managersExpanded, setManagersExpanded] = useState(false);
+  const [membersExpanded, setMembersExpanded] = useState(false);
+
+  const totalMembers =
+    subDepartment.leads.length + (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
+
+  return (
+    <div className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
+      <div className="flex items-start gap-3 p-4">
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-[11px] font-semibold text-white"
+          style={{ backgroundColor: subDepartment.color }}
+        >
+          {initials(subDepartment.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-sans text-[14px] font-semibold text-pen-foreground">
+              {subDepartment.name}
+            </span>
+            <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
+              {subDepartment.prefix}
+            </span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+              <Users className="size-3 shrink-0" />
+              {totalMembers} member{totalMembers === 1 ? "" : "s"}
+            </span>
+            <ProjectPill label={subDepartment.department} />
+          </div>
+        </div>
+        {canManage && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Edit sub department"
+              className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              title="Delete sub department"
+              className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setManagersExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Shield className="size-3.5 text-pen-muted" />
+          Sub-managers
+        </span>
+        {managersExpanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {managersExpanded && (
+        <div className="border-t border-pen-card-border/60 px-4 py-3">
+          <LeadCell leads={subDepartment.leads} />
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setMembersExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Users className="size-3.5 text-pen-muted" />
+          Members {subDepartment.members?.length ? `(${totalMembers})` : ""}
+        </span>
+        {membersExpanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {membersExpanded && (
+        <div className="flex items-center justify-between gap-3 border-t border-pen-card-border/60 px-4 py-3">
+          <MemberStack members={subDepartment.members} extra={subDepartment.extraMembers} />
+          {canManage && (
+            <button
+              type="button"
+              onClick={onAssign}
+              className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+            >
+              <Plus className="size-3" />
+              Assign member
+            </button>
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onViewMembers}
+        className="border-t border-pen-card-border px-4 py-2.5 text-center font-sans text-[11.5px] font-semibold text-pen-blue transition-colors hover:bg-pen-surface/50"
+      >
+        View all members
+      </button>
+    </div>
+  );
+}
+
 export function SettingsSubDepartmentsPage({
   subDepartments,
   departments,
@@ -1435,132 +1546,25 @@ export function SettingsSubDepartmentsPage({
           )}
         </div>
 
-        <TableSection>
-          <Table className="w-full min-w-[640px]">
-            <TableHeader>
-              <TableRow className="border-pen-card-border hover:bg-transparent">
-                <TableHead className="h-8 w-[29%] px-[18px]">
-                  <SectionLabel>Sub department</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[25%]">
-                  <SectionLabel>Sub-managers</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[17%] min-w-[108px]">
-                  <SectionLabel>Members</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[21%]">
-                  <SectionLabel>Department</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[10%]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subDepartments.length === 0 ? (
-                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={5} className="px-[18px] py-0">
-                    <div className="flex h-[52px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">
-                        No sub departments yet
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {subDepartments.map((subDepartment) => (
-                <TableRow
-                  key={subDepartment.id}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
-                >
-                  <TableCell className="px-[18px] py-0">
-                    <div className="flex h-[52px] items-center gap-2.5">
-                      <span
-                        className="size-3 shrink-0 rounded-[3px]"
-                        style={{ backgroundColor: subDepartment.color }}
-                        aria-hidden
-                      />
-                      <span className="font-sans text-[13px] font-semibold text-pen-foreground">
-                        {subDepartment.name}
-                      </span>
-                      <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
-                        {subDepartment.prefix}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] min-w-0 items-center">
-                      <LeadCell leads={subDepartment.leads} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] items-center">
-                      <MemberStack
-                        members={subDepartment.members}
-                        extra={subDepartment.extraMembers}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] flex-wrap items-center gap-[5px]">
-                      <ProjectPill label={subDepartment.department} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0 pr-[18px] text-right">
-                    <div className="flex h-[52px] items-center justify-end">
-                      {canManage && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            type="button"
-                            className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
-                            aria-label={`Actions for ${subDepartment.name}`}
-                          >
-                            <MoreHorizontal className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-36">
-                            <DropdownMenuItem
-                              className="font-sans text-xs"
-                              onClick={() =>
-                                setModal({ type: "members", subDepartment })
-                              }
-                            >
-                              View members
-                            </DropdownMenuItem>
-                            {canManage && (
-                              <>
-                                <DropdownMenuItem
-                                  className="font-sans text-xs"
-                                  onClick={() =>
-                                    setModal({ type: "edit", subDepartment })
-                                  }
-                                >
-                                  Edit sub department
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="font-sans text-xs"
-                                  onClick={() =>
-                                    setModal({ type: "assign", subDepartment })
-                                  }
-                                >
-                                  Assign member
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  className="font-sans text-xs"
-                                  onClick={() => setConfirmDelete(subDepartment)}
-                                >
-                                  Delete sub department
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSection>
+        {subDepartments.length === 0 ? (
+          <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-6 text-center">
+            <p className="font-sans text-[12.5px] text-pen-muted">No sub departments yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {subDepartments.map((subDepartment) => (
+              <SubDepartmentCard
+                key={subDepartment.id}
+                subDepartment={subDepartment}
+                canManage={canManage}
+                onEdit={() => setModal({ type: "edit", subDepartment })}
+                onAssign={() => setModal({ type: "assign", subDepartment })}
+                onViewMembers={() => setModal({ type: "members", subDepartment })}
+                onDelete={() => setConfirmDelete(subDepartment)}
+              />
+            ))}
+          </div>
+        )}
 
         {pendingRequests.length > 0 && (
           <JoinRequestsSection requests={pendingRequests} isAdmin={isAdmin} />

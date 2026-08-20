@@ -52,7 +52,7 @@ export const TEMPLATE_FEATURE_KEYS = [
   "activity",
   /** Recruitment — sidebar "Recruitment" (/recruitment). */
   "recruitment",
-  /** Team Reports — sidebar "Team Reports" (/manager/people). */
+  /** Team Reports — sidebar "Sub Departments" (/sub-departments). */
   "teamReports",
   /** Help Center — sidebar "Help Center" (/docs). */
   "helpCenter",

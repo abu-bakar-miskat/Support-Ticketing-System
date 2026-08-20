@@ -459,7 +459,7 @@ export function Sidebar({
           ...(isAdmin || isManager
             ? [
                 { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
-                { label: "Sub Departments", href: "/manager/people", icon: ChartPie, templateFeatureKey: "teamReports" as const },
+                { label: "Sub Departments", href: "/sub-departments", icon: ChartPie, templateFeatureKey: "teamReports" as const },
                 // Recruitment is hidden from the UI (code/routes/APIs retained).
                 // { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]

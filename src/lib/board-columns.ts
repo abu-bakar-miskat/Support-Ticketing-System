@@ -177,3 +177,38 @@ export async function seedDepartmentBoard(
     })),
   });
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type SeedStatusTx = {
+  subDepartmentStatus: {
+    findFirst: (args: any) => Promise<any>;
+    createMany: (args: any) => Promise<any>;
+  };
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Idempotently create a sub-department's five default statuses
+ * (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED), mirroring the department board.
+ * No-ops if the sub-department already has any status, so it's safe to call on
+ * every sub-department creation and from a backfill.
+ */
+export async function seedSubDepartmentStatuses(
+  tx: SeedStatusTx,
+  subDepartmentId: string,
+): Promise<void> {
+  const existing = await tx.subDepartmentStatus.findFirst({
+    where: { subDepartmentId },
+    select: { id: true },
+  });
+  if (existing) return;
+  await tx.subDepartmentStatus.createMany({
+    data: DEFAULT_SUB_DEPARTMENT_STATUSES.map((s) => ({
+      subDepartmentId,
+      label: s.label,
+      color: s.color,
+      order: s.order,
+      isComplete: s.isComplete,
+    })),
+  });
+}

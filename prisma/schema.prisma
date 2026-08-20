@@ -221,6 +221,7 @@ model Tenant {
   boardColumns BoardColumn[]
   slaPolicies SlaPolicy[]
   assignmentRules AssignmentRule[]
+  rules Rule[]
   bulkReassignJobs BulkReassignJob[]
   mailboxConnections MailboxConnection[]
   mailSuppressionLogs MailSuppressionLog[]
@@ -325,6 +326,7 @@ model Department {
   boardColumns      BoardColumn[]
   slaPolicies       SlaPolicy[]
   assignmentRules   AssignmentRule[]
+  rules             Rule[]
   mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
@@ -1214,6 +1216,32 @@ model SlaPolicy {
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   timers     SlaTimer[]
+
+  @@index([departmentId])
+  @@index([tenantId])
+}
+
+// Unified per-department automation rule (slice 09, RE-01..05). `conditions` is
+// a rules-engine `ConditionGroup` and `actions` is a `RuleAction[]`
+// (lib/rules-engine.ts). Rules run in `order` on every new ticket; a matched
+// rule fires its actions (assign, priority, category/tag, apply SLA, status,
+// notify) and, if `stopProcessing`, halts later rules. This supersedes the
+// single-action AssignmentRule for automation going forward.
+model Rule {
+  id             String   @id @default(cuid())
+  tenantId       String
+  departmentId   String
+  name           String
+  conditions     Json
+  actions        Json
+  order          Int      @default(0)
+  enabled        Boolean  @default(true)
+  stopProcessing Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@index([departmentId])
   @@index([tenantId])

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 type SlaPolicy = {
   id: string;
@@ -137,7 +138,7 @@ export function SlaSettingsPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
         href="/settings/departments"
         className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
@@ -186,11 +187,10 @@ export function SlaSettingsPage({
                     onChange={(e) => updatePolicy(policy.id, { name: e.target.value })}
                     className="min-w-0 flex-1 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12.5px] font-medium text-pen-foreground outline-none"
                   />
-                  <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
-                    <input
-                      type="checkbox"
+                  <label className="flex cursor-pointer items-center gap-2 font-sans text-[11.5px] text-pen-muted">
+                    <Switch
                       checked={policy.enabled}
-                      onChange={(e) => updatePolicy(policy.id, { enabled: e.target.checked })}
+                      onCheckedChange={(v) => updatePolicy(policy.id, { enabled: v })}
                     />
                     Enabled
                   </label>
@@ -243,11 +243,10 @@ export function SlaSettingsPage({
           <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
         ) : (
           <div className="flex flex-col gap-4">
-            <label className="flex items-center gap-2 font-sans text-[12.5px] text-pen-foreground">
-              <input
-                type="checkbox"
+            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-pen-foreground">
+              <Switch
                 checked={slaConfig.pauseOutsideHours}
-                onChange={(e) => setSlaConfig({ ...slaConfig, pauseOutsideHours: e.target.checked })}
+                onCheckedChange={(v) => setSlaConfig({ ...slaConfig, pauseOutsideHours: v })}
               />
               Pause SLA timers outside working hours
             </label>

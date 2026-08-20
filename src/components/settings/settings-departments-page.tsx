@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog, Zap,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -740,19 +740,7 @@ function DepartmentCard({
   const [expanded, setExpanded] = useState(false);
   const [membersExpanded, setMembersExpanded] = useState(false);
   const [managersExpanded, setManagersExpanded] = useState(false);
-  const [isHub, setIsHub] = useState(dept.isHub);
-  const [togglingHub, setTogglingHub] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
-
-  async function toggleHub() {
-    setTogglingHub(true);
-    try {
-      await updateAdminDepartment(dept.id, { name: editName.trim() || dept.name, isHub: !isHub });
-      setIsHub((v) => !v);
-    } finally {
-      setTogglingHub(false);
-    }
-  }
 
   async function saveEdit() {
     if (!editName.trim()) return;
@@ -940,11 +928,7 @@ function DepartmentCard({
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="pen-text-modal-title">{dept.name}</h3>
-                {isHub ? (
-                  <span className="inline-flex items-center rounded-full bg-violet-100 px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-                    Hub
-                  </span>
-                ) : dept.type && dept.type !== "development" ? (
+                {dept.type && dept.type !== "development" ? (
                   <span className="inline-flex items-center rounded-full bg-pen-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-pen-blue">
                     {departmentTypeLabel(dept.type)}
                   </span>
@@ -987,24 +971,17 @@ function DepartmentCard({
               >
                 <UserCog className="size-3.5" />
               </a>
+              <a
+                href={`/settings/departments/${dept.id}/rules`}
+                title="Automation rules"
+                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              >
+                <Zap className="size-3.5" />
+              </a>
             </div>
           )}
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={toggleHub}
-                disabled={togglingHub}
-                title={isHub ? "Disable hub department" : "Mark as hub department"}
-                className={cn(
-                  "rounded-md p-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
-                  isHub
-                    ? "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400"
-                    : "text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground",
-                )}
-              >
-                Hub
-              </button>
               <button type="button" onClick={() => setEditing(true)} className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground" title="Rename">
                 <Pencil className="size-3.5" />
               </button>

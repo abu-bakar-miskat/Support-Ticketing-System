@@ -35,7 +35,7 @@ type Db = Prisma.TransactionClient | typeof prisma;
 export async function provisionDepartmentSupportTemplate(departmentId: string): Promise<void> {
   const dept = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { emailConfig: true },
+    select: { tenantId: true, emailConfig: true },
   });
   if (!dept) return;
 
@@ -47,6 +47,82 @@ export async function provisionDepartmentSupportTemplate(departmentId: string): 
   }
 
   await resolveSupportProjectForDepartment(departmentId);
+  await seedDefaultSlaPolicies(departmentId, dept.tenantId);
+  await seedSampleRules(departmentId, dept.tenantId);
+}
+
+// Priority-based defaults (SLA-01/02): stricter targets for higher priority, plus
+// a catch-all "Standard" policy so every ticket gets a timer.
+const DEFAULT_SLA_POLICIES = [
+  {
+    name: "Urgent",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Urgent" }] },
+    firstResponseMins: 15,
+    resolutionMins: 120,
+  },
+  {
+    name: "High priority",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "High" }] },
+    firstResponseMins: 30,
+    resolutionMins: 240,
+  },
+  {
+    name: "Standard",
+    conditions: { combinator: "AND", conditions: [] },
+    firstResponseMins: 120,
+    resolutionMins: 960,
+  },
+] as const;
+
+/** Seed a department's default priority-based SLA policies. Idempotent — no-op if any policy exists. */
+export async function seedDefaultSlaPolicies(departmentId: string, tenantId: string): Promise<void> {
+  const existing = await prisma.slaPolicy.count({ where: { departmentId } });
+  if (existing > 0) return;
+  await prisma.slaPolicy.createMany({
+    data: DEFAULT_SLA_POLICIES.map((p, order) => ({
+      tenantId,
+      departmentId,
+      name: p.name,
+      conditions: p.conditions as unknown as Prisma.InputJsonValue,
+      firstResponseMins: p.firstResponseMins,
+      resolutionMins: p.resolutionMins,
+      order,
+    })),
+  });
+}
+
+// Illustrative starter rules, created DISABLED so they never change tickets until
+// an admin reviews and enables them. They use only built-in fields (priority,
+// type) so they work on manual + intake tickets without needing specific IDs.
+const SAMPLE_RULES = [
+  {
+    name: "Escalate urgent tickets",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Urgent" }] },
+    actions: [{ type: "change_column", params: { status: "ESCALATED" } }],
+  },
+  {
+    name: "Tag bug reports",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "type", operator: "equals", value: "Bug" }] },
+    actions: [{ type: "set_tag", params: { tag: "bug" } }],
+  },
+] as const;
+
+/** Seed a department's sample automation rules (disabled). Idempotent — no-op if any rule exists. */
+export async function seedSampleRules(departmentId: string, tenantId: string): Promise<void> {
+  const existing = await prisma.rule.count({ where: { departmentId } });
+  if (existing > 0) return;
+  await prisma.rule.createMany({
+    data: SAMPLE_RULES.map((r, order) => ({
+      tenantId,
+      departmentId,
+      name: r.name,
+      conditions: r.conditions as unknown as Prisma.InputJsonValue,
+      actions: r.actions as unknown as Prisma.InputJsonValue,
+      order,
+      enabled: false,
+      stopProcessing: false,
+    })),
+  });
 }
 
 /**

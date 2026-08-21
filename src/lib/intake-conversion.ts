@@ -13,7 +13,6 @@ import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { generateReplyToken } from "@/lib/customer-conversation";
 import { autoAssignTicket } from "@/lib/assignment-engine";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
-import { resolveColumnIdForStatus } from "@/lib/board-columns";
 import { assertDepartmentOperational } from "@/lib/department-setup";
 
 // Fixed UUID for the synthetic "System" profile used as the creator of
@@ -268,12 +267,6 @@ export async function runConversion(
     throw new Error(`Intake team ${prep.intakeSubDepartmentId} not found`);
   }
 
-  // Place the intake ticket in a column of its department's board (DAT-03).
-  const boardColumnId = await resolveColumnIdForStatus(tx, {
-    departmentId: prep.departmentId,
-    status: prep.status,
-  });
-
   const ticket = await tx.ticket.create({
     data: {
       title: prep.title,
@@ -287,7 +280,6 @@ export async function runConversion(
       subDepartmentId: prep.intakeSubDepartmentId,
       projectId: prep.projectId,
       assigneeId: prep.assigneeId,
-      ...(boardColumnId ? { boardColumnId } : {}),
       ...(estimatedHours !== null ? { estimatedTime: estimatedHours * 60 } : {}),
     },
     select: {

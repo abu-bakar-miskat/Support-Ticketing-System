@@ -12,7 +12,6 @@ vi.mock("@/lib/db", () => ({
     ticket: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
     subDepartmentMembership: { findUnique: vi.fn() },
-    boardColumn: { findMany: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   },
 }))
@@ -23,7 +22,6 @@ import { transferTicket } from "./ticket-transfer"
 const mockTicketFind = vi.mocked(prisma.ticket.findUnique)
 const mockTeamFind = vi.mocked(prisma.subDepartment.findUnique)
 const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
-const mockBoardColumns = vi.mocked(prisma.boardColumn.findMany)
 
 const baseTicket = {
   id: "ticket-1",
@@ -45,16 +43,11 @@ beforeEach(() => {
   mockTicketFind.mockResolvedValue(baseTicket as never)
   mockTeamFind.mockResolvedValue(baseTargetTeam as never)
   mockMembershipFind.mockResolvedValue(null as never)
-  mockBoardColumns.mockResolvedValue([
-    { id: "col-todo", statusType: "OPEN", order: 0 },
-    { id: "col-progress", statusType: "OPEN", order: 1 },
-    { id: "col-done", statusType: "RESOLVED", order: 2 },
-  ] as never)
   mockTx.subDepartmentTicketCounter.upsert.mockResolvedValue({ subDepartmentId: "team-target", lastNumber: 7 } as never)
 })
 
 describe("transferTicket", () => {
-  it("moves the ticket, renumbers, remaps to the destination's first OPEN column, and clears a non-member assignee", async () => {
+  it("moves the ticket, renumbers, and clears a non-member assignee", async () => {
     const result = await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-target", actorId: "actor-1" })
 
     expect(result).toEqual({
@@ -70,7 +63,6 @@ describe("transferTicket", () => {
         subDepartmentId: "team-target",
         ticketNumber: 7,
         assigneeId: null,
-        boardColumnId: "col-todo",
       },
     })
   })
@@ -137,15 +129,5 @@ describe("transferTicket", () => {
     mockTeamFind.mockResolvedValue({ ...baseTargetTeam, id: "team-source" } as never)
     const result = await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-source", actorId: "actor-1" })
     expect(result).toEqual({ ok: false, error: "Ticket is already in that team" })
-  })
-
-  it("leaves boardColumnId unset when the destination board has no OPEN column", async () => {
-    mockBoardColumns.mockResolvedValue([{ id: "col-done", statusType: "RESOLVED", order: 0 }] as never)
-
-    await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-target", actorId: "actor-1" })
-
-    expect(mockTx.ticket.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.not.objectContaining({ boardColumnId: expect.anything() }) }),
-    )
   })
 })

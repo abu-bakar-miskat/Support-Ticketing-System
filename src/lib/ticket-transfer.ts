@@ -4,12 +4,10 @@
  * the ticket's effective department/sub-department in one step. Renumbers
  * into the destination team's own counter — `(teamId, ticketNumber)` is
  * unique per team, so the source number can collide with an existing
- * destination ticket — and remaps to the destination board's first OPEN
- * column (DAT-03: a ticket always sits in exactly one column of its own
- * department's board).
+ * destination ticket. The ticket keeps its `status`, which is what the
+ * destination board groups on.
  */
 import { prisma } from "@/lib/db";
-import { firstColumnOfType } from "@/lib/board-columns";
 
 export type TransferResult =
   | { ok: true; ticketId: string; fromTeamId: string; toTeamId: string; newTicketNumber: number }
@@ -55,20 +53,13 @@ export async function transferTicket(params: {
     return { ok: false, error: "Ticket is already in that team" };
   }
 
-  const [assigneeMembership, destColumns] = await Promise.all([
-    ticket.assigneeId
-      ? prisma.subDepartmentMembership.findUnique({
-          where: { userId_subDepartmentId: { userId: ticket.assigneeId, subDepartmentId: targetTeam.id } },
-          select: { isActive: true },
-        })
-      : Promise.resolve(null),
-    prisma.boardColumn.findMany({
-      where: { departmentId: targetTeam.departmentId },
-      select: { id: true, statusType: true, order: true },
-    }),
-  ]);
+  const assigneeMembership = ticket.assigneeId
+    ? await prisma.subDepartmentMembership.findUnique({
+        where: { userId_subDepartmentId: { userId: ticket.assigneeId, subDepartmentId: targetTeam.id } },
+        select: { isActive: true },
+      })
+    : null;
   const nextAssigneeId = assigneeMembership?.isActive ? ticket.assigneeId : null;
-  const destColumnId = firstColumnOfType(destColumns, "OPEN")?.id ?? null;
 
   const newTicketNumber = await prisma.$transaction(async (tx) => {
     const counter = await tx.subDepartmentTicketCounter.upsert({
@@ -83,7 +74,6 @@ export async function transferTicket(params: {
         subDepartmentId: targetTeam.id,
         ticketNumber: counter.lastNumber,
         assigneeId: nextAssigneeId,
-        ...(destColumnId ? { boardColumnId: destColumnId } : {}),
       },
     });
 

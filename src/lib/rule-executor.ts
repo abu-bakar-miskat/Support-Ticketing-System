@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine";
-import { resolveColumnIdForStatus } from "@/lib/board-columns";
 import { getEligibleMembers } from "@/lib/rota";
 import { createNotification } from "@/lib/notify";
 import type { NotificationType } from "@/generated/prisma/enums";
@@ -135,13 +134,9 @@ export async function applyRulesToTicket(
           break;
         }
         case "change_column":
+          // The board groups tickets by `status`, so setting status is the move.
           if (typeof p.status === "string" && p.status) {
             data.status = p.status;
-            const colId = await resolveColumnIdForStatus(prisma, {
-              departmentId: ticket.departmentId,
-              status: p.status,
-            });
-            if (colId) data.boardColumnId = colId;
           }
           break;
         case "apply_sla":

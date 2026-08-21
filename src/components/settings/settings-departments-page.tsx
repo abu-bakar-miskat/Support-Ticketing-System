@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog, Zap, Mail,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog, Zap,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -959,13 +959,6 @@ function DepartmentCard({
           {!editing && (
             <div className="flex items-center gap-0.5">
               <a
-                href={`/settings/departments/${dept.id}/sla`}
-                title="SLA policies"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <Clock className="size-3.5" />
-              </a>
-              <a
                 href={`/settings/departments/${dept.id}/assignment`}
                 title="Assignment methods"
                 className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
@@ -978,13 +971,6 @@ function DepartmentCard({
                 className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
               >
                 <Zap className="size-3.5" />
-              </a>
-              <a
-                href={`/settings/departments/${dept.id}/mailbox`}
-                title="Mailbox"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <Mail className="size-3.5" />
               </a>
             </div>
           )}

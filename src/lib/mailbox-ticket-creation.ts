@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine";
-import { resolveColumnIdForStatus } from "@/lib/board-columns";
 import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
@@ -59,8 +58,6 @@ export async function createTicketFromInboundEmail(params: {
     excludeUserId: managerRow?.userId ?? null,
   });
 
-  const boardColumnId = await resolveColumnIdForStatus(prisma, { departmentId, status });
-
   const ticket = await prisma.$transaction(async (tx) => {
     const created = await tx.ticket.create({
       data: {
@@ -74,7 +71,6 @@ export async function createTicketFromInboundEmail(params: {
         subDepartmentId: teamId,
         projectId,
         assigneeId: assignResult.assigneeId,
-        ...(boardColumnId ? { boardColumnId } : {}),
       },
       select: { id: true, ticketNumber: true },
     });

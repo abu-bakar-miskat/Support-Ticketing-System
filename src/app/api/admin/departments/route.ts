@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "../_guard"
 import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
-import { seedDepartmentBoard } from "@/lib/board-columns"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
 import { runWithScope } from "@/lib/request-scope"
 
@@ -58,7 +57,6 @@ export async function POST(request: Request) {
       const dept = await tx.department.create({
         data: { name, tenantId, type, isHub: type === "hub" },
       })
-      await seedDepartmentBoard(tx, { departmentId: dept.id, tenantId })
       return dept
     }),
   )

@@ -12,7 +12,6 @@ import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTi
 import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
-import { resolveColumnIdForStatus } from "@/lib/board-columns"
 import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { assertDepartmentOperational } from "@/lib/department-setup"
@@ -325,17 +324,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Team not found" }, { status: 404 })
   }
 
-  // Place the ticket in a column of its own department's board (DAT-03). The
-  // department is the project's (or its team's); null column is tolerated when
-  // the board isn't seeded yet (pre-backfill).
+  // Resolve the ticket's department (the project's, or its team's) — used below
+  // to start SLA timers for the new ticket.
   const columnProject = await prisma.project.findUnique({
     where: { id: resolvedProjectId },
     select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
   })
   const columnDeptId = columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
-  const boardColumnId = columnDeptId
-    ? await resolveColumnIdForStatus(prisma, { departmentId: columnDeptId, status })
-    : null
 
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
   let ticket
@@ -365,7 +360,6 @@ export async function POST(request: Request) {
         ...(assetLinks.length > 0 ? { assetLinks } : {}),
         ...(templateData ? { templateData } : {}),
         ...(validTemplateId ? { template: { connect: { id: validTemplateId } } } : {}),
-        ...(boardColumnId ? { boardColumn: { connect: { id: boardColumnId } } } : {}),
       },
       include: {
         subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },

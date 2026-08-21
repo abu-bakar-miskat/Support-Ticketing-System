@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowLeft,
+  ArrowRightLeft,
   Trash2,
   Plus,
   X,
@@ -118,6 +119,7 @@ import {
 } from "@/lib/ticket-datetime";
 import type { DateRange as DayPickerDateRange } from "react-day-picker";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TransferTicketDialog } from "@/components/tickets/transfer-ticket-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { RichTextDisplay } from "@/components/ui/rich-text-editor";
 import { ExpandableDescriptionEditor } from "@/components/ui/expandable-description-editor";
@@ -820,6 +822,7 @@ export function TicketDetailPage({
   const [templateEditing, setTemplateEditing] = useState(false);
   const [templateSaving, setTemplateSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [subTickets, setSubTickets] =
     useState<SubTicketData[]>(initialSubTickets);
   const [subModalId, setSubModalId] = useState<string | null>(null);
@@ -2055,6 +2058,17 @@ export function TicketDetailPage({
         successMessage={`Ticket ${ticketId} deleted`}
         onConfirm={doDeleteTicket}
       />
+      <TransferTicketDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        ticketDbId={dbId}
+        ticketHumanId={ticketId}
+        currentSubDepartmentId={subDepartmentId}
+        onTransferred={() => {
+          if (isDrawer) onClose?.();
+          router.refresh();
+        }}
+      />
       <ConfirmDialog
         open={!!subToDelete}
         onOpenChange={(open) => {
@@ -2204,6 +2218,17 @@ export function TicketDetailPage({
                 <Copy className="size-3" />
                 {copied ? "Copied" : "Copy link"}
               </button>
+              {canEditTicket && (
+                <button
+                  type="button"
+                  onClick={() => setTransferOpen(true)}
+                  title="Transfer to another department or sub-department"
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-pen-foreground hover:opacity-70"
+                >
+                  <ArrowRightLeft className="size-3" />
+                  Transfer
+                </button>
+              )}
               {canDelete && (
                 <button
                   type="button"

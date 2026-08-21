@@ -51,6 +51,36 @@ function readBusinessHours(value: unknown): BusinessHours {
 const toDateKey = (d: Date): string => d.toISOString().slice(0, 10);
 
 /**
+ * Resolves the effective SLA settings for a ticket: a sub-department's own
+ * `slaConfig`/`businessHours` override the parent department's when present,
+ * each falling back independently to the department (then built-in defaults).
+ */
+async function resolveSlaSettings(
+  departmentId: string,
+  subDepartmentId?: string | null,
+): Promise<{ slaConfig: SlaConfig; businessHours: BusinessHours }> {
+  let slaRaw: unknown = null;
+  let bhRaw: unknown = null;
+  if (subDepartmentId) {
+    const sub = await prisma.subDepartment.findUnique({
+      where: { id: subDepartmentId },
+      select: { slaConfig: true, businessHours: true },
+    });
+    slaRaw = sub?.slaConfig ?? null;
+    bhRaw = sub?.businessHours ?? null;
+  }
+  if (slaRaw == null || bhRaw == null) {
+    const dept = await prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { slaConfig: true, businessHours: true },
+    });
+    if (slaRaw == null) slaRaw = dept?.slaConfig ?? null;
+    if (bhRaw == null) bhRaw = dept?.businessHours ?? null;
+  }
+  return { slaConfig: readSlaConfig(slaRaw), businessHours: readBusinessHours(bhRaw) };
+}
+
+/**
  * Resolves the working-hours calendar to pause SLA timers against (SLA-04),
  * or null when the department doesn't pause outside hours. WH-05: the
  * assignee's own MemberSchedule (+ MemberHoliday) wins when present; the
@@ -58,15 +88,14 @@ const toDateKey = (d: Date): string => d.toISOString().slice(0, 10);
  * the ticket is unassigned or the assignee has no schedule configured.
  */
 export async function resolveCalendarForTicket(
-  params: { departmentId: string; assigneeId?: string | null },
+  params: { departmentId: string; subDepartmentId?: string | null; assigneeId?: string | null },
   rangeFrom: Date,
   rangeTo: Date,
 ): Promise<WorkingHoursCalendar | null> {
-  const department = await prisma.department.findUnique({
-    where: { id: params.departmentId },
-    select: { slaConfig: true, businessHours: true },
-  });
-  const slaConfig = readSlaConfig(department?.slaConfig);
+  const { slaConfig, businessHours } = await resolveSlaSettings(
+    params.departmentId,
+    params.subDepartmentId,
+  );
   if (!slaConfig.pauseOutsideHours) return null;
 
   if (params.assigneeId) {
@@ -90,7 +119,6 @@ export async function resolveCalendarForTicket(
     }
   }
 
-  const businessHours = readBusinessHours(department?.businessHours);
   const departmentHolidays = await prisma.departmentHoliday.findMany({
     where: { departmentId: params.departmentId, startDate: { lte: rangeTo }, endDate: { gte: rangeFrom } },
     select: { startDate: true, endDate: true },
@@ -113,10 +141,19 @@ export async function startSlaTimers(
   departmentId: string,
   formValues: Record<string, unknown>,
   now: Date = new Date(),
+  subDepartmentId?: string | null,
 ): Promise<void> {
   try {
     const policies = await prisma.slaPolicy.findMany({
-      where: { departmentId, enabled: true },
+      // Department-wide policies (subDepartmentId = null) apply to every ticket;
+      // a sub-department's own policies apply additionally to its tickets.
+      where: {
+        departmentId,
+        enabled: true,
+        OR: subDepartmentId
+          ? [{ subDepartmentId: null }, { subDepartmentId }]
+          : [{ subDepartmentId: null }],
+      },
       select: { id: true, conditions: true, firstResponseMins: true, resolutionMins: true },
     });
     const targets = selectSlaTargets(policies as SlaPolicyLike[], formValues);
@@ -197,16 +234,16 @@ export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new
   if (!timer) return null;
 
   const departmentId = timer.ticket.subDepartment.departmentId;
+  const subDepartmentId = timer.ticket.subDepartmentId;
   const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
   const calendar = await resolveCalendarForTicket(
-    { departmentId, assigneeId: timer.ticket.assigneeId },
+    { departmentId, subDepartmentId, assigneeId: timer.ticket.assigneeId },
     rangeFrom,
     now,
   );
-  const department = await prisma.department.findUnique({ where: { id: departmentId }, select: { slaConfig: true } });
-  const { atRiskPct } = readSlaConfig(department?.slaConfig);
+  const { slaConfig } = await resolveSlaSettings(departmentId, subDepartmentId);
 
-  return evaluateSlaIndicator(toTimerState(timer), now, calendar, atRiskPct);
+  return evaluateSlaIndicator(toTimerState(timer), now, calendar, slaConfig.atRiskPct);
 }
 
 /**
@@ -235,10 +272,11 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
     if (!timer) return;
 
     const departmentId = timer.ticket.subDepartment.departmentId;
+    const subDepartmentId = timer.ticket.subDepartmentId;
     const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
-    const calendar = await resolveCalendarForTicket({ departmentId, assigneeId: timer.ticket.assigneeId }, rangeFrom, now);
-    const department = await prisma.department.findUnique({ where: { id: departmentId }, select: { slaConfig: true } });
-    const { atRiskPct } = readSlaConfig(department?.slaConfig);
+    const calendar = await resolveCalendarForTicket({ departmentId, subDepartmentId, assigneeId: timer.ticket.assigneeId }, rangeFrom, now);
+    const { slaConfig } = await resolveSlaSettings(departmentId, subDepartmentId);
+    const atRiskPct = slaConfig.atRiskPct;
 
     const indicator = evaluateSlaIndicator(toTimerState(timer), now, calendar, atRiskPct);
 

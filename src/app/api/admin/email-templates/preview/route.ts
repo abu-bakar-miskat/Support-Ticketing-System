@@ -32,13 +32,17 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+  const subDepartmentId =
+    typeof body?.subDepartmentId === "string" && body.subDepartmentId.trim()
+      ? body.subDepartmentId.trim()
+      : null;
 
   const def = DEFAULT_TEMPLATES[key];
   const subject = typeof body?.subject === "string" && body.subject.trim() ? body.subject : def.subject;
   const heading = typeof body?.heading === "string" && body.heading.trim() ? body.heading : def.heading;
   const bodyHtml = typeof body?.bodyHtml === "string" && body.bodyHtml.trim() ? body.bodyHtml : def.bodyHtml;
 
-  const config = await getEmailConfig(departmentId);
+  const config = await getEmailConfig(departmentId, subDepartmentId);
   const branding = brandingFrom(config);
 
   const renderedSubject = applyPlaceholders(subject, def.sample);

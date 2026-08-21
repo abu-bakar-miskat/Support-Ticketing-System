@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("@/lib/db", () => ({
   prisma: {
     department: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
     slaPolicy: { findMany: vi.fn() },
     slaTimer: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     slaBreach: { create: vi.fn() },

@@ -23,7 +23,7 @@ function notifyKeyFor(templateKey: string): string {
   return `notify${templateKey[0].toUpperCase()}${templateKey.slice(1)}`;
 }
 
-export type DeptOption = { id: string; name: string };
+export type DeptOption = { id: string; name: string; subDepartmentId?: string | null };
 
 const inputClass =
   "h-9 w-full rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none outline-none focus:border-pen-blue";
@@ -38,10 +38,12 @@ const PLACEHOLDER_HINTS: Record<string, string> = {
 function TemplateEditor({
   template,
   departmentId,
+  subDepartmentId,
   onSaved,
 }: {
   template: EmailTemplateInfo;
   departmentId: string;
+  subDepartmentId?: string | null;
   onSaved: () => void;
 }) {
   const isCustomized = Boolean(template.override);
@@ -57,7 +59,7 @@ function TemplateEditor({
   async function runPreview(next: EmailTemplateOverrideDraft) {
     setLoadingPreview(true);
     try {
-      const result = await previewEmailTemplate(template.key, next, departmentId);
+      const result = await previewEmailTemplate(template.key, next, departmentId, subDepartmentId);
       setPreview(result);
     } catch {
       toast.error("Failed to render preview");
@@ -69,7 +71,7 @@ function TemplateEditor({
   useEffect(() => {
     runPreview(draft);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template.key, departmentId]);
+  }, [template.key, departmentId, subDepartmentId]);
 
   async function handleSave() {
     if (!draft.bodyHtml.trim()) {
@@ -78,7 +80,7 @@ function TemplateEditor({
     }
     setSaving(true);
     try {
-      await saveEmailTemplate(template.key, draft, departmentId);
+      await saveEmailTemplate(template.key, draft, departmentId, subDepartmentId);
       toast.success(`${template.label} template saved`);
       onSaved();
     } catch (err) {
@@ -91,7 +93,7 @@ function TemplateEditor({
   async function handleReset() {
     setSaving(true);
     try {
-      await resetEmailTemplate(template.key, departmentId);
+      await resetEmailTemplate(template.key, departmentId, subDepartmentId);
       setDraft(template.default);
       await runPreview(template.default);
       toast.success(`${template.label} template reset to default`);
@@ -248,10 +250,12 @@ export function SettingsEmailTemplatesPage({
   const [disabledNotifyKeys, setDisabledNotifyKeys] = useState<Set<string>>(new Set());
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
+  const subDepartmentId = departments.find((o) => o.id === departmentId)?.subDepartmentId ?? null;
+
   async function load() {
     if (!departmentId) return;
     try {
-      const data = await fetchEmailTemplates(departmentId);
+      const data = await fetchEmailTemplates(departmentId, subDepartmentId);
       setTemplates(data);
     } catch {
       toast.error("Failed to load email templates");
@@ -261,7 +265,7 @@ export function SettingsEmailTemplatesPage({
   async function loadNotifications() {
     if (!departmentId) return;
     try {
-      const data = await fetchEmailNotifications(departmentId);
+      const data = await fetchEmailNotifications(departmentId, subDepartmentId);
       const disabled = new Set(
         data.filter((n) => (n.override ?? n.default) === false).map((n) => n.key),
       );
@@ -280,7 +284,7 @@ export function SettingsEmailTemplatesPage({
     load();
     loadNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [departmentId]);
+  }, [departmentId, subDepartmentId]);
 
   if (departments.length === 0) {
     return (
@@ -389,6 +393,7 @@ export function SettingsEmailTemplatesPage({
                   key={`${departmentId}-${template.key}`}
                   template={template}
                   departmentId={departmentId}
+                  subDepartmentId={subDepartmentId}
                   onSaved={load}
                 />
               ) : null}

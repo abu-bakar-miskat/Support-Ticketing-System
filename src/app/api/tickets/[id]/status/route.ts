@@ -212,6 +212,7 @@ export async function PATCH(
       formName: ticket.intake.formConfig.name,
       ticketTitle: ticket.title,
       departmentId: ticket.subDepartment.departmentId,
+      subDepartmentId: ticket.subDepartmentId,
     }).catch((err) => console.error("[resolution email] failed:", err))
   }
 

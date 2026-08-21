@@ -10,7 +10,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
@@ -105,7 +104,6 @@ export function SubDepartmentMailboxManager({
 
   const list = connections ?? [];
   const loading = connections === null;
-  const unhealthy = list.filter((c) => c.status !== "ACTIVE").length;
 
   async function connect() {
     const value = address.trim();
@@ -209,29 +207,6 @@ export function SubDepartmentMailboxManager({
           </button>
         )}
       </div>
-
-      {/* ── Health summary ── */}
-      {!loading && list.length > 0 && (
-        <div
-          className={cn(
-            "flex items-center gap-2.5 rounded-xl border px-4 py-3",
-            unhealthy === 0
-              ? "border-pen-green/30 bg-pen-green/5"
-              : "border-amber-500/30 bg-amber-500/5",
-          )}
-        >
-          {unhealthy === 0 ? (
-            <ShieldCheck className="size-4 shrink-0 text-pen-green" />
-          ) : (
-            <AlertTriangle className="size-4 shrink-0 text-amber-500" />
-          )}
-          <p className="font-sans text-[12.5px] text-pen-foreground">
-            {unhealthy === 0
-              ? `All ${list.length} mailbox${list.length === 1 ? "" : "es"} connected and healthy.`
-              : `${unhealthy} of ${list.length} mailbox${list.length === 1 ? "" : "es"} need attention.`}
-          </p>
-        </div>
-      )}
 
       {/* ── Connect form ── */}
       {canManage && showConnect && (

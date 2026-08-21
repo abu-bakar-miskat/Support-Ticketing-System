@@ -29,9 +29,27 @@ function isConditionGroup(value: unknown): value is ConditionGroup {
   }
 }
 
+/** Validate that `subDepartmentId` (if given) belongs to department `id`. */
+async function resolveSubDepartmentScope(
+  departmentId: string,
+  raw: string | null | undefined,
+): Promise<{ subDepartmentId: string | null } | { error: NextResponse }> {
+  const subDepartmentId = raw && raw.trim() ? raw.trim() : null
+  if (subDepartmentId) {
+    const sub = await prisma.subDepartment.findFirst({
+      where: { id: subDepartmentId, departmentId },
+      select: { id: true },
+    })
+    if (!sub) {
+      return { error: NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 }) }
+    }
+  }
+  return { subDepartmentId }
+}
+
 /** GET /api/departments/:id/sla-policies — this department's SLA policies, in order. */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
@@ -42,8 +60,12 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const scope = await resolveSubDepartmentScope(id, req.nextUrl.searchParams.get("subDepartmentId"))
+  if ("error" in scope) return scope.error
+
+  // Without a subDepartmentId, return only department-wide policies (null).
   const policies = await prisma.slaPolicy.findMany({
-    where: { departmentId: id },
+    where: { departmentId: id, subDepartmentId: scope.subDepartmentId },
     orderBy: { order: "asc" },
     select: POLICY_SELECT,
   })
@@ -83,8 +105,11 @@ export async function POST(
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
   if (!dept) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
+  const scope = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
+  if ("error" in scope) return scope.error
+
   const last = await prisma.slaPolicy.findFirst({
-    where: { departmentId: id },
+    where: { departmentId: id, subDepartmentId: scope.subDepartmentId },
     orderBy: { order: "desc" },
     select: { order: true },
   })
@@ -94,6 +119,7 @@ export async function POST(
     data: {
       tenantId: dept.tenantId,
       departmentId: id,
+      subDepartmentId: scope.subDepartmentId,
       name,
       conditions,
       firstResponseMins,

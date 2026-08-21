@@ -113,6 +113,7 @@ export async function recordAssignmentFailure(
   actorId: string,
   ticketTitle: string,
   humanId: string,
+  subDepartmentId?: string | null,
 ): Promise<void> {
   try {
     await prisma.activityLog.create({
@@ -140,6 +141,7 @@ export async function recordAssignmentFailure(
         humanId,
         ticketTitle,
         departmentId,
+        subDepartmentId,
       }).catch(() => undefined);
     }
   } catch {

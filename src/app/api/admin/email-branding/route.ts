@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import {
   brandingFrom,
   getEmailConfig,
@@ -9,6 +10,14 @@ import {
 } from "@/lib/email-config";
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/** Validate an optional sub-department belongs to the given department. */
+async function checkSubScope(departmentId: string, subDepartmentId: string | null): Promise<NextResponse | null> {
+  if (!subDepartmentId) return null;
+  const sub = await prisma.subDepartment.findFirst({ where: { id: subDepartmentId, departmentId }, select: { id: true } });
+  if (!sub) return NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 });
+  return null;
+}
 
 function requireDepartmentId(
   profile: NonNullable<Awaited<ReturnType<typeof requireAdminOrManager>>["profile"]>,
@@ -34,10 +43,16 @@ export async function GET(request: NextRequest) {
   const departmentId = request.nextUrl.searchParams.get("departmentId");
   const scopeError = requireDepartmentId(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
+  const subScopeError = await checkSubScope(departmentId!, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
-  const workspaceConfig = await getEmailConfig();
-  const override = await getDepartmentEmailBranding(departmentId!);
-  const defaults = brandingFrom(workspaceConfig);
+  // Sub-department inherits the department's effective branding as its default.
+  const baseConfig = subDepartmentId ? await getEmailConfig(departmentId) : await getEmailConfig();
+  const override = subDepartmentId
+    ? await getDepartmentEmailBranding(departmentId!, subDepartmentId)
+    : await getDepartmentEmailBranding(departmentId!);
+  const defaults = brandingFrom(baseConfig);
 
   return NextResponse.json({
     defaults,
@@ -59,6 +74,9 @@ export async function PUT(request: NextRequest) {
   const departmentId = typeof body?.departmentId === "string" ? body.departmentId : "";
   const scopeError = requireDepartmentId(profile!, departmentId || null);
   if (scopeError) return scopeError;
+  const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
+  const subScopeError = await checkSubScope(departmentId, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
   const branding: Partial<EmailBranding> = {};
   for (const key of ["brandColor", "headerColor", "logoUrl", "footerText"] as const) {
@@ -75,7 +93,7 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  await saveDepartmentEmailBranding(departmentId, branding as EmailBranding);
+  await saveDepartmentEmailBranding(departmentId, branding as EmailBranding, subDepartmentId);
   return NextResponse.json({ ok: true });
 }
 
@@ -86,7 +104,10 @@ export async function DELETE(request: NextRequest) {
   const departmentId = request.nextUrl.searchParams.get("departmentId");
   const scopeError = requireDepartmentId(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
+  const subScopeError = await checkSubScope(departmentId!, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
-  await saveDepartmentEmailBranding(departmentId!, null);
+  await saveDepartmentEmailBranding(departmentId!, null, subDepartmentId);
   return NextResponse.json({ ok: true });
 }

@@ -87,6 +87,7 @@ export async function POST(
           assignedByName: profile.name,
           assignedById: profile.id,
           departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartmentId,
         }).catch((err) => console.error("[assignment email] failed:", err));
       }
     }

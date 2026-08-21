@@ -86,10 +86,19 @@ async function jsonOrThrow(res: Response) {
 export function RulesSettingsPage({
   departmentId,
   departmentName,
+  subDepartmentId,
+  subDepartmentName,
 }: {
   departmentId: string;
   departmentName: string;
+  /** When set, this surface manages ONLY the given sub-department's rules. */
+  subDepartmentId?: string;
+  subDepartmentName?: string;
 }) {
+  // Scope every request to the sub-department when one is provided; otherwise
+  // the endpoints default to department-wide rules (subDepartmentId = null).
+  const scopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
+  const scopeBody = subDepartmentId ? { subDepartmentId } : {};
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [slaPolicies, setSlaPolicies] = useState<SlaPolicyLite[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -102,8 +111,8 @@ export function RulesSettingsPage({
 
   const load = () => {
     Promise.all([
-      fetch(`/api/departments/${departmentId}/rules`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/sla-policies`).then(jsonOrThrow).catch(() => []),
+      fetch(`/api/departments/${departmentId}/rules${scopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/sla-policies${scopeQs}`).then(jsonOrThrow).catch(() => []),
     ])
       .then(([rulesRes, slaRes]) => {
         setRules(rulesRes);
@@ -111,7 +120,7 @@ export function RulesSettingsPage({
       })
       .catch((e) => setError(e.message));
   };
-  useEffect(load, [departmentId]);
+  useEffect(load, [departmentId, subDepartmentId]);
 
   function patchLocal(id: string, updater: (r: Rule) => Rule) {
     setRules((prev) => prev?.map((r) => (r.id === id ? updater(r) : r)) ?? null);
@@ -128,6 +137,7 @@ export function RulesSettingsPage({
             name: "New rule",
             conditions: { combinator: "AND", conditions: [] },
             actions: [],
+            ...scopeBody,
           }),
         }),
       );
@@ -186,7 +196,7 @@ export function RulesSettingsPage({
         await fetch(`/api/departments/${departmentId}/rules/reorder`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ruleIds: next.map((r) => r.id) }),
+          body: JSON.stringify({ ruleIds: next.map((r) => r.id), ...scopeBody }),
         }),
       );
     } catch (e) {
@@ -206,7 +216,7 @@ export function RulesSettingsPage({
         await fetch(`/api/departments/${departmentId}/rules/test`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values, rules }),
+          body: JSON.stringify({ values, rules, ...scopeBody }),
         }),
       );
       setTestResult(plan);
@@ -219,15 +229,22 @@ export function RulesSettingsPage({
 
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-      <Link
-        href="/settings/departments"
-        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
-      >
-        <ArrowLeft className="size-3.5" /> Back to departments
-      </Link>
+      {!subDepartmentId && (
+        <Link
+          href="/settings/departments"
+          className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
+        >
+          <ArrowLeft className="size-3.5" /> Back to departments
+        </Link>
+      )}
 
-      <h1 className="pen-text-modal-title mb-1">Automation rules — {departmentName}</h1>
+      <h1 className="pen-text-modal-title mb-1">
+        Automation rules — {subDepartmentName ?? departmentName}
+      </h1>
       <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+        {subDepartmentId
+          ? "These rules run in addition to the parent department's rules, on this sub-department's tickets only. "
+          : ""}
         Rules run in order on every new ticket. A matching rule fires its actions; enable
         &ldquo;stop after this&rdquo; to halt later rules. Test against sample field values before turning a rule on.
       </p>

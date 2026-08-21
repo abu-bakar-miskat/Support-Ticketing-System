@@ -100,7 +100,7 @@ export async function createTicketFromInboundEmail(params: {
   }
 
   const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName };
-  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues);
+  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues, undefined, teamId);
 
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
@@ -117,7 +117,7 @@ export async function createTicketFromInboundEmail(params: {
   const humanId = `${team.prefix}-${ticket.ticketNumber}`;
 
   if (assignResult.failed) {
-    await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId);
+    await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId, teamId);
   } else if (assignResult.assigneeId) {
     const assignee = await prisma.profile.findUnique({
       where: { id: assignResult.assigneeId },
@@ -140,6 +140,7 @@ export async function createTicketFromInboundEmail(params: {
         assignedByName: "System",
         assignedById: creatorId,
         departmentId,
+        subDepartmentId: teamId,
       }).catch(() => undefined);
     }
   }

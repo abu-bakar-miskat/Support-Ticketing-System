@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       ticketNumber: true,
       assigneeId: true,
       projectId: true,
+      subDepartmentId: true,
       subDepartment: { select: { prefix: true, departmentId: true } },
     },
   })
@@ -196,6 +197,7 @@ export async function POST(req: NextRequest) {
           assignedByName: caller!.name,
           assignedById: caller!.id,
           departmentId: before.subDepartment.departmentId,
+          subDepartmentId: before.subDepartmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }),
     )

@@ -59,7 +59,13 @@ export async function applyRulesToTicket(
 ): Promise<RuleExecutionResult> {
   try {
     const rows = await prisma.rule.findMany({
-      where: { departmentId: ticket.departmentId, enabled: true },
+      // Department-wide rules (subDepartmentId = null) apply to every ticket;
+      // a sub-department's own rules apply additionally to its tickets.
+      where: {
+        departmentId: ticket.departmentId,
+        enabled: true,
+        OR: [{ subDepartmentId: null }, { subDepartmentId: ticket.subDepartmentId }],
+      },
       orderBy: { order: "asc" },
       select: {
         id: true,

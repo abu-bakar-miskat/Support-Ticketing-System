@@ -140,6 +140,7 @@ async function handlePost(
       formName: form.name,
       verifyUrl: ensureAbsoluteUrl(`${BASE_URL}/support/verify/${token}`),
       departmentId: form.departmentId,
+      subDepartmentId: form.intakeSubDepartmentId,
     })
 
   // ── Reuse an existing unconsumed verification for this submission ────────────

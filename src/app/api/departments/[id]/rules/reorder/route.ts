@@ -25,10 +25,11 @@ export async function PATCH(
   if (!Array.isArray(ruleIds) || ruleIds.some((r) => typeof r !== "string")) {
     return NextResponse.json({ error: "ruleIds must be an array of strings" }, { status: 400 })
   }
+  const subDepartmentId = (body.subDepartmentId as string | undefined)?.trim() || null
 
-  // Only reorder rules that actually belong to this department.
+  // Only reorder rules that belong to this department + sub-department surface.
   const owned = await prisma.rule.findMany({
-    where: { departmentId: id, id: { in: ruleIds } },
+    where: { departmentId: id, subDepartmentId, id: { in: ruleIds } },
     select: { id: true },
   })
   const ownedIds = new Set(owned.map((r) => r.id))
@@ -42,7 +43,7 @@ export async function PATCH(
   )
 
   const rules = await prisma.rule.findMany({
-    where: { departmentId: id },
+    where: { departmentId: id, subDepartmentId },
     orderBy: { order: "asc" },
     select: { id: true, name: true, conditions: true, actions: true, order: true, enabled: true, stopProcessing: true },
   })

@@ -96,6 +96,8 @@ function EmailNotificationsCard({
   const [overrides, setOverrides] = useState<Partial<Record<NotifyKey, boolean | null>>>({});
   const [loading, setLoading] = useState(false);
 
+  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+
   useEffect(() => {
     if (!departmentId) {
       setOverrides({});
@@ -103,7 +105,7 @@ function EmailNotificationsCard({
     }
     let cancelled = false;
     setLoading(true);
-    fetchEmailNotifications(departmentId)
+    fetchEmailNotifications(departmentId, subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         const map: Partial<Record<NotifyKey, boolean | null>> = {};
@@ -113,7 +115,7 @@ function EmailNotificationsCard({
       .catch(() => toast.error("Failed to load department notification settings"))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [departmentId]);
+  }, [departmentId, subDepartmentId]);
 
   async function handleToggle(key: NotifyKey, checked: boolean) {
     if (!departmentId) {
@@ -123,7 +125,7 @@ function EmailNotificationsCard({
     const previous = overrides[key] ?? null;
     setOverrides((prev) => ({ ...prev, [key]: checked }));
     try {
-      await setEmailNotificationOverride(key, checked, departmentId);
+      await setEmailNotificationOverride(key, checked, departmentId, subDepartmentId);
     } catch {
       toast.error("Failed to save override");
       setOverrides((prev) => ({ ...prev, [key]: previous }));
@@ -360,7 +362,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchEmailIdentity(department.id)
+    fetchEmailIdentity(department.id, department.subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         setDefaults({ fromName: data.defaultFromName, fromEmail: data.defaultFromEmail });
@@ -370,7 +372,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
       .catch(() => toast.error(`Failed to load email identity for ${department.name}`))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [department.id, department.name]);
+  }, [department.id, department.name, department.subDepartmentId]);
 
   useEffect(() => {
     const email = fromEmail.trim();
@@ -392,7 +394,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   async function saveName() {
     setSavingName(true);
     try {
-      await setEmailIdentity({ fromName: fromName.trim() }, department.id);
+      await setEmailIdentity({ fromName: fromName.trim() }, department.id, department.subDepartmentId);
       toast.success(`From name saved for ${department.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save From name");
@@ -404,7 +406,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   async function saveEmail() {
     setSavingEmail(true);
     try {
-      await setEmailIdentity({ fromEmail: fromEmail.trim() }, department.id);
+      await setEmailIdentity({ fromEmail: fromEmail.trim() }, department.id, department.subDepartmentId);
       toast.success(`From email saved for ${department.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save From email");
@@ -540,11 +542,13 @@ function EmailBrandingCard({
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+
   useEffect(() => {
     if (!departmentId) return;
     let cancelled = false;
     setLoading(true);
-    fetchEmailBranding(departmentId)
+    fetchEmailBranding(departmentId, subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         const effective: EmailBrandingValues = {
@@ -567,7 +571,7 @@ function EmailBrandingCard({
     return () => {
       cancelled = true;
     };
-  }, [departmentId]);
+  }, [departmentId, subDepartmentId]);
 
   if (departments.length === 0) return null;
 
@@ -596,7 +600,7 @@ function EmailBrandingCard({
         logoUrl: logoUrl.trim(),
         footerText,
       };
-      await setEmailBranding(departmentId, next);
+      await setEmailBranding(departmentId, next, subDepartmentId);
       setSaved(next);
       setHasOverride(true);
       toast.success("Email branding saved");
@@ -618,8 +622,8 @@ function EmailBrandingCard({
     if (!departmentId) return;
     setResetting(true);
     try {
-      await resetEmailBranding(departmentId);
-      const data = await fetchEmailBranding(departmentId);
+      await resetEmailBranding(departmentId, subDepartmentId);
+      const data = await fetchEmailBranding(departmentId, subDepartmentId);
       const defaults = data.defaults;
       setBrandColor(defaults.brandColor);
       setHeaderColor(defaults.headerColor);
@@ -911,7 +915,7 @@ export function SettingsEmailPage({
   branding?: EmailBrandingValues;
 }) {
   const canSeeGeneral = isAdmin || isManager;
-  const [tab, setTab] = useState<"general" | "templates">(canSeeGeneral ? "general" : "templates");
+  const [tab, setTab] = useState<"general" | "branding" | "templates">(canSeeGeneral ? "general" : "templates");
   const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
     mergeSwitches(defaultSwitches(), initialConfig),
   );
@@ -941,6 +945,7 @@ export function SettingsEmailPage({
             canSeeGeneral
               ? [
                   { id: "general" as const, label: "General" },
+                  { id: "branding" as const, label: "Branding" },
                   { id: "templates" as const, label: "Templates" },
                 ]
               : [{ id: "templates" as const, label: "Templates" }]
@@ -971,13 +976,6 @@ export function SettingsEmailPage({
             fromEmail={fromEmail}
           />
 
-          {branding ? (
-            <EmailBrandingCard
-              departments={departments}
-              workspaceDefaults={branding}
-            />
-          ) : null}
-
           <EmailIdentityCard departments={departments} />
 
           <EmailNotificationsCard
@@ -985,6 +983,15 @@ export function SettingsEmailPage({
             switches={switches}
             onWorkspaceSwitchChange={onWorkspaceSwitchChange}
           />
+        </div>
+      ) : tab === "branding" && canSeeGeneral ? (
+        <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+          {branding ? (
+            <EmailBrandingCard
+              departments={departments}
+              workspaceDefaults={branding}
+            />
+          ) : null}
         </div>
       ) : (
         <SettingsEmailTemplatesPage departments={departments} />

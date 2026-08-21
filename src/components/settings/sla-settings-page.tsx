@@ -32,9 +32,14 @@ async function jsonOrThrow(res: Response) {
 export function SlaSettingsPage({
   departmentId,
   departmentName,
+  subDepartmentId,
+  subDepartmentName,
 }: {
   departmentId: string;
   departmentName: string;
+  /** When set, this surface manages ONLY the given sub-department's SLA. */
+  subDepartmentId?: string;
+  subDepartmentName?: string;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
@@ -42,10 +47,15 @@ export function SlaSettingsPage({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Scope every request to the sub-department when one is provided; otherwise
+  // the endpoints operate on department-wide config (subDepartmentId = null).
+  const scopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
+  const scopeBody = subDepartmentId ? { subDepartmentId } : {};
+
   const load = () => {
     Promise.all([
-      fetch(`/api/departments/${departmentId}/sla-policies`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/sla-settings`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/sla-policies${scopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/sla-settings${scopeQs}`).then(jsonOrThrow),
     ])
       .then(([policiesRes, settingsRes]) => {
         setPolicies(policiesRes);
@@ -55,7 +65,7 @@ export function SlaSettingsPage({
       .catch((e) => setError(e.message));
   };
 
-  useEffect(load, [departmentId]);
+  useEffect(load, [departmentId, subDepartmentId]);
 
   async function addPolicy() {
     setError(null);
@@ -69,6 +79,7 @@ export function SlaSettingsPage({
             conditions: { combinator: "AND", conditions: [] },
             firstResponseMins: 60,
             resolutionMins: 480,
+            ...scopeBody,
           }),
         }),
       );
@@ -116,7 +127,7 @@ export function SlaSettingsPage({
         await fetch(`/api/departments/${departmentId}/sla-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slaConfig, businessHours }),
+          body: JSON.stringify({ slaConfig, businessHours, ...scopeBody }),
         }),
       );
     } catch (e) {
@@ -141,13 +152,21 @@ export function SlaSettingsPage({
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
         href="/settings/departments"
-        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
+        className={cn(
+          "mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground",
+          subDepartmentId && "hidden",
+        )}
       >
         <ArrowLeft className="size-3.5" /> Back to departments
       </Link>
 
-      <h1 className="pen-text-modal-title mb-1">SLA policies — {departmentName}</h1>
+      <h1 className="pen-text-modal-title mb-1">
+        SLA policies — {subDepartmentName ?? departmentName}
+      </h1>
       <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+        {subDepartmentId
+          ? "These policies and business hours run in addition to the parent department's, for this sub-department's tickets only. "
+          : ""}
         First-response and resolution targets, matched against submitted form values. When several
         policies match, the strictest target on each metric wins.
       </p>

@@ -85,6 +85,35 @@ function mergeConfig(
   return merged;
 }
 
+/**
+ * A target for reading/writing an `emailConfig` JSON blob: either a department
+ * or one of its sub-departments. Sub-department and department rows use the
+ * exact same JSON shape (identity/branding/notifyOverrides/customTemplates), so
+ * every helper below works against either by switching the Prisma model here.
+ */
+type EmailConfigScope = { subDepartmentId: string } | { departmentId: string };
+
+function scopeFor(departmentId: string, subDepartmentId?: string | null): EmailConfigScope {
+  return subDepartmentId ? { subDepartmentId } : { departmentId };
+}
+
+async function loadEmailConfigRaw(scope: EmailConfigScope): Promise<Record<string, unknown>> {
+  const raw =
+    "subDepartmentId" in scope
+      ? (await prisma.subDepartment.findUnique({ where: { id: scope.subDepartmentId }, select: { emailConfig: true } }))?.emailConfig
+      : (await prisma.department.findUnique({ where: { id: scope.departmentId }, select: { emailConfig: true } }))?.emailConfig;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
+async function writeEmailConfigRaw(scope: EmailConfigScope, nextConfig: Record<string, unknown>): Promise<void> {
+  const data = { emailConfig: nextConfig as Prisma.InputJsonValue };
+  if ("subDepartmentId" in scope) {
+    await prisma.subDepartment.update({ where: { id: scope.subDepartmentId }, data });
+  } else {
+    await prisma.department.update({ where: { id: scope.departmentId }, data });
+  }
+}
+
 export const EMAIL_NOTIFY_KEYS = [
   "notifyAssignment",
   "notifyMention",
@@ -113,15 +142,17 @@ function readNotifyOverrides(
   return result;
 }
 
-/** Reads one department's own notification-toggle overrides (no fallback applied). */
+/**
+ * Reads one scope's own notification-toggle overrides (no fallback applied).
+ * When `subDepartmentId` is given, reads the sub-department's overrides;
+ * otherwise the department's.
+ */
 export async function getDepartmentNotifyOverrides(
   departmentId: string,
+  subDepartmentId?: string | null,
 ): Promise<Partial<Record<EmailNotifyKey, boolean>>> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  return readNotifyOverrides(department?.emailConfig);
+  const raw = await loadEmailConfigRaw(scopeFor(departmentId, subDepartmentId));
+  return readNotifyOverrides(raw);
 }
 
 /** DS-02: one of a department's configured send-from addresses. */
@@ -190,15 +221,13 @@ export function readIdentityOverride(emailConfig: unknown): EmailIdentityOverrid
   return result;
 }
 
-/** Reads one department's own From name/email override (no fallback applied). */
+/** Reads one scope's own From name/email override (no fallback applied). */
 export async function getDepartmentEmailIdentity(
   departmentId: string,
+  subDepartmentId?: string | null,
 ): Promise<EmailIdentityOverride> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  return readIdentityOverride(department?.emailConfig);
+  const raw = await loadEmailConfigRaw(scopeFor(departmentId, subDepartmentId));
+  return readIdentityOverride(raw);
 }
 
 /**
@@ -209,15 +238,10 @@ export async function getDepartmentEmailIdentity(
 export async function saveDepartmentEmailIdentity(
   departmentId: string,
   identity: { fromName?: string | null; fromEmail?: string | null },
+  subDepartmentId?: string | null,
 ): Promise<void> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  const existingConfig =
-    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
-      ? (department.emailConfig as Record<string, unknown>)
-      : {};
+  const scope = scopeFor(departmentId, subDepartmentId);
+  const existingConfig = await loadEmailConfigRaw(scope);
   const nextIdentity = { ...readIdentityOverride(existingConfig) };
   if (identity.fromName !== undefined) {
     if (identity.fromName === null || !identity.fromName.trim()) delete nextIdentity.fromName;
@@ -227,11 +251,7 @@ export async function saveDepartmentEmailIdentity(
     if (identity.fromEmail === null || !identity.fromEmail.trim()) delete nextIdentity.fromEmail;
     else nextIdentity.fromEmail = identity.fromEmail.trim();
   }
-  const nextConfig = { ...existingConfig, identity: nextIdentity };
-  await prisma.department.update({
-    where: { id: departmentId },
-    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
-  });
+  await writeEmailConfigRaw(scope, { ...existingConfig, identity: nextIdentity });
 }
 
 /**
@@ -243,15 +263,10 @@ export async function saveDepartmentEmailIdentity(
 export async function saveDepartmentEmailSenders(
   departmentId: string,
   senders: { id?: string; name: string; email: string; isDefault?: boolean }[],
+  subDepartmentId?: string | null,
 ): Promise<EmailSender[]> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  const existingConfig =
-    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
-      ? (department.emailConfig as Record<string, unknown>)
-      : {};
+  const scope = scopeFor(departmentId, subDepartmentId);
+  const existingConfig = await loadEmailConfigRaw(scope);
   const existingIdentity: Record<string, unknown> =
     existingConfig.identity && typeof existingConfig.identity === "object" && !Array.isArray(existingConfig.identity)
       ? (existingConfig.identity as Record<string, unknown>)
@@ -274,11 +289,7 @@ export async function saveDepartmentEmailSenders(
   delete nextIdentity.fromName;
   delete nextIdentity.fromEmail;
 
-  const nextConfig = { ...existingConfig, identity: nextIdentity };
-  await prisma.department.update({
-    where: { id: departmentId },
-    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
-  });
+  await writeEmailConfigRaw(scope, { ...existingConfig, identity: nextIdentity });
   return normalized;
 }
 
@@ -292,8 +303,17 @@ export async function saveDepartmentEmailSenders(
 export async function resolveDepartmentSender(
   departmentId: string,
   overrideSenderId?: string | null,
+  subDepartmentId?: string | null,
 ): Promise<{ name: string; email: string } | null> {
-  const { senders = [] } = await getDepartmentEmailIdentity(departmentId);
+  // A sub-department's own senders win; if it has none configured, fall back to
+  // the department's senders (then null → workspace-wide address upstream).
+  let senders: EmailSender[] = [];
+  if (subDepartmentId) {
+    senders = (await getDepartmentEmailIdentity(departmentId, subDepartmentId)).senders ?? [];
+  }
+  if (senders.length === 0) {
+    senders = (await getDepartmentEmailIdentity(departmentId)).senders ?? [];
+  }
   if (overrideSenderId) {
     const chosen = senders.find((s) => s.id === overrideSenderId);
     if (chosen) return { name: chosen.name, email: chosen.email };
@@ -322,15 +342,13 @@ export function readBrandingOverride(emailConfig: unknown): Partial<EmailBrandin
   return result;
 }
 
-/** Reads one department's own branding override (no fallback applied). */
+/** Reads one scope's own branding override (no fallback applied). */
 export async function getDepartmentEmailBranding(
   departmentId: string,
+  subDepartmentId?: string | null,
 ): Promise<Partial<EmailBranding>> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  return readBrandingOverride(department?.emailConfig);
+  const raw = await loadEmailConfigRaw(scopeFor(departmentId, subDepartmentId));
+  return readBrandingOverride(raw);
 }
 
 /**
@@ -341,15 +359,10 @@ export async function getDepartmentEmailBranding(
 export async function saveDepartmentEmailBranding(
   departmentId: string,
   branding: Partial<EmailBranding> | null,
+  subDepartmentId?: string | null,
 ): Promise<void> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  const existingConfig =
-    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
-      ? (department.emailConfig as Record<string, unknown>)
-      : {};
+  const scope = scopeFor(departmentId, subDepartmentId);
+  const existingConfig = await loadEmailConfigRaw(scope);
 
   let nextBranding: Partial<EmailBranding>;
   if (branding === null) {
@@ -364,11 +377,7 @@ export async function saveDepartmentEmailBranding(
     }
   }
 
-  const nextConfig = { ...existingConfig, branding: nextBranding };
-  await prisma.department.update({
-    where: { id: departmentId },
-    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
-  });
+  await writeEmailConfigRaw(scope, { ...existingConfig, branding: nextBranding });
 }
 
 /**
@@ -380,26 +389,17 @@ export async function saveDepartmentNotifyOverride(
   key: EmailNotifyKey,
   value: boolean | null,
   departmentId: string,
+  subDepartmentId?: string | null,
 ): Promise<void> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  const existingConfig =
-    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
-      ? (department.emailConfig as Record<string, unknown>)
-      : {};
+  const scope = scopeFor(departmentId, subDepartmentId);
+  const existingConfig = await loadEmailConfigRaw(scope);
   const nextOverrides = { ...readNotifyOverrides(existingConfig) };
   if (value === null) {
     delete nextOverrides[key];
   } else {
     nextOverrides[key] = value;
   }
-  const nextConfig = { ...existingConfig, notifyOverrides: nextOverrides };
-  await prisma.department.update({
-    where: { id: departmentId },
-    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
-  });
+  await writeEmailConfigRaw(scope, { ...existingConfig, notifyOverrides: nextOverrides });
 }
 
 /**
@@ -407,7 +407,10 @@ export async function saveDepartmentNotifyOverride(
  * to layer that department's notification-toggle, From identity, and branding
  * overrides on top — reply-to stays workspace-wide.
  */
-export async function getEmailConfig(departmentId?: string | null): Promise<EmailConfig> {
+export async function getEmailConfig(
+  departmentId?: string | null,
+  subDepartmentId?: string | null,
+): Promise<EmailConfig> {
   const defaults = emailConfigDefaults();
   // Base = the tenant's email config (resolved via the department). Falls back to
   // the legacy Workspace singleton when there's no department or no tenant config
@@ -436,6 +439,18 @@ export async function getEmailConfig(departmentId?: string | null): Promise<Emai
     if (identity.fromName) config = { ...config, fromName: identity.fromName };
     if (identity.fromEmail) config = { ...config, fromEmail: identity.fromEmail };
     const branding = await getDepartmentEmailBranding(departmentId);
+    if (Object.keys(branding).length > 0) {
+      config = { ...config, ...branding };
+    }
+  }
+  // Sub-department overrides win over the department's for its own tickets.
+  if (subDepartmentId) {
+    const overrides = await getDepartmentNotifyOverrides(departmentId ?? "", subDepartmentId);
+    config = { ...config, ...overrides };
+    const identity = await getDepartmentEmailIdentity(departmentId ?? "", subDepartmentId);
+    if (identity.fromName) config = { ...config, fromName: identity.fromName };
+    if (identity.fromEmail) config = { ...config, fromEmail: identity.fromEmail };
+    const branding = await getDepartmentEmailBranding(departmentId ?? "", subDepartmentId);
     if (Object.keys(branding).length > 0) {
       config = { ...config, ...branding };
     }
@@ -499,15 +514,13 @@ export async function getWorkspaceTemplateOverrides(): Promise<
   return readTemplateOverrides(workspace?.emailConfig);
 }
 
-/** Reads one department's own template overrides (no fallback applied). */
+/** Reads one scope's own template overrides (no fallback applied). */
 export async function getDepartmentTemplateOverrides(
   departmentId: string,
+  subDepartmentId?: string | null,
 ): Promise<Partial<Record<EmailTemplateKey, EmailTemplateOverride>>> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { emailConfig: true },
-  });
-  return readTemplateOverrides(department?.emailConfig);
+  const raw = await loadEmailConfigRaw(scopeFor(departmentId, subDepartmentId));
+  return readTemplateOverrides(raw);
 }
 
 /**
@@ -518,6 +531,7 @@ export async function getDepartmentTemplateOverrides(
  */
 export async function getEmailTemplateOverrides(
   departmentId?: string | null,
+  subDepartmentId?: string | null,
 ): Promise<Partial<Record<EmailTemplateKey, EmailTemplateOverride>>> {
   if (!departmentId) return getWorkspaceTemplateOverrides();
   // Base = the tenant's template overrides (via the department), falling back to
@@ -528,7 +542,11 @@ export async function getEmailTemplateOverrides(
       ? readTemplateOverrides(tenantConfig)
       : await getWorkspaceTemplateOverrides();
   const departmentOverrides = await getDepartmentTemplateOverrides(departmentId);
-  return { ...baseOverrides, ...departmentOverrides };
+  // Sub-department template overrides win per-key over the department's.
+  const subOverrides = subDepartmentId
+    ? await getDepartmentTemplateOverrides(departmentId, subDepartmentId)
+    : {};
+  return { ...baseOverrides, ...departmentOverrides, ...subOverrides };
 }
 
 function applyTemplateOverride(
@@ -555,21 +573,17 @@ export async function saveEmailTemplateOverride(
   override: EmailTemplateOverride | null,
   departmentId: string,
   actorId: string,
+  subDepartmentId?: string | null,
 ): Promise<void> {
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { tenantId: true, emailConfig: true },
+    select: { tenantId: true },
   });
-  const existingConfig =
-    department?.emailConfig && typeof department.emailConfig === "object" && !Array.isArray(department.emailConfig)
-      ? (department.emailConfig as Record<string, unknown>)
-      : {};
+  const scope = scopeFor(departmentId, subDepartmentId);
+  const existingConfig = await loadEmailConfigRaw(scope);
   const before = readTemplateOverrides(existingConfig)[key] ?? null;
   const nextConfig = applyTemplateOverride(existingConfig, key, override);
-  await prisma.department.update({
-    where: { id: departmentId },
-    data: { emailConfig: nextConfig as Prisma.InputJsonValue },
-  });
+  await writeEmailConfigRaw(scope, nextConfig);
 
   // NFR-09/DAT-05 (slice 20): notification-template changes are audited.
   if (department) {
@@ -578,7 +592,7 @@ export async function saveEmailTemplateOverride(
       actorId,
       action: override ? "EMAIL_TEMPLATE_UPDATED" : "EMAIL_TEMPLATE_RESET",
       targetType: "EmailTemplate",
-      targetId: `${departmentId}:${key}`,
+      targetId: subDepartmentId ? `${departmentId}:${subDepartmentId}:${key}` : `${departmentId}:${key}`,
       before,
       after: override,
     });

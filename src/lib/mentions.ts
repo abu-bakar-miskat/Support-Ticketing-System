@@ -98,9 +98,10 @@ export async function processMentions({
   const notifiedSet = new Set(alreadyNotifiedIds)
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { subDepartment: { select: { departmentId: true } } },
+    select: { subDepartmentId: true, subDepartment: { select: { departmentId: true } } },
   })
   const departmentId = ticket?.subDepartment.departmentId ?? null
+  const subDepartmentId = ticket?.subDepartmentId ?? null
 
   for (const profile of profiles) {
     const existingMention = await prisma.mention.findFirst({
@@ -131,7 +132,7 @@ export async function processMentions({
     })
 
     if (!notifiedSet.has(profile.id)) {
-      sendMentionEmail({ to: profile.email, mentionedName: profile.name, mentionedUserId: profile.id, ticketId, ticketTitle, actorId, departmentId })
+      sendMentionEmail({ to: profile.email, mentionedName: profile.name, mentionedUserId: profile.id, ticketId, ticketTitle, actorId, departmentId, subDepartmentId })
         .then(() =>
           prisma.mention.updateMany({
             where: { commentId, mentionedUserId: profile.id, notifiedAt: null },

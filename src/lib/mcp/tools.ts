@@ -332,6 +332,7 @@ export async function createTicket(
       subDepartment.departmentId,
       { priority: input.priority, type: input.type, title: input.title },
       ticket.createdAt,
+      subDepartment.id,
     )
   }
 
@@ -361,6 +362,7 @@ export async function createTicket(
         ticketTitle: ticket.title,
         assignedByName: ctx.creatorName,
         departmentId: subDepartment.departmentId,
+        subDepartmentId: subDepartment.id,
       }).catch(() => undefined)
     }
   }
@@ -593,6 +595,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
         to: newAssignee.email, assigneeName: newAssignee.name, assigneeId: newAssignee.id,
         ticketId: ticket.id, humanId: `${prefix}-${number}`, ticketTitle: ticket.title,
         assignedByName: ctx.creatorName, departmentId: ticket.subDepartment.departmentId,
+        subDepartmentId: ticket.subDepartmentId,
       }).catch(() => undefined)
     }
   } else if (newProject) {
@@ -617,6 +620,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
           to: ticket.intake.submitterEmail, submitterName: ticket.intake.submitterName,
           formName: ticket.intake.formConfig.name, ticketTitle: ticket.title,
           departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartmentId,
         }).catch(() => undefined)
       }
     }

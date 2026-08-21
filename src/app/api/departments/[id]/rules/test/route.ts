@@ -46,8 +46,9 @@ export async function POST(
     }
     rules = body.rules as Rule[]
   } else {
+    const subDepartmentId = (body.subDepartmentId as string | undefined)?.trim() || null
     const saved = await prisma.rule.findMany({
-      where: { departmentId: id },
+      where: { departmentId: id, subDepartmentId },
       orderBy: { order: "asc" },
       select: { id: true, name: true, conditions: true, actions: true, order: true, enabled: true, stopProcessing: true },
     })

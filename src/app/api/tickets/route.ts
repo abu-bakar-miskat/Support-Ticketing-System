@@ -387,6 +387,7 @@ export async function POST(request: Request) {
       columnDeptId,
       { priority, type, title, description, labels },
       ticket.createdAt,
+      ticket.subDepartment.id,
     )
   }
 
@@ -443,6 +444,7 @@ export async function POST(request: Request) {
         assignedByName: profile.name,
         assignedById: profile.id,
         departmentId: ticket.subDepartment.departmentId,
+        subDepartmentId: ticket.subDepartment.id,
       }).catch((err) => console.error("[assignment email] failed:", err))
     }
   }

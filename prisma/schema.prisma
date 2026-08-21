@@ -455,12 +455,19 @@ model SubDepartment {
   departmentId      String
   rotaPointer       Int                @default(0)
   workloadThreshold Int                @default(5)
+  // Optional per-sub-department overrides. Same JSON shapes as the department
+  // fields; null means "inherit from the parent department".
+  emailConfig       Json?
+  slaConfig         Json?
+  businessHours     Json?
   department        Department         @relation(fields: [departmentId], references: [id])
   profiles          Profile[]
   tickets           Ticket[]
   counter           SubDepartmentTicketCounter?
   githubStatusMap   SubDepartmentGitHubStatusMap?
   routingRules      RoutingRule[]
+  rules             Rule[]
+  slaPolicies       SlaPolicy[]
   statuses          SubDepartmentStatus[]
   memberships       SubDepartmentMembership[]
   joinRequests      JoinRequest[]
@@ -1214,12 +1221,16 @@ model SlaPolicy {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  timers     SlaTimer[]
+  subDepartmentId String? @map("teamId")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
+  timers        SlaTimer[]
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
 }
 
 // Unified per-department automation rule (slice 09, RE-01..05). `conditions` is
@@ -1241,11 +1252,15 @@ model Rule {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartmentId String? @map("teamId")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
 }
 
 // Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a

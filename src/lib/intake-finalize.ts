@@ -93,7 +93,7 @@ export async function createTicketFromPayload(
 
   if (subDepartment && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
-    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt, prep.intakeSubDepartmentId).catch(() => undefined)
     // RE-01/02: run the department's automation rules against the submitted form
     // values and apply the fired actions to the new ticket.
     await applyRulesToTicket(
@@ -111,7 +111,7 @@ export async function createTicketFromPayload(
   // ASG-02/03 (slice 11): no eligible agent was found — the ticket exists,
   // unassigned; report it immediately so it's never silently unrouted.
   if (prep.assignmentFailed && humanId) {
-    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId).catch(() => undefined)
+    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId, prep.intakeSubDepartmentId).catch(() => undefined)
   }
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {
@@ -124,6 +124,7 @@ export async function createTicketFromPayload(
       ticketTitle: prep.title,
       assignedByName: "Support system",
       departmentId: form.departmentId,
+      subDepartmentId: prep.intakeSubDepartmentId,
     }).catch((err) => console.error("[intake] assignment email failed:", err))
   }
 
@@ -140,6 +141,7 @@ export async function createTicketFromPayload(
         formName: form.name,
         submitterName,
         departmentId: form.departmentId,
+        subDepartmentId: prep.intakeSubDepartmentId,
       }).catch((err) => console.error("[intake] manager alert email failed:", err))
     }
   }
@@ -157,6 +159,7 @@ export async function createTicketFromPayload(
     responses: emailSummary,
     replyToken: useToken ? replyToken : null,
     departmentId: form.departmentId,
+    subDepartmentId: prep.intakeSubDepartmentId,
   }).catch((err) => console.error("[intake] confirmation email failed:", err))
 
   return { ticketId, humanId }

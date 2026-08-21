@@ -67,6 +67,10 @@ export async function listMailboxConnectionsForSubDepartment(subDepartmentId: st
   });
 }
 
+export async function getMailboxConnectionSafe(id: string): Promise<MailboxConnectionSafe | null> {
+  return prisma.mailboxConnection.findUnique({ where: { id }, select: SAFE_SELECT });
+}
+
 export async function createMailboxConnection(params: {
   tenantId: string;
   departmentId: string;
@@ -184,7 +188,15 @@ function nextBackoffMinutes(failureCount: number): number {
  * managers immediately (EM-07: "within one polling cycle"). Best-effort —
  * never throws, so one bad connection can't abort the sweep.
  */
-export async function checkMailboxConnectionHealth(connectionId: string, now: Date = new Date()): Promise<void> {
+export async function checkMailboxConnectionHealth(
+  connectionId: string,
+  now: Date = new Date(),
+  // Manual re-checks from the UI pass `notifyOnNewFailure: false` so an admin
+  // testing a connection never triggers a real alert email to the department
+  // manager. The scheduled sweep keeps the default so genuine outages still
+  // notify exactly once on the healthy→failed transition.
+  { notifyOnNewFailure = true }: { notifyOnNewFailure?: boolean } = {},
+): Promise<void> {
   try {
     const connection = await prisma.mailboxConnection.findUnique({
       where: { id: connectionId },
@@ -236,7 +248,7 @@ export async function checkMailboxConnectionHealth(connectionId: string, now: Da
       },
     });
 
-    if (wasHealthy) {
+    if (wasHealthy && notifyOnNewFailure) {
       await notifyMailboxConnectionFailure(connection.departmentId, connection.address, result.error);
     }
   } catch {

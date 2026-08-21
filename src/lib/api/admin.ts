@@ -459,6 +459,11 @@ export async function deleteMailboxConnection(connectionId: string) {
   if (!res.ok) throw new Error("Failed to disconnect mailbox")
 }
 
+export async function recheckMailboxConnection(connectionId: string): Promise<MailboxConnection> {
+  const res = await fetch(`/api/admin/mailbox-connections/${connectionId}/check`, { method: "POST" })
+  return readJsonResponse<MailboxConnection>(res)
+}
+
 export async function bulkAssignTickets(ticketIds: string[], assigneeId: string): Promise<{ updated: number }> {
   const res = await fetch("/api/admin/tickets/bulk-assign", {
     method: "POST",

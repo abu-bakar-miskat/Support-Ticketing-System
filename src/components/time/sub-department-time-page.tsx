@@ -649,13 +649,6 @@ export function SubDepartmentTimePage() {
               detail={`${overview.totals.closed} closed · ${overview.totals.total} total`}
               icon={Layers}
             />
-            {(data?.qaStats ?? []).map((stat) => (
-              <ReportStatCard
-                key={stat.label}
-                {...stat}
-                icon={Clock}
-              />
-            ))}
           </>
       </div>
 
@@ -685,7 +678,7 @@ export function SubDepartmentTimePage() {
             <OverviewCard title="RESOLVED">
               <CountBars rows={overview.resolved} color="#16a34a" />
             </OverviewCard>
-            <OverviewCard title={`TOP DEV TIME · ${selectedLabel.toUpperCase()}`}>
+            <OverviewCard title={`TOP TIME LOGGED · ${selectedLabel.toUpperCase()}`}>
               <TopContributors
                 members={data?.members ?? []}
                 periodLabel={selectedLabel.toLowerCase()}
@@ -713,26 +706,6 @@ export function SubDepartmentTimePage() {
             </OverviewCard>
           </div>
 
-          {/* QA — only when someone has been assigned as QA / logged QA time */}
-          {((overview.qaWorkload?.length ?? 0) > 0 ||
-            (overview.qaResolved?.length ?? 0) > 0 ||
-            (data?.qaMembers?.length ?? 0) > 0) && (
-            <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-3">
-              <OverviewCard title="QA · OPEN">
-                <CountBars rows={overview.qaWorkload} color="#0d9488" />
-              </OverviewCard>
-              <OverviewCard title="TESTED">
-                <CountBars rows={overview.qaResolved} color="#0d9488" />
-              </OverviewCard>
-              <OverviewCard title={`TOP QA TIME · ${selectedLabel.toUpperCase()}`}>
-                <TopContributors
-                  members={data?.qaMembers ?? []}
-                  periodLabel={selectedLabel.toLowerCase()}
-                />
-              </OverviewCard>
-            </div>
-          )}
-
           {/* Cross-department contributions — what our people did for other departments */}
           {(overview.crossDept?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-pen-card-border bg-pen-card">
@@ -750,12 +723,12 @@ export function SubDepartmentTimePage() {
         </>
       )}
 
-      {/* Dev time by project */}
+      {/* Time by project */}
       {!isLoading && overview && (data?.projects.length ?? 0) > 0 && (
         <div className="rounded-xl border border-pen-card-border bg-pen-card">
           <div className="border-b border-pen-card-border px-4 py-2.5 sm:px-[18px]">
             <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
-              DEV TIME BY PROJECT · {selectedLabel.toUpperCase()}
+              TIME BY PROJECT · {selectedLabel.toUpperCase()}
             </p>
           </div>
           <div className="px-4 py-3 sm:px-[18px]">
@@ -829,80 +802,6 @@ export function SubDepartmentTimePage() {
         </div>
       )}
 
-      {/* QA time by project */}
-      {!isLoading && overview && (data?.qaProjects?.length ?? 0) > 0 && (
-        <div className="rounded-xl border border-pen-card-border bg-pen-card">
-          <div className="border-b border-pen-card-border px-4 py-2.5 sm:px-[18px]">
-            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-teal-700 dark:text-teal-400">
-              QA TIME BY PROJECT · {selectedLabel.toUpperCase()}
-            </p>
-          </div>
-          <div className="px-4 py-3 sm:px-[18px]">
-            <ProjectShareBar projects={data!.qaProjects} />
-            <div className="mb-1 flex flex-wrap gap-x-3 gap-y-1">
-              {data!.qaProjects.slice(0, 6).map((p) => (
-                <span
-                  key={p.name}
-                  className="flex items-center gap-1.5 font-sans text-[11px] text-pen-muted"
-                >
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: p.color }}
-                  />
-                  {p.name} {p.share}%
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-4 border-y border-pen-card-border/60 px-4 py-1.5 sm:px-[18px]">
-            <span className="size-2.5 shrink-0" />
-            <span className="min-w-0 flex-1 font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
-              Project
-            </span>
-            <span className="hidden w-16 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70 sm:block">
-              People
-            </span>
-            <span className="hidden w-32 shrink-0 md:block" />
-            <span className="w-[72px] shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
-              Time
-            </span>
-            <span className="w-9 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
-              %
-            </span>
-          </div>
-          <div className="divide-y divide-pen-card-border/60">
-            {data!.qaProjects.map((p) => (
-              <div
-                key={p.name}
-                className="flex items-center gap-4 px-4 py-2.5 transition-colors hover:bg-pen-bg/40 sm:px-[18px]"
-              >
-                <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                />
-                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
-                  {p.name}
-                </span>
-                <span className="hidden w-16 shrink-0 text-right font-sans text-[11.5px] text-pen-subtle sm:block">
-                  {p.contributors} {p.contributors === 1 ? "person" : "people"}
-                </span>
-                <div className="hidden h-2 w-32 shrink-0 overflow-hidden rounded-full bg-pen-surface md:block">
-                  <div
-                    className="h-full rounded-full bg-teal-600/70"
-                    style={{ width: `${Math.max(4, p.share)}%` }}
-                  />
-                </div>
-                <span className="w-[72px] shrink-0 whitespace-nowrap text-right font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">
-                  {p.hours}
-                </span>
-                <span className="w-9 shrink-0 text-right font-sans text-[11.5px] tabular-nums text-pen-subtle">
-                  {p.share}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

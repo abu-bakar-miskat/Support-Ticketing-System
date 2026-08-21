@@ -80,11 +80,6 @@ export default async function TicketPage({
           user: { select: { id: true, name: true, avatarUrl: true } },
         },
       },
-      qaAssignees: {
-        include: {
-          user: { select: { id: true, name: true, avatarUrl: true } },
-        },
-      },
       estimates: {
         select: { userId: true, estimatedMinutes: true, targetDate: true },
       },
@@ -355,25 +350,8 @@ export default async function TicketPage({
       }[];
     }
   >();
-  const qaTimeByUser = new Map<
-    string,
-    {
-      userId: string;
-      userName: string;
-      avatarUrl: string | null;
-      totalSecs: number;
-      isRunning: boolean;
-      runningStartedAt: string | null;
-      sessions: {
-        id: string;
-        startedAt: string;
-        endedAt: string | null;
-        durationSecs: number | null;
-      }[];
-    }
-  >();
   for (const entry of ticketTimeEntries) {
-    const target = entry.kind === "QA" ? qaTimeByUser : timeByUser;
+    const target = timeByUser;
     const existing = target.get(entry.profileId) ?? {
       userId: entry.profileId,
       userName: entry.profile.name,
@@ -425,7 +403,6 @@ export default async function TicketPage({
     startedAt: e.startedAt.toISOString(),
     endedAt: e.endedAt ? e.endedAt.toISOString() : null,
     durationSecs: e.durationSecs ?? 0,
-    kind: e.kind as string,
   }));
   for (const e of subTicketEntries) {
     subPerTicketSecs.set(
@@ -448,14 +425,11 @@ export default async function TicketPage({
   };
 
   const myActiveEntry = ticketTimeEntries.find(
-    (e) => e.profileId === profile.id && !e.endedAt && e.kind !== "QA",
+    (e) => e.profileId === profile.id && !e.endedAt,
   );
   const isCurrentUserAssignee =
     ticket.assigneeId === profile.id ||
     ticket.assignees.some((a) => a.user.id === profile.id);
-  const isCurrentUserQa = ticket.qaAssignees.some(
-    (a) => a.user.id === profile.id,
-  );
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`;
   const { openedDaysAgo, dueOverdue } = ticketTimes(
@@ -509,11 +483,6 @@ export default async function TicketPage({
           name: a.user.name,
           avatarUrl: a.user.avatarUrl ?? null,
         }))}
-        qaAssignees={ticket.qaAssignees.map((a) => ({
-          id: a.user.id,
-          name: a.user.name,
-          avatarUrl: a.user.avatarUrl ?? null,
-        }))}
         startDateIso={ticket.startDate ? serializeTicketDateIso(ticket.startDate, "start") : null}
         dueDateIso={ticket.dueDate ? serializeTicketDateIso(ticket.dueDate, "due") : null}
         dueDate={
@@ -549,12 +518,10 @@ export default async function TicketPage({
           targetDateIso: e.targetDate ? serializeTicketDateIso(e.targetDate, "due") : null,
         }))}
         timeEntries={[...timeByUser.values()]}
-        qaTimeEntries={[...qaTimeByUser.values()]}
         subTicketTime={subTicketTime}
         myActiveTimerId={myActiveEntry?.id ?? null}
         myActiveTimerStartedAt={myActiveEntry?.startedAt.toISOString() ?? null}
         isCurrentUserAssignee={isCurrentUserAssignee}
-        isCurrentUserQa={isCurrentUserQa}
         assetLinks={(ticket.assetLinks as { label: string; url: string }[] | null) ?? []}
         github={github}
         templateData={(ticket.templateData as Record<string, any> | null) ?? null}

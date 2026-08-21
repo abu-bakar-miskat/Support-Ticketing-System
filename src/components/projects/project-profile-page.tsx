@@ -1043,7 +1043,6 @@ function OverviewTab({
   subDepartmentBoardGroups,
   recentActivity,
   timeStats,
-  qaTimeStats,
   initialStatus,
   initialDescription,
   initialLifecycleStages,
@@ -1064,7 +1063,6 @@ function OverviewTab({
   subDepartmentBoardGroups: SubDepartmentBoardGroup[];
   recentActivity: ActivityItem[];
   timeStats?: ProjectTimeStats;
-  qaTimeStats?: ProjectTimeStats;
   initialStatus: "pipeline" | "in_development" | "live";
   initialDescription: string | null;
   initialLifecycleStages: import("@/lib/project-lifecycle").LifecycleStage[];
@@ -1167,13 +1165,9 @@ function OverviewTab({
   const timeByUser = timeStats?.byUser
     ? [...timeStats.byUser].sort((a, b) => b.totalSecs - a.totalSecs)
     : [];
-  const qaTimeByUser = qaTimeStats?.byUser
-    ? [...qaTimeStats.byUser].sort((a, b) => b.totalSecs - a.totalSecs)
-    : [];
 
   const maxContributorCount = contributors[0]?.count ?? 1;
   const maxTimeSecs = timeByUser[0]?.totalSecs ?? 1;
-  const maxQaTimeSecs = qaTimeByUser[0]?.totalSecs ?? 1;
 
   const ACTIVITY_ICON_MAP: Record<string, React.ElementType> = {
     STATUS_CHANGED: ArrowRightLeft,
@@ -1428,47 +1422,6 @@ function OverviewTab({
                       </div>
                       <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-pen-surface">
                         <div className="h-full rounded-full bg-pen-blue/50 transition-all duration-500" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Time logged — QA */}
-          <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-teal-600/10">
-                  <Timer className="size-3.5 text-teal-600" strokeWidth={2} />
-                </div>
-                <p className="pen-text-section-label">QA time logged</p>
-              </div>
-              {qaTimeStats && qaTimeStats.totalSecs > 0 && (
-                <span className="rounded-full bg-teal-600/10 px-2 py-0.5 font-mono text-[11.5px] font-semibold text-teal-700 dark:text-teal-400">
-                  {formatSecs(qaTimeStats.totalSecs)}
-                </span>
-              )}
-            </div>
-            {qaTimeByUser.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-pen-card-border px-3 py-4">
-                <Clock className="size-4 shrink-0 text-pen-subtle/30" />
-                <p className="font-sans text-[11.5px] text-pen-subtle">No QA time logged yet</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {qaTimeByUser.map((u) => {
-                  const pct = Math.round((u.totalSecs / maxQaTimeSecs) * 100);
-                  return (
-                    <div key={u.userId} className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <UserAvatar name={u.userName} avatarUrl={u.avatarUrl} size={20} />
-                        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-pen-foreground">{u.userName}</span>
-                        <span className="shrink-0 font-mono text-[11.5px] font-semibold tabular-nums text-teal-700 dark:text-teal-400">{formatSecs(u.totalSecs)}</span>
-                      </div>
-                      <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-pen-surface">
-                        <div className="h-full rounded-full bg-teal-600/50 transition-all duration-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -2149,7 +2102,6 @@ export function ProjectProfilePage({
     canDeleteAssets = false,
     defaultTab = null,
     timeStats,
-    qaTimeStats,
     allProjectAssignees = [],
     projectMemberUsers = [],
     currentUserIsProjectMember = false,
@@ -2177,7 +2129,6 @@ export function ProjectProfilePage({
       canDeleteAssets={canDeleteAssets}
       defaultTab={defaultTab}
       timeStats={timeStats}
-      qaTimeStats={qaTimeStats}
       allProjectAssignees={allProjectAssignees}
       projectMemberUsers={projectMemberUsers}
       currentUserIsProjectMember={currentUserIsProjectMember}
@@ -2209,7 +2160,6 @@ function ProjectProfilePageInner({
   canDeleteAssets = false,
   defaultTab = null,
   timeStats,
-  qaTimeStats,
   allProjectAssignees = [],
   projectMemberUsers = [],
   currentUserIsProjectMember = false,
@@ -2237,7 +2187,6 @@ function ProjectProfilePageInner({
   canDeleteAssets?: boolean;
   defaultTab?: string | null;
   timeStats?: ProjectTimeStats;
-  qaTimeStats?: ProjectTimeStats;
   allProjectAssignees?: UserListPerson[];
   projectMemberUsers?: UserListPerson[];
   currentUserIsProjectMember?: boolean;
@@ -2858,7 +2807,6 @@ function ProjectProfilePageInner({
             subDepartmentBoardGroups={subDepartmentBoardGroups}
             recentActivity={recentActivity}
             timeStats={timeStats}
-            qaTimeStats={qaTimeStats}
             initialStatus={
               (project.projectStatus ?? "pipeline") as
                 | "pipeline"

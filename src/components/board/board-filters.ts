@@ -19,15 +19,8 @@ export function isAssignedToUser(card: BoardCardData, userId: string): boolean {
   if (!userId) return false;
   return (
     card.assigneeId === userId ||
-    card.coAssignees.some((a) => a.id === userId) ||
-    card.qaAssignees.some((a) => a.id === userId)
+    card.coAssignees.some((a) => a.id === userId)
   );
-}
-
-/** True when the user is on this card only as a QA assignee (not dev assignee/co-assignee). */
-export function isQaForUser(card: BoardCardData, userId: string): boolean {
-  if (!userId) return false;
-  return card.qaAssignees.some((a) => a.id === userId);
 }
 
 export function matchesAssigneeFilter(
@@ -40,8 +33,7 @@ export function matchesAssigneeFilter(
   if (filter === "unassigned") return !card.assigneeId;
   return (
     card.assigneeId === filter ||
-    card.coAssignees.some((a) => a.id === filter) ||
-    card.qaAssignees.some((a) => a.id === filter)
+    card.coAssignees.some((a) => a.id === filter)
   );
 }
 

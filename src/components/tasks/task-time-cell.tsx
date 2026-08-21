@@ -35,11 +35,10 @@ export function TaskTimeCell({
   const timerEntryId = useTimerStore((s) => s.entryId);
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const timerStartedAtMs = useTimerStore((s) => s.startedAtMs);
-  const timerKind = useTimerStore((s) => s.kind);
   const { startTimer, stopTimer } = useTimerActions();
   const userId = useAuthStore((s) => s.user?.id);
 
-  const isRunning = timerTicketDbId === ticketDbId && timerKind !== "QA";
+  const isRunning = timerTicketDbId === ticketDbId;
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = userLoggedSecs + (isRunning ? elapsedSecs : 0);
   const timeLabel = formatTaskTimeDisplay(displaySecs, estimatedTime);

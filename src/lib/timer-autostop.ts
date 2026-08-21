@@ -19,7 +19,7 @@ export async function stopRunningTimersOnStatusChange(
   if (normalizeStatus(newStatus) === "In Progress") return
 
   const running = await prisma.timeEntry.findMany({
-    where: { ticketId, endedAt: null, kind: "DEVELOPMENT" },
+    where: { ticketId, endedAt: null },
     select: {
       id: true,
       profileId: true,

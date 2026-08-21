@@ -2,14 +2,13 @@
 
 import { useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { useTimerStore, type TimerKind } from "@/store"
+import { useTimerStore } from "@/store"
 import { ticketKeys, taskKeys, timeKeys } from "@/hooks/queries/keys"
 
 type StartTimerOpts = {
   ticketDbId: string
   humanId: string
   title: string
-  kind?: TimerKind
 }
 
 export function useTimerActions() {
@@ -27,19 +26,18 @@ export function useTimerActions() {
   }, [queryClient])
 
   const startTimer = useCallback(
-    async ({ ticketDbId, humanId, title, kind = "DEVELOPMENT" }: StartTimerOpts) => {
+    async ({ ticketDbId, humanId, title }: StartTimerOpts) => {
       const res = await fetch("/api/time", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start", ticketId: ticketDbId, kind }),
+        body: JSON.stringify({ action: "start", ticketId: ticketDbId }),
       })
       if (!res.ok) throw new Error("Failed to start timer")
 
-      const entry = (await res.json()) as { id: string; startedAt: string; kind?: TimerKind }
+      const entry = (await res.json()) as { id: string; startedAt: string }
       setRunning(entry.id, ticketDbId, new Date(entry.startedAt).getTime(), {
         ticketHumanId: humanId,
         ticketTitle: title,
-        kind: entry.kind === "QA" ? "QA" : kind,
       })
       await invalidateTimerQueries()
       return entry

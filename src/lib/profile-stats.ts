@@ -127,15 +127,10 @@ export type ProfileStatsResult = {
     avgCycleDays: number | null
     outsideContributions: number
     homeContributions: number
-    qaOpen: number
-    qaDone: number
-    hasQaAssignment: boolean
   }
   timeLogged: {
-    developmentSecs: number
-    qaSecs: number
-    developmentLabel: string
-    qaLabel: string
+    totalSecs: number
+    totalLabel: string
   }
   tickets: Record<
     | "total"
@@ -144,9 +139,7 @@ export type ProfileStatsResult = {
     | "overdue"
     | "blocked"
     | "review"
-    | "created"
-    | "qaOpen"
-    | "qaDone",
+    | "created",
     ProfileStatsTicketSummary[]
   >
   byPriority: Record<string, number>
@@ -427,24 +420,7 @@ export async function fetchProfileStats(opts: {
     select: TICKET_SELECT,
   })
 
-  // QA tasks — tickets where the target is a QA assignee (counted separately
-  // from dev work so a tester's QA contribution is justified on its own axis).
-  const [qaTickets, qaAssignmentCount] = await Promise.all([
-    prisma.ticket.findMany({
-      where: {
-        deletedAt: null,
-        qaAssignees: { some: { userId: targetId } },
-        createdAt: { gte: fromDate, lte: toDate },
-        ...(projectId ? { projectId } : {}),
-      },
-      select: TICKET_SELECT,
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.ticketQaAssignee.count({ where: { userId: targetId } }),
-  ])
-  const hasQaAssignment = qaAssignmentCount > 0
-
-  // Logged time (development vs QA) in the selected period — separate from ticket counts.
+  // Logged time in the selected period — separate from ticket counts.
   const timeEntries = await prisma.timeEntry.findMany({
     where: {
       profileId: targetId,
@@ -454,7 +430,6 @@ export async function fetchProfileStats(opts: {
     },
     select: {
       durationSecs: true,
-      kind: true,
       ticket: {
         select: {
           project: {
@@ -473,18 +448,15 @@ export async function fetchProfileStats(opts: {
       },
     },
   })
-  let developmentSecs = 0
-  let qaSecs = 0
+  let totalSecs = 0
   for (const e of timeEntries) {
-    const secs = e.durationSecs ?? 0
-    if (e.kind === "QA") qaSecs += secs
-    else developmentSecs += secs
+    totalSecs += e.durationSecs ?? 0
   }
 
   const allTickets = [...assignedTickets, ...coAssignedSubtickets]
 
   const uniqueSubDepartmentIds = [
-    ...new Set([...allTickets, ...qaTickets, ...createdTickets].map((t) => t.subDepartment.id)),
+    ...new Set([...allTickets, ...createdTickets].map((t) => t.subDepartment.id)),
   ]
   const completeStatuses = uniqueSubDepartmentIds.length > 0
     ? await prisma.subDepartmentStatus.findMany({
@@ -539,9 +511,6 @@ export async function fetchProfileStats(opts: {
 
   const completionRate =
     cats.total.length > 0 ? cats.completed.length / cats.total.length : 0
-
-  const qaOpenTickets = qaTickets.filter((t) => !isDone(t))
-  const qaDoneTickets = qaTickets.filter(isDone)
 
   const actByDay: Record<string, number> = {}
   for (const a of activityLogs) {
@@ -726,15 +695,10 @@ export async function fetchProfileStats(opts: {
         avgCycleDays,
         homeContributions,
         outsideContributions,
-        qaOpen: qaOpenTickets.length,
-        qaDone: qaDoneTickets.length,
-        hasQaAssignment,
       },
       timeLogged: {
-        developmentSecs,
-        qaSecs,
-        developmentLabel: formatHm(developmentSecs),
-        qaLabel: formatHm(qaSecs),
+        totalSecs,
+        totalLabel: formatHm(totalSecs),
       },
       tickets: {
         total: cats.total.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
@@ -744,8 +708,6 @@ export async function fetchProfileStats(opts: {
         blocked: cats.blocked.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
         review: cats.review.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
         created: createdTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        qaOpen: qaOpenTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        qaDone: qaDoneTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
       },
       byPriority,
       byProject: [...projMap.entries()].map(([id, v]) => ({ id, ...v })),

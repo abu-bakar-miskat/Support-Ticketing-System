@@ -45,7 +45,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       : {}),
   };
 
-  const [myTickets, myProjectRows, weekEntries, qaWeekEntries, activityRows] =
+  const [myTickets, myProjectRows, weekEntries, activityRows] =
     await Promise.all([
       prisma.ticket.findMany({
         where: {
@@ -85,28 +85,6 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
         where: {
           profileId: profile.id,
           startedAt: { gte: startOfWeek, lt: endOfWeek },
-          kind: "DEVELOPMENT",
-          ...(deptScope
-            ? {
-                OR: [
-                  { ticketId: null },
-                  { ticket: { subDepartmentId: { in: deptScope.subDepartmentIds }, deletedAt: null } },
-                ],
-              }
-            : {}),
-        },
-        select: {
-          ticketId: true,
-          startedAt: true,
-          endedAt: true,
-          durationSecs: true,
-        },
-      }),
-      prisma.timeEntry.findMany({
-        where: {
-          profileId: profile.id,
-          startedAt: { gte: startOfWeek, lt: endOfWeek },
-          kind: "QA",
           ...(deptScope
             ? {
                 OR: [
@@ -157,12 +135,6 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     const dayIdx = (e.startedAt.getDay() + 6) % 7;
     secsByDay[dayIdx] += entryDuration(e, now);
   }
-  const qaSecsByDay = [0, 0, 0, 0, 0, 0, 0];
-  for (const e of qaWeekEntries) {
-    const dayIdx = (e.startedAt.getDay() + 6) % 7;
-    qaSecsByDay[dayIdx] += entryDuration(e, now);
-  }
-
   const subDepartmentIds = [...new Set(myTickets.map((t) => t.subDepartmentId))];
   const allSubDepartmentStatuses =
     subDepartmentIds.length > 0
@@ -218,7 +190,6 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     (t) => t.dueDate && t.dueDate >= startOfToday && t.dueDate < endOfWeek,
   );
   const timeTodaySecs = secsByDay[dayOfWeek];
-  const qaTimeTodaySecs = qaSecsByDay[dayOfWeek];
 
   // ── Needs attention: overdue → due soon (3d) → blocked ────────────────────
   const threeDaysOut = new Date(startOfToday);
@@ -340,8 +311,6 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       todo: todoCount,
       timeTodaySecs,
       timeToday: formatDuration(timeTodaySecs),
-      qaTimeTodaySecs,
-      qaTimeToday: formatDuration(qaTimeTodaySecs),
     },
     attention,
     projects,

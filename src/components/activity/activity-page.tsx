@@ -124,8 +124,6 @@ const ACTION_FILTER_OPTIONS: { value: ActivityAction | ""; label: string }[] = [
   { value: "ASSIGNED",               label: "Assignments"           },
   { value: "CO_ASSIGNEE_ADDED",      label: "Co-assignee added"     },
   { value: "CO_ASSIGNEE_REMOVED",    label: "Co-assignee removed"   },
-  { value: "QA_ASSIGNEE_ADDED",      label: "QA added"              },
-  { value: "QA_ASSIGNEE_REMOVED",    label: "QA removed"            },
   { value: "COMMENT_ADDED",          label: "Comments"              },
   { value: "ATTACHMENT_ADDED",       label: "Attachments"           },
   { value: "MENTION",                label: "Mentions"              },
@@ -143,7 +141,6 @@ const ACTION_FILTER_OPTIONS: { value: ActivityAction | ""; label: string }[] = [
   { value: "MODULE_CHANGED",         label: "Module changes"        },
   { value: "SUBTICKET_ADDED",        label: "Sub-tickets added"     },
   { value: "TIMER_RESET",            label: "Timer resets"          },
-  { value: "QA_TIME_LOGGED",         label: "QA time logged"        },
 ];
 
 const RANGE_PRESETS: { id: RangePreset; label: string }[] = [

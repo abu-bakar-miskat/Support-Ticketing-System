@@ -235,7 +235,6 @@ export type BoardCardData = {
   avatarColor: string | null
   assigneeAvatarUrl?: string | null
   coAssignees: { id: string; name: string; color: string; avatarUrl?: string | null }[]
-  qaAssignees: { id: string; name: string; color: string; avatarUrl?: string | null }[]
   creatorId: string
   creatorName: string
   creatorAvatarUrl?: string | null

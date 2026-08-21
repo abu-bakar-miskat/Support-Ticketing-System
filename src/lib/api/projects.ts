@@ -128,10 +128,6 @@ export type ProjectDetailsResponse = {
     totalSecs: number
     byUser: { userId: string; userName: string; avatarUrl: string | null; totalSecs: number }[]
   }
-  qaTimeStats: {
-    totalSecs: number
-    byUser: { userId: string; userName: string; avatarUrl: string | null; totalSecs: number }[]
-  }
   members: ProjectMember[]
   statusDist: { label: string; color: string; count: number }[]
   tickets: TicketRow[]

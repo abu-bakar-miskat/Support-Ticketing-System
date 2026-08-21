@@ -151,11 +151,8 @@ function BoardCard({
   const timerEntryId = useTimerStore((s) => s.entryId);
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const timerStartedAtMs = useTimerStore((s) => s.startedAtMs);
-  const timerKind = useTimerStore((s) => s.kind);
   const { startTimer, stopTimer } = useTimerActions();
-  // Board controls track DEVELOPMENT time only — ignore QA timers here
-  const isRunning =
-    timerTicketDbId === initialCard.dbId && timerKind !== "QA";
+  const isRunning = timerTicketDbId === initialCard.dbId;
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs =
     initialCard.totalLoggedSecs + (isRunning ? elapsedSecs : 0);
@@ -289,34 +286,6 @@ function BoardCard({
                   +{initialCard.coAssignees.length - 3}
                 </span>
               )}
-            </div>
-          )}
-          {(initialCard.qaAssignees?.length ?? 0) > 0 && (
-            <div
-              className="flex items-center gap-0.5 border-l border-pen-card-border pl-1.5 ml-0.5"
-              title={`QA: ${initialCard.qaAssignees.map((a) => a.name).join(", ")}`}
-            >
-              <span className="font-sans text-[9px] font-semibold uppercase tracking-wide text-[#0d9488]">
-                QA
-              </span>
-              <div className="flex items-center -space-x-1">
-                {initialCard.qaAssignees.slice(0, 3).map((a) => (
-                  <UserAvatar
-                    key={a.id}
-                    name={a.name}
-                    avatarUrl={a.avatarUrl}
-                    userId={a.id}
-                    size={14}
-                    className="ring-1 ring-[#0d9488]/40"
-                    meta={{}}
-                  />
-                ))}
-                {initialCard.qaAssignees.length > 3 && (
-                  <span className="flex size-[14px] shrink-0 items-center justify-center rounded-full bg-[#0d948815] font-sans text-[9.5px] text-[#0d9488] ring-1 ring-[#0d9488]/40">
-                    +{initialCard.qaAssignees.length - 3}
-                  </span>
-                )}
-              </div>
             </div>
           )}
         </div>
@@ -882,7 +851,6 @@ export function BoardPage({
           ? avatarColorFor(ticket.assigneeName)
           : null,
         coAssignees: [],
-        qaAssignees: [],
         creatorId: "",
         creatorName: "",
         creatorAvatarUrl: null,

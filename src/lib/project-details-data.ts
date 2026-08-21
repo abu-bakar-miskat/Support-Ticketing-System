@@ -151,29 +151,20 @@ export async function getProjectDetailsData(
     string,
     { userId: string; userName: string; avatarUrl: string | null; totalSecs: number }
   >();
-  const projectQaTimeByUser = new Map<
-    string,
-    { userId: string; userName: string; avatarUrl: string | null; totalSecs: number }
-  >();
   for (const entry of projectTimeEntries) {
     const secs = entry.durationSecs ?? 0;
-    const target = entry.kind === "QA" ? projectQaTimeByUser : projectTimeByUser;
-    const existing = target.get(entry.profileId) ?? {
+    const existing = projectTimeByUser.get(entry.profileId) ?? {
       userId: entry.profileId,
       userName: entry.profile.name,
       avatarUrl: entry.profile.avatarUrl ?? null,
       totalSecs: 0,
     };
     existing.totalSecs += secs;
-    target.set(entry.profileId, existing);
+    projectTimeByUser.set(entry.profileId, existing);
   }
   const timeStats = {
     totalSecs: [...projectTimeByUser.values()].reduce((s, e) => s + e.totalSecs, 0),
     byUser: [...projectTimeByUser.values()].sort((a, b) => b.totalSecs - a.totalSecs),
-  };
-  const qaTimeStats = {
-    totalSecs: [...projectQaTimeByUser.values()].reduce((s, e) => s + e.totalSecs, 0),
-    byUser: [...projectQaTimeByUser.values()].sort((a, b) => b.totalSecs - a.totalSecs),
   };
 
   const ticketSubDepartmentMap = new Map(cardSubDepartmentIds.map((t) => [t.id, t.subDepartmentId]));
@@ -467,7 +458,6 @@ export async function getProjectDetailsData(
     defaultTab,
     stats: { total, open, closed, inProgress, byPriority },
     timeStats,
-    qaTimeStats,
     members,
     statusDist,
     tickets: ticketRows,

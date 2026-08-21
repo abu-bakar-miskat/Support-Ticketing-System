@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Mail,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -48,6 +49,11 @@ import {
   updateAdminSubDepartment,
   deleteAdminSubDepartment,
   handleDepartmentJoinRequest,
+  getSubDepartmentMailboxConnections,
+  createSubDepartmentMailboxConnection,
+  updateMailboxConnection,
+  deleteMailboxConnection,
+  type MailboxConnection,
 } from "@/lib/api/admin";
 import { ProjectAccessPicker } from "@/components/settings/settings-departments-page";
 import { notifEvents } from "@/store";
@@ -1349,6 +1355,192 @@ function JoinRequestsSection({
   );
 }
 
+const MAILBOX_STATUS_STYLES: Record<string, string> = {
+  ACTIVE: "bg-pen-green/10 text-pen-green",
+  AUTH_ERROR: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+  UNREACHABLE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+function SubDepartmentMailboxSection({ subDepartmentId, canManage }: { subDepartmentId: string; canManage: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAddress, setEditAddress] = useState("");
+  const loading = expanded && connections === null;
+
+  useEffect(() => {
+    if (!expanded || connections !== null) return;
+    getSubDepartmentMailboxConnections(subDepartmentId)
+      .then(setConnections)
+      .catch(() => setConnections([]));
+  }, [expanded, connections, subDepartmentId]);
+
+  async function connect() {
+    if (!address.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createSubDepartmentMailboxConnection(subDepartmentId, { address: address.trim() });
+      setConnections((prev) => [...(prev ?? []), created]);
+      setAddress("");
+      setShowConnectForm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to connect mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editAddress.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateMailboxConnection(id, { address: editAddress.trim() });
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setEditingId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disconnect(id: string) {
+    await deleteMailboxConnection(id).catch(() => null);
+    setConnections((prev) => (prev ?? []).filter((c) => c.id !== id));
+  }
+
+  const list = connections ?? [];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Mail className="size-3.5 text-pen-muted" />
+          Shared mailbox
+        </span>
+        {expanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2.5 border-t border-pen-card-border/60 px-4 py-3">
+          {loading ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">Loading…</p>
+          ) : list.length === 0 ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">No mailbox connected yet.</p>
+          ) : (
+            list.map((c) => (
+              <div key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2">
+                {editingId === c.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
+                      className="min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    />
+                    <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-md p-1 text-pen-green hover:bg-pen-green/10">
+                      <Check className="size-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-pen-foreground">{c.address}</span>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold", MAILBOX_STATUS_STYLES[c.status])}>
+                      {c.status}
+                    </span>
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                          title="Edit address"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-pen-card hover:text-pen-foreground"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => disconnect(c.id)}
+                          title="Disconnect"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {c.status !== "ACTIVE" && c.lastErrorMessage && (
+                  <p className="font-sans text-[10.5px] text-red-500">{c.lastErrorMessage}</p>
+                )}
+              </div>
+            ))
+          )}
+
+          {canManage && list.length === 0 && (
+            showConnectForm ? (
+              <div className="flex flex-col gap-1.5">
+                <input
+                  autoFocus
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") connect(); }}
+                  placeholder="support@yourcompany.com"
+                  className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+                />
+                {error && <p className="font-sans text-[10.5px] text-red-500">{error}</p>}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={connect}
+                    disabled={saving || !address.trim()}
+                    className="rounded-md bg-pen-blue px-2.5 py-1 font-sans text-[11.5px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving ? "Connecting…" : "Connect"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowConnectForm(false); setError(null); }}
+                    className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowConnectForm(true)}
+                className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              >
+                <Plus className="size-3" />
+                Connect mailbox
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function SubDepartmentCard({
   subDepartment,
   canManage,
@@ -1456,6 +1648,8 @@ function SubDepartmentCard({
           )}
         </div>
       )}
+
+      <SubDepartmentMailboxSection subDepartmentId={subDepartment.id} canManage={canManage} />
 
       <button
         type="button"

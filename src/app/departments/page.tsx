@@ -30,6 +30,7 @@ export default async function DepartmentsPage() {
           subDepartments: {
             select: {
               id: true,
+              name: true,
               _count: { select: { memberships: { where: { isActive: true } } } },
               memberships: {
                 where: { isActive: true },
@@ -197,6 +198,7 @@ export default async function DepartmentsPage() {
         for (const subDepartment of d.subDepartments) for (const ms of subDepartment.memberships) seen.add(ms.userId);
         return [...seen];
       })(),
+      subDepartments: d.subDepartments.map((t) => ({ id: t.id, name: t.name })),
     }));
 
     const tenantRow = await prisma.tenant.findUnique({

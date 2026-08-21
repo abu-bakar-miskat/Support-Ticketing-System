@@ -388,6 +388,77 @@ export async function removeDepartmentMember(deptId: string, userId: string) {
   if (!res.ok) throw new Error("Failed to remove member")
 }
 
+export type MailboxConnection = {
+  id: string
+  tenantId: string
+  departmentId: string
+  subDepartmentId: string
+  scopeType: "DEPARTMENT" | "SUB_DEPARTMENT"
+  address: string
+  authType: "RESEND" | "OAUTH_M365" | "OAUTH_GOOGLE" | "IMAP"
+  status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE"
+  failureCount: number
+  lastCheckedAt: string | null
+  lastErrorAt: string | null
+  lastErrorMessage: string | null
+  nextCheckAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export async function getDepartmentMailboxConnections(departmentId: string): Promise<MailboxConnection[]> {
+  const res = await fetch(`/api/admin/departments/${departmentId}/mailbox-connections`)
+  if (!res.ok) throw new Error("Failed to fetch mailbox connections")
+  return res.json()
+}
+
+export async function createDepartmentMailboxConnection(
+  departmentId: string,
+  body: { teamId: string; address: string; authType?: string; plaintextCredentials?: string | null },
+): Promise<MailboxConnection> {
+  const res = await fetch(`/api/admin/departments/${departmentId}/mailbox-connections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, scopeType: "DEPARTMENT" }),
+  })
+  return readJsonResponse<MailboxConnection>(res)
+}
+
+export async function getSubDepartmentMailboxConnections(subDepartmentId: string): Promise<MailboxConnection[]> {
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/mailbox-connections`)
+  if (!res.ok) throw new Error("Failed to fetch mailbox connections")
+  return res.json()
+}
+
+export async function createSubDepartmentMailboxConnection(
+  subDepartmentId: string,
+  body: { address: string; authType?: string; plaintextCredentials?: string | null },
+): Promise<MailboxConnection> {
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/mailbox-connections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  return readJsonResponse<MailboxConnection>(res)
+}
+
+export async function updateMailboxConnection(
+  connectionId: string,
+  body: { address?: string; plaintextCredentials?: string | null },
+): Promise<MailboxConnection> {
+  const res = await fetch(`/api/admin/mailbox-connections/${connectionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  return readJsonResponse<MailboxConnection>(res)
+}
+
+export async function deleteMailboxConnection(connectionId: string) {
+  const res = await fetch(`/api/admin/mailbox-connections/${connectionId}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Failed to disconnect mailbox")
+}
+
 export async function bulkAssignTickets(ticketIds: string[], assigneeId: string): Promise<{ updated: number }> {
   const res = await fetch("/api/admin/tickets/bulk-assign", {
     method: "POST",

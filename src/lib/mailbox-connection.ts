@@ -59,6 +59,14 @@ export async function listMailboxConnections(departmentId: string): Promise<Mail
   });
 }
 
+export async function listMailboxConnectionsForSubDepartment(subDepartmentId: string): Promise<MailboxConnectionSafe[]> {
+  return prisma.mailboxConnection.findMany({
+    where: { subDepartmentId },
+    select: SAFE_SELECT,
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function createMailboxConnection(params: {
   tenantId: string;
   departmentId: string;

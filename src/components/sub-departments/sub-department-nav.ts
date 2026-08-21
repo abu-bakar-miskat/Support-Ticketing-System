@@ -21,6 +21,7 @@ export function getSubDepartmentNav(name: string): SubDepartmentNavGroup[] {
       items: [
         { label: "About", href: base },
         { label: "Mailbox", href: `${base}/mailbox` },
+        { label: "Support forms", href: `${base}/support-forms` },
       ],
     },
   ];

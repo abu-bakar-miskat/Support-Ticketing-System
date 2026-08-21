@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Check, Clock, TicketCheck, Layers, ChartColumn, Globe } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { createTicketsSubscription } from "@/lib/realtime";
+import { CustomReportBuilder } from "@/components/reports/custom-report-builder";
+import { ScheduledReports } from "@/components/reports/scheduled-reports";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -428,8 +433,27 @@ export function SubDepartmentTimePage() {
   const [customRange, setCustomRange] = useState<DayPickerDateRange | undefined>();
   const [rangeOpen, setRangeOpen] = useState(false);
   const { userRole } = useDashboardContext();
+  const queryClient = useQueryClient();
   // Per-person filtering is a manager tool — completely hidden from members.
   const canFilterByPerson = userRole === "admin" || userRole === "manager";
+
+  // RPT-06: live dashboard — refresh report metrics when tenant tickets change.
+  // Debounced so a burst of changes triggers a single invalidation.
+  useEffect(() => {
+    const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["reports"] });
+      }, 1500);
+    };
+    const unsubscribe = createTicketsSubscription(supabase, invalidate);
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [queryClient]);
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [personFilter, setPersonFilter] = useState<string>("all");
   const selectedLabel =
@@ -801,6 +825,12 @@ export function SubDepartmentTimePage() {
           </div>
         </div>
       )}
+
+      {/* RPT-04: custom report builder over the selected range */}
+      <CustomReportBuilder from={range.from} to={range.to} />
+
+      {/* RPT-06: periodic exportable reports (Project Admin only; self-hides otherwise) */}
+      <ScheduledReports />
 
     </div>
   );

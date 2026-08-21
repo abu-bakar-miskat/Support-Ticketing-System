@@ -43,6 +43,7 @@ import {
   updateAdminUser,
   addAdminSubDepartmentMember,
   removeAdminSubDepartmentMember,
+  updateAdminSubDepartmentMemberRole,
   createAdminSubDepartment,
   updateAdminSubDepartment,
   deleteAdminSubDepartment,
@@ -57,7 +58,7 @@ export type SubDepartmentRow = {
   prefix: string;
   departmentId: string;
   color: string;
-  leads: { name: string; avatarUrl: string | null }[];
+  leads: { userId: string; name: string; avatarUrl: string | null; isExplicit: boolean }[];
   memberColors: string[];
   members?: { name: string; avatarUrl: string | null }[];
   extraMembers: number;
@@ -97,26 +98,38 @@ function SubDepartmentAvatar({ name, avatarUrl, role, subDepartment }: { name: s
   return <UserAvatar name={name} avatarUrl={avatarUrl} size={24} meta={{ role, subDepartment }} />;
 }
 
-function LeadCell({ leads }: { leads: { name: string; avatarUrl: string | null }[] }) {
+function SubManagersList({
+  leads,
+  canManage,
+  onRemove,
+}: {
+  leads: SubDepartmentRow["leads"];
+  canManage: boolean;
+  onRemove: (userId: string) => void;
+}) {
   if (leads.length === 0) {
-    return <span className="font-sans text-xs text-pen-subtle">—</span>;
+    return <span className="font-sans text-[11.5px] text-pen-subtle">No sub-managers assigned</span>;
   }
-  if (leads.length === 1) {
-    const lead = leads[0];
-    return (
-      <div className="flex min-w-0 items-center gap-2">
-        <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
-        <span className="truncate font-sans text-xs text-pen-foreground">{lead.name}</span>
-      </div>
-    );
-  }
-  const visible = leads.slice(0, 3);
-  const extra = leads.length - visible.length;
-  const label = leads.map((l) => l.name).join(", ");
   return (
-    <div className="flex min-w-0 items-center gap-2" title={label}>
-      <MemberStack members={visible} extra={extra} />
-      <span className="truncate font-sans text-xs text-pen-foreground">{label}</span>
+    <div className="flex flex-col gap-2">
+      {leads.map((lead, i) => (
+        <div key={lead.userId || `${lead.name}-${i}`} className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
+            <span className="truncate font-sans text-[12.5px] text-pen-foreground">{lead.name}</span>
+          </div>
+          {canManage && lead.isExplicit && (
+            <button
+              type="button"
+              onClick={() => onRemove(lead.userId)}
+              title="Remove sub-manager"
+              className="shrink-0 rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -159,6 +172,7 @@ type ModalMode =
   | { type: "create" }
   | { type: "edit"; subDepartment: SubDepartmentRow }
   | { type: "assign"; subDepartment: SubDepartmentRow }
+  | { type: "assign-sub-manager"; subDepartment: SubDepartmentRow }
   | { type: "members"; subDepartment: SubDepartmentRow };
 
 function SubDepartmentModal({
@@ -728,15 +742,19 @@ type ProfileOption = {
 
 function AssignMemberModal({
   subDepartment,
+  role,
   onClose,
   onSuccess,
 }: {
   subDepartment: SubDepartmentRow;
+  /** When set to "sub_manager", also offers existing team members for promotion. */
+  role?: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [subManagerIds, setSubManagerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
@@ -744,15 +762,19 @@ function AssignMemberModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const isSubManagerMode = role === "sub_manager";
 
   useEffect(() => {
     Promise.all([
       getAdminUsers(),
       getAdminSubDepartmentMembers(subDepartment.id),
     ])
-      .then(([allUsers, currentMembers]: [ProfileOption[], { id: string; userId?: string }[]]) => {
+      .then(([allUsers, currentMembers]: [ProfileOption[], { id: string; userId?: string; role?: string }[]]) => {
         setProfiles(allUsers);
         setExistingIds(new Set(currentMembers.map((m) => m.userId ?? m.id)));
+        setSubManagerIds(
+          new Set(currentMembers.filter((m) => m.role === "sub_manager").map((m) => m.userId ?? m.id)),
+        );
         setLoading(false);
         searchRef.current?.focus();
       })
@@ -761,8 +783,8 @@ function AssignMemberModal({
 
   const filtered = profiles.filter(
     (p) =>
-      !existingIds.has(p.id) &&
-      p.subDepartment === null &&
+      !subManagerIds.has(p.id) &&
+      (isSubManagerMode ? p.subDepartment === null || existingIds.has(p.id) : !existingIds.has(p.id) && p.subDepartment === null) &&
       (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         p.email.toLowerCase().includes(debouncedSearch.toLowerCase())),
   );
@@ -786,7 +808,7 @@ function AssignMemberModal({
     try {
       try {
         await Promise.all(
-          [...selectedIds].map((userId) => addAdminSubDepartmentMember(subDepartment.id, userId)),
+          [...selectedIds].map((userId) => addAdminSubDepartmentMember(subDepartment.id, userId, role)),
         );
         onSuccess();
       } catch {
@@ -811,7 +833,7 @@ function AssignMemberModal({
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="pen-text-modal-title">
-              Add members
+              {isSubManagerMode ? "Add sub-manager" : "Add members"}
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
               Sub department:{" "}
@@ -879,11 +901,11 @@ function AssignMemberModal({
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="px-3 py-4 text-center font-sans text-[11.5px] text-pen-subtle">
-                  {profiles.every(
-                    (p) => p.subDepartment !== null || existingIds.has(p.id),
-                  )
-                    ? "All users are already assigned to a sub department"
-                    : "No users found"}
+                  {isSubManagerMode
+                    ? "No eligible members found"
+                    : profiles.every((p) => p.subDepartment !== null || existingIds.has(p.id))
+                      ? "All users are already assigned to a sub department"
+                      : "No users found"}
                 </p>
               ) : (
                 filtered.map((p) => {
@@ -1332,6 +1354,8 @@ function SubDepartmentCard({
   canManage,
   onEdit,
   onAssign,
+  onAssignSubManager,
+  onRemoveSubManager,
   onViewMembers,
   onDelete,
 }: {
@@ -1339,6 +1363,8 @@ function SubDepartmentCard({
   canManage: boolean;
   onEdit: () => void;
   onAssign: () => void;
+  onAssignSubManager: () => void;
+  onRemoveSubManager: (userId: string) => void;
   onViewMembers: () => void;
   onDelete: () => void;
 }) {
@@ -1412,8 +1438,22 @@ function SubDepartmentCard({
         )}
       </button>
       {managersExpanded && (
-        <div className="border-t border-pen-card-border/60 px-4 py-3">
-          <LeadCell leads={subDepartment.leads} />
+        <div className="flex flex-col gap-3 border-t border-pen-card-border/60 px-4 py-3">
+          <SubManagersList
+            leads={subDepartment.leads}
+            canManage={canManage}
+            onRemove={onRemoveSubManager}
+          />
+          {canManage && (
+            <button
+              type="button"
+              onClick={onAssignSubManager}
+              className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+            >
+              <Plus className="size-3" />
+              Add sub-manager
+            </button>
+          )}
         </div>
       )}
 
@@ -1489,6 +1529,11 @@ export function SettingsSubDepartmentsPage({
     setConfirmDelete(null);
   }
 
+  async function removeSubManager(subDepartmentId: string, userId: string) {
+    await updateAdminSubDepartmentMemberRole(subDepartmentId, userId, "agent").catch(() => null);
+    startTransition(() => router.refresh());
+  }
+
   return (
     <>
       <ConfirmDialog
@@ -1500,7 +1545,7 @@ export function SettingsSubDepartmentsPage({
         successMessage={confirmDelete ? `"${confirmDelete.name}" deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await doDeleteSubDepartment(confirmDelete); }}
       />
-      {modal && modal.type !== "assign" && modal.type !== "members" && (
+      {modal && modal.type !== "assign" && modal.type !== "assign-sub-manager" && modal.type !== "members" && (
         <SubDepartmentModal
           mode={modal}
           departments={departments}
@@ -1511,6 +1556,14 @@ export function SettingsSubDepartmentsPage({
       {modal?.type === "assign" && (
         <AssignMemberModal
           subDepartment={modal.subDepartment}
+          onClose={() => setModal(null)}
+          onSuccess={refresh}
+        />
+      )}
+      {modal?.type === "assign-sub-manager" && (
+        <AssignMemberModal
+          subDepartment={modal.subDepartment}
+          role="sub_manager"
           onClose={() => setModal(null)}
           onSuccess={refresh}
         />
@@ -1559,6 +1612,8 @@ export function SettingsSubDepartmentsPage({
                 canManage={canManage}
                 onEdit={() => setModal({ type: "edit", subDepartment })}
                 onAssign={() => setModal({ type: "assign", subDepartment })}
+                onAssignSubManager={() => setModal({ type: "assign-sub-manager", subDepartment })}
+                onRemoveSubManager={(userId) => removeSubManager(subDepartment.id, userId)}
                 onViewMembers={() => setModal({ type: "members", subDepartment })}
                 onDelete={() => setConfirmDelete(subDepartment)}
               />

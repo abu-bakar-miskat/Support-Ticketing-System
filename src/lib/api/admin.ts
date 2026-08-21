@@ -198,6 +198,15 @@ export async function removeAdminSubDepartmentMember(subDepartmentId: string, us
   if (!res.ok) throw new Error("Failed to remove team member")
 }
 
+export async function updateAdminSubDepartmentMemberRole(subDepartmentId: string, userId: string, role: string) {
+  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, role }),
+  })
+  if (!res.ok) throw new Error("Failed to update member role")
+}
+
 export async function removeAdminDeptMember(deptId: string, userId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/members`, {
     method: "DELETE",

@@ -31,16 +31,16 @@ export default async function SubDepartmentsPage() {
 
   // Fetch department managers so we can display them as team leads when
   // no explicit TeamMembership with role="sub_manager" exists.
-  const deptManagerMap = new Map<string, { name: string; avatarUrl: string | null }>();
+  const deptManagerMap = new Map<string, { id: string; name: string; avatarUrl: string | null }>();
   if (deptScopeList?.length) {
     const deptManagers = await prisma.departmentManager.findMany({
       where: { departmentId: { in: deptScopeList } },
-      select: { departmentId: true, user: { select: { name: true, avatarUrl: true } } },
+      select: { departmentId: true, user: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { assignedAt: "asc" },
     });
     for (const dm of deptManagers) {
       if (!deptManagerMap.has(dm.departmentId)) {
-        deptManagerMap.set(dm.departmentId, { name: dm.user.name, avatarUrl: dm.user.avatarUrl ?? null });
+        deptManagerMap.set(dm.departmentId, { id: dm.user.id, name: dm.user.name, avatarUrl: dm.user.avatarUrl ?? null });
       }
     }
   }
@@ -96,14 +96,14 @@ export default async function SubDepartmentsPage() {
   const subDepartmentRows: SubDepartmentRow[] = subDepartmentsRaw.map((subDepartment) => {
     const explicitLeads = subDepartment.memberships
       .filter((m) => m.role === "sub_manager")
-      .map((m) => ({ name: m.user.name, avatarUrl: m.user.avatarUrl ?? null }));
+      .map((m) => ({ userId: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl ?? null, isExplicit: true as const }));
 
     const subDepartmentManagerMember = subDepartment.memberships.find((m) => m.role === "manager" || m.role === "admin");
     const deptManager = deptManagerMap.get(subDepartment.department.id);
 
     const fallbackLead =
       subDepartmentManagerMember?.user ??
-      (deptManager ? { name: deptManager.name, avatarUrl: deptManager.avatarUrl } : null) ??
+      (deptManager ? { id: deptManager.id, name: deptManager.name, avatarUrl: deptManager.avatarUrl } : null) ??
       subDepartment.memberships[0]?.user ??
       null;
 
@@ -111,7 +111,7 @@ export default async function SubDepartmentsPage() {
       explicitLeads.length > 0
         ? explicitLeads
         : fallbackLead
-          ? [{ name: fallbackLead.name, avatarUrl: fallbackLead.avatarUrl ?? null }]
+          ? [{ userId: fallbackLead.id, name: fallbackLead.name, avatarUrl: fallbackLead.avatarUrl ?? null, isExplicit: false as const }]
           : [];
 
     const leadIds = new Set(

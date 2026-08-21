@@ -226,6 +226,7 @@ model Tenant {
   mailboxConnections MailboxConnection[]
   mailSuppressionLogs MailSuppressionLog[]
   reportExportJobs ReportExportJob[]
+  reportSchedules ReportSchedule[]
   featureFlags FeatureFlag[]
   auditEvents AuditEvent[]
   agreements Agreement[]
@@ -1358,6 +1359,38 @@ model ReportExportJob {
   @@index([tenantId])
   @@index([status])
   @@index([createdById])
+}
+
+enum ReportScheduleFrequency {
+  DAILY
+  WEEKLY
+}
+
+// RPT-06: periodic exportable reports. A Project Admin configures a recurring
+// report (reportType + format + rolling window). The scheduled-reports cron
+// materializes each due schedule into a ReportExportJob (same generation +
+// storage path as on-demand exports), so the output is downloadable in-app —
+// no email delivery. `nextRunAt` is the due marker the cron polls.
+model ReportSchedule {
+  id           String                  @id @default(cuid())
+  tenantId     String
+  createdById  String                  @db.Uuid
+  name         String
+  reportType   String
+  format       ReportExportFormat
+  frequency    ReportScheduleFrequency
+  // Rolling window length (days back from run time) the report covers.
+  rangeDays    Int                     @default(30)
+  enabled      Boolean                 @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([enabled, nextRunAt])
 }
 
 // SA-04 (slice 19): per-tenant opt-out switch for a named platform feature

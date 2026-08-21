@@ -34,7 +34,7 @@ export function canManageProjects(profile: ProjectPermissionProfile): boolean {
 }
 
 export function canDeleteProjects(profile: ProjectPermissionProfile): boolean {
-  return profile.role === "admin" || profile.role === "manager";
+  return profile.role === "admin" || profile.role === "manager" || !!profile.isSuperAdmin;
 }
 
 /** Full asset edit/delete (not add-only staff access). */

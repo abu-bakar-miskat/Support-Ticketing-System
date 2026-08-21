@@ -81,6 +81,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
         role={profile.role as Role}
         subDepartmentId={profile.subDepartmentId}
         subDepartmentIds={profile.subDepartmentIds}
+        isSuperAdmin={profile.isSuperAdmin}
         memberships={memberships.map((m) => ({
           subDepartmentId: m.subDepartmentId,
           role: m.role,

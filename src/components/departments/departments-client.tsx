@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Users, FolderKanban, LayoutList,
-  AlertCircle, Settings,
+  AlertCircle, Settings, Mail,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
 import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
 import { SettingsMembersPage, type MemberRow } from "@/components/settings/settings-members-page";
+import { DepartmentsMailboxes, type DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
 
 type UserOption = { id: string; name: string; email: string; role: string };
 
@@ -82,6 +83,7 @@ export function DepartmentsClient({
   tenantId,
   members,
   currentUserId,
+  mailboxUsage,
 }: {
   departments: DepartmentRow[];
   allUsers: UserOption[];
@@ -90,9 +92,11 @@ export function DepartmentsClient({
   tenantId?: string | null;
   members?: MemberRow[];
   currentUserId?: string;
+  mailboxUsage?: DepartmentMailboxUsage[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"departments" | "users">("departments");
+  const [tab, setTab] = useState<"departments" | "users" | "mailboxes">("departments");
+  const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
 
   async function enterWorkspace(deptId: string) {
     await fetch("/api/active-dept", {
@@ -134,10 +138,11 @@ export function DepartmentsClient({
           />
 
           {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
             <StatCard icon={Users}        label="Teams"             value={orgStats.subDepartmentCount} />
             <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    onClick={() => setTab("users")} />
+            <StatCard icon={Mail}         label="Mailboxes"         value={mailboxTotal}            onClick={() => setTab("mailboxes")} />
             <StatCard icon={FolderKanban} label="Projects"          value={orgStats.projectCount}   href="/projects" />
             <StatCard icon={LayoutList}   label="Open tickets"      value={orgStats.openTickets}    href="/all-tasks" />
             <StatCard icon={AlertCircle}  label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/sub-departments" />
@@ -148,6 +153,7 @@ export function DepartmentsClient({
             {([
               { key: "departments" as const, label: "Departments" },
               { key: "users" as const, label: `Users${members ? ` (${members.length})` : ""}` },
+              { key: "mailboxes" as const, label: `Mailboxes${mailboxUsage ? ` (${mailboxTotal})` : ""}` },
             ]).map((t) => (
               <button
                 key={t.key}
@@ -167,13 +173,15 @@ export function DepartmentsClient({
         </div>
       )}
 
-      {/* ── Department management / Users ───────────────────────────────────── */}
+      {/* ── Department management / Users / Mailboxes ───────────────────────── */}
       {tab === "users" && members ? (
         <SettingsMembersPage
           members={members}
           isAdmin
           currentUserId={currentUserId}
         />
+      ) : tab === "mailboxes" ? (
+        <DepartmentsMailboxes rows={mailboxUsage ?? []} />
       ) : (
         <SettingsDepartmentsPage
           departments={departments}

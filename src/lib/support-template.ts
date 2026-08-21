@@ -51,30 +51,52 @@ export async function provisionDepartmentSupportTemplate(departmentId: string): 
   await seedSampleRules(departmentId, dept.tenantId);
 }
 
-// Priority-based defaults (SLA-01/02): stricter targets for higher priority, plus
-// a catch-all "Standard" policy so every ticket gets a timer.
+// Priority-based defaults (SLA-01/02). Targets are counted in BUSINESS time
+// (timers pause outside working hours — enabled below when a department is first
+// seeded), so day-based targets use an 8-hour business day: 1 business day = 480
+// min, 3 = 1440, 5 = 2400. A catch-all "Standard" policy (Critical/unset
+// priority) keeps every ticket timed (SLA-01).
+const BUSINESS_HOUR = 60;
+const BUSINESS_DAY = 8 * BUSINESS_HOUR; // 09:00–17:00 default window
 const DEFAULT_SLA_POLICIES = [
   {
     name: "Urgent",
     conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Urgent" }] },
-    firstResponseMins: 15,
-    resolutionMins: 120,
+    firstResponseMins: 1 * BUSINESS_HOUR,
+    resolutionMins: 4 * BUSINESS_HOUR,
   },
   {
     name: "High priority",
     conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "High" }] },
-    firstResponseMins: 30,
-    resolutionMins: 240,
+    firstResponseMins: 4 * BUSINESS_HOUR,
+    resolutionMins: 1 * BUSINESS_DAY,
+  },
+  {
+    name: "Medium priority",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Medium" }] },
+    firstResponseMins: 1 * BUSINESS_DAY,
+    resolutionMins: 3 * BUSINESS_DAY,
+  },
+  {
+    name: "Low priority",
+    conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Low" }] },
+    firstResponseMins: 2 * BUSINESS_DAY,
+    resolutionMins: 5 * BUSINESS_DAY,
   },
   {
     name: "Standard",
     conditions: { combinator: "AND", conditions: [] },
-    firstResponseMins: 120,
-    resolutionMins: 960,
+    firstResponseMins: 1 * BUSINESS_DAY,
+    resolutionMins: 3 * BUSINESS_DAY,
   },
 ] as const;
 
-/** Seed a department's default priority-based SLA policies. Idempotent — no-op if any policy exists. */
+/**
+ * Seed a department's default priority-based SLA policies and turn on
+ * business-hours pausing so the "business day" targets above are measured
+ * against working hours. Idempotent — no-op if any policy already exists, so
+ * existing departments are never modified.
+ */
 export async function seedDefaultSlaPolicies(departmentId: string, tenantId: string): Promise<void> {
   const existing = await prisma.slaPolicy.count({ where: { departmentId } });
   if (existing > 0) return;
@@ -88,6 +110,22 @@ export async function seedDefaultSlaPolicies(departmentId: string, tenantId: str
       resolutionMins: p.resolutionMins,
       order,
     })),
+  });
+
+  // Enable "pause outside business hours" for this freshly-seeded department so
+  // the business-day targets count only working time. Merge to preserve any
+  // other slaConfig keys (e.g. atRiskPct).
+  const dept = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { slaConfig: true },
+  });
+  const cfg =
+    dept?.slaConfig && typeof dept.slaConfig === "object" && !Array.isArray(dept.slaConfig)
+      ? (dept.slaConfig as Record<string, unknown>)
+      : {};
+  await prisma.department.update({
+    where: { id: departmentId },
+    data: { slaConfig: { ...cfg, pauseOutsideHours: true } as Prisma.InputJsonValue },
   });
 }
 

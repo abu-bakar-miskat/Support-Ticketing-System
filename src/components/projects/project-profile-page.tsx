@@ -2542,6 +2542,10 @@ function ProjectProfilePageInner({
             }
             startTransition(() => router.refresh());
           }}
+          onDeleted={() => {
+            setSettingsOpen(false);
+            router.push("/projects");
+          }}
         />
       )}
       {!canModifyProject && canSelfJoinProject && !isSupport && (

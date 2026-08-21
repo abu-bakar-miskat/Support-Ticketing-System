@@ -10,9 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatUserListSubtitle, matchesUserListSearch } from "@/lib/user-list-person";
 import { ProjectAvatar } from "@/components/projects/project-avatar";
-import { createAdminProject, updateAdminProject, uploadAdminProjectAvatar } from "@/lib/api/admin";
+import { createAdminProject, updateAdminProject, uploadAdminProjectAvatar, deleteAdminProject } from "@/lib/api/admin";
 import { fetchDepartmentPeople } from "@/lib/api/projects";
 import { usePermissions } from "@/hooks/use-permissions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LifecycleStepper } from "@/components/projects/lifecycle-stepper";
 import {
   type LifecycleStage,
@@ -321,6 +322,7 @@ export function ProjectModal({
   lockedDepartment,
   onClose,
   onSuccess,
+  onDeleted,
 }: {
   mode: ModalMode;
   departments: DepartmentOption[];
@@ -328,9 +330,12 @@ export function ProjectModal({
   lockedDepartment?: { id: string; name: string } | null;
   onClose: () => void;
   onSuccess: () => void;
+  /** Called after a successful delete. Falls back to onSuccess + onClose when omitted. */
+  onDeleted?: () => void;
 }) {
   const isEdit = mode.type === "edit";
-  const { canManageProjectLifecycle } = usePermissions();
+  const { canManageProjectLifecycle, canDeleteProjects } = usePermissions();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(isEdit ? mode.project.name : "");
   const [color, setColor] = useState(
     isEdit ? mode.project.color : PRESET_COLORS[0],
@@ -497,6 +502,16 @@ export function ProjectModal({
       toast.error(errorMessage);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!isEdit) return;
+    await deleteAdminProject(mode.project.id);
+    if (onDeleted) onDeleted();
+    else {
+      onSuccess();
+      onClose();
     }
   }
 
@@ -754,7 +769,18 @@ export function ProjectModal({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-pen-card-border px-[22px] py-3.5">
+          <div className="flex shrink-0 items-center gap-2 border-t border-pen-card-border px-[22px] py-3.5">
+            {isEdit && canDeleteProjects && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-pen-red/30 px-3 font-sans text-[12.5px] font-medium text-pen-red transition-colors hover:bg-pen-red/10"
+              >
+                <Trash2 className="size-3.5" strokeWidth={2} />
+                Delete project
+              </button>
+            )}
+            <div className="flex-1" />
             <button
               type="button"
               onClick={onClose}
@@ -772,6 +798,18 @@ export function ProjectModal({
           </div>
         </form>
       </div>
+
+      {isEdit && (
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title="Delete project"
+          description={`Delete "${mode.project.name}"? This permanently removes the project and all its tickets. This cannot be undone.`}
+          confirmLabel="Delete project"
+          successMessage={`"${mode.project.name}" deleted`}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 }

@@ -458,6 +458,9 @@ model SubDepartment {
   emailConfig       Json?
   slaConfig         Json?
   businessHours     Json?
+  // Per-sub-department ticket-assignment method. null = inherit from the parent
+  // department's assignmentMethod (see lib/assignment-engine.ts).
+  assignmentMethod  AssignmentMethod?
   department        Department         @relation(fields: [departmentId], references: [id])
   profiles          Profile[]
   tickets           Ticket[]
@@ -474,6 +477,7 @@ model SubDepartment {
   intakeIssues      IntakeIssue[]
   invites           DepartmentInvite[]
   mailboxConnections MailboxConnection[]
+  assignmentRules   AssignmentRule[]
 
   @@index([tenantId])
   @@map("Team")
@@ -1241,6 +1245,8 @@ model AssignmentRule {
   id           String   @id @default(cuid())
   tenantId     String
   departmentId String
+  // Optional sub-department scope. null = department-wide rule. See ASG-01.
+  subDepartmentId String? @map("teamId")
   name         String
   conditions   Json
   agentId      String   @db.Uuid
@@ -1251,9 +1257,11 @@ model AssignmentRule {
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
 }
 
 enum BulkReassignTargetType {

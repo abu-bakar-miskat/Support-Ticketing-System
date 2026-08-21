@@ -25,6 +25,7 @@ export function getSubDepartmentNav(name: string): SubDepartmentNavGroup[] {
         { label: "Email settings", href: `${base}/email` },
         { label: "Automation rules", href: `${base}/automation-rules` },
         { label: "SLA policies", href: `${base}/sla-policies` },
+        { label: "Assignment methods", href: `${base}/assignment` },
       ],
     },
   ];

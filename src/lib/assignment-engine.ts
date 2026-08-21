@@ -67,17 +67,22 @@ export async function autoAssignTicket(params: {
 
   const [department, team] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
-    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true } }),
   ]);
-  const method: AssignmentMethod = department?.assignmentMethod ?? "ROUND_ROBIN";
+  // Sub-department override wins; null falls back to the parent department's
+  // method, then to ROUND_ROBIN (preserves lib/rota.ts's historical default).
+  const method: AssignmentMethod = team?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
 
   let result: AutoAssignResult;
 
   if (method === "MANUAL") {
     result = { assigneeId: null, method, failed: false };
   } else if (method === "RULE_BASED") {
+    // Sub-department-scoped rules take precedence over department-wide ones
+    // (subDepartmentId non-null sorts first), then by explicit `order`.
     const rules = await prisma.assignmentRule.findMany({
-      where: { departmentId, enabled: true },
+      where: { departmentId, enabled: true, OR: [{ subDepartmentId: teamId }, { subDepartmentId: null }] },
+      orderBy: [{ subDepartmentId: { sort: "desc", nulls: "last" } }, { order: "asc" }],
       select: { id: true, conditions: true, agentId: true, enabled: true, order: true },
     });
     const candidateId = pickRuleBased(rules as AssignmentRuleLike[], formValues);

@@ -34,30 +34,47 @@ async function jsonOrThrow(res: Response) {
 export function AssignmentSettingsPage({
   departmentId,
   departmentName,
+  subDepartmentId,
+  subDepartmentName,
+  backHref = "/settings/departments",
+  backLabel = "Back to departments",
 }: {
   departmentId: string;
   departmentName: string;
+  /** When set, the page edits this sub-department's override instead of the department. */
+  subDepartmentId?: string;
+  subDepartmentName?: string;
+  backHref?: string;
+  backLabel?: string;
 }) {
-  const [method, setMethod] = useState<AssignmentMethod | null>(null);
+  // `undefined` = still loading; `null` = "inherit from parent" (sub-dept only).
+  const [method, setMethod] = useState<AssignmentMethod | null | undefined>(undefined);
+  const [parentMethod, setParentMethod] = useState<AssignmentMethod | null>(null);
   const [rules, setRules] = useState<AssignmentRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const scopeQs = subDepartmentId
+    ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}`
+    : "";
+  const scopeName = subDepartmentName ?? departmentName;
+
   const load = () => {
     Promise.all([
-      fetch(`/api/departments/${departmentId}/assignment-settings`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/assignment-rules`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/assignment-settings${scopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`).then(jsonOrThrow),
     ])
       .then(([settingsRes, rulesRes]) => {
-        setMethod(settingsRes.assignmentMethod);
+        setMethod(settingsRes.assignmentMethod ?? null);
+        setParentMethod(settingsRes.parentMethod ?? null);
         setRules(rulesRes);
       })
       .catch((e) => setError(e.message));
   };
 
-  useEffect(load, [departmentId]);
+  useEffect(load, [departmentId, subDepartmentId]);
 
-  async function changeMethod(next: AssignmentMethod) {
+  async function changeMethod(next: AssignmentMethod | null) {
     setError(null);
     const prev = method;
     setMethod(next);
@@ -67,7 +84,11 @@ export function AssignmentSettingsPage({
         await fetch(`/api/departments/${departmentId}/assignment-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assignmentMethod: next }),
+          body: JSON.stringify(
+            subDepartmentId
+              ? { assignmentMethod: next, subDepartmentId }
+              : { assignmentMethod: next },
+          ),
         }),
       );
     } catch (e) {
@@ -82,13 +103,14 @@ export function AssignmentSettingsPage({
     setError(null);
     try {
       const created = await jsonOrThrow(
-        await fetch(`/api/departments/${departmentId}/assignment-rules`, {
+        await fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: "New rule",
             conditions: { combinator: "AND", conditions: [] },
             agentId: "",
+            ...(subDepartmentId ? { subDepartmentId } : {}),
           }),
         }),
       );
@@ -130,16 +152,19 @@ export function AssignmentSettingsPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link
-        href="/settings/departments"
+        href={backHref}
         className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
       >
-        <ArrowLeft className="size-3.5" /> Back to departments
+        <ArrowLeft className="size-3.5" /> {backLabel}
       </Link>
 
-      <h1 className="pen-text-modal-title mb-1">Assignment methods — {departmentName}</h1>
+      <h1 className="pen-text-modal-title mb-1">Assignment methods — {scopeName}</h1>
       <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
-        How new tickets are routed to agents. When no eligible agent can be found, tickets are left
-        unassigned and department admins are notified immediately.
+        {subDepartmentId
+          ? "How new tickets for this sub-department are routed to agents. Inherit the parent department's method, or set one here to override it."
+          : "How new tickets are routed to agents."}{" "}
+        When no eligible agent can be found, tickets are left unassigned and department admins are
+        notified immediately.
       </p>
 
       {error && (
@@ -151,10 +176,34 @@ export function AssignmentSettingsPage({
       {/* ── Method selector ── */}
       <div className="mb-8 rounded-2xl border border-pen-card-border bg-pen-card p-5">
         <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-pen-foreground">Method</h2>
-        {method === null ? (
+        {method === undefined ? (
           <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {subDepartmentId && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => changeMethod(null)}
+                className={cn(
+                  "rounded-lg border p-3 text-left transition-colors disabled:opacity-60 sm:col-span-2",
+                  method === null
+                    ? "border-pen-blue bg-pen-blue-tint"
+                    : "border-pen-card-border hover:bg-pen-surface",
+                )}
+              >
+                <p className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                  Inherit from parent department
+                </p>
+                <p className="mt-0.5 font-sans text-[11px] text-pen-muted">
+                  Use the department&apos;s method
+                  {parentMethod
+                    ? ` (currently ${METHODS.find((m) => m.value === parentMethod)?.label ?? parentMethod})`
+                    : ""}
+                  .
+                </p>
+              </button>
+            )}
             {METHODS.map((m) => (
               <button
                 key={m.value}

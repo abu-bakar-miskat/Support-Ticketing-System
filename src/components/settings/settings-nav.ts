@@ -102,6 +102,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         managerOnly: true,
         deptSpecific: true,
       },
+      {
+        label: "Assignment methods",
+        href: "/settings/assignment",
+        managerOnly: true,
+        deptSpecific: true,
+      },
     ],
   },
   {

@@ -137,7 +137,6 @@ const SETTINGS_ITEMS: Item[] = [
   { id: "s-depts",      label: "Settings — Departments",icon: <DepartmentIcon className={ICON} />,  href: "/settings/departments" },
   { id: "s-projects",   label: "Settings — Projects",   icon: <FolderKanban className={ICON} />,href: "/settings/projects" },
   { id: "s-tags",       label: "Settings — Tags",       icon: <Tag className={ICON} />,        href: "/settings/tags" },
-  { id: "s-teams",      label: "Settings — Teams",      icon: <Users className={ICON} />,      href: "/settings/sub-departments" },
 ];
 
 const ACTION_ITEMS: Item[] = [

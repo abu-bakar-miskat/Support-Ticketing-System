@@ -5,38 +5,39 @@ import { getProfileDeptScope } from "@/lib/dept-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
-// GET /api/admin/sub-departments/[id]/mailbox-mail
-// Every email this sub-department's mailbox connection(s) received: inbound
-// TicketMessages filed against the team's tickets, plus auto-generated mail
-// that never became a ticket (MailSuppressionLog, keyed by mailboxConnectionId).
+// GET /api/admin/departments/[id]/mailbox-mail
+// Every email the department's mailbox connection(s) received, aggregated across
+// all of its sub-departments: inbound TicketMessages filed against the
+// department's tickets, plus auto-generated mail that never became a ticket
+// (MailSuppressionLog, keyed by mailboxConnectionId).
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
 
-  const { id } = await params
-  const subDepartment = await prisma.subDepartment.findUnique({
-    where: { id },
-    select: { id: true, departmentId: true },
+  const { id: departmentId } = await params
+  const department = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { id: true },
   })
-  if (!subDepartment) {
-    return NextResponse.json({ error: "Sub-department not found" }, { status: 404 })
+  if (!department) {
+    return NextResponse.json({ error: "Department not found" }, { status: 404 })
   }
 
   if (caller!.role === "manager") {
     const deptScope = await getProfileDeptScope(caller!)
-    if (!deptScope?.allowedDeptIds.includes(subDepartment.departmentId)) {
-      return NextResponse.json({ error: "Sub-department is outside your scope" }, { status: 403 })
+    if (!deptScope?.allowedDeptIds.includes(departmentId)) {
+      return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
     }
   }
 
   const connections = await prisma.mailboxConnection.findMany({
-    where: { subDepartmentId: id },
+    where: { departmentId },
     select: { id: true, address: true, status: true, subDepartmentId: true },
   })
 
   const [messages, suppressed] = await Promise.all([
     prisma.ticketMessage.findMany({
-      where: { direction: "inbound", ticket: { subDepartmentId: id } },
+      where: { direction: "inbound", ticket: { subDepartment: { departmentId } } },
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {

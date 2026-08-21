@@ -63,8 +63,6 @@ export type HomeDashboardData = {
     todo: number;
     timeTodaySecs: number;
     timeToday: string;
-    qaTimeTodaySecs: number;
-    qaTimeToday: string;
   };
   attention: AttentionTask[];
   projects: MyProject[];
@@ -250,10 +248,7 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
           </div>
 
           {data && (
-            <div className={cn(
-              "grid grid-cols-2 gap-3",
-              data.metrics.qaTimeTodaySecs > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4",
-            )}>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MetricCard
                 label="Open" value={data.metrics.open} color="#0a76b9"
                 sub="assigned to you" href="/tasks"
@@ -269,17 +264,10 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
                 href="/tasks"
               />
               <MetricCard
-                label="Dev time today" value={data.metrics.timeTodaySecs}
-                display={data.metrics.timeToday} color="#10b981" sub="development"
+                label="Time today" value={data.metrics.timeTodaySecs}
+                display={data.metrics.timeToday} color="#10b981" sub="logged"
                 href="/time"
               />
-              {data.metrics.qaTimeTodaySecs > 0 && (
-                <MetricCard
-                  label="QA time today" value={data.metrics.qaTimeTodaySecs}
-                  display={data.metrics.qaTimeToday} color="#0d9488" sub="testing"
-                  href="/time"
-                />
-              )}
             </div>
           )}
         </header>

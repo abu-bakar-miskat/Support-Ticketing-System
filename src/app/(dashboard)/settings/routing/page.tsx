@@ -6,7 +6,7 @@ import {
   type RoutingRule,
 } from "@/components/settings/settings-routing-rules-page";
 
-export const metadata = { title: "Routing rules — Ticketing System" };
+export const metadata = { title: "Routing rules — Support Ticketing System" };
 
 const CONDITION_LABELS: Record<string, string> = {
   subject_contains: "subject contains",

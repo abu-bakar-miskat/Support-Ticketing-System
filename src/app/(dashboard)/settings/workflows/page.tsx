@@ -5,7 +5,7 @@ import { SettingsWorkflowsPage } from "@/components/settings/settings-workflows-
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 
-export const metadata = { title: "Workflows & statuses — Ticketing System" };
+export const metadata = { title: "Workflows & statuses — Support Ticketing System" };
 
 export default async function SettingsWorkflowsRoute() {
   const profile = await getProfile();

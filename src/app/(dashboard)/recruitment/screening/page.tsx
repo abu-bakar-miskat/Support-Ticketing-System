@@ -38,7 +38,7 @@ import { InviteForm } from "./invite-form"
 import { RowActions } from "./row-actions"
 import { HowItWorks } from "./how-it-works"
 
-export const metadata = { title: "Screening — Ticketing System" }
+export const metadata = { title: "Screening — Support Ticketing System" }
 
 const STATUS_STYLE: Record<string, { label: string; className: string }> = {
   sent: { label: "Sent", className: "bg-muted text-muted-foreground" },

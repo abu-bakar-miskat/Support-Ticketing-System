@@ -53,11 +53,6 @@ export async function GET(request: Request) {
   const createdWhere = { ...base, createdAt: { gte: start, lt: end } }
   // Tickets resolved (closed) within the selected period.
   const closedWhere = { ...base, closedAt: { gte: start, lt: end } }
-  // QA is a separate axis (join table), so its widgets scope by team/project only,
-  // independent of the dev-assignee person filter.
-  const qaBase = { deletedAt: null, ...subDepartmentFilter, ...projectFilter }
-  const qaClosedTicketWhere = { ...qaBase, closedAt: { gte: start, lt: end } }
-  const qaOpenTicketWhere = { ...qaBase, createdAt: { gte: start, lt: end }, closedAt: null }
 
   const [
     createdGroups,
@@ -72,8 +67,6 @@ export async function GET(request: Request) {
     moduleTotalGroups,
     moduleOpenGroups,
     scopeProjectGroups,
-    qaResolvedGroups,
-    qaWorkloadGroups,
     completeStatuses,
   ] = await Promise.all([
     prisma.ticket.groupBy({
@@ -134,18 +127,6 @@ export async function GET(request: Request) {
       where: { deletedAt: null, ...subDepartmentFilter },
       _count: { _all: true },
     }),
-    // QA resolved: closed tickets grouped by QA assignee (via join table).
-    prisma.ticketQaAssignee.groupBy({
-      by: ["userId"],
-      where: { ticket: qaClosedTicketWhere },
-      _count: { _all: true },
-    }),
-    // QA workload: open tickets grouped by QA assignee.
-    prisma.ticketQaAssignee.groupBy({
-      by: ["userId"],
-      where: { ticket: qaOpenTicketWhere },
-      _count: { _all: true },
-    }),
     // Statuses flagged complete per team — the source of truth for "done".
     prisma.subDepartmentStatus.findMany({
       where: {
@@ -194,8 +175,6 @@ export async function GET(request: Request) {
         ...createdGroups.map((g) => g.creatorId),
         ...resolvedGroups.map((g) => g.assigneeId),
         ...workloadGroups.map((g) => g.assigneeId),
-        ...qaResolvedGroups.map((g) => g.userId),
-        ...qaWorkloadGroups.map((g) => g.userId),
       ].filter((id): id is string => !!id),
     ),
   ]
@@ -299,17 +278,6 @@ export async function GET(request: Request) {
   const workload: NamedCount[] = workloadGroups
     .filter((g) => g.assigneeId)
     .map((g) => ({ name: nameById.get(g.assigneeId!) ?? "Unknown", count: g._count._all }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8)
-
-  // ── QA tasks per person (resolved / open), counted separately from dev work ──
-  const qaResolved: NamedCount[] = qaResolvedGroups
-    .map((g) => ({ name: nameById.get(g.userId) ?? "Unknown", count: g._count._all }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8)
-
-  const qaWorkload: NamedCount[] = qaWorkloadGroups
-    .map((g) => ({ name: nameById.get(g.userId) ?? "Unknown", count: g._count._all }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
@@ -517,8 +485,6 @@ export async function GET(request: Request) {
     statusDist,
     priorityDist,
     workload,
-    qaResolved,
-    qaWorkload,
     projectTickets,
     moduleTickets: moduleTicketOverview,
     totals,

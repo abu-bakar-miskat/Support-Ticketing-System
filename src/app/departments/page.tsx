@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import type { ProfileMembership } from "@/lib/profile";
 import { prisma } from "@/lib/db";
+import { avatarColorFor } from "@/lib/board-data";
 import { DepartmentsClient } from "@/components/departments/departments-client";
 import { MyDepartmentsClient, type MyDepartmentItem } from "@/components/departments/my-departments-client";
 import type { DepartmentRow } from "@/components/settings/settings-departments-page";
+import type { MemberRow } from "@/components/settings/settings-members-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
 
-export const metadata = { title: "Departments — Ticketing System" };
+export const metadata = { title: "Departments — Support Ticketing System" };
 
 export default async function DepartmentsPage() {
   const profile = await getProfile();
@@ -28,6 +30,7 @@ export default async function DepartmentsPage() {
           subDepartments: {
             select: {
               id: true,
+              name: true,
               _count: { select: { memberships: { where: { isActive: true } } } },
               memberships: {
                 where: { isActive: true },
@@ -80,6 +83,73 @@ export default async function DepartmentsPage() {
 
     const [deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests] = orgStats;
 
+    // ── Tenant-wide user list, grouped by department + sub-department ────────
+    const [tenantProfiles, tenantMemberships, tenantDirectDeptMembers] = await Promise.all([
+      prisma.profile.findMany({
+        where: { deletedAt: null, tenantMemberships: { some: { tenantId, isActive: true } } },
+        orderBy: { name: "asc" },
+      }),
+      (prisma.subDepartmentMembership as any).findMany({
+        where: { isActive: true, subDepartment: { tenantId } },
+        select: {
+          userId: true,
+          doNotAssign: true,
+          subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+        },
+      }),
+      (prisma.departmentMember as any).findMany({
+        where: { department: { tenantId } },
+        select: { userId: true, department: { select: { id: true, name: true } } },
+      }),
+    ]);
+
+    const subDepartmentsByUser = new Map<string, string[]>();
+    const subDepartmentIdByUser = new Map<string, string>();
+    const deptByUser = new Map<string, string>();
+    const deptIdByUser = new Map<string, string>();
+    const doNotAssignMap = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
+    for (const m of tenantMemberships as any[]) {
+      const list = subDepartmentsByUser.get(m.userId) ?? [];
+      list.push(m.subDepartment.name);
+      subDepartmentsByUser.set(m.userId, list);
+      if (!subDepartmentIdByUser.has(m.userId) && m.subDepartment?.id) {
+        subDepartmentIdByUser.set(m.userId, m.subDepartment.id);
+      }
+      if (m.subDepartment?.department?.name && !deptByUser.has(m.userId)) {
+        deptByUser.set(m.userId, m.subDepartment.department.name);
+      }
+      if (m.subDepartment?.department?.id && !deptIdByUser.has(m.userId)) {
+        deptIdByUser.set(m.userId, m.subDepartment.department.id);
+      }
+      if (m.subDepartment?.id) {
+        const existing = doNotAssignMap.get(m.userId) ?? [];
+        existing.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
+        doNotAssignMap.set(m.userId, existing);
+      }
+    }
+    for (const dm of tenantDirectDeptMembers as { userId: string; department: { id: string; name: string } }[]) {
+      if (!deptByUser.has(dm.userId)) deptByUser.set(dm.userId, dm.department.name);
+      if (!deptIdByUser.has(dm.userId)) deptIdByUser.set(dm.userId, dm.department.id);
+    }
+
+    const tenantMembers: MemberRow[] = tenantProfiles.map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      color: avatarColorFor(p.name),
+      avatarUrl: p.avatarUrl ?? null,
+      role: p.role,
+      location: p.location ?? null,
+      timezone: p.timezone ?? null,
+      isActive: p.isActive ?? true,
+      subDepartments: subDepartmentsByUser.get(p.id) ?? [],
+      subDepartmentId: p.subDepartmentId ?? subDepartmentIdByUser.get(p.id) ?? null,
+      department: deptByUser.get(p.id) ?? null,
+      departmentId: deptIdByUser.get(p.id) ?? null,
+      isCrossAccess: false,
+      subDepartmentMemberships: doNotAssignMap.get(p.id) ?? [],
+    }));
+
     const departments: DepartmentRow[] = rawDepts.map((d) => ({
       id: d.id,
       name: d.name,
@@ -128,6 +198,7 @@ export default async function DepartmentsPage() {
         for (const subDepartment of d.subDepartments) for (const ms of subDepartment.memberships) seen.add(ms.userId);
         return [...seen];
       })(),
+      subDepartments: d.subDepartments.map((t) => ({ id: t.id, name: t.name })),
     }));
 
     const tenantRow = await prisma.tenant.findUnique({
@@ -144,6 +215,8 @@ export default async function DepartmentsPage() {
         orgStats={{ deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests }}
         tenantName={tenantName}
         tenantId={profile.activeTenantId ?? null}
+        members={tenantMembers}
+        currentUserId={profile.id}
       />
     );
   }

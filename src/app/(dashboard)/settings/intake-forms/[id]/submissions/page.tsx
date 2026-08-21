@@ -6,7 +6,7 @@ import {
   type SubmissionRow,
 } from "@/components/settings/settings-intake-submissions-page"
 
-export const metadata = { title: "Submissions — Ticketing System" }
+export const metadata = { title: "Submissions — Support Ticketing System" }
 
 export default async function SettingsIntakeSubmissionsRoute({
   params,

@@ -6,7 +6,7 @@ import { getEmailConfig } from "@/lib/email-config";
 import { getTenantConfig } from "@/lib/tenant-config";
 import { SettingsEmailPage } from "@/components/settings/settings-email-page";
 
-export const metadata = { title: "Email settings — Ticketing System" };
+export const metadata = { title: "Email settings — Support Ticketing System" };
 
 function asConfigObject(
   value: unknown,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, X, Plus, CalendarDays } from "lucide-react";
+import { Loader2, X, Plus, CalendarDays, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
@@ -37,12 +37,22 @@ export type MemberConfigTarget = {
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
 };
 
+type ReassignContext = {
+  departmentId: string;
+  teams: { id: string; name: string }[];
+  agents: { id: string; name: string }[];
+};
+
+type ReassignTargetType = "SINGLE_AGENT" | "GROUP" | "DEPARTMENT_POOL";
+
 export function MemberConfigPanel({
   member,
   onClose,
+  reassignContext = null,
 }: {
   member: MemberConfigTarget;
   onClose: () => void;
+  reassignContext?: ReassignContext | null;
 }) {
   const router = useRouter();
   const refreshAvailability = useAvailabilityRefresh();
@@ -62,6 +72,12 @@ export function MemberConfigPanel({
   const [newHolidayRange, setNewHolidayRange] = useState<DateRange | undefined>(undefined);
   const [newHolidayReason, setNewHolidayReason] = useState("");
   const [addingHoliday, setAddingHoliday] = useState(false);
+
+  const [reassignType, setReassignType] = useState<ReassignTargetType>("DEPARTMENT_POOL");
+  const [reassignAgentId, setReassignAgentId] = useState("");
+  const [reassignTeamId, setReassignTeamId] = useState("");
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignResult, setReassignResult] = useState<string | null>(null);
 
   const timezoneOptions = TIMEZONES.some((t) => t.value === timezone)
     ? TIMEZONES
@@ -184,6 +200,65 @@ export function MemberConfigPanel({
       toast.error(
         err instanceof Error ? err.message : "Failed to update assignment blocking",
       );
+    }
+  }
+
+  async function handleReassign() {
+    if (!reassignContext) return;
+    if (reassignType === "SINGLE_AGENT" && !reassignAgentId) return;
+    if (reassignType === "GROUP" && !reassignTeamId) return;
+    setReassigning(true);
+    setReassignResult(null);
+    try {
+      const res = await fetch("/api/admin/tickets/bulk-reassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          departmentId: reassignContext.departmentId,
+          sourceAssigneeId: member.id,
+          targetType: reassignType,
+          targetAgentId: reassignType === "SINGLE_AGENT" ? reassignAgentId : undefined,
+          targetTeamId: reassignType === "GROUP" ? reassignTeamId : undefined,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? "Bulk reassign failed");
+
+      const { jobId, ticketCount } = json as { jobId: string; ticketCount: number };
+      if (ticketCount === 0) {
+        setReassignResult("No open tickets to reassign.");
+        return;
+      }
+
+      // Poll the job until it finishes.
+      const deadline = Date.now() + 60_000;
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const pollRes = await fetch(`/api/admin/tickets/bulk-reassign/${jobId}`);
+        if (!pollRes.ok) break;
+        const job = await pollRes.json();
+        if (job.status === "COMPLETED" || job.status === "FAILED") {
+          const succeeded = job.succeeded ?? 0;
+          const total = job.total ?? ticketCount;
+          const failed = total - succeeded;
+          setReassignResult(
+            job.status === "FAILED"
+              ? `Job failed after reassigning ${succeeded}/${total}.`
+              : `Reassigned ${succeeded} of ${total} ticket${total === 1 ? "" : "s"}${failed > 0 ? ` (${failed} could not be routed)` : ""}.`,
+          );
+          toast.success(`Reassigned ${succeeded} of ${total} tickets`);
+          router.refresh();
+          break;
+        }
+        if (Date.now() > deadline) {
+          setReassignResult("Reassignment is still running — check back shortly.");
+          break;
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Bulk reassign failed");
+    } finally {
+      setReassigning(false);
     }
   }
 
@@ -409,6 +484,84 @@ export function MemberConfigPanel({
                   </button>
                 </div>
               </section>
+
+              {reassignContext && (
+                <section>
+                  <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                    Reassign open tickets
+                  </p>
+                  <p className="mb-2.5 font-sans text-[11px] text-pen-subtle">
+                    Move all of {member.name}&apos;s open tickets in this department to another
+                    agent, a team, or back into the department pool (auto-routed by the
+                    department&apos;s assignment method).
+                  </p>
+
+                  <div className="flex flex-col gap-2 rounded-[8px] border border-pen-card-border bg-pen-bg p-3">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([
+                        ["DEPARTMENT_POOL", "Dept pool"],
+                        ["SINGLE_AGENT", "Agent"],
+                        ["GROUP", "Team"],
+                      ] as [ReassignTargetType, string][]).map(([val, label]) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => { setReassignType(val); setReassignResult(null); }}
+                          className={cn(
+                            "h-8 rounded-[6px] border font-sans text-[12px] font-medium transition-colors",
+                            reassignType === val
+                              ? "border-pen-blue bg-pen-blue text-white"
+                              : "border-pen-card-border bg-pen-surface text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {reassignType === "SINGLE_AGENT" && (
+                      <SearchableSelect
+                        value={reassignAgentId}
+                        onChange={setReassignAgentId}
+                        options={reassignContext.agents.map((a) => ({ value: a.id, label: a.name }))}
+                        placeholder="Select an agent…"
+                        searchPlaceholder="Search agents…"
+                        emptyLabel="No other agents"
+                        className="bg-pen-bg"
+                      />
+                    )}
+                    {reassignType === "GROUP" && (
+                      <SearchableSelect
+                        value={reassignTeamId}
+                        onChange={setReassignTeamId}
+                        options={reassignContext.teams.map((t) => ({ value: t.id, label: t.name }))}
+                        placeholder="Select a team…"
+                        searchPlaceholder="Search teams…"
+                        emptyLabel="No teams"
+                        className="bg-pen-bg"
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={
+                        reassigning ||
+                        (reassignType === "SINGLE_AGENT" && !reassignAgentId) ||
+                        (reassignType === "GROUP" && !reassignTeamId)
+                      }
+                      onClick={handleReassign}
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+                    >
+                      {reassigning ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowRightLeft className="size-3.5" />}
+                      Reassign tickets
+                    </button>
+
+                    {reassignResult && (
+                      <p className="font-sans text-[11.5px] text-pen-foreground">{reassignResult}</p>
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         )}

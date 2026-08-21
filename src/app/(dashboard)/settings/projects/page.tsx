@@ -10,7 +10,7 @@ import { type ProjectRow } from "@/components/projects/project-modal";
 import { canDeleteProjects } from "@/lib/project-permissions";
 import { avatarColorFor } from "@/lib/avatar";
 
-export const metadata = { title: "Projects — Ticketing System" };
+export const metadata = { title: "Projects — Support Ticketing System" };
 
 export default async function SettingsProjectsRoute() {
   const profile = await getProfile();

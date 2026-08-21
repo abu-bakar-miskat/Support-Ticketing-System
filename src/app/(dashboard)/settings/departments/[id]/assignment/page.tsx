@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { canManageDeptCalendar } from "@/lib/dept-scope";
 import { AssignmentSettingsPage } from "@/components/settings/assignment-settings-page";
 
-export const metadata = { title: "Assignment methods — Ticketing System" };
+export const metadata = { title: "Assignment methods — Support Ticketing System" };
 
 export default async function DepartmentAssignmentSettingsRoute({
   params,

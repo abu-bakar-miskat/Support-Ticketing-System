@@ -12,7 +12,6 @@ import {
 } from "@/lib/time-data"
 import type {
   TimeEntriesResponse,
-  TimeKindBucket,
   TodaySegment,
   TodayTaskSummary,
   TimeEntryItem,
@@ -30,7 +29,6 @@ type RawEntry = {
   durationSecs: number | null
   ticketId: string | null
   note: string | null
-  kind: "DEVELOPMENT" | "QA"
   ticket: {
     title: string
     ticketNumber: number
@@ -39,14 +37,14 @@ type RawEntry = {
   } | null
 }
 
-function buildKindBucket(
+function buildBucket(
   rawEntries: RawEntry[],
   now: Date,
   weekStart: Date,
   weekEnd: Date,
   startOfToday: Date,
   todayIndex: number,
-): TimeKindBucket {
+) {
   const daySecs = [0, 0, 0, 0, 0, 0, 0]
   for (const entry of rawEntries) {
     if (entry.startedAt < weekStart || entry.startedAt >= weekEnd) continue
@@ -181,7 +179,6 @@ export async function GET() {
       durationSecs: true,
       ticketId: true,
       note: true,
-      kind: true,
       ticket: {
         select: {
           title: true,
@@ -194,19 +191,8 @@ export async function GET() {
     orderBy: { startedAt: "desc" },
   })) as RawEntry[]
 
-  const developmentEntries = rawEntries.filter((e) => e.kind !== "QA")
-  const qaEntries = rawEntries.filter((e) => e.kind === "QA")
-
-  const development = buildKindBucket(
-    developmentEntries,
-    now,
-    weekStart,
-    weekEnd,
-    startOfToday,
-    todayIndex,
-  )
-  const qa = buildKindBucket(
-    qaEntries,
+  const bucket = buildBucket(
+    rawEntries,
     now,
     weekStart,
     weekEnd,
@@ -214,7 +200,6 @@ export async function GET() {
     todayIndex,
   )
 
-  // Prefer the live running entry of either kind for the top-level activeTask
   const running = rawEntries.find((e) => e.endedAt === null) ?? null
   const activeTask: ActiveTaskData | null = running
     ? {
@@ -226,22 +211,20 @@ export async function GET() {
         title: running.ticket?.title ?? running.note ?? "Untitled timer",
         elapsed: formatClock(entrySeconds(running, now)),
         startedAtMs: running.startedAt.getTime(),
-        kind: running.kind === "QA" ? "QA" : "DEVELOPMENT",
       }
     : null
 
   const response: TimeEntriesResponse = {
     weekRangeLabel: formatDateRange(weekStart, new Date(weekEnd.getTime() - 86_400_000)),
     activeTask,
-    // Top-level fields remain DEVELOPMENT for backward compatibility
-    todayTasks: development.todayTasks,
-    weekBars: development.weekBars,
-    weekTotalLabel: development.weekTotalLabel,
-    todayTotal: development.todayTotal,
-    todaySegments: development.todaySegments,
-    entries: development.entries,
-    development,
-    qa,
+    todayTasks: bucket.todayTasks,
+    weekBars: bucket.weekBars,
+    weekTotalLabel: bucket.weekTotalLabel,
+    todayTotal: bucket.todayTotal,
+    todayTotalSecs: bucket.todayTotalSecs,
+    weekTotalSecs: bucket.weekTotalSecs,
+    todaySegments: bucket.todaySegments,
+    entries: bucket.entries,
   }
 
   return NextResponse.json(response)

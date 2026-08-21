@@ -7,7 +7,7 @@ import { BoardPage } from "@/components/board/board-page";
 import { BoardPageSkeleton } from "@/components/skeletons/page-skeletons";
 import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
 
-export const metadata = { title: "Board — Ticketing System" };
+export const metadata = { title: "Board — Support Ticketing System" };
 
 /** FLT-01/03: parses the URL's search/sub-status params into a board query fragment. */
 function parseBoardSearchParams(sp: Record<string, string | string[] | undefined>) {

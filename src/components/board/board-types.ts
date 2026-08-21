@@ -141,6 +141,14 @@ const STATUS_ALIASES: Record<string, CanonicalStatus> = {
   pull_request: "Pull Request",
   live: "Live",
   blocked: "Blocked",
+  // New default status labels (uppercase) → canonical buckets. ESCALATED/PAUSED
+  // have no distinct canonical, so they collapse to "Blocked" (non-active,
+  // non-complete); RESOLVED is the complete bucket.
+  OPEN: "To Do",
+  "IN PROGRESS": "In Progress",
+  PAUSED: "Blocked",
+  ESCALATED: "Blocked",
+  RESOLVED: "Live",
 }
 
 /** Map legacy DB / API values to the canonical display label. */
@@ -177,11 +185,11 @@ export type SubDepartmentStatusConfig = {
 }
 
 export const DEFAULT_STATUSES: SubDepartmentStatusConfig[] = [
-  { id: "not-started", label: "To Do", color: "#94a3b8", order: 0, isComplete: false },
-  { id: "in-progress",  label: "In Progress",  color: "#0a76b9", order: 1, isComplete: false },
-  { id: "pull-request", label: "Pull Request",  color: "#7c3aed", order: 2, isComplete: false },
-  { id: "live",         label: "Live",          color: "#16a34a", order: 3, isComplete: true },
-  { id: "blocked",      label: "Blocked",       color: "#dc2626", order: 4, isComplete: false },
+  { id: "open",        label: "OPEN",        color: "#94a3b8", order: 0, isComplete: false },
+  { id: "in-progress", label: "IN PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
+  { id: "paused",      label: "PAUSED",      color: "#f59e0b", order: 2, isComplete: false },
+  { id: "escalated",   label: "ESCALATED",   color: "#dc2626", order: 3, isComplete: false },
+  { id: "resolved",    label: "RESOLVED",    color: "#16a34a", order: 4, isComplete: true },
 ]
 
 export type SubCardData = {
@@ -227,7 +235,6 @@ export type BoardCardData = {
   avatarColor: string | null
   assigneeAvatarUrl?: string | null
   coAssignees: { id: string; name: string; color: string; avatarUrl?: string | null }[]
-  qaAssignees: { id: string; name: string; color: string; avatarUrl?: string | null }[]
   creatorId: string
   creatorName: string
   creatorAvatarUrl?: string | null

@@ -5,6 +5,7 @@ import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
 import { startSlaTimers } from "@/lib/sla-engine"
+import { applyRulesToTicket } from "@/lib/rule-executor"
 import { recordAssignmentFailure } from "@/lib/assignment-engine"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
@@ -93,6 +94,18 @@ export async function createTicketFromPayload(
   if (subDepartment && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
     startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+    // RE-01/02: run the department's automation rules against the submitted form
+    // values and apply the fired actions to the new ticket.
+    await applyRulesToTicket(
+      {
+        id: ticketId,
+        tenantId: subDepartment.tenantId,
+        departmentId: form.departmentId,
+        subDepartmentId: prep.intakeSubDepartmentId,
+        assigneeId: prep.assigneeId ?? null,
+      },
+      formValues,
+    )
   }
 
   // ASG-02/03 (slice 11): no eligible agent was found — the ticket exists,

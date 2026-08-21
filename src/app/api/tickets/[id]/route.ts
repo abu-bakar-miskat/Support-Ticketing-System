@@ -357,14 +357,9 @@ export async function PATCH(
     await ensureProjectMembers(updated.projectId, [newAssigneeId])
   }
   if (hasProjectId && updateData.projectId && updateData.projectId !== ticket.projectId) {
-    const qaRows = await prisma.ticketQaAssignee.findMany({
-      where: { ticketId: id },
-      select: { userId: true },
-    })
     await ensureProjectMembers(updateData.projectId as string, [
       updated.assigneeId,
       ...ticket.assignees.map((a) => a.userId),
-      ...qaRows.map((q) => q.userId),
     ])
   }
 

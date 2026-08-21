@@ -13,7 +13,7 @@ import {
 import { ActivityPage, type ActivityItem, type RangePreset } from "@/components/activity/activity-page";
 import { ActivityPageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Activity — Ticketing System" };
+export const metadata = { title: "Activity — Support Ticketing System" };
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);

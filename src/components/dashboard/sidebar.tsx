@@ -37,7 +37,6 @@ import {
   Boxes,
   Activity,
   KeyRound,
-  BriefcaseBusiness,
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -460,8 +459,9 @@ export function Sidebar({
           ...(isAdmin || isManager
             ? [
                 { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
-                { label: "Team Reports", href: "/manager/people", icon: ChartPie, templateFeatureKey: "teamReports" as const },
-                { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
+                { label: "Sub Departments", href: "/sub-departments", icon: ChartPie, templateFeatureKey: "teamReports" as const },
+                // Recruitment is hidden from the UI (code/routes/APIs retained).
+                // { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]
             : []),
         ];

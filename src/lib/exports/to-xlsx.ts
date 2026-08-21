@@ -16,7 +16,7 @@ function safeSheetName(name: string, used: Set<string>): string {
 
 export async function buildXlsx(doc: ExportDoc): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "PEN Ticketing System";
+  workbook.creator = "PEN Support Ticketing System";
   workbook.created = new Date();
 
   const usedNames = new Set<string>();

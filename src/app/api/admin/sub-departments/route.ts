@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
 import { departmentTenantId } from "@/lib/tenant-scope"
+import { ensureDefaultSupportForm } from "@/lib/support-template"
+import { seedSubDepartmentStatuses } from "@/lib/board-columns"
 
 function isUniqueViolation(e: unknown): boolean {
   return (
@@ -101,6 +103,18 @@ export async function POST(request: Request) {
     // assigned here — access is governed by team/department scope, not
     // explicit board membership.
     await createBoardForSubDepartment(subDepartment.id, name, color, departmentId, tenantId)
+    // Seed the default statuses (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED) so
+    // a new sub-department mirrors the department's default board until it's
+    // given its own. Idempotent + best-effort — never fails sub-department creation.
+    await seedSubDepartmentStatuses(prisma, subDepartment.id).catch((e) =>
+      console.error("[POST /api/admin/sub-departments] default statuses seed failed:", e),
+    )
+    // Support template: create the department's default "Support" intake form
+    // now that it has a sub-department to file tickets into. Idempotent + best-
+    // effort so it never fails sub-department creation.
+    await ensureDefaultSupportForm(prisma, departmentId, subDepartment.id).catch((e) =>
+      console.error("[POST /api/admin/sub-departments] default support form failed:", e),
+    )
     return NextResponse.json(subDepartment, { status: 201 })
   } catch (e) {
     if (isUniqueViolation(e)) {

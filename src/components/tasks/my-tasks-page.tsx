@@ -111,21 +111,6 @@ function resolveToSubDepartmentStatus(cardStatus: string, subDepartmentStatuses:
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 
-/** Small pill marking a ticket that is in the user's list because they are QA. */
-function QaBadge({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full bg-[#0d948815] px-1.5 py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-[#0d9488]",
-        className,
-      )}
-      title="You are assigned to QA this ticket"
-    >
-      QA
-    </span>
-  );
-}
-
 function PersonCell({ name, avatarUrl, subDepartment }: { name: string; avatarUrl?: string | null; subDepartment?: string }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
@@ -144,11 +129,10 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
   const timerEntryId = useTimerStore((s) => s.entryId);
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const timerStartedAtMs = useTimerStore((s) => s.startedAtMs);
-  const timerKind = useTimerStore((s) => s.kind);
   const { startTimer, stopTimer } = useTimerActions();
   const currentUser = useCurrentUser();
   const userId = currentUser?.id;
-  const isRunning = timerTicketDbId === task.dbId && timerKind !== "QA";
+  const isRunning = timerTicketDbId === task.dbId;
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = task.userLoggedSecs + (isRunning ? elapsedSecs : 0);
   const canTrack =
@@ -210,7 +194,6 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
         {/* ID + priority */}
         <div className="flex h-4 items-center">
           <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">{task.humanId}</span>
-          {!!userId && task.qaAssignees.some((a) => a.id === userId) && <QaBadge className="ml-1.5" />}
           {isRunning && (
             <span className="ml-1.5 flex items-center gap-1 rounded-full bg-pen-green/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-pen-green">
               <span className="block size-1.5 animate-pulse rounded-full bg-pen-green" />
@@ -270,26 +253,6 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
               <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-pen-surface font-sans text-[11.5px] text-pen-subtle ring-1 ring-pen-card">+{task.coAssignees.length - 2}</span>
             )}
           </div>
-          {(task.qaAssignees?.length ?? 0) > 0 && (
-            <div
-              className="ml-1 flex items-center gap-0.5 border-l border-pen-card-border pl-1.5"
-              title={`QA: ${task.qaAssignees.map((a) => a.name).join(", ")}`}
-            >
-              <span className="font-sans text-[9px] font-semibold uppercase tracking-wide text-[#0d9488]">
-                QA
-              </span>
-              <div className="flex items-center -space-x-1">
-                {task.qaAssignees.slice(0, 2).map((a) => (
-                  <UserAvatar key={a.id} name={a.name} avatarUrl={a.avatarUrl} userId={a.id} size={18} className="ring-1 ring-[#0d9488]/40" meta={{}} />
-                ))}
-                {task.qaAssignees.length > 2 && (
-                  <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-[#0d948815] font-sans text-[11.5px] text-[#0d9488] ring-1 ring-[#0d9488]/40">
-                    +{task.qaAssignees.length - 2}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {task.labels.length > 0 && (
@@ -527,7 +490,6 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
   const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
-  const isQaForMe = !!currentUser?.id && task.qaAssignees.some((a) => a.id === currentUser.id);
 
   async function handleStatusChange(newStatus: string, chosenLabel?: string) {
     const prev = liveStatus;
@@ -576,7 +538,6 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
             <DrawerLink ticketId={task.dbId} href={`/tickets/${task.dbId}`} card={task} className="flex min-w-0 flex-1 items-center gap-1.5">
               <span className={cn("block size-[7px] shrink-0 rounded-full", pulseCritical && "pen-critical-breathe")} style={{ backgroundColor: priorityColor }} />
               <span className="min-w-0 truncate font-sans text-[13px] text-pen-foreground group-hover:text-pen-id" title={task.title}>{truncateTitle(task.title)}</span>
-              {isQaForMe && <QaBadge />}
               <TaskListLabels labels={task.labels} />
               {hasChildren && (
                 <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-px font-sans text-[11.5px] text-pen-subtle">{task.subTicketCards.length}</span>

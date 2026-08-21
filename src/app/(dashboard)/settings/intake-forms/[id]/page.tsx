@@ -6,7 +6,7 @@ import {
   type FieldRow,
 } from "@/components/settings/settings-field-builder-page"
 
-export const metadata = { title: "Field builder — Ticketing System" }
+export const metadata = { title: "Field builder — Support Ticketing System" }
 
 export default async function SettingsFieldBuilderRoute({
   params,

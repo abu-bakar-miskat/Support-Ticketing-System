@@ -8,7 +8,7 @@ import {
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 
-export const metadata = { title: "Ticket Templates — Ticketing System" };
+export const metadata = { title: "Ticket Templates — Support Ticketing System" };
 
 export default async function SettingsTemplatesRoute() {
   const profile = await getProfile();

@@ -29,7 +29,7 @@ const ROUTE_META: Record<string, { label: string; parent?: string }> = {
   "/department": { label: "Department", parent: "/" },
   "/docs": { label: "User manual", parent: "/" },
   "/reports": { label: "Team time", parent: "/" },
-  "/manager/people": { label: "Team reports", parent: "/manager" },
+  "/sub-departments": { label: "Sub Departments", parent: "/manager" },
 };
 
 function resolveParentHref(parentKey: string): string {

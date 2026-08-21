@@ -4,7 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
 
-export const metadata = { title: "Departments — Ticketing System" };
+export const metadata = { title: "Departments — Support Ticketing System" };
 
 export default async function SettingsDepartmentsRoute() {
   const profile = await getProfile();
@@ -37,6 +37,10 @@ export default async function SettingsDepartmentsRoute() {
       orderBy: { name: "asc" },
       include: {
         _count: { select: { subDepartments: true } },
+        subDepartments: {
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        },
         managers: {
           include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
           orderBy: { assignedAt: "asc" },
@@ -126,6 +130,7 @@ export default async function SettingsDepartmentsRoute() {
         user: u,
       })),
       memberIds: [...nativeMemberMap.keys()],
+      subDepartments: d.subDepartments,
     };
   });
 

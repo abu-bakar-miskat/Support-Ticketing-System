@@ -66,7 +66,7 @@ export function buildReportsExportDoc(args: {
     }
     if (subDepartmentTime.projects.length) {
       sheets.push({
-        name: "Dev Time by Project",
+        name: "Time by Project",
         columns: [
           { key: "name", header: "Project", width: 30 },
           { key: "hours", header: "Hours", width: 12 },
@@ -74,53 +74,6 @@ export function buildReportsExportDoc(args: {
           { key: "contributors", header: "Contributors", width: 14 },
         ],
         rows: subDepartmentTime.projects.map((p) => ({
-          name: p.name,
-          hours: p.hours,
-          share: p.share,
-          contributors: p.contributors,
-        })),
-      });
-    }
-    if (subDepartmentTime.qaStats.length) {
-      sheets.push({
-        name: "QA Summary",
-        columns: [
-          { key: "label", header: "Metric", width: 22 },
-          { key: "value", header: "Value", width: 14 },
-          { key: "detail", header: "Detail", width: 30 },
-        ],
-        rows: subDepartmentTime.qaStats.map((s) => ({ label: s.label, value: s.value, detail: s.detail })),
-      });
-    }
-    if (subDepartmentTime.qaMembers.length) {
-      sheets.push({
-        name: "QA Members",
-        columns: [
-          { key: "name", header: "Name", width: 24 },
-          { key: "role", header: "Role", width: 14 },
-          { key: "location", header: "Team", width: 18 },
-          { key: "weekHours", header: "Hours", width: 12 },
-          { key: "topProject", header: "Top Project", width: 22 },
-        ],
-        rows: subDepartmentTime.qaMembers.map((m) => ({
-          name: m.name,
-          role: m.role,
-          location: m.location,
-          weekHours: m.weekHours,
-          topProject: m.topProject,
-        })),
-      });
-    }
-    if (subDepartmentTime.qaProjects.length) {
-      sheets.push({
-        name: "QA Time by Project",
-        columns: [
-          { key: "name", header: "Project", width: 30 },
-          { key: "hours", header: "Hours", width: 12 },
-          { key: "share", header: "Share %", width: 10 },
-          { key: "contributors", header: "Contributors", width: 14 },
-        ],
-        rows: subDepartmentTime.qaProjects.map((p) => ({
           name: p.name,
           hours: p.hours,
           share: p.share,
@@ -163,8 +116,6 @@ export function buildReportsExportDoc(args: {
     if (overview.created.length) sheets.push(namedCountSheet("Tickets Created", overview.created));
     if (overview.resolved.length) sheets.push(namedCountSheet("Tickets Resolved", overview.resolved));
     if (overview.workload.length) sheets.push(namedCountSheet("Open Workload", overview.workload));
-    if (overview.qaResolved.length) sheets.push(namedCountSheet("QA Resolved", overview.qaResolved));
-    if (overview.qaWorkload.length) sheets.push(namedCountSheet("QA Workload", overview.qaWorkload));
     if (overview.projectTickets.length) {
       sheets.push({
         name: "Tickets by Project",

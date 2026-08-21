@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
 
 export function SettingsBrandingPage({
@@ -38,52 +41,67 @@ export function SettingsBrandingPage({
     setStatus("Saved. Reload to see the shell update.")
   }
 
+  const labelClass = "block font-sans text-[13px] font-medium text-pen-foreground"
+
   return (
-    <div className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-semibold">Branding</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Customize how <span className="font-medium">{tenantName}</span> appears in the app shell.
-        These settings apply only to this tenant.
-      </p>
+    <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+      <header className="flex flex-col gap-[3px]">
+        <h1 className="pen-text-admin-title">Branding</h1>
+        <p className="font-sans text-[13px] text-pen-muted">
+          Customize how <span className="font-medium text-pen-foreground">{tenantName}</span> appears
+          in the app shell. These settings apply only to this tenant.
+        </p>
+      </header>
 
       {error && (
-        <div className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <div className="w-full max-w-[920px] rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
+          {error}
+        </div>
       )}
       {status && (
-        <div className="mt-4 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{status}</div>
+        <div className="w-full max-w-[920px] rounded-lg border border-pen-green/30 bg-pen-green/10 px-3 py-2 font-sans text-[12.5px] text-pen-green">
+          {status}
+        </div>
       )}
 
-      <form onSubmit={save} className="mt-6 space-y-5">
-        <div>
-          <label className="block text-sm font-medium">Display name</label>
-          <p className="text-xs text-muted-foreground">Shown in the sidebar (falls back to the tenant name).</p>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder={tenantName}
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
-        </div>
+      <section
+        className={cn(
+          "w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card",
+          "px-[22px] py-5",
+        )}
+      >
+        <form onSubmit={save} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-[5px]">
+            <label className={labelClass}>Display name</label>
+            <p className="font-sans text-[12px] text-pen-muted">
+              Shown in the sidebar (falls back to the tenant name).
+            </p>
+            <Input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={tenantName}
+              className="mt-1 h-9"
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium">Logo URL</label>
-          <p className="text-xs text-muted-foreground">Absolute (https://…) or root-relative (/…) image URL.</p>
-          <input
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            placeholder="https://example.com/logo.svg"
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-          />
-        </div>
+          <div className="flex flex-col gap-[5px]">
+            <label className={labelClass}>Logo URL</label>
+            <p className="font-sans text-[12px] text-pen-muted">
+              Absolute (https://…) or root-relative (/…) image URL.
+            </p>
+            <Input
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://example.com/logo.svg"
+              className="mt-1 h-9"
+            />
+          </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Save branding"}
-        </button>
-      </form>
+          <Button type="submit" size="lg" disabled={saving} className="w-fit">
+            {saving ? "Saving…" : "Save branding"}
+          </Button>
+        </form>
+      </section>
     </div>
   )
 }

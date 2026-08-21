@@ -48,6 +48,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       isCrossAccess={isCrossAccess}
       isSuperAdmin={profile.isSuperAdmin}
       activeFeatureKeys={activeFeatureKeys}
+      hasActiveDept={activeDeptId != null}
     >
       {children}
     </SettingsLayout>

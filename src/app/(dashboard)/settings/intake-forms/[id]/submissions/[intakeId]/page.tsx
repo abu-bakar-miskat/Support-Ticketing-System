@@ -19,7 +19,7 @@ import { AvatarVisual } from "@/components/ui/user-avatar"
 import { UI_PRIORITY_STYLE, uiPriorityFromDb } from "@/components/board/board-types"
 import { cn } from "@/lib/utils"
 
-export const metadata = { title: "Submission — Ticketing System" }
+export const metadata = { title: "Submission — Support Ticketing System" }
 
 export default async function SettingsIntakeSubmissionDetailRoute({
   params,

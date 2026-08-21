@@ -65,15 +65,10 @@ type Stats = {
   avgCycleDays: number | null;
   homeContributions: number;
   outsideContributions: number;
-  qaOpen: number;
-  qaDone: number;
-  hasQaAssignment: boolean;
 };
 type TimeLogged = {
-  developmentSecs: number;
-  qaSecs: number;
-  developmentLabel: string;
-  qaLabel: string;
+  totalSecs: number;
+  totalLabel: string;
 };
 type DeptContribution = {
   departmentId: string;
@@ -206,9 +201,7 @@ type StatKey =
   | "overdue"
   | "blocked"
   | "review"
-  | "created"
-  | "qaOpen"
-  | "qaDone";
+  | "created";
 const STAT_LABELS: Record<StatKey, string> = {
   total: "All tickets",
   completed: "Completed",
@@ -217,8 +210,6 @@ const STAT_LABELS: Record<StatKey, string> = {
   blocked: "Blocked",
   review: "In review",
   created: "Created",
-  qaOpen: "QA open",
-  qaDone: "QA done",
 };
 
 function TicketSlideOver({
@@ -642,10 +633,8 @@ export function ProfileStatsPage({
     profile,
     stats,
     timeLogged = {
-      developmentSecs: 0,
-      qaSecs: 0,
-      developmentLabel: "0h",
-      qaLabel: "0h",
+      totalSecs: 0,
+      totalLabel: "0h",
     },
     tickets,
     byProject,
@@ -772,71 +761,25 @@ export function ProfileStatsPage({
                 onClick={() => setSlide("created")}
                 active={activeSlide === "created"}
               />
-              {stats.hasQaAssignment && (
-                <>
-                  <MetricButton
-                    label="QA open"
-                    value={stats.qaOpen}
-                    accent="text-teal-700 dark:text-teal-400"
-                    onClick={() => setSlide("qaOpen")}
-                    active={activeSlide === "qaOpen"}
-                  />
-                  <MetricButton
-                    label="QA done"
-                    value={stats.qaDone}
-                    accent="text-teal-600 dark:text-teal-400"
-                    onClick={() => setSlide("qaDone")}
-                    active={activeSlide === "qaDone"}
-                  />
-                </>
-              )}
             </div>
 
-            {/* Time logged — development and QA kept separate */}
-            {(timeLogged.developmentSecs > 0 ||
-              (stats.hasQaAssignment && timeLogged.qaSecs > 0)) && (
-              <div
-                className={cn(
-                  "grid grid-cols-1 gap-3",
-                  timeLogged.developmentSecs > 0 &&
-                    stats.hasQaAssignment &&
-                    timeLogged.qaSecs > 0
-                    ? "sm:grid-cols-2"
-                    : "sm:grid-cols-1",
-                )}
-              >
-                {timeLogged.developmentSecs > 0 && (
-                  <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <Clock className="size-3.5 text-pen-blue" />
-                      <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-pen-subtle">
-                        DEVELOPMENT TIME
-                      </p>
-                    </div>
-                    <p className="font-mono text-[26px] font-semibold tabular-nums text-pen-foreground">
-                      {timeLogged.developmentLabel}
-                    </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
-                      Logged as assignee in this period
+            {/* Time logged */}
+            {timeLogged.totalSecs > 0 && (
+              <div className="grid grid-cols-1 gap-3">
+                <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <Clock className="size-3.5 text-pen-blue" />
+                    <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-pen-subtle">
+                      TIME LOGGED
                     </p>
                   </div>
-                )}
-                {timeLogged.qaSecs > 0 && stats.hasQaAssignment && (
-                  <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <Clock className="size-3.5 text-teal-600" />
-                      <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-teal-700 dark:text-teal-400">
-                        QA TIME
-                      </p>
-                    </div>
-                    <p className="font-mono text-[26px] font-semibold tabular-nums text-pen-foreground">
-                      {timeLogged.qaLabel}
-                    </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
-                      Logged while testing in this period
-                    </p>
-                  </div>
-                )}
+                  <p className="font-mono text-[26px] font-semibold tabular-nums text-pen-foreground">
+                    {timeLogged.totalLabel}
+                  </p>
+                  <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+                    Logged in this period
+                  </p>
+                </div>
               </div>
             )}
 

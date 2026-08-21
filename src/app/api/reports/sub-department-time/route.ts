@@ -62,16 +62,7 @@ export async function GET(request: Request) {
     ...(personScoped ? { assigneeId: personId } : {}),
   }
 
-  // QA is cross-departmental — a tester from another department can log QA time
-  // on this department's tickets. Scope QA by the *ticket's* team (not the
-  // logger's) so cross-department QA work still surfaces in the ticket's report.
-  const qaTicketWhere = {
-    ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : { tenantId }),
-    ...(projectScoped ? { projectId } : {}),
-  }
-  const qaTicketScoped = Object.keys(qaTicketWhere).length > 0
-
-  const [profiles, weekEntries, qaWeekEntries, closedGroups, closedLastWeek] =
+  const [profiles, weekEntries, closedGroups, closedLastWeek] =
     await Promise.all([
       prisma.profile.findMany({
         where: memberWhere,
@@ -86,30 +77,9 @@ export async function GET(request: Request) {
             : { profile: { tenantMemberships: { some: { tenantId, isActive: true } } } }),
           ...(projectScoped ? { ticket: { projectId } } : {}),
           ...(personScoped ? { profileId: personId } : {}),
-          kind: "DEVELOPMENT",
         },
         include: {
           ticket: { select: { project: { select: { name: true, color: true } } } },
-        },
-      }),
-      prisma.timeEntry.findMany({
-        where: {
-          OR: [{ startedAt: { gte: weekStart, lt: weekEnd } }, { endedAt: null }],
-          ...(qaTicketScoped ? { ticket: qaTicketWhere } : {}),
-          ...(personScoped ? { profileId: personId } : {}),
-          kind: "QA",
-        },
-        include: {
-          ticket: { select: { project: { select: { name: true, color: true } } } },
-          profile: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-              avatarUrl: true,
-              subDepartment: { select: { name: true } },
-            },
-          },
         },
       }),
       prisma.ticket.groupBy({
@@ -205,7 +175,7 @@ export async function GET(request: Request) {
 
   const stats: StatCard[] = [
     {
-      label: "DEV HOURS",
+      label: "HOURS LOGGED",
       value: `${Math.round(totalSecs / 3600)}h`,
       detail: `across ${profiles.length} ${profiles.length === 1 ? "person" : "people"}`,
     },
@@ -243,104 +213,10 @@ export async function GET(request: Request) {
     .filter((p) => p.secs > 0)
     .sort((a, b) => b.secs - a.secs)
 
-  // ── QA time (separate from development hours) ─────────────────────────────
-  // Build the tester list from whoever actually logged QA time (which may include
-  // people outside the active department), not from the dept member roster.
-  const qaProfiles = new Map<string, (typeof qaWeekEntries)[number]["profile"]>()
-  for (const entry of qaWeekEntries) {
-    if (entry.profile && !qaProfiles.has(entry.profileId)) {
-      qaProfiles.set(entry.profileId, entry.profile)
-    }
-  }
-  const qaMembers: { row: SubDepartmentMember; weekSecs: number }[] = [...qaProfiles.values()].map((member) => {
-    const entries = qaWeekEntries.filter((e) => e.profileId === member.id)
-    const weekSecs = entries.reduce((sum, e) => sum + entrySeconds(e, now), 0)
-    const daySecs = [0, 0, 0, 0, 0]
-    for (const entry of entries) {
-      if (entry.startedAt < weekStart || entry.startedAt >= weekEnd) continue
-      const idx = (entry.startedAt.getDay() + 6) % 7
-      if (idx < 5) daySecs[idx] += entrySeconds(entry, now)
-    }
-    const maxDay = Math.max(...daySecs)
-    const dailyBars = daySecs.map((secs) =>
-      secs === 0 || maxDay === 0 ? 2 : Math.max(4, Math.round((secs / maxDay) * 30)),
-    )
-    const projectSecs = new Map<string, { secs: number; color: string }>()
-    for (const entry of entries) {
-      const name = entry.ticket?.project?.name ?? "Internal"
-      const color = entry.ticket?.project?.color ?? FALLBACK_PROJECT_COLOR
-      const current = projectSecs.get(name) ?? { secs: 0, color }
-      current.secs += entrySeconds(entry, now)
-      projectSecs.set(name, current)
-    }
-    const topProject = [...projectSecs.entries()].sort((a, b) => b[1].secs - a[1].secs)[0]
-    const runningEntry = entries.find((e) => e.endedAt === null)
-    return {
-      weekSecs,
-      row: {
-        id: member.id,
-        name: member.name,
-        role: ROLE_LABEL[member.role] ?? member.role,
-        location: member.subDepartment?.name ?? "No team",
-        avatarColor: avatarColorFor(member.name),
-        avatarUrl: member.avatarUrl ?? null,
-        weekHours: formatHm(weekSecs),
-        weekProgress: Math.min(100, Math.round((weekSecs / WEEK_TARGET_SECS) * 100)),
-        dailyBars,
-        topProject: topProject ? topProject[0] : "—",
-        projectColor: topProject ? topProject[1].color : FALLBACK_PROJECT_COLOR,
-        closed: 0,
-        active: runningEntry ? "Now" : "—",
-        activeNow: Boolean(runningEntry),
-      },
-    }
-  })
-  qaMembers.sort(
-    (a, b) => b.weekSecs - a.weekSecs || a.row.name.localeCompare(b.row.name),
-  )
-  const qaTotalSecs = qaMembers.reduce((sum, m) => sum + m.weekSecs, 0)
-  const qaStats: StatCard[] =
-    qaTotalSecs > 0
-      ? [
-          {
-            label: "QA HOURS",
-            value: `${Math.round(qaTotalSecs / 3600)}h`,
-            detail: `${qaMembers.filter((m) => m.weekSecs > 0).length} tester${qaMembers.filter((m) => m.weekSecs > 0).length === 1 ? "" : "s"}`,
-          },
-        ]
-      : []
-  const qaProjAgg = new Map<
-    string,
-    { secs: number; color: string; contributors: Set<string> }
-  >()
-  for (const entry of qaWeekEntries) {
-    const name = entry.ticket?.project?.name ?? "Internal"
-    const color = entry.ticket?.project?.color ?? FALLBACK_PROJECT_COLOR
-    const cur = qaProjAgg.get(name) ?? { secs: 0, color, contributors: new Set<string>() }
-    cur.secs += entrySeconds(entry, now)
-    cur.contributors.add(entry.profileId)
-    qaProjAgg.set(name, cur)
-  }
-  const qaProjTotalSecs = [...qaProjAgg.values()].reduce((s, p) => s + p.secs, 0) || 1
-  const qaProjects: ProjectTimeRow[] = [...qaProjAgg.entries()]
-    .map(([name, p]) => ({
-      name,
-      color: p.color,
-      secs: p.secs,
-      hours: formatHm(p.secs),
-      share: Math.round((p.secs / qaProjTotalSecs) * 100),
-      contributors: p.contributors.size,
-    }))
-    .filter((p) => p.secs > 0)
-    .sort((a, b) => b.secs - a.secs)
-
   const response: SubDepartmentTimeResponse = {
     stats,
     members: members.map((m) => m.row),
     projects,
-    qaStats,
-    qaProjects,
-    qaMembers: qaMembers.filter((m) => m.weekSecs > 0).map((m) => m.row),
   }
 
   return NextResponse.json(response)

@@ -8,8 +8,8 @@ function durationSecsBetween(start: Date, end: Date): number {
 }
 
 /**
- * Auto-start a DEVELOPMENT timer for the actor when a ticket moves to
- * "In Progress", if they are the assignee or a co-assignee.
+ * Auto-start a timer for the actor when a ticket moves to "In Progress",
+ * if they are the assignee or a co-assignee.
  * No-op for non-assignees, already-running timers on this ticket, or other statuses.
  */
 export async function startTimerOnStatusChange(
@@ -38,7 +38,6 @@ export async function startTimerOnStatusChange(
       ticketId,
       profileId: actor.id,
       endedAt: null,
-      kind: "DEVELOPMENT",
     },
     select: { id: true },
   })
@@ -46,10 +45,10 @@ export async function startTimerOnStatusChange(
 
   const now = new Date()
   const { entry, closed } = await prisma.$transaction(async (tx) => {
-    // Close any open timer (dev or QA) so only one entry is running — matches /api/time start
+    // Close any open timer so only one entry is running — matches /api/time start
     const running = await tx.timeEntry.findMany({
       where: { profileId: actor.id, endedAt: null },
-      select: { id: true, startedAt: true, ticketId: true, kind: true },
+      select: { id: true, startedAt: true, ticketId: true },
     })
     const closedEntries: {
       id: string
@@ -57,7 +56,6 @@ export async function startTimerOnStatusChange(
       endedAt: Date
       durationSecs: number
       ticketId: string | null
-      kind: "DEVELOPMENT" | "QA"
     }[] = []
     for (const open of running) {
       const durationSecs = durationSecsBetween(open.startedAt, now)
@@ -71,7 +69,6 @@ export async function startTimerOnStatusChange(
         endedAt: now,
         durationSecs,
         ticketId: open.ticketId,
-        kind: open.kind === "QA" ? "QA" : "DEVELOPMENT",
       })
     }
     const created = await tx.timeEntry.create({
@@ -80,7 +77,6 @@ export async function startTimerOnStatusChange(
         ticketId,
         startedAt: now,
         billable: true,
-        kind: "DEVELOPMENT",
       },
     })
     return { entry: created, closed: closedEntries }
@@ -96,7 +92,6 @@ export async function startTimerOnStatusChange(
         entryId: c.id,
         durationSecs: c.durationSecs,
         endedAt: c.endedAt.toISOString(),
-        kind: c.kind,
       }).catch(() => undefined)
     }),
     broadcastTicketEvent(ticketId, "TIMER_STARTED", actor.id, {
@@ -105,7 +100,6 @@ export async function startTimerOnStatusChange(
       avatarUrl: actor.avatarUrl ?? null,
       entryId: entry.id,
       startedAt: entry.startedAt.toISOString(),
-      kind: "DEVELOPMENT",
     }).catch(() => undefined),
   ])
 }

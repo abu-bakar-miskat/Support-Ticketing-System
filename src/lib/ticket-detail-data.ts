@@ -40,11 +40,6 @@ const ticketCoreInclude = {
       user: { select: { id: true, name: true, avatarUrl: true } },
     },
   },
-  qaAssignees: {
-    include: {
-      user: { select: { id: true, name: true, avatarUrl: true } },
-    },
-  },
   estimates: {
     select: { userId: true, estimatedMinutes: true, targetDate: true },
   },
@@ -308,11 +303,6 @@ export async function getTicketDetailPayload(
         name: a.user.name,
         avatarUrl: a.user.avatarUrl ?? null,
       })),
-      ...ticket.qaAssignees.map((a) => ({
-        id: a.user.id,
-        name: a.user.name,
-        avatarUrl: a.user.avatarUrl ?? null,
-      })),
     ]),
     getCachedSubDepartmentStatuses(ticket.subDepartmentId),
     prisma.timeEntry.findMany({
@@ -350,26 +340,8 @@ export async function getTicketDetailPayload(
       }[];
     }
   >();
-  const qaTimeByUser = new Map<
-    string,
-    {
-      userId: string;
-      userName: string;
-      avatarUrl: string | null;
-      totalSecs: number;
-      isRunning: boolean;
-      runningStartedAt: string | null;
-      sessions: {
-        id: string;
-        startedAt: string;
-        endedAt: string | null;
-        durationSecs: number | null;
-      }[];
-    }
-  >();
   for (const entry of ticketTimeEntries) {
-    const target = entry.kind === "QA" ? qaTimeByUser : timeByUser;
-    const existing = target.get(entry.profileId) ?? {
+    const existing = timeByUser.get(entry.profileId) ?? {
       userId: entry.profileId,
       userName: entry.profile.name,
       avatarUrl: entry.profile.avatarUrl ?? null,
@@ -391,7 +363,7 @@ export async function getTicketDetailPayload(
       endedAt: entry.endedAt ? entry.endedAt.toISOString() : null,
       durationSecs: entry.durationSecs ?? null,
     });
-    target.set(entry.profileId, existing);
+    timeByUser.set(entry.profileId, existing);
   }
 
   // Roll up time logged on this ticket's sub-tickets, shown on the parent.
@@ -421,7 +393,6 @@ export async function getTicketDetailPayload(
     startedAt: string;
     endedAt: string | null;
     durationSecs: number;
-    kind: string;
   }[] = [];
   let subTicketTotalSecs = 0;
   for (const e of subTicketEntries) {
@@ -439,7 +410,6 @@ export async function getTicketDetailPayload(
       startedAt: e.startedAt.toISOString(),
       endedAt: e.endedAt ? e.endedAt.toISOString() : null,
       durationSecs: secs,
-      kind: e.kind,
     });
   }
   const subTicketTime = {
@@ -457,14 +427,11 @@ export async function getTicketDetailPayload(
   };
 
   const myActiveEntry = ticketTimeEntries.find(
-    (e) => e.profileId === profile.id && !e.endedAt && e.kind !== "QA",
+    (e) => e.profileId === profile.id && !e.endedAt,
   );
-    const isCurrentUserAssignee =
+  const isCurrentUserAssignee =
     ticket.assigneeId === profile.id ||
     ticket.assignees.some((a) => a.user.id === profile.id);
-  const isCurrentUserQa = ticket.qaAssignees.some(
-    (a) => a.user.id === profile.id,
-  );
 
   const now = Date.now();
   const openedDaysAgo = Math.max(
@@ -525,11 +492,6 @@ export async function getTicketDetailPayload(
       name: a.user.name,
       avatarUrl: a.user.avatarUrl ?? null,
     })),
-    qaAssignees: ticket.qaAssignees.map((a) => ({
-      id: a.user.id,
-      name: a.user.name,
-      avatarUrl: a.user.avatarUrl ?? null,
-    })),
     currentUserId: profile.id,
     currentUserName: profile.name,
     startDateIso: ticket.startDate ? serializeTicketDateIso(ticket.startDate, "start") : null,
@@ -556,12 +518,10 @@ export async function getTicketDetailPayload(
     })),
     assetLinks: (ticket.assetLinks as { label: string; url: string }[]) ?? [],
     timeEntries: [...timeByUser.values()],
-    qaTimeEntries: [...qaTimeByUser.values()],
     subTicketTime,
     myActiveTimerId: myActiveEntry?.id ?? null,
     myActiveTimerStartedAt: myActiveEntry?.startedAt.toISOString() ?? null,
     isCurrentUserAssignee,
-    isCurrentUserQa,
     parentTicket: ticket.parent
       ? {
           dbId: ticket.parent.id,

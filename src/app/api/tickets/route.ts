@@ -14,6 +14,7 @@ import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolveColumnIdForStatus } from "@/lib/board-columns"
 import { startSlaTimers } from "@/lib/sla-engine"
+import { applyRulesToTicket } from "@/lib/rule-executor"
 import { assertDepartmentOperational } from "@/lib/department-setup"
 
 const VALID_TYPES = ["Bug", "Feature", "Task", "Chore"] as const
@@ -386,6 +387,20 @@ export async function POST(request: Request) {
       columnDeptId,
       { priority, type, title, description, labels },
       ticket.createdAt,
+    )
+  }
+
+  // RE-01/02: run the department's automation rules on the new ticket.
+  if (!isDraft) {
+    await applyRulesToTicket(
+      {
+        id: ticket.id,
+        tenantId: ticketTenantId,
+        departmentId: ticket.subDepartment.departmentId,
+        subDepartmentId: ticket.subDepartment.id,
+        assigneeId: ticket.assignee?.id ?? null,
+      },
+      { priority, type, title, description, labels },
     )
   }
 

@@ -247,13 +247,6 @@ export function patchTicketDetailFromActivity(
     case "TIMER_STARTED":
     case "TIMER_STOPPED": {
       // Timers are noisy — do not prepend to the activity feed
-      const timerKind = payload.kind === "QA" ? "QA" : "DEVELOPMENT"
-      if (timerKind === "QA") {
-        return {
-          ...detail,
-          qaTimeEntries: applyTimerEventToEntries(detail.qaTimeEntries ?? [], event),
-        }
-      }
       return {
         ...detail,
         timeEntries: applyTimerEventToEntries(detail.timeEntries ?? [], event),
@@ -268,47 +261,6 @@ export function patchTicketDetailFromActivity(
           ? (detail.timeEntries ?? []).filter((e) => e.userId !== actorId)
           : detail.timeEntries,
       }
-    }
-    case "QA_TIME_LOGGED": {
-      const durationSecs = (payload.durationSecs as number | undefined) ?? 0
-      const entryId = (payload.entryId as string | undefined) ?? `qa-${event.createdAt}`
-      const actorId = event.actorId
-      if (!actorId || durationSecs <= 0) return { ...detail, activity }
-      const nowIso = event.createdAt
-      const startedAt = new Date(
-        new Date(nowIso).getTime() - durationSecs * 1000,
-      ).toISOString()
-      const session = {
-        id: entryId,
-        startedAt,
-        endedAt: nowIso,
-        durationSecs,
-      }
-      const qaTimeEntries = detail.qaTimeEntries ?? []
-      const existing = qaTimeEntries.find((e) => e.userId === actorId)
-      const nextQa = existing
-        ? qaTimeEntries.map((e) =>
-            e.userId === actorId
-              ? {
-                  ...e,
-                  totalSecs: e.totalSecs + durationSecs,
-                  sessions: [session, ...e.sessions],
-                }
-              : e,
-          )
-        : [
-            ...qaTimeEntries,
-            {
-              userId: actorId,
-              userName: actorName,
-              avatarUrl: null,
-              totalSecs: durationSecs,
-              isRunning: false,
-              runningStartedAt: null,
-              sessions: [session],
-            },
-          ]
-      return { ...detail, activity, qaTimeEntries: nextQa }
     }
     case "COMMENT_ADDED":
     case "MENTION":

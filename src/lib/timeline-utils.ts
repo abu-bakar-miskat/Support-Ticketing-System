@@ -150,7 +150,6 @@ export function subCardToBoardCard(
     avatarColor: sub.avatarColor,
     assigneeAvatarUrl: sub.assigneeAvatarUrl,
     coAssignees: [],
-    qaAssignees: [],
     creatorId: parent.creatorId,
     creatorName: parent.creatorName,
     creatorAvatarUrl: parent.creatorAvatarUrl,

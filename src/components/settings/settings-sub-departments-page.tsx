@@ -8,9 +8,13 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Mail,
   MoreHorizontal,
+  Pencil,
   Plus,
   Search,
+  Shield,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -33,14 +37,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
   getAdminUsers,
@@ -48,10 +44,16 @@ import {
   updateAdminUser,
   addAdminSubDepartmentMember,
   removeAdminSubDepartmentMember,
+  updateAdminSubDepartmentMemberRole,
   createAdminSubDepartment,
   updateAdminSubDepartment,
   deleteAdminSubDepartment,
   handleDepartmentJoinRequest,
+  getSubDepartmentMailboxConnections,
+  createSubDepartmentMailboxConnection,
+  updateMailboxConnection,
+  deleteMailboxConnection,
+  type MailboxConnection,
 } from "@/lib/api/admin";
 import { ProjectAccessPicker } from "@/components/settings/settings-departments-page";
 import { notifEvents } from "@/store";
@@ -62,7 +64,7 @@ export type SubDepartmentRow = {
   prefix: string;
   departmentId: string;
   color: string;
-  leads: { name: string; avatarUrl: string | null }[];
+  leads: { userId: string; name: string; avatarUrl: string | null; isExplicit: boolean }[];
   memberColors: string[];
   members?: { name: string; avatarUrl: string | null }[];
   extraMembers: number;
@@ -84,147 +86,9 @@ export type PendingRequest = {
 
 type Department = { id: string; name: string };
 
-type Permission = "yes" | "own" | "no";
-
-type CapabilityRow = {
-  label: string;
-  admin: Permission;
-  manager: Permission;
-  sub_manager: Permission;
-  member: Permission;
-};
-
-const CAPABILITIES: CapabilityRow[] = [
-  {
-    label: "View own tasks & time",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Create & edit tickets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Track time & log entries",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "View sub department board & sprints",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "View sub department time report",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Approve timesheets",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Manage sub department members",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Create / rename sub departments",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Create & edit projects",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Edit & delete project assets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "no",
-  },
-  {
-    label: "Upload project assets",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "yes",
-    member: "yes",
-  },
-  {
-    label: "Delete projects",
-    admin: "yes",
-    manager: "yes",
-    sub_manager: "no",
-    member: "no",
-  },
-  {
-    label: "Sub department settings (workflows, tags)",
-    admin: "yes",
-    manager: "own",
-    sub_manager: "own",
-    member: "no",
-  },
-  {
-    label: "Workspace settings & integrations",
-    admin: "yes",
-    manager: "no",
-    sub_manager: "no",
-    member: "no",
-  },
-];
-
 const PRESET_COLORS = [
   "#0a76b9", "#7c3aed", "#059669", "#dc2626",
   "#d97706", "#db2777", "#0891b2", "#65a30d",
-];
-
-const ROLES = [
-  {
-    key: "admin" as const,
-    label: "Admin",
-    hint: "full access",
-    dotClassName: "bg-pen-blue",
-  },
-  {
-    key: "manager" as const,
-    label: "Manager",
-    hint: "own dept",
-    dotClassName: "bg-pen-purple",
-  },
-  {
-    key: "sub_manager" as const,
-    label: "Sub-manager",
-    hint: "own sub department",
-    dotClassName: "bg-emerald-500",
-  },
-  {
-    key: "member" as const,
-    label: "Agent",
-    hint: "self",
-    dotClassName: "bg-pen-subtle",
-  },
 ];
 
 function initials(name: string) {
@@ -236,46 +100,42 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function TableSection({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
-      <div className="overflow-x-auto">{children}</div>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="font-sans text-[9.5px] font-medium tracking-[0.95px] text-pen-subtle uppercase">
-      {children}
-    </span>
-  );
-}
-
 function SubDepartmentAvatar({ name, avatarUrl, role, subDepartment }: { name: string; color?: string; avatarUrl?: string | null; role?: string; subDepartment?: string }) {
   return <UserAvatar name={name} avatarUrl={avatarUrl} size={24} meta={{ role, subDepartment }} />;
 }
 
-function LeadCell({ leads }: { leads: { name: string; avatarUrl: string | null }[] }) {
+function SubManagersList({
+  leads,
+  canManage,
+  onRemove,
+}: {
+  leads: SubDepartmentRow["leads"];
+  canManage: boolean;
+  onRemove: (userId: string) => void;
+}) {
   if (leads.length === 0) {
-    return <span className="font-sans text-xs text-pen-subtle">—</span>;
+    return <span className="font-sans text-[11.5px] text-pen-subtle">No sub-managers assigned</span>;
   }
-  if (leads.length === 1) {
-    const lead = leads[0];
-    return (
-      <div className="flex min-w-0 items-center gap-2">
-        <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
-        <span className="truncate font-sans text-xs text-pen-foreground">{lead.name}</span>
-      </div>
-    );
-  }
-  const visible = leads.slice(0, 3);
-  const extra = leads.length - visible.length;
-  const label = leads.map((l) => l.name).join(", ");
   return (
-    <div className="flex min-w-0 items-center gap-2" title={label}>
-      <MemberStack members={visible} extra={extra} />
-      <span className="truncate font-sans text-xs text-pen-foreground">{label}</span>
+    <div className="flex flex-col gap-2">
+      {leads.map((lead, i) => (
+        <div key={lead.userId || `${lead.name}-${i}`} className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
+            <span className="truncate font-sans text-[12.5px] text-pen-foreground">{lead.name}</span>
+          </div>
+          {canManage && lead.isExplicit && (
+            <button
+              type="button"
+              onClick={() => onRemove(lead.userId)}
+              title="Remove sub-manager"
+              className="shrink-0 rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -314,64 +174,11 @@ function ProjectPill({ label }: { label: string }) {
   );
 }
 
-function PermissionCell({ value }: { value: Permission }) {
-  if (value === "no") {
-    return (
-      <span
-        className="block h-0.5 w-3 rounded-sm bg-pen-subtle"
-        aria-label="No access"
-      />
-    );
-  }
-  if (value === "own") {
-    return (
-      <span className="inline-flex items-center gap-[5px]">
-        <Check
-          className="size-3.5 text-pen-green"
-          strokeWidth={2.5}
-          aria-hidden
-        />
-        <span className="font-sans text-[9.5px] text-[#c2410c] dark:text-[#e0a96a]">
-          own
-        </span>
-      </span>
-    );
-  }
-  return (
-    <Check
-      className="size-[15px] text-pen-green"
-      strokeWidth={2.5}
-      aria-label="Allowed"
-    />
-  );
-}
-
-function RoleHeader({
-  label,
-  hint,
-  dotClassName,
-}: {
-  label: string;
-  hint: string;
-  dotClassName: string;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-px">
-      <div className="flex items-center gap-1.5">
-        <span className={cn("size-[7px] rounded-full", dotClassName)} />
-        <span className="font-sans text-xs font-semibold text-pen-foreground">
-          {label}
-        </span>
-      </div>
-      <span className="font-sans text-[9.5px] text-pen-subtle">{hint}</span>
-    </div>
-  );
-}
-
 type ModalMode =
   | { type: "create" }
   | { type: "edit"; subDepartment: SubDepartmentRow }
   | { type: "assign"; subDepartment: SubDepartmentRow }
+  | { type: "assign-sub-manager"; subDepartment: SubDepartmentRow }
   | { type: "members"; subDepartment: SubDepartmentRow };
 
 function SubDepartmentModal({
@@ -941,15 +748,19 @@ type ProfileOption = {
 
 function AssignMemberModal({
   subDepartment,
+  role,
   onClose,
   onSuccess,
 }: {
   subDepartment: SubDepartmentRow;
+  /** When set to "sub_manager", also offers existing team members for promotion. */
+  role?: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [subManagerIds, setSubManagerIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
@@ -957,15 +768,19 @@ function AssignMemberModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const isSubManagerMode = role === "sub_manager";
 
   useEffect(() => {
     Promise.all([
       getAdminUsers(),
       getAdminSubDepartmentMembers(subDepartment.id),
     ])
-      .then(([allUsers, currentMembers]: [ProfileOption[], { id: string; userId?: string }[]]) => {
+      .then(([allUsers, currentMembers]: [ProfileOption[], { id: string; userId?: string; role?: string }[]]) => {
         setProfiles(allUsers);
         setExistingIds(new Set(currentMembers.map((m) => m.userId ?? m.id)));
+        setSubManagerIds(
+          new Set(currentMembers.filter((m) => m.role === "sub_manager").map((m) => m.userId ?? m.id)),
+        );
         setLoading(false);
         searchRef.current?.focus();
       })
@@ -974,8 +789,8 @@ function AssignMemberModal({
 
   const filtered = profiles.filter(
     (p) =>
-      !existingIds.has(p.id) &&
-      p.subDepartment === null &&
+      !subManagerIds.has(p.id) &&
+      (isSubManagerMode ? p.subDepartment === null || existingIds.has(p.id) : !existingIds.has(p.id) && p.subDepartment === null) &&
       (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         p.email.toLowerCase().includes(debouncedSearch.toLowerCase())),
   );
@@ -999,7 +814,7 @@ function AssignMemberModal({
     try {
       try {
         await Promise.all(
-          [...selectedIds].map((userId) => addAdminSubDepartmentMember(subDepartment.id, userId)),
+          [...selectedIds].map((userId) => addAdminSubDepartmentMember(subDepartment.id, userId, role)),
         );
         onSuccess();
       } catch {
@@ -1024,7 +839,7 @@ function AssignMemberModal({
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="pen-text-modal-title">
-              Add members
+              {isSubManagerMode ? "Add sub-manager" : "Add members"}
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
               Sub department:{" "}
@@ -1092,11 +907,11 @@ function AssignMemberModal({
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="px-3 py-4 text-center font-sans text-[11.5px] text-pen-subtle">
-                  {profiles.every(
-                    (p) => p.subDepartment !== null || existingIds.has(p.id),
-                  )
-                    ? "All users are already assigned to a sub department"
-                    : "No users found"}
+                  {isSubManagerMode
+                    ? "No eligible members found"
+                    : profiles.every((p) => p.subDepartment !== null || existingIds.has(p.id))
+                      ? "All users are already assigned to a sub department"
+                      : "No users found"}
                 </p>
               ) : (
                 filtered.map((p) => {
@@ -1540,6 +1355,344 @@ function JoinRequestsSection({
   );
 }
 
+const MAILBOX_STATUS_STYLES: Record<string, string> = {
+  ACTIVE: "bg-pen-green/10 text-pen-green",
+  AUTH_ERROR: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+  UNREACHABLE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+function SubDepartmentMailboxSection({ subDepartmentId, canManage }: { subDepartmentId: string; canManage: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAddress, setEditAddress] = useState("");
+  const loading = expanded && connections === null;
+
+  useEffect(() => {
+    if (!expanded || connections !== null) return;
+    getSubDepartmentMailboxConnections(subDepartmentId)
+      .then(setConnections)
+      .catch(() => setConnections([]));
+  }, [expanded, connections, subDepartmentId]);
+
+  async function connect() {
+    if (!address.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createSubDepartmentMailboxConnection(subDepartmentId, { address: address.trim() });
+      setConnections((prev) => [...(prev ?? []), created]);
+      setAddress("");
+      setShowConnectForm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to connect mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editAddress.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateMailboxConnection(id, { address: editAddress.trim() });
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setEditingId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disconnect(id: string) {
+    await deleteMailboxConnection(id).catch(() => null);
+    setConnections((prev) => (prev ?? []).filter((c) => c.id !== id));
+  }
+
+  const list = connections ?? [];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Mail className="size-3.5 text-pen-muted" />
+          Shared mailbox
+        </span>
+        {expanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2.5 border-t border-pen-card-border/60 px-4 py-3">
+          {loading ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">Loading…</p>
+          ) : list.length === 0 ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">No mailbox connected yet.</p>
+          ) : (
+            list.map((c) => (
+              <div key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2">
+                {editingId === c.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
+                      className="min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    />
+                    <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-md p-1 text-pen-green hover:bg-pen-green/10">
+                      <Check className="size-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-pen-foreground">{c.address}</span>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold", MAILBOX_STATUS_STYLES[c.status])}>
+                      {c.status}
+                    </span>
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                          title="Edit address"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-pen-card hover:text-pen-foreground"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => disconnect(c.id)}
+                          title="Disconnect"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {c.status !== "ACTIVE" && c.lastErrorMessage && (
+                  <p className="font-sans text-[10.5px] text-red-500">{c.lastErrorMessage}</p>
+                )}
+              </div>
+            ))
+          )}
+
+          {canManage && list.length === 0 && (
+            showConnectForm ? (
+              <div className="flex flex-col gap-1.5">
+                <input
+                  autoFocus
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") connect(); }}
+                  placeholder="support@yourcompany.com"
+                  className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+                />
+                {error && <p className="font-sans text-[10.5px] text-red-500">{error}</p>}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={connect}
+                    disabled={saving || !address.trim()}
+                    className="rounded-md bg-pen-blue px-2.5 py-1 font-sans text-[11.5px] font-medium text-white disabled:opacity-50"
+                  >
+                    {saving ? "Connecting…" : "Connect"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowConnectForm(false); setError(null); }}
+                    className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowConnectForm(true)}
+                className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              >
+                <Plus className="size-3" />
+                Connect mailbox
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function SubDepartmentCard({
+  subDepartment,
+  canManage,
+  onEdit,
+  onAssign,
+  onAssignSubManager,
+  onRemoveSubManager,
+  onViewMembers,
+  onDelete,
+}: {
+  subDepartment: SubDepartmentRow;
+  canManage: boolean;
+  onEdit: () => void;
+  onAssign: () => void;
+  onAssignSubManager: () => void;
+  onRemoveSubManager: (userId: string) => void;
+  onViewMembers: () => void;
+  onDelete: () => void;
+}) {
+  const [managersExpanded, setManagersExpanded] = useState(false);
+  const [membersExpanded, setMembersExpanded] = useState(false);
+
+  const totalMembers =
+    subDepartment.leads.length + (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
+
+  return (
+    <div className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
+      <div className="flex items-start gap-3 p-4">
+        <span
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-[11px] font-semibold text-white"
+          style={{ backgroundColor: subDepartment.color }}
+        >
+          {initials(subDepartment.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-sans text-[14px] font-semibold text-pen-foreground">
+              {subDepartment.name}
+            </span>
+            <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
+              {subDepartment.prefix}
+            </span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+              <Users className="size-3 shrink-0" />
+              {totalMembers} member{totalMembers === 1 ? "" : "s"}
+            </span>
+            <ProjectPill label={subDepartment.department} />
+          </div>
+        </div>
+        {canManage && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Edit sub department"
+              className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              title="Delete sub department"
+              className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setManagersExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Shield className="size-3.5 text-pen-muted" />
+          Sub-managers
+        </span>
+        {managersExpanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {managersExpanded && (
+        <div className="flex flex-col gap-3 border-t border-pen-card-border/60 px-4 py-3">
+          <SubManagersList
+            leads={subDepartment.leads}
+            canManage={canManage}
+            onRemove={onRemoveSubManager}
+          />
+          {canManage && (
+            <button
+              type="button"
+              onClick={onAssignSubManager}
+              className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+            >
+              <Plus className="size-3" />
+              Add sub-manager
+            </button>
+          )}
+        </div>
+      )}
+
+      <SubDepartmentMailboxSection subDepartmentId={subDepartment.id} canManage={canManage} />
+
+      <button
+        type="button"
+        onClick={() => setMembersExpanded((v) => !v)}
+        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+      >
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
+          <Users className="size-3.5 text-pen-muted" />
+          Members {subDepartment.members?.length ? `(${totalMembers})` : ""}
+        </span>
+        {membersExpanded ? (
+          <ChevronUp className="size-3.5 text-pen-muted" />
+        ) : (
+          <ChevronDown className="size-3.5 text-pen-muted" />
+        )}
+      </button>
+      {membersExpanded && (
+        <div className="flex items-center justify-between gap-3 border-t border-pen-card-border/60 px-4 py-3">
+          <MemberStack members={subDepartment.members} extra={subDepartment.extraMembers} />
+          {canManage && (
+            <button
+              type="button"
+              onClick={onAssign}
+              className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+            >
+              <Plus className="size-3" />
+              Assign member
+            </button>
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onViewMembers}
+        className="border-t border-pen-card-border px-4 py-2.5 text-center font-sans text-[11.5px] font-semibold text-pen-blue transition-colors hover:bg-pen-surface/50"
+      >
+        View all members
+      </button>
+    </div>
+  );
+}
+
 export function SettingsSubDepartmentsPage({
   subDepartments,
   departments,
@@ -1570,6 +1723,11 @@ export function SettingsSubDepartmentsPage({
     setConfirmDelete(null);
   }
 
+  async function removeSubManager(subDepartmentId: string, userId: string) {
+    await updateAdminSubDepartmentMemberRole(subDepartmentId, userId, "agent").catch(() => null);
+    startTransition(() => router.refresh());
+  }
+
   return (
     <>
       <ConfirmDialog
@@ -1581,7 +1739,7 @@ export function SettingsSubDepartmentsPage({
         successMessage={confirmDelete ? `"${confirmDelete.name}" deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await doDeleteSubDepartment(confirmDelete); }}
       />
-      {modal && modal.type !== "assign" && modal.type !== "members" && (
+      {modal && modal.type !== "assign" && modal.type !== "assign-sub-manager" && modal.type !== "members" && (
         <SubDepartmentModal
           mode={modal}
           departments={departments}
@@ -1592,6 +1750,14 @@ export function SettingsSubDepartmentsPage({
       {modal?.type === "assign" && (
         <AssignMemberModal
           subDepartment={modal.subDepartment}
+          onClose={() => setModal(null)}
+          onSuccess={refresh}
+        />
+      )}
+      {modal?.type === "assign-sub-manager" && (
+        <AssignMemberModal
+          subDepartment={modal.subDepartment}
+          role="sub_manager"
           onClose={() => setModal(null)}
           onSuccess={refresh}
         />
@@ -1619,7 +1785,7 @@ export function SettingsSubDepartmentsPage({
             <Button
               onClick={() => setModal({ type: "create" })}
               disabled={isPending}
-              className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[120px]"
+              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-pen-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-auto"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
               New sub department
@@ -1627,193 +1793,31 @@ export function SettingsSubDepartmentsPage({
           )}
         </div>
 
-        <TableSection>
-          <Table className="w-full min-w-[640px]">
-            <TableHeader>
-              <TableRow className="border-pen-card-border hover:bg-transparent">
-                <TableHead className="h-8 w-[29%] px-[18px]">
-                  <SectionLabel>Sub department</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[25%]">
-                  <SectionLabel>Leads</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[17%] min-w-[108px]">
-                  <SectionLabel>Members</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[21%]">
-                  <SectionLabel>Department</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[10%]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subDepartments.length === 0 ? (
-                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={5} className="px-[18px] py-0">
-                    <div className="flex h-[52px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">
-                        No sub departments yet
-                      </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {subDepartments.map((subDepartment) => (
-                <TableRow
-                  key={subDepartment.id}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
-                >
-                  <TableCell className="px-[18px] py-0">
-                    <div className="flex h-[52px] items-center gap-2.5">
-                      <span
-                        className="size-3 shrink-0 rounded-[3px]"
-                        style={{ backgroundColor: subDepartment.color }}
-                        aria-hidden
-                      />
-                      <span className="font-sans text-[13px] font-semibold text-pen-foreground">
-                        {subDepartment.name}
-                      </span>
-                      <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
-                        {subDepartment.prefix}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] min-w-0 items-center">
-                      <LeadCell leads={subDepartment.leads} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] items-center">
-                      <MemberStack
-                        members={subDepartment.members}
-                        extra={subDepartment.extraMembers}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0">
-                    <div className="flex h-[52px] flex-wrap items-center gap-[5px]">
-                      <ProjectPill label={subDepartment.department} />
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-0 pr-[18px] text-right">
-                    <div className="flex h-[52px] items-center justify-end">
-                      {canManage && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            type="button"
-                            className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
-                            aria-label={`Actions for ${subDepartment.name}`}
-                          >
-                            <MoreHorizontal className="size-3.5" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-36">
-                            <DropdownMenuItem
-                              className="font-sans text-xs"
-                              onClick={() =>
-                                setModal({ type: "members", subDepartment })
-                              }
-                            >
-                              View members
-                            </DropdownMenuItem>
-                            {canManage && (
-                              <>
-                                <DropdownMenuItem
-                                  className="font-sans text-xs"
-                                  onClick={() =>
-                                    setModal({ type: "edit", subDepartment })
-                                  }
-                                >
-                                  Edit sub department
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="font-sans text-xs"
-                                  onClick={() =>
-                                    setModal({ type: "assign", subDepartment })
-                                  }
-                                >
-                                  Assign member
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  className="font-sans text-xs"
-                                  onClick={() => setConfirmDelete(subDepartment)}
-                                >
-                                  Delete sub department
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSection>
+        {subDepartments.length === 0 ? (
+          <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-6 text-center">
+            <p className="font-sans text-[12.5px] text-pen-muted">No sub departments yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {subDepartments.map((subDepartment) => (
+              <SubDepartmentCard
+                key={subDepartment.id}
+                subDepartment={subDepartment}
+                canManage={canManage}
+                onEdit={() => setModal({ type: "edit", subDepartment })}
+                onAssign={() => setModal({ type: "assign", subDepartment })}
+                onAssignSubManager={() => setModal({ type: "assign-sub-manager", subDepartment })}
+                onRemoveSubManager={(userId) => removeSubManager(subDepartment.id, userId)}
+                onViewMembers={() => setModal({ type: "members", subDepartment })}
+                onDelete={() => setConfirmDelete(subDepartment)}
+              />
+            ))}
+          </div>
+        )}
 
         {pendingRequests.length > 0 && (
           <JoinRequestsSection requests={pendingRequests} isAdmin={isAdmin} />
         )}
-
-        <div className="flex flex-col gap-0.5">
-          <h2 className="pen-text-modal-title">
-            Roles & permissions
-          </h2>
-          <p className="font-sans text-xs text-pen-muted">
-            Roles map from Microsoft groups on sign-in; admins can override per
-            person. &ldquo;Own&rdquo; means scoped to your department or sub department.
-          </p>
-        </div>
-
-        <TableSection>
-          <Table className="w-full table-fixed">
-            <TableHeader>
-              <TableRow className="border-pen-card-border hover:bg-transparent">
-                <TableHead className="h-[52px] px-[18px] align-middle">
-                  <SectionLabel>Capability</SectionLabel>
-                </TableHead>
-                {ROLES.map((role) => (
-                  <TableHead
-                    key={role.key}
-                    className="h-[52px] w-[92px] text-center align-middle sm:w-[96px]"
-                  >
-                    <RoleHeader
-                      label={role.label}
-                      hint={role.hint}
-                      dotClassName={role.dotClassName}
-                    />
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {CAPABILITIES.map((capability) => (
-                <TableRow
-                  key={capability.label}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
-                >
-                  <TableCell className="px-[18px] py-0">
-                    <div className="flex h-10 items-center">
-                      <span className="font-sans text-[12.5px] text-pen-foreground">
-                        {capability.label}
-                      </span>
-                    </div>
-                  </TableCell>
-                  {ROLES.map((role) => (
-                    <TableCell key={role.key} className="py-0 text-center">
-                      <div className="flex h-10 items-center justify-center">
-                        <PermissionCell value={capability[role.key]} />
-                      </div>
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableSection>
       </div>
     </>
   );

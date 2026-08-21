@@ -41,7 +41,6 @@ const ticketInclude = {
   assignee: { select: { id: true, name: true, avatarUrl: true } },
   creator: { select: { id: true, name: true, avatarUrl: true } },
   assignees: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
-  qaAssignees: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
   estimates: { select: { targetDate: true } },
   subTickets: {
     where: { deletedAt: null, isDraft: false },
@@ -119,7 +118,6 @@ export function toBoardCard(
     avatarColor: t.assignee ? avatarColorFor(t.assignee.name) : null,
     assigneeAvatarUrl: t.assignee?.avatarUrl ?? null,
     coAssignees: t.assignees.map((a) => ({ id: a.user.id, name: a.user.name, color: avatarColorFor(a.user.name), avatarUrl: a.user.avatarUrl ?? null })),
-    qaAssignees: t.qaAssignees.map((a) => ({ id: a.user.id, name: a.user.name, color: avatarColorFor(a.user.name), avatarUrl: a.user.avatarUrl ?? null })),
     creatorId: t.creator.id,
     creatorName: t.creator.name,
     creatorAvatarUrl: t.creator.avatarUrl ?? null,
@@ -223,7 +221,7 @@ export async function getAssignedSubtasks(
     subtaskIds.length > 0
       ? prisma.timeEntry.groupBy({
           by: ["ticketId"],
-          where: { ticketId: { in: subtaskIds }, endedAt: { not: null }, profileId: assigneeId, kind: "DEVELOPMENT" },
+          where: { ticketId: { in: subtaskIds }, endedAt: { not: null }, profileId: assigneeId },
           _sum: { durationSecs: true },
         })
       : Promise.resolve([]),
@@ -281,7 +279,7 @@ async function buildTimeMaps(
     return { totalMap: new Map(), userMap: new Map() }
   }
 
-  const baseWhere = { ticketId: { in: allIds }, endedAt: { not: null } as const, kind: "DEVELOPMENT" as const }
+  const baseWhere = { ticketId: { in: allIds }, endedAt: { not: null } as const }
 
   const [totalAggs, userAggs] = await Promise.all([
     prisma.timeEntry.groupBy({
@@ -412,7 +410,6 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
       OR: [
         { assigneeId: where.assigneeId },
         { assignees: { some: { userId: where.assigneeId } } },
-        { qaAssignees: { some: { userId: where.assigneeId } } },
       ],
     })
   }
@@ -421,7 +418,6 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
       OR: [
         { projectId: { in: where.staffProjectIds } },
         { assigneeId: where.staffUserId },
-        { qaAssignees: { some: { userId: where.staffUserId } } },
       ],
     })
   }
@@ -466,7 +462,6 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
       OR: [
         { assigneeId: { in: where.assigneeIdIn } },
         { assignees: { some: { userId: { in: where.assigneeIdIn } } } },
-        { qaAssignees: { some: { userId: { in: where.assigneeIdIn } } } },
       ],
     })
   }

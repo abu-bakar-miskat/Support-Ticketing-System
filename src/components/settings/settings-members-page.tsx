@@ -612,6 +612,17 @@ export function SettingsMembersPage({
       <MemberConfigPanel
         member={configMember}
         onClose={() => setConfigMember(null)}
+        reassignContext={
+          departmentId && (isAdmin || isManager)
+            ? {
+                departmentId,
+                teams: availableSubDepartments,
+                agents: liveMembers
+                  .filter((m) => m.id !== configMember.id)
+                  .map((m) => ({ id: m.id, name: m.name })),
+              }
+            : null
+        }
       />
     )}
 

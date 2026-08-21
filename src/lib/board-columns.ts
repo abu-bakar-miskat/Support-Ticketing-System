@@ -20,15 +20,35 @@ export type DefaultColumnSpec = {
 
 /**
  * The five status-typed columns seeded on every new department board (DAT-03).
- * Two OPEN columns (To Do / In Progress) give a normal active-work flow; the
- * remaining three cover the other status types one-to-one.
+ * Two OPEN columns (OPEN / IN PROGRESS) give a normal active-work flow; the
+ * remaining three cover the other status types one-to-one. New sub-departments
+ * inherit this same set (see DEFAULT_SUB_DEPARTMENT_STATUSES).
  */
 export const DEFAULT_BOARD_COLUMNS: readonly DefaultColumnSpec[] = [
-  { label: "To Do", color: "#94a3b8", statusType: "OPEN", order: 0 },
-  { label: "In Progress", color: "#0a76b9", statusType: "OPEN", order: 1 },
-  { label: "On Hold", color: "#f59e0b", statusType: "PAUSED", order: 2 },
-  { label: "Escalated", color: "#dc2626", statusType: "ESCALATED", order: 3 },
-  { label: "Done", color: "#16a34a", statusType: "RESOLVED", order: 4 },
+  { label: "OPEN", color: "#94a3b8", statusType: "OPEN", order: 0 },
+  { label: "IN PROGRESS", color: "#0a76b9", statusType: "OPEN", order: 1 },
+  { label: "PAUSED", color: "#f59e0b", statusType: "PAUSED", order: 2 },
+  { label: "ESCALATED", color: "#dc2626", statusType: "ESCALATED", order: 3 },
+  { label: "RESOLVED", color: "#16a34a", statusType: "RESOLVED", order: 4 },
+];
+
+/**
+ * Default statuses seeded for a newly-created sub-department so it mirrors the
+ * department's default board (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED) until
+ * it's given its own. Kept in sync with DEFAULT_BOARD_COLUMNS. `isComplete` is
+ * true only for the RESOLVED (done) status.
+ */
+export const DEFAULT_SUB_DEPARTMENT_STATUSES: readonly {
+  label: string;
+  color: string;
+  order: number;
+  isComplete: boolean;
+}[] = [
+  { label: "OPEN", color: "#94a3b8", order: 0, isComplete: false },
+  { label: "IN PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
+  { label: "PAUSED", color: "#f59e0b", order: 2, isComplete: false },
+  { label: "ESCALATED", color: "#dc2626", order: 3, isComplete: false },
+  { label: "RESOLVED", color: "#16a34a", order: 4, isComplete: true },
 ];
 
 export const STATUS_TYPES: readonly StatusType[] = ["OPEN", "PAUSED", "ESCALATED", "RESOLVED"];
@@ -154,6 +174,41 @@ export async function seedDepartmentBoard(
       color: c.color,
       statusType: c.statusType,
       order: c.order,
+    })),
+  });
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type SeedStatusTx = {
+  subDepartmentStatus: {
+    findFirst: (args: any) => Promise<any>;
+    createMany: (args: any) => Promise<any>;
+  };
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Idempotently create a sub-department's five default statuses
+ * (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED), mirroring the department board.
+ * No-ops if the sub-department already has any status, so it's safe to call on
+ * every sub-department creation and from a backfill.
+ */
+export async function seedSubDepartmentStatuses(
+  tx: SeedStatusTx,
+  subDepartmentId: string,
+): Promise<void> {
+  const existing = await tx.subDepartmentStatus.findFirst({
+    where: { subDepartmentId },
+    select: { id: true },
+  });
+  if (existing) return;
+  await tx.subDepartmentStatus.createMany({
+    data: DEFAULT_SUB_DEPARTMENT_STATUSES.map((s) => ({
+      subDepartmentId,
+      label: s.label,
+      color: s.color,
+      order: s.order,
+      isComplete: s.isComplete,
     })),
   });
 }

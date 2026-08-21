@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "../_guard"
 import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
-import { resolveSupportProjectForDepartment } from "@/lib/support-project"
 import { seedDepartmentBoard } from "@/lib/board-columns"
+import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
 import { runWithScope } from "@/lib/request-scope"
 
 export async function GET() {
@@ -63,12 +63,14 @@ export async function POST(request: Request) {
     }),
   )
 
-  // A support department is intake-driven — give it its support project up front.
-  if (type === "support") {
-    await resolveSupportProjectForDepartment(department.id).catch((e) =>
-      console.error("[POST /api/admin/departments] support project seed failed:", e),
-    )
-  }
+  // Auto-provision the support template for every new department: its Support
+  // project + default email settings/templates. The default support intake form
+  // is created once the department gets its first sub-department (it needs one
+  // to file tickets into) — see the sub-department create route. Best-effort so
+  // a provisioning hiccup never fails department creation.
+  await provisionDepartmentSupportTemplate(department.id).catch((e) =>
+    console.error("[POST /api/admin/departments] support template provisioning failed:", e),
+  )
 
   return NextResponse.json(department, { status: 201 })
 }

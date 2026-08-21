@@ -1,5 +1,3 @@
-export type TimerKind = "DEVELOPMENT" | "QA"
-
 export type ActiveTaskData = {
   entryId: string
   ticketId: string | null
@@ -7,7 +5,6 @@ export type ActiveTaskData = {
   title: string
   elapsed: string
   startedAtMs: number
-  kind?: TimerKind
 }
 
 export type TodayTaskSummary = {
@@ -48,30 +45,17 @@ export type TodaySegment = {
   pct: number
 }
 
-/** Aggregated stats for one time-entry kind (dev or QA). */
-export type TimeKindBucket = {
+export type TimeEntriesResponse = {
+  weekRangeLabel: string
+  activeTask: ActiveTaskData | null
+  todayTasks: TodayTaskSummary[]
   weekBars: WeekBar[]
   weekTotalLabel: string
   todayTotal: string
   todayTotalSecs: number
   weekTotalSecs: number
   todaySegments: TodaySegment[]
-  todayTasks: TodayTaskSummary[]
   entries: TimeEntryItem[]
-}
-
-export type TimeEntriesResponse = {
-  weekRangeLabel: string
-  activeTask: ActiveTaskData | null
-  /** @deprecated Prefer `development` — kept for older clients */
-  todayTasks: TodayTaskSummary[]
-  weekBars: WeekBar[]
-  weekTotalLabel: string
-  todayTotal: string
-  todaySegments: TodaySegment[]
-  entries: TimeEntryItem[]
-  development: TimeKindBucket
-  qa: TimeKindBucket
 }
 
 export async function fetchTimeEntries(): Promise<TimeEntriesResponse> {

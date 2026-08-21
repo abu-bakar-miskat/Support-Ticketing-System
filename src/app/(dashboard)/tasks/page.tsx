@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { TasksPage } from "@/components/tasks/tasks-page";
 
-export const metadata = { title: "Tasks — Ticketing System" };
+export const metadata = { title: "Tasks — Support Ticketing System" };
 
 export default async function TasksRoute() {
   const profile = await getProfile();

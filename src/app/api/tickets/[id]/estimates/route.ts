@@ -13,7 +13,6 @@ type TicketForEstimate = {
   deletedAt: Date | null;
   subDepartment: { departmentId: string | null };
   assignees: { userId: string }[];
-  qaAssignees: { userId: string }[];
 };
 
 async function loadTicket(ticketId: string): Promise<TicketForEstimate | null> {
@@ -29,7 +28,6 @@ async function loadTicket(ticketId: string): Promise<TicketForEstimate | null> {
       deletedAt: true,
       subDepartment: { select: { departmentId: true } },
       assignees: { select: { userId: true } },
-      qaAssignees: { select: { userId: true } },
     },
   });
 }
@@ -38,7 +36,6 @@ function assignedUserIds(ticket: TicketForEstimate): Set<string> {
   return new Set([
     ...(ticket.assigneeId ? [ticket.assigneeId] : []),
     ...ticket.assignees.map((a) => a.userId),
-    ...ticket.qaAssignees.map((a) => a.userId),
   ]);
 }
 

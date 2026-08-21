@@ -37,9 +37,6 @@ export type SubDepartmentTimeResponse = {
   stats: StatCard[]
   members: SubDepartmentMember[]
   projects: ProjectTimeRow[]
-  qaStats: StatCard[]
-  qaProjects: ProjectTimeRow[]
-  qaMembers: SubDepartmentMember[]
 }
 
 export async function fetchSubDepartmentTimeReport(
@@ -105,8 +102,6 @@ export type ReportsOverview = {
   statusDist: DistSlice[]
   priorityDist: DistSlice[]
   workload: NamedCount[]
-  qaResolved: NamedCount[]
-  qaWorkload: NamedCount[]
   projectTickets: ProjectTickets[]
   moduleTickets: ModuleTickets[]
   totals: { open: number; closed: number; total: number }

@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog, Zap, Mail,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -33,6 +33,11 @@ import {
   updateAdminDepartment,
   deleteAdminDepartment,
   createAdminSubDepartment,
+  getDepartmentMailboxConnections,
+  createDepartmentMailboxConnection,
+  updateMailboxConnection,
+  deleteMailboxConnection,
+  type MailboxConnection,
 } from "@/lib/api/admin";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -78,6 +83,7 @@ export type DepartmentRow = {
   directMembers: DeptMember[];
   nativeMembers: NativeMember[];
   memberIds: string[];
+  subDepartments: { id: string; name: string }[];
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -432,6 +438,9 @@ function NewDepartmentModal({
   const [prefixManuallyEdited, setPrefixManuallyEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Holds the department id once created, so a retry (after a sub-department
+  // error) never creates a duplicate department.
+  const createdDeptIdRef = useRef<string | null>(null);
 
   function handleSubDepartmentNameChange(v: string) {
     setSubDepartmentInput(v);
@@ -471,17 +480,69 @@ function NewDepartmentModal({
     if (!deptName) return;
     setSaving(true);
     setError(null);
-    try {
-      const dept = await createAdminDepartment({ name: deptName, type });
-      await Promise.all([
-        ...selectedManagers.map((m) => assignDepartmentManager(dept.id, m.id).catch(() => null)),
-        ...subDepartments.map((t) => createAdminSubDepartment({ name: t.name, prefix: t.prefix, departmentId: dept.id }).catch(() => null)),
-      ]);
-      onCreated();
-    } catch {
-      setError("Failed to create department");
+
+    // Include a sub department that was typed but not yet "Added" so it isn't
+    // silently dropped when the user clicks Create.
+    const pendingName = subDepartmentInput.trim();
+    const subs: PendingSubDepartment[] =
+      pendingName && !subDepartments.some((t) => t.name.toLowerCase() === pendingName.toLowerCase())
+        ? [
+            ...subDepartments,
+            { id: "pending", name: pendingName, prefix: subDepartmentPrefix.trim() || autoPrefix(pendingName) },
+          ]
+        : subDepartments;
+
+    // Create the department once; reuse it on retry so we never duplicate it.
+    let deptId = createdDeptIdRef.current;
+    if (!deptId) {
+      try {
+        const dept = await createAdminDepartment({ name: deptName, type });
+        deptId = dept.id;
+        createdDeptIdRef.current = dept.id;
+      } catch {
+        setError("Failed to create department");
+        setSaving(false);
+        return;
+      }
+      await Promise.all(
+        selectedManagers.map((m) => assignDepartmentManager(deptId!, m.id).catch(() => null)),
+      );
     }
+    if (!deptId) {
+      setSaving(false);
+      return;
+    }
+
+    const succeeded: string[] = [];
+    const failures: string[] = [];
+    for (const t of subs) {
+      try {
+        await createAdminSubDepartment({ name: t.name, prefix: t.prefix, departmentId: deptId });
+        succeeded.push(t.name);
+      } catch (e) {
+        failures.push(`${t.name} — ${e instanceof Error ? e.message : "failed"}`);
+      }
+    }
+
+    // Drop successfully-created sub departments (and the pending input) so a
+    // retry only re-attempts the ones that failed.
+    if (succeeded.length > 0) {
+      setSubDepartments((prev) => prev.filter((t) => !succeeded.includes(t.name)));
+      if (succeeded.includes(pendingName)) {
+        setSubDepartmentInput("");
+        setSubDepartmentPrefix("");
+        setPrefixManuallyEdited(false);
+      }
+    }
+
     setSaving(false);
+    if (failures.length > 0) {
+      // Department already exists — keep the modal open so the error is visible
+      // and the remaining sub departments can be retried without duplicating.
+      setError(`Department created, but couldn't add: ${failures.join("; ")}`);
+      return;
+    }
+    onCreated();
   }
 
   const managerIds = selectedManagers.map((m) => m.id);
@@ -578,26 +639,26 @@ function NewDepartmentModal({
             )}
           </div>
 
-          {/* Teams */}
+          {/* Sub departments */}
           <div>
             <label className="mb-2 block font-sans text-[11.5px] font-medium text-pen-muted">
-              Teams <span className="text-pen-subtle font-normal">(optional)</span>
+              Sub departments <span className="text-pen-subtle font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-2">
               <input
                 value={subDepartmentInput}
                 onChange={(e) => handleSubDepartmentNameChange(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubDepartment(); } }}
-                placeholder="Team name…"
+                placeholder="Sub department name…"
                 className="h-8 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
               />
               <input
                 value={subDepartmentPrefix}
                 onChange={(e) => handlePrefixChange(e.target.value)}
-                placeholder="PRE"
-                maxLength={4}
-                className="h-8 w-16 rounded-lg border border-pen-card-border bg-pen-surface px-2 text-center font-mono text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
-                title="Prefix (auto-generated)"
+                placeholder="Prefix"
+                maxLength={5}
+                className="h-8 w-20 rounded-lg border border-pen-card-border bg-pen-surface px-2 text-center font-mono text-[12px] text-pen-foreground uppercase outline-none placeholder:text-pen-subtle placeholder:normal-case focus:border-pen-blue/60"
+                title="Custom prefix — 2–5 letters, used on this sub department's ticket IDs (auto-filled from the name, editable)"
               />
               <button
                 type="button"
@@ -657,6 +718,215 @@ function NewDepartmentModal({
 
 // ── Department Card ───────────────────────────────────────────────────────────
 
+const DEPT_MAILBOX_STATUS_STYLES: Record<string, string> = {
+  ACTIVE: "bg-pen-green/10 text-pen-green",
+  AUTH_ERROR: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+  UNREACHABLE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+function DepartmentMailboxSection({
+  departmentId,
+  subDepartments,
+  canManage,
+}: {
+  departmentId: string;
+  subDepartments: { id: string; name: string }[];
+  canManage: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [address, setAddress] = useState("");
+  const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAddress, setEditAddress] = useState("");
+  const loading = expanded && connections === null;
+
+  useEffect(() => {
+    if (!expanded || connections !== null) return;
+    getDepartmentMailboxConnections(departmentId)
+      .then(setConnections)
+      .catch(() => setConnections([]));
+  }, [expanded, connections, departmentId]);
+
+  async function connect() {
+    if (!address.trim() || !teamId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createDepartmentMailboxConnection(departmentId, { teamId, address: address.trim() });
+      setConnections((prev) => [...(prev ?? []), created]);
+      setAddress("");
+      setShowConnectForm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to connect mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editAddress.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateMailboxConnection(id, { address: editAddress.trim() });
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setEditingId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update mailbox");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disconnect(id: string) {
+    await deleteMailboxConnection(id).catch(() => null);
+    setConnections((prev) => (prev ?? []).filter((c) => c.id !== id));
+  }
+
+  const list = connections ?? [];
+  const subDeptName = (id: string) => subDepartments.find((s) => s.id === id)?.name ?? "—";
+
+  return (
+    <div className="border-t border-pen-card-border px-5 py-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <Shield className="size-3.5 shrink-0 text-pen-muted" />
+        <span className="font-sans text-[11.5px] font-semibold text-pen-foreground flex-1">
+          Shared mailboxes
+          {list.length > 0 && <span className="ml-1.5 font-normal text-pen-subtle">({list.length})</span>}
+        </span>
+        <ChevronDown className={cn("size-3.5 text-pen-subtle transition-transform", expanded && "rotate-180")} />
+      </button>
+      {expanded && (
+        <div className="mt-2 flex flex-col gap-2">
+          {loading ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">Loading…</p>
+          ) : list.length === 0 ? (
+            <p className="font-sans text-[11.5px] text-pen-subtle">No mailboxes connected yet.</p>
+          ) : (
+            list.map((c) => (
+              <div key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2">
+                {editingId === c.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
+                      className="min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    />
+                    <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-md p-1 text-pen-green hover:bg-pen-green/10">
+                      <Check className="size-3.5" />
+                    </button>
+                    <button type="button" onClick={() => setEditingId(null)} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-sans text-[12px] font-medium text-pen-foreground">{c.address}</p>
+                      <p className="truncate font-sans text-[10.5px] text-pen-subtle">Files into {subDeptName(c.subDepartmentId)}</p>
+                    </div>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold", DEPT_MAILBOX_STATUS_STYLES[c.status])}>
+                      {c.status}
+                    </span>
+                    {canManage && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                          title="Edit address"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-pen-card hover:text-pen-foreground"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => disconnect(c.id)}
+                          title="Disconnect"
+                          className="rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {c.status !== "ACTIVE" && c.lastErrorMessage && (
+                  <p className="font-sans text-[10.5px] text-red-500">{c.lastErrorMessage}</p>
+                )}
+              </div>
+            ))
+          )}
+
+          {canManage && (
+            showConnectForm ? (
+              subDepartments.length === 0 ? (
+                <p className="font-sans text-[11.5px] text-pen-subtle">Add a team to this department before connecting a mailbox.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    autoFocus
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") connect(); }}
+                    placeholder="support@yourcompany.com"
+                    className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+                  />
+                  <select
+                    value={teamId}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+                  >
+                    {subDepartments.map((s) => (
+                      <option key={s.id} value={s.id}>Files into {s.name}</option>
+                    ))}
+                  </select>
+                  {error && <p className="font-sans text-[10.5px] text-red-500">{error}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={connect}
+                      disabled={saving || !address.trim() || !teamId}
+                      className="rounded-md bg-pen-blue px-2.5 py-1 font-sans text-[11.5px] font-medium text-white disabled:opacity-50"
+                    >
+                      {saving ? "Connecting…" : "Connect"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowConnectForm(false); setError(null); }}
+                      className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowConnectForm(true)}
+                className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              >
+                <Plus className="size-3" />
+                Connect mailbox
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DepartmentCard({
   dept,
   allUsers,
@@ -685,19 +955,7 @@ function DepartmentCard({
   const [expanded, setExpanded] = useState(false);
   const [membersExpanded, setMembersExpanded] = useState(false);
   const [managersExpanded, setManagersExpanded] = useState(false);
-  const [isHub, setIsHub] = useState(dept.isHub);
-  const [togglingHub, setTogglingHub] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
-
-  async function toggleHub() {
-    setTogglingHub(true);
-    try {
-      await updateAdminDepartment(dept.id, { name: editName.trim() || dept.name, isHub: !isHub });
-      setIsHub((v) => !v);
-    } finally {
-      setTogglingHub(false);
-    }
-  }
 
   async function saveEdit() {
     if (!editName.trim()) return;
@@ -885,11 +1143,7 @@ function DepartmentCard({
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="pen-text-modal-title">{dept.name}</h3>
-                {isHub ? (
-                  <span className="inline-flex items-center rounded-full bg-violet-100 px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-                    Hub
-                  </span>
-                ) : dept.type && dept.type !== "development" ? (
+                {dept.type && dept.type !== "development" ? (
                   <span className="inline-flex items-center rounded-full bg-pen-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-pen-blue">
                     {departmentTypeLabel(dept.type)}
                   </span>
@@ -932,24 +1186,24 @@ function DepartmentCard({
               >
                 <UserCog className="size-3.5" />
               </a>
+              <a
+                href={`/settings/departments/${dept.id}/rules`}
+                title="Automation rules"
+                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              >
+                <Zap className="size-3.5" />
+              </a>
+              <a
+                href={`/settings/departments/${dept.id}/mailbox`}
+                title="Mailbox"
+                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              >
+                <Mail className="size-3.5" />
+              </a>
             </div>
           )}
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={toggleHub}
-                disabled={togglingHub}
-                title={isHub ? "Disable hub department" : "Mark as hub department"}
-                className={cn(
-                  "rounded-md p-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
-                  isHub
-                    ? "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400"
-                    : "text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground",
-                )}
-              >
-                Hub
-              </button>
               <button type="button" onClick={() => setEditing(true)} className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground" title="Rename">
                 <Pencil className="size-3.5" />
               </button>
@@ -1009,6 +1263,8 @@ function DepartmentCard({
             </>
           )}
         </div>
+
+        <DepartmentMailboxSection departmentId={dept.id} subDepartments={dept.subDepartments} canManage />
 
         {/* ── Members (collapsible) ── */}
         <div className="border-t border-pen-card-border px-5 py-3">

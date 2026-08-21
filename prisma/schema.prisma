@@ -221,10 +221,12 @@ model Tenant {
   boardColumns BoardColumn[]
   slaPolicies SlaPolicy[]
   assignmentRules AssignmentRule[]
+  rules Rule[]
   bulkReassignJobs BulkReassignJob[]
   mailboxConnections MailboxConnection[]
   mailSuppressionLogs MailSuppressionLog[]
   reportExportJobs ReportExportJob[]
+  reportSchedules ReportSchedule[]
   featureFlags FeatureFlag[]
   auditEvents AuditEvent[]
   agreements Agreement[]
@@ -325,6 +327,7 @@ model Department {
   boardColumns      BoardColumn[]
   slaPolicies       SlaPolicy[]
   assignmentRules   AssignmentRule[]
+  rules             Rule[]
   mailboxConnections MailboxConnection[]
 
   @@index([tenantId])
@@ -1219,6 +1222,32 @@ model SlaPolicy {
   @@index([tenantId])
 }
 
+// Unified per-department automation rule (slice 09, RE-01..05). `conditions` is
+// a rules-engine `ConditionGroup` and `actions` is a `RuleAction[]`
+// (lib/rules-engine.ts). Rules run in `order` on every new ticket; a matched
+// rule fires its actions (assign, priority, category/tag, apply SLA, status,
+// notify) and, if `stopProcessing`, halts later rules. This supersedes the
+// single-action AssignmentRule for automation going forward.
+model Rule {
+  id             String   @id @default(cuid())
+  tenantId       String
+  departmentId   String
+  name           String
+  conditions     Json
+  actions        Json
+  order          Int      @default(0)
+  enabled        Boolean  @default(true)
+  stopProcessing Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([departmentId])
+  @@index([tenantId])
+}
+
 // Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a
 // rules-engine `ConditionGroup` (lib/rules-engine.ts) matched against submitted
 // form values; rules are tried in `order`, first enabled match wins and its
@@ -1330,6 +1359,38 @@ model ReportExportJob {
   @@index([tenantId])
   @@index([status])
   @@index([createdById])
+}
+
+enum ReportScheduleFrequency {
+  DAILY
+  WEEKLY
+}
+
+// RPT-06: periodic exportable reports. A Project Admin configures a recurring
+// report (reportType + format + rolling window). The scheduled-reports cron
+// materializes each due schedule into a ReportExportJob (same generation +
+// storage path as on-demand exports), so the output is downloadable in-app —
+// no email delivery. `nextRunAt` is the due marker the cron polls.
+model ReportSchedule {
+  id           String                  @id @default(cuid())
+  tenantId     String
+  createdById  String                  @db.Uuid
+  name         String
+  reportType   String
+  format       ReportExportFormat
+  frequency    ReportScheduleFrequency
+  // Rolling window length (days back from run time) the report covers.
+  rangeDays    Int                     @default(30)
+  enabled      Boolean                 @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([enabled, nextRunAt])
 }
 
 // SA-04 (slice 19): per-tenant opt-out switch for a named platform feature

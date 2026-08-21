@@ -1085,46 +1085,6 @@ export function ProfileStatsSkeleton() {
 
 // ── Manager ───────────────────────────────────────────────────────────────────
 
-function PersonReportCardSkeleton({ style }: { style?: CSSProperties }) {
-  return (
-    <div
-      className="flex flex-col gap-4 rounded-2xl border border-pen-card-border bg-pen-card p-5 shadow-pen-card"
-      style={style}
-    >
-      <div className="flex items-center gap-3.5">
-        <Skeleton className="size-[72px] shrink-0 rounded-full" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="h-3 w-44" />
-        </div>
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        {["Open", "Late", "Review", "Done"].map((label) => (
-          <div
-            key={label}
-            className="flex flex-col items-center gap-1 rounded-xl bg-pen-surface/60 py-2.5"
-          >
-            <Skeleton className="h-5 w-6" />
-            <span className="font-sans text-[9.5px] font-medium uppercase tracking-wide text-pen-subtle">
-              {label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function PeopleReportsGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-5 min-[560px]:grid-cols-[repeat(auto-fill,minmax(340px,1fr))]">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <PersonReportCardSkeleton key={i} style={fade(i, 0.08)} />
-      ))}
-    </div>
-  );
-}
-
 export function ManagerDashboardSkeleton() {
   return (
     <div className="flex h-full flex-col overflow-hidden">

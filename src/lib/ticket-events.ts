@@ -34,8 +34,8 @@ export type TicketEventPayloads = {
   TIMER_RESET:            { clearedSecs: number; entryCount: number }
   QA_TIME_LOGGED:         { durationSecs: number; note?: string | null; entryId: string }
   /** Broadcast-only (no ActivityLog) — other ticket viewers see timers live */
-  TIMER_STARTED:          { userId: string; userName: string; avatarUrl?: string | null; entryId: string; startedAt: string; kind?: "DEVELOPMENT" | "QA" }
-  TIMER_STOPPED:          { userId: string; userName: string; entryId: string; durationSecs: number; endedAt: string; kind?: "DEVELOPMENT" | "QA" }
+  TIMER_STARTED:          { userId: string; userName: string; avatarUrl?: string | null; entryId: string; startedAt: string }
+  TIMER_STOPPED:          { userId: string; userName: string; entryId: string; durationSecs: number; endedAt: string }
 }
 
 export type TicketAction = keyof TicketEventPayloads

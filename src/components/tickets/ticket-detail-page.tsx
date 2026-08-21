@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowLeft,
+  ArrowRightLeft,
   Trash2,
   Plus,
   X,
@@ -104,7 +105,6 @@ import { StatusPill as SharedStatusPill } from "@/components/board/status-pill";
 import { TagPill } from "@/components/board/tag-pill";
 import type { UserListPerson } from "@/lib/user-list-person";
 import { CoAssigneeSelect } from "@/components/tickets/co-assignee-select";
-import { QaAssigneeSelect } from "@/components/tickets/qa-assignee-select";
 import {
   Popover,
   PopoverContent,
@@ -119,6 +119,7 @@ import {
 } from "@/lib/ticket-datetime";
 import type { DateRange as DayPickerDateRange } from "react-day-picker";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TransferTicketDialog } from "@/components/tickets/transfer-ticket-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { RichTextDisplay } from "@/components/ui/rich-text-editor";
 import { ExpandableDescriptionEditor } from "@/components/ui/expandable-description-editor";
@@ -482,16 +483,7 @@ const ACTIVITY_TEXT: Record<string, (meta: Record<string, unknown>) => string> =
     SUBTICKET_ADDED: (m) =>
       m.humanId ? `added sub-ticket ${m.humanId}` : "added a sub-ticket",
     LABELS_CHANGED: () => "updated labels",
-    TIMER_RESET: () => "manually reset their development timer",
-    QA_TIME_LOGGED: (m) => {
-      const secs = typeof m.durationSecs === "number" ? m.durationSecs : 0;
-      if (secs <= 0) return "logged QA time";
-      if (secs < 60) return `logged ${secs}s of QA time`;
-      const mins = Math.round(secs / 60);
-      return mins >= 60
-        ? `logged ${Math.floor(mins / 60)}h ${mins % 60}m of QA time`
-        : `logged ${mins}m of QA time`;
-    },
+    TIMER_RESET: () => "manually reset their timer",
     DATE_CHANGED: (m) => {
       const fmt = (d: unknown) => (typeof d === "string" && d ? d : null);
       const toStart = fmt(m.toStart);
@@ -636,7 +628,6 @@ export type SubTicketTimeData = {
     startedAt: string;
     endedAt: string | null;
     durationSecs: number;
-    kind: string;
   }[];
 };
 
@@ -668,7 +659,6 @@ export type TicketDetailProps = {
   assigneeName: string | null;
   assigneeAvatarUrl: string | null;
   coAssignees?: { id: string; name: string; avatarUrl: string | null }[];
-  qaAssignees?: { id: string; name: string; avatarUrl: string | null }[];
   startDateIso: string | null;
   dueDateIso: string | null;
   dueDate: string | null;
@@ -698,12 +688,10 @@ export type TicketDetailProps = {
   estimatedTime?: number | null;
   personalEstimates?: PersonalEstimate[];
   timeEntries?: TimeEntrySummary[];
-  qaTimeEntries?: TimeEntrySummary[];
   subTicketTime?: SubTicketTimeData | null;
   myActiveTimerId?: string | null;
   myActiveTimerStartedAt?: string | null;
   isCurrentUserAssignee?: boolean;
-  isCurrentUserQa?: boolean;
   intake?: IntakeData | null;
   assetLinks?: { label: string; url: string }[];
   github?: GitHubDevData | null;
@@ -759,7 +747,6 @@ export function TicketDetailPage({
   assigneeName,
   assigneeAvatarUrl,
   coAssignees = EMPTY_CO_ASSIGNEES,
-  qaAssignees = EMPTY_CO_ASSIGNEES,
   startDateIso,
   dueDateIso,
   dueDate,
@@ -785,12 +772,10 @@ export function TicketDetailPage({
   estimatedTime: initialEstimatedTime = null,
   personalEstimates: initialPersonalEstimates = EMPTY_PERSONAL_ESTIMATES,
   timeEntries: initialTimeEntries = EMPTY_TIME_ENTRIES,
-  qaTimeEntries: initialQaTimeEntries = EMPTY_TIME_ENTRIES,
   subTicketTime = null,
   myActiveTimerId: initialActiveTimerId = null,
   myActiveTimerStartedAt = null,
   isCurrentUserAssignee = false,
-  isCurrentUserQa = false,
   intake = null,
   assetLinks = EMPTY_ASSET_LINKS,
   github = null,
@@ -837,6 +822,7 @@ export function TicketDetailPage({
   const [templateEditing, setTemplateEditing] = useState(false);
   const [templateSaving, setTemplateSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [subTickets, setSubTickets] =
     useState<SubTicketData[]>(initialSubTickets);
   const [subModalId, setSubModalId] = useState<string | null>(null);
@@ -847,7 +833,6 @@ export function TicketDetailPage({
     assigneeAvatarUrl ?? null,
   );
   const [liveCoAssignees, setLiveCoAssignees] = useState(coAssignees);
-  const [liveQaAssignees, setLiveQaAssignees] = useState(qaAssignees);
   const [liveLabels, setLiveLabels] = useState<string[]>(labels);
   const [livePriority, setLivePriority] = useState(priority);
   const [liveModuleId, setLiveModuleId] = useState(moduleId ?? null);
@@ -861,8 +846,6 @@ export function TicketDetailPage({
     useState(initialEstimatedTime);
   const [liveActivity, setLiveActivity] = useState(activity);
   const [liveTimeEntries, setLiveTimeEntries] = useState(initialTimeEntries);
-  const [liveQaTimeEntries, setLiveQaTimeEntries] =
-    useState(initialQaTimeEntries);
   const [liveComments, setLiveComments] = useState<CommentData[]>(comments);
   const knownCommentIds = useRef(new Set(comments.map((c) => c.id)));
   const knownActivityIds = useRef(new Set(activity.map((a) => a.id)));
@@ -904,9 +887,6 @@ export function TicketDetailPage({
     setLiveCoAssignees(coAssignees);
   }, [coAssignees]);
   useEffect(() => {
-    setLiveQaAssignees(qaAssignees);
-  }, [qaAssignees]);
-  useEffect(() => {
     setLiveLabels(labels);
   }, [labels]);
   useEffect(() => {
@@ -945,9 +925,6 @@ export function TicketDetailPage({
   useEffect(() => {
     setLiveTimeEntries(initialTimeEntries);
   }, [initialTimeEntries]);
-  useEffect(() => {
-    setLiveQaTimeEntries(initialQaTimeEntries);
-  }, [initialQaTimeEntries]);
   useEffect(() => {
     setLiveComments(comments);
     knownCommentIds.current = new Set(comments.map((c) => c.id));
@@ -1089,19 +1066,6 @@ export function TicketDetailPage({
   const handleCoAssigneesChange = useCallback(
     (list: { id: string; name: string; avatarUrl?: string | null }[]) => {
       setLiveCoAssignees(
-        list.map((m) => ({
-          id: m.id,
-          name: m.name,
-          avatarUrl: m.avatarUrl ?? null,
-        })),
-      );
-    },
-    [],
-  );
-
-  const handleQaAssigneesChange = useCallback(
-    (list: { id: string; name: string; avatarUrl?: string | null }[]) => {
-      setLiveQaAssignees(
         list.map((m) => ({
           id: m.id,
           name: m.name,
@@ -1415,33 +1379,6 @@ export function TicketDetailPage({
           }
           break;
         }
-        case "QA_ASSIGNEE_ADDED": {
-          const userId = payload.userId as string | undefined;
-          const userName =
-            (payload.userName as string | undefined) ?? "Unknown";
-          if (!userId) break;
-          const member = subDepartmentMembers.find((m) => m.id === userId);
-          setLiveQaAssignees((prev) =>
-            prev.some((c) => c.id === userId)
-              ? prev
-              : [
-                  ...prev,
-                  {
-                    id: userId,
-                    name: userName,
-                    avatarUrl: member?.avatarUrl ?? null,
-                  },
-                ],
-          );
-          break;
-        }
-        case "QA_ASSIGNEE_REMOVED": {
-          const userId = payload.userId as string | undefined;
-          if (userId) {
-            setLiveQaAssignees((prev) => prev.filter((c) => c.id !== userId));
-          }
-          break;
-        }
         case "TITLE_CHANGED": {
           const to = payload.to as string | undefined;
           if (to) setTitleValue(to);
@@ -1514,14 +1451,7 @@ export function TicketDetailPage({
         }
         case "TIMER_STARTED":
         case "TIMER_STOPPED": {
-          const timerKind = payload.kind === "QA" ? "QA" : "DEVELOPMENT";
-          if (timerKind === "QA") {
-            setLiveQaTimeEntries((prev) =>
-              applyTimerEventToEntries(prev, event),
-            );
-          } else {
-            setLiveTimeEntries((prev) => applyTimerEventToEntries(prev, event));
-          }
+          setLiveTimeEntries((prev) => applyTimerEventToEntries(prev, event));
           // Keep the actor's global timer indicator in sync with auto-start/stop
           if (
             event.actorId === currentUserId ||
@@ -1540,52 +1470,6 @@ export function TicketDetailPage({
           }
           if (actorId === currentUserId) {
             void useTimerStore.getState().syncFromServer();
-          }
-          break;
-        }
-        case "QA_TIME_LOGGED": {
-          const durationSecs =
-            (payload.durationSecs as number | undefined) ?? 0;
-          const entryId =
-            (payload.entryId as string | undefined) ?? `qa-${event.createdAt}`;
-          const actorId = event.actorId;
-          if (actorId && durationSecs > 0) {
-            const nowIso = event.createdAt;
-            const startedAt = new Date(
-              new Date(nowIso).getTime() - durationSecs * 1000,
-            ).toISOString();
-            setLiveQaTimeEntries((prev) => {
-              const existing = prev.find((e) => e.userId === actorId);
-              const session = {
-                id: entryId,
-                startedAt,
-                endedAt: nowIso,
-                durationSecs,
-              };
-              if (existing) {
-                return prev.map((e) =>
-                  e.userId === actorId
-                    ? {
-                        ...e,
-                        totalSecs: e.totalSecs + durationSecs,
-                        sessions: [session, ...e.sessions],
-                      }
-                    : e,
-                );
-              }
-              return [
-                ...prev,
-                {
-                  userId: actorId,
-                  userName: actorName,
-                  avatarUrl: null,
-                  totalSecs: durationSecs,
-                  isRunning: false,
-                  runningStartedAt: null,
-                  sessions: [session],
-                },
-              ];
-            });
           }
           break;
         }
@@ -1764,26 +1648,17 @@ export function TicketDetailPage({
     return createTicketGithubSubscription(supabase, dbId, handleTicketUpdate);
   }, [dbId, handleTicketUpdate]);
 
-  // Auto-stop DEVELOPMENT timers when the ticket leaves In Progress.
-  // QA timers are allowed in Review and later stages — do not stop those here.
+  // Auto-stop timers when the ticket leaves In Progress.
   const { stopTimer: stopTimerAction } = useTimerActions();
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const timerEntryId = useTimerStore((s) => s.entryId);
-  const timerKind = useTimerStore((s) => s.kind);
   const isTimerRunningHere = timerTicketDbId === dbId;
   useEffect(() => {
     if (!isTimerRunningHere) return;
-    if (timerKind === "QA") return;
     if (normalizeStatus(liveStatus) !== "In Progress") {
       stopTimerAction(timerEntryId).catch(() => undefined);
     }
-  }, [
-    liveStatus,
-    isTimerRunningHere,
-    timerEntryId,
-    timerKind,
-    stopTimerAction,
-  ]);
+  }, [liveStatus, isTimerRunningHere, timerEntryId, stopTimerAction]);
 
   const stackLen = useDrawerStore((s) => s.stack.length);
   const popDrawer = useDrawerStore((s) => s.pop);
@@ -2183,6 +2058,17 @@ export function TicketDetailPage({
         successMessage={`Ticket ${ticketId} deleted`}
         onConfirm={doDeleteTicket}
       />
+      <TransferTicketDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        ticketDbId={dbId}
+        ticketHumanId={ticketId}
+        currentSubDepartmentId={subDepartmentId}
+        onTransferred={() => {
+          if (isDrawer) onClose?.();
+          router.refresh();
+        }}
+      />
       <ConfirmDialog
         open={!!subToDelete}
         onOpenChange={(open) => {
@@ -2332,6 +2218,17 @@ export function TicketDetailPage({
                 <Copy className="size-3" />
                 {copied ? "Copied" : "Copy link"}
               </button>
+              {canEditTicket && (
+                <button
+                  type="button"
+                  onClick={() => setTransferOpen(true)}
+                  title="Transfer to another department or sub-department"
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-pen-foreground hover:opacity-70"
+                >
+                  <ArrowRightLeft className="size-3" />
+                  Transfer
+                </button>
+              )}
               {canDelete && (
                 <button
                   type="button"
@@ -3650,18 +3547,6 @@ export function TicketDetailPage({
               />
             </div>
 
-            {/* QA */}
-            <div className="flex flex-col gap-1.5">
-              <SectionLabel>QA</SectionLabel>
-              <QaAssigneeSelect
-                ticketId={dbId}
-                qaAssignees={liveQaAssignees}
-                subDepartmentMembers={subDepartmentMembers}
-                onQaAssigneesChange={handleQaAssigneesChange}
-                disabled={!canEditTicket}
-              />
-            </div>
-
             {/* Module */}
             {projectModuleSystemEnabled && (
               <div className="flex flex-col gap-1.5">
@@ -3712,12 +3597,10 @@ export function TicketDetailPage({
               ticketTitle={titleValue}
               estimatedTime={liveEstimatedTime}
               timeEntries={liveTimeEntries}
-              qaTimeEntries={liveQaTimeEntries}
               myActiveTimerId={initialActiveTimerId}
               myActiveTimerStartedAt={myActiveTimerStartedAt}
               canStart={isCurrentUserAssignee && isTicketActive}
               isAssignee={isCurrentUserAssignee}
-              isQa={isCurrentUserQa}
               estimateEditable={isSupport}
               canEditEstimate={canEditDates}
               currentUserId={currentUserId}
@@ -3742,7 +3625,6 @@ export function TicketDetailPage({
                 };
                 push(liveAssigneeId, liveAssigneeName, liveAssigneeAvatarUrl, "Assignee");
                 liveCoAssignees.forEach((a) => push(a.id, a.name, a.avatarUrl, "Co-assignee"));
-                liveQaAssignees.forEach((a) => push(a.id, a.name, a.avatarUrl, "QA"));
                 return (
                   <PersonalEstimatesSection
                     ticketId={dbId}
@@ -4120,11 +4002,6 @@ function SubTicketTimeSection({ data }: { data: SubTicketTimeData }) {
                     <span className="font-sans text-[11.5px] text-pen-muted">
                       {format(parseISO(s.startedAt), "d MMM")}
                     </span>
-                    {s.kind === "QA" && (
-                      <span className="rounded bg-pen-surface px-1 font-sans text-[9.5px] text-pen-subtle">
-                        QA
-                      </span>
-                    )}
                     <span className="ml-auto font-mono text-[11.5px] font-semibold text-pen-foreground">
                       {formatSecs(s.durationSecs)}
                     </span>
@@ -4143,7 +4020,7 @@ type EstimatePerson = {
   id: string;
   name: string;
   avatarUrl: string | null;
-  role: "Assignee" | "Co-assignee" | "QA";
+  role: "Assignee" | "Co-assignee";
 };
 
 function PersonalEstimatesSection({
@@ -4343,12 +4220,10 @@ function TimeTrackingSection({
   ticketTitle,
   estimatedTime: initialEstimatedTime,
   timeEntries: initialEntries,
-  qaTimeEntries: initialQaEntries,
   myActiveTimerId,
   myActiveTimerStartedAt,
   canStart,
   isAssignee,
-  isQa,
   estimateEditable,
   canEditEstimate,
   currentUserId,
@@ -4360,12 +4235,10 @@ function TimeTrackingSection({
   ticketTitle: string;
   estimatedTime: number | null;
   timeEntries: TimeEntrySummary[];
-  qaTimeEntries: TimeEntrySummary[];
   myActiveTimerId: string | null;
   myActiveTimerStartedAt: string | null;
   canStart: boolean;
   isAssignee: boolean;
-  isQa: boolean;
   /** Support tickets edit the ticket-wide estimate directly; others roll it up per-person. */
   estimateEditable: boolean;
   canEditEstimate: boolean;
@@ -4380,16 +4253,11 @@ function TimeTrackingSection({
   );
   const [savingEst, setSavingEst] = useState(false);
   const [entries, setEntries] = useState<TimeEntrySummary[]>(initialEntries);
-  const [qaEntries, setQaEntries] =
-    useState<TimeEntrySummary[]>(initialQaEntries);
   const [, setTick] = useState(0);
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showLog, setShowLog] = useState(false);
-  const [showQaLog, setShowQaLog] = useState(false);
-  const [startingQa, setStartingQa] = useState(false);
-  const [stoppingQa, setStoppingQa] = useState(false);
   const router = useRouter();
   const {
     startTimer: startTimerAction,
@@ -4398,16 +4266,10 @@ function TimeTrackingSection({
   } = useTimerActions();
   const timerEntryId = useTimerStore((s) => s.entryId);
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
-  const timerKind = useTimerStore((s) => s.kind);
   const prevTimerTicketRef = useRef<string | null>(timerTicketDbId);
   const timerStartedAtMs = useTimerStore((s) => s.startedAtMs);
   const isRunningHere = timerTicketDbId === ticketId && !!timerEntryId;
-  // Store kind is the source of truth. Null kind on a running timer is treated as DEVELOPMENT
-  // (legacy / hydrating) unless we just started QA and the store already says QA.
-  const isQaRunningHere = isRunningHere && timerKind === "QA";
-  const isDevRunningHere = isRunningHere && timerKind !== "QA";
-  const activeTimerId = isDevRunningHere ? timerEntryId : null;
-  const activeQaTimerId = isQaRunningHere ? timerEntryId : null;
+  const activeTimerId = isRunningHere ? timerEntryId : null;
 
   // Keep in sync with parent live patches (other users' timer / estimate changes)
   useEffect(() => {
@@ -4419,27 +4281,17 @@ function TimeTrackingSection({
   useEffect(() => {
     setEntries(initialEntries);
   }, [initialEntries]);
-  useEffect(() => {
-    setQaEntries(initialQaEntries);
-  }, [initialQaEntries]);
 
   const myEntry = entries.find((e) => e.userId === currentUserId);
-  const myQaEntry = qaEntries.find((e) => e.userId === currentUserId);
   const runningStartedAt =
-    isDevRunningHere && timerStartedAtMs
-      ? new Date(timerStartedAtMs).toISOString()
-      : null;
-  const qaRunningStartedAt =
-    isQaRunningHere && timerStartedAtMs
+    isRunningHere && timerStartedAtMs
       ? new Date(timerStartedAtMs).toISOString()
       : null;
 
   // Tick every second while any timer is running
   const hasRunning =
     !!activeTimerId ||
-    !!activeQaTimerId ||
-    entries.some((e) => e.isRunning && e.userId !== currentUserId) ||
-    qaEntries.some((e) => e.isRunning && e.userId !== currentUserId);
+    entries.some((e) => e.isRunning && e.userId !== currentUserId);
   useEffect(() => {
     if (!hasRunning) return;
     const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -4453,27 +4305,13 @@ function TimeTrackingSection({
         e.userId === currentUserId
           ? {
               ...e,
-              isRunning: isDevRunningHere,
-              runningStartedAt: isDevRunningHere ? runningStartedAt : null,
+              isRunning: isRunningHere,
+              runningStartedAt: isRunningHere ? runningStartedAt : null,
             }
           : e,
       ),
     );
-  }, [isDevRunningHere, runningStartedAt, currentUserId]);
-
-  useEffect(() => {
-    setQaEntries((prev) =>
-      prev.map((e) =>
-        e.userId === currentUserId
-          ? {
-              ...e,
-              isRunning: isQaRunningHere,
-              runningStartedAt: isQaRunningHere ? qaRunningStartedAt : null,
-            }
-          : e,
-      ),
-    );
-  }, [isQaRunningHere, qaRunningStartedAt, currentUserId]);
+  }, [isRunningHere, runningStartedAt, currentUserId]);
 
   useEffect(() => {
     const prev = prevTimerTicketRef.current;
@@ -4496,13 +4334,7 @@ function TimeTrackingSection({
       ? Math.floor((Date.now() - new Date(runningStartedAt).getTime()) / 1000)
       : 0;
 
-  const myQaElapsed =
-    activeQaTimerId && qaRunningStartedAt
-      ? Math.floor((Date.now() - new Date(qaRunningStartedAt).getTime()) / 1000)
-      : 0;
-
   const myTotalSecs = (myEntry?.totalSecs ?? 0) + myElapsed;
-  const myQaTotalSecs = (myQaEntry?.totalSecs ?? 0) + myQaElapsed;
 
   const othersTotalSecs = entries
     .filter((e) => e.userId !== currentUserId)
@@ -4517,14 +4349,10 @@ function TimeTrackingSection({
     ? Math.max(0, totalSecs - estimatedSecs)
     : 0;
 
-  const othersQaTotalSecs = qaEntries
-    .filter((e) => e.userId !== currentUserId)
-    .reduce((sum, e) => sum + getEntrySecs(e), 0);
-  const qaTotalSecs = myQaTotalSecs + othersQaTotalSecs;
   const canReset = isAssignee && (myTotalSecs > 0 || !!activeTimerId);
 
   useEffect(() => {
-    if (!isDevRunningHere || !timerStartedAtMs) return;
+    if (!isRunningHere || !timerStartedAtMs) return;
     setEntries((prev) =>
       prev.map((e) =>
         e.userId === currentUserId
@@ -4536,22 +4364,7 @@ function TimeTrackingSection({
           : e,
       ),
     );
-  }, [isDevRunningHere, timerStartedAtMs, currentUserId]);
-
-  useEffect(() => {
-    if (!isQaRunningHere || !timerStartedAtMs) return;
-    setQaEntries((prev) =>
-      prev.map((e) =>
-        e.userId === currentUserId
-          ? {
-              ...e,
-              isRunning: true,
-              runningStartedAt: new Date(timerStartedAtMs).toISOString(),
-            }
-          : e,
-      ),
-    );
-  }, [isQaRunningHere, timerStartedAtMs, currentUserId]);
+  }, [isRunningHere, timerStartedAtMs, currentUserId]);
 
   async function startTimer() {
     if (starting || activeTimerId) return;
@@ -4561,7 +4374,6 @@ function TimeTrackingSection({
         ticketDbId: ticketId,
         humanId: ticketHumanId,
         title: ticketTitle,
-        kind: "DEVELOPMENT",
       });
       const nowIso = new Date(entry.startedAt).toISOString();
       const newSession = {
@@ -4570,33 +4382,6 @@ function TimeTrackingSection({
         endedAt: null,
         durationSecs: null,
       };
-      // Starting dev closes any running QA timer on this user
-      setQaEntries((prev) =>
-        prev.map((e) =>
-          e.userId === currentUserId
-            ? {
-                ...e,
-                isRunning: false,
-                runningStartedAt: null,
-                sessions: e.sessions.map((s) =>
-                  s.endedAt
-                    ? s
-                    : {
-                        ...s,
-                        endedAt: nowIso,
-                        durationSecs: Math.max(
-                          0,
-                          Math.floor(
-                            (Date.now() - new Date(s.startedAt).getTime()) /
-                              1000,
-                          ),
-                        ),
-                      },
-                ),
-              }
-            : e,
-        ),
-      );
       setEntries((prev) => {
         const exists = prev.find((e) => e.userId === currentUserId);
         if (exists) {
@@ -4686,119 +4471,6 @@ function TimeTrackingSection({
     }
   }
 
-  async function startQaTimer() {
-    if (startingQa || activeQaTimerId) return;
-    setStartingQa(true);
-    try {
-      const entry = await startTimerAction({
-        ticketDbId: ticketId,
-        humanId: ticketHumanId,
-        title: ticketTitle,
-        kind: "QA",
-      });
-      const nowIso = new Date(entry.startedAt).toISOString();
-      const newSession = {
-        id: entry.id,
-        startedAt: nowIso,
-        endedAt: null,
-        durationSecs: null,
-      };
-      // Starting QA closes any running dev timer on this user
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.userId === currentUserId
-            ? {
-                ...e,
-                isRunning: false,
-                runningStartedAt: null,
-                sessions: e.sessions.map((s) =>
-                  s.endedAt
-                    ? s
-                    : {
-                        ...s,
-                        endedAt: nowIso,
-                        durationSecs: Math.max(
-                          0,
-                          Math.floor(
-                            (Date.now() - new Date(s.startedAt).getTime()) /
-                              1000,
-                          ),
-                        ),
-                      },
-                ),
-              }
-            : e,
-        ),
-      );
-      setQaEntries((prev) => {
-        const exists = prev.find((e) => e.userId === currentUserId);
-        if (exists) {
-          return prev.map((e) =>
-            e.userId === currentUserId
-              ? {
-                  ...e,
-                  isRunning: true,
-                  runningStartedAt: nowIso,
-                  sessions: [
-                    newSession,
-                    ...e.sessions.filter((s) => s.endedAt !== null),
-                  ],
-                }
-              : e,
-          );
-        }
-        return [
-          ...prev,
-          {
-            userId: currentUserId,
-            userName: currentUserName,
-            avatarUrl: currentUserAvatarUrl,
-            totalSecs: 0,
-            isRunning: true,
-            runningStartedAt: nowIso,
-            sessions: [newSession],
-          },
-        ];
-      });
-    } finally {
-      setStartingQa(false);
-    }
-  }
-
-  async function pauseQaTimer() {
-    if (stoppingQa) return;
-    setStoppingQa(true);
-    try {
-      await stopTimerAction(activeQaTimerId);
-      const nowIso = new Date().toISOString();
-      setQaEntries((prev) =>
-        prev.map((e) => {
-          if (e.userId !== currentUserId) return e;
-          let addSecs = 0;
-          const sessions = e.sessions.map((s) => {
-            if (s.endedAt !== null) return s;
-            const dur = Math.max(
-              0,
-              Math.floor((Date.now() - new Date(s.startedAt).getTime()) / 1000),
-            );
-            addSecs += dur;
-            return { ...s, endedAt: nowIso, durationSecs: dur };
-          });
-          return {
-            ...e,
-            isRunning: false,
-            runningStartedAt: null,
-            totalSecs: e.totalSecs + addSecs,
-            sessions,
-          };
-        }),
-      );
-      router.refresh();
-    } finally {
-      setStoppingQa(false);
-    }
-  }
-
   async function saveEstimate() {
     const mins = parseTimeInput(estInput);
     setSavingEst(true);
@@ -4832,26 +4504,6 @@ function TimeTrackingSection({
         new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
 
-  const qaSessions = qaEntries
-    .flatMap((e) =>
-      e.sessions.map((s) => ({
-        ...s,
-        userId: e.userId,
-        userName: e.userName,
-        avatarUrl: e.avatarUrl,
-      })),
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-    );
-
-  const displayQaEntries = qaEntries.slice().sort((a, b) => {
-    const aSecs = a.userId === currentUserId ? myQaTotalSecs : getEntrySecs(a);
-    const bSecs = b.userId === currentUserId ? myQaTotalSecs : getEntrySecs(b);
-    return bSecs - aSecs;
-  });
-
   function isMineDevSessionRunning(session: {
     id: string;
     endedAt: string | null;
@@ -4859,18 +4511,8 @@ function TimeTrackingSection({
   }) {
     if (session.endedAt !== null) return false;
     if (session.userId !== currentUserId) return true;
-    // Own open sessions only count as running when the store says this DEV timer is active
-    return isDevRunningHere && session.id === activeTimerId;
-  }
-
-  function isMineQaSessionRunning(session: {
-    id: string;
-    endedAt: string | null;
-    userId: string;
-  }) {
-    if (session.endedAt !== null) return false;
-    if (session.userId !== currentUserId) return true;
-    return isQaRunningHere && session.id === activeQaTimerId;
+    // Own open sessions only count as running when the store says this timer is active
+    return isRunningHere && session.id === activeTimerId;
   }
 
   return (
@@ -5114,7 +4756,7 @@ function TimeTrackingSection({
         </div>
       </div>
 
-      {/* Timer controls — same Start/Pause control as QA */}
+      {/* Timer controls */}
       {canStart || activeTimerId ? (
         <div className="flex gap-1.5">
           <div className="min-w-0 flex-1">
@@ -5163,162 +4805,6 @@ function TimeTrackingSection({
           )}
         </div>
       ) : null}
-
-      {/* QA time tracking — same Start/Pause + session log pattern */}
-      {(isQa || qaEntries.length > 0) && (
-        <div className="mt-1 flex flex-col gap-[8px]">
-          <SectionLabel>QA Time Log</SectionLabel>
-          <div className="rounded-[8px] border border-pen-card-border bg-pen-surface/60 px-[11px] py-[9px] space-y-[8px]">
-            <div className="flex items-baseline gap-1">
-              <span
-                className={cn(
-                  "font-mono text-[14px] font-semibold leading-none",
-                  qaTotalSecs > 0 ? "text-pen-foreground" : "text-pen-subtle",
-                )}
-              >
-                {qaTotalSecs > 0 ? formatSecs(qaTotalSecs) : "0s"}
-              </span>
-              <span className="font-sans text-[11.5px] text-pen-subtle/60">
-                logged
-              </span>
-              {activeQaTimerId && (
-                <span className="ml-auto flex items-center gap-1 font-sans text-[11.5px] text-teal-600">
-                  <span className="block size-[5px] rounded-full bg-teal-600 animate-pulse" />
-                  {formatSecs(myQaElapsed)}
-                </span>
-              )}
-            </div>
-
-            {displayQaEntries.length > 0 && (
-              <div className="space-y-[5px] border-t border-pen-card-border/60 pt-[7px]">
-                {displayQaEntries.map((entry) => {
-                  const secs =
-                    entry.userId === currentUserId
-                      ? myQaTotalSecs
-                      : getEntrySecs(entry);
-                  const running =
-                    entry.userId === currentUserId
-                      ? !!activeQaTimerId
-                      : entry.isRunning;
-                  return (
-                    <div
-                      key={entry.userId}
-                      className="flex items-center gap-1.5"
-                    >
-                      <Avatar
-                        name={entry.userName}
-                        src={entry.avatarUrl}
-                        size={16}
-                      />
-                      <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-muted">
-                        {entry.userName.split(" ")[0]}
-                      </span>
-                      {running && (
-                        <span className="block size-[5px] shrink-0 rounded-full bg-teal-600 animate-pulse" />
-                      )}
-                      <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">
-                        {formatSecs(secs)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {qaSessions.length > 0 && (
-              <div className="border-t border-pen-card-border/60 pt-[7px]">
-                <button
-                  type="button"
-                  onClick={() => setShowQaLog((v) => !v)}
-                  className="flex w-full items-center gap-1 font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-pen-muted"
-                >
-                  {showQaLog ? (
-                    <ChevronDown className="size-3 shrink-0" />
-                  ) : (
-                    <ChevronRight className="size-3 shrink-0" />
-                  )}
-                  <span>Time log</span>
-                  <span className="text-pen-subtle/60">
-                    ({qaSessions.length})
-                  </span>
-                </button>
-                {showQaLog && (
-                  <div className="mt-[6px] space-y-[5px]">
-                    {qaSessions.map((s) => {
-                      const running = isMineQaSessionRunning(s);
-                      const durSecs = running
-                        ? Math.max(
-                            0,
-                            Math.floor(
-                              (Date.now() - new Date(s.startedAt).getTime()) /
-                                1000,
-                            ),
-                          )
-                        : (s.durationSecs ??
-                          (s.endedAt
-                            ? Math.max(
-                                0,
-                                Math.floor(
-                                  (new Date(s.endedAt).getTime() -
-                                    new Date(s.startedAt).getTime()) /
-                                    1000,
-                                ),
-                              )
-                            : 0));
-                      return (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-1.5 leading-none"
-                        >
-                          <Avatar
-                            name={s.userName}
-                            src={s.avatarUrl}
-                            size={14}
-                          />
-                          <span className="font-sans text-[11.5px] text-pen-muted">
-                            {format(parseISO(s.startedAt), "d MMM")}
-                          </span>
-                          <span className="font-mono text-[11.5px] text-pen-subtle">
-                            {format(parseISO(s.startedAt), "HH:mm")}
-                            {" – "}
-                            {running ? (
-                              <span className="text-teal-600">running</span>
-                            ) : s.endedAt ? (
-                              format(parseISO(s.endedAt), "HH:mm")
-                            ) : (
-                              format(parseISO(s.startedAt), "HH:mm")
-                            )}
-                          </span>
-                          <span
-                            className={cn(
-                              "ml-auto font-mono text-[11.5px] font-semibold",
-                              running ? "text-teal-600" : "text-pen-foreground",
-                            )}
-                          >
-                            {formatSecs(durSecs)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {isQa && (
-            <TimerToggleButton
-              running={!!activeQaTimerId}
-              starting={startingQa}
-              stopping={stoppingQa}
-              onToggle={() => {
-                void (activeQaTimerId ? pauseQaTimer() : startQaTimer());
-              }}
-              idleClassName="bg-teal-600/10 text-teal-700 ring-1 ring-teal-600/20 hover:bg-teal-600/15 dark:text-teal-400"
-            />
-          )}
-        </div>
-      )}
     </div>
   );
 }

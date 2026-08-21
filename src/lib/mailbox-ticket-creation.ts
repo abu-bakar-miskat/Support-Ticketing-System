@@ -7,6 +7,7 @@ import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { startSlaTimers } from "@/lib/sla-engine";
+import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
 import { assertDepartmentOperational } from "@/lib/department-setup";
@@ -98,7 +99,20 @@ export async function createTicketFromInboundEmail(params: {
     await ensureProjectMembers(projectId, [assignResult.assigneeId]).catch(() => undefined);
   }
 
-  await startSlaTimers(ticket.id, team.tenantId, departmentId, {});
+  const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName };
+  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues);
+
+  // RE-01/02: run the department's automation rules on the inbound-email ticket.
+  await applyRulesToTicket(
+    {
+      id: ticket.id,
+      tenantId: team.tenantId,
+      departmentId,
+      subDepartmentId: teamId,
+      assigneeId: assignResult.assigneeId,
+    },
+    ruleFormValues,
+  );
 
   const humanId = `${team.prefix}-${ticket.ticketNumber}`;
 

@@ -105,6 +105,16 @@ function createPool(connectionString: string) {
     console.warn("[db pool] idle connection error:", err.message)
   })
 
+  // @prisma/adapter-pg attaches its own 'error' listener to this (external,
+  // singleton) pool on every adapter.connect() and only removes it when that
+  // connection is disposed. Our own handler above, plus one per live adapter
+  // connection, plus the transient overlap while a superseded client from a
+  // Turbopack HMR reload awaits $disconnect(), routinely exceeds Node's default
+  // cap of 10 on this one long-lived emitter — triggering a spurious
+  // MaxListenersExceededWarning. Raise the cap to a bounded value so a genuine
+  // unbounded leak would still surface, rather than silencing it entirely.
+  pool.setMaxListeners(Math.max(32, poolMax() * 4))
+
   return pool
 }
 

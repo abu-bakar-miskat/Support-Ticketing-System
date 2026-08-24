@@ -496,11 +496,19 @@ export function Sidebar({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/pen-dot.svg"
-                alt="PEN"
-                width={20}
-                height={20}
-                className="size-5"
+                src="/images/support-icon.png"
+                alt="Support Ticketing System"
+                width={24}
+                height={24}
+                className="size-6 dark:hidden"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/support-icon-white.png"
+                alt=""
+                width={24}
+                height={24}
+                className="hidden size-6 dark:block"
               />
             </button>
           ) : brandingLogoUrl ? (
@@ -519,19 +527,17 @@ export function Sidebar({
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/pen-logo-light.svg"
-                alt="PEN Group"
-                width={116}
+                src="/images/support-logo-horizontal.png"
+                alt="Support Ticketing System"
                 height={36}
-                className="dark:hidden"
+                className="h-9 w-auto max-w-[150px] object-contain dark:hidden"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/images/pen-logo-dark.svg"
-                alt="PEN Group"
-                width={116}
+                src="/images/support-logo-horizontal-white.png"
+                alt=""
                 height={36}
-                className="hidden dark:block"
+                className="hidden h-9 w-auto max-w-[150px] object-contain dark:block"
               />
             </>
           )}

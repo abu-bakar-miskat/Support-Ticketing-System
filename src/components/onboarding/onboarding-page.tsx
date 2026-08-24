@@ -122,9 +122,9 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
       {/* Top bar */}
       <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-pen-card-border bg-pen-card/80 px-5 backdrop-blur-md sm:px-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/pen-logo-light.svg" alt="PEN Group" width={100} height={30} className="h-7 w-auto dark:hidden" />
+        <img src="/images/support-logo-horizontal.png" alt="Support Ticketing System" height={28} className="h-7 w-auto object-contain dark:hidden" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/pen-logo-dark.svg"  alt="PEN Group" width={100} height={30} className="hidden h-7 w-auto dark:block" />
+        <img src="/images/support-logo-horizontal-white.png" alt="" height={28} className="hidden h-7 w-auto object-contain dark:block" />
         <SignOutButton />
       </header>
 

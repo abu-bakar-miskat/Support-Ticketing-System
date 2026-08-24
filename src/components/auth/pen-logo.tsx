@@ -1,26 +1,43 @@
-export function PenLogo() {
+import { cn } from "@/lib/utils";
+
+const ALT = "Support Ticketing System";
+
+/** Full stacked brand lockup (icon + wordmark), with a light variant for dark surfaces. */
+export function PenLogo({ className }: { className?: string }) {
   return (
-    <div
-      className="relative h-[54px] w-[180px] shrink-0"
-      aria-label="PEN Group"
+    <span
+      className={cn("inline-flex items-center justify-center", className)}
+      aria-label={ALT}
       role="img"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/pen-logo-light.svg"
-        alt=""
-        width={180}
-        height={55}
-        className="absolute inset-0 size-full dark:hidden"
-      />
+      <img src="/images/support-logo.png" alt="" className="h-24 w-auto dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/pen-logo-dark.svg"
+        src="/images/support-logo-white.png"
         alt=""
-        width={180}
-        height={55}
-        className="absolute inset-0 hidden size-full dark:block"
+        className="hidden h-24 w-auto dark:block"
       />
-    </div>
-  )
+    </span>
+  );
+}
+
+/** Compact brand mark (headset/chat icon only) for sidebars and collapsed states. */
+export function BrandIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("inline-flex items-center justify-center", className)}
+      aria-label={ALT}
+      role="img"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/support-icon.png" alt="" className="h-full w-auto dark:hidden" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/support-icon-white.png"
+        alt=""
+        className="hidden h-full w-auto dark:block"
+      />
+    </span>
+  );
 }

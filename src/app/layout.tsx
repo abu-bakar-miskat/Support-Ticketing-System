@@ -22,11 +22,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Support Ticketing System",
-  description: "Internal development ticketing for PEN",
+  description: "Track, prioritize, and resolve support tickets",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "PEN",
+    title: "Support Ticketing System",
   },
   icons: {
     icon: [

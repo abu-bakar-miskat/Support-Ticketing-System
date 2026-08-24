@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "PEN Platform",
-    short_name: "PEN",
-    description: "Internal development ticketing for PEN",
+    name: "Support Ticketing System",
+    short_name: "Support",
+    description: "Track, prioritize, and resolve support tickets",
     start_url: "/",
     scope: "/",
     display: "standalone",

@@ -381,8 +381,10 @@ export function SubDepartmentMailboxManager({
         </ul>
       )}
 
-      {/* ── Received mail ── */}
-      <SubDepartmentReceivedMail subDepartmentId={subDepartmentId} canManage={canManage} />
+      {/* ── Received mail (only once a mailbox is connected) ── */}
+      {list.length > 0 && (
+        <SubDepartmentReceivedMail subDepartmentId={subDepartmentId} canManage={canManage} />
+      )}
 
       {/* ── How it works ── */}
       <div className="rounded-2xl border border-pen-card-border bg-pen-surface/40 p-4">

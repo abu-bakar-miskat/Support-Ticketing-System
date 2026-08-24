@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUp, ArrowDown, Plus, Trash2, FlaskConical } from "lucide-react";
+import { ArrowLeft, ArrowUp, ArrowDown, Plus, Trash2, FlaskConical, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 
@@ -103,6 +103,8 @@ export function RulesSettingsPage({
   const [slaPolicies, setSlaPolicies] = useState<SlaPolicyLite[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [showNewRule, setShowNewRule] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   // Test panel
   const [testFields, setTestFields] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
@@ -126,7 +128,8 @@ export function RulesSettingsPage({
     setRules((prev) => prev?.map((r) => (r.id === id ? updater(r) : r)) ?? null);
   }
 
-  async function addRule() {
+  async function createRule(input: { name: string; enabled: boolean; stopProcessing: boolean }) {
+    setCreating(true);
     setError(null);
     try {
       const created: Rule = await jsonOrThrow(
@@ -134,16 +137,21 @@ export function RulesSettingsPage({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: "New rule",
+            name: input.name,
             conditions: { combinator: "AND", conditions: [] },
             actions: [],
+            enabled: input.enabled,
+            stopProcessing: input.stopProcessing,
             ...scopeBody,
           }),
         }),
       );
       setRules((prev) => [...(prev ?? []), created]);
+      setShowNewRule(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create rule");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -257,20 +265,45 @@ export function RulesSettingsPage({
 
       <div className="mb-8 rounded-2xl border border-pen-card-border bg-pen-card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-sans text-[13.5px] font-semibold text-pen-foreground">Rules</h2>
+          <div>
+            <h2 className="font-sans text-[13.5px] font-semibold text-pen-foreground">Rules</h2>
+            {rules !== null && rules.length > 0 && (
+              <p className="mt-0.5 font-sans text-[11px] text-pen-subtle">
+                {rules.length} {rules.length === 1 ? "rule" : "rules"} ·{" "}
+                {rules.filter((r) => r.enabled).length} active · run top to bottom
+              </p>
+            )}
+          </div>
           <button
             type="button"
-            onClick={addRule}
+            onClick={() => setShowNewRule(true)}
             className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
           >
-            <Plus className="size-3.5" /> Add rule
+            <Plus className="size-3.5" /> New rule
           </button>
         </div>
 
         {rules === null ? (
           <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
         ) : rules.length === 0 ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">No rules yet.</p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-pen-card-border py-10 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-pen-blue/10">
+              <Zap className="size-5 text-pen-blue" />
+            </div>
+            <div>
+              <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No automation rules yet</p>
+              <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+                Add a rule to auto-assign, prioritise, or tag new tickets.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNewRule(true)}
+              className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
+            >
+              <Plus className="size-3.5" /> New rule
+            </button>
+          </div>
         ) : (
           <div className="flex flex-col gap-4">
             {rules.map((rule, index) => (
@@ -378,6 +411,118 @@ export function RulesSettingsPage({
             </div>
           </div>
         )}
+      </div>
+
+      {showNewRule && (
+        <NewRuleModal
+          scopeName={subDepartmentName ?? departmentName}
+          creating={creating}
+          onCancel={() => setShowNewRule(false)}
+          onCreate={createRule}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── New-rule modal ───────────────────────────────────────────────────────────
+function NewRuleModal({
+  scopeName,
+  creating,
+  onCancel,
+  onCreate,
+}: {
+  scopeName: string;
+  creating: boolean;
+  onCancel: () => void;
+  onCreate: (input: { name: string; enabled: boolean; stopProcessing: boolean }) => void;
+}) {
+  const [name, setName] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [stopProcessing, setStopProcessing] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  const canSubmit = name.trim().length > 0 && !creating;
+
+  return (
+    <div className="pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
+      <div
+        className="pen-glass-panel pen-modal-enter flex w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pen-card-border px-[22px]">
+          <h2 className="pen-text-modal-title">New automation rule</h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={creating}
+            className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+          >
+            <X size={17} strokeWidth={2} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-col gap-4 px-[22px] py-5">
+          <p className="font-sans text-[11.5px] text-pen-muted">
+            Create the rule for <span className="font-medium text-pen-foreground">{scopeName}</span>, then add its
+            conditions and actions on the card.
+          </p>
+
+          <div className="space-y-1.5">
+            <label className="pen-text-label">Rule name</label>
+            <input
+              autoFocus
+              placeholder="e.g. Route billing to Finance"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && canSubmit) onCreate({ name: name.trim(), enabled, stopProcessing }); }}
+              className="h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30"
+            />
+          </div>
+
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-pen-surface px-3 py-2.5">
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+            <span className="flex flex-col">
+              <span className="font-sans text-[12.5px] font-medium text-pen-foreground">Enabled</span>
+              <span className="font-sans text-[11px] text-pen-muted">Start evaluating this rule on new tickets right away.</span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-pen-surface px-3 py-2.5">
+            <Switch checked={stopProcessing} onCheckedChange={setStopProcessing} />
+            <span className="flex flex-col">
+              <span className="font-sans text-[12.5px] font-medium text-pen-foreground">Stop after this rule matches</span>
+              <span className="font-sans text-[11px] text-pen-muted">Skip all later rules once this one fires.</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Footer */}
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-pen-card-border bg-pen-bg px-[22px]">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={creating}
+            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-pen-card-border font-sans text-[12px] font-semibold text-pen-foreground transition-colors hover:bg-pen-card-border disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onCreate({ name: name.trim(), enabled, stopProcessing })}
+            disabled={!canSubmit}
+            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {creating ? "Creating…" : "Create rule"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -441,8 +441,8 @@ export function DepartmentMailboxesPage({
         </ul>
       )}
 
-      {/* ── Received mail ── */}
-      {!noTeams && (
+      {/* ── Received mail (only once a mailbox is connected) ── */}
+      {list.length > 0 && (
         <ReceivedMailPanel
           endpoint={`/api/admin/departments/${departmentId}/mailbox-mail`}
           canManage={canManage}

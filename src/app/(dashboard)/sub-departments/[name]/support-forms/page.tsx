@@ -34,8 +34,8 @@ export default async function Page({
     where: { intakeSubDepartmentId: subDepartment.id },
     orderBy: { createdAt: "desc" },
     include: {
-      department: { select: { id: true, name: true } },
-      intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true } },
+      department: { select: { id: true, name: true, assignmentMethod: true } },
+      intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true, assignmentMethod: true } },
       _count: { select: { intakes: true } },
     },
   })
@@ -55,6 +55,12 @@ export default async function Page({
     createdAt: f.createdAt.toISOString(),
     defaultFields: resolveIntakeDefaultFields(f.intakeDefaultFields),
     branding: readFormBranding(f.branding),
+    assignmentMethod: f.assignmentMethod ?? null,
+    effectiveMethod:
+      f.assignmentMethod ??
+      f.intakeSubDepartment.assignmentMethod ??
+      f.department.assignmentMethod ??
+      "ROUND_ROBIN",
   }))
 
   // Constrain creation/editing to this sub-department: a single department

@@ -4,6 +4,21 @@ import { prisma } from "@/lib/db"
 import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { TicketPriority } from "@/generated/prisma/client"
+
+const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
+
+/** Coerce an optional string field: trimmed non-empty string, else null. */
+function optionalId(raw: unknown): string | null {
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null
+}
+
+/** Parse a body field into a deduped list of user-id strings. */
+export function parseAssigneeIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const ids = raw.filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+  return [...new Set(ids.map((s) => s.trim()))]
+}
 
 const POLICY_SELECT = {
   id: true,
@@ -13,7 +28,18 @@ const POLICY_SELECT = {
   resolutionMins: true,
   enabled: true,
   order: true,
+  formConfigId: true,
+  priority: true,
+  assigneeId: true,
+  assignees: { select: { userId: true } },
 } as const
+
+type PolicyRow = { assignees: { userId: string }[] } & Record<string, unknown>
+
+/** Flatten the assignees relation into a plain `assigneeIds` array for the API. */
+export function shapePolicy({ assignees, ...rest }: PolicyRow) {
+  return { ...rest, assigneeIds: assignees.map((a) => a.userId) }
+}
 
 function isConditionGroup(value: unknown): value is ConditionGroup {
   if (typeof value !== "object" || value === null) return false
@@ -69,7 +95,7 @@ export async function GET(
     orderBy: { order: "asc" },
     select: POLICY_SELECT,
   })
-  return NextResponse.json(policies)
+  return NextResponse.json(policies.map(shapePolicy))
 }
 
 /** POST /api/departments/:id/sla-policies — create an SLA policy (SLA-01/02). */
@@ -90,6 +116,9 @@ export async function POST(
   const conditions = body.conditions ?? { combinator: "AND", conditions: [] }
   const firstResponseMins = Number(body.firstResponseMins)
   const resolutionMins = Number(body.resolutionMins)
+  const formConfigId = optionalId(body.formConfigId)
+  const assigneeIds = parseAssigneeIds(body.assigneeIds)
+  const priority = optionalId(body.priority)
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 })
   if (!isConditionGroup(conditions)) {
@@ -100,6 +129,9 @@ export async function POST(
   }
   if (!Number.isFinite(resolutionMins) || resolutionMins <= 0) {
     return NextResponse.json({ error: "resolutionMins must be a positive number" }, { status: 400 })
+  }
+  if (priority && !VALID_PRIORITIES.has(priority)) {
+    return NextResponse.json({ error: "priority is not a valid value" }, { status: 400 })
   }
 
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
@@ -125,6 +157,9 @@ export async function POST(
       firstResponseMins,
       resolutionMins,
       order: nextOrder,
+      formConfigId,
+      priority: priority as TicketPriority | null,
+      assignees: { create: assigneeIds.map((userId) => ({ userId })) },
     },
     select: POLICY_SELECT,
   })
@@ -140,5 +175,5 @@ export async function POST(
     after: policy,
   })
 
-  return NextResponse.json(policy, { status: 201 })
+  return NextResponse.json(shapePolicy(policy), { status: 201 })
 }

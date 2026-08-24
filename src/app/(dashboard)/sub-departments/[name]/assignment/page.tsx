@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { resolveSubDepartmentByName } from "@/lib/sub-department-access";
+import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { AssignmentSettingsPage } from "@/components/settings/assignment-settings-page";
 
 export const metadata = { title: "Assignment methods — Support Ticketing System" };
@@ -18,6 +19,16 @@ export default async function Page({
   const subDepartment = await resolveSubDepartmentByName(decodeURIComponent(name), profile);
   if (!subDepartment) notFound();
 
+  // Members feed the per-form rule-based "assign to" picker (agentId).
+  const people = await fetchProjectDepartmentPeople(subDepartment.departmentId);
+  const members = people.map((p) => ({
+    id: p.id,
+    name: p.name,
+    avatarUrl: p.avatarUrl,
+    departmentName: p.departmentName,
+    subDepartmentName: p.subDepartmentName,
+  }));
+
   // The method set here overrides the parent department's for this
   // sub-department's tickets; leaving it on "Inherit" defers to the parent
   // (see lib/assignment-engine.ts).
@@ -27,6 +38,7 @@ export default async function Page({
       departmentName={subDepartment.departmentName}
       subDepartmentId={subDepartment.id}
       subDepartmentName={subDepartment.name}
+      members={members}
       backHref="/sub-departments"
       backLabel="Sub-departments"
     />

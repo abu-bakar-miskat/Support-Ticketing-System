@@ -36,24 +36,28 @@ export async function createTicketFromPayload(
 
   const { submitterName, submitterEmail, title, priority, issueId, responses, idempotencyKey } = payload
 
-  // ── Resolve priority + estimatedHours (mirrors issue-based routing) ─────────
+  // ── Resolve priority + routing from the chosen SLA policy ────────────────────
+  // A support form's selectable "issues" are its SLA policies; the picked policy
+  // (issueId) supplies priority, sub-department routing, the round-robin assignee
+  // pool, and — replacing the retired estimatedHours — its resolution target as
+  // the ticket's estimated minutes.
   let resolvedPriority: TicketPriority = TicketPriority.Medium
-  let resolvedEstimatedHours: number | null = null
+  let resolvedEstimatedMinutes: number | null = null
   let routedSubDepartmentId: string | null = null
   let issueAssigneeIds: string[] = []
   let issueRotaPointer = 0
 
   if (issueId) {
-    const issue = await prisma.intakeIssue.findFirst({
+    const policy = await prisma.slaPolicy.findFirst({
       where: { id: issueId, formConfigId },
       include: { assignees: { select: { userId: true }, orderBy: { userId: "asc" } } },
     })
-    if (issue) {
-      resolvedPriority = issue.priority
-      resolvedEstimatedHours = issue.estimatedHours
-      routedSubDepartmentId = issue.intakeSubDepartmentId
-      issueAssigneeIds = issue.assignees.map((a) => a.userId)
-      issueRotaPointer = issue.assigneeRotaPointer
+    if (policy) {
+      resolvedPriority = policy.priority ?? TicketPriority.Medium
+      resolvedEstimatedMinutes = policy.resolutionMins
+      routedSubDepartmentId = policy.subDepartmentId
+      issueAssigneeIds = policy.assignees.map((a) => a.userId)
+      issueRotaPointer = policy.assigneeRotaPointer
     }
   } else if (priority && VALID_PRIORITIES.has(priority)) {
     resolvedPriority = priority as TicketPriority
@@ -79,7 +83,7 @@ export async function createTicketFromPayload(
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>
-    runConversion(tx, prep, submitterName, submitterEmail, idempotencyKey, storedResponses, formConfigId, resolvedEstimatedHours),
+    runConversion(tx, prep, submitterName, submitterEmail, idempotencyKey, storedResponses, formConfigId, resolvedEstimatedMinutes),
   )
 
   // ── Fire-and-forget side effects ────────────────────────────────────────────

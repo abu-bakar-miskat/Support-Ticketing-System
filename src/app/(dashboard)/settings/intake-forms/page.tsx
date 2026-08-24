@@ -45,8 +45,8 @@ export default async function SettingsIntakeFormsRoute() {
       where: { department: deptWhere },
       orderBy: { createdAt: "desc" },
       include: {
-        department: { select: { id: true, name: true } },
-        intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true } },
+        department: { select: { id: true, name: true, assignmentMethod: true } },
+        intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true, assignmentMethod: true } },
         _count: { select: { intakes: true } },
       },
     }),
@@ -74,6 +74,12 @@ export default async function SettingsIntakeFormsRoute() {
     createdAt: f.createdAt.toISOString(),
     defaultFields: resolveIntakeDefaultFields(f.intakeDefaultFields),
     branding: readFormBranding(f.branding),
+    assignmentMethod: f.assignmentMethod ?? null,
+    effectiveMethod:
+      f.assignmentMethod ??
+      f.intakeSubDepartment.assignmentMethod ??
+      f.department.assignmentMethod ??
+      "ROUND_ROBIN",
   }))
 
   // Department members populate the per-issue "Assign to" picker (feature is

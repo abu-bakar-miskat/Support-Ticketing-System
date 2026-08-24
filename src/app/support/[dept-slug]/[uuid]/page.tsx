@@ -67,9 +67,12 @@ export default async function PublicIntakeFormPage({
     validation: f.validation as Record<string, unknown> | null,
   }))
 
-  const issues = await prisma.intakeIssue.findMany({
-    where: { formConfigId: uuid },
-    orderBy: { createdAt: "asc" },
+  // The form's selectable "issues" are now its enabled SLA policies — each
+  // policy carries the name, priority, assignee pool and SLA targets a ticket
+  // inherits when the requester picks it (see lib/intake-finalize).
+  const issues = await prisma.slaPolicy.findMany({
+    where: { formConfigId: uuid, enabled: true },
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: { id: true, name: true },
   })
 

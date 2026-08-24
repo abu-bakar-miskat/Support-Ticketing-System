@@ -191,6 +191,7 @@ export async function prepareConversion({
         teamId: intakeSubDepartmentId,
         formValues,
         excludeUserId: managerId,
+        formConfigId: formId,
       });
       assigneeId = result.assigneeId;
       assignmentFailed = result.failed;
@@ -244,7 +245,7 @@ export async function runConversion(
   idempotencyKey: string | null,
   storedResponses: unknown[],
   formId: string,
-  estimatedHours: number | null = null,
+  estimatedMinutes: number | null = null,
 ): Promise<{ intakeId: string; ticketId: string; replyToken: string }> {
   const intake = await tx.intake.create({
     data: {
@@ -252,7 +253,7 @@ export async function runConversion(
       submitterName,
       submitterEmail,
       priority: prep.priority,
-      ...(estimatedHours !== null ? { estimatedHours } : {}),
+      ...(estimatedMinutes !== null ? { estimatedHours: Math.round(estimatedMinutes / 60) } : {}),
       responses: storedResponses as Prisma.InputJsonValue,
       replyToken: generateReplyToken(),
     },
@@ -280,7 +281,7 @@ export async function runConversion(
       subDepartmentId: prep.intakeSubDepartmentId,
       projectId: prep.projectId,
       assigneeId: prep.assigneeId,
-      ...(estimatedHours !== null ? { estimatedTime: estimatedHours * 60 } : {}),
+      ...(estimatedMinutes !== null ? { estimatedTime: estimatedMinutes } : {}),
     },
     select: {
       id: true,
@@ -312,10 +313,10 @@ export async function runConversion(
     data: { rotaPointer: prep.newRotaPointer },
   });
 
-  // When assignment came from a specific issue's round-robin pool, advance that
-  // issue's cursor (the team pointer above is unchanged in that path).
+  // When assignment came from a specific policy's round-robin pool, advance that
+  // policy's cursor (the team pointer above is unchanged in that path).
   if (prep.rotaIssueId && prep.newIssueRotaPointer !== null && prep.newIssueRotaPointer !== undefined) {
-    await tx.intakeIssue.update({
+    await tx.slaPolicy.update({
       where: { id: prep.rotaIssueId },
       data: { assigneeRotaPointer: prep.newIssueRotaPointer },
     });

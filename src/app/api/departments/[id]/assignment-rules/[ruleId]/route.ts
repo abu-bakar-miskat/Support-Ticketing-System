@@ -11,6 +11,7 @@ const RULE_SELECT = {
   agentId: true,
   enabled: true,
   order: true,
+  formConfigId: true,
 } as const
 
 function isConditionGroup(value: unknown): value is ConditionGroup {

@@ -288,8 +288,8 @@ export function CommentInput({
     if (ext === "pdf") return <FileText className="size-[22px] text-red-400" />;
     if (["xls", "xlsx", "csv"].includes(ext)) return <FileSpreadsheet className="size-[22px] text-green-500" />;
     if (["zip", "rar", "7z", "gz"].includes(ext)) return <FileArchive className="size-[22px] text-yellow-500" />;
-    if (["doc", "docx"].includes(ext)) return <FileText className="size-[22px] text-pen-blue" />;
-    return <FileIcon className="size-[22px] text-pen-subtle" />;
+    if (["doc", "docx"].includes(ext)) return <FileText className="size-[22px] text-sts-blue" />;
+    return <FileIcon className="size-[22px] text-sts-subtle" />;
   }
 
   const imageEntries = fileEntries.filter((e) => e.previewUrl);
@@ -299,10 +299,10 @@ export function CommentInput({
     <div ref={wrapperRef} className="relative space-y-[6px]">
       <div
         className={[
-          "rounded-[8px] border bg-pen-card transition-all duration-150",
+          "rounded-[8px] border bg-sts-card transition-all duration-150",
           focused
-            ? "border-pen-blue/50 ring-1 ring-pen-blue/30"
-            : "border-pen-card-border",
+            ? "border-sts-blue/50 ring-1 ring-sts-blue/30"
+            : "border-sts-card-border",
         ].join(" ")}
       >
         <div>
@@ -316,8 +316,8 @@ export function CommentInput({
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             className="w-full resize-none rounded-t-[8px] bg-transparent px-[14px] pt-[10px] pb-[6px]
-            font-sans text-[12.5px] leading-[19px] text-pen-foreground outline-none
-            placeholder:text-pen-subtle"
+            font-sans text-[12.5px] leading-[19px] text-sts-foreground outline-none
+            placeholder:text-sts-subtle"
           />
         </div>
 
@@ -325,7 +325,7 @@ export function CommentInput({
         {fileEntries.length > 0 && (
           <div className="flex flex-wrap gap-[8px] px-[10px] pb-[8px]">
             {imageEntries.map((entry) => (
-              <div key={entry.id} className="relative size-[90px] rounded-[6px] bg-pen-surface">
+              <div key={entry.id} className="relative size-[90px] rounded-[6px] bg-sts-surface">
                 <img
                   src={entry.previewUrl!}
                   alt={entry.file.name}
@@ -334,7 +334,7 @@ export function CommentInput({
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
-                  className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-pen-surface text-pen-subtle shadow hover:text-pen-foreground"
+                  className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
                 </button>
@@ -343,16 +343,16 @@ export function CommentInput({
             {fileOnlyEntries.map((entry) => (
               <div
                 key={entry.id}
-                className="relative flex size-[90px] flex-col items-center justify-center gap-[5px] rounded-[6px] bg-pen-surface px-[6px]"
+                className="relative flex size-[90px] flex-col items-center justify-center gap-[5px] rounded-[6px] bg-sts-surface px-[6px]"
               >
                 {fileTypeIcon(entry.file.name)}
-                <span className="w-full truncate text-center font-sans text-[10px] text-pen-muted leading-tight">
+                <span className="w-full truncate text-center font-sans text-[10px] text-sts-muted leading-tight">
                   {entry.file.name}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
-                  className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-pen-surface text-pen-subtle shadow hover:text-pen-foreground"
+                  className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
                 </button>
@@ -362,7 +362,7 @@ export function CommentInput({
         )}
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between border-t border-pen-card-border px-[10px] py-[7px]">
+        <div className="flex items-center justify-between border-t border-sts-card-border px-[10px] py-[7px]">
           <div className="flex flex-wrap items-center gap-[4px]">
             <input
               ref={fileRef}
@@ -382,7 +382,7 @@ export function CommentInput({
               type="button"
               onClick={() => fileRef.current?.click()}
               title="Attach files"
-              className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-muted"
+              className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
             >
               <Paperclip className="size-[12px]" />
               Attach
@@ -393,7 +393,7 @@ export function CommentInput({
             type="button"
             disabled={submitting || uploading}
             onClick={doSubmit}
-            className="flex items-center gap-[6px] rounded-[6px] bg-pen-blue px-[12px] py-[5px] font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50 dark:text-gray-900"
+            className="flex items-center gap-[6px] rounded-[6px] bg-sts-blue px-[12px] py-[5px] font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50 dark:text-gray-900"
           >
             {submitting || uploading ? (
               <>
@@ -411,7 +411,7 @@ export function CommentInput({
       </div>
 
       {error && (
-        <p className="font-sans text-[11.5px] text-pen-red">{error}</p>
+        <p className="font-sans text-[11.5px] text-sts-red">{error}</p>
       )}
 
       {/* @mention dropdown */}
@@ -420,7 +420,7 @@ export function CommentInput({
         open={mentionQuery !== null && suggestionCount > 0}
         placement="top"
         maxHeight={160}
-        className="rounded-[8px] border border-pen-card-border bg-pen-bg shadow-xl backdrop-blur-xl"
+        className="rounded-[8px] border border-sts-card-border bg-sts-bg shadow-xl backdrop-blur-xl"
       >
         <ul className="w-full">
           {/* @all option */}
@@ -430,12 +430,12 @@ export function CommentInput({
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); insertMentionAll(); }}
                 className={[
-                  "w-full px-[12px] py-[7px] text-left font-sans text-[12px] text-pen-foreground transition-colors",
-                  highlightedIndex === 0 ? "bg-pen-surface" : "hover:bg-pen-surface",
+                  "w-full px-[12px] py-[7px] text-left font-sans text-[12px] text-sts-foreground transition-colors",
+                  highlightedIndex === 0 ? "bg-sts-surface" : "hover:bg-sts-surface",
                 ].join(" ")}
               >
-                <span className="font-semibold text-pen-blue">@all</span>
-                <span className="ml-2 text-pen-subtle">— mention everyone ({subDepartmentMembers.length})</span>
+                <span className="font-semibold text-sts-blue">@all</span>
+                <span className="ml-2 text-sts-subtle">— mention everyone ({subDepartmentMembers.length})</span>
               </button>
             </li>
           )}
@@ -449,7 +449,7 @@ export function CommentInput({
                   className={[
                     userListPickerButtonClass,
                     "px-[10px] py-[6px] transition-colors",
-                    idx === highlightedIndex ? "bg-pen-surface" : "hover:bg-pen-surface",
+                    idx === highlightedIndex ? "bg-sts-surface" : "hover:bg-sts-surface",
                   ].join(" ")}
                 >
                   <UserListItem

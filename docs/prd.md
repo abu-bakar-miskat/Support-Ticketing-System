@@ -1,4 +1,4 @@
-# PRD — PEN Platform Phase 1: Internal Dev Ticketing System
+# PRD — Support Ticketing System Phase 1: Internal Dev Ticketing System
 
 ## Problem Statement
 

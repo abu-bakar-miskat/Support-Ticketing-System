@@ -97,7 +97,7 @@ export function TaskListRow({
 
   return (
     <>
-      <tr className="group border-b border-[#f0f4f8] transition-colors hover:bg-pen-bg dark:border-[#3a3a37]">
+      <tr className="group border-b border-[#f0f4f8] transition-colors hover:bg-sts-bg dark:border-[#3a3a37]">
         {onToggleSelect && (
           <td className="w-9 py-2.5 pl-4 align-middle">
             <div className="flex items-center">
@@ -106,7 +106,7 @@ export function TaskListRow({
                 checked={isSelected ?? false}
                 onChange={() => onToggleSelect(task.dbId)}
                 onClick={(e) => e.stopPropagation()}
-                className="size-3.5 shrink-0 rounded border-pen-card-border accent-pen-blue cursor-pointer"
+                className="size-3.5 shrink-0 rounded border-sts-card-border accent-sts-blue cursor-pointer"
               />
             </div>
           </td>
@@ -114,7 +114,7 @@ export function TaskListRow({
         <td className={cn("w-[80px] py-2.5", onToggleSelect ? "pl-2" : "pl-4")}>
           <Link
             href={`/tickets/${task.dbId}`}
-            className="font-mono text-[11.5px] font-semibold text-pen-id hover:underline"
+            className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
           >
             {task.humanId}
           </Link>
@@ -125,7 +125,7 @@ export function TaskListRow({
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="flex shrink-0 items-center justify-center text-pen-muted hover:text-pen-foreground"
+                className="flex shrink-0 items-center justify-center text-sts-muted hover:text-sts-foreground"
                 aria-label={expanded ? "Collapse subtasks" : "Expand subtasks"}
               >
                 <ChevronRight
@@ -142,15 +142,15 @@ export function TaskListRow({
               title={task.title}
             >
               <span
-                className={cn("block size-[7px] shrink-0 rounded-full", pulseCritical && "pen-critical-breathe")}
+                className={cn("block size-[7px] shrink-0 rounded-full", pulseCritical && "sts-critical-breathe")}
                 style={{ backgroundColor: priorityColor }}
               />
-              <span className="min-w-0 truncate font-sans text-[13px] text-pen-foreground group-hover:text-pen-id">
+              <span className="min-w-0 truncate font-sans text-[13px] text-sts-foreground group-hover:text-sts-id">
                 {truncateTitle(task.title)}
               </span>
               <TaskListLabels labels={task.labels} />
               {hasChildren && (
-                <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-px font-sans text-[11.5px] text-pen-subtle">
+                <span className="shrink-0 rounded-full bg-sts-surface px-1.5 py-px font-sans text-[11.5px] text-sts-subtle">
                   {task.subTicketCards.length}
                 </span>
               )}
@@ -210,7 +210,7 @@ export function TaskListRow({
                   e.stopPropagation();
                   onClick();
                 }}
-                className="rounded px-1 py-0.5 transition-colors hover:bg-pen-surface"
+                className="rounded px-1 py-0.5 transition-colors hover:bg-sts-surface"
               >
                 <AssigneeAvatars
                   assigneeId={liveAssigneeId}
@@ -230,7 +230,7 @@ export function TaskListRow({
               name={task.project}
               size={22}
             />
-            <span className="min-w-0 truncate font-sans text-[11.5px] text-pen-muted">
+            <span className="min-w-0 truncate font-sans text-[11.5px] text-sts-muted">
               {task.project}
             </span>
           </div>
@@ -274,13 +274,13 @@ export function TaskListRow({
           return (
             <tr
               key={sub.dbId}
-              className="border-b border-[#f0f4f8] bg-pen-bg transition-colors hover:bg-pen-surface dark:border-[#3a3a37]"
+              className="border-b border-[#f0f4f8] bg-sts-bg transition-colors hover:bg-sts-surface dark:border-[#3a3a37]"
             >
               {onToggleSelect && <td className="w-9 py-2 pl-4" />}
               <td className={cn("w-[80px] py-2", onToggleSelect ? "pl-2" : "pl-4")}>
                 <Link
                   href={`/tickets/${sub.dbId}`}
-                  className="font-mono text-[11.5px] font-semibold text-pen-id hover:underline"
+                  className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
                 >
                   {sub.humanId}
                 </Link>
@@ -291,10 +291,10 @@ export function TaskListRow({
                   className="flex min-w-0 items-center gap-2"
                 >
                   <span
-                    className={cn("block size-[6px] shrink-0 rounded-full", subPulseCritical && "pen-critical-breathe")}
+                    className={cn("block size-[6px] shrink-0 rounded-full", subPulseCritical && "sts-critical-breathe")}
                     style={{ backgroundColor: subPriorityColor }}
                   />
-                  <span className="truncate font-sans text-[12px] text-pen-foreground">
+                  <span className="truncate font-sans text-[12px] text-sts-foreground">
                     {sub.title}
                   </span>
                 </Link>
@@ -313,7 +313,7 @@ export function TaskListRow({
                   />
                 ) : (
                   <span
-                    className="block size-5 shrink-0 rounded-full border border-dashed border-pen-subtle"
+                    className="block size-5 shrink-0 rounded-full border border-dashed border-sts-subtle"
                     title="Unassigned"
                   />
                 )}
@@ -340,7 +340,7 @@ export function TaskListHead({
   onToggleAll?: () => void;
 } = {}) {
   return (
-    <thead className="sticky top-0 z-10 bg-pen-card">
+    <thead className="sticky top-0 z-10 bg-sts-card">
       <AllTasksHeadRow
         showCheckbox={showCheckbox}
         allSelected={allSelected}
@@ -369,7 +369,7 @@ export function TaskListTable({
             <tr>
               <td
                 colSpan={9}
-                className="py-20 text-center font-sans text-[13px] text-pen-subtle"
+                className="py-20 text-center font-sans text-[13px] text-sts-subtle"
               >
                 {emptyMessage}
               </td>

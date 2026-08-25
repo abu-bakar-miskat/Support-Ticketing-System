@@ -77,14 +77,14 @@ function NotifRow({
       type="button"
       onClick={handleClick}
       className={cn(
-        "group flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-pen-surface/60",
-        item.unread && "bg-pen-card",
+        "group flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-sts-surface/60",
+        item.unread && "bg-sts-card",
       )}
     >
       {/* Unread dot */}
       <span className="mt-2 shrink-0">
         {item.unread
-          ? <span className="block size-1.5 rounded-full bg-pen-blue" />
+          ? <span className="block size-1.5 rounded-full bg-sts-blue" />
           : <span className="block size-1.5" />}
       </span>
 
@@ -92,7 +92,7 @@ function NotifRow({
       <div className="relative mt-0.5 shrink-0">
         <UserAvatar name={item.actorName} avatarUrl={item.actorAvatarUrl} size={28} />
         <span
-          className="absolute -bottom-[2px] -right-[2px] flex size-[14px] items-center justify-center rounded-full border border-pen-card"
+          className="absolute -bottom-[2px] -right-[2px] flex size-[14px] items-center justify-center rounded-full border border-sts-card"
           style={{ backgroundColor: meta.color }}
         >
           <Icon className="size-[7px] text-white" strokeWidth={2.5} />
@@ -103,20 +103,20 @@ function NotifRow({
       <div className="min-w-0 flex-1">
         <p className={cn(
           "font-sans text-[12px] leading-snug",
-          item.unread ? "font-semibold text-pen-foreground" : "text-pen-muted",
+          item.unread ? "font-semibold text-sts-foreground" : "text-sts-muted",
         )}>
           <span className="font-semibold">{item.actorName}</span>
           {" "}{meta.label}
         </p>
         {summary && (
-          <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-subtle">
+          <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-subtle">
             {summary}
           </p>
         )}
       </div>
 
       {/* Time */}
-      <span className="mt-0.5 shrink-0 font-sans text-[11.5px] text-pen-subtle">
+      <span className="mt-0.5 shrink-0 font-sans text-[11.5px] text-sts-subtle">
         {item.time}
       </span>
     </button>
@@ -182,7 +182,7 @@ export function NotificationSidebar({
         aria-hidden
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-40 pen-overlay-backdrop transition-opacity duration-200",
+          "fixed inset-0 z-40 sts-overlay-backdrop transition-opacity duration-200",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -190,18 +190,18 @@ export function NotificationSidebar({
       {/* Panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-[360px] max-w-[calc(100vw-48px)] flex-col border-l border-pen-card-border bg-pen-bg shadow-2xl transition-transform duration-200 ease-out",
+          "fixed inset-y-0 right-0 z-50 flex w-[360px] max-w-[calc(100vw-48px)] flex-col border-l border-sts-card-border bg-sts-bg shadow-2xl transition-transform duration-200 ease-out",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
         {/* Header */}
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-pen-card-border bg-pen-card px-4">
-          <Bell className="size-4 shrink-0 text-pen-foreground" strokeWidth={1.8} />
-          <span className="flex-1 pen-text-card-title">
+        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-sts-card-border bg-sts-card px-4">
+          <Bell className="size-4 shrink-0 text-sts-foreground" strokeWidth={1.8} />
+          <span className="flex-1 sts-text-card-title">
             Notifications
           </span>
           {unreadCount > 0 && (
-            <span className="rounded-full bg-pen-blue px-1.5 py-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
+            <span className="rounded-full bg-sts-blue px-1.5 py-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
               {unreadCount}
             </span>
           )}
@@ -210,7 +210,7 @@ export function NotificationSidebar({
               type="button"
               onClick={markAllRead}
               title="Mark all read"
-              className="flex size-7 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+              className="flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <CheckCheck className="size-3.5" />
             </button>
@@ -219,7 +219,7 @@ export function NotificationSidebar({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -229,15 +229,15 @@ export function NotificationSidebar({
         <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-40 items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-pen-muted" />
+              <Loader2 className="size-5 animate-spin text-sts-muted" />
             </div>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
-              <Bell className="size-7 text-pen-subtle" strokeWidth={1.2} />
-              <p className="font-sans text-[12.5px] text-pen-muted">No notifications yet</p>
+              <Bell className="size-7 text-sts-subtle" strokeWidth={1.2} />
+              <p className="font-sans text-[12.5px] text-sts-muted">No notifications yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-pen-card-border">
+            <div className="divide-y divide-sts-card-border">
               {items.map((item) => (
                 <NotifRow
                   key={item.id}
@@ -251,11 +251,11 @@ export function NotificationSidebar({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="shrink-0 border-t border-sts-card-border bg-sts-card px-4 py-3">
           <Link
             href="/inbox"
             onClick={onClose}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-pen-card-border py-2 font-sans text-[12px] font-semibold text-pen-foreground transition-colors hover:bg-pen-surface"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-sts-card-border py-2 font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface"
           >
             See all notifications
             <MoveRight className="size-3.5" />

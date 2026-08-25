@@ -36,24 +36,28 @@ export async function createTicketFromPayload(
 
   const { submitterName, submitterEmail, title, priority, issueId, responses, idempotencyKey } = payload
 
-  // ── Resolve priority + estimatedHours (mirrors issue-based routing) ─────────
+  // ── Resolve priority + routing from the chosen SLA policy ────────────────────
+  // A support form's selectable "issues" are its SLA policies; the picked policy
+  // (issueId) supplies priority, sub-department routing, the round-robin assignee
+  // pool, and — replacing the retired estimatedHours — its resolution target as
+  // the ticket's estimated minutes.
   let resolvedPriority: TicketPriority = TicketPriority.Medium
-  let resolvedEstimatedHours: number | null = null
+  let resolvedEstimatedMinutes: number | null = null
   let routedSubDepartmentId: string | null = null
   let issueAssigneeIds: string[] = []
   let issueRotaPointer = 0
 
   if (issueId) {
-    const issue = await prisma.intakeIssue.findFirst({
+    const policy = await prisma.slaPolicy.findFirst({
       where: { id: issueId, formConfigId },
       include: { assignees: { select: { userId: true }, orderBy: { userId: "asc" } } },
     })
-    if (issue) {
-      resolvedPriority = issue.priority
-      resolvedEstimatedHours = issue.estimatedHours
-      routedSubDepartmentId = issue.intakeSubDepartmentId
-      issueAssigneeIds = issue.assignees.map((a) => a.userId)
-      issueRotaPointer = issue.assigneeRotaPointer
+    if (policy) {
+      resolvedPriority = policy.priority ?? TicketPriority.Medium
+      resolvedEstimatedMinutes = policy.resolutionMins
+      routedSubDepartmentId = policy.subDepartmentId
+      issueAssigneeIds = policy.assignees.map((a) => a.userId)
+      issueRotaPointer = policy.assigneeRotaPointer
     }
   } else if (priority && VALID_PRIORITIES.has(priority)) {
     resolvedPriority = priority as TicketPriority
@@ -79,7 +83,7 @@ export async function createTicketFromPayload(
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>
-    runConversion(tx, prep, submitterName, submitterEmail, idempotencyKey, storedResponses, formConfigId, resolvedEstimatedHours),
+    runConversion(tx, prep, submitterName, submitterEmail, idempotencyKey, storedResponses, formConfigId, resolvedEstimatedMinutes),
   )
 
   // ── Fire-and-forget side effects ────────────────────────────────────────────
@@ -93,7 +97,7 @@ export async function createTicketFromPayload(
 
   if (subDepartment && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
-    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt).catch(() => undefined)
+    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt, prep.intakeSubDepartmentId).catch(() => undefined)
     // RE-01/02: run the department's automation rules against the submitted form
     // values and apply the fired actions to the new ticket.
     await applyRulesToTicket(
@@ -103,6 +107,7 @@ export async function createTicketFromPayload(
         departmentId: form.departmentId,
         subDepartmentId: prep.intakeSubDepartmentId,
         assigneeId: prep.assigneeId ?? null,
+        formConfigId,
       },
       formValues,
     )
@@ -111,7 +116,7 @@ export async function createTicketFromPayload(
   // ASG-02/03 (slice 11): no eligible agent was found — the ticket exists,
   // unassigned; report it immediately so it's never silently unrouted.
   if (prep.assignmentFailed && humanId) {
-    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId).catch(() => undefined)
+    recordAssignmentFailure(ticketId, form.departmentId, prep.creatorId, prep.title, humanId, prep.intakeSubDepartmentId).catch(() => undefined)
   }
 
   if (prep.assigneeId && prep.assigneeEmail && humanId) {
@@ -124,6 +129,7 @@ export async function createTicketFromPayload(
       ticketTitle: prep.title,
       assignedByName: "Support system",
       departmentId: form.departmentId,
+      subDepartmentId: prep.intakeSubDepartmentId,
     }).catch((err) => console.error("[intake] assignment email failed:", err))
   }
 
@@ -140,6 +146,7 @@ export async function createTicketFromPayload(
         formName: form.name,
         submitterName,
         departmentId: form.departmentId,
+        subDepartmentId: prep.intakeSubDepartmentId,
       }).catch((err) => console.error("[intake] manager alert email failed:", err))
     }
   }
@@ -157,6 +164,7 @@ export async function createTicketFromPayload(
     responses: emailSummary,
     replyToken: useToken ? replyToken : null,
     departmentId: form.departmentId,
+    subDepartmentId: prep.intakeSubDepartmentId,
   }).catch((err) => console.error("[intake] confirmation email failed:", err))
 
   return { ticketId, humanId }

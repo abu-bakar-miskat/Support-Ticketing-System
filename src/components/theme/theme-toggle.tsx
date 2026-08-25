@@ -33,8 +33,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       className={cn(
         "inline-flex size-9 items-center justify-center rounded-lg border transition-colors",
-        "border-pen-card-border bg-pen-card text-pen-foreground",
-        "hover:bg-pen-secondary-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+        "border-sts-card-border bg-sts-card text-sts-foreground",
+        "hover:bg-sts-secondary-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
         className,
       )}
     >

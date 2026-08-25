@@ -12,6 +12,7 @@ const RULE_SELECT = {
   agentId: true,
   enabled: true,
   order: true,
+  formConfigId: true,
 } as const
 
 function isConditionGroup(value: unknown): value is ConditionGroup {
@@ -27,9 +28,31 @@ function isConditionGroup(value: unknown): value is ConditionGroup {
   }
 }
 
-/** GET /api/departments/:id/assignment-rules — this department's rule-based assignment rules, in order. */
+/** Confirm a sub-department belongs to the department; null when it does not. */
+async function loadOwnedSubDepartment(departmentId: string, subDepartmentId: string) {
+  return prisma.subDepartment.findFirst({
+    where: { id: subDepartmentId, departmentId },
+    select: { id: true },
+  })
+}
+
+/** Confirm a support form belongs to the department; null when it does not. */
+async function loadOwnedForm(departmentId: string, formConfigId: string) {
+  return prisma.intakeFormConfig.findFirst({
+    where: { id: formConfigId, departmentId },
+    select: { id: true, intakeSubDepartmentId: true },
+  })
+}
+
+/**
+ * GET /api/departments/:id/assignment-rules — rule-based assignment rules, in
+ * order. Scoping (most specific wins):
+ *   `?formConfigId=` → rules for that support form.
+ *   `?subDepartmentId=` → that sub-department's non-form rules.
+ *   neither → department-wide rules (both scopes null).
+ */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
@@ -40,8 +63,27 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const formConfigId = req.nextUrl.searchParams.get("formConfigId")
+  const subDepartmentId = req.nextUrl.searchParams.get("subDepartmentId")
+
+  if (formConfigId) {
+    if (!(await loadOwnedForm(id, formConfigId))) {
+      return NextResponse.json({ error: "Form not found" }, { status: 404 })
+    }
+    const rules = await prisma.assignmentRule.findMany({
+      where: { departmentId: id, formConfigId },
+      orderBy: { order: "asc" },
+      select: RULE_SELECT,
+    })
+    return NextResponse.json(rules)
+  }
+
+  if (subDepartmentId && !(await loadOwnedSubDepartment(id, subDepartmentId))) {
+    return NextResponse.json({ error: "Sub-department not found" }, { status: 404 })
+  }
+
   const rules = await prisma.assignmentRule.findMany({
-    where: { departmentId: id },
+    where: { departmentId: id, subDepartmentId: subDepartmentId ?? null, formConfigId: null },
     orderBy: { order: "asc" },
     select: RULE_SELECT,
   })
@@ -65,6 +107,12 @@ export async function POST(
   const name = (body.name as string | undefined)?.trim()
   const conditions = body.conditions ?? { combinator: "AND", conditions: [] }
   const agentId = body.agentId as string | undefined
+  const rawFormConfigId = body.formConfigId as unknown
+  const formConfigId =
+    typeof rawFormConfigId === "string" && rawFormConfigId.length > 0 ? rawFormConfigId : null
+  const rawSubDepartmentId = body.subDepartmentId as unknown
+  let subDepartmentId =
+    typeof rawSubDepartmentId === "string" && rawSubDepartmentId.length > 0 ? rawSubDepartmentId : null
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 })
   if (!isConditionGroup(conditions)) {
@@ -77,8 +125,17 @@ export async function POST(
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
   if (!dept) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
+  // Form-scoped rule: validate the form and pin its sub-department for consistency.
+  if (formConfigId) {
+    const form = await loadOwnedForm(id, formConfigId)
+    if (!form) return NextResponse.json({ error: "Form not found" }, { status: 404 })
+    subDepartmentId = form.intakeSubDepartmentId
+  } else if (subDepartmentId && !(await loadOwnedSubDepartment(id, subDepartmentId))) {
+    return NextResponse.json({ error: "Sub-department not found" }, { status: 404 })
+  }
+
   const last = await prisma.assignmentRule.findFirst({
-    where: { departmentId: id },
+    where: { departmentId: id, formConfigId, subDepartmentId: formConfigId ? undefined : subDepartmentId },
     orderBy: { order: "desc" },
     select: { order: true },
   })
@@ -88,6 +145,8 @@ export async function POST(
     data: {
       tenantId: dept.tenantId,
       departmentId: id,
+      subDepartmentId,
+      formConfigId,
       name,
       conditions,
       agentId,

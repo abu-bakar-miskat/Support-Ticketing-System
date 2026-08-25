@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getInvitePreview } from "@/lib/invites/accept-department-invite";
-import { PenLogo } from "@/components/auth/pen-logo";
+import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +24,12 @@ const ERROR_COPY: Record<string, string> = {
 
 function InviteShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="pen-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans px-4">
+    <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans px-4">
       <ThemeToggle className="absolute right-6 top-6 z-20" />
       <div
         className={cn(
           "relative z-10 flex w-full max-w-md flex-col items-center",
-          "pen-glass-panel rounded-2xl border px-8 pb-8 pt-10 ring-1 ring-white/40 dark:ring-white/10",
+          "sts-glass-panel rounded-2xl border px-8 pb-8 pt-10 ring-1 ring-white/40 dark:ring-white/10",
         )}
       >
         <PenLogo />
@@ -48,15 +48,15 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   if (!invite) {
     return (
       <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-pen-foreground">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
           Invitation not found
         </h1>
-        <p className="mt-2 text-center text-[13.5px] text-pen-muted">
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           This invitation link is invalid or no longer available.
         </p>
         <Link
           href="/login"
-          className="mt-6 text-[13px] font-medium text-pen-blue hover:underline"
+          className="mt-6 text-[13px] font-medium text-sts-blue hover:underline"
         >
           Go to sign in
         </Link>
@@ -67,20 +67,20 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   if (errorCode && ERROR_COPY[errorCode]) {
     return (
       <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-pen-foreground">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
           Could not accept invitation
         </h1>
-        <p className="mt-2 text-center text-[13.5px] text-pen-muted">
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           {ERROR_COPY[errorCode]}
         </p>
         {errorCode === "email_mismatch" && (
-          <p className="mt-3 text-center text-[12px] text-pen-subtle">
+          <p className="mt-3 text-center text-[12px] text-sts-subtle">
             Invitation was sent to {invite.email}.
           </p>
         )}
         <Link
           href="/"
-          className="mt-6 text-[13px] font-medium text-pen-blue hover:underline"
+          className="mt-6 text-[13px] font-medium text-sts-blue hover:underline"
         >
           Go to dashboard
         </Link>
@@ -91,10 +91,10 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   if (invite.revokedAt) {
     return (
       <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-pen-foreground">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
           Invitation revoked
         </h1>
-        <p className="mt-2 text-center text-[13.5px] text-pen-muted">
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           This invitation to {invite.department.name} has been revoked.
         </p>
       </InviteShell>
@@ -104,15 +104,15 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   if (invite.acceptedAt) {
     return (
       <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-pen-foreground">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
           Already accepted
         </h1>
-        <p className="mt-2 text-center text-[13.5px] text-pen-muted">
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           This invitation has already been used. Sign in to open your dashboard.
         </p>
         <Link
           href="/login"
-          className="mt-6 text-[13px] font-medium text-pen-blue hover:underline"
+          className="mt-6 text-[13px] font-medium text-sts-blue hover:underline"
         >
           Go to sign in
         </Link>
@@ -123,10 +123,10 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   if (invite.expiresAt.getTime() < Date.now()) {
     return (
       <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-pen-foreground">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
           Invitation expired
         </h1>
-        <p className="mt-2 text-center text-[13.5px] text-pen-muted">
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           Ask your manager to send a new invitation to join {invite.department.name}.
         </p>
       </InviteShell>

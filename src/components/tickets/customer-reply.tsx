@@ -46,7 +46,7 @@ function renderNoteBody(body: string) {
     part.startsWith("@") ? (
       <mark
         key={i}
-        className="rounded-[3px] bg-pen-blue/10 px-0.5 font-semibold text-pen-blue not-italic"
+        className="rounded-[3px] bg-sts-blue/10 px-0.5 font-semibold text-sts-blue not-italic"
       >
         {part.replace(/_/g, " ")}
       </mark>
@@ -153,7 +153,7 @@ type PendingAttachment = {
  * Composer for emailing the intake submitter. The "Reply to submitter" label,
  * Mail icon, and shown recipient make its external-email intent explicit so a
  * staffer can never mistake it for an internal note. Colors follow the theme
- * accent (--pen-blue) so it fits every theme.
+ * accent (--sts-blue) so it fits every theme.
  */
 export function CustomerReplyComposer({
   ticketId,
@@ -273,14 +273,14 @@ export function CustomerReplyComposer({
   const canSend = !submitting && (!!value.trim() || attachments.length > 0);
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-pen-blue/25 bg-pen-card">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-sts-blue/25 bg-sts-card">
       {/* Header band — makes the external-email intent explicit */}
-      <div className="flex items-center gap-1.5 border-b border-pen-blue/15 bg-pen-blue-tint/50 px-3.5 py-2">
-        <Mail className="size-[13px] shrink-0 text-pen-blue" />
-        <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-id">
+      <div className="flex items-center gap-1.5 border-b border-sts-blue/15 bg-sts-blue-tint/50 px-3.5 py-2">
+        <Mail className="size-[13px] shrink-0 text-sts-blue" />
+        <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-id">
           Reply to submitter
         </span>
-        <span className="truncate font-sans text-[11.5px] text-pen-muted">
+        <span className="truncate font-sans text-[11.5px] text-sts-muted">
           · {customerEmail}
         </span>
       </div>
@@ -310,26 +310,26 @@ export function CustomerReplyComposer({
               onClick={() => fileRef.current?.click()}
               disabled={submitting}
               title="Attach file"
-              className="flex size-6 items-center justify-center rounded text-pen-muted transition-colors hover:bg-pen-card hover:text-pen-foreground disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex size-6 items-center justify-center rounded text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Paperclip className="size-3.5" />
             </button>
           }
-          className="min-h-0 rounded-none border-0 bg-transparent [&>div:first-child]:border-pen-blue/15 [&>div:first-child]:bg-transparent"
+          className="min-h-0 rounded-none border-0 bg-transparent [&>div:first-child]:border-sts-blue/15 [&>div:first-child]:bg-transparent"
           contentClassName="max-h-[220px]"
         />
       </div>
 
       {/* Attachment previews */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-t border-pen-blue/10 px-3.5 py-2.5">
+        <div className="flex flex-wrap gap-2 border-t border-sts-blue/10 px-3.5 py-2.5">
           {attachments.map((att) => (
             <div
               key={att.id}
-              className="group relative flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5"
+              className="group relative flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5"
             >
               {att.uploading ? (
-                <LoadingSpinner className="size-[12px] text-pen-muted" />
+                <LoadingSpinner className="size-[12px] text-sts-muted" />
               ) : att.previewUrl ? (
                 <img
                   src={att.previewUrl}
@@ -337,16 +337,16 @@ export function CustomerReplyComposer({
                   className="size-8 rounded object-cover"
                 />
               ) : (
-                <FileText className="size-[13px] shrink-0 text-pen-muted" />
+                <FileText className="size-[13px] shrink-0 text-sts-muted" />
               )}
-              <span className="max-w-[120px] truncate font-sans text-[11.5px] text-pen-foreground">
+              <span className="max-w-[120px] truncate font-sans text-[11.5px] text-sts-foreground">
                 {att.fileName}
               </span>
               {!att.uploading && (
                 <button
                   type="button"
                   onClick={() => removeAttachment(att.id)}
-                  className="ml-0.5 text-pen-subtle hover:text-pen-red"
+                  className="ml-0.5 text-sts-subtle hover:text-sts-red"
                 >
                   <X className="size-[11px]" />
                 </button>
@@ -357,7 +357,7 @@ export function CustomerReplyComposer({
       )}
 
       {/* Action bar */}
-      <div className="flex items-center gap-2 border-t border-pen-blue/15 px-3 py-2">
+      <div className="flex items-center gap-2 border-t border-sts-blue/15 px-3 py-2">
         {/* Hidden file input — triggered by the attach button in the editor toolbar */}
         <input
           ref={fileRef}
@@ -372,11 +372,11 @@ export function CustomerReplyComposer({
 
         <span className="flex-1" />
 
-        <span className="hidden select-none font-sans text-[11px] text-pen-subtle sm:inline">
-          <kbd className="rounded border border-pen-card-border bg-pen-surface px-1 py-px font-sans text-[10px] text-pen-muted">
+        <span className="hidden select-none font-sans text-[11px] text-sts-subtle sm:inline">
+          <kbd className="rounded border border-sts-card-border bg-sts-surface px-1 py-px font-sans text-[10px] text-sts-muted">
             ⌘
           </kbd>
-          <kbd className="ml-0.5 rounded border border-pen-card-border bg-pen-surface px-1 py-px font-sans text-[10px] text-pen-muted">
+          <kbd className="ml-0.5 rounded border border-sts-card-border bg-sts-surface px-1 py-px font-sans text-[10px] text-sts-muted">
             ↵
           </kbd>
           <span className="ml-1.5">to send</span>
@@ -386,7 +386,7 @@ export function CustomerReplyComposer({
           type="button"
           onClick={() => void submit()}
           disabled={!canSend}
-          className="flex items-center gap-1.5 rounded-lg bg-pen-blue px-3.5 py-1.5 font-sans text-[12px] font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-45 disabled:shadow-none dark:text-gray-900"
+          className="flex items-center gap-1.5 rounded-lg bg-sts-blue px-3.5 py-1.5 font-sans text-[12px] font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-45 disabled:shadow-none dark:text-gray-900"
         >
           {submitting ? (
             <LoadingSpinner className="size-[13px]" />
@@ -501,10 +501,10 @@ function MessageNotes({
               <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                 Internal note
               </span>
-              <span className="font-sans text-[11px] font-medium text-pen-foreground">
+              <span className="font-sans text-[11px] font-medium text-sts-foreground">
                 {n.authorName}
               </span>
-              <span className="font-sans text-[10.5px] text-pen-subtle">
+              <span className="font-sans text-[10.5px] text-sts-subtle">
                 {formatDateTime(new Date(n.createdAt))}
                 {n.editedAt ? " · edited" : ""}
               </span>
@@ -517,7 +517,7 @@ function MessageNotes({
                       setEditValue(n.body);
                     }}
                     title="Edit note"
-                    className="flex size-5 items-center justify-center rounded text-pen-subtle hover:bg-pen-card hover:text-pen-foreground"
+                    className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-card hover:text-sts-foreground"
                   >
                     <Pencil className="size-3" />
                   </button>
@@ -525,7 +525,7 @@ function MessageNotes({
                     type="button"
                     onClick={() => removeNote(n.id)}
                     title="Delete note"
-                    className="flex size-5 items-center justify-center rounded text-pen-subtle hover:bg-pen-red/10 hover:text-pen-red"
+                    className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -542,27 +542,27 @@ function MessageNotes({
                   autoFocus
                   onSubmit={() => void saveEdit(n.id)}
                   onCancel={() => setEditingId(null)}
-                  className="w-full resize-none rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+                  className="w-full resize-none rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/50"
                 />
                 <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => saveEdit(n.id)}
-                    className="h-6 rounded-md bg-pen-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
+                    className="h-6 rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
-                    className="h-6 rounded-md border border-pen-card-border px-2.5 font-sans text-[11px] text-pen-muted"
+                    className="h-6 rounded-md border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="mt-0.5 whitespace-pre-wrap break-words pl-[18px] font-sans text-[12px] leading-[18px] text-pen-foreground">
+              <p className="mt-0.5 whitespace-pre-wrap break-words pl-[18px] font-sans text-[12px] leading-[18px] text-sts-foreground">
                 {renderNoteBody(n.body)}
               </p>
             )}
@@ -571,7 +571,7 @@ function MessageNotes({
       })}
 
       {composing ? (
-        <div className="flex flex-col gap-1.5 rounded-md border border-pen-card-border bg-pen-bg px-2.5 py-2">
+        <div className="flex flex-col gap-1.5 rounded-md border border-sts-card-border bg-sts-bg px-2.5 py-2">
           <MentionTextarea
             value={draft}
             onChange={setDraft}
@@ -584,14 +584,14 @@ function MessageNotes({
               setComposing(false);
               setDraft("");
             }}
-            className="w-full resize-none bg-transparent font-sans text-[12px] leading-[18px] text-pen-foreground outline-none placeholder:text-pen-subtle"
+            className="w-full resize-none bg-transparent font-sans text-[12px] leading-[18px] text-sts-foreground outline-none placeholder:text-sts-subtle"
           />
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => void addNote()}
               disabled={saving || !draft.trim()}
-              className="flex h-6 items-center gap-1 rounded-md bg-pen-blue px-2.5 font-sans text-[11px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="flex h-6 items-center gap-1 rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? <LoadingSpinner className="size-3" /> : null}
               Add note
@@ -602,7 +602,7 @@ function MessageNotes({
                 setComposing(false);
                 setDraft("");
               }}
-              className="h-6 rounded-md px-2 font-sans text-[11px] text-pen-subtle hover:text-pen-foreground"
+              className="h-6 rounded-md px-2 font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -612,7 +612,7 @@ function MessageNotes({
         <button
           type="button"
           onClick={() => setComposing(true)}
-          className="flex w-fit items-center gap-1 rounded-md px-1 py-0.5 font-sans text-[11px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+          className="flex w-fit items-center gap-1 rounded-md px-1 py-0.5 font-sans text-[11px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
         >
           <Plus className="size-3" />
           Add internal note
@@ -695,7 +695,7 @@ export function CustomerMessageItem({
         <span
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-full font-sans text-[12px] font-semibold text-white shadow-sm",
-            outbound ? "bg-pen-blue" : "bg-pen-purple",
+            outbound ? "bg-sts-blue" : "bg-sts-purple",
           )}
         >
           {initials(displayName)}
@@ -715,15 +715,15 @@ export function CustomerMessageItem({
               outbound && "flex-row-reverse",
             )}
           >
-            <span className="font-sans text-[12.5px] font-semibold leading-none text-pen-foreground">
+            <span className="font-sans text-[12.5px] font-semibold leading-none text-sts-foreground">
               {displayName}
             </span>
             <span
               className={cn(
                 "rounded-full px-1.5 py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide",
                 outbound
-                  ? "bg-pen-blue/15 text-pen-blue"
-                  : "bg-pen-purple/15 text-pen-purple",
+                  ? "bg-sts-blue/15 text-sts-blue"
+                  : "bg-sts-purple/15 text-sts-purple",
               )}
             >
               {outbound ? "Support" : "User"}
@@ -733,7 +733,7 @@ export function CustomerMessageItem({
                 ⚠ Unverified
               </span>
             )}
-            <span className="font-sans text-[11.5px] text-pen-subtle/70">
+            <span className="font-sans text-[11.5px] text-sts-subtle/70">
               {formatDateTime(new Date(message.createdAt))}
             </span>
           </div>
@@ -743,14 +743,14 @@ export function CustomerMessageItem({
             className={cn(
               "mt-1 w-fit max-w-full rounded-2xl border px-3.5 py-2.5 text-left shadow-sm",
               outbound
-                ? "rounded-tr-sm border-pen-blue/20 bg-pen-blue-tint"
-                : "rounded-tl-sm border-pen-card-border bg-pen-surface",
+                ? "rounded-tr-sm border-sts-blue/20 bg-sts-blue-tint"
+                : "rounded-tl-sm border-sts-card-border bg-sts-surface",
             )}
           >
             {/* Body */}
             {visibleBody && (
               <div
-                className="whitespace-pre-wrap break-words font-sans text-[12.5px] leading-[20px] text-pen-foreground [&_a]:text-pen-blue [&_a]:underline"
+                className="whitespace-pre-wrap break-words font-sans text-[12.5px] leading-[20px] text-sts-foreground [&_a]:text-sts-blue [&_a]:underline"
                 dangerouslySetInnerHTML={{ __html: visibleBody }}
               />
             )}
@@ -762,7 +762,7 @@ export function CustomerMessageItem({
                   type="button"
                   onClick={() => setShowQuote((v) => !v)}
                   title={showQuote ? "Hide quoted text" : "Show quoted text"}
-                  className="inline-flex items-center gap-1 rounded-md bg-pen-bg px-1.5 py-0.5 font-sans text-[11px] text-pen-subtle transition-colors hover:text-pen-foreground"
+                  className="inline-flex items-center gap-1 rounded-md bg-sts-bg px-1.5 py-0.5 font-sans text-[11px] text-sts-subtle transition-colors hover:text-sts-foreground"
                 >
                   <span className="tracking-widest leading-none">•••</span>
                   <ChevronDown
@@ -774,7 +774,7 @@ export function CustomerMessageItem({
                 </button>
                 {showQuote && (
                   <div
-                    className="mt-1.5 whitespace-pre-wrap break-words border-l-2 border-pen-card-border pl-2.5 font-sans text-[12px] leading-relaxed text-pen-subtle"
+                    className="mt-1.5 whitespace-pre-wrap break-words border-l-2 border-sts-card-border pl-2.5 font-sans text-[12px] leading-relaxed text-sts-subtle"
                     dangerouslySetInnerHTML={{ __html: quotedBody }}
                   />
                 )}
@@ -811,22 +811,22 @@ export function CustomerMessageItem({
                     type="button"
                     onClick={() => downloadFile(a.storageUrl, a.fileName)}
                     title={`Download ${a.fileName}`}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-pen-card-border bg-pen-bg px-2.5 py-2 text-left transition-colors hover:border-pen-blue/40 hover:bg-pen-blue/5"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
                   >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-pen-surface">
-                      <FileText className="size-4 text-pen-blue" />
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
+                      <FileText className="size-4 text-sts-blue" />
                     </span>
                     <span className="flex min-w-0 flex-col">
-                      <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-pen-foreground">
+                      <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-sts-foreground">
                         {a.fileName}
                       </span>
                       {a.fileSize > 0 && (
-                        <span className="font-sans text-[10.5px] text-pen-subtle">
+                        <span className="font-sans text-[10.5px] text-sts-subtle">
                           {formatFileSize(a.fileSize)}
                         </span>
                       )}
                     </span>
-                    <Download className="ml-auto size-3.5 shrink-0 text-pen-muted" />
+                    <Download className="ml-auto size-3.5 shrink-0 text-sts-muted" />
                   </button>
                 ))}
               </div>

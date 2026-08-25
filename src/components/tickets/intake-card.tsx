@@ -33,7 +33,7 @@ function isImageUrl(url: string) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="pen-text-label">{children}</p>;
+  return <p className="sts-text-label">{children}</p>;
 }
 
 function EmailValue({ email }: { email: string }) {
@@ -42,7 +42,7 @@ function EmailValue({ email }: { email: string }) {
     <span className="inline-flex items-center gap-1.5">
       <a
         href={`mailto:${email}`}
-        className="font-sans text-[12.5px] text-pen-id hover:underline"
+        className="font-sans text-[12.5px] text-sts-id hover:underline"
       >
         {email}
       </a>
@@ -55,10 +55,10 @@ function EmailValue({ email }: { email: string }) {
           });
         }}
         title={copied ? "Copied" : "Copy email"}
-        className="flex size-5 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+        className="flex size-5 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
       >
         {copied ? (
-          <Check className="size-3 text-pen-green" />
+          <Check className="size-3 text-sts-green" />
         ) : (
           <Copy className="size-3" />
         )}
@@ -79,20 +79,20 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
   );
 
   return (
-    <div className="flex flex-col rounded-xl border border-pen-card-border bg-pen-card">
+    <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
+      <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-pen-blue-tint text-pen-id">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
             <Inbox className="size-3.5" />
           </span>
-          <p className="min-w-0 font-sans text-[12.5px] text-pen-foreground">
+          <p className="min-w-0 font-sans text-[12.5px] text-sts-foreground">
             <span className="font-semibold">{intake.submitterEmail}</span>{" "}
             raised this request via{" "}
             <span className="font-semibold">{intake.formName}</span>
           </p>
         </div>
-        <span className="ml-3 shrink-0 font-sans text-[11.5px] text-pen-subtle">
+        <span className="ml-3 shrink-0 font-sans text-[11.5px] text-sts-subtle">
           {date}
         </span>
       </div>
@@ -102,7 +102,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
         {visibleResponses.length > 0 && (
           <div className="flex flex-col gap-2">
             <SectionLabel>Responses</SectionLabel>
-            <div className="overflow-hidden rounded-lg border border-pen-card-border">
+            <div className="overflow-hidden rounded-lg border border-sts-card-border">
               {visibleResponses.map((r, i) => {
                 const isEmail =
                   r.type === "email" ||
@@ -114,10 +114,10 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                     key={r.fieldId}
                     className={cn(
                       "px-3.5 py-2.5",
-                      i > 0 && "border-t border-pen-card-border",
+                      i > 0 && "border-t border-sts-card-border",
                     )}
                   >
-                    <p className="mb-1 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+                    <p className="mb-1 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                       {r.label}
                     </p>
                     {r.type === "richtext" ? (
@@ -125,7 +125,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                     ) : r.type === "file" ? (
                       isImageUrl(r.value) ? (
                         <div className="flex flex-col gap-1.5">
-                          <div className="overflow-hidden rounded-lg border border-pen-card-border">
+                          <div className="overflow-hidden rounded-lg border border-sts-card-border">
                             <img
                               src={r.value}
                               alt={r.label}
@@ -136,7 +136,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                             href={r.value}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-sans text-[11.5px] text-pen-id hover:underline"
+                            className="inline-flex items-center gap-1 font-sans text-[11.5px] text-sts-id hover:underline"
                           >
                             <ExternalLink className="size-3 shrink-0" />
                             View full image
@@ -147,7 +147,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                           href={r.value}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-id hover:underline"
+                          className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-id hover:underline"
                         >
                           <Paperclip className="size-3 shrink-0" />
                           Download file
@@ -156,7 +156,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                     ) : isEmail ? (
                       <EmailValue email={r.value.trim()} />
                     ) : (
-                      <p className="font-sans text-[12.5px] leading-relaxed text-pen-foreground break-words whitespace-pre-wrap">
+                      <p className="font-sans text-[12.5px] leading-relaxed text-sts-foreground break-words whitespace-pre-wrap">
                         {r.value}
                       </p>
                     )}

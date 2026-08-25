@@ -76,7 +76,7 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
   }
 
   function editorFields() {
-    const label = "pen-text-section-label mb-1 block"
+    const label = "sts-text-section-label mb-1 block"
     return (
       <div className="space-y-3">
         <div>
@@ -122,7 +122,7 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
         <section
           key={q.id}
           className={cn(
-            "pen-glass-panel border-border rounded-2xl border p-4",
+            "sts-glass-panel border-border rounded-2xl border p-4",
             !q.active && "opacity-55",
           )}
         >
@@ -146,7 +146,7 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
             <>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="pen-text-section-label">
+                  <div className="sts-text-section-label">
                     Question {i + 1}
                     {!q.active && " · disabled"}
                     {q.alwaysInclude && " · in every invite"}
@@ -218,8 +218,8 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
       ))}
 
       {adding ? (
-        <section className="pen-glass-panel border-border rounded-2xl border p-4">
-          <div className="pen-text-section-label mb-3">New question</div>
+        <section className="sts-glass-panel border-border rounded-2xl border p-4">
+          <div className="sts-text-section-label mb-3">New question</div>
           {editorFields()}
           <div className="mt-3 flex gap-2">
             <Button size="sm" disabled={busy} onClick={() => call("/api/screening/questions", "POST", draft)}>

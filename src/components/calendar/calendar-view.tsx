@@ -155,7 +155,7 @@ export function CalendarView({
           <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => setMonthAnchor((m) => addMonths(m, -1))}>
             <ChevronLeft />
           </Button>
-          <h2 className="min-w-[9rem] text-center font-poppins text-[17px] font-semibold text-pen-foreground">
+          <h2 className="min-w-[9rem] text-center font-poppins text-[17px] font-semibold text-sts-foreground">
             {format(monthAnchor, "MMMM yyyy")}
           </h2>
           <Button variant="outline" size="icon-sm" aria-label="Next month" onClick={() => setMonthAnchor((m) => addMonths(m, 1))}>
@@ -167,7 +167,7 @@ export function CalendarView({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="hidden text-[12px] text-pen-muted sm:inline">{deptName}</span>
+          <span className="hidden text-[12px] text-sts-muted sm:inline">{deptName}</span>
           {canManage && (
             <>
               <AddEventPopover deptId={deptId} onDone={invalidate} />
@@ -182,14 +182,14 @@ export function CalendarView({
       {/* Scrollable content */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 sm:px-8 lg:px-10">
       {/* Month grid */}
-      <div className="shrink-0 overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
-        <div className="grid grid-cols-7 border-b border-pen-card-border bg-pen-surface">
+      <div className="shrink-0 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
+        <div className="grid grid-cols-7 border-b border-sts-card-border bg-sts-surface">
           {WEEKDAYS.map((d, i) => (
             <div
               key={d}
               className={cn(
                 "px-2 py-2 text-center font-poppins text-[11px] font-semibold uppercase tracking-wide",
-                i === 0 || i === 6 ? "text-pen-blue" : "text-pen-subtle",
+                i === 0 || i === 6 ? "text-sts-blue" : "text-sts-subtle",
               )}
             >
               {d}
@@ -209,10 +209,10 @@ export function CalendarView({
               <div
                 key={key}
                 className={cn(
-                  "min-h-[104px] border-b border-r border-pen-card-border p-1.5 last:border-r-0",
-                  !inMonth && "bg-pen-surface/40",
-                  inMonth && weekend && "bg-pen-surface/60",
-                  isToday && "bg-pen-blue-tint/60",
+                  "min-h-[104px] border-b border-r border-sts-card-border p-1.5 last:border-r-0",
+                  !inMonth && "bg-sts-surface/40",
+                  inMonth && weekend && "bg-sts-surface/60",
+                  isToday && "bg-sts-blue-tint/60",
                 )}
               >
                 <div className="mb-1 flex justify-end">
@@ -220,10 +220,10 @@ export function CalendarView({
                     className={cn(
                       "inline-flex size-6 items-center justify-center rounded-full text-[12px]",
                       isToday
-                        ? "bg-pen-blue font-semibold text-white"
+                        ? "bg-sts-blue font-semibold text-white"
                         : inMonth
-                          ? "text-pen-foreground"
-                          : "text-pen-subtle",
+                          ? "text-sts-foreground"
+                          : "text-sts-subtle",
                     )}
                   >
                     {format(day, "d")}
@@ -291,19 +291,19 @@ export function CalendarView({
       </div>
 
       {/* Team availability */}
-      <div className="shrink-0 rounded-xl border border-pen-card-border bg-pen-card p-4">
-        <h3 className="mb-3 font-poppins text-[13px] font-semibold text-pen-foreground">Team availability</h3>
+      <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card p-4">
+        <h3 className="mb-3 font-poppins text-[13px] font-semibold text-sts-foreground">Team availability</h3>
         {isLoading && members.length === 0 ? (
-          <p className="text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="text-[12.5px] text-sts-muted">Loading…</p>
         ) : members.length === 0 ? (
-          <p className="text-[12.5px] text-pen-muted">No members in this department yet.</p>
+          <p className="text-[12.5px] text-sts-muted">No members in this department yet.</p>
         ) : (
-          <ul className="divide-y divide-pen-card-border">
+          <ul className="divide-y divide-sts-card-border">
             {members.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] text-pen-foreground">{m.name}</p>
-                  <p className="truncate text-[11.5px] text-pen-muted">
+                  <p className="truncate text-[13px] text-sts-foreground">{m.name}</p>
+                  <p className="truncate text-[11.5px] text-sts-muted">
                     {m.schedule
                       ? `Works ${m.schedule.workingDays.map((d) => DAY_LABELS[d]).join(", ")} · ${m.schedule.workStartTime}–${m.schedule.workEndTime}`
                       : "Default schedule (Mon–Fri, 09:00–17:00)"}
@@ -365,7 +365,7 @@ function AddEventPopover({ deptId, onDone }: { deptId: string; onDone: () => voi
         Add event
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
-        <p className="font-poppins text-[12.5px] font-semibold text-pen-foreground">Calendar event</p>
+        <p className="font-poppins text-[12.5px] font-semibold text-sts-foreground">Calendar event</p>
         <FieldLabel>Type</FieldLabel>
         <SearchableSelect
           value={type}
@@ -379,7 +379,7 @@ function AddEventPopover({ deptId, onDone }: { deptId: string; onDone: () => voi
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={type === "birthday" ? "e.g. Sam's birthday" : "e.g. Team lunch"}
-          className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-pen-accent"
+          className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-sts-accent"
         />
         <div className="flex gap-2">
           <div className="flex-1">
@@ -429,13 +429,13 @@ function AddHolidayPopover({ deptId, onDone }: { deptId: string; onDone: () => v
         Add holiday
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
-        <p className="font-poppins text-[12.5px] font-semibold text-pen-foreground">Department holiday</p>
+        <p className="font-poppins text-[12.5px] font-semibold text-sts-foreground">Department holiday</p>
         <FieldLabel>Name</FieldLabel>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Eid holiday"
-          className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-pen-accent"
+          className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-sts-accent"
         />
         <div className="flex gap-2">
           <div className="flex-1">
@@ -502,8 +502,8 @@ function ImportHolidaysPopover({ deptId, onDone }: { deptId: string; onDone: () 
         Import JSON
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80">
-        <p className="font-poppins text-[12.5px] font-semibold text-pen-foreground">Import holidays</p>
-        <p className="text-[11px] text-pen-muted">
+        <p className="font-poppins text-[12.5px] font-semibold text-sts-foreground">Import holidays</p>
+        <p className="text-[11px] text-sts-muted">
           Paste a JSON array of <code>{"{ name, startDate, endDate? }"}</code>. Dates as YYYY-MM-DD.
         </p>
         <textarea
@@ -512,7 +512,7 @@ function ImportHolidaysPopover({ deptId, onDone }: { deptId: string; onDone: () 
           placeholder={IMPORT_PLACEHOLDER}
           rows={7}
           spellCheck={false}
-          className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 font-mono text-[11.5px] outline-none focus:border-pen-accent"
+          className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 font-mono text-[11.5px] outline-none focus:border-sts-accent"
         />
         <label className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "cursor-pointer justify-center")}>
           <Upload className="size-3.5" />
@@ -567,7 +567,7 @@ function MarkOffPopover({
         Mark someone off
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
-        <p className="font-poppins text-[12.5px] font-semibold text-pen-foreground">Mark unavailable</p>
+        <p className="font-poppins text-[12.5px] font-semibold text-sts-foreground">Mark unavailable</p>
         <FieldLabel>Member</FieldLabel>
         <SearchableSelect
           value={userId}
@@ -591,7 +591,7 @@ function MarkOffPopover({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="e.g. Annual leave"
-          className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-pen-accent"
+          className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-sts-accent"
         />
         <Button
           size="sm"
@@ -608,7 +608,7 @@ function MarkOffPopover({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mt-1 block text-[11px] font-medium text-pen-subtle">{children}</label>
+  return <label className="mt-1 block text-[11px] font-medium text-sts-subtle">{children}</label>
 }
 
 function DateInput({ value, onChange, min }: { value: string; onChange: (v: string) => void; min?: string }) {
@@ -618,7 +618,7 @@ function DateInput({ value, onChange, min }: { value: string; onChange: (v: stri
       value={value}
       min={min}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-pen-accent"
+      className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-sts-accent"
     />
   )
 }

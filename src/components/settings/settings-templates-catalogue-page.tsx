@@ -39,8 +39,8 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div>
-        <h1 className="pen-text-admin-title">Templates</h1>
-        <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+        <h1 className="sts-text-admin-title">Templates</h1>
+        <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
           Templates bundle related settings sections together. Request one to unlock its features for your
           organization — a Super Admin will review the request.
         </p>
@@ -56,10 +56,10 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
         {catalogue.map((t) => (
           <li
             key={t.id}
-            className="flex flex-col rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card"
+            className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card"
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-pen-foreground">
+              <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
                 {t.name}
               </span>
               {t.status === "active" && (
@@ -73,18 +73,18 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
                 </span>
               )}
             </div>
-            {t.description && <p className="mt-1 font-sans text-[12px] text-pen-muted">{t.description}</p>}
+            {t.description && <p className="mt-1 font-sans text-[12px] text-sts-muted">{t.description}</p>}
             <div className="mt-2 flex flex-wrap gap-1">
               {t.features.map((key) => (
                 <span
                   key={key}
-                  className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue"
+                  className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue"
                 >
                   {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
                 </span>
               ))}
             </div>
-            <div className={cn("mt-3 border-t border-pen-card-border/60 pt-3")}>
+            <div className={cn("mt-3 border-t border-sts-card-border/60 pt-3")}>
               <Button
                 size="sm"
                 variant={t.status === "available" ? "default" : "outline"}
@@ -98,7 +98,7 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
           </li>
         ))}
         {catalogue.length === 0 && (
-          <p className="font-sans text-[13px] text-pen-muted">No templates are available in the catalogue yet.</p>
+          <p className="font-sans text-[13px] text-sts-muted">No templates are available in the catalogue yet.</p>
         )}
       </ul>
     </div>

@@ -218,7 +218,6 @@ model Tenant {
   subDepartments SubDepartment[]
   projects    Project[]
   tickets     Ticket[]
-  boardColumns BoardColumn[]
   slaPolicies SlaPolicy[]
   assignmentRules AssignmentRule[]
   rules Rule[]
@@ -324,7 +323,6 @@ model Department {
   departmentEvents  DepartmentEvent[]
   recruitmentBoards RecruitmentBoard[]
   bulkReassignJobs  BulkReassignJob[]
-  boardColumns      BoardColumn[]
   slaPolicies       SlaPolicy[]
   assignmentRules   AssignmentRule[]
   rules             Rule[]
@@ -455,12 +453,22 @@ model SubDepartment {
   departmentId      String
   rotaPointer       Int                @default(0)
   workloadThreshold Int                @default(5)
+  // Optional per-sub-department overrides. Same JSON shapes as the department
+  // fields; null means "inherit from the parent department".
+  emailConfig       Json?
+  slaConfig         Json?
+  businessHours     Json?
+  // Per-sub-department ticket-assignment method. null = inherit from the parent
+  // department's assignmentMethod (see lib/assignment-engine.ts).
+  assignmentMethod  AssignmentMethod?
   department        Department         @relation(fields: [departmentId], references: [id])
   profiles          Profile[]
   tickets           Ticket[]
   counter           SubDepartmentTicketCounter?
   githubStatusMap   SubDepartmentGitHubStatusMap?
   routingRules      RoutingRule[]
+  rules             Rule[]
+  slaPolicies       SlaPolicy[]
   statuses          SubDepartmentStatus[]
   memberships       SubDepartmentMembership[]
   joinRequests      JoinRequest[]
@@ -469,6 +477,7 @@ model SubDepartment {
   intakeIssues      IntakeIssue[]
   invites           DepartmentInvite[]
   mailboxConnections MailboxConnection[]
+  assignmentRules   AssignmentRule[]
 
   @@index([tenantId])
   @@map("Team")
@@ -489,30 +498,6 @@ model SubDepartmentStatus {
   @@map("TeamStatus")
 }
 
-// A column of a department's board (SRS DAT-03). The board is the set of columns
-// for a department — created atomically with the department (five status-typed
-// defaults) and edited via add/rename/reorder/delete-with-move. `statusType` is
-// chosen at creation and never mutated, so it stays immutable once the column
-// holds tickets (DAT-02); renaming only changes `label`. tenantId is denormalized
-// (like SubDepartment/Project/Ticket) so the non-bypassable scope extension can filter it.
-model BoardColumn {
-  id           String     @id @default(cuid())
-  tenantId     String
-  departmentId String
-  label        String
-  color        String     @default("#94a3b8")
-  statusType   StatusType
-  order        Int
-  createdAt    DateTime   @default(now())
-
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  tickets    Ticket[]
-
-  @@unique([departmentId, label])
-  @@index([departmentId, order])
-  @@index([tenantId])
-}
 
 model Profile {
   id        String   @id @db.Uuid
@@ -551,6 +536,7 @@ model Profile {
   qaTicketAssignments   TicketQaAssignee[]
   ticketEstimates       TicketEstimate[]
   intakeIssueAssignments IntakeIssueAssignee[] @relation("IntakeIssueAssignments")
+  slaPolicyAssignments   SlaPolicyAssignee[]   @relation("SlaPolicyAssignments")
   managedDepartments    DepartmentManager[] @relation("ManagedDepartments")
   deptMgrGranted        DepartmentManager[] @relation("DeptMgrGrantors")
   departmentAccesses    DepartmentAccess[]  @relation("DeptAccessGrants")
@@ -791,10 +777,6 @@ model Ticket {
   creatorId    String         @db.Uuid
   projectId    String?
   subDepartmentId String @map("teamId")
-  // The one column of the ticket's own department board it currently sits in
-  // (SRS DAT-03). Nullable during the board rollout/backfill; set on create and
-  // on status moves thereafter. The department is derived (see effectiveTicketDept).
-  boardColumnId String?
   parentId     String?
   sprintId     String?
   moduleId     String?
@@ -819,7 +801,6 @@ model Ticket {
   subDepartment SubDepartment  @relation(fields: [subDepartmentId], references: [id])
   parent        Ticket?        @relation("SubTickets", fields: [parentId], references: [id])
   subTickets    Ticket[]       @relation("SubTickets")
-  boardColumn   BoardColumn?   @relation(fields: [boardColumnId], references: [id])
   sprint        Sprint?        @relation(fields: [sprintId], references: [id])
   module        ProjectModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   template      TicketTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
@@ -847,7 +828,6 @@ model Ticket {
   @@index([parentId])
   @@index([sprintId])
   @@index([moduleId])
-  @@index([boardColumnId])
   @@index([templateId])
   @@index([subDepartmentId, deletedAt, dueDate])
   @@index([subDepartmentId, deletedAt, status])
@@ -1214,12 +1194,30 @@ model SlaPolicy {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  timers     SlaTimer[]
+  subDepartmentId String? @map("teamId")
+
+  // The support form + issue this policy is authored against (the policy name
+  // mirrors the chosen issue's name), plus the priority/assignee an admin picks
+  // for it. Scalar-only (no FK relations) to keep the shared-DB migration purely
+  // additive. assigneeId is a Profile id.
+  formConfigId String?
+  priority     TicketPriority?
+  assigneeId   String?         @db.Uuid
+
+  // SLA policies double as a support form's selectable "issues": the round-robin
+  // cursor + assignee pool used to route tickets created from this policy
+  // (mirrors the retired IntakeIssue.assignees + assigneeRotaPointer).
+  assigneeRotaPointer Int @default(0)
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
+  timers        SlaTimer[]
+  assignees     SlaPolicyAssignee[]
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
 }
 
 // Unified per-department automation rule (slice 09, RE-01..05). `conditions` is
@@ -1241,11 +1239,21 @@ model Rule {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartmentId String? @map("teamId")
+  // Optional support-form scope. When set, the rule runs only on tickets created
+  // from this intake form (in addition to department/sub-department rules). null
+  // = not form-specific. See lib/rule-executor.ts.
+  formConfigId String?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
+  formConfig    IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
+  @@index([formConfigId])
 }
 
 // Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a
@@ -1258,6 +1266,12 @@ model AssignmentRule {
   id           String   @id @default(cuid())
   tenantId     String
   departmentId String
+  // Optional sub-department scope. null = department-wide rule. See ASG-01.
+  subDepartmentId String? @map("teamId")
+  // Optional support-form scope. When set, the rule applies only to tickets from
+  // this intake form (and takes precedence over sub-department/department-wide
+  // rules). null = not form-specific. See lib/assignment-engine.ts.
+  formConfigId String?
   name         String
   conditions   Json
   agentId      String   @db.Uuid
@@ -1268,9 +1282,13 @@ model AssignmentRule {
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
+  formConfig    IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
 
   @@index([departmentId])
   @@index([tenantId])
+  @@index([subDepartmentId])
+  @@index([formConfigId])
 }
 
 enum BulkReassignTargetType {
@@ -1677,6 +1695,10 @@ model IntakeFormConfig {
   isActive             Boolean   @default(true)
   allowCustomerReplies Boolean   @default(true)
   autoAssign           Boolean   @default(true)
+  // Per-support-form ticket-assignment method override. null = inherit the
+  // sub-department's method (which itself falls back to the parent department,
+  // then ROUND_ROBIN). Wins over both when set. See lib/assignment-engine.ts.
+  assignmentMethod     AssignmentMethod?
   displayMode  IntakeFormDisplayMode @default(FORM)
   // Per-form overrides (label/placeholder) for the default static fields
   // (name, email, title, issue type). See lib/intake-default-fields.
@@ -1694,6 +1716,8 @@ model IntakeFormConfig {
   intakes    Intake[]
   issues     IntakeIssue[]
   pendingIntakes PendingIntake[]
+  assignmentRules AssignmentRule[]
+  rules      Rule[]
 }
 
 model IntakeFormField {
@@ -1743,6 +1767,20 @@ model IntakeIssueAssignee {
   user  Profile     @relation("IntakeIssueAssignments", fields: [userId], references: [id])
 
   @@id([issueId, userId])
+  @@index([userId])
+}
+
+// Users assigned to an SLA policy (which doubles as a support-form issue). One
+// assignee → tickets from this policy auto-assign to that user; multiple →
+// round-robin via SlaPolicy.assigneeRotaPointer. Mirrors IntakeIssueAssignee.
+model SlaPolicyAssignee {
+  policyId String
+  userId   String @db.Uuid
+
+  policy SlaPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user   Profile   @relation("SlaPolicyAssignments", fields: [userId], references: [id])
+
+  @@id([policyId, userId])
   @@index([userId])
 }
 

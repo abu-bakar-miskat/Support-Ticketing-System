@@ -38,7 +38,7 @@ export default async function VerifyIntakePage({
   const Icon = success ? CheckCircle2 : result.status === "expired" ? Clock : XCircle
 
   return (
-    <main className="pen-light-scope flex min-h-screen flex-col bg-pen-bg">
+    <main className="sts-light-scope flex min-h-screen flex-col bg-sts-bg">
       {brand.logoUrl && (
         <div style={{ background: brand.headerColor }} className="w-full px-4 py-5 sm:px-6">
           <div className="mx-auto flex max-w-2xl items-center">
@@ -49,7 +49,7 @@ export default async function VerifyIntakePage({
       )}
 
       <div className="flex flex-1 items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md rounded-2xl border border-pen-card-border bg-pen-card px-8 py-12 text-center shadow-sm">
+        <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-card px-8 py-12 text-center shadow-sm">
           <div
             className={`mx-auto mb-5 flex size-14 items-center justify-center rounded-full ${
               success ? "bg-green-50" : result.status === "expired" ? "bg-amber-50" : "bg-red-50"
@@ -63,20 +63,20 @@ export default async function VerifyIntakePage({
             />
           </div>
 
-          <h1 className="font-poppins text-[22px] font-semibold text-pen-foreground">{heading}</h1>
-          <p className="mx-auto mt-2 max-w-sm font-poppins text-[13px] leading-relaxed text-pen-muted">
+          <h1 className="font-poppins text-[22px] font-semibold text-sts-foreground">{heading}</h1>
+          <p className="mx-auto mt-2 max-w-sm font-poppins text-[13px] leading-relaxed text-sts-muted">
             {message}
           </p>
 
           {success && humanId && (
             <div className="mt-6 flex flex-col items-center gap-1.5">
-              <span className="font-poppins text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <span className="font-poppins text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                 Ticket number
               </span>
-              <span className="rounded-md border border-pen-card-border bg-pen-surface px-3 py-1.5 font-mono text-[14px] font-medium text-pen-foreground">
+              <span className="rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-mono text-[14px] font-medium text-sts-foreground">
                 {humanId}
               </span>
-              <span className="font-poppins text-[11px] text-pen-subtle">
+              <span className="font-poppins text-[11px] text-sts-subtle">
                 Please quote this in any follow-up.
               </span>
             </div>

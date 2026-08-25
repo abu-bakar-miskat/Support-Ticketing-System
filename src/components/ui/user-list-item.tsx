@@ -52,7 +52,7 @@ export function UserListItem({
       <span className="min-w-0 flex-1 text-left">
         <span
           className={cn(
-            "block truncate text-left font-sans text-[12px] font-semibold text-pen-foreground",
+            "block truncate text-left font-sans text-[12px] font-semibold text-sts-foreground",
             nameClassName,
           )}
         >
@@ -61,7 +61,7 @@ export function UserListItem({
         {subtitle && (
           <span
             className={cn(
-              "block truncate text-left font-sans text-[11.5px] text-pen-subtle",
+              "block truncate text-left font-sans text-[11.5px] text-sts-subtle",
               subtitleClassName,
             )}
           >

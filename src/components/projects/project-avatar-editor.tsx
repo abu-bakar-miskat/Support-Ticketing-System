@@ -102,7 +102,7 @@ export function ProjectAvatarEditor({
         title="Change project icon"
         aria-label="Change project icon"
         className={cn(
-          "group relative shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-id",
+          "group relative shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id",
           className,
         )}
       >

@@ -25,10 +25,17 @@ export async function PATCH(
   if (!Array.isArray(ruleIds) || ruleIds.some((r) => typeof r !== "string")) {
     return NextResponse.json({ error: "ruleIds must be an array of strings" }, { status: 400 })
   }
+  const formConfigId = (body.formConfigId as string | undefined)?.trim() || null
+  const subDepartmentId = (body.subDepartmentId as string | undefined)?.trim() || null
 
-  // Only reorder rules that actually belong to this department.
+  // Scope the surface: a form's rules, else a sub-department's (non-form) rules,
+  // else department-wide. Only rules within that surface are reordered.
+  const scopeWhere = formConfigId
+    ? { departmentId: id, formConfigId }
+    : { departmentId: id, subDepartmentId, formConfigId: null }
+
   const owned = await prisma.rule.findMany({
-    where: { departmentId: id, id: { in: ruleIds } },
+    where: { ...scopeWhere, id: { in: ruleIds } },
     select: { id: true },
   })
   const ownedIds = new Set(owned.map((r) => r.id))
@@ -42,9 +49,9 @@ export async function PATCH(
   )
 
   const rules = await prisma.rule.findMany({
-    where: { departmentId: id },
+    where: scopeWhere,
     orderBy: { order: "asc" },
-    select: { id: true, name: true, conditions: true, actions: true, order: true, enabled: true, stopProcessing: true },
+    select: { id: true, name: true, conditions: true, actions: true, order: true, enabled: true, stopProcessing: true, formConfigId: true },
   })
   return NextResponse.json(rules)
 }

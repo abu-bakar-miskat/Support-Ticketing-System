@@ -30,6 +30,7 @@ export default async function TenantsLayout({ children }: { children: React.Reac
         role={profile.role as Role}
         subDepartmentId={profile.subDepartmentId}
         subDepartmentIds={profile.subDepartmentIds}
+        isSuperAdmin={profile.isSuperAdmin}
         memberships={(profile.memberships ?? []).map((m) => ({
           subDepartmentId: m.subDepartmentId,
           role: m.role,

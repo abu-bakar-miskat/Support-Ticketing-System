@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db"
 import { canManageDeptCalendar } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { TicketPriority } from "@/generated/prisma/client"
+import { parseAssigneeIds, shapePolicy } from "../route"
+
+const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
 const POLICY_SELECT = {
   id: true,
@@ -13,6 +17,10 @@ const POLICY_SELECT = {
   resolutionMins: true,
   enabled: true,
   order: true,
+  formConfigId: true,
+  priority: true,
+  assigneeId: true,
+  assignees: { select: { userId: true } },
 } as const
 
 function isConditionGroup(value: unknown): value is ConditionGroup {
@@ -59,6 +67,10 @@ export async function PATCH(
     resolutionMins?: number
     enabled?: boolean
     order?: number
+    formConfigId?: string | null
+    priority?: TicketPriority | null
+    assignees?: { deleteMany: Record<string, never>; create: { userId: string }[] }
+    assigneeRotaPointer?: number
   } = {}
 
   if (body.name !== undefined) {
@@ -99,6 +111,24 @@ export async function PATCH(
     }
     data.order = v
   }
+  if (body.formConfigId !== undefined) {
+    const v = body.formConfigId
+    data.formConfigId = typeof v === "string" && v.trim() ? v.trim() : null
+  }
+  if (body.assigneeIds !== undefined) {
+    // Replacing the assignee pool resets the round-robin cursor (mirrors the
+    // retired IntakeIssue behaviour).
+    const ids = parseAssigneeIds(body.assigneeIds)
+    data.assignees = { deleteMany: {}, create: ids.map((userId) => ({ userId })) }
+    data.assigneeRotaPointer = 0
+  }
+  if (body.priority !== undefined) {
+    const v = body.priority
+    if (v !== null && !(typeof v === "string" && VALID_PRIORITIES.has(v))) {
+      return NextResponse.json({ error: "priority is not a valid value" }, { status: 400 })
+    }
+    data.priority = (v === null ? null : v) as TicketPriority | null
+  }
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
   }
@@ -116,7 +146,7 @@ export async function PATCH(
     after: updated,
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json(shapePolicy(updated))
 }
 
 /** DELETE /api/departments/:id/sla-policies/:policyId — remove a policy. */

@@ -70,7 +70,7 @@ function FieldLabel({
   id?: string;
 }) {
   return (
-    <Label id={id} className="pen-text-label">
+    <Label id={id} className="sts-text-label">
       {children}
     </Label>
   );
@@ -96,12 +96,12 @@ function ProfileField({
           readOnly={readOnly}
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           className={cn(
-            "h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none",
-            readOnly && "pr-8 text-pen-muted",
+            "h-9 rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none",
+            readOnly && "pr-8 text-sts-muted",
           )}
         />
         {readOnly ? (
-          <Lock className="pointer-events-none absolute top-1/2 right-3 size-3 -translate-y-1/2 text-pen-subtle" />
+          <Lock className="pointer-events-none absolute top-1/2 right-3 size-3 -translate-y-1/2 text-sts-subtle" />
         ) : null}
       </div>
     </div>
@@ -339,20 +339,20 @@ export function SettingsProfilePage({
   return (
     <div className="flex flex-col gap-6 px-5 py-8 sm:px-8 lg:px-11 lg:py-9">
       <div className="flex flex-col gap-[5px]">
-        <h1 className="pen-text-admin-title">Profile</h1>
-        <p className="font-sans text-[13px] text-pen-muted">
+        <h1 className="sts-text-admin-title">Profile</h1>
+        <p className="font-sans text-[13px] text-sts-muted">
           Your personal information.
         </p>
       </div>
 
-      <div className="flex w-full max-w-[912px] flex-col gap-5 rounded-[10px] border border-pen-card-border bg-pen-card px-5 py-[22px] sm:px-[26px]">
+      <div className="flex w-full max-w-[912px] flex-col gap-5 rounded-[10px] border border-sts-card-border bg-sts-card px-5 py-[22px] sm:px-[26px]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative shrink-0">
             <Avatar className="size-16">
               {userAvatarUrl ? (
                 <AvatarImage src={userAvatarUrl} alt={userName} />
               ) : null}
-              <AvatarFallback className="bg-pen-blue font-sans text-lg font-medium text-white dark:text-gray-900">
+              <AvatarFallback className="bg-sts-blue font-sans text-lg font-medium text-white dark:text-gray-900">
                 {userName.charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -388,16 +388,16 @@ export function SettingsProfilePage({
             />
           </div>
           <div className="flex min-w-0 flex-col gap-[3px]">
-            <p className="font-sans text-[17px] font-semibold text-pen-foreground">
+            <p className="font-sans text-[17px] font-semibold text-sts-foreground">
               {userName}
             </p>
-            <p className="truncate font-sans text-[12.5px] text-pen-muted">
+            <p className="truncate font-sans text-[12.5px] text-sts-muted">
               {userEmail}
             </p>
           </div>
         </div>
 
-        <Separator className="bg-pen-card-border" />
+        <Separator className="bg-sts-card-border" />
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 lg:flex-row">
@@ -418,7 +418,7 @@ export function SettingsProfilePage({
                 value={timezone}
                 onValueChange={(v) => v && setTimezone(v)}
               >
-                <SelectTrigger className="h-9 w-full rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none">
+                <SelectTrigger className="h-9 w-full rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -440,7 +440,7 @@ export function SettingsProfilePage({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Dhaka, BD"
-                className="h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
+                className="h-9 rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none"
               />
             </div>
           </div>
@@ -463,8 +463,8 @@ export function SettingsProfilePage({
                     }
                     className={`h-8 min-w-[44px] rounded-md border px-3 font-sans text-[12px] font-medium transition-colors ${
                       active
-                        ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                        : "border-pen-card-border bg-pen-bg text-pen-muted hover:border-pen-blue/50 hover:text-pen-foreground"
+                        ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                        : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-blue/50 hover:text-sts-foreground"
                     }`}
                   >
                     {d.label}
@@ -481,7 +481,7 @@ export function SettingsProfilePage({
                 type="time"
                 value={workStartTime}
                 onChange={(e) => setWorkStartTime(e.target.value)}
-                className="h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
+                className="h-9 rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none"
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
@@ -490,34 +490,34 @@ export function SettingsProfilePage({
                 type="time"
                 value={workEndTime}
                 onChange={(e) => setWorkEndTime(e.target.value)}
-                className="h-9 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
+                className="h-9 rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none"
               />
             </div>
           </div>
         </div>
 
-        {/* <Separator className="bg-pen-card-border" /> */}
+        {/* <Separator className="bg-sts-card-border" /> */}
 
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-px">
-              <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+              <h2 className="font-sans text-sm font-semibold text-sts-foreground">
                 Email signature
               </h2>
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 Append this signature to assignment, reply, mention and invite emails sent under your name.
               </p>
             </div>
             <Switch
               checked={sigEnabled}
               onCheckedChange={handleSignatureEnabledChange}
-              className="h-[22px] w-[38px] shrink-0 data-checked:bg-pen-blue data-unchecked:bg-pen-surface dark:data-unchecked:bg-pen-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]"
+              className="h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-surface dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]"
             />
           </div>
 
           <div className="flex flex-col gap-2">
             {sigList.length === 0 ? (
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 No signatures yet. Add one below.
               </p>
             ) : (
@@ -529,8 +529,8 @@ export function SettingsProfilePage({
                     className={cn(
                       "flex items-center justify-between gap-3 rounded-md border px-3 py-2",
                       isActive
-                        ? "border-pen-blue bg-pen-blue-tint"
-                        : "border-pen-card-border bg-pen-bg",
+                        ? "border-sts-blue bg-sts-blue-tint"
+                        : "border-sts-card-border bg-sts-bg",
                     )}
                   >
                     <button
@@ -541,7 +541,7 @@ export function SettingsProfilePage({
                       <span
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                          isActive ? "border-pen-blue bg-pen-blue" : "border-pen-card-border",
+                          isActive ? "border-sts-blue bg-sts-blue" : "border-sts-card-border",
                         )}
                       >
                         {isActive ? (
@@ -549,10 +549,10 @@ export function SettingsProfilePage({
                         ) : null}
                       </span>
                       <span className="flex min-w-0 flex-col">
-                        <span className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                        <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {entry.label}
                         </span>
-                        <span className="truncate font-sans text-[11px] text-pen-muted">
+                        <span className="truncate font-sans text-[11px] text-sts-muted">
                           {plainPreview(entry.html) || "No preview available"}
                         </span>
                       </span>
@@ -562,7 +562,7 @@ export function SettingsProfilePage({
                         type="button"
                         onClick={() => openEditSigForm(entry)}
                         title="Edit signature"
-                        className="shrink-0 rounded-md p-1.5 text-pen-subtle hover:bg-pen-blue-tint hover:text-pen-foreground"
+                        className="shrink-0 rounded-md p-1.5 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
                       >
                         <Pencil className="size-3.5" />
                       </button>
@@ -570,7 +570,7 @@ export function SettingsProfilePage({
                         type="button"
                         onClick={() => handleDeleteSignature(entry.id)}
                         title="Delete signature"
-                        className="shrink-0 rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        className="shrink-0 rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -582,7 +582,7 @@ export function SettingsProfilePage({
           </div>
 
           {showAddSigForm ? (
-            <div className="flex flex-col gap-3 rounded-md border border-pen-card-border bg-pen-bg p-3">
+            <div className="flex flex-col gap-3 rounded-md border border-sts-card-border bg-sts-bg p-3">
               <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
                   <FieldLabel>Signature name</FieldLabel>
@@ -590,7 +590,7 @@ export function SettingsProfilePage({
                     value={newSigLabel}
                     onChange={(e) => setNewSigLabel(e.target.value)}
                     placeholder="e.g. Support signature"
-                    className="h-9 rounded-md border-pen-card-border bg-pen-card px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none"
+                    className="h-9 rounded-md border-sts-card-border bg-sts-card px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none"
                   />
                 </div>
               </div>
@@ -604,7 +604,7 @@ export function SettingsProfilePage({
                         if (sigPasteRef.current) sigPasteRef.current.innerHTML = "";
                         setNewSigHtml("");
                       }}
-                      className="font-sans text-[11px] font-semibold text-pen-subtle hover:text-pen-foreground"
+                      className="font-sans text-[11px] font-semibold text-sts-subtle hover:text-sts-foreground"
                     >
                       Clear
                     </button>
@@ -626,14 +626,14 @@ export function SettingsProfilePage({
                   type="button"
                   variant="outline"
                   onClick={closeAddSigForm}
-                  className="h-8 rounded-md border-pen-card-border bg-transparent font-sans text-xs font-semibold text-pen-foreground hover:bg-pen-blue-tint"
+                  className="h-8 rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="button"
                   onClick={handleSaveSignature}
-                  className="h-8 rounded-md bg-pen-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90"
+                  className="h-8 rounded-md bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
                 >
                   {editingSigId ? "Save changes" : "Add signature"}
                 </Button>
@@ -644,7 +644,7 @@ export function SettingsProfilePage({
               type="button"
               variant="outline"
               onClick={openAddSigForm}
-              className="h-8 w-fit gap-1.5 rounded-md border-pen-card-border bg-transparent px-2.5 font-sans text-xs font-semibold text-pen-foreground hover:bg-pen-blue-tint"
+              className="h-8 w-fit gap-1.5 rounded-md border-sts-card-border bg-transparent px-2.5 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
             >
               <Plus className="size-3.5" />
               Add signature
@@ -658,17 +658,17 @@ export function SettingsProfilePage({
                 type="button"
                 onClick={() => setShowSigPreview((v) => !v)}
                 disabled={!activeSignature}
-                className="h-7 rounded-md border border-pen-card-border bg-transparent px-2.5 font-sans text-[11.5px] font-semibold text-pen-foreground hover:bg-pen-blue-tint disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-7 rounded-md border border-sts-card-border bg-transparent px-2.5 font-sans text-[11.5px] font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {showSigPreview ? "Hide preview" : "Show preview"}
               </button>
             </div>
             {!activeSignature ? (
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 Add a signature above and select it to preview and send it.
               </p>
             ) : showSigPreview ? (
-              <div className="overflow-hidden rounded-md bg-pen-bg p-3">
+              <div className="overflow-hidden rounded-md bg-sts-bg p-3">
                 <iframe
                   title="Signature preview"
                   srcDoc={`<body style="margin:0;padding:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${renderSignatureHtml(
@@ -692,10 +692,10 @@ export function SettingsProfilePage({
           </div>
         </div>
 
-        <Separator className="bg-pen-card-border" />
+        <Separator className="bg-sts-card-border" />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <p className="font-sans text-[11.5px] text-pen-muted">
+          <p className="font-sans text-[11.5px] text-sts-muted">
             Sign out works through Microsoft.
           </p>
           <div className="flex flex-1 justify-end gap-2.5">
@@ -703,7 +703,7 @@ export function SettingsProfilePage({
               type="button"
               variant="outline"
               onClick={handleDiscard}
-              className="h-8 min-w-[78px] rounded-md border-pen-card-border bg-transparent font-sans text-xs font-semibold text-pen-foreground hover:bg-pen-blue-tint"
+              className="h-8 min-w-[78px] rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
             >
               Discard
             </Button>
@@ -711,7 +711,7 @@ export function SettingsProfilePage({
               type="button"
               onClick={handleSave}
               disabled={saving || !isDirty}
-              className="h-8 min-w-[72px] rounded-md bg-pen-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 disabled:opacity-50"
+              className="h-8 min-w-[72px] rounded-md bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </Button>

@@ -136,6 +136,7 @@ export async function runBulkReassignJob(jobId: string): Promise<void> {
           job.createdById,
           ticket.title,
           `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
+          ticket.subDepartmentId,
         );
       } else if (newAssigneeId && newAssigneeId !== previousAssigneeId) {
         await prisma.activityLog.create({

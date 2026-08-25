@@ -33,9 +33,27 @@ function readBusinessHours(value: unknown): BusinessHours {
   }
 }
 
+/** Validate that `subDepartmentId` (if given) belongs to department `id`. */
+async function resolveSubDepartmentScope(
+  departmentId: string,
+  raw: string | null | undefined,
+): Promise<{ subDepartmentId: string | null } | { error: NextResponse }> {
+  const subDepartmentId = raw && raw.trim() ? raw.trim() : null
+  if (subDepartmentId) {
+    const sub = await prisma.subDepartment.findFirst({
+      where: { id: subDepartmentId, departmentId },
+      select: { id: true },
+    })
+    if (!sub) {
+      return { error: NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 }) }
+    }
+  }
+  return { subDepartmentId }
+}
+
 /** GET /api/departments/:id/sla-settings — SLA-04/WH-05 pause + business-hours config. */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
@@ -46,15 +64,31 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const scope = await resolveSubDepartmentScope(id, req.nextUrl.searchParams.get("subDepartmentId"))
+  if ("error" in scope) return scope.error
+
   const department = await prisma.department.findUnique({
     where: { id },
     select: { slaConfig: true, businessHours: true },
   })
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
+  // For a sub-department, show its own values, each field falling back to the
+  // department's when the sub-department hasn't overridden it yet.
+  let slaRaw: unknown = department.slaConfig
+  let bhRaw: unknown = department.businessHours
+  if (scope.subDepartmentId) {
+    const sub = await prisma.subDepartment.findUnique({
+      where: { id: scope.subDepartmentId },
+      select: { slaConfig: true, businessHours: true },
+    })
+    if (sub?.slaConfig != null) slaRaw = sub.slaConfig
+    if (sub?.businessHours != null) bhRaw = sub.businessHours
+  }
+
   return NextResponse.json({
-    slaConfig: readSlaConfig(department.slaConfig),
-    businessHours: readBusinessHours(department.businessHours),
+    slaConfig: readSlaConfig(slaRaw),
+    businessHours: readBusinessHours(bhRaw),
   })
 }
 
@@ -71,28 +105,52 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const body = await request.json().catch(() => ({}))
+  const scope = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
+  if ("error" in scope) return scope.error
+
   const department = await prisma.department.findUnique({
     where: { id },
     select: { slaConfig: true, businessHours: true },
   })
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
-  const body = await request.json().catch(() => ({}))
-  const nextSlaConfig = readSlaConfig({ ...readSlaConfig(department.slaConfig), ...body.slaConfig })
-  const nextBusinessHours = readBusinessHours({ ...readBusinessHours(department.businessHours), ...body.businessHours })
+  // Merge onto the current values for the target scope (sub-department when
+  // provided, else department); fall back to the department's values as the
+  // seed for a not-yet-overridden sub-department.
+  let baseSla: unknown = department.slaConfig
+  let baseBh: unknown = department.businessHours
+  if (scope.subDepartmentId) {
+    const sub = await prisma.subDepartment.findUnique({
+      where: { id: scope.subDepartmentId },
+      select: { slaConfig: true, businessHours: true },
+    })
+    if (sub?.slaConfig != null) baseSla = sub.slaConfig
+    if (sub?.businessHours != null) baseBh = sub.businessHours
+  }
+
+  const nextSlaConfig = readSlaConfig({ ...readSlaConfig(baseSla), ...body.slaConfig })
+  const nextBusinessHours = readBusinessHours({ ...readBusinessHours(baseBh), ...body.businessHours })
 
   if (nextSlaConfig.atRiskPct <= 0 || nextSlaConfig.atRiskPct > 100) {
     return NextResponse.json({ error: "atRiskPct must be between 1 and 100" }, { status: 400 })
   }
 
-  const updated = await prisma.department.update({
-    where: { id },
-    data: {
-      slaConfig: nextSlaConfig as Prisma.InputJsonValue,
-      businessHours: nextBusinessHours as Prisma.InputJsonValue,
-    },
-    select: { slaConfig: true, businessHours: true },
-  })
+  const data = {
+    slaConfig: nextSlaConfig as Prisma.InputJsonValue,
+    businessHours: nextBusinessHours as Prisma.InputJsonValue,
+  }
+  const updated = scope.subDepartmentId
+    ? await prisma.subDepartment.update({
+        where: { id: scope.subDepartmentId },
+        data,
+        select: { slaConfig: true, businessHours: true },
+      })
+    : await prisma.department.update({
+        where: { id },
+        data,
+        select: { slaConfig: true, businessHours: true },
+      })
 
   return NextResponse.json({
     slaConfig: readSlaConfig(updated.slaConfig),

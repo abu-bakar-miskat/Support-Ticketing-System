@@ -13,6 +13,7 @@ type UserHydratorProps = {
   subDepartmentId: string | null;
   subDepartmentIds: string[];
   memberships: { subDepartmentId: string; role: string }[];
+  isSuperAdmin?: boolean;
 };
 
 export function UserHydrator(props: UserHydratorProps) {
@@ -28,6 +29,7 @@ export function UserHydrator(props: UserHydratorProps) {
       subDepartmentId: props.subDepartmentId,
       subDepartmentIds: props.subDepartmentIds,
       memberships: props.memberships,
+      isSuperAdmin: props.isSuperAdmin,
     });
     return () => setUser(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps

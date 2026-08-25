@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { saveDepartmentEmailSenders } from "@/lib/email-config";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,6 +23,11 @@ export async function PUT(request: NextRequest) {
   if (deptScope && !deptScope.has(departmentId)) {
     return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
   }
+  const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
+  if (subDepartmentId) {
+    const sub = await prisma.subDepartment.findFirst({ where: { id: subDepartmentId, departmentId }, select: { id: true } });
+    if (!sub) return NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 });
+  }
 
   const rawSenders = Array.isArray(body?.senders) ? body.senders : null;
   if (!rawSenders) {
@@ -38,6 +44,6 @@ export async function PUT(request: NextRequest) {
     senders.push({ id: typeof s?.id === "string" ? s.id : undefined, name, email, isDefault: s?.isDefault === true });
   }
 
-  const saved = await saveDepartmentEmailSenders(departmentId, senders);
+  const saved = await saveDepartmentEmailSenders(departmentId, senders, subDepartmentId);
   return NextResponse.json({ senders: saved });
 }

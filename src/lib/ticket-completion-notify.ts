@@ -72,6 +72,7 @@ export async function notifyTicketCompletion({
       ticketTitle,
       completedByName: actorName,
       departmentId: subDepartment.departmentId,
+      subDepartmentId,
     }).catch(() => undefined)
   }
 }

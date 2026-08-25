@@ -28,7 +28,7 @@ type DepartmentOption = { id: string; name: string };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -105,24 +105,24 @@ export function SettingsProjectsPage({
       <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="pen-text-admin-title">
+            <h1 className="sts-text-admin-title">
               Projects
             </h1>
-            <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+            <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
               Workstreams assigned to people across teams.
             </p>
           </div>
           <Button
             onClick={() => setModal({ type: "create" })}
             disabled={isPending}
-            className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[140px]"
+            className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
             New project
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -149,7 +149,7 @@ export function SettingsProjectsPage({
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={6} className="py-0">
                     <div className="flex h-[52px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">No projects yet</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">No projects yet</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -157,13 +157,13 @@ export function SettingsProjectsPage({
               {projects.map((project) => (
                 <TableRow
                   key={project.id}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
+                  className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"
                 >
                   {/* Name */}
                   <TableCell className="py-0">
                     <div className="flex h-[52px] items-center gap-2.5">
                       <ProjectAvatar name={project.name} color={project.color} avatarUrl={project.avatarUrl} size={24} />
-                      <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
+                      <span className="truncate font-sans text-[13px] font-semibold text-sts-foreground">
                         {project.name}
                       </span>
                     </div>
@@ -173,11 +173,11 @@ export function SettingsProjectsPage({
                   <TableCell className="py-0">
                     <div className="flex h-[52px] items-center">
                       {project.departmentName ? (
-                        <span className="inline-flex items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted">
+                        <span className="inline-flex items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
                           {project.departmentName}
                         </span>
                       ) : (
-                        <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       )}
                     </div>
                   </TableCell>
@@ -186,14 +186,14 @@ export function SettingsProjectsPage({
                   <TableCell className="py-0">
                     <div className="flex h-[52px] items-center">
                       {project.members.length === 0 ? (
-                        <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       ) : (
                         <div className="flex items-center -space-x-1.5">
                           {project.members.slice(0, 5).map((m) => (
                             <MemberAvatar key={m.id} name={m.name} color={m.avatarColor} avatarUrl={m.avatarUrl} size={6} />
                           ))}
                           {project.members.length > 5 && (
-                            <span className="flex size-6 items-center justify-center rounded-full bg-pen-surface font-sans text-[8.5px] text-pen-subtle ring-2 ring-pen-card">
+                            <span className="flex size-6 items-center justify-center rounded-full bg-sts-surface font-sans text-[8.5px] text-sts-subtle ring-2 ring-sts-card">
                               +{project.members.length - 5}
                             </span>
                           )}
@@ -211,7 +211,7 @@ export function SettingsProjectsPage({
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-id transition-colors hover:text-pen-blue"
+                          className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-id transition-colors hover:text-sts-blue"
                         >
                           <ExternalLink className="size-3 shrink-0" />
                           <span className="max-w-[110px] truncate">
@@ -219,7 +219,7 @@ export function SettingsProjectsPage({
                           </span>
                         </a>
                       ) : (
-                        <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       )}
                     </div>
                   </TableCell>
@@ -227,7 +227,7 @@ export function SettingsProjectsPage({
                   {/* Open count */}
                   <TableCell className="py-0">
                     <div className="flex h-[52px] items-center">
-                      <span className="font-mono text-xs font-semibold text-pen-foreground">
+                      <span className="font-mono text-xs font-semibold text-sts-foreground">
                         {project.openCount}
                       </span>
                     </div>
@@ -239,7 +239,7 @@ export function SettingsProjectsPage({
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           type="button"
-                          className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                           aria-label={`Actions for ${project.name}`}
                         >
                           <MoreHorizontal className="size-3.5" />

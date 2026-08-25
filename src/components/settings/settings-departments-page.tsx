@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, UserCog, Zap, Mail,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -33,11 +33,6 @@ import {
   updateAdminDepartment,
   deleteAdminDepartment,
   createAdminSubDepartment,
-  getDepartmentMailboxConnections,
-  createDepartmentMailboxConnection,
-  updateMailboxConnection,
-  deleteMailboxConnection,
-  type MailboxConnection,
 } from "@/lib/api/admin";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -114,41 +109,41 @@ export function UserPickerDropdown({
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
       <PopoverTrigger
         type="button"
-        className="flex h-7 items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[11.5px] text-pen-muted hover:border-pen-id hover:text-pen-foreground"
+        className="flex h-7 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:border-sts-id hover:text-sts-foreground"
       >
         <UserPlus className="size-3 shrink-0" />
         {label}
         <ChevronDown className={cn("size-3 shrink-0 transition-transform", open && "rotate-180")} />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-64 p-0">
-        <div className="border-b border-pen-card-border p-2">
+        <div className="border-b border-sts-card-border p-2">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-pen-subtle" />
+            <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-sts-subtle" />
             <input
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search people…"
-              className="h-7 w-full rounded-md border border-pen-card-border bg-pen-surface pl-6 pr-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+              className="h-7 w-full rounded-md border border-sts-card-border bg-sts-surface pl-6 pr-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
             />
           </div>
         </div>
         <div className="max-h-48 overflow-y-auto p-1">
           {filtered.length === 0 ? (
-            <p className="py-3 text-center font-sans text-[12px] text-pen-subtle">No users found</p>
+            <p className="py-3 text-center font-sans text-[12px] text-sts-subtle">No users found</p>
           ) : filtered.map((u) => (
             <button
               key={u.id}
               type="button"
               onClick={() => { onSelect(u); setOpen(false); setSearch(""); }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-pen-blue-tint"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-sts-blue-tint"
             >
               <Avatar name={u.name} size={22} avatarUrl={u.avatarUrl ?? null} />
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate font-sans text-[12px] text-pen-foreground">{u.name}</p>
-                <p className="truncate font-sans text-[11.5px] text-pen-subtle">{u.email}</p>
+                <p className="truncate font-sans text-[12px] text-sts-foreground">{u.name}</p>
+                <p className="truncate font-sans text-[11.5px] text-sts-subtle">{u.email}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-0.5 font-sans text-[9.5px] text-pen-subtle capitalize">{u.role}</span>
+              <span className="shrink-0 rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">{u.role}</span>
             </button>
           ))}
         </div>
@@ -195,14 +190,14 @@ export function ProjectAccessPicker({
 
   return (
     <div>
-      <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Project access</label>
-      <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
+      <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Project access</label>
+      <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
         <button
           type="button"
           onClick={() => onFullAccessChange(false)}
           className={cn(
             "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-            !fullAccess ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+            !fullAccess ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
           )}
         >
           Select projects
@@ -211,30 +206,30 @@ export function ProjectAccessPicker({
           type="button"
           onClick={() => onFullAccessChange(true)}
           className={cn(
-            "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[12px] font-medium transition-colors",
-            fullAccess ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+            "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
+            fullAccess ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
           )}
         >
           Full access
         </button>
       </div>
       {fullAccess ? (
-        <p className="mt-1.5 font-sans text-[11.5px] text-pen-subtle">
+        <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">
           Can see and create tickets on every project in {deptName}.
         </p>
       ) : (
-        <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-pen-card-border">
+        <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-sts-card-border">
           {loadingProjects ? (
-            <p className="py-3 text-center font-sans text-[12px] text-pen-subtle">Loading projects…</p>
+            <p className="py-3 text-center font-sans text-[12px] text-sts-subtle">Loading projects…</p>
           ) : projectsError ? (
             <div className="flex flex-col items-center gap-1.5 py-3">
               <p className="font-sans text-[12px] text-red-500">Failed to load projects.</p>
-              <button type="button" onClick={loadProjects} className="font-sans text-[11.5px] text-pen-id hover:underline">
+              <button type="button" onClick={loadProjects} className="font-sans text-[11.5px] text-sts-id hover:underline">
                 Retry
               </button>
             </div>
           ) : projects.length === 0 ? (
-            <p className="py-3 text-center font-sans text-[12px] text-pen-subtle">No projects in this department yet.</p>
+            <p className="py-3 text-center font-sans text-[12px] text-sts-subtle">No projects in this department yet.</p>
           ) : (
             [...projects]
               .sort((a, b) => Number(selectedProjectIds.has(b.id)) - Number(selectedProjectIds.has(a.id)))
@@ -245,17 +240,17 @@ export function ProjectAccessPicker({
                   key={p.id}
                   type="button"
                   onClick={() => onToggleProject(p.id)}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-pen-surface"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-sts-surface"
                 >
                   <span
                     className={cn(
                       "flex size-4 shrink-0 items-center justify-center rounded border",
-                      checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border",
+                      checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border",
                     )}
                   >
                     {checked && <Check className="size-3 text-white dark:text-gray-900" />}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">{p.name}</span>
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">{p.name}</span>
                 </button>
               );
             })
@@ -325,42 +320,42 @@ export function GrantAccessModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-pen-foreground">Grant access to {deptName}</p>
-          <button type="button" onClick={onClose}><X className="size-4 text-pen-muted" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Grant access to {deptName}</p>
+          <button type="button" onClick={onClose}><X className="size-4 text-sts-muted" /></button>
         </div>
         <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">User <span className="text-red-500">*</span></label>
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">User <span className="text-red-500">*</span></label>
             <div className="relative mb-1.5">
-              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface pl-8 pr-3 font-sans text-[12.5px] outline-none focus:border-pen-id" />
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] outline-none focus:border-sts-id" />
             </div>
-            <div className="max-h-36 overflow-y-auto rounded-lg border border-pen-card-border">
+            <div className="max-h-36 overflow-y-auto rounded-lg border border-sts-card-border">
               {filtered.map((u) => (
                 <button key={u.id} type="button" onClick={() => { setUserId(u.id); setUserName(u.name); }}
-                  className={cn("flex w-full items-center gap-2 px-3 py-2 text-left", userId === u.id ? "bg-pen-blue-tint" : "hover:bg-pen-surface")}>
+                  className={cn("flex w-full items-center gap-2 px-3 py-2 text-left", userId === u.id ? "bg-sts-blue-tint" : "hover:bg-sts-surface")}>
                   <Avatar name={u.name} size={22} avatarUrl={u.avatarUrl ?? null} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-sans text-[12px] text-pen-foreground">{u.name}</p>
-                    <p className="font-sans text-[11.5px] text-pen-subtle">{u.email}</p>
+                    <p className="font-sans text-[12px] text-sts-foreground">{u.name}</p>
+                    <p className="font-sans text-[11.5px] text-sts-subtle">{u.email}</p>
                   </div>
-                  {userId === u.id && <Check className="size-3.5 shrink-0 text-pen-id" />}
+                  {userId === u.id && <Check className="size-3.5 shrink-0 text-sts-id" />}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Access duration</label>
-            <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
+            <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
               <button
                 type="button"
                 onClick={() => setPermanent(true)}
                 className={cn(
                   "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                  permanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                  permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 Permanent
@@ -369,8 +364,8 @@ export function GrantAccessModal({
                 type="button"
                 onClick={() => setPermanent(false)}
                 className={cn(
-                  "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[12px] font-medium transition-colors",
-                  !permanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                  "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
+                  !permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 Set expiry
@@ -381,7 +376,7 @@ export function GrantAccessModal({
                 type="date"
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
-                className="mt-2 h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+                className="mt-2 h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
               />
             )}
           </div>
@@ -394,13 +389,13 @@ export function GrantAccessModal({
             onToggleProject={toggleProject}
           />
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Reason (optional)</label>
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Cross-team ticket assignment" className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id" />
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Reason (optional)</label>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Cross-team ticket assignment" className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id" />
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-pen-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12.5px] text-pen-muted hover:bg-pen-surface">Cancel</button>
-          <button type="button" disabled={!canSubmit || saving} onClick={submit} className="h-8 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+        <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
+          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
+          <button type="button" disabled={!canSubmit || saving} onClick={submit} className="h-8 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
             {saving ? "Granting…" : "Grant access"}
           </button>
         </div>
@@ -548,20 +543,20 @@ function NewDepartmentModal({
   const managerIds = selectedManagers.map((m) => m.id);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
       <div
-        className="flex w-full max-w-lg flex-col rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl"
+        className="flex w-full max-w-lg flex-col rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-pen-blue/10">
-              <DepartmentIcon className="size-4 text-pen-blue" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-sts-blue/10">
+              <DepartmentIcon className="size-4 text-sts-blue" />
             </div>
-            <p className="font-sans text-[14px] font-semibold text-pen-foreground">New department</p>
+            <p className="font-sans text-[14px] font-semibold text-sts-foreground">New department</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground">
             <X className="size-4" />
           </button>
         </div>
@@ -570,7 +565,7 @@ function NewDepartmentModal({
         <div className="flex flex-col gap-5 px-5 py-5">
           {/* Name */}
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Department name <span className="text-red-500">*</span>
             </label>
             <input
@@ -579,13 +574,13 @@ function NewDepartmentModal({
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
               placeholder="e.g. Engineering"
-              className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
+              className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-blue/60"
             />
           </div>
 
           {/* Template */}
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Template
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -599,14 +594,14 @@ function NewDepartmentModal({
                     className={cn(
                       "rounded-lg border px-2.5 py-2 text-left transition-colors",
                       on
-                        ? "border-pen-blue bg-pen-blue-tint"
-                        : "border-pen-card-border hover:border-pen-blue/40",
+                        ? "border-sts-blue bg-sts-blue-tint"
+                        : "border-sts-card-border hover:border-sts-blue/40",
                     )}
                   >
-                    <div className={cn("font-sans text-[12.5px] font-semibold", on ? "text-pen-blue" : "text-pen-foreground")}>
+                    <div className={cn("font-sans text-[12.5px] font-semibold", on ? "text-sts-blue" : "text-sts-foreground")}>
                       {departmentTypeLabel(t)}
                     </div>
-                    <div className="mt-0.5 font-sans text-[10.5px] leading-tight text-pen-subtle">
+                    <div className="mt-0.5 font-sans text-[10.5px] leading-tight text-sts-subtle">
                       {departmentTypeDescription(t)}
                     </div>
                   </button>
@@ -618,19 +613,19 @@ function NewDepartmentModal({
           {/* Managers */}
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <label className="font-sans text-[11.5px] font-medium text-pen-muted">Managers <span className="text-pen-subtle font-normal">(optional)</span></label>
+              <label className="font-sans text-[11.5px] font-medium text-sts-muted">Managers <span className="text-sts-subtle font-normal">(optional)</span></label>
               <span className="flex-1" />
               <UserPickerDropdown label="Add manager" users={allUsers} excludeIds={managerIds} onSelect={addManager} />
             </div>
             {selectedManagers.length === 0 ? (
-              <p className="font-sans text-[11.5px] text-pen-subtle">No managers selected.</p>
+              <p className="font-sans text-[11.5px] text-sts-subtle">No managers selected.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {selectedManagers.map((m) => (
-                  <div key={m.id} className="flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface py-1 pl-1.5 pr-2">
+                  <div key={m.id} className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                     <UserAvatar name={m.name} size={18} avatarUrl={m.avatarUrl ?? null} />
-                    <span className="font-sans text-[11.5px] text-pen-foreground">{m.name}</span>
-                    <button type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-pen-subtle hover:text-red-500">
+                    <span className="font-sans text-[11.5px] text-sts-foreground">{m.name}</span>
+                    <button type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
                       <X className="size-2.5" />
                     </button>
                   </div>
@@ -641,8 +636,8 @@ function NewDepartmentModal({
 
           {/* Sub departments */}
           <div>
-            <label className="mb-2 block font-sans text-[11.5px] font-medium text-pen-muted">
-              Sub departments <span className="text-pen-subtle font-normal">(optional)</span>
+            <label className="mb-2 block font-sans text-[11.5px] font-medium text-sts-muted">
+              Sub departments <span className="text-sts-subtle font-normal">(optional)</span>
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -650,21 +645,21 @@ function NewDepartmentModal({
                 onChange={(e) => handleSubDepartmentNameChange(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubDepartment(); } }}
                 placeholder="Sub department name…"
-                className="h-8 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-blue/60"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-blue/60"
               />
               <input
                 value={subDepartmentPrefix}
                 onChange={(e) => handlePrefixChange(e.target.value)}
                 placeholder="Prefix"
                 maxLength={5}
-                className="h-8 w-20 rounded-lg border border-pen-card-border bg-pen-surface px-2 text-center font-mono text-[12px] text-pen-foreground uppercase outline-none placeholder:text-pen-subtle placeholder:normal-case focus:border-pen-blue/60"
+                className="h-8 w-20 rounded-lg border border-sts-card-border bg-sts-surface px-2 text-center font-mono text-[12px] text-sts-foreground uppercase outline-none placeholder:text-sts-subtle placeholder:normal-case focus:border-sts-blue/60"
                 title="Custom prefix — 2–5 letters, used on this sub department's ticket IDs (auto-filled from the name, editable)"
               />
               <button
                 type="button"
                 onClick={addSubDepartment}
                 disabled={!subDepartmentInput.trim()}
-                className="flex h-8 items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-blue/40 hover:text-pen-blue disabled:opacity-40"
+                className="flex h-8 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-40"
               >
                 <Plus className="size-3.5" /> Add
               </button>
@@ -672,10 +667,10 @@ function NewDepartmentModal({
             {subDepartments.length > 0 && (
               <div className="mt-2 flex flex-col gap-1">
                 {subDepartments.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5">
-                    <span className="font-mono text-[11.5px] text-pen-id">{t.prefix}</span>
-                    <span className="font-sans text-[12.5px] text-pen-foreground flex-1">{t.name}</span>
-                    <button type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-pen-subtle hover:text-red-500">
+                  <div key={t.id} className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5">
+                    <span className="font-mono text-[11.5px] text-sts-id">{t.prefix}</span>
+                    <span className="font-sans text-[12.5px] text-sts-foreground flex-1">{t.name}</span>
+                    <button type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-sts-subtle hover:text-red-500">
                       <X className="size-3" />
                     </button>
                   </div>
@@ -688,15 +683,15 @@ function NewDepartmentModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-pen-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12.5px] text-pen-muted hover:bg-pen-surface">
+        <div className="flex items-center justify-end gap-2 border-t border-sts-card-border px-5 py-3">
+          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">
             Cancel
           </button>
           <button
             type="button"
             disabled={!name.trim() || saving}
             onClick={handleSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {saving ? (
               <span className="flex items-center gap-1.5">
@@ -717,215 +712,6 @@ function NewDepartmentModal({
 }
 
 // ── Department Card ───────────────────────────────────────────────────────────
-
-const DEPT_MAILBOX_STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-pen-green/10 text-pen-green",
-  AUTH_ERROR: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
-  UNREACHABLE: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-};
-
-function DepartmentMailboxSection({
-  departmentId,
-  subDepartments,
-  canManage,
-}: {
-  departmentId: string;
-  subDepartments: { id: string; name: string }[];
-  canManage: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
-  const [showConnectForm, setShowConnectForm] = useState(false);
-  const [address, setAddress] = useState("");
-  const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAddress, setEditAddress] = useState("");
-  const loading = expanded && connections === null;
-
-  useEffect(() => {
-    if (!expanded || connections !== null) return;
-    getDepartmentMailboxConnections(departmentId)
-      .then(setConnections)
-      .catch(() => setConnections([]));
-  }, [expanded, connections, departmentId]);
-
-  async function connect() {
-    if (!address.trim() || !teamId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const created = await createDepartmentMailboxConnection(departmentId, { teamId, address: address.trim() });
-      setConnections((prev) => [...(prev ?? []), created]);
-      setAddress("");
-      setShowConnectForm(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to connect mailbox");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveEdit(id: string) {
-    if (!editAddress.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await updateMailboxConnection(id, { address: editAddress.trim() });
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
-      setEditingId(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update mailbox");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function disconnect(id: string) {
-    await deleteMailboxConnection(id).catch(() => null);
-    setConnections((prev) => (prev ?? []).filter((c) => c.id !== id));
-  }
-
-  const list = connections ?? [];
-  const subDeptName = (id: string) => subDepartments.find((s) => s.id === id)?.name ?? "—";
-
-  return (
-    <div className="border-t border-pen-card-border px-5 py-3">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 text-left"
-      >
-        <Shield className="size-3.5 shrink-0 text-pen-muted" />
-        <span className="font-sans text-[11.5px] font-semibold text-pen-foreground flex-1">
-          Shared mailboxes
-          {list.length > 0 && <span className="ml-1.5 font-normal text-pen-subtle">({list.length})</span>}
-        </span>
-        <ChevronDown className={cn("size-3.5 text-pen-subtle transition-transform", expanded && "rotate-180")} />
-      </button>
-      {expanded && (
-        <div className="mt-2 flex flex-col gap-2">
-          {loading ? (
-            <p className="font-sans text-[11.5px] text-pen-subtle">Loading…</p>
-          ) : list.length === 0 ? (
-            <p className="font-sans text-[11.5px] text-pen-subtle">No mailboxes connected yet.</p>
-          ) : (
-            list.map((c) => (
-              <div key={c.id} className="flex flex-col gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2">
-                {editingId === c.id ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      value={editAddress}
-                      onChange={(e) => setEditAddress(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
-                      className="min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
-                    />
-                    <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-md p-1 text-pen-green hover:bg-pen-green/10">
-                      <Check className="size-3.5" />
-                    </button>
-                    <button type="button" onClick={() => setEditingId(null)} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-sans text-[12px] font-medium text-pen-foreground">{c.address}</p>
-                      <p className="truncate font-sans text-[10.5px] text-pen-subtle">Files into {subDeptName(c.subDepartmentId)}</p>
-                    </div>
-                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold", DEPT_MAILBOX_STATUS_STYLES[c.status])}>
-                      {c.status}
-                    </span>
-                    {canManage && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                          title="Edit address"
-                          className="rounded-md p-1 text-pen-subtle hover:bg-pen-card hover:text-pen-foreground"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => disconnect(c.id)}
-                          title="Disconnect"
-                          className="rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-                {c.status !== "ACTIVE" && c.lastErrorMessage && (
-                  <p className="font-sans text-[10.5px] text-red-500">{c.lastErrorMessage}</p>
-                )}
-              </div>
-            ))
-          )}
-
-          {canManage && (
-            showConnectForm ? (
-              subDepartments.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-pen-subtle">Add a team to this department before connecting a mailbox.</p>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <input
-                    autoFocus
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") connect(); }}
-                    placeholder="support@yourcompany.com"
-                    className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
-                  />
-                  <select
-                    value={teamId}
-                    onChange={(e) => setTeamId(e.target.value)}
-                    className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
-                  >
-                    {subDepartments.map((s) => (
-                      <option key={s.id} value={s.id}>Files into {s.name}</option>
-                    ))}
-                  </select>
-                  {error && <p className="font-sans text-[10.5px] text-red-500">{error}</p>}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={connect}
-                      disabled={saving || !address.trim() || !teamId}
-                      className="rounded-md bg-pen-blue px-2.5 py-1 font-sans text-[11.5px] font-medium text-white disabled:opacity-50"
-                    >
-                      {saving ? "Connecting…" : "Connect"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowConnectForm(false); setError(null); }}
-                      className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowConnectForm(true)}
-                className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
-              >
-                <Plus className="size-3" />
-                Connect mailbox
-              </button>
-            )
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function DepartmentCard({
   dept,
@@ -1114,17 +900,17 @@ function DepartmentCard({
           onClose={() => setShowGrantModal(false)}
         />
       )}
-      <div className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
+      <div className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
 
         {/* ── Card header ── */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pen-blue/10">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
             <DepartmentIconVisual
               name={dept.name}
               id={dept.id}
               isHub={dept.isHub}
               size="lg"
-              className="text-pen-blue"
+              className="text-sts-blue"
             />
           </div>
           <div className="min-w-0 flex-1">
@@ -1135,16 +921,16 @@ function DepartmentCard({
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") { setEditing(false); setEditName(dept.name); } }}
-                  className="min-w-0 flex-1 rounded-lg border border-pen-blue/50 bg-pen-surface px-3 py-1 font-sans text-[14px] font-semibold text-pen-foreground outline-none"
+                  className="min-w-0 flex-1 rounded-lg border border-sts-blue/50 bg-sts-surface px-3 py-1 font-sans text-[14px] font-semibold text-sts-foreground outline-none"
                 />
-                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-md p-1.5 text-pen-green hover:bg-pen-green/10"><Check className="size-3.5" /></button>
-                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-md p-1.5 text-pen-subtle hover:text-pen-foreground"><X className="size-3.5" /></button>
+                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-md p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
+                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-md p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="pen-text-modal-title">{dept.name}</h3>
+                <h3 className="sts-text-modal-title">{dept.name}</h3>
                 {dept.type && dept.type !== "development" ? (
-                  <span className="inline-flex items-center rounded-full bg-pen-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-pen-blue">
+                  <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
                     {departmentTypeLabel(dept.type)}
                   </span>
                 ) : null}
@@ -1152,62 +938,30 @@ function DepartmentCard({
             )}
             {/* Stats row */}
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+              <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                 <Users className="size-3 shrink-0" />
                 {dept._count.subDepartments} team{dept._count.subDepartments !== 1 ? "s" : ""}
               </span>
               {dept._count.projects !== undefined && (
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <FolderKanban className="size-3 shrink-0" />
                   {dept._count.projects} project{dept._count.projects !== 1 ? "s" : ""}
                 </span>
               )}
               {dept._count.members !== undefined && (
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <Users className="size-3 shrink-0" />
                   {dept._count.members} member{dept._count.members !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
           </div>
-          {!editing && (
-            <div className="flex items-center gap-0.5">
-              <a
-                href={`/settings/departments/${dept.id}/sla`}
-                title="SLA policies"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <Clock className="size-3.5" />
-              </a>
-              <a
-                href={`/settings/departments/${dept.id}/assignment`}
-                title="Assignment methods"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <UserCog className="size-3.5" />
-              </a>
-              <a
-                href={`/settings/departments/${dept.id}/rules`}
-                title="Automation rules"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <Zap className="size-3.5" />
-              </a>
-              <a
-                href={`/settings/departments/${dept.id}/mailbox`}
-                title="Mailbox"
-                className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-              >
-                <Mail className="size-3.5" />
-              </a>
-            </div>
-          )}
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setEditing(true)} className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground" title="Rename">
+              <button type="button" onClick={() => setEditing(true)} className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Rename">
                 <Pencil className="size-3.5" />
               </button>
-              <button type="button" onClick={() => onDelete(dept.id)} className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Delete">
+              <button type="button" onClick={() => onDelete(dept.id)} className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Delete">
                 <Trash2 className="size-3.5" />
               </button>
             </div>
@@ -1215,16 +969,16 @@ function DepartmentCard({
         </div>
 
         {/* ── Managers (collapsible) ── */}
-        <div className="border-t border-pen-card-border px-5 py-3">
+        <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
             onClick={() => setManagersExpanded((v) => !v)}
             className="flex w-full items-center gap-2 text-left"
           >
-            <Shield className="size-3.5 shrink-0 text-pen-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-pen-foreground flex-1">
+            <Shield className="size-3.5 shrink-0 text-sts-muted" />
+            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Managers
-              {managers.length > 0 && <span className="ml-1.5 font-normal text-pen-subtle">({managers.length})</span>}
+              {managers.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({managers.length})</span>}
             </span>
             {managers.length > 0 && !managersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
@@ -1232,13 +986,13 @@ function DepartmentCard({
                   <Avatar key={m.id} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                 ))}
                 {managers.length > 4 && (
-                  <span className="flex size-[18px] items-center justify-center rounded-full bg-pen-surface border border-pen-card-border font-sans text-[9px] text-pen-subtle">
+                  <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
                     +{managers.length - 4}
                   </span>
                 )}
               </div>
             )}
-            <ChevronDown className={cn("size-3.5 text-pen-subtle transition-transform", managersExpanded && "rotate-180")} />
+            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", managersExpanded && "rotate-180")} />
           </button>
           {managersExpanded && (
             <>
@@ -1246,14 +1000,14 @@ function DepartmentCard({
                 <UserPickerDropdown label="Assign manager" users={allUsers} excludeIds={managerIds} onSelect={assignManager} />
               </div>
               {managers.length === 0 ? (
-                <p className="mt-1.5 font-sans text-[11.5px] text-pen-subtle">No managers assigned yet.</p>
+                <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">No managers assigned yet.</p>
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {managers.map((m) => (
-                    <div key={m.id} className="group flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface py-1 pl-1.5 pr-2">
+                    <div key={m.id} className="group flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                       <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                      <span className="font-sans text-[11.5px] text-pen-foreground">{m.user.name}</span>
-                      <button type="button" onClick={() => removeManager(m.userId)} className="ml-0.5 rounded-full p-0.5 text-pen-subtle transition-opacity hover:text-red-500">
+                      <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                      <button type="button" onClick={() => removeManager(m.userId)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500">
                         <X className="size-2.5" />
                       </button>
                     </div>
@@ -1264,19 +1018,17 @@ function DepartmentCard({
           )}
         </div>
 
-        <DepartmentMailboxSection departmentId={dept.id} subDepartments={dept.subDepartments} canManage />
-
         {/* ── Members (collapsible) ── */}
-        <div className="border-t border-pen-card-border px-5 py-3">
+        <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
             onClick={() => setMembersExpanded((v) => !v)}
             className="flex w-full items-center gap-2 text-left"
           >
-            <Users className="size-3.5 shrink-0 text-pen-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-pen-foreground flex-1">
+            <Users className="size-3.5 shrink-0 text-sts-muted" />
+            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Members
-              {allMemberEntries.length > 0 && <span className="ml-1.5 font-normal text-pen-subtle">({allMemberEntries.length})</span>}
+              {allMemberEntries.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({allMemberEntries.length})</span>}
             </span>
             {allMemberEntries.length > 0 && !membersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
@@ -1284,13 +1036,13 @@ function DepartmentCard({
                   <Avatar key={m.userId} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                 ))}
                 {allMemberEntries.length > 4 && (
-                  <span className="flex size-[18px] items-center justify-center rounded-full bg-pen-surface border border-pen-card-border font-sans text-[9px] text-pen-subtle">
+                  <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
                     +{allMemberEntries.length - 4}
                   </span>
                 )}
               </div>
             )}
-            <ChevronDown className={cn("size-3.5 text-pen-subtle transition-transform", membersExpanded && "rotate-180")} />
+            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", membersExpanded && "rotate-180")} />
           </button>
           {membersExpanded && (
             <>
@@ -1303,20 +1055,20 @@ function DepartmentCard({
                 />
               </div>
               {allMemberEntries.length === 0 ? (
-                <p className="mt-1.5 font-sans text-[11.5px] text-pen-subtle">No members yet.</p>
+                <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">No members yet.</p>
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {allMemberEntries.map((m) => (
-                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface py-1 pl-1.5 pr-2">
+                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                       <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                      <span className="font-sans text-[11.5px] text-pen-foreground">{m.user.name}</span>
-                      <span className="ml-0.5 rounded-full bg-pen-surface px-1 py-0.5 font-sans text-[9.5px] text-pen-subtle capitalize">{m.user.role}</span>
+                      <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                      <span className="ml-0.5 rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">{m.user.role}</span>
                       {!managerIds.includes(m.userId) && (
                         <button
                           type="button"
                           onClick={() => (m.source === "direct" ? removeDirectMember(m.userId) : setConfirmRemoveMember({ userId: m.userId, name: m.user.name }))}
                           title="Remove from department"
-                          className="ml-0.5 rounded-full p-0.5 text-pen-subtle transition-opacity hover:text-red-500"
+                          className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500"
                         >
                           <X className="size-2.5" />
                         </button>
@@ -1330,17 +1082,17 @@ function DepartmentCard({
         </div>
 
         {/* ── Cross-dept access (collapsible) ── */}
-        <div className="border-t border-pen-card-border px-5 py-3">
+        <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             className="flex w-full items-center gap-2 text-left"
           >
-            <Users className="size-3.5 shrink-0 text-pen-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-pen-foreground flex-1">
+            <Users className="size-3.5 shrink-0 text-sts-muted" />
+            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Cross-department access
               {accessGrants.length > 0 && (
-                <span className="ml-1.5 font-normal text-pen-subtle">({accessGrants.length})</span>
+                <span className="ml-1.5 font-normal text-sts-subtle">({accessGrants.length})</span>
               )}
             </span>
             {accessGrants.length > 0 && (
@@ -1348,17 +1100,17 @@ function DepartmentCard({
                 {accessGrants.slice(0, 3).map((g) => <Avatar key={g.id} name={g.user.name} size={18} avatarUrl={g.user.avatarUrl ?? null} />)}
               </div>
             )}
-            <ChevronDown className={cn("size-3.5 text-pen-subtle transition-transform", expanded && "rotate-180")} />
+            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", expanded && "rotate-180")} />
           </button>
 
           {expanded && (
             <div className="mt-2 flex flex-col gap-1">
               {accessGrants.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-pen-subtle">No temporary access grants.</p>
+                <p className="font-sans text-[11.5px] text-sts-subtle">No temporary access grants.</p>
               ) : (
                 accessGrants.map((g) => (
                   <Fragment key={g.id}>
-                  <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-pen-surface">
+                  <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-sts-surface">
                     <button
                       type="button"
                       onClick={() => openEditGrant(g)}
@@ -1367,8 +1119,8 @@ function DepartmentCard({
                     >
                       <Avatar name={g.user.name} size={22} avatarUrl={g.user.avatarUrl ?? null} />
                       <div className="min-w-0 flex-1">
-                        <p className="font-sans text-[12px] font-semibold text-pen-foreground">{g.user.name}</p>
-                        <p className="font-sans text-[11.5px] text-pen-subtle">
+                        <p className="font-sans text-[12px] font-semibold text-sts-foreground">{g.user.name}</p>
+                        <p className="font-sans text-[11.5px] text-sts-subtle">
                           {g.reason ?? "No reason"}
                           {g.expiresAt && ` · expires ${new Date(g.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
                         </p>
@@ -1377,7 +1129,7 @@ function DepartmentCard({
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 font-sans text-[11.5px]",
                           g.fullAccess
-                            ? "bg-pen-blue/10 text-pen-blue"
+                            ? "bg-sts-blue/10 text-sts-blue"
                             : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
                         )}
                       >
@@ -1391,25 +1143,25 @@ function DepartmentCard({
                         </span>
                       )}
                     </button>
-                    <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="shrink-0 rounded-md p-1 text-pen-subtle hover:text-red-500">
+                    <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="shrink-0 rounded-md p-1 text-sts-subtle hover:text-red-500">
                       <X className="size-3" />
                     </button>
                   </div>
                   {editingGrantId === g.userId && (
-                      <div className="mx-2 mb-2 flex flex-col gap-3 rounded-lg border border-pen-card-border bg-pen-bg p-3">
+                      <div className="mx-2 mb-2 flex flex-col gap-3 rounded-lg border border-sts-card-border bg-sts-bg p-3">
                         {editLoading ? (
-                          <p className="py-2 text-center font-sans text-[12px] text-pen-subtle">Loading…</p>
+                          <p className="py-2 text-center font-sans text-[12px] text-sts-subtle">Loading…</p>
                         ) : (
                           <>
                             <div>
-                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Access duration</label>
-                              <div className="flex h-8 overflow-hidden rounded-lg border border-pen-card-border">
+                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
+                              <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border">
                                 <button
                                   type="button"
                                   onClick={() => setEditPermanent(true)}
                                   className={cn(
                                     "flex flex-1 items-center justify-center font-sans text-[11.5px] font-medium transition-colors",
-                                    editPermanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                                    editPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                                   )}
                                 >
                                   Permanent
@@ -1418,8 +1170,8 @@ function DepartmentCard({
                                   type="button"
                                   onClick={() => setEditPermanent(false)}
                                   className={cn(
-                                    "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[11.5px] font-medium transition-colors",
-                                    !editPermanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                                    "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[11.5px] font-medium transition-colors",
+                                    !editPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                                   )}
                                 >
                                   Set expiry
@@ -1430,7 +1182,7 @@ function DepartmentCard({
                                   type="date"
                                   value={editExpiresAt}
                                   onChange={(e) => setEditExpiresAt(e.target.value)}
-                                  className="mt-2 h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-id"
+                                  className="mt-2 h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
                                 />
                               )}
                             </div>
@@ -1443,22 +1195,22 @@ function DepartmentCard({
                               onToggleProject={toggleEditProject}
                             />
                             <div>
-                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Reason (optional)</label>
+                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Reason (optional)</label>
                               <input
                                 value={editReason}
                                 onChange={(e) => setEditReason(e.target.value)}
-                                className="h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-id"
+                                className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
                               />
                             </div>
                             <div className="flex justify-end gap-2">
-                              <button type="button" onClick={() => setEditingGrantId(null)} className="h-8 rounded-lg border border-pen-card-border px-3 font-sans text-[11.5px] text-pen-muted hover:bg-pen-surface">
+                              <button type="button" onClick={() => setEditingGrantId(null)} className="h-8 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:bg-sts-surface">
                                 Cancel
                               </button>
                               <button
                                 type="button"
                                 disabled={editSaving || (!editFullAccess && editSelectedProjectIds.size === 0)}
                                 onClick={() => saveGrantEdit(g.userId)}
-                                className="h-8 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                                className="h-8 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
                               >
                                 {editSaving ? "Saving…" : "Save"}
                               </button>
@@ -1473,7 +1225,7 @@ function DepartmentCard({
               <button
                 type="button"
                 onClick={() => setShowGrantModal(true)}
-                className="mt-1 flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border px-3 font-sans text-[11.5px] text-pen-subtle hover:border-pen-blue/40 hover:text-pen-blue transition-colors"
+                className="mt-1 flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] text-sts-subtle hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
               >
                 <Plus className="size-3" /> Grant access
               </button>
@@ -1483,7 +1235,7 @@ function DepartmentCard({
             <button
               type="button"
               onClick={() => setShowGrantModal(true)}
-              className="mt-1.5 flex h-6 items-center gap-1 font-sans text-[11.5px] text-pen-subtle hover:text-pen-blue transition-colors"
+              className="mt-1.5 flex h-6 items-center gap-1 font-sans text-[11.5px] text-sts-subtle hover:text-sts-blue transition-colors"
             >
               <Plus className="size-3" /> Grant access
             </button>
@@ -1492,12 +1244,12 @@ function DepartmentCard({
 
         {/* ── Enter workspace CTA ── */}
         {onEnterWorkspace && (
-          <div className="mt-auto border-t border-pen-card-border px-5 py-3">
+          <div className="mt-auto border-t border-sts-card-border px-5 py-3">
             <button
               type="button"
               disabled={entering}
               onClick={() => { setEntering(true); onEnterWorkspace(dept.id); }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-pen-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-80"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-80"
             >
               {entering ? (
                 <>
@@ -1580,10 +1332,10 @@ export function SettingsDepartmentsPage({
       {/* ── Page header ── */}
       <div className="flex items-start gap-4">
         <div className="flex-1">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             {inWorkspace ? "Department" : "Departments"}
           </h1>
-          <p className="mt-1 font-sans text-[13px] text-pen-muted">
+          <p className="mt-1 font-sans text-[13px] text-sts-muted">
             {inWorkspace
               ? "Manage this department — assign managers and grant cross-department access."
               : "Manage departments, assign managers, and grant cross-department access."}
@@ -1593,7 +1345,7 @@ export function SettingsDepartmentsPage({
           <button
             type="button"
             onClick={() => setShowNewModal(true)}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-pen-blue px-4 font-sans text-[12px] font-medium text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12px] font-medium text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
           >
             <Plus className="size-3.5" strokeWidth={2.5} />
             New department
@@ -1605,9 +1357,9 @@ export function SettingsDepartmentsPage({
 
       {/* ── Department cards grid ── */}
       {departments.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-pen-card-border py-16 text-center">
-          <DepartmentIcon className="size-8 text-pen-subtle" strokeWidth={1.2} />
-          <p className="font-sans text-[13px] text-pen-muted">No departments yet. Create one above.</p>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-sts-card-border py-16 text-center">
+          <DepartmentIcon className="size-8 text-sts-subtle" strokeWidth={1.2} />
+          <p className="font-sans text-[13px] text-sts-muted">No departments yet. Create one above.</p>
         </div>
       ) : inWorkspace ? (
         // Single-department workspace view — no grid needed, give the card room to breathe

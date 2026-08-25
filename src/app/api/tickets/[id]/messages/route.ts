@@ -237,6 +237,7 @@ export async function POST(
       inReplyTo: lastMessage?.providerMessageId ?? null,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       departmentId: ticket.subDepartment.departmentId,
+      subDepartmentId: ticket.subDepartmentId,
     })
   } catch (err) {
     console.error("[messages] send failed:", err)

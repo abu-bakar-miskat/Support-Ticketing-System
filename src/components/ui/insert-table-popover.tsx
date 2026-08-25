@@ -82,10 +82,10 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
       ref={panelRef}
       role="dialog"
       aria-label="Insert table"
-      className="fixed w-[196px] rounded-xl border border-pen-card-border bg-pen-card p-3 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
+      className="fixed w-[196px] rounded-xl border border-sts-card-border bg-sts-card p-3 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
       style={{ top: coords.top, left: coords.left, zIndex: TABLE_PANEL_Z }}
     >
-      <p className="mb-2 font-sans text-[11px] font-semibold tracking-wide text-pen-foreground">
+      <p className="mb-2 font-sans text-[11px] font-semibold tracking-wide text-sts-foreground">
         Insert table
       </p>
 
@@ -109,8 +109,8 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
               className={cn(
                 "rounded-[3px] border transition-colors",
                 active
-                  ? "border-pen-id bg-pen-blue-tint"
-                  : "border-pen-card-border bg-pen-surface hover:border-pen-muted",
+                  ? "border-sts-id bg-sts-blue-tint"
+                  : "border-sts-card-border bg-sts-surface hover:border-sts-muted",
               )}
               style={{ width: CELL_PX, height: CELL_PX }}
               onMouseEnter={() => setHover({ rows: row, cols: col })}
@@ -120,16 +120,16 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
         })}
       </div>
 
-      <p className="mb-2 text-center font-sans text-[11px] text-pen-muted">
+      <p className="mb-2 text-center font-sans text-[11px] text-sts-muted">
         {hover.rows} × {hover.cols}
       </p>
 
-      <label className="mb-2 flex items-center gap-2 font-sans text-[11px] text-pen-muted">
+      <label className="mb-2 flex items-center gap-2 font-sans text-[11px] text-sts-muted">
         <input
           type="checkbox"
           checked={header}
           onChange={(e) => setHeader(e.target.checked)}
-          className="rounded border-pen-card-border accent-pen-id"
+          className="rounded border-sts-card-border accent-sts-id"
         />
         Header row
       </label>
@@ -137,7 +137,7 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
       <button
         type="button"
         onClick={() => insert()}
-        className="h-8 w-full rounded-lg bg-pen-blue font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+        className="h-8 w-full rounded-lg bg-sts-blue font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
       >
         Insert {hover.rows}×{hover.cols}
       </button>
@@ -159,8 +159,8 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
         className={cn(
           "flex size-6 items-center justify-center rounded transition-colors",
           editor.isActive("table") || open
-            ? "bg-pen-blue-tint font-semibold text-pen-id"
-            : "text-pen-muted hover:bg-pen-card hover:text-pen-foreground",
+            ? "bg-sts-blue-tint font-semibold text-sts-id"
+            : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
         )}
       >
         <Table2 className="size-3.5" />

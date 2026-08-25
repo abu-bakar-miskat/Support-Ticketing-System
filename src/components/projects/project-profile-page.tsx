@@ -235,7 +235,7 @@ function boardSubDepartmentSourceBadge(
     return {
       label: "Dept",
       className:
-        "bg-pen-blue-tint text-pen-id dark:bg-pen-blue-tint/30",
+        "bg-sts-blue-tint text-sts-id dark:bg-sts-blue-tint/30",
     };
   }
   if (source === "member") {
@@ -266,14 +266,14 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="pen-glass-panel flex flex-col gap-1 rounded-xl border border-pen-card-border p-4">
+    <div className="sts-glass-panel flex flex-col gap-1 rounded-xl border border-sts-card-border p-4">
       <div className="flex items-center justify-between">
-        <span className="pen-text-section-label">
+        <span className="sts-text-section-label">
           {label}
         </span>
         <Icon className="size-4" style={{ color: accent }} strokeWidth={1.8} />
       </div>
-      <span className="font-sans text-[28px] font-bold leading-none text-pen-foreground">
+      <span className="font-sans text-[28px] font-bold leading-none text-sts-foreground">
         {value}
       </span>
     </div>
@@ -284,8 +284,8 @@ function PriorityBar({ byPriority }: { byPriority: Record<string, number> }) {
   const total = Object.values(byPriority).reduce((a, b) => a + b, 0);
   if (total === 0) return null;
   return (
-    <div className="pen-glass-panel rounded-xl border border-pen-card-border p-4">
-      <p className="mb-3 pen-text-section-label">
+    <div className="sts-glass-panel rounded-xl border border-sts-card-border p-4">
+      <p className="mb-3 sts-text-section-label">
         Priority breakdown
       </p>
       <div className="flex h-2 overflow-hidden rounded-full">
@@ -307,9 +307,9 @@ function PriorityBar({ byPriority }: { byPriority: Record<string, number> }) {
               className="size-2 rounded-full"
               style={{ backgroundColor: PRIORITY_COLOR[p] }}
             />
-            <span className="font-sans text-[11.5px] text-pen-subtle">
+            <span className="font-sans text-[11.5px] text-sts-subtle">
               {p}{" "}
-              <span className="font-semibold text-pen-foreground">
+              <span className="font-semibold text-sts-foreground">
                 {byPriority[p]}
               </span>
             </span>
@@ -324,8 +324,8 @@ function StatusDistribution({ statusDist }: { statusDist: StatusDist[] }) {
   const total = statusDist.reduce((a, b) => a + b.count, 0);
   if (total === 0) return null;
   return (
-    <div className="pen-glass-panel rounded-xl border border-pen-card-border p-4">
-      <p className="mb-3 pen-text-section-label">
+    <div className="sts-glass-panel rounded-xl border border-sts-card-border p-4">
+      <p className="mb-3 sts-text-section-label">
         Status distribution
       </p>
       <div className="flex flex-col gap-2">
@@ -337,10 +337,10 @@ function StatusDistribution({ statusDist }: { statusDist: StatusDist[] }) {
                 className="size-2 shrink-0 rounded-full"
                 style={{ backgroundColor: s.color }}
               />
-              <span className="min-w-[90px] truncate font-sans text-[12px] text-pen-foreground">
+              <span className="min-w-[90px] truncate font-sans text-[12px] text-sts-foreground">
                 {s.label}
               </span>
-              <div className="flex-1 overflow-hidden rounded-full bg-pen-surface">
+              <div className="flex-1 overflow-hidden rounded-full bg-sts-surface">
                 <div
                   className="h-1.5 rounded-full transition-all"
                   style={{
@@ -349,7 +349,7 @@ function StatusDistribution({ statusDist }: { statusDist: StatusDist[] }) {
                   }}
                 />
               </div>
-              <span className="w-6 text-right font-sans text-[11.5px] font-semibold text-pen-foreground">
+              <span className="w-6 text-right font-sans text-[11.5px] font-semibold text-sts-foreground">
                 {s.count}
               </span>
             </div>
@@ -433,15 +433,15 @@ function ProjectMembersSection({
   const filtered = users.filter((u) => matchesUserListSearch(u, query));
 
   return (
-    <div className="pen-glass-panel rounded-xl border border-pen-card-border p-4">
+    <div className="sts-glass-panel rounded-xl border border-sts-card-border p-4">
       <div className="mb-3 flex items-center gap-2">
-        <p className="pen-text-section-label flex-1">
+        <p className="sts-text-section-label flex-1">
           Project Members
         </p>
         <button
           type="button"
           onClick={openAdding}
-          className="flex items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[11.5px] text-pen-muted transition-colors hover:border-pen-id hover:text-pen-id"
+          className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id"
         >
           <UserPlus className="size-3" />
           Add
@@ -449,7 +449,7 @@ function ProjectMembersSection({
       </div>
 
       {projectMembers.length === 0 ? (
-        <p className="font-sans text-[12px] text-pen-subtle">
+        <p className="font-sans text-[12px] text-sts-subtle">
           No members assigned yet
         </p>
       ) : (
@@ -458,11 +458,11 @@ function ProjectMembersSection({
             <div key={m.id} className="flex items-center gap-2">
               <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
               <div className="min-w-0 flex-1">
-                <p className="font-sans text-[12px] font-semibold text-pen-foreground">
+                <p className="font-sans text-[12px] font-semibold text-sts-foreground">
                   {m.name}
                 </p>
                 {(m.departmentName || m.subDepartmentName) && (
-                  <p className="font-sans text-[11.5px] text-pen-subtle">
+                  <p className="font-sans text-[11.5px] text-sts-subtle">
                     {[m.departmentName, m.subDepartmentName].filter(Boolean).join(" · ")}
                   </p>
                 )}
@@ -474,18 +474,18 @@ function ProjectMembersSection({
 
       {adding && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop"
           onClick={() => setAdding(false)}
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-pen-card-border bg-pen-bg p-4 shadow-xl backdrop-blur-xl"
+            className="w-full max-w-sm rounded-xl border border-sts-card-border bg-sts-bg p-4 shadow-xl backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+              <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                 Add members
                 {selectedIds.size > 0 && (
-                  <span className="ml-1.5 font-normal text-pen-subtle">
+                  <span className="ml-1.5 font-normal text-sts-subtle">
                     ({selectedIds.size} selected)
                   </span>
                 )}
@@ -493,28 +493,28 @@ function ProjectMembersSection({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="text-pen-muted hover:text-pen-foreground"
+                className="text-sts-muted hover:text-sts-foreground"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="relative mb-2">
-              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
               <input
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search members…"
-                className="h-8 w-full rounded-md border border-pen-card-border bg-pen-surface pl-8 pr-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-id"
+                className="h-8 w-full rounded-md border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
               />
             </div>
             <div className="max-h-48 overflow-y-auto">
               {loadingUsers ? (
-                <p className="py-4 text-center font-sans text-[12px] text-pen-subtle">
+                <p className="py-4 text-center font-sans text-[12px] text-sts-subtle">
                   Loading…
                 </p>
               ) : filtered.length === 0 ? (
-                <p className="py-4 text-center font-sans text-[12px] text-pen-subtle">
+                <p className="py-4 text-center font-sans text-[12px] text-sts-subtle">
                   No users available
                 </p>
               ) : (
@@ -528,7 +528,7 @@ function ProjectMembersSection({
                       className={cn(
                         userListPickerButtonClass,
                         "gap-2.5 rounded-md px-2 py-1.5 transition-colors",
-                        selected ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                        selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                       )}
                     >
                       <UserListItem
@@ -541,8 +541,8 @@ function ProjectMembersSection({
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
                           selected
-                            ? "border-pen-blue bg-pen-blue"
-                            : "border-pen-card-border bg-pen-surface",
+                            ? "border-sts-blue bg-sts-blue"
+                            : "border-sts-card-border bg-sts-surface",
                         )}
                       >
                         {selected && (
@@ -558,7 +558,7 @@ function ProjectMembersSection({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="h-7 rounded-md border border-pen-card-border px-3 font-sans text-[12px] text-pen-muted hover:bg-pen-surface"
+                className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
               >
                 Cancel
               </button>
@@ -566,7 +566,7 @@ function ProjectMembersSection({
                 type="button"
                 disabled={selectedIds.size === 0 || saving}
                 onClick={addMembers}
-                className="h-7 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {saving
                   ? "Adding…"
@@ -588,8 +588,8 @@ function SubDepartmentStatusBreakdown({
   if (subDepartmentBoardGroups.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
-      <p className="mb-3 pen-text-section-label">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
+      <p className="mb-3 sts-text-section-label">
         Team breakdown
       </p>
 
@@ -610,7 +610,7 @@ function SubDepartmentStatusBreakdown({
           return (
             <div
               key={g.subDepartmentId}
-              className="rounded-xl border border-pen-card-border/60 bg-pen-surface/30 p-3 dark:bg-white/3"
+              className="rounded-xl border border-sts-card-border/60 bg-sts-surface/30 p-3 dark:bg-white/3"
             >
               {/* Header row */}
               <div className="mb-2.5 flex items-center gap-2">
@@ -618,10 +618,10 @@ function SubDepartmentStatusBreakdown({
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: subDepartmentColor }}
                 />
-                <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {g.subDepartmentName}
                 </p>
-                <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-pen-muted">
+                <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-sts-muted">
                   {done}/{total} done
                 </span>
                 <span
@@ -640,7 +640,7 @@ function SubDepartmentStatusBreakdown({
               </div>
 
               {/* Segmented progress bar */}
-              <div className="mb-2.5 flex h-2 w-full overflow-hidden rounded-full bg-pen-card-border/50">
+              <div className="mb-2.5 flex h-2 w-full overflow-hidden rounded-full bg-sts-card-border/50">
                 {sortedStatuses.map((s) => {
                   const count = g.cards.filter(
                     (c) => c.status === s.label,
@@ -708,7 +708,7 @@ function ProjectPersonCell({
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
       <UserAvatar name={name} avatarUrl={avatarUrl} size={size} />
       <span
-        className="min-w-0 truncate font-sans text-[12px] text-pen-foreground"
+        className="min-w-0 truncate font-sans text-[12px] text-sts-foreground"
         title={name}
       >
         {name}
@@ -821,7 +821,7 @@ function TicketList({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tickets…"
-          className="h-8 w-48 shrink-0 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+          className="h-8 w-48 shrink-0 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
         <SearchableSelect
           value={filterStatus}
@@ -847,20 +847,20 @@ function TicketList({
           aria-label="Filter by priority"
           className="w-auto min-w-[9.5rem] max-w-[12rem] shrink-0"
         />
-        <span className="ml-auto font-sans text-[11.5px] text-pen-subtle">
+        <span className="ml-auto font-sans text-[11.5px] text-sts-subtle">
           {filtered.length} ticket{filtered.length !== 1 ? "s" : ""}
         </span>
         {canCreate && (
           <div className="flex items-center gap-2">
             {singleBoardName && (
-              <span className="hidden font-sans text-[11px] text-pen-subtle sm:inline">
+              <span className="hidden font-sans text-[11px] text-sts-subtle sm:inline">
                 Board: {singleBoardName}
               </span>
             )}
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-pen-id px-3 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-id px-3 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90"
             >
               <Plus className="size-3.5" />
               Create task
@@ -870,10 +870,10 @@ function TicketList({
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+      <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
         {filtered.length === 0 ? (
           <div className="flex h-24 items-center justify-center">
-            <p className="font-sans text-[12.5px] text-pen-subtle">
+            <p className="font-sans text-[12.5px] text-sts-subtle">
               No tickets match your filters
             </p>
           </div>
@@ -888,7 +888,7 @@ function TicketList({
                 <Link
                   key={t.id}
                   href={makeHref(t.id)}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-pen-bg/40"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-sts-bg/40"
                 >
                   {/* Priority dot */}
                   <PriorityDot
@@ -899,10 +899,10 @@ function TicketList({
                   {/* ID + title */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="shrink-0 font-mono text-[11.5px] text-pen-subtle">
+                      <span className="shrink-0 font-mono text-[11.5px] text-sts-subtle">
                         {t.humanId}
                       </span>
-                      <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
+                      <span className="truncate font-sans text-[13px] font-semibold text-sts-foreground">
                         {t.title}
                       </span>
                     </div>
@@ -950,7 +950,7 @@ function TicketList({
                         size={22}
                       />
                     ) : (
-                      <span className="font-sans text-[11.5px] text-pen-subtle">Unassigned</span>
+                      <span className="font-sans text-[11.5px] text-sts-subtle">Unassigned</span>
                     )}
                   </div>
 
@@ -959,13 +959,13 @@ function TicketList({
                     {t.creatorName?.trim() ? (
                       <ProjectPersonCell name={t.creatorName} size={22} />
                     ) : (
-                      <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                      <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                     )}
                   </div>
 
                   {/* Created */}
                   <span
-                    className="hidden shrink-0 font-sans text-[11.5px] text-pen-muted md:block"
+                    className="hidden shrink-0 font-sans text-[11.5px] text-sts-muted md:block"
                     title={formatDateTime(new Date(t.createdAt))}
                   >
                     {formatDateTime(new Date(t.createdAt))}
@@ -973,7 +973,7 @@ function TicketList({
 
                   {/* Comments */}
                   {t.commentCount > 0 && (
-                    <span className="hidden items-center gap-1 font-sans text-[11.5px] text-pen-subtle sm:flex">
+                    <span className="hidden items-center gap-1 font-sans text-[11.5px] text-sts-subtle sm:flex">
                       <MessageCircle className="size-3" />
                       {t.commentCount}
                     </span>
@@ -985,12 +985,12 @@ function TicketList({
                       className={cn(
                         "hidden shrink-0 font-sans text-[11.5px] sm:block",
                         due.label === "Complete"
-                          ? "font-medium text-pen-green"
+                          ? "font-medium text-sts-green"
                           : due.overdue
                             ? "font-medium text-red-500"
                             : due.urgent
                               ? "font-medium text-amber-500"
-                              : "text-pen-subtle",
+                              : "text-sts-subtle",
                       )}
                     >
                       {due.label}
@@ -998,11 +998,11 @@ function TicketList({
                   )}
 
                   {/* Updated */}
-                  <span className="hidden shrink-0 font-sans text-[11.5px] text-pen-muted lg:block">
+                  <span className="hidden shrink-0 font-sans text-[11.5px] text-sts-muted lg:block">
                     {timeAgo(t.updatedAt)}
                   </span>
 
-                  <ArrowUpRight className="size-3.5 shrink-0 text-pen-subtle" />
+                  <ArrowUpRight className="size-3.5 shrink-0 text-sts-subtle" />
                 </Link>
               );
             })}
@@ -1199,29 +1199,29 @@ function OverviewTab({
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {/* Total tickets */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Total</span>
-            <TicketCheck className="size-3.5 text-pen-blue/60" strokeWidth={2} />
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Total</span>
+            <TicketCheck className="size-3.5 text-sts-blue/60" strokeWidth={2} />
           </div>
-          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-pen-foreground">{totalTickets}</span>
-          <span className="font-sans text-[11px] text-pen-subtle">tickets</span>
+          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-sts-foreground">{totalTickets}</span>
+          <span className="font-sans text-[11px] text-sts-subtle">tickets</span>
         </div>
 
         {/* Completed */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Done</span>
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Done</span>
             <CheckCircle2 className="size-3.5 text-emerald-500/70" strokeWidth={2} />
           </div>
           <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-emerald-500">{doneTickets}</span>
-          <span className="font-sans text-[11px] text-pen-subtle">completed</span>
+          <span className="font-sans text-[11px] text-sts-subtle">completed</span>
         </div>
 
         {/* Completion % */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Rate</span>
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Rate</span>
             <TrendingUp
               className="size-3.5"
               style={{ color: completionPct >= 75 ? "#059669" : completionPct >= 40 ? "#f97316" : "#94a3b8", opacity: 0.7 }}
@@ -1234,7 +1234,7 @@ function OverviewTab({
           >
             {completionPct}%
           </span>
-          <div className="h-1 overflow-hidden rounded-full bg-pen-surface">
+          <div className="h-1 overflow-hidden rounded-full bg-sts-surface">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -1246,9 +1246,9 @@ function OverviewTab({
         </div>
 
         {/* Overdue */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Overdue</span>
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Overdue</span>
             <AlertTriangle
               className="size-3.5"
               style={{ color: overdueTotal > 0 ? "#dc2626" : "#94a3b8", opacity: 0.7 }}
@@ -1261,27 +1261,27 @@ function OverviewTab({
           >
             {overdueTotal}
           </span>
-          <span className="font-sans text-[11px] text-pen-subtle">{overdueTotal === 1 ? "ticket" : "tickets"}</span>
+          <span className="font-sans text-[11px] text-sts-subtle">{overdueTotal === 1 ? "ticket" : "tickets"}</span>
         </div>
 
         {/* Assets */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Assets</span>
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Assets</span>
             <Layers className="size-3.5 text-violet-500/60" strokeWidth={2} />
           </div>
-          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-pen-foreground">{totalAssets}</span>
-          <span className="font-sans text-[11px] text-pen-subtle">files</span>
+          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-sts-foreground">{totalAssets}</span>
+          <span className="font-sans text-[11px] text-sts-subtle">files</span>
         </div>
 
         {/* Folders */}
-        <div className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Folders</span>
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Folders</span>
             <FolderIcon className="size-3.5 text-orange-400/70" strokeWidth={2} />
           </div>
-          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-pen-foreground">{totalFolders}</span>
-          <span className="font-sans text-[11px] text-pen-subtle">folders</span>
+          <span className="font-sans text-[26px] font-bold leading-none tabular-nums text-sts-foreground">{totalFolders}</span>
+          <span className="font-sans text-[11px] text-sts-subtle">folders</span>
         </div>
       </div>
 
@@ -1308,20 +1308,20 @@ function OverviewTab({
             type="button"
             onClick={onOpenAssets}
             title="Open assets"
-            className="w-full rounded-xl border border-pen-card-border bg-pen-card px-4 py-3 text-left transition-colors hover:border-pen-blue/40 hover:bg-pen-surface/40"
+            className="w-full rounded-xl border border-sts-card-border bg-sts-card px-4 py-3 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-surface/40"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="pen-text-section-label">Assets</p>
+              <p className="sts-text-section-label">Assets</p>
               {totalAssetCount > 0 && (
-                <span className="rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-foreground">
+                <span className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-foreground">
                   {totalAssetCount} total
                 </span>
               )}
             </div>
             {assetCounts.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-pen-card-border px-3 py-4">
-                <FolderOpen className="size-4 shrink-0 text-pen-subtle/30" />
-                <p className="font-sans text-[11.5px] text-pen-subtle">No assets uploaded yet</p>
+              <div className="flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
+                <FolderOpen className="size-4 shrink-0 text-sts-subtle/30" />
+                <p className="font-sans text-[11.5px] text-sts-subtle">No assets uploaded yet</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -1335,7 +1335,7 @@ function OverviewTab({
                       <Icon className="size-3.5" style={{ color }} strokeWidth={1.8} />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-sans text-[11px] text-pen-muted">{label}</p>
+                      <p className="truncate font-sans text-[11px] text-sts-muted">{label}</p>
                       <p className="font-sans text-[14px] font-bold tabular-nums" style={{ color }}>{count}</p>
                     </div>
                   </div>
@@ -1349,24 +1349,24 @@ function OverviewTab({
         <div className="flex min-w-0 flex-col gap-4">
 
           {/* Ticket contributions */}
-          <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+          <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="flex size-6 items-center justify-center rounded-lg bg-violet-500/10">
                   <Users className="size-3.5 text-violet-500" strokeWidth={2} />
                 </div>
-                <p className="pen-text-section-label">Contributors</p>
+                <p className="sts-text-section-label">Contributors</p>
               </div>
               {contributors.length > 0 && (
-                <span className="rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] text-pen-subtle">
+                <span className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] text-sts-subtle">
                   {contributors.length} {contributors.length === 1 ? "member" : "members"}
                 </span>
               )}
             </div>
             {contributors.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-pen-card-border px-3 py-4">
-                <Users className="size-4 shrink-0 text-pen-subtle/30" />
-                <p className="font-sans text-[11.5px] text-pen-subtle">No assignees yet</p>
+              <div className="flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
+                <Users className="size-4 shrink-0 text-sts-subtle/30" />
+                <p className="font-sans text-[11.5px] text-sts-subtle">No assignees yet</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
@@ -1376,10 +1376,10 @@ function OverviewTab({
                     <div key={c.name} className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <UserAvatar name={c.name} avatarUrl={c.avatarUrl} size={20} />
-                        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-pen-foreground">{c.name}</span>
-                        <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-pen-muted">{c.count}</span>
+                        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-sts-foreground">{c.name}</span>
+                        <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-sts-muted">{c.count}</span>
                       </div>
-                      <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-pen-surface">
+                      <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-sts-surface">
                         <div className="h-full rounded-full bg-violet-500/60 transition-all duration-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -1390,24 +1390,24 @@ function OverviewTab({
           </div>
 
           {/* Time logged — development */}
-          <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+          <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-pen-blue/10">
-                  <Timer className="size-3.5 text-pen-blue" strokeWidth={2} />
+                <div className="flex size-6 items-center justify-center rounded-lg bg-sts-blue/10">
+                  <Timer className="size-3.5 text-sts-blue" strokeWidth={2} />
                 </div>
-                <p className="pen-text-section-label">Dev time logged</p>
+                <p className="sts-text-section-label">Dev time logged</p>
               </div>
               {timeStats && timeStats.totalSecs > 0 && (
-                <span className="rounded-full bg-pen-surface px-2 py-0.5 font-mono text-[11.5px] font-semibold text-pen-foreground">
+                <span className="rounded-full bg-sts-surface px-2 py-0.5 font-mono text-[11.5px] font-semibold text-sts-foreground">
                   {formatSecs(timeStats.totalSecs)}
                 </span>
               )}
             </div>
             {timeByUser.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-pen-card-border px-3 py-4">
-                <Clock className="size-4 shrink-0 text-pen-subtle/30" />
-                <p className="font-sans text-[11.5px] text-pen-subtle">No development time logged yet</p>
+              <div className="flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
+                <Clock className="size-4 shrink-0 text-sts-subtle/30" />
+                <p className="font-sans text-[11.5px] text-sts-subtle">No development time logged yet</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
@@ -1417,11 +1417,11 @@ function OverviewTab({
                     <div key={u.userId} className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <UserAvatar name={u.userName} avatarUrl={u.avatarUrl} size={20} />
-                        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-pen-foreground">{u.userName}</span>
-                        <span className="shrink-0 font-mono text-[11.5px] font-semibold tabular-nums text-pen-foreground">{formatSecs(u.totalSecs)}</span>
+                        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-medium text-sts-foreground">{u.userName}</span>
+                        <span className="shrink-0 font-mono text-[11.5px] font-semibold tabular-nums text-sts-foreground">{formatSecs(u.totalSecs)}</span>
                       </div>
-                      <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-pen-surface">
-                        <div className="h-full rounded-full bg-pen-blue/50 transition-all duration-500" style={{ width: `${pct}%` }} />
+                      <div className="ml-[28px] h-1 overflow-hidden rounded-full bg-sts-surface">
+                        <div className="h-full rounded-full bg-sts-blue/50 transition-all duration-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -1431,17 +1431,17 @@ function OverviewTab({
           </div>
 
           {/* Recent activity */}
-          <div className="flex flex-col overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
-            <div className="shrink-0 border-b border-pen-card-border px-4 pt-3 pb-2.5">
+          <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
+            <div className="shrink-0 border-b border-sts-card-border px-4 pt-3 pb-2.5">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <div className="mr-auto flex items-center gap-2">
-                  <div className="flex size-6 items-center justify-center rounded-lg bg-pen-surface">
-                    <Activity className="size-3.5 text-pen-subtle" strokeWidth={2} />
+                  <div className="flex size-6 items-center justify-center rounded-lg bg-sts-surface">
+                    <Activity className="size-3.5 text-sts-subtle" strokeWidth={2} />
                   </div>
-                  <p className="pen-text-section-label">
+                  <p className="sts-text-section-label">
                     Activity
                     {recentActivity.length > 0 && (
-                      <span className="ml-1 font-normal normal-case tracking-normal text-pen-subtle/50">
+                      <span className="ml-1 font-normal normal-case tracking-normal text-sts-subtle/50">
                         ({filteredActivity.length})
                       </span>
                     )}
@@ -1456,8 +1456,8 @@ function OverviewTab({
                       className={cn(
                         "h-6 rounded-md px-2 font-sans text-[11px] transition-colors",
                         activityFilter === f.id
-                          ? "bg-pen-blue text-white dark:text-gray-900"
-                          : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                          ? "bg-sts-blue text-white dark:text-gray-900"
+                          : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                       )}
                     >
                       {f.label}
@@ -1467,12 +1467,12 @@ function OverviewTab({
               </div>
             </div>
             {filteredActivity.length === 0 ? (
-              <div className="mx-4 my-3 flex items-center gap-3 rounded-lg border border-dashed border-pen-card-border px-3 py-4">
-                <Activity className="size-4 shrink-0 text-pen-subtle/30" />
-                <p className="font-sans text-[11.5px] text-pen-subtle">No activity yet</p>
+              <div className="mx-4 my-3 flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
+                <Activity className="size-4 shrink-0 text-sts-subtle/30" />
+                <p className="font-sans text-[11.5px] text-sts-subtle">No activity yet</p>
               </div>
             ) : (
-              <div className="max-h-[380px] flex-1 divide-y divide-pen-card-border/50 overflow-y-auto">
+              <div className="max-h-[380px] flex-1 divide-y divide-sts-card-border/50 overflow-y-auto">
                 {visibleActivity.map((a) => {
                   const label = ACTIVITY_LABEL[a.action]?.(a.metadata) ?? a.action;
                   const accentColor = ACTIVITY_ICON_COLOR[a.action] ?? "#94a3b8";
@@ -1481,25 +1481,25 @@ function OverviewTab({
                     <Link
                       key={a.id}
                       href={makeHref(a.ticketId)}
-                      className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-pen-bg/40"
+                      className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-sts-bg/40"
                     >
                       <div className="relative mt-0.5 shrink-0">
                         <UserAvatar name={a.actorName} avatarUrl={a.actorAvatarUrl} size={24} />
                         <div
-                          className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border border-pen-card"
+                          className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border border-sts-card"
                           style={{ backgroundColor: `${accentColor}20` }}
                         >
                           <ActionIcon className="size-2.5" style={{ color: accentColor }} strokeWidth={2.5} />
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-sans text-[12px] leading-snug text-pen-foreground">
+                        <p className="font-sans text-[12px] leading-snug text-sts-foreground">
                           <span className="font-semibold">{a.actorName}</span>{" "}
                           <span style={{ color: accentColor }}>{label}</span>
                         </p>
-                        <p className="mt-0.5 font-mono text-[11px] text-pen-muted">{a.ticketHumanId}</p>
+                        <p className="mt-0.5 font-mono text-[11px] text-sts-muted">{a.ticketHumanId}</p>
                       </div>
-                      <span className="mt-0.5 shrink-0 font-sans text-[11px] text-pen-subtle">{timeAgo(a.createdAt)}</span>
+                      <span className="mt-0.5 shrink-0 font-sans text-[11px] text-sts-subtle">{timeAgo(a.createdAt)}</span>
                     </Link>
                   );
                 })}
@@ -1507,7 +1507,7 @@ function OverviewTab({
                   <button
                     type="button"
                     onClick={() => setActivityLimit((n) => n + 10)}
-                    className="w-full px-4 py-2.5 text-center font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-bg/40 hover:text-pen-foreground"
+                    className="w-full px-4 py-2.5 text-center font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-bg/40 hover:text-sts-foreground"
                   >
                     Show {filteredActivity.length - activityLimit} more
                   </button>
@@ -1556,7 +1556,7 @@ function BoardTabContextMenu({
 
   return (
     <div
-      className="fixed z-50 min-w-[180px] rounded-lg border border-pen-card-border bg-pen-card py-1 shadow-lg"
+      className="fixed z-50 min-w-[180px] rounded-lg border border-sts-card-border bg-sts-card py-1 shadow-lg"
       style={{ left: menu.x, top: menu.y }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -1572,14 +1572,14 @@ function BoardTabContextMenu({
         className={cn(
           "flex w-full items-center px-3 py-2 text-left font-sans text-[12.5px]",
           canRemove
-            ? "text-red-600 hover:bg-pen-surface dark:text-red-400"
-            : "cursor-not-allowed text-pen-muted",
+            ? "text-red-600 hover:bg-sts-surface dark:text-red-400"
+            : "cursor-not-allowed text-sts-muted",
         )}
       >
         {removing ? "Removing…" : "Remove board"}
       </button>
       {!canRemove && (
-        <p className="px-3 pb-2 font-sans text-[11px] text-pen-subtle">
+        <p className="px-3 pb-2 font-sans text-[11px] text-sts-subtle">
           {menu.ticketCount} ticket{menu.ticketCount !== 1 ? "s" : ""} remain
         </p>
       )}
@@ -1648,10 +1648,10 @@ function AddBoardButton({
         onClick={toggleOpen}
         disabled={adding}
         title="Add board — department teams or teams of assigned members"
-        className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-pen-card-border text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id disabled:opacity-50"
+        className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
       >
         {adding ? (
-          <Loader2 className="size-3.5 animate-spin text-pen-id" />
+          <Loader2 className="size-3.5 animate-spin text-sts-id" />
         ) : (
           <Plus className="size-3.5" />
         )}
@@ -1661,10 +1661,10 @@ function AddBoardButton({
         createPortal(
           <div
             ref={menuRef}
-            className="pen-field-dropdown fixed z-[100] max-h-72 min-w-[220px] max-w-[min(280px,calc(100vw-1rem))] overflow-y-auto rounded-lg py-1"
+            className="sts-field-dropdown fixed z-[100] max-h-72 min-w-[220px] max-w-[min(280px,calc(100vw-1rem))] overflow-y-auto rounded-lg py-1"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
-            <p className="px-3 py-1.5 font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">
+            <p className="px-3 py-1.5 font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
               Add board
             </p>
             {subDepartments.map((t) => {
@@ -1678,14 +1678,14 @@ function AddBoardButton({
                     setOpen(false);
                     void onAdd(t.id);
                   }}
-                  className="pen-field-dropdown-item flex w-full flex-col gap-0.5 px-3 py-2 text-left disabled:opacity-50"
+                  className="sts-field-dropdown-item flex w-full flex-col gap-0.5 px-3 py-2 text-left disabled:opacity-50"
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                    <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                       {t.name}
                     </span>
                     {creatingSubDepartmentId === t.id ? (
-                      <Loader2 className="size-3 shrink-0 animate-spin text-pen-id" />
+                      <Loader2 className="size-3 shrink-0 animate-spin text-sts-id" />
                     ) : (
                       <span
                         className={cn(
@@ -1697,7 +1697,7 @@ function AddBoardButton({
                       </span>
                     )}
                   </span>
-                  <span className="font-sans text-[11px] text-pen-subtle">
+                  <span className="font-sans text-[11px] text-sts-subtle">
                     {boardSubDepartmentSourceLabel(t.source, t.memberNames)}
                   </span>
                 </button>
@@ -1891,7 +1891,7 @@ function HeaderMemberAvatars({
             name={m.name}
             avatarUrl={m.avatarUrl}
             size={28}
-            className="relative shrink-0 ring-2 ring-pen-card"
+            className="relative shrink-0 ring-2 ring-sts-card"
             meta={{ subDepartment: m.subDepartmentName || undefined }}
           />
         ))}
@@ -1904,7 +1904,7 @@ function HeaderMemberAvatars({
           onClick={selfJoin}
           disabled={joining}
           title="Join this project"
-          className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-pen-card-border px-2.5 font-sans text-[11.5px] text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id disabled:opacity-50"
+          className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-2.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
         >
           <UserPlus className="size-3" />
           {joining ? "Joining…" : "Join"}
@@ -1917,7 +1917,7 @@ function HeaderMemberAvatars({
           type="button"
           onClick={openAdding}
           title="Add member"
-          className="flex size-7 items-center justify-center rounded-full border border-dashed border-pen-card-border text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id"
+          className="flex size-7 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
         >
           <UserPlus className="size-3.5" />
         </button>
@@ -1925,18 +1925,18 @@ function HeaderMemberAvatars({
 
       {adding && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop"
           onClick={() => setAdding(false)}
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-pen-card-border bg-pen-bg p-4 shadow-xl backdrop-blur-xl"
+            className="w-full max-w-sm rounded-xl border border-sts-card-border bg-sts-bg p-4 shadow-xl backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+              <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                 Add project members
                 {selectedIds.size > 0 && (
-                  <span className="ml-1.5 font-normal text-pen-subtle">
+                  <span className="ml-1.5 font-normal text-sts-subtle">
                     ({selectedIds.size} selected)
                   </span>
                 )}
@@ -1944,28 +1944,28 @@ function HeaderMemberAvatars({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="text-pen-muted hover:text-pen-foreground"
+                className="text-sts-muted hover:text-sts-foreground"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="relative mb-2">
-              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
               <input
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search…"
-                className="h-8 w-full rounded-md border border-pen-card-border bg-pen-surface pl-8 pr-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-id"
+                className="h-8 w-full rounded-md border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
               />
             </div>
             <div className="max-h-48 overflow-y-auto">
               {loadingUsers ? (
-                <p className="py-4 text-center font-sans text-[12px] text-pen-subtle">
+                <p className="py-4 text-center font-sans text-[12px] text-sts-subtle">
                   Loading…
                 </p>
               ) : filtered.length === 0 ? (
-                <p className="py-4 text-center font-sans text-[12px] text-pen-subtle">
+                <p className="py-4 text-center font-sans text-[12px] text-sts-subtle">
                   No users available
                 </p>
               ) : (
@@ -1979,7 +1979,7 @@ function HeaderMemberAvatars({
                       className={cn(
                         userListPickerButtonClass,
                         "gap-2.5 rounded-md px-2 py-1.5 transition-colors",
-                        selected ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                        selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                       )}
                     >
                       <UserListItem
@@ -1992,8 +1992,8 @@ function HeaderMemberAvatars({
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
                           selected
-                            ? "border-pen-blue bg-pen-blue"
-                            : "border-pen-card-border bg-pen-surface",
+                            ? "border-sts-blue bg-sts-blue"
+                            : "border-sts-card-border bg-sts-surface",
                         )}
                       >
                         {selected && (
@@ -2009,7 +2009,7 @@ function HeaderMemberAvatars({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="h-7 rounded-md border border-pen-card-border px-3 font-sans text-[12px] text-pen-muted hover:bg-pen-surface"
+                className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
               >
                 Cancel
               </button>
@@ -2017,7 +2017,7 @@ function HeaderMemberAvatars({
                 type="button"
                 disabled={selectedIds.size === 0 || saving}
                 onClick={confirm}
-                className="h-7 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {saving
                   ? "Adding…"
@@ -2066,7 +2066,7 @@ export function ProjectProfilePage({
   if (isError || (!isPending && !data)) {
     return (
       <div className="flex h-full items-center justify-center">
-        <span className="font-sans text-[13px] text-pen-subtle">
+        <span className="font-sans text-[13px] text-sts-subtle">
           Project not found.
         </span>
       </div>
@@ -2499,14 +2499,14 @@ function ProjectProfilePageInner({
           className={cn(
             "flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-3 font-sans text-[12px] whitespace-nowrap sm:px-3 sm:text-[12.5px]",
             tab === t.id
-              ? "border-pen-id font-semibold text-pen-id"
-              : "border-transparent text-pen-muted hover:text-pen-foreground",
+              ? "border-sts-id font-semibold text-sts-id"
+              : "border-transparent text-sts-muted hover:text-sts-foreground",
           )}
         >
           <Icon className="size-3.5 shrink-0" />
           {t.label}
           {isSubDepartmentTab && creatingBoardSubDepartmentId === subDepartmentId && (
-            <Loader2 className="size-3 shrink-0 animate-spin text-pen-id" />
+            <Loader2 className="size-3 shrink-0 animate-spin text-sts-id" />
           )}
           {(!creatingBoardSubDepartmentId || creatingBoardSubDepartmentId !== subDepartmentId) &&
             boardGroup &&
@@ -2542,19 +2542,23 @@ function ProjectProfilePageInner({
             }
             startTransition(() => router.refresh());
           }}
+          onDeleted={() => {
+            setSettingsOpen(false);
+            router.push("/projects");
+          }}
         />
       )}
       {!canModifyProject && canSelfJoinProject && !isSupport && (
         <div className="shrink-0 border-b border-amber-500/20 bg-amber-500/5 px-4 py-2.5 sm:px-6 xl:px-8">
-          <p className="font-sans text-[12.5px] leading-relaxed text-pen-muted">
-            <span className="font-semibold text-pen-foreground">Read-only access.</span>{" "}
+          <p className="font-sans text-[12.5px] leading-relaxed text-sts-muted">
+            <span className="font-semibold text-sts-foreground">Read-only access.</span>{" "}
             You can browse this project as a department member, but you must be added to the
             project before creating tickets or making changes.
           </p>
         </div>
       )}
       {/* Header */}
-      <div className="pen-page-header shrink-0 border-b border-pen-card-border bg-pen-card">
+      <div className="sts-page-header shrink-0 border-b border-sts-card-border bg-sts-card">
         <div className="mb-2 flex items-start gap-2.5 sm:mb-3 sm:gap-3">
           <ProjectAvatarEditor
             projectId={project.id}
@@ -2569,7 +2573,7 @@ function ProjectProfilePageInner({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="shrink-0 pen-text-page-title leading-tight">
+                <h1 className="shrink-0 sts-text-page-title leading-tight">
                   {project.name}
                 </h1>
                 {!isSupport && (() => {
@@ -2595,7 +2599,7 @@ function ProjectProfilePageInner({
                         {stage.label}
                       </span>
                       {range && (
-                        <span className="font-mono text-[11.5px] text-pen-muted">
+                        <span className="font-mono text-[11.5px] text-sts-muted">
                           {range}
                         </span>
                       )}
@@ -2603,11 +2607,11 @@ function ProjectProfilePageInner({
                   );
                 })()}
                 {subDepartmentBoardGroups.length === 0 && project.subDepartmentName && (
-                  <span className="shrink-0 rounded-full bg-pen-blue-tint px-2.5 py-0.5 font-sans text-[11.5px] font-medium whitespace-nowrap text-pen-id">
+                  <span className="shrink-0 rounded-full bg-sts-blue-tint px-2.5 py-0.5 font-sans text-[11.5px] font-medium whitespace-nowrap text-sts-id">
                     {project.subDepartmentName}
                   </span>
                 )}
-                <span className="shrink-0 whitespace-nowrap font-sans text-[11.5px] text-pen-subtle">
+                <span className="shrink-0 whitespace-nowrap font-sans text-[11.5px] text-sts-subtle">
                   Created {formatDateTime(new Date(project.createdAt))}
                 </span>
               </div>
@@ -2626,7 +2630,7 @@ function ProjectProfilePageInner({
                     onClick={() => setSettingsOpen(true)}
                     title="Project settings"
                     aria-label="Project settings"
-                    className="flex size-7 items-center justify-center rounded-full border border-pen-card-border text-pen-muted transition-colors hover:border-pen-id hover:bg-pen-surface hover:text-pen-foreground"
+                    className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-id hover:bg-sts-surface hover:text-sts-foreground"
                   >
                     <Settings className="size-3.5" strokeWidth={2} />
                   </button>
@@ -2638,7 +2642,7 @@ function ProjectProfilePageInner({
 
         {/* Tabs + view toggle */}
         <div className="flex w-full min-w-0 items-end">
-          <div className="pen-header-scroll min-w-0 flex-1">
+          <div className="sts-header-scroll min-w-0 flex-1">
             <div className="flex w-max items-end gap-0.5">
               {PRIMARY_TABS.map(renderTabButton)}
               {canManageBoards && (
@@ -2659,11 +2663,11 @@ function ProjectProfilePageInner({
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-end gap-0.5 overflow-x-auto border-l border-pen-card-border/60 pl-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex shrink-0 items-end gap-0.5 overflow-x-auto border-l border-sts-card-border/60 pl-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {UTILITY_TABS.map(renderTabButton)}
             {tab.startsWith("team:") && (
               <>
-                <span className="mb-2 hidden h-5 w-px shrink-0 bg-pen-card-border/80 sm:block" />
+                <span className="mb-2 hidden h-5 w-px shrink-0 bg-sts-card-border/80 sm:block" />
                 <div className="mb-2 flex shrink-0 items-center gap-1">
                   <FilterDropdown
                     compact
@@ -2719,7 +2723,7 @@ function ProjectProfilePageInner({
                         setFilterModule(new Set());
                       }}
                       title="Clear filters"
-                      className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-pen-card-border px-2 font-sans text-[11.5px] text-pen-muted transition-colors hover:border-pen-red hover:text-pen-red"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-sts-card-border px-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
                     >
                       <X className="size-3 shrink-0" />
                       <span className="hidden sm:inline">Clear</span>
@@ -2730,7 +2734,7 @@ function ProjectProfilePageInner({
             )}
             {tab.startsWith("team:") && (
               <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-pen-card-border bg-pen-card">
+                <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
                   {(["board", "list"] as const).map((v) => (
                     <button
                       key={v}
@@ -2740,8 +2744,8 @@ function ProjectProfilePageInner({
                       className={cn(
                         "flex h-full items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                         boardView === v
-                          ? "bg-pen-blue-tint font-semibold text-pen-id"
-                          : "text-pen-muted hover:text-pen-foreground",
+                          ? "bg-sts-blue-tint font-semibold text-sts-id"
+                          : "text-sts-muted hover:text-sts-foreground",
                       )}
                     >
                       {v === "board" ? (
@@ -2756,7 +2760,7 @@ function ProjectProfilePageInner({
                   ))}
                 </div>
                 {boardView === "board" && (
-                  <div className="flex h-7 overflow-hidden rounded-md border border-pen-card-border bg-pen-card">
+                  <div className="flex h-7 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
                     <button
                       type="button"
                       onClick={() =>
@@ -2765,12 +2769,12 @@ function ProjectProfilePageInner({
                           behavior: "smooth",
                         })
                       }
-                      className="flex h-[26px] w-7 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                      className="flex h-[26px] w-7 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                       aria-label="Scroll board left"
                     >
                       <ChevronLeft className="size-3.5 shrink-0" />
                     </button>
-                    <span className="w-px self-stretch bg-pen-card-border" />
+                    <span className="w-px self-stretch bg-sts-card-border" />
                     <button
                       type="button"
                       onClick={() =>
@@ -2779,7 +2783,7 @@ function ProjectProfilePageInner({
                           behavior: "smooth",
                         })
                       }
-                      className="flex h-[26px] w-7 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                      className="flex h-[26px] w-7 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                       aria-label="Scroll board right"
                     >
                       <ChevronRight className="size-3.5 shrink-0" />

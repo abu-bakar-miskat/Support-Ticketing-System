@@ -19,7 +19,7 @@ function Kbd({ keys }: { keys: string[] }) {
   return (
     <div className="flex items-center gap-1">
       {keys.map((k) => (
-        <span key={k} className="flex h-5 min-w-[20px] items-center justify-center rounded border border-pen-card-border bg-pen-surface px-1.5 font-mono text-[11.5px] font-medium text-pen-muted dark:bg-pen-secondary-bg">
+        <span key={k} className="flex h-5 min-w-[20px] items-center justify-center rounded border border-sts-card-border bg-sts-surface px-1.5 font-mono text-[11.5px] font-medium text-sts-muted dark:bg-sts-secondary-bg">
           {k}
         </span>
       ))}
@@ -29,8 +29,8 @@ function Kbd({ keys }: { keys: string[] }) {
 
 function EnterBtn() {
   return (
-    <div className="flex size-5 shrink-0 items-center justify-center rounded bg-pen-button">
-      <span className="font-sans text-[11.5px] text-pen-button-fg">↵</span>
+    <div className="flex size-5 shrink-0 items-center justify-center rounded bg-sts-button">
+      <span className="font-sans text-[11.5px] text-sts-button-fg">↵</span>
     </div>
   );
 }
@@ -62,13 +62,13 @@ function ProjectStatusBadge({ status }: { status: string }) {
 
   const colorClass =
     status === "active"
-      ? "bg-pen-green-tint text-[#15803d] dark:bg-[#152a20] dark:text-[#6ee7a0]"
+      ? "bg-sts-green-tint text-[#15803d] dark:bg-[#152a20] dark:text-[#6ee7a0]"
       : status === "pipeline"
         ? "bg-[#f1f5f9] text-[#64748b] dark:bg-[#2a2e36] dark:text-[#94a3b8]"
         : status === "on_hold"
           ? "bg-[#fff7ed] text-[#c2410c] dark:bg-[#3a2818] dark:text-[#fdba74]"
           : status === "completed"
-            ? "bg-pen-blue-tint text-[#0369a1] dark:bg-[#1a3444] dark:text-[#7dd3fc]"
+            ? "bg-sts-blue-tint text-[#0369a1] dark:bg-[#1a3444] dark:text-[#7dd3fc]"
             : "bg-[#f1f5f9] text-[#64748b] dark:bg-[#2a2e36] dark:text-[#94a3b8]";
 
   return (
@@ -78,7 +78,7 @@ function ProjectStatusBadge({ status }: { status: string }) {
   );
 }
 
-const ICON = "size-[16px] shrink-0 text-pen-muted";
+const ICON = "size-[16px] shrink-0 text-sts-muted";
 
 export type RecentTicket = { dbId: string; ticketId: string; label: string; meta: string };
 export type SidebarProjectItem = { id: string; label: string; href: string; color: string; projectStatus?: string | null };
@@ -137,7 +137,6 @@ const SETTINGS_ITEMS: Item[] = [
   { id: "s-depts",      label: "Settings — Departments",icon: <DepartmentIcon className={ICON} />,  href: "/settings/departments" },
   { id: "s-projects",   label: "Settings — Projects",   icon: <FolderKanban className={ICON} />,href: "/settings/projects" },
   { id: "s-tags",       label: "Settings — Tags",       icon: <Tag className={ICON} />,        href: "/settings/tags" },
-  { id: "s-teams",      label: "Settings — Teams",      icon: <Users className={ICON} />,      href: "/settings/sub-departments" },
 ];
 
 const ACTION_ITEMS: Item[] = [
@@ -356,25 +355,25 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]" onClick={onClose}>
-      <div className="pen-overlay-enter absolute inset-0 pen-overlay-backdrop" />
+      <div className="sts-overlay-enter absolute inset-0 sts-overlay-backdrop" />
       <div
-        className="relative z-10 w-full max-w-[640px] overflow-hidden rounded-[14px] pen-glass-panel pen-modal-enter border ring-1 ring-white/30 dark:ring-white/10"
+        className="relative z-10 w-full max-w-[640px] overflow-hidden rounded-[14px] sts-glass-panel sts-modal-enter border ring-1 ring-white/30 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}
-        <div className="flex h-14 items-center gap-3 border-b border-pen-card-border pl-[18px] pr-4">
-          <Search className="size-[18px] shrink-0 text-pen-subtle" />
+        <div className="flex h-14 items-center gap-3 border-b border-sts-card-border pl-[18px] pr-4">
+          <Search className="size-[18px] shrink-0 text-sts-subtle" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search tickets, projects, settings… or try ENG-123"
-            className="min-w-0 flex-1 bg-transparent font-sans text-[15px] text-pen-foreground outline-none placeholder:text-pen-subtle"
+            className="min-w-0 flex-1 bg-transparent font-sans text-[15px] text-sts-foreground outline-none placeholder:text-sts-subtle"
             style={{ caretColor: "#38bdf8" }}
           />
           {searching && (
-            <span className="font-sans text-[11.5px] text-pen-subtle animate-pulse">Searching…</span>
+            <span className="font-sans text-[11.5px] text-sts-subtle animate-pulse">Searching…</span>
           )}
           <Kbd keys={["esc"]} />
         </div>
@@ -382,12 +381,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         {/* Results */}
         <div className="flex flex-col gap-0.5 overflow-y-auto p-2" style={{ maxHeight: "calc(80vh - 52px - 38px)" }}>
           {visibleGroups.length === 0 && query.length >= 2 && !searching && (
-            <p className="py-8 text-center font-sans text-[13px] text-pen-subtle">No results for "{query}"</p>
+            <p className="py-8 text-center font-sans text-[13px] text-sts-subtle">No results for "{query}"</p>
           )}
           {visibleGroups.map((group) => (
             <div key={group.heading}>
               <div className="flex h-[22px] items-center pl-2.5">
-                <span className="pen-text-label">{group.heading}</span>
+                <span className="sts-text-label">{group.heading}</span>
               </div>
               {group.items.map((item) => {
                 const isActive = item.id === activeId;
@@ -401,7 +400,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     className={cn(
                       "flex w-full items-center gap-[10px] rounded-lg px-2.5 text-left transition-colors",
                       (t || p) ? "h-10" : "h-9",
-                      isActive ? "bg-pen-blue-tint" : "hover:bg-pen-blue-tint/60 dark:hover:bg-pen-blue-tint/40",
+                      isActive ? "bg-sts-blue-tint" : "hover:bg-sts-blue-tint/60 dark:hover:bg-sts-blue-tint/40",
                     )}
                     onMouseEnter={() => setActiveId(item.id)}
                     onClick={() => handleSelect(item)}
@@ -410,31 +409,31 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     {t ? (
                       <>
                         <PriorityDot priority={t.priority} />
-                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-pen-foreground font-semibold" : "text-pen-foreground")}>
+                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-sts-foreground font-semibold" : "text-sts-foreground")}>
                           {t.title}
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
                           {t.project && (
-                            <span className="hidden max-w-[120px] truncate font-sans text-[11.5px] text-pen-subtle sm:block">
+                            <span className="hidden max-w-[120px] truncate font-sans text-[11.5px] text-sts-subtle sm:block">
                               {t.project}
                             </span>
                           )}
                           <div className="flex items-center gap-1">
                             <StatusDot status={t.status} />
-                            <span className="font-sans text-[11.5px] text-pen-subtle">{t.status}</span>
+                            <span className="font-sans text-[11.5px] text-sts-subtle">{t.status}</span>
                           </div>
-                          <span className="font-mono text-[11px] font-semibold text-pen-id">{t.humanId}</span>
+                          <span className="font-mono text-[11px] font-semibold text-sts-id">{t.humanId}</span>
                         </div>
                       </>
                     ) : p ? (
                       /* Project result row */
                       <>
                         <span className="size-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: p.color }} />
-                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-pen-foreground font-semibold" : "text-pen-foreground")}>
+                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-sts-foreground font-semibold" : "text-sts-foreground")}>
                           {p.name}
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className="font-sans text-[11.5px] text-pen-subtle tabular-nums">
+                          <span className="font-sans text-[11.5px] text-sts-subtle tabular-nums">
                             {p.ticketCount} {p.ticketCount === 1 ? "ticket" : "tickets"}
                           </span>
                           <ProjectStatusBadge status={p.status} />
@@ -446,7 +445,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                         {item.colorDot
                           ? <span className="size-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: item.colorDot }} />
                           : item.icon}
-                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-pen-foreground font-semibold" : "text-pen-foreground")}>
+                        <span className={cn("min-w-0 flex-1 truncate font-sans text-[13px]", isActive ? "text-sts-foreground font-semibold" : "text-sts-foreground")}>
                           {item.label}
                         </span>
                         {/* Recent ticket: show ticket ID + status dot */}
@@ -454,15 +453,15 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                           <div className="flex shrink-0 items-center gap-2">
                             <div className="flex items-center gap-1">
                               <StatusDot status={item.recentMeta} />
-                              <span className="font-sans text-[11.5px] text-pen-subtle">{item.recentMeta}</span>
+                              <span className="font-sans text-[11.5px] text-sts-subtle">{item.recentMeta}</span>
                             </div>
-                            <span className="font-mono text-[11px] font-semibold text-pen-id">{item.sub}</span>
+                            <span className="font-mono text-[11px] font-semibold text-sts-id">{item.sub}</span>
                           </div>
                         ) : item.sub ? (
-                          <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">{item.sub}</span>
+                          <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">{item.sub}</span>
                         ) : null}
                         {item.isActive && (
-                          <Check className="size-3.5 shrink-0 text-pen-blue" />
+                          <Check className="size-3.5 shrink-0 text-sts-blue" />
                         )}
                         {isActive && !item.recentMeta && <EnterBtn />}
                       </>
@@ -476,12 +475,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex h-[38px] items-center gap-3.5 border-t border-pen-card-border bg-pen-bg px-4">
-          <div className="flex items-center gap-1.5"><Kbd keys={["↑","↓"]} /><span className="font-sans text-[11.5px] text-pen-subtle">navigate</span></div>
-          <div className="flex items-center gap-1.5"><Kbd keys={["↵"]} /><span className="font-sans text-[11.5px] text-pen-subtle">select</span></div>
-          <div className="flex items-center gap-1.5"><Kbd keys={["⌘","K"]} /><span className="font-sans text-[11.5px] text-pen-subtle">toggle</span></div>
+        <div className="flex h-[38px] items-center gap-3.5 border-t border-sts-card-border bg-sts-bg px-4">
+          <div className="flex items-center gap-1.5"><Kbd keys={["↑","↓"]} /><span className="font-sans text-[11.5px] text-sts-subtle">navigate</span></div>
+          <div className="flex items-center gap-1.5"><Kbd keys={["↵"]} /><span className="font-sans text-[11.5px] text-sts-subtle">select</span></div>
+          <div className="flex items-center gap-1.5"><Kbd keys={["⌘","K"]} /><span className="font-sans text-[11.5px] text-sts-subtle">toggle</span></div>
           <span className="flex-1" />
-          <span className="font-sans text-[11.5px] font-medium text-pen-subtle">PEN Platform</span>
+          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">Support Ticketing System</span>
         </div>
       </div>
     </div>

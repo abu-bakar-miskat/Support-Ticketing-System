@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import {
   EMAIL_NOTIFY_KEYS,
   type EmailNotifyKey,
@@ -22,6 +23,14 @@ function checkScope(
   return null;
 }
 
+/** Validate an optional sub-department belongs to the given department. */
+async function checkSubScope(departmentId: string, subDepartmentId: string | null): Promise<NextResponse | null> {
+  if (!subDepartmentId) return null;
+  const sub = await prisma.subDepartment.findFirst({ where: { id: subDepartmentId, departmentId }, select: { id: true } });
+  if (!sub) return NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 });
+  return null;
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
@@ -41,12 +50,15 @@ export async function PUT(
   }
   const scopeError = checkScope(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
+  const subScopeError = await checkSubScope(departmentId, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
   if (typeof body?.value !== "boolean") {
     return NextResponse.json({ error: "value must be a boolean" }, { status: 400 });
   }
 
-  await saveDepartmentNotifyOverride(key, body.value, departmentId);
+  await saveDepartmentNotifyOverride(key, body.value, departmentId, subDepartmentId);
   return NextResponse.json({ ok: true });
 }
 
@@ -68,7 +80,10 @@ export async function DELETE(
   }
   const scopeError = checkScope(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
+  const subScopeError = await checkSubScope(departmentId, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
-  await saveDepartmentNotifyOverride(key, null, departmentId);
+  await saveDepartmentNotifyOverride(key, null, departmentId, subDepartmentId);
   return NextResponse.json({ ok: true });
 }

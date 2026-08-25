@@ -83,6 +83,22 @@ export default async function DepartmentsPage() {
 
     const [deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests] = orgStats;
 
+    // ── Per-department shared-mailbox usage (tenant-wide) ────────────────────
+    const mailboxGroups = await prisma.mailboxConnection.groupBy({
+      by: ["departmentId", "status"],
+      where: { tenantId },
+      _count: { _all: true },
+    });
+    const mailboxByDept = new Map<string, { total: number; active: number; issues: number }>();
+    for (const g of mailboxGroups) {
+      const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0 };
+      const count = g._count._all;
+      entry.total += count;
+      if (g.status === "ACTIVE") entry.active += count;
+      else entry.issues += count; // AUTH_ERROR + UNREACHABLE
+      mailboxByDept.set(g.departmentId, entry);
+    }
+
     // ── Tenant-wide user list, grouped by department + sub-department ────────
     const [tenantProfiles, tenantMemberships, tenantDirectDeptMembers] = await Promise.all([
       prisma.profile.findMany({
@@ -208,6 +224,11 @@ export default async function DepartmentsPage() {
     const tenantName =
       readTenantBranding(tenantRow?.branding).displayName ?? tenantRow?.name ?? null;
 
+    const mailboxUsage = rawDepts.map((d) => {
+      const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0 };
+      return { departmentId: d.id, name: d.name, total: u.total, active: u.active, issues: u.issues };
+    });
+
     return (
       <DepartmentsClient
         departments={departments}
@@ -217,6 +238,7 @@ export default async function DepartmentsPage() {
         tenantId={profile.activeTenantId ?? null}
         members={tenantMembers}
         currentUserId={profile.id}
+        mailboxUsage={mailboxUsage}
       />
     );
   }

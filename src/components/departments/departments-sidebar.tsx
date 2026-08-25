@@ -52,7 +52,7 @@ export function DepartmentsSidebar({
   return (
     <aside
       className={cn(
-        "pen-glass-panel flex h-full w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r px-3 py-3.5",
+        "sts-glass-panel flex h-full w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r px-3 py-3.5",
         className,
       )}
     >
@@ -66,26 +66,24 @@ export function DepartmentsSidebar({
             className="h-9 w-auto max-w-[140px] object-contain"
           />
         ) : brandingName ? (
-          <span className="truncate text-[15px] font-semibold text-pen-foreground">
+          <span className="truncate text-[15px] font-semibold text-sts-foreground">
             {brandingName}
           </span>
         ) : (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/pen-logo-light.svg"
-              alt="PEN Group"
-              width={116}
+              src="/images/support-logo-horizontal.png"
+              alt="Support Ticketing System"
               height={36}
-              className="dark:hidden"
+              className="h-9 w-auto max-w-[150px] object-contain dark:hidden"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/pen-logo-dark.svg"
-              alt="PEN Group"
-              width={116}
+              src="/images/support-logo-horizontal-white.png"
+              alt=""
               height={36}
-              className="hidden dark:block"
+              className="hidden h-9 w-auto max-w-[150px] object-contain dark:block"
             />
           </>
         )}
@@ -93,7 +91,7 @@ export function DepartmentsSidebar({
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto rounded p-1 text-pen-subtle hover:text-pen-foreground lg:hidden"
+            className="ml-auto rounded p-1 text-sts-subtle hover:text-sts-foreground lg:hidden"
             aria-label="Close sidebar"
           >
             <X className="size-4" />
@@ -106,20 +104,20 @@ export function DepartmentsSidebar({
       {isSuperAdmin && (
         <Link
           href="/platform"
-          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
         >
           <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
           <span className="font-sans text-[11.5px] font-medium">Platform</span>
         </Link>
       )}
 
-      <div className="flex items-center gap-2 rounded-lg border border-pen-blue/30 bg-pen-blue-tint px-2.5 py-2">
+      <div className="flex items-center gap-2 rounded-lg border border-sts-blue/30 bg-sts-blue-tint px-2.5 py-2">
         <SidebarNavIcon
           icon={DepartmentIcon}
           size="sm"
-          className="shrink-0 text-pen-blue"
+          className="shrink-0 text-sts-blue"
         />
-        <span className="font-sans text-[12px] font-semibold text-pen-id">
+        <span className="font-sans text-[12px] font-semibold text-sts-id">
           All Departments
         </span>
       </div>
@@ -137,8 +135,8 @@ export function DepartmentsSidebar({
             href={item.href}
             prefetch={true}
             className={cn(
-              "pen-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-pen-foreground hover:bg-pen-blue-tint",
-              active && "bg-pen-blue-tint font-semibold text-pen-id",
+              "sts-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
+              active && "bg-sts-blue-tint font-semibold text-sts-id",
             )}
           >
             <SidebarNavIcon icon={item.icon} />
@@ -146,7 +144,7 @@ export function DepartmentsSidebar({
             {item.badge != null && (
               <>
                 <span className="flex-1" />
-                <span className="text-[11.5px] text-pen-subtle">
+                <span className="text-[11.5px] text-sts-subtle">
                   {item.badge}
                 </span>
               </>

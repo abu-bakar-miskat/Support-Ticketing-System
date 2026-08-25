@@ -38,7 +38,7 @@ export function TasksPage({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Scope toggle + New Task button */}
-      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-pen-card-border bg-pen-card px-4 py-1.5 sm:px-6 xl:px-8">
+      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-sts-card-border bg-sts-card px-4 py-1.5 sm:px-6 xl:px-8">
         {SCOPES.filter((s) => s !== "unassigned" || canSeeUnassigned).map((s) => (
           <button
             key={s}
@@ -47,8 +47,8 @@ export function TasksPage({
             className={cn(
               "flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
               effectiveScope === s
-                ? "bg-pen-blue text-white dark:text-gray-900"
-                : "text-pen-muted hover:bg-pen-surface hover:text-pen-foreground",
+                ? "bg-sts-blue text-white dark:text-gray-900"
+                : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
             )}
           >
             {s === "mine" && <CheckSquare className="size-3.5 shrink-0" />}
@@ -68,7 +68,7 @@ export function TasksPage({
                   "flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-sans text-[10.5px] font-bold leading-none",
                   effectiveScope === s
                     ? "bg-white/25 text-white dark:text-gray-900"
-                    : "bg-pen-blue-tint text-pen-id",
+                    : "bg-sts-blue-tint text-sts-id",
                 )}
               >
                 {unassignedCount}
@@ -82,7 +82,7 @@ export function TasksPage({
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-pen-blue px-3 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-pen-blue/90 dark:text-gray-900"
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 dark:text-gray-900"
         >
           <Plus className="size-3.5 shrink-0" />
           New Task

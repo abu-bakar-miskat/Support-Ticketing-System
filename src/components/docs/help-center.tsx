@@ -85,11 +85,11 @@ const GROUPS: { id: HelpGroup; label: string; managerOnly?: boolean }[] = [
 // ─── Primitives ─────────────────────────────────────────────────────────────
 function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agent" | "all" }) {
   const styles: Record<string, string> = {
-    admin: "bg-pen-blue/15 text-pen-blue",
+    admin: "bg-sts-blue/15 text-sts-blue",
     manager: "bg-purple-500/15 text-purple-500",
     sub_manager: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    agent: "bg-pen-surface text-pen-subtle",
-    all: "bg-pen-blue/10 text-pen-id",
+    agent: "bg-sts-surface text-sts-subtle",
+    all: "bg-sts-blue/10 text-sts-id",
   };
   const labels: Record<string, string> = {
     admin: "Admin",
@@ -113,17 +113,17 @@ function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agen
 function SectionHeader({ id, icon: Icon, title }: { id: string; icon: LucideIcon; title: string }) {
   return (
     <div className="mb-5 flex items-center gap-3" id={id}>
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-pen-blue/10">
-        <Icon className="size-[18px] text-pen-blue" />
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
+        <Icon className="size-[18px] text-sts-blue" />
       </div>
-      <h2 className="font-sans text-[22px] font-bold tracking-tight text-pen-foreground">{title}</h2>
+      <h2 className="font-sans text-[22px] font-bold tracking-tight text-sts-foreground">{title}</h2>
     </div>
   );
 }
 
 function InfoBox({ type = "info", children }: { type?: "info" | "tip" | "warning"; children: React.ReactNode }) {
   const styles = {
-    info: { wrapper: "bg-pen-blue/5 border-pen-blue/20", icon: <Info className="mt-0.5 size-4 shrink-0 text-pen-blue" /> },
+    info: { wrapper: "bg-sts-blue/5 border-sts-blue/20", icon: <Info className="mt-0.5 size-4 shrink-0 text-sts-blue" /> },
     tip: { wrapper: "bg-emerald-500/5 border-emerald-500/20", icon: <Lightbulb className="mt-0.5 size-4 shrink-0 text-emerald-500" /> },
     warning: { wrapper: "bg-amber-500/5 border-amber-500/20", icon: <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-500" /> },
   };
@@ -131,7 +131,7 @@ function InfoBox({ type = "info", children }: { type?: "info" | "tip" | "warning
   return (
     <div className={cn("my-4 flex gap-3 rounded-xl border p-4", s.wrapper)}>
       {s.icon}
-      <div className="font-sans text-[13.5px] leading-relaxed text-pen-foreground">{children}</div>
+      <div className="font-sans text-[13.5px] leading-relaxed text-sts-foreground">{children}</div>
     </div>
   );
 }
@@ -139,12 +139,12 @@ function InfoBox({ type = "info", children }: { type?: "info" | "tip" | "warning
 function Step({ number, title, children }: { number: number; title: string; children?: React.ReactNode }) {
   return (
     <div className="mb-4 flex gap-4">
-      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-pen-blue font-sans text-[13px] font-bold text-white">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-sts-blue font-sans text-[13px] font-bold text-white">
         {number}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="mb-1 font-sans text-[14px] font-semibold text-pen-foreground">{title}</p>
-        {children && <p className="font-sans text-[13.5px] leading-relaxed text-pen-subtle">{children}</p>}
+        <p className="mb-1 font-sans text-[14px] font-semibold text-sts-foreground">{title}</p>
+        {children && <p className="font-sans text-[13.5px] leading-relaxed text-sts-subtle">{children}</p>}
       </div>
     </div>
   );
@@ -162,17 +162,17 @@ function FeatureCard({
   roles?: Array<"admin" | "manager" | "sub_manager" | "agent" | "all">;
 }) {
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-surface p-4 transition-colors hover:border-pen-blue/30">
+    <div className="rounded-xl border border-sts-card-border bg-sts-surface p-4 transition-colors hover:border-sts-blue/30">
       <div className="flex items-start gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-pen-blue/10">
-          <Icon className="size-4 text-pen-blue" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10">
+          <Icon className="size-4 text-sts-blue" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <p className="font-sans text-[13.5px] font-semibold text-pen-foreground">{title}</p>
+            <p className="font-sans text-[13.5px] font-semibold text-sts-foreground">{title}</p>
             {roles?.map((r) => <RoleBadge key={r} role={r} />)}
           </div>
-          <p className="font-sans text-[13px] leading-relaxed text-pen-subtle">{description}</p>
+          <p className="font-sans text-[13px] leading-relaxed text-sts-subtle">{description}</p>
         </div>
       </div>
     </div>
@@ -180,19 +180,19 @@ function FeatureCard({
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="mb-3 font-sans text-[13.5px] leading-relaxed text-pen-subtle">{children}</p>;
+  return <p className="mb-3 font-sans text-[13.5px] leading-relaxed text-sts-subtle">{children}</p>;
 }
 
 function Subhead({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 mt-4 font-sans text-[13.5px] font-semibold text-pen-foreground">{children}</p>;
+  return <p className="mb-2 mt-4 font-sans text-[13.5px] font-semibold text-sts-foreground">{children}</p>;
 }
 
 function Bullets({ items }: { items: React.ReactNode[] }) {
   return (
     <ul className="mb-3 space-y-1.5">
       {items.map((it, i) => (
-        <li key={i} className="flex gap-2 font-sans text-[13.5px] leading-relaxed text-pen-subtle">
-          <ArrowRight className="mt-1 size-3.5 shrink-0 text-pen-blue" />
+        <li key={i} className="flex gap-2 font-sans text-[13.5px] leading-relaxed text-sts-subtle">
+          <ArrowRight className="mt-1 size-3.5 shrink-0 text-sts-blue" />
           <span>{it}</span>
         </li>
       ))}
@@ -202,7 +202,7 @@ function Bullets({ items }: { items: React.ReactNode[] }) {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-pen-card-border bg-pen-surface px-1.5 py-0.5 font-mono text-[11.5px] text-pen-foreground">
+    <kbd className="rounded border border-sts-card-border bg-sts-surface px-1.5 py-0.5 font-mono text-[11.5px] text-sts-foreground">
       {children}
     </kbd>
   );
@@ -373,17 +373,17 @@ const SECTIONS: HelpSection[] = [
     keywords: "keyboard shortcuts hotkeys keys cmd ctrl create task",
     summary: "Speed up common actions.",
     body: (
-      <div className="rounded-xl border border-pen-card-border bg-pen-surface p-4">
-        <div className="flex items-center justify-between border-b border-pen-card-border py-2.5">
-          <span className="text-[13.5px] text-pen-foreground">Open search / command palette</span>
+      <div className="rounded-xl border border-sts-card-border bg-sts-surface p-4">
+        <div className="flex items-center justify-between border-b border-sts-card-border py-2.5">
+          <span className="text-[13.5px] text-sts-foreground">Open search / command palette</span>
           <span className="flex gap-1"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
         </div>
-        <div className="flex items-center justify-between border-b border-pen-card-border py-2.5">
-          <span className="text-[13.5px] text-pen-foreground">Create a new ticket</span>
+        <div className="flex items-center justify-between border-b border-sts-card-border py-2.5">
+          <span className="text-[13.5px] text-sts-foreground">Create a new ticket</span>
           <span className="flex gap-1"><Kbd>X</Kbd><Kbd>Space</Kbd></span>
         </div>
         <div className="flex items-center justify-between py-2.5">
-          <span className="text-[13.5px] text-pen-foreground">Close open dialog / drawer</span>
+          <span className="text-[13.5px] text-sts-foreground">Close open dialog / drawer</span>
           <span><Kbd>Esc</Kbd></span>
         </div>
       </div>
@@ -703,9 +703,9 @@ const SECTIONS: HelpSection[] = [
       <>
         <Bullets
           items={[
-            <><Tag className="inline size-3.5 text-pen-blue" /> <strong>Projects</strong> (Settings → Projects) — create projects, assign members/colors; admins can delete.</>,
-            <><Tag className="inline size-3.5 text-pen-blue" /> <strong>Tags &amp; Labels</strong> (Settings → Tags) — create labels with colors; see usage counts.</>,
-            <><FileText className="inline size-3.5 text-pen-blue" /> <strong>Ticket templates</strong> (Settings → Templates) — preset field sets to speed up ticket creation.</>,
+            <><Tag className="inline size-3.5 text-sts-blue" /> <strong>Projects</strong> (Settings → Projects) — create projects, assign members/colors; admins can delete.</>,
+            <><Tag className="inline size-3.5 text-sts-blue" /> <strong>Tags &amp; Labels</strong> (Settings → Tags) — create labels with colors; see usage counts.</>,
+            <><FileText className="inline size-3.5 text-sts-blue" /> <strong>Ticket templates</strong> (Settings → Templates) — preset field sets to speed up ticket creation.</>,
           ]}
         />
       </>
@@ -1115,65 +1115,65 @@ export function HelpCenter() {
   }, [q, sections]);
 
   return (
-    <div className="flex h-full overflow-hidden bg-pen-bg">
+    <div className="flex h-full overflow-hidden bg-sts-bg">
       {/* Left rail */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-pen-card-border bg-pen-card lg:flex">
-        <div className="border-b border-pen-card-border p-3">
-          <div className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-2.5">
-            <Search className="size-3.5 shrink-0 text-pen-subtle" />
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sts-card-border bg-sts-card lg:flex">
+        <div className="border-b border-sts-card-border p-3">
+          <div className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-2.5">
+            <Search className="size-3.5 shrink-0 text-sts-subtle" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search help…"
-              className="w-full bg-transparent py-2 text-[12.5px] outline-none placeholder:text-pen-subtle"
+              className="w-full bg-transparent py-2 text-[12.5px] outline-none placeholder:text-sts-subtle"
             />
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto p-3">
           {q ? (
             <div className="flex flex-col gap-1">
-              <p className="px-2 pb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <p className="px-2 pb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                 {matchedSections.length + matchedFaqs.length} result(s)
               </p>
               {matchedSections.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => scrollTo(s.id)}
-                  className="rounded-md px-2 py-1.5 text-left text-[13px] text-pen-foreground hover:bg-pen-surface"
+                  className="rounded-md px-2 py-1.5 text-left text-[13px] text-sts-foreground hover:bg-sts-surface"
                 >
                   <span className="flex items-center gap-2">
-                    <s.icon className="size-3.5 shrink-0 text-pen-blue" />
+                    <s.icon className="size-3.5 shrink-0 text-sts-blue" />
                     {s.title}
                   </span>
-                  <span className="ml-5 block truncate text-[11.5px] text-pen-subtle">{s.summary}</span>
+                  <span className="ml-5 block truncate text-[11.5px] text-sts-subtle">{s.summary}</span>
                 </button>
               ))}
               {matchedFaqs.map((f) => (
                 <button
                   key={f.id}
                   onClick={() => { scrollTo("faq"); setOpenFaq(f.id); }}
-                  className="rounded-md px-2 py-1.5 text-left text-[13px] text-pen-foreground hover:bg-pen-surface"
+                  className="rounded-md px-2 py-1.5 text-left text-[13px] text-sts-foreground hover:bg-sts-surface"
                 >
                   <span className="flex items-center gap-2">
-                    <CircleAlert className="size-3.5 shrink-0 text-pen-blue" />
+                    <CircleAlert className="size-3.5 shrink-0 text-sts-blue" />
                     FAQ: {f.q}
                   </span>
                 </button>
               ))}
               {matchedSections.length + matchedFaqs.length === 0 && (
-                <p className="px-2 py-4 text-[12.5px] text-pen-subtle">No matches. Try another term.</p>
+                <p className="px-2 py-4 text-[12.5px] text-sts-subtle">No matches. Try another term.</p>
               )}
             </div>
           ) : (
             visibleGroups.map((g) => (
               <div key={g.id} className="mb-4">
-                <p className="px-2 pb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">{g.label}</p>
+                <p className="px-2 pb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">{g.label}</p>
                 {g.id === "faq" ? (
                   <button
                     onClick={() => scrollTo("faq")}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-pen-surface",
-                      activeSection === "faq" ? "bg-pen-surface font-medium text-pen-foreground" : "text-pen-subtle",
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-sts-surface",
+                      activeSection === "faq" ? "bg-sts-surface font-medium text-sts-foreground" : "text-sts-subtle",
                     )}
                   >
                     <CircleAlert className="size-3.5 shrink-0" />
@@ -1187,8 +1187,8 @@ export function HelpCenter() {
                         key={s.id}
                         onClick={() => scrollTo(s.id)}
                         className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-pen-surface",
-                          activeSection === s.id ? "bg-pen-surface font-medium text-pen-foreground" : "text-pen-subtle",
+                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-sts-surface",
+                          activeSection === s.id ? "bg-sts-surface font-medium text-sts-foreground" : "text-sts-subtle",
                         )}
                       >
                         <s.icon className="size-3.5 shrink-0" />
@@ -1207,36 +1207,36 @@ export function HelpCenter() {
         <div className="w-full px-5 py-8 sm:px-8 lg:px-10">
           <div className="mb-6">
             <div className="mb-1 flex items-center gap-2">
-              <LifeBuoy className="size-5 text-pen-blue" />
-              <h1 className="font-sans text-[26px] font-bold tracking-tight text-pen-foreground">Help Center</h1>
+              <LifeBuoy className="size-5 text-sts-blue" />
+              <h1 className="font-sans text-[26px] font-bold tracking-tight text-sts-foreground">Help Center</h1>
             </div>
-            <p className="font-sans text-[13.5px] text-pen-subtle">
+            <p className="font-sans text-[13.5px] text-sts-subtle">
               Guides, processes and FAQs for the platform.
               {isManager && <> Manager-only topics are included for your role.</>}
             </p>
             {/* Mobile search + jump */}
             <div className="mt-4 flex flex-col gap-2 lg:hidden">
-              <div className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-2.5">
-                <Search className="size-3.5 shrink-0 text-pen-subtle" />
+              <div className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-2.5">
+                <Search className="size-3.5 shrink-0 text-sts-subtle" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search help…"
-                  className="w-full bg-transparent py-2 text-[12.5px] outline-none placeholder:text-pen-subtle"
+                  className="w-full bg-transparent py-2 text-[12.5px] outline-none placeholder:text-sts-subtle"
                 />
               </div>
               <div className="relative">
                 <select
                   value={activeSection}
                   onChange={(e) => scrollTo(e.target.value)}
-                  className="w-full appearance-none rounded-lg border border-pen-card-border bg-pen-surface px-2.5 py-2 text-[12.5px] text-pen-foreground outline-none"
+                  className="w-full appearance-none rounded-lg border border-sts-card-border bg-sts-surface px-2.5 py-2 text-[12.5px] text-sts-foreground outline-none"
                 >
                   {sections.map((s) => (
                     <option key={s.id} value={s.id}>{s.title}</option>
                   ))}
                   <option value="faq">Frequently asked questions</option>
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
               </div>
             </div>
           </div>
@@ -1254,7 +1254,7 @@ export function HelpCenter() {
               </div>
             ) : (
               <div key={g!.id} className="mb-2">
-                <p className="mb-4 mt-2 border-b border-pen-card-border pb-2 font-sans text-[12px] font-semibold uppercase tracking-wider text-pen-subtle">
+                <p className="mb-4 mt-2 border-b border-sts-card-border pb-2 font-sans text-[12px] font-semibold uppercase tracking-wider text-sts-subtle">
                   {g!.label}
                 </p>
                 {sections
@@ -1273,17 +1273,17 @@ export function HelpCenter() {
           {(!q || matchedFaqs.length > 0) && (
             <section className="mb-10 scroll-mt-4">
               <SectionHeader id="faq" icon={CircleAlert} title="Frequently asked questions" />
-              <div className="overflow-hidden rounded-xl border border-pen-card-border">
+              <div className="overflow-hidden rounded-xl border border-sts-card-border">
                 {(q ? matchedFaqs : faqs).map((f) => {
                   const open = openFaq === f.id;
                   return (
-                    <div key={f.id} className="border-b border-pen-card-border last:border-0">
+                    <div key={f.id} className="border-b border-sts-card-border last:border-0">
                       <button
                         onClick={() => setOpenFaq(open ? null : f.id)}
-                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-pen-surface"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-sts-surface"
                       >
-                        <span className="font-sans text-[13.5px] font-medium text-pen-foreground">{f.q}</span>
-                        <ChevronDown className={cn("size-4 shrink-0 text-pen-subtle transition-transform", open && "rotate-180")} />
+                        <span className="font-sans text-[13.5px] font-medium text-sts-foreground">{f.q}</span>
+                        <ChevronDown className={cn("size-4 shrink-0 text-sts-subtle transition-transform", open && "rotate-180")} />
                       </button>
                       {open && <div className="px-4 pb-3">{f.a}</div>}
                     </div>
@@ -1294,7 +1294,7 @@ export function HelpCenter() {
           )}
 
           {q && matchedSections.length === 0 && matchedFaqs.length === 0 && (
-            <p className="py-10 text-center text-[13px] text-pen-subtle">No results for “{query}”.</p>
+            <p className="py-10 text-center text-[13px] text-sts-subtle">No results for “{query}”.</p>
           )}
         </div>
       </div>

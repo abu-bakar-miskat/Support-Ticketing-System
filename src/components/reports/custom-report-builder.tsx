@@ -116,19 +116,19 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
   const maxCount = buckets && buckets.length ? Math.max(...buckets.map((b) => b.count)) : 1;
 
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card">
-      <div className="border-b border-pen-card-border px-4 py-2.5 sm:px-[18px]">
-        <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card">
+      <div className="border-b border-sts-card-border px-4 py-2.5 sm:px-[18px]">
+        <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
           CUSTOM REPORT
         </p>
-        <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+        <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
           Group ticket counts by one of your form fields for the selected range.
         </p>
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-4 sm:px-[18px]">
         <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+          <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
             Group by field
           </label>
           <SearchableSelect
@@ -145,7 +145,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
 
         {/* Optional filters */}
         <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+          <label className="font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
             Filters (optional)
           </label>
           {filters.map((row, i) => {
@@ -178,13 +178,13 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
                       setFilters((prev) => prev.map((r, idx) => (idx === i ? { ...r, value: e.target.value } : r)))
                     }
                     placeholder="Value…"
-                    className="h-9 w-[180px] rounded-lg border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue/60"
+                    className="h-9 w-[180px] rounded-lg border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/60"
                   />
                 )}
                 <button
                   type="button"
                   onClick={() => setFilters((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle hover:text-red-500"
+                  className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle hover:text-red-500"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -194,7 +194,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
           <button
             type="button"
             onClick={() => setFilters((prev) => [...prev, { fieldId: "", value: "" }])}
-            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] font-medium text-pen-muted hover:text-pen-foreground"
+            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground"
           >
             <Plus className="size-3.5" />
             Add filter
@@ -207,7 +207,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || running}
             onClick={runPreview}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
           >
             {running ? <Loader2 className="size-3.5 animate-spin" /> : <Table2 className="size-3.5" />}
             Run preview
@@ -216,7 +216,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || exporting !== null}
             onClick={() => exportReport("CSV")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-3 font-sans text-[12px] font-medium text-pen-foreground hover:bg-pen-bg disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
           >
             {exporting === "CSV" ? <Loader2 className="size-3.5 animate-spin" /> : <Table2 className="size-3.5" />}
             Export CSV
@@ -225,7 +225,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || exporting !== null}
             onClick={() => exportReport("PDF")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-3 font-sans text-[12px] font-medium text-pen-foreground hover:bg-pen-bg disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
           >
             {exporting === "PDF" ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
             Export PDF
@@ -235,16 +235,16 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
         {/* Preview */}
         {buckets && (
           buckets.length === 0 ? (
-            <p className="font-sans text-[12px] text-pen-subtle">No tickets matched for this range.</p>
+            <p className="font-sans text-[12px] text-sts-subtle">No tickets matched for this range.</p>
           ) : (
-            <div className="mt-1 flex flex-col divide-y divide-pen-card-border/60 rounded-lg border border-pen-card-border">
+            <div className="mt-1 flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border">
               {buckets.map((b) => (
                 <div key={b.value} className="flex items-center gap-3 px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">{b.value}</span>
-                  <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-pen-surface sm:block">
-                    <div className="h-full rounded-full bg-pen-blue" style={{ width: `${Math.max(4, Math.round((b.count / maxCount) * 100))}%` }} />
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">{b.value}</span>
+                  <div className="hidden h-2 w-40 overflow-hidden rounded-full bg-sts-surface sm:block">
+                    <div className="h-full rounded-full bg-sts-blue" style={{ width: `${Math.max(4, Math.round((b.count / maxCount) * 100))}%` }} />
                   </div>
-                  <span className="w-10 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">{b.count}</span>
+                  <span className="w-10 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">{b.count}</span>
                 </div>
               ))}
             </div>

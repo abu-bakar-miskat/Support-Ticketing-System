@@ -133,10 +133,10 @@ export function CoAssigneeSelect({
           {coAssignees.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface pl-1 pr-2 py-0.5"
+                className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-1 pr-2 py-0.5"
               >
                 <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.id} size={20} />
-                <span className="font-sans text-[11.5px] text-pen-foreground">{m.name.split(" ")[0]}</span>
+                <span className="font-sans text-[11.5px] text-sts-foreground">{m.name.split(" ")[0]}</span>
                 {!disabled && (
                   <button
                     type="button"
@@ -146,7 +146,7 @@ export function CoAssigneeSelect({
                         .then(() => { onCoAssigneesChange?.(newList); router.refresh(); })
                         .catch(() => toast.error("Failed to remove co-assignee"));
                     }}
-                    className="ml-0.5 text-pen-subtle hover:text-pen-red"
+                    className="ml-0.5 text-sts-subtle hover:text-sts-red"
                   >
                     <X className="size-3" />
                   </button>
@@ -161,7 +161,7 @@ export function CoAssigneeSelect({
           ref={triggerRef}
           type="button"
           onClick={() => open ? setOpen(false) : openDropdown()}
-          className="flex items-center gap-1.5 rounded-md border border-dashed border-pen-card-border px-2 py-1 font-sans text-[11.5px] text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id"
+          className="flex items-center gap-1.5 rounded-md border border-dashed border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
         >
           <Plus className="size-3" />
           {coAssignees.length > 0 ? "Edit co-assignees" : "Add co-assignee"}
@@ -172,19 +172,19 @@ export function CoAssigneeSelect({
       {open && dropPos && typeof document !== "undefined" && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-[9999] overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-2xl"
+          className="fixed z-[9999] overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg shadow-2xl"
           style={{ top: dropPos.top, left: dropPos.left, width: 272 }}
         >
           {/* Search */}
-          <div className="border-b border-pen-card-border p-2">
+          <div className="border-b border-sts-card-border p-2">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-pen-subtle" />
+              <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-sts-subtle" />
               <input
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search…"
-                className="h-7 w-full rounded-md border border-pen-card-border bg-pen-surface pl-6 pr-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue"
+                className="h-7 w-full rounded-md border border-sts-card-border bg-sts-surface pl-6 pr-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue"
               />
             </div>
           </div>
@@ -192,7 +192,7 @@ export function CoAssigneeSelect({
           {/* Member list */}
           <div className="max-h-56 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="py-3 text-center font-sans text-[11.5px] text-pen-subtle">No members found</p>
+              <p className="py-3 text-center font-sans text-[11.5px] text-sts-subtle">No members found</p>
             ) : filtered.map((m) => {
               const selected = staged.has(m.id);
               return (
@@ -203,14 +203,14 @@ export function CoAssigneeSelect({
                   className={cn(
                     userListPickerButtonClass,
                     "px-3 py-2 transition-colors",
-                    selected ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                    selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                   )}
                 >
                   <UserListItem
                     person={m}
                     avatarSize={24}
                     trailing={
-                      selected ? <Check className="size-3.5 shrink-0 text-pen-blue" /> : null
+                      selected ? <Check className="size-3.5 shrink-0 text-sts-blue" /> : null
                     }
                   />
                 </button>
@@ -219,11 +219,11 @@ export function CoAssigneeSelect({
           </div>
 
           {/* Footer — Save / Cancel */}
-          <div className="flex items-center justify-end gap-2 border-t border-pen-card-border px-3 py-2">
+          <div className="flex items-center justify-end gap-2 border-t border-sts-card-border px-3 py-2">
             <button
               type="button"
               onClick={cancel}
-              className="h-6 rounded-md px-2.5 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+              className="h-6 rounded-md px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -231,7 +231,7 @@ export function CoAssigneeSelect({
               type="button"
               onClick={save}
               disabled={!hasChanges || saving}
-              className="h-6 rounded-md bg-pen-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
+              className="h-6 rounded-md bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save"}
             </button>

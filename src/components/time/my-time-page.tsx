@@ -22,7 +22,7 @@ export type { ActiveTaskData, TimeEntryItem, TodaySegment, WeekBar };
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const SEGMENT_CLASSES = ["bg-pen-blue", "bg-pen-green", "bg-pen-subtle"] as const;
+const SEGMENT_CLASSES = ["bg-sts-blue", "bg-sts-green", "bg-sts-subtle"] as const;
 
 function formatClock(secs: number): string {
   const h = Math.floor(secs / 3600);
@@ -55,25 +55,25 @@ function EntryRow({
     <div
       className={cn(
         "flex min-w-[640px] items-center border-b border-[#f0f4f8] px-[18px] last:border-0 dark:border-[#3a3a37]",
-        entry.running && "bg-pen-blue-tint/50 dark:bg-pen-blue-tint/50",
-        entry.ticketDbId && "cursor-pointer transition-colors hover:bg-pen-surface/60",
+        entry.running && "bg-sts-blue-tint/50 dark:bg-sts-blue-tint/50",
+        entry.ticketDbId && "cursor-pointer transition-colors hover:bg-sts-surface/60",
       )}
     >
       <div className="flex h-[50px] w-7 shrink-0 items-center">
         {entry.running ? (
-          <span className="block size-2.5 rounded-full bg-pen-green" />
+          <span className="block size-2.5 rounded-full bg-sts-green" />
         ) : (
-          <Play className="size-3 fill-pen-subtle text-pen-subtle" />
+          <Play className="size-3 fill-sts-subtle text-sts-subtle" />
         )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-px py-2 pr-4">
-        <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+        <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
           {entry.title}
         </p>
         <div className="flex items-center gap-1.5">
           {entry.ticketId && (
-            <span className="font-mono text-[11.5px] font-semibold text-pen-id">
+            <span className="font-mono text-[11.5px] font-semibold text-sts-id">
               {entry.ticketId}
             </span>
           )}
@@ -81,14 +81,14 @@ function EntryRow({
             className="block size-2 shrink-0 rounded-[2px]"
             style={{ backgroundColor: entry.projectColor }}
           />
-          <span className="truncate font-sans text-[11.5px] text-pen-muted">
+          <span className="truncate font-sans text-[11.5px] text-sts-muted">
             {entry.project}
           </span>
         </div>
       </div>
 
       <div className="hidden w-[150px] shrink-0 sm:flex sm:items-center">
-        <span className="font-mono text-[11.5px] text-pen-muted">
+        <span className="font-mono text-[11.5px] text-sts-muted">
           {entry.running ? "running…" : entry.timeRange}
         </span>
       </div>
@@ -97,7 +97,7 @@ function EntryRow({
         <span
           className={cn(
             "font-mono text-[13px] font-medium",
-            entry.running ? "text-pen-id" : "text-pen-foreground",
+            entry.running ? "text-sts-id" : "text-sts-foreground",
           )}
         >
           {duration}
@@ -139,14 +139,14 @@ function TodayTaskCard({
       className={cn(
         "flex flex-col gap-4 rounded-xl border px-5 py-4 sm:flex-row sm:items-center sm:gap-[18px]",
         task.running
-          ? "border-[1.5px] border-pen-blue bg-pen-blue-tint"
-          : "border-pen-card-border bg-pen-card",
+          ? "border-[1.5px] border-sts-blue bg-sts-blue-tint"
+          : "border-sts-card-border bg-sts-card",
       )}
     >
       <span
         className={cn(
           "block size-2.5 shrink-0 rounded-full",
-          task.running ? "bg-pen-green" : "bg-pen-subtle",
+          task.running ? "bg-sts-green" : "bg-sts-subtle",
         )}
       />
 
@@ -154,19 +154,19 @@ function TodayTaskCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className={cn(
-              "pen-text-stat-label",
-              task.running ? "text-pen-blue" : "text-pen-subtle",
+              "sts-text-stat-label",
+              task.running ? "text-sts-blue" : "text-sts-subtle",
             )}
           >
             {task.running ? "CURRENTLY TRACKING" : "TRACKED TODAY"}
           </span>
           {task.ticketId && (
-            <span className="font-mono text-[11.5px] font-semibold text-pen-id">
+            <span className="font-mono text-[11.5px] font-semibold text-sts-id">
               {task.ticketId}
             </span>
           )}
         </div>
-        <p className="mt-1 font-sans text-sm font-semibold text-pen-foreground">
+        <p className="mt-1 font-sans text-sm font-semibold text-sts-foreground">
           {task.title}
         </p>
       </div>
@@ -174,7 +174,7 @@ function TodayTaskCard({
       <div className="flex items-center gap-4 sm:gap-[18px]">
         <span
           className={cn(
-            "font-mono font-semibold tabular-nums text-pen-foreground",
+            "font-mono font-semibold tabular-nums text-sts-foreground",
             task.running ? "text-[28px] sm:text-[32px]" : "text-[22px] sm:text-[24px]",
           )}
         >
@@ -185,7 +185,7 @@ function TodayTaskCard({
             size="lg"
             disabled={stopping}
             onClick={onStop}
-            className="h-11 gap-1.5 rounded-lg bg-pen-red px-4 font-sans text-[13px] font-medium text-white hover:bg-pen-red/90"
+            className="h-11 gap-1.5 rounded-lg bg-sts-red px-4 font-sans text-[13px] font-medium text-white hover:bg-sts-red/90"
           >
             <Pause className="size-3.5 fill-current" />
             {stopping ? "Pausing…" : "Pause"}
@@ -228,8 +228,8 @@ export function MyTimePage() {
 
   if (isError) {
     return (
-      <div className="pen-page-pad flex h-full items-center justify-center">
-        <p className="font-sans text-[13px] text-pen-muted">
+      <div className="sts-page-pad flex h-full items-center justify-center">
+        <p className="font-sans text-[13px] text-sts-muted">
           Failed to load time data. Please refresh the page.
         </p>
       </div>
@@ -238,11 +238,11 @@ export function MyTimePage() {
 
   if (!data) {
     return (
-      <div className="pen-page-pad flex h-full flex-col gap-[18px] overflow-y-auto">
+      <div className="sts-page-pad flex h-full flex-col gap-[18px] overflow-y-auto">
         <PageHeader
           title="My Time"
           icon={Timer}
-          iconClassName="text-pen-blue"
+          iconClassName="text-sts-blue"
           description="Track time against your tasks. Logged automatically to the ticket and your timesheet."
           clampDescription
         />
@@ -252,11 +252,11 @@ export function MyTimePage() {
   }
 
   return (
-    <div className="pen-page-pad flex h-full flex-col gap-[22px] overflow-y-auto">
+    <div className="sts-page-pad flex h-full flex-col gap-[22px] overflow-y-auto">
       <PageHeader
         title="My Time"
         icon={Timer}
-        iconClassName="text-pen-blue"
+        iconClassName="text-sts-blue"
         description="Track time against your tasks. Logged automatically to the ticket and your timesheet."
         clampDescription
       />
@@ -281,14 +281,14 @@ export function MyTimePage() {
         )}
 
         <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="flex w-full shrink-0 flex-col gap-1.5 rounded-xl border border-pen-card-border bg-pen-card px-[18px] py-4 lg:w-[300px]">
-            <p className="pen-text-label">TODAY</p>
+          <div className="flex w-full shrink-0 flex-col gap-1.5 rounded-xl border border-sts-card-border bg-sts-card px-[18px] py-4 lg:w-[300px]">
+            <p className="sts-text-label">TODAY</p>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[30px] font-semibold text-pen-foreground">
+              <span className="font-mono text-[30px] font-semibold text-sts-foreground">
                 {data.todayTotal}
               </span>
             </div>
-            <div className="flex h-2 overflow-hidden rounded bg-pen-surface">
+            <div className="flex h-2 overflow-hidden rounded bg-sts-surface">
               {data.todaySegments.map((segment, i) => (
                 <div
                   key={segment.name}
@@ -297,7 +297,7 @@ export function MyTimePage() {
                 />
               ))}
             </div>
-            <div className="flex flex-wrap gap-2.5 font-sans text-[9.5px] text-pen-muted">
+            <div className="flex flex-wrap gap-2.5 font-sans text-[9.5px] text-sts-muted">
               {data.todaySegments.map((segment) => (
                 <span key={segment.name}>{segment.name}</span>
               ))}
@@ -305,11 +305,11 @@ export function MyTimePage() {
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card px-[18px] pt-4 pb-3.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card px-[18px] pt-4 pb-3.5">
             <div className="flex items-center">
-              <p className="pen-text-label">THIS WEEK</p>
+              <p className="sts-text-label">THIS WEEK</p>
               <span className="flex-1" />
-              <span className="font-mono text-[11.5px] font-medium text-pen-muted">
+              <span className="font-mono text-[11.5px] font-medium text-sts-muted">
                 {data.weekTotalLabel}
               </span>
             </div>
@@ -323,10 +323,10 @@ export function MyTimePage() {
                     className={cn(
                       "w-[22px] rounded-[3px]",
                       bar.empty
-                        ? "bg-[#e3eaf0] dark:bg-pen-card-border"
+                        ? "bg-[#e3eaf0] dark:bg-sts-card-border"
                         : bar.today
-                          ? "bg-pen-blue"
-                          : "bg-pen-blue/45",
+                          ? "bg-sts-blue"
+                          : "bg-sts-blue/45",
                     )}
                     style={{ height: bar.height }}
                   />
@@ -334,8 +334,8 @@ export function MyTimePage() {
                     className={cn(
                       "font-sans text-[9.5px]",
                       bar.today
-                        ? "font-semibold text-pen-foreground dark:text-pen-id"
-                        : "text-pen-subtle",
+                        ? "font-semibold text-sts-foreground dark:text-sts-id"
+                        : "text-sts-subtle",
                     )}
                   >
                     {bar.day}
@@ -346,16 +346,16 @@ export function MyTimePage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
-          <div className="flex h-9 items-center border-b border-pen-card-border px-[18px]">
-            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+        <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
+          <div className="flex h-9 items-center border-b border-sts-card-border px-[18px]">
+            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
               TODAY&apos;S ENTRIES
             </p>
           </div>
           <div className="overflow-x-auto">
             {data.entries.length === 0 && (
               <div className="flex h-[50px] items-center px-[18px]">
-                <p className="font-sans text-[12.5px] text-pen-muted">
+                <p className="font-sans text-[12.5px] text-sts-muted">
                   No entries yet today. Start a timer from a ticket to begin tracking.
                 </p>
               </div>

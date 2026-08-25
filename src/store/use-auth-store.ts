@@ -12,6 +12,7 @@ type CurrentUser = {
   subDepartmentId: string | null
   subDepartmentIds: string[]
   memberships: { subDepartmentId: string; role: string }[]
+  isSuperAdmin?: boolean
 }
 
 type AuthState = {

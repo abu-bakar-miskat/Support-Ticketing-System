@@ -27,7 +27,7 @@ function TicketPanel({
   return (
     <div
       className={cn(
-        "flex h-full flex-col overflow-hidden bg-pen-bg",
+        "flex h-full flex-col overflow-hidden bg-sts-bg",
         className,
       )}
     >
@@ -35,10 +35,10 @@ function TicketPanel({
         <TicketDetailSkeleton showDrawerChrome />
       ) : isError && !data ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="font-sans text-[14px] font-semibold text-pen-foreground">
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">
             Failed to load ticket
           </p>
-          <p className="font-sans text-[13px] text-pen-subtle">
+          <p className="font-sans text-[13px] text-sts-subtle">
             This may be a network issue. Check your connection and try again.
           </p>
           <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ function TicketPanel({
               type="button"
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1.5 rounded-lg bg-pen-blue px-4 py-2 font-sans text-[13px] font-medium text-white transition-colors hover:bg-pen-blue/90 disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-lg bg-sts-blue px-4 py-2 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60"
             >
               <RefreshCw
                 className={cn("size-3.5", isFetching && "animate-spin")}
@@ -56,7 +56,7 @@ function TicketPanel({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1.5 rounded-lg border border-pen-card-border px-4 py-2 font-sans text-[13px] text-pen-muted transition-colors hover:bg-pen-surface"
+              className="flex items-center gap-1.5 rounded-lg border border-sts-card-border px-4 py-2 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-surface"
             >
               <X className="size-3.5" />
               Close
@@ -122,7 +122,7 @@ export function TicketDrawerRoot() {
       {/* Backdrop */}
       <div
         className={cn(
-          "fixed inset-0 z-40 pen-overlay-backdrop transition-opacity duration-200",
+          "fixed inset-0 z-40 sts-overlay-backdrop transition-opacity duration-200",
           visible ? "opacity-100" : "opacity-0",
         )}
         onClick={handleClose}
@@ -131,7 +131,7 @@ export function TicketDrawerRoot() {
       {/* Parent ticket drawer — right-anchored */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-50 bg-pen-bg shadow-[-8px_0_40px_rgba(0,0,0,0.15)] transition-transform duration-200 ease-out",
+          "fixed inset-y-0 right-0 z-50 bg-sts-bg shadow-[-8px_0_40px_rgba(0,0,0,0.15)] transition-transform duration-200 ease-out",
           visible ? "translate-x-0" : "translate-x-full",
         )}
         style={{ width: SINGLE_WIDTH }}

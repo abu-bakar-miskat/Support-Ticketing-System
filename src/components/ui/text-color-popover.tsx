@@ -92,10 +92,10 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
       ref={panelRef}
       role="dialog"
       aria-label="Text color"
-      className="fixed w-[196px] rounded-xl border border-pen-card-border bg-pen-card p-3 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
+      className="fixed w-[196px] rounded-xl border border-sts-card-border bg-sts-card p-3 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
       style={{ top: coords.top, left: coords.left, zIndex: PANEL_Z }}
     >
-      <p className="mb-2 font-sans text-[11px] font-semibold tracking-wide text-pen-foreground">
+      <p className="mb-2 font-sans text-[11px] font-semibold tracking-wide text-sts-foreground">
         Text color
       </p>
       <div className="mb-2 grid grid-cols-7 gap-1.5">
@@ -108,8 +108,8 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
             className={cn(
               "flex size-5 items-center justify-center rounded-md border font-sans text-[12px] font-bold transition-transform hover:scale-110",
               editor.isActive("textStyle", { color: c.value })
-                ? "border-pen-id ring-1 ring-pen-id"
-                : "border-pen-card-border",
+                ? "border-sts-id ring-1 ring-sts-id"
+                : "border-sts-card-border",
             )}
             style={{ color: c.value }}
           >
@@ -121,7 +121,7 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
         type="button"
         onClick={remove}
         disabled={!isActive}
-        className="flex h-7 w-full items-center justify-center gap-1.5 rounded-lg border border-pen-card-border font-sans text-[11px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-40"
+        className="flex h-7 w-full items-center justify-center gap-1.5 rounded-lg border border-sts-card-border font-sans text-[11px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
       >
         <Ban className="size-3" /> Default color
       </button>
@@ -143,8 +143,8 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
         className={cn(
           "flex size-6 items-center justify-center rounded transition-colors",
           isActive || open
-            ? "bg-pen-blue-tint font-semibold text-pen-id"
-            : "text-pen-muted hover:bg-pen-card hover:text-pen-foreground",
+            ? "bg-sts-blue-tint font-semibold text-sts-id"
+            : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
         )}
       >
         <Baseline className="size-3.5" />

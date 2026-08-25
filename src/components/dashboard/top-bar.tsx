@@ -88,10 +88,10 @@ export function TopBar({
   const hideClock = pathname === "/" || pathname === "/manager";
 
   return (
-    <header className="pen-glass-panel flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 lg:px-5">
+    <header className="sts-glass-panel flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 lg:px-5">
       <button
         type="button"
-        className="rounded p-1.5 text-pen-subtle hover:text-pen-foreground lg:hidden"
+        className="rounded p-1.5 text-sts-subtle hover:text-sts-foreground lg:hidden"
         onClick={onMenuClick}
         aria-label="Open navigation"
       >
@@ -101,7 +101,7 @@ export function TopBar({
       {sidebarCollapsed && (
         <button
           type="button"
-          className="hidden rounded p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground lg:inline-flex"
+          className="hidden rounded p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground lg:inline-flex"
           onClick={toggleSidebar}
           aria-label="Expand sidebar"
           title="Expand sidebar"
@@ -117,7 +117,7 @@ export function TopBar({
         {backTarget && (
           <Link
             href={backTarget.href}
-            className="flex shrink-0 items-center gap-0.5 font-sans text-[12.5px] font-medium leading-none text-pen-muted transition-colors hover:text-pen-foreground"
+            className="flex shrink-0 items-center gap-0.5 font-sans text-[12.5px] font-medium leading-none text-sts-muted transition-colors hover:text-sts-foreground"
             aria-label={`Back to ${backTarget.label}`}
             title={`Back to ${backTarget.label}`}
           >
@@ -128,7 +128,7 @@ export function TopBar({
 
         <span className="hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto sm:flex">
           {backTarget && trailCrumbs.length > 0 && (
-            <span className="font-sans text-[11.5px] leading-none text-pen-subtle">/</span>
+            <span className="font-sans text-[11.5px] leading-none text-sts-subtle">/</span>
           )}
           {trailCrumbs.map((crumb, i) => {
             const isLast = i === trailCrumbs.length - 1;
@@ -137,8 +137,8 @@ export function TopBar({
             if (collapseMiddle && i === 1) {
               return (
                 <span key="ellipsis" className="hidden items-center gap-1.5 md:flex">
-                  <span className="font-sans text-[11.5px] leading-none text-pen-subtle">/</span>
-                  <span className="font-sans text-[11.5px] leading-none text-pen-subtle">…</span>
+                  <span className="font-sans text-[11.5px] leading-none text-sts-subtle">/</span>
+                  <span className="font-sans text-[11.5px] leading-none text-sts-subtle">…</span>
                 </span>
               );
             }
@@ -152,11 +152,11 @@ export function TopBar({
                 className="flex min-w-0 shrink-0 items-center gap-1.5"
               >
                 {i > 0 && (
-                  <span className="font-sans text-[11.5px] leading-none text-pen-subtle">/</span>
+                  <span className="font-sans text-[11.5px] leading-none text-sts-subtle">/</span>
                 )}
                 {isLast ? (
                   <span
-                    className="truncate font-sans text-[12.5px] font-semibold leading-none text-pen-foreground"
+                    className="truncate font-sans text-[12.5px] font-semibold leading-none text-sts-foreground"
                     title={crumb.label}
                   >
                     {crumb.label}
@@ -164,7 +164,7 @@ export function TopBar({
                 ) : (
                   <Link
                     href={crumb.href}
-                    className="truncate font-sans text-[12.5px] font-medium leading-none text-pen-muted transition-colors hover:text-pen-foreground"
+                    className="truncate font-sans text-[12.5px] font-medium leading-none text-sts-muted transition-colors hover:text-sts-foreground"
                     title={crumb.label}
                   >
                     {crumb.label}
@@ -176,7 +176,7 @@ export function TopBar({
         </span>
 
         <span
-          className="min-w-0 truncate font-sans text-[12.5px] font-semibold leading-none text-pen-foreground sm:hidden"
+          className="min-w-0 truncate font-sans text-[12.5px] font-semibold leading-none text-sts-foreground sm:hidden"
           title={currentCrumb.label}
         >
           {currentCrumb.label}
@@ -189,7 +189,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="flex size-7 items-center justify-center rounded-md border border-pen-card-border bg-pen-surface text-pen-subtle transition-colors hover:text-pen-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
+          className="flex size-7 items-center justify-center rounded-md border border-sts-card-border bg-sts-surface text-sts-subtle transition-colors hover:text-sts-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
           aria-label="Open command palette"
         >
           <Search className="size-3.5" />
@@ -198,12 +198,12 @@ export function TopBar({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="hidden h-7 w-36 items-center gap-2 rounded-md border border-pen-card-border bg-pen-surface px-2 text-pen-subtle transition-colors hover:text-pen-foreground sm:flex md:w-44 lg:w-48 dark:border-white/10 dark:bg-white/5 dark:text-pen-subtle dark:hover:border-white/20 dark:hover:text-pen-foreground"
+          className="hidden h-7 w-36 items-center gap-2 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-subtle transition-colors hover:text-sts-foreground sm:flex md:w-44 lg:w-48 dark:border-white/10 dark:bg-white/5 dark:text-sts-subtle dark:hover:border-white/20 dark:hover:text-sts-foreground"
           aria-label="Open command palette"
         >
           <Search className="size-3.5 shrink-0" />
           <span className="font-sans text-[11.5px]">Search</span>
-          <span className="ml-auto hidden font-mono text-[11.5px] text-pen-subtle opacity-70 md:inline">
+          <span className="ml-auto hidden font-mono text-[11.5px] text-sts-subtle opacity-70 md:inline">
             ⌘K
           </span>
         </button>
@@ -215,7 +215,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onNotifClick}
-          className="relative flex size-7 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-bg hover:text-pen-foreground"
+          className="relative flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
           aria-label="Notifications"
         >
           <Bell className="size-4" />

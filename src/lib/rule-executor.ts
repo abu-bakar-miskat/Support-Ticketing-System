@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine";
-import { resolveColumnIdForStatus } from "@/lib/board-columns";
 import { getEligibleMembers } from "@/lib/rota";
 import { createNotification } from "@/lib/notify";
 import type { NotificationType } from "@/generated/prisma/enums";
@@ -41,6 +40,11 @@ export type RuleTicketContext = {
   departmentId: string;
   subDepartmentId: string;
   assigneeId: string | null;
+  /**
+   * The intake form the ticket came from, if any. Rules scoped to this form
+   * (formConfigId set) run in addition to the department/sub-department rules.
+   */
+  formConfigId?: string | null;
 };
 
 export type RuleExecutionResult = { assigned: boolean; firedCount: number };
@@ -59,7 +63,19 @@ export async function applyRulesToTicket(
 ): Promise<RuleExecutionResult> {
   try {
     const rows = await prisma.rule.findMany({
-      where: { departmentId: ticket.departmentId, enabled: true },
+      // Department-wide rules (subDepartmentId = null, no form) apply to every
+      // ticket; a sub-department's own rules apply additionally to its tickets;
+      // and — when the ticket came from an intake form — that form's rules apply
+      // too. All run together, in `order`.
+      where: {
+        departmentId: ticket.departmentId,
+        enabled: true,
+        OR: [
+          { subDepartmentId: null, formConfigId: null },
+          { subDepartmentId: ticket.subDepartmentId, formConfigId: null },
+          ...(ticket.formConfigId ? [{ formConfigId: ticket.formConfigId }] : []),
+        ],
+      },
       orderBy: { order: "asc" },
       select: {
         id: true,
@@ -129,13 +145,9 @@ export async function applyRulesToTicket(
           break;
         }
         case "change_column":
+          // The board groups tickets by `status`, so setting status is the move.
           if (typeof p.status === "string" && p.status) {
             data.status = p.status;
-            const colId = await resolveColumnIdForStatus(prisma, {
-              departmentId: ticket.departmentId,
-              status: p.status,
-            });
-            if (colId) data.boardColumnId = colId;
           }
           break;
         case "apply_sla":

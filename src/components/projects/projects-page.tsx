@@ -36,7 +36,7 @@ export function ProjectsPage({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-1 border-b border-pen-card-border bg-pen-card px-4 py-1.5 sm:px-6 xl:px-8">
+      <div className="flex shrink-0 items-center gap-1 border-b border-sts-card-border bg-sts-card px-4 py-1.5 sm:px-6 xl:px-8">
         {(["mine", "all"] as const).map((s) => (
           <button
             key={s}
@@ -45,8 +45,8 @@ export function ProjectsPage({
             className={cn(
               "flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
               scope === s
-                ? "bg-pen-blue text-white dark:text-gray-900"
-                : "text-pen-muted hover:bg-pen-surface hover:text-pen-foreground",
+                ? "bg-sts-blue text-white dark:text-gray-900"
+                : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
             )}
           >
             {s === "mine"

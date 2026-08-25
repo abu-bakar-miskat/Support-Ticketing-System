@@ -164,19 +164,19 @@ function ProjectMenu({
         top: coords.top,
         right: coords.right,
         zIndex: 9999,
-        background: "var(--pen-card-solid)",
+        background: "var(--sts-card-solid)",
       }}
-      className="w-56 max-h-[340px] overflow-y-auto overflow-x-hidden rounded-xl border border-pen-card-border shadow-2xl"
+      className="w-56 max-h-[340px] overflow-y-auto overflow-x-hidden rounded-xl border border-sts-card-border shadow-2xl"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Overview */}
-      <div className="border-b border-pen-card-border px-3 py-2.5">
-        <p className="pen-text-section-label">
+      <div className="border-b border-sts-card-border px-3 py-2.5">
+        <p className="sts-text-section-label">
           {project.name}
         </p>
-        <div className="mt-1 flex items-center gap-2 text-pen-muted">
+        <div className="mt-1 flex items-center gap-2 text-sts-muted">
           <span className="font-sans text-[11.5px]">{project.members.length} member{project.members.length !== 1 ? "s" : ""}</span>
-          <span className="text-pen-card-border">·</span>
+          <span className="text-sts-card-border">·</span>
           <span className="font-sans text-[11.5px]">{project.ticketCount} ticket{project.ticketCount !== 1 ? "s" : ""}</span>
         </div>
       </div>
@@ -186,26 +186,26 @@ function ProjectMenu({
         <Link
           href={`/projects/${project.slug}`}
           onClick={() => setOpen(false)}
-          className="flex items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-pen-foreground transition-colors hover:bg-pen-surface"
+          className="flex items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-sts-foreground transition-colors hover:bg-sts-surface"
         >
-          <ExternalLink className="size-3.5 shrink-0 text-pen-muted" />
+          <ExternalLink className="size-3.5 shrink-0 text-sts-muted" />
           Open project
         </Link>
         <button
           type="button"
           onClick={() => { setOpen(false); onManageMembers(); }}
-          className="flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-pen-foreground transition-colors hover:bg-pen-surface"
+          className="flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-sts-foreground transition-colors hover:bg-sts-surface"
         >
-          <UserPlus className="size-3.5 shrink-0 text-pen-muted" />
+          <UserPlus className="size-3.5 shrink-0 text-sts-muted" />
           Manage members
         </button>
         {onEditSettings ? (
           <button
             type="button"
             onClick={() => { setOpen(false); onEditSettings(); }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-pen-foreground transition-colors hover:bg-pen-surface"
+            className="flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] text-sts-foreground transition-colors hover:bg-sts-surface"
           >
-            <Settings className="size-3.5 shrink-0 text-pen-muted" />
+            <Settings className="size-3.5 shrink-0 text-sts-muted" />
             Project settings
           </button>
         ) : null}
@@ -213,8 +213,8 @@ function ProjectMenu({
 
       {/* Status — managers/admins only, not for support projects */}
       {canEditStatus && project.kind !== "support" && (
-        <div className="border-t border-pen-card-border py-1">
-          <p className="px-3 py-1 pen-text-section-label">
+        <div className="border-t border-sts-card-border py-1">
+          <p className="px-3 py-1 sts-text-section-label">
             Set status
           </p>
           {statusOptions.map((s) => (
@@ -224,13 +224,13 @@ function ProjectMenu({
               onClick={() => handleStatusChange(s.key)}
               disabled={saving}
               className={cn(
-                "flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] transition-colors hover:bg-pen-surface disabled:cursor-wait",
-                currentStatus === s.key ? "text-pen-foreground font-semibold" : "text-pen-muted",
+                "flex w-full items-center gap-2.5 px-3 py-2 font-sans text-[12.5px] transition-colors hover:bg-sts-surface disabled:cursor-wait",
+                currentStatus === s.key ? "text-sts-foreground font-semibold" : "text-sts-muted",
               )}
             >
               {currentStatus === s.key
-                ? <CheckCircle className="size-3.5 shrink-0 text-pen-blue" />
-                : <Circle className="size-3.5 shrink-0 text-pen-card-border" />}
+                ? <CheckCircle className="size-3.5 shrink-0 text-sts-blue" />
+                : <Circle className="size-3.5 shrink-0 text-sts-card-border" />}
               <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: s.dot }} />
               {s.label}
             </button>
@@ -249,8 +249,8 @@ function ProjectMenu({
         className={cn(
           "flex size-7 items-center justify-center rounded-md transition-colors",
           open
-            ? "bg-pen-surface text-pen-foreground"
-            : "text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground",
+            ? "bg-sts-surface text-sts-foreground"
+            : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
         )}
         title="Quick actions"
       >
@@ -290,8 +290,8 @@ function SprintIndicator({
         "inline-flex items-center gap-1 rounded-full font-sans font-medium",
         size === "md" ? "px-2 py-0.5 text-[11.5px]" : "px-1.5 py-0.5 text-[11px]",
         running
-          ? "bg-[#e7f7ec] text-pen-green dark:bg-[#26352b]"
-          : "bg-pen-surface text-pen-muted",
+          ? "bg-[#e7f7ec] text-sts-green dark:bg-[#26352b]"
+          : "bg-sts-surface text-sts-muted",
       )}
     >
       <Zap
@@ -307,16 +307,16 @@ function SprintIndicator({
 
 function ProjectListHead() {
   return (
-    <thead className="sticky top-0 z-10 bg-pen-card">
-      <tr className="border-b border-pen-card-border">
-        <th className="py-2.5 pl-4 text-left pen-text-table-head">Project</th>
-        <th className="hidden w-[140px] py-2.5 text-left pen-text-table-head md:table-cell">Status</th>
-        <th className="hidden w-[80px] py-2.5 text-left pen-text-table-head sm:table-cell">Tickets</th>
-        <th className="hidden w-[150px] py-2.5 text-left pen-text-table-head lg:table-cell">Members</th>
-        <th className="hidden w-[150px] py-2.5 text-left pen-text-table-head xl:table-cell">Live domain</th>
-        <th className="hidden w-[130px] py-2.5 text-left pen-text-table-head 2xl:table-cell">Created</th>
-        <th className="hidden w-[110px] py-2.5 text-left pen-text-table-head 2xl:table-cell">Project ID</th>
-        <th className="w-[72px] py-2.5 pr-4 text-right pen-text-table-head" />
+    <thead className="sticky top-0 z-10 bg-sts-card">
+      <tr className="border-b border-sts-card-border">
+        <th className="py-2.5 pl-4 text-left sts-text-table-head">Project</th>
+        <th className="hidden w-[140px] py-2.5 text-left sts-text-table-head md:table-cell">Status</th>
+        <th className="hidden w-[80px] py-2.5 text-left sts-text-table-head sm:table-cell">Tickets</th>
+        <th className="hidden w-[150px] py-2.5 text-left sts-text-table-head lg:table-cell">Members</th>
+        <th className="hidden w-[150px] py-2.5 text-left sts-text-table-head xl:table-cell">Live domain</th>
+        <th className="hidden w-[130px] py-2.5 text-left sts-text-table-head 2xl:table-cell">Created</th>
+        <th className="hidden w-[110px] py-2.5 text-left sts-text-table-head 2xl:table-cell">Project ID</th>
+        <th className="w-[72px] py-2.5 pr-4 text-right sts-text-table-head" />
       </tr>
     </thead>
   );
@@ -352,8 +352,8 @@ function ProjectListRow({
   return (
     <tr
       className={cn(
-        "group border-b border-[#f0f4f8] transition-colors hover:bg-pen-bg dark:border-[#3a3a37]",
-        isPinned && "bg-pen-blue/3 dark:bg-pen-blue/6",
+        "group border-b border-[#f0f4f8] transition-colors hover:bg-sts-bg dark:border-[#3a3a37]",
+        isPinned && "bg-sts-blue/3 dark:bg-sts-blue/6",
       )}
     >
       <td className="py-2.5 pl-4">
@@ -361,18 +361,18 @@ function ProjectListRow({
           <ProjectAvatar name={project.name} color={project.color ?? "#0a76b9"} avatarUrl={project.avatarUrl} size={32} />
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              {isPinned && <Pin className="size-3 shrink-0 text-pen-blue" />}
-              <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground group-hover:text-pen-id">
+              {isPinned && <Pin className="size-3 shrink-0 text-sts-blue" />}
+              <span className="truncate font-sans text-[13px] font-semibold text-sts-foreground group-hover:text-sts-id">
                 {project.name}
               </span>
             </div>
-            <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-subtle">
+            <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-subtle">
               {project.departmentName ?? "No department"}
               {project.subDepartmentName ? ` · ${project.subDepartmentName}` : ""}
             </p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 md:hidden">
               {!isSupport && <StatusPill status={status.label} color={status.color} size="sm" />}
-              <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+              <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                 <Ticket className="size-3" />
                 {project.ticketCount}
               </span>
@@ -383,12 +383,12 @@ function ProjectListRow({
 
       <td className="hidden py-2.5 md:table-cell">
         {isSupport ? (
-          <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+          <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
         ) : (
           <div className="flex flex-col items-start gap-1">
             <StatusPill status={status.label} color={status.color} size="md" />
             {project.statusRange && (
-              <span className="font-mono text-[11px] text-pen-muted">
+              <span className="font-mono text-[11px] text-sts-muted">
                 {project.statusRange}
               </span>
             )}
@@ -402,8 +402,8 @@ function ProjectListRow({
       </td>
 
       <td className="hidden py-2.5 sm:table-cell">
-        <div className="flex items-center gap-1.5 text-pen-muted">
-          <Ticket className="size-3.5 shrink-0 text-pen-subtle" />
+        <div className="flex items-center gap-1.5 text-sts-muted">
+          <Ticket className="size-3.5 shrink-0 text-sts-subtle" />
           <span className="font-sans text-[12px] tabular-nums">{project.ticketCount}</span>
         </div>
       </td>
@@ -417,24 +417,24 @@ function ProjectListRow({
                 name={m.name}
                 avatarUrl={m.avatarUrl}
                 size={24}
-                className="ring-2 ring-pen-card"
+                className="ring-2 ring-sts-card"
                 meta={{ role: m.role ?? undefined, email: m.email ?? undefined }}
               />
             ))}
             {extra > 0 && (
-              <span className="flex size-6 items-center justify-center rounded-full bg-pen-surface font-sans text-[8.5px] text-pen-subtle ring-2 ring-pen-card">
+              <span className="flex size-6 items-center justify-center rounded-full bg-sts-surface font-sans text-[8.5px] text-sts-subtle ring-2 ring-sts-card">
                 +{extra}
               </span>
             )}
             {project.members.length === 0 && (
-              <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+              <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
             )}
           </div>
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); onManageMembers(); }}
             title="Add members"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-pen-card-border text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id"
+            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
           >
             <UserPlus className="size-3" />
           </button>
@@ -448,7 +448,7 @@ function ProjectListRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-id transition-colors hover:text-pen-blue"
+            className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-id transition-colors hover:text-sts-blue"
           >
             <ExternalLink className="size-3 shrink-0" />
             <span className="max-w-[110px] truncate">
@@ -456,12 +456,12 @@ function ProjectListRow({
             </span>
           </a>
         ) : (
-          <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+          <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
         )}
       </td>
 
       <td className="hidden py-2.5 2xl:table-cell">
-        <span className="whitespace-nowrap font-sans text-[11.5px] text-pen-muted">
+        <span className="whitespace-nowrap font-sans text-[11.5px] text-sts-muted">
           {formatDateTime(new Date(project.createdAt))}
         </span>
       </td>
@@ -471,7 +471,7 @@ function ProjectListRow({
           type="button"
           title="Click to copy"
           onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(project.id).then(() => toast.success("Project ID copied")); }}
-          className="max-w-[100px] truncate rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[10.5px] text-pen-muted transition-colors hover:bg-pen-card-border hover:text-pen-foreground"
+          className="max-w-[100px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
         >
           {project.id}
         </button>
@@ -486,8 +486,8 @@ function ProjectListRow({
             className={cn(
               "flex size-7 items-center justify-center rounded-md transition-colors",
               isPinned
-                ? "text-pen-blue hover:bg-pen-blue/10"
-                : "text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground",
+                ? "text-sts-blue hover:bg-sts-blue/10"
+                : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
             )}
           >
             {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
@@ -535,8 +535,8 @@ function ProjectCard({
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-3 rounded-xl border border-pen-card-border bg-pen-card p-4 transition-colors hover:border-pen-id/30 hover:bg-pen-surface/40",
-        isPinned && "border-pen-blue/25 bg-pen-blue/3 dark:bg-pen-blue/6",
+        "group relative flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card p-4 transition-colors hover:border-sts-id/30 hover:bg-sts-surface/40",
+        isPinned && "border-sts-blue/25 bg-sts-blue/3 dark:bg-sts-blue/6",
       )}
     >
       <div className="flex items-start gap-3">
@@ -549,12 +549,12 @@ function ProjectCard({
           />
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              {isPinned && <Pin className="size-3 shrink-0 text-pen-blue" />}
-              <h3 className="truncate font-sans text-[13.5px] font-semibold text-pen-foreground group-hover:text-pen-id">
+              {isPinned && <Pin className="size-3 shrink-0 text-sts-blue" />}
+              <h3 className="truncate font-sans text-[13.5px] font-semibold text-sts-foreground group-hover:text-sts-id">
                 {project.name}
               </h3>
             </div>
-            <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-subtle">
+            <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-subtle">
               {project.departmentName ?? "No department"}
               {project.subDepartmentName ? ` · ${project.subDepartmentName}` : ""}
             </p>
@@ -569,8 +569,8 @@ function ProjectCard({
             className={cn(
               "flex size-7 items-center justify-center rounded-md transition-colors",
               isPinned
-                ? "text-pen-blue hover:bg-pen-blue/10"
-                : "text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground",
+                ? "text-sts-blue hover:bg-sts-blue/10"
+                : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
             )}
           >
             {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
@@ -586,7 +586,7 @@ function ProjectCard({
       </div>
 
       {project.description ? (
-        <p className="line-clamp-2 font-sans text-[12px] leading-relaxed text-pen-muted">
+        <p className="line-clamp-2 font-sans text-[12px] leading-relaxed text-sts-muted">
           {project.description}
         </p>
       ) : null}
@@ -594,7 +594,7 @@ function ProjectCard({
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
         {!isSupport && <StatusPill status={status.label} color={status.color} size="sm" />}
         {!isSupport && project.statusRange && (
-          <span className="font-mono text-[11px] text-pen-muted">
+          <span className="font-mono text-[11px] text-sts-muted">
             {project.statusRange}
           </span>
         )}
@@ -605,8 +605,8 @@ function ProjectCard({
             size="sm"
           />
         )}
-        <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
-          <Ticket className="size-3 shrink-0 text-pen-subtle" />
+        <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
+          <Ticket className="size-3 shrink-0 text-sts-subtle" />
           {project.ticketCount} ticket{project.ticketCount !== 1 ? "s" : ""}
         </span>
         {project.liveDomain && (
@@ -615,7 +615,7 @@ function ProjectCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-id transition-colors hover:text-pen-blue"
+            className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-id transition-colors hover:text-sts-blue"
           >
             <ExternalLink className="size-3 shrink-0" />
             <span className="max-w-[120px] truncate">
@@ -623,12 +623,12 @@ function ProjectCard({
             </span>
           </a>
         )}
-        <span className="font-sans text-[11.5px] text-pen-subtle">
+        <span className="font-sans text-[11.5px] text-sts-subtle">
           {formatDateTime(new Date(project.createdAt))}
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-pen-card-border pt-3">
+      <div className="flex items-center justify-between gap-2 border-t border-sts-card-border pt-3">
         <div className="flex items-center gap-1.5">
           <div className="flex items-center -space-x-1.5">
             {shown.map((m) => (
@@ -637,17 +637,17 @@ function ProjectCard({
                 name={m.name}
                 avatarUrl={m.avatarUrl}
                 size={24}
-                className="ring-2 ring-pen-card"
+                className="ring-2 ring-sts-card"
                 meta={{ role: m.role ?? undefined, email: m.email ?? undefined }}
               />
             ))}
             {extra > 0 && (
-              <span className="flex size-6 items-center justify-center rounded-full bg-pen-surface font-sans text-[8.5px] text-pen-subtle ring-2 ring-pen-card">
+              <span className="flex size-6 items-center justify-center rounded-full bg-sts-surface font-sans text-[8.5px] text-sts-subtle ring-2 ring-sts-card">
                 +{extra}
               </span>
             )}
             {project.members.length === 0 && (
-              <span className="font-sans text-[11.5px] text-pen-subtle">No members</span>
+              <span className="font-sans text-[11.5px] text-sts-subtle">No members</span>
             )}
           </div>
           <button
@@ -657,7 +657,7 @@ function ProjectCard({
               onManageMembers();
             }}
             title="Add members"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-pen-card-border text-pen-subtle transition-colors hover:border-pen-id hover:text-pen-id"
+            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
           >
             <UserPlus className="size-3" />
           </button>
@@ -671,7 +671,7 @@ function ProjectCard({
               .writeText(project.id)
               .then(() => toast.success("Project ID copied"))
           }
-          className="max-w-[120px] truncate rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[10px] text-pen-muted transition-colors hover:bg-pen-card-border hover:text-pen-foreground"
+          className="max-w-[120px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
         >
           {project.id}
         </button>
@@ -777,16 +777,16 @@ export function ProjectsListPage({
       )}
       {/* Header */}
       <div className={cn(
-        "shrink-0 border-b border-pen-card-border bg-pen-card",
-        hideTitleBar ? "px-4 py-2 sm:px-6 xl:px-8" : "pen-page-header",
+        "shrink-0 border-b border-sts-card-border bg-sts-card",
+        hideTitleBar ? "px-4 py-2 sm:px-6 xl:px-8" : "sts-page-header",
       )}>
         {!hideTitleBar && (
           <PageHeader
             title="Projects"
             icon={FolderKanban}
-            iconClassName="text-pen-blue"
+            iconClassName="text-sts-blue"
             badge={
-              <span className="shrink-0 rounded-full bg-pen-surface px-2.5 py-0.5 font-sans text-[11.5px] text-pen-subtle">
+              <span className="shrink-0 rounded-full bg-sts-surface px-2.5 py-0.5 font-sans text-[11.5px] text-sts-subtle">
                 {projects.length}
               </span>
             }
@@ -800,13 +800,13 @@ export function ProjectsListPage({
           hideTitleBar ? "mb-0" : "pb-3",
         )}>
           {hideTitleBar && (
-            <p className="shrink-0 font-sans text-[12px] text-pen-muted sm:text-[12.5px]">
-              <span className="font-semibold text-pen-foreground">{sorted.length}</span>
+            <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
+              <span className="font-semibold text-sts-foreground">{sorted.length}</span>
               {" of "}
-              <span className="font-semibold text-pen-foreground">{total}</span>
+              <span className="font-semibold text-sts-foreground">{total}</span>
               {" project"}{total === 1 ? "" : "s"}
               {scope === "mine" && (
-                <span className="ml-1.5 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] text-pen-subtle">
+                <span className="ml-1.5 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] text-sts-subtle">
                   assigned to you
                 </span>
               )}
@@ -815,12 +815,12 @@ export function ProjectsListPage({
 
           <div className="flex min-w-0 flex-1 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full sm:max-w-[200px] sm:shrink-0">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search projects…"
-              className="h-8 w-full rounded-lg border border-pen-card-border bg-transparent pl-8 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+              className="h-8 w-full rounded-lg border border-sts-card-border bg-transparent pl-8 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
           </div>
 
@@ -838,7 +838,7 @@ export function ProjectsListPage({
               ))}
 
               {!isCrossAccess && pins.size > 0 && (
-                <span className="flex shrink-0 items-center gap-1 rounded-full border border-pen-blue/20 bg-pen-blue/10 px-2.5 py-1 font-sans text-[11.5px] font-medium whitespace-nowrap text-pen-blue">
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-sts-blue/20 bg-sts-blue/10 px-2.5 py-1 font-sans text-[11.5px] font-medium whitespace-nowrap text-sts-blue">
                   <Pin className="size-3" />
                   {pins.size} pinned
                 </span>
@@ -848,7 +848,7 @@ export function ProjectsListPage({
                 <Button
                   type="button"
                   onClick={() => setCreateOpen(true)}
-                  className="ml-auto h-8 shrink-0 gap-1.5 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90 dark:text-gray-900"
+                  className="ml-auto h-8 shrink-0 gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
                 >
                   <Plus className="size-3.5" strokeWidth={2.5} />
                   New project
@@ -856,7 +856,7 @@ export function ProjectsListPage({
               )}
 
               <div className={cn(
-                "flex h-8 shrink-0 overflow-hidden rounded-md border border-pen-card-border bg-pen-card",
+                "flex h-8 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card",
                 isCrossAccess && "ml-auto",
               )}>
                 <button
@@ -866,8 +866,8 @@ export function ProjectsListPage({
                   className={cn(
                     "flex h-full items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                     layout === "list"
-                      ? "bg-pen-blue-tint font-semibold text-pen-id"
-                      : "text-pen-muted hover:text-pen-foreground",
+                      ? "bg-sts-blue-tint font-semibold text-sts-id"
+                      : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   <AlignJustify className="size-3" />
@@ -880,8 +880,8 @@ export function ProjectsListPage({
                   className={cn(
                     "flex h-full items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                     layout === "cards"
-                      ? "bg-pen-blue-tint font-semibold text-pen-id"
-                      : "text-pen-muted hover:text-pen-foreground",
+                      ? "bg-sts-blue-tint font-semibold text-sts-id"
+                      : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   <LayoutGrid className="size-3" />
@@ -897,8 +897,8 @@ export function ProjectsListPage({
       {/* Projects */}
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
         {sorted.length === 0 ? (
-          <div className="py-20 text-center font-sans text-[13px] text-pen-subtle">
-            <p className="text-pen-muted">No projects found</p>
+          <div className="py-20 text-center font-sans text-[13px] text-sts-subtle">
+            <p className="text-sts-muted">No projects found</p>
             <p className="mt-1 text-[12px]">
               {search
                 ? "Try a different search term"

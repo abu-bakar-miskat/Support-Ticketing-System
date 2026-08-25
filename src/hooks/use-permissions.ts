@@ -51,6 +51,7 @@ export function usePermissions(): Permissions {
       subDepartmentId: user.subDepartmentId,
       subDepartmentIds: user.subDepartmentIds,
       memberships: user.memberships,
+      isSuperAdmin: user.isSuperAdmin,
     }
     return {
       loading: false,

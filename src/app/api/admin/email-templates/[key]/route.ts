@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import {
   EMAIL_TEMPLATE_KEYS,
   type EmailTemplateKey,
@@ -8,6 +9,14 @@ import {
 
 function isTemplateKey(value: string): value is EmailTemplateKey {
   return (EMAIL_TEMPLATE_KEYS as readonly string[]).includes(value);
+}
+
+/** Validate an optional sub-department belongs to the given department. */
+async function checkSubScope(departmentId: string, subDepartmentId: string | null): Promise<NextResponse | null> {
+  if (!subDepartmentId) return null;
+  const sub = await prisma.subDepartment.findFirst({ where: { id: subDepartmentId, departmentId }, select: { id: true } });
+  if (!sub) return NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 });
+  return null;
 }
 
 /** Templates are department-scoped — managers may only edit departments in scope. */
@@ -47,6 +56,9 @@ export async function PUT(
       : null;
   const scopeError = checkDepartmentScope(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
+  const subScopeError = await checkSubScope(departmentId!, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
   const subject = typeof body?.subject === "string" ? body.subject.trim() : "";
   const heading = typeof body?.heading === "string" ? body.heading.trim() : "";
@@ -67,6 +79,7 @@ export async function PUT(
     { subject, heading, bodyHtml, ...(footerText ? { footerText } : {}) },
     departmentId!,
     profile!.id,
+    subDepartmentId,
   );
   return NextResponse.json({ ok: true });
 }
@@ -86,7 +99,10 @@ export async function DELETE(
   const departmentId = request.nextUrl.searchParams.get("departmentId");
   const scopeError = checkDepartmentScope(profile!, departmentId);
   if (scopeError) return scopeError;
+  const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
+  const subScopeError = await checkSubScope(departmentId!, subDepartmentId);
+  if (subScopeError) return subScopeError;
 
-  await saveEmailTemplateOverride(key, null, departmentId!, profile!.id);
+  await saveEmailTemplateOverride(key, null, departmentId!, profile!.id, subDepartmentId);
   return NextResponse.json({ ok: true });
 }

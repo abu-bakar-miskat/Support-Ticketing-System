@@ -488,6 +488,7 @@ export async function PATCH(
           assignedByName: profile.name,
           assignedById: profile.id,
           departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       })
     }
@@ -521,6 +522,7 @@ export async function PATCH(
           assignedByName: profile.name,
           assignedById: profile.id,
           departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }
 
@@ -548,6 +550,7 @@ export async function PATCH(
           assignedByName: profile.name,
           assignedById: profile.id,
           departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartmentId,
         }).catch((err) => console.error("[assignment email] failed:", err))
       }
     })

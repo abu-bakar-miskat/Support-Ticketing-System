@@ -430,7 +430,7 @@ export function IntakeChat({
 
   return (
     <div
-      className="relative flex h-[70vh] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card shadow-sm"
+      className="relative flex h-[70vh] min-h-[420px] flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sm"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault()
@@ -449,8 +449,8 @@ export function IntakeChat({
       }}
     >
       {dragOver && !submitted && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-pen-id bg-pen-blue-tint/80 backdrop-blur-[2px]">
-          <p className="flex items-center gap-2 font-poppins text-[14px] font-semibold text-pen-id">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-sts-id bg-sts-blue-tint/80 backdrop-blur-[2px]">
+          <p className="flex items-center gap-2 font-poppins text-[14px] font-semibold text-sts-id">
             <Paperclip className="size-4" />
             Drop files to attach
           </p>
@@ -464,8 +464,8 @@ export function IntakeChat({
               className={cn(
                 "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 font-poppins text-[13px] leading-relaxed",
                 m.role === "user"
-                  ? "rounded-br-md bg-pen-blue text-white"
-                  : "rounded-bl-md bg-pen-surface text-pen-foreground",
+                  ? "rounded-br-md bg-sts-blue text-white"
+                  : "rounded-bl-md bg-sts-surface text-sts-foreground",
               )}
             >
               {m.text}
@@ -475,10 +475,10 @@ export function IntakeChat({
 
         {typing && (
           <div className="flex justify-start">
-            <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-pen-surface px-4 py-3">
-              <span className="size-1.5 animate-bounce rounded-full bg-pen-subtle [animation-delay:0ms]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-pen-subtle [animation-delay:120ms]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-pen-subtle [animation-delay:240ms]" />
+            <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-sts-surface px-4 py-3">
+              <span className="size-1.5 animate-bounce rounded-full bg-sts-subtle [animation-delay:0ms]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-sts-subtle [animation-delay:120ms]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-sts-subtle [animation-delay:240ms]" />
             </div>
           </div>
         )}
@@ -503,7 +503,7 @@ export function IntakeChat({
 
         {submitError && !submitted && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-pen-red/30 bg-pen-red-tint px-4 py-2.5 font-poppins text-[12.5px] text-pen-red">
+            <div className="max-w-[85%] rounded-2xl rounded-bl-md border border-sts-red/30 bg-sts-red-tint px-4 py-2.5 font-poppins text-[12.5px] text-sts-red">
               {submitError}{" "}
               <button type="button" onClick={handleSubmit} className="font-semibold underline underline-offset-2">
                 Retry
@@ -514,16 +514,16 @@ export function IntakeChat({
 
         {submitted && (
           <div className="flex justify-start">
-            <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-bl-md bg-pen-surface px-4 py-3">
+            <div className="flex max-w-[85%] items-start gap-2.5 rounded-2xl rounded-bl-md bg-sts-surface px-4 py-3">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-500" />
               {awaitingVerification ? (
-                <p className="font-poppins text-[13px] leading-relaxed text-pen-foreground">
+                <p className="font-poppins text-[13px] leading-relaxed text-sts-foreground">
                   Almost there, {answers["name"]}! We&apos;ve emailed a confirmation link to{" "}
                   {answers["email"]}. Click it to submit your request — your ticket is created once
                   you confirm. The link expires in 24 hours.
                 </p>
               ) : (
-                <p className="font-poppins text-[13px] leading-relaxed text-pen-foreground">
+                <p className="font-poppins text-[13px] leading-relaxed text-sts-foreground">
                   Your request is in! Thank you, {answers["name"]}.
                   <br />
                   We&apos;ll be in touch at {answers["email"]}.
@@ -582,11 +582,11 @@ function ChatInputDock({
 
   if (step.kind === "attachments") {
     return (
-      <div className="flex flex-col gap-1.5 border-t border-pen-card-border p-3">
+      <div className="flex flex-col gap-1.5 border-t border-sts-card-border p-3">
         <div className="flex items-center gap-2">
           <label
             className={cn(
-              "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-pen-card-border font-poppins text-[13px] text-pen-muted transition-colors hover:bg-pen-surface",
+              "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
               upload?.uploading && "pointer-events-none opacity-60",
             )}
           >
@@ -612,17 +612,17 @@ function ChatInputDock({
             )}
           </label>
           {upload?.error && (
-            <span className="font-poppins text-[11.5px] text-pen-red">{upload.error}</span>
+            <span className="font-poppins text-[11.5px] text-sts-red">{upload.error}</span>
           )}
           <button
             type="button"
             onClick={onAttachmentsDone}
-            className="rounded-full border border-pen-card-border bg-pen-surface px-4 py-2 font-poppins text-[12.5px] font-medium text-pen-foreground transition-colors hover:border-pen-id hover:text-pen-id"
+            className="rounded-full border border-sts-card-border bg-sts-surface px-4 py-2 font-poppins text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id hover:text-sts-id"
           >
             {attachmentCount > 0 ? "Done" : "Skip"}
           </button>
         </div>
-        <p className="text-center font-poppins text-[11px] text-pen-subtle">
+        <p className="text-center font-poppins text-[11px] text-sts-subtle">
           Tip: you can also paste a screenshot or drop files anywhere in the chat.
         </p>
       </div>
@@ -668,10 +668,10 @@ function ChatInputDock({
 
   if (step.kind === "field" && step.field.type === "file") {
     return (
-      <div className="flex items-center gap-2 border-t border-pen-card-border p-3">
+      <div className="flex items-center gap-2 border-t border-sts-card-border p-3">
         <label
           className={cn(
-            "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-pen-card-border font-poppins text-[13px] text-pen-muted transition-colors hover:bg-pen-surface",
+            "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
             upload?.uploading && "pointer-events-none opacity-60",
           )}
         >
@@ -695,7 +695,7 @@ function ChatInputDock({
           )}
         </label>
         {upload?.error && (
-          <span className="font-poppins text-[11.5px] text-pen-red">{upload.error}</span>
+          <span className="font-poppins text-[11.5px] text-sts-red">{upload.error}</span>
         )}
         {isOptionalField && <SkipChip onClick={() => onAnswer("", "")} />}
       </div>
@@ -728,7 +728,7 @@ function ChatInputDock({
   }
 
   return (
-    <div className="flex items-end gap-2 border-t border-pen-card-border p-3">
+    <div className="flex items-end gap-2 border-t border-sts-card-border p-3">
       {isMultiline ? (
         <textarea
           value={draft}
@@ -738,7 +738,7 @@ function ChatInputDock({
           }}
           rows={3}
           placeholder={placeholder}
-          className="flex-1 resize-none rounded-xl border border-pen-card-border bg-pen-surface px-3.5 py-2.5 font-poppins text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-2 focus:ring-pen-id/10"
+          className="flex-1 resize-none rounded-xl border border-sts-card-border bg-sts-surface px-3.5 py-2.5 font-poppins text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-2 focus:ring-sts-id/10"
         />
       ) : (
         <input
@@ -750,7 +750,7 @@ function ChatInputDock({
             if (e.key === "Enter") send()
           }}
           placeholder={placeholder}
-          className="h-10 flex-1 rounded-xl border border-pen-card-border bg-pen-surface px-3.5 font-poppins text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-2 focus:ring-pen-id/10"
+          className="h-10 flex-1 rounded-xl border border-sts-card-border bg-sts-surface px-3.5 font-poppins text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-2 focus:ring-sts-id/10"
         />
       )}
       {canSkipText && !draft && <SkipChip onClick={() => onAnswer("", "")} />}
@@ -759,7 +759,7 @@ function ChatInputDock({
         type="button"
         onClick={send}
         title="Send"
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-pen-blue text-white transition-colors hover:bg-pen-blue/90"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue text-white transition-colors hover:bg-sts-blue/90"
       >
         <Send className="size-4" />
       </button>
@@ -778,7 +778,7 @@ function AttachButton({
     <label
       title="Attach files"
       className={cn(
-        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-pen-card-border bg-pen-surface text-pen-muted transition-colors hover:border-pen-id hover:text-pen-id",
+        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id",
         uploading && "pointer-events-none opacity-60",
       )}
     >
@@ -798,7 +798,7 @@ function AttachButton({
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-2 border-t border-pen-card-border p-3">{children}</div>
+  return <div className="flex flex-wrap gap-2 border-t border-sts-card-border p-3">{children}</div>
 }
 
 function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
@@ -806,7 +806,7 @@ function Chip({ children, onClick }: { children: React.ReactNode; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-pen-card-border bg-pen-surface px-4 py-2 font-poppins text-[12.5px] font-medium text-pen-foreground transition-colors hover:border-pen-id hover:text-pen-id"
+      className="rounded-full border border-sts-card-border bg-sts-surface px-4 py-2 font-poppins text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id hover:text-sts-id"
     >
       {children}
     </button>
@@ -818,7 +818,7 @@ function SkipChip({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full px-3 py-2 font-poppins text-[12px] text-pen-subtle transition-colors hover:text-pen-foreground"
+      className="rounded-full px-3 py-2 font-poppins text-[12px] text-sts-subtle transition-colors hover:text-sts-foreground"
     >
       Skip
     </button>
@@ -876,14 +876,14 @@ function SummaryCard({
   }
 
   return (
-    <div className="rounded-2xl border border-pen-card-border bg-pen-surface p-4">
-      <div className="flex flex-col divide-y divide-pen-card-border">
+    <div className="rounded-2xl border border-sts-card-border bg-sts-surface p-4">
+      <div className="flex flex-col divide-y divide-sts-card-border">
         {rows.map((r) => (
           <div key={r.key} className="flex items-center gap-3 py-2">
-            <span className="w-28 shrink-0 font-sans text-[11.5px] font-semibold text-pen-muted">
+            <span className="w-28 shrink-0 font-sans text-[11.5px] font-semibold text-sts-muted">
               {r.label}
             </span>
-            <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] text-pen-foreground">
+            <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] text-sts-foreground">
               {r.isFile && r.value ? (
                 <span className="inline-flex items-center gap-1">
                   <Paperclip className="size-3" /> Attached
@@ -891,7 +891,7 @@ function SummaryCard({
               ) : r.value ? (
                 r.value
               ) : (
-                <span className="text-pen-subtle">—</span>
+                <span className="text-sts-subtle">—</span>
               )}
             </span>
             {!r.noEdit && (
@@ -899,7 +899,7 @@ function SummaryCard({
                 type="button"
                 onClick={() => onEdit(r.key)}
                 title={`Edit ${r.label}`}
-                className="shrink-0 rounded-md p-1 text-pen-subtle transition-colors hover:text-pen-id"
+                className="shrink-0 rounded-md p-1 text-sts-subtle transition-colors hover:text-sts-id"
               >
                 <Pencil className="size-3.5" />
               </button>
@@ -911,7 +911,7 @@ function SummaryCard({
         type="button"
         onClick={onSend}
         disabled={submitting}
-        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-pen-blue font-poppins text-[13.5px] font-semibold text-white shadow-sm transition-all hover:bg-pen-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sts-blue font-poppins text-[13.5px] font-semibold text-white shadow-sm transition-all hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting && <Loader2 className="size-4 animate-spin" />}
         {submitting ? "Sending…" : "Send ticket"}

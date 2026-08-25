@@ -95,16 +95,16 @@ function PageSizeSelector({
   const [open, setOpen] = useState(false);
   return (
     <div className="flex items-center gap-1.5">
-      <span className="font-sans text-[11.5px] text-pen-subtle">Per page</span>
+      <span className="font-sans text-[11.5px] text-sts-subtle">Per page</span>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex h-8 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground">
+        <PopoverTrigger className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
           {value}
           <ChevronDown className="size-3 shrink-0" />
         </PopoverTrigger>
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-auto min-w-[80px] rounded-xl border border-pen-card-border bg-pen-bg p-1.5 shadow-xl"
+          className="w-auto min-w-[80px] rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
         >
           {PAGE_SIZE_OPTIONS.map((size) => (
             <button
@@ -117,8 +117,8 @@ function PageSizeSelector({
               className={cn(
                 "flex w-full items-center rounded-md px-3 py-1.5 font-sans text-[12px] transition-colors",
                 size === value
-                  ? "bg-pen-blue-tint font-semibold text-pen-id"
-                  : "text-pen-foreground hover:bg-pen-surface",
+                  ? "bg-sts-blue-tint font-semibold text-sts-id"
+                  : "text-sts-foreground hover:bg-sts-surface",
               )}
             >
               {size}
@@ -171,11 +171,11 @@ function SavedViewsMenu({
         }
       }}
     >
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <Bookmark className="size-3.5" />
         <span className="hidden sm:inline">Views</span>
         {views.length > 0 && (
-          <span className="rounded-full bg-pen-surface px-1.5 text-[10.5px] font-semibold text-pen-subtle">
+          <span className="rounded-full bg-sts-surface px-1.5 text-[10.5px] font-semibold text-sts-subtle">
             {views.length}
           </span>
         )}
@@ -184,10 +184,10 @@ function SavedViewsMenu({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-64 rounded-xl border border-pen-card-border bg-pen-bg p-1.5 shadow-xl"
+        className="w-64 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
       >
         {views.length === 0 ? (
-          <p className="px-3 py-2 font-sans text-[11.5px] text-pen-subtle">
+          <p className="px-3 py-2 font-sans text-[11.5px] text-sts-subtle">
             No saved views yet. Set some filters, then save this view.
           </p>
         ) : (
@@ -195,7 +195,7 @@ function SavedViewsMenu({
             {views.map((view) => (
               <div
                 key={view.id}
-                className="group flex items-center gap-1 rounded-md pr-1 transition-colors hover:bg-pen-surface"
+                className="group flex items-center gap-1 rounded-md pr-1 transition-colors hover:bg-sts-surface"
               >
                 <button
                   type="button"
@@ -203,12 +203,12 @@ function SavedViewsMenu({
                     onApply(view);
                     setOpen(false);
                   }}
-                  className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left font-sans text-[12px] text-pen-foreground"
+                  className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground"
                 >
                   {view.id === activeViewId ? (
-                    <Check className="size-3.5 shrink-0 text-pen-id" />
+                    <Check className="size-3.5 shrink-0 text-sts-id" />
                   ) : (
-                    <Bookmark className="size-3.5 shrink-0 text-pen-subtle" />
+                    <Bookmark className="size-3.5 shrink-0 text-sts-subtle" />
                   )}
                   <span className="truncate">{view.name}</span>
                 </button>
@@ -216,7 +216,7 @@ function SavedViewsMenu({
                   type="button"
                   onClick={() => onDelete(view.id)}
                   aria-label={`Delete view ${view.name}`}
-                  className="shrink-0 rounded p-1 text-pen-subtle opacity-0 transition-opacity hover:text-pen-red group-hover:opacity-100"
+                  className="shrink-0 rounded p-1 text-sts-subtle opacity-0 transition-opacity hover:text-sts-red group-hover:opacity-100"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -225,7 +225,7 @@ function SavedViewsMenu({
           </div>
         )}
 
-        <div className="my-1 h-px bg-pen-card-border" />
+        <div className="my-1 h-px bg-sts-card-border" />
 
         {naming ? (
           <div className="flex items-center gap-1 p-1">
@@ -238,13 +238,13 @@ function SavedViewsMenu({
                 if (e.key === "Escape") setNaming(false);
               }}
               placeholder="View name…"
-              className="h-8 min-w-0 flex-1 rounded-md border border-pen-card-border bg-transparent px-2.5 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+              className="h-8 min-w-0 flex-1 rounded-md border border-sts-card-border bg-transparent px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
             <button
               type="button"
               onClick={submitNew}
               disabled={!name.trim()}
-              className="flex h-8 shrink-0 items-center rounded-md bg-pen-blue px-2.5 font-sans text-[12px] font-semibold text-white disabled:opacity-40"
+              className="flex h-8 shrink-0 items-center rounded-md bg-sts-blue px-2.5 font-sans text-[12px] font-semibold text-white disabled:opacity-40"
             >
               Save
             </button>
@@ -254,7 +254,7 @@ function SavedViewsMenu({
             type="button"
             onClick={() => setNaming(true)}
             disabled={!hasFilters}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 font-sans text-[12px] text-pen-id transition-colors hover:bg-pen-blue-tint disabled:cursor-not-allowed disabled:text-pen-subtle disabled:hover:bg-transparent"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 font-sans text-[12px] text-sts-id transition-colors hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:text-sts-subtle disabled:hover:bg-transparent"
           >
             <Plus className="size-3.5" />
             {hasFilters ? "Save current filters as view" : "Set filters to save a view"}
@@ -289,7 +289,7 @@ function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <Download className="size-3.5" />
         <span className="hidden sm:inline">Export</span>
         <ChevronDown className="size-3 shrink-0" />
@@ -297,9 +297,9 @@ function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-48 rounded-xl border border-pen-card-border bg-pen-bg p-1.5 shadow-xl"
+        className="w-48 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
       >
-        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-pen-subtle">
+        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-sts-subtle">
           Export current filters
         </p>
         {EXPORT_OPTIONS.map((opt) => (
@@ -307,9 +307,9 @@ function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
             key={opt.format}
             type="button"
             onClick={() => handleExport(opt.format)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-pen-foreground transition-colors hover:bg-pen-surface"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:bg-sts-surface"
           >
-            <Download className="size-3.5 shrink-0 text-pen-subtle" />
+            <Download className="size-3.5 shrink-0 text-sts-subtle" />
             {opt.label}
           </button>
         ))}
@@ -674,7 +674,7 @@ export function AllTasksPage({
         )}
       >
         {!hideTitleBar && (
-          <PageHeader title="All Tasks" icon={ListTodo} iconClassName="text-pen-blue" className="mb-3" />
+          <PageHeader title="All Tasks" icon={ListTodo} iconClassName="text-sts-blue" className="mb-3" />
         )}
 
         <div
@@ -684,27 +684,27 @@ export function AllTasksPage({
           )}
         >
           {/* Stats */}
-          <p className="shrink-0 font-sans text-[12px] text-pen-muted sm:text-[12.5px]">
+          <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
             {isLoading ? (
-              <span className="text-pen-subtle">Loading…</span>
+              <span className="text-sts-subtle">Loading…</span>
             ) : (
               <>
-                <span className="font-semibold text-pen-foreground">
+                <span className="font-semibold text-sts-foreground">
                   {allTasks.length}
                 </span>
                 {" of "}
-                <span className="font-semibold text-pen-foreground">
+                <span className="font-semibold text-sts-foreground">
                   {serverTotal}
                 </span>
                 {" ticket"}
                 {serverTotal === 1 ? "" : "s"}
                 {!isPrivileged && (
-                  <span className="ml-1.5 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] text-pen-subtle">
+                  <span className="ml-1.5 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] text-sts-subtle">
                     your projects only
                   </span>
                 )}
                 {isFetching && !isFetchingNextPage && (
-                  <Loader2 className="ml-2 inline size-3.5 animate-spin text-pen-subtle" />
+                  <Loader2 className="ml-2 inline size-3.5 animate-spin text-sts-subtle" />
                 )}
               </>
             )}
@@ -715,25 +715,25 @@ export function AllTasksPage({
             <div className="flex w-max min-w-full flex-wrap items-center gap-2 xl:w-full">
               {/* Search */}
               <div className="relative shrink-0">
-                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
                 <input
                   value={rawSearch}
                   onChange={(e) => setRawSearch(e.target.value)}
                   placeholder="Search tickets…"
-                  className="h-8 w-36 rounded-lg border border-pen-card-border bg-transparent pl-8 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id sm:w-48"
+                  className="h-8 w-36 rounded-lg border border-sts-card-border bg-transparent pl-8 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id sm:w-48"
                 />
                 {rawSearch && (
                   <button
                     type="button"
                     onClick={() => setRawSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-pen-subtle hover:text-pen-foreground"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-sts-subtle hover:text-sts-foreground"
                   >
                     <X className="size-3" />
                   </button>
                 )}
               </div>
 
-              <div className="hidden h-5 w-px shrink-0 bg-pen-card-border sm:block" />
+              <div className="hidden h-5 w-px shrink-0 bg-sts-card-border sm:block" />
 
               <FilterDropdown
                 label="Status"
@@ -828,7 +828,7 @@ export function AllTasksPage({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-pen-muted transition-colors hover:border-pen-red hover:text-pen-red"
+                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
                 >
                   <X className="size-3" />
                   <span className="hidden sm:inline">Clear all</span>
@@ -851,7 +851,7 @@ export function AllTasksPage({
               {chips.map((chip) => (
                 <span
                   key={chip.label}
-                  className="flex items-center gap-1 rounded-full bg-pen-blue-tint px-2.5 py-0.5 font-sans text-[11.5px] font-semibold text-pen-id"
+                  className="flex items-center gap-1 rounded-full bg-sts-blue-tint px-2.5 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id"
                 >
                   {chip.label}
                   <button
@@ -887,7 +887,7 @@ export function AllTasksPage({
                 <tr>
                   <td
                     colSpan={showBulkSelect ? 10 : 9}
-                    className="py-20 text-center font-sans text-[13px] text-pen-subtle"
+                    className="py-20 text-center font-sans text-[13px] text-sts-subtle"
                   >
                     {unassignedOnly
                       ? "No unassigned tickets."
@@ -925,7 +925,7 @@ export function AllTasksPage({
           {/* Footer: spinner for scroll pagination only */}
           <div className="flex items-center justify-center gap-3 px-6 py-3">
             {isFetchingNextPage ? (
-              <span className="flex items-center gap-2 font-sans text-[12px] text-pen-muted">
+              <span className="flex items-center gap-2 font-sans text-[12px] text-sts-muted">
                 <Loader2 className="size-3.5 animate-spin" />
                 Loading more…
               </span>
@@ -933,12 +933,12 @@ export function AllTasksPage({
               <button
                 type="button"
                 onClick={() => fetchNextPage()}
-                className="font-sans text-[12px] text-pen-id hover:underline"
+                className="font-sans text-[12px] text-sts-id hover:underline"
               >
                 Load {pageSize} more
               </button>
             ) : allTasks.length > 0 ? (
-              <span className="font-sans text-[12px] text-pen-subtle">
+              <span className="font-sans text-[12px] text-sts-subtle">
                 All {serverTotal} ticket{serverTotal === 1 ? "" : "s"} loaded
               </span>
             ) : null}
@@ -949,20 +949,20 @@ export function AllTasksPage({
 
     {/* Floating assign button — appears bottom-right when tickets are selected (Unassigned tab only) */}
     {showBulkSelect && selectedIds.size > 0 && (
-      <div className="fixed bottom-6 right-6 z-50 flex animate-in items-center gap-1 rounded-full border border-pen-card-border bg-pen-card py-1.5 pr-1.5 pl-4 shadow-2xl fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-150">
-        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-blue-tint font-sans text-[11px] font-bold text-pen-blue">
+      <div className="fixed bottom-6 right-6 z-50 flex animate-in items-center gap-1 rounded-full border border-sts-card-border bg-sts-card py-1.5 pr-1.5 pl-4 shadow-2xl fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-150">
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint font-sans text-[11px] font-bold text-sts-blue">
             {selectedIds.size}
           </span>
           selected
         </span>
 
-        <div className="mx-2 h-5 w-px shrink-0 bg-pen-card-border" />
+        <div className="mx-2 h-5 w-px shrink-0 bg-sts-card-border" />
 
         <button
           type="button"
           onClick={() => setAssignModalOpen(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-pen-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-pen-blue/90"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm transition-colors hover:bg-sts-blue/90"
         >
           <Users className="size-3.5 shrink-0" />
           Assign {selectedIds.size} Ticket{selectedIds.size === 1 ? "" : "s"}
@@ -971,7 +971,7 @@ export function AllTasksPage({
           type="button"
           onClick={() => setSelectedIds(new Set())}
           aria-label="Clear selection"
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
         >
           <X className="size-3.5" />
         </button>

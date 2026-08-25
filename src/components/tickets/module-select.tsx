@@ -94,7 +94,7 @@ export function ModuleSelect({ ticketId, projectId, moduleId, moduleName, disabl
           ))}
         </SelectContent>
       </Select>
-      {error ? <p className="font-sans text-[11.5px] text-pen-red">{error}</p> : null}
+      {error ? <p className="font-sans text-[11.5px] text-sts-red">{error}</p> : null}
     </div>
   )
 }

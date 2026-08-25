@@ -36,7 +36,7 @@ function CopyButton({ text }: { text: string }) {
         toast.success("Copied to clipboard");
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="flex items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[11px] text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground"
+      className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground"
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
       {copied ? "Copied" : "Copy"}
@@ -79,10 +79,10 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
   ];
 
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card p-3">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card p-3">
       <div className="mb-2.5 flex items-center gap-1.5">
-        <Sparkles className="size-3.5 text-pen-blue" />
-        <span className="font-sans text-[12px] font-semibold text-pen-foreground">AI assist</span>
+        <Sparkles className="size-3.5 text-sts-blue" />
+        <span className="font-sans text-[12px] font-semibold text-sts-foreground">AI assist</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -98,8 +98,8 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
                 disabled={loading !== null}
                 onClick={() => run(a.id)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground disabled:opacity-50",
-                  isLoading && "border-pen-id text-pen-foreground",
+                  "flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground disabled:opacity-50",
+                  isLoading && "border-sts-id text-sts-foreground",
                 )}
               >
                 {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}
@@ -110,25 +110,25 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
       </div>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-pen-surface px-3 py-2 font-sans text-[12px] text-pen-muted">
+        <p className="mt-3 rounded-lg bg-sts-surface px-3 py-2 font-sans text-[12px] text-sts-muted">
           {error}
         </p>
       )}
 
       {result?.action === "summarize" && (
-        <div className="mt-3 space-y-2.5 rounded-lg bg-pen-surface p-3">
+        <div className="mt-3 space-y-2.5 rounded-lg bg-sts-surface p-3">
           <div className="flex items-start justify-between gap-2">
-            <p className="font-sans text-[12.5px] leading-relaxed text-pen-foreground">{result.data.summary}</p>
+            <p className="font-sans text-[12.5px] leading-relaxed text-sts-foreground">{result.data.summary}</p>
             <CopyButton text={result.data.summary} />
           </div>
           {result.data.openQuestions?.length > 0 && (
             <div>
-              <p className="mb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <p className="mb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                 Open questions
               </p>
               <ul className="list-disc space-y-0.5 pl-4">
                 {result.data.openQuestions.map((q, i) => (
-                  <li key={i} className="font-sans text-[12px] text-pen-muted">
+                  <li key={i} className="font-sans text-[12px] text-sts-muted">
                     {q}
                   </li>
                 ))}
@@ -136,8 +136,8 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
             </div>
           )}
           {result.data.nextStep && (
-            <p className="font-sans text-[12px] text-pen-muted">
-              <span className="font-semibold text-pen-foreground">Next step: </span>
+            <p className="font-sans text-[12px] text-sts-muted">
+              <span className="font-semibold text-sts-foreground">Next step: </span>
               {result.data.nextStep}
             </p>
           )}
@@ -145,39 +145,39 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
       )}
 
       {result?.action === "draft_reply" && (
-        <div className="mt-3 space-y-2 rounded-lg bg-pen-surface p-3">
+        <div className="mt-3 space-y-2 rounded-lg bg-sts-surface p-3">
           <div className="flex items-center justify-between">
-            <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
               Suggested reply — review before sending
             </p>
             <CopyButton text={result.data.reply} />
           </div>
-          <p className="whitespace-pre-wrap font-sans text-[12.5px] leading-relaxed text-pen-foreground">
+          <p className="whitespace-pre-wrap font-sans text-[12.5px] leading-relaxed text-sts-foreground">
             {result.data.reply}
           </p>
         </div>
       )}
 
       {result?.action === "triage" && (
-        <div className="mt-3 space-y-2 rounded-lg bg-pen-surface p-3">
+        <div className="mt-3 space-y-2 rounded-lg bg-sts-surface p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-pen-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-id">
+            <span className="rounded-md bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
               Type: {result.data.type}
             </span>
-            <span className="rounded-md bg-pen-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-id">
+            <span className="rounded-md bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
               Priority: {result.data.priority}
             </span>
             {result.data.labels?.map((l) => (
               <span
                 key={l}
-                className="rounded-md bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] text-pen-muted ring-1 ring-pen-card-border"
+                className="rounded-md bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] text-sts-muted ring-1 ring-sts-card-border"
               >
                 {l}
               </span>
             ))}
           </div>
-          <p className="font-sans text-[12px] text-pen-muted">{result.data.reasoning}</p>
-          <p className="font-sans text-[11px] text-pen-subtle">Suggestions only — apply manually if they fit.</p>
+          <p className="font-sans text-[12px] text-sts-muted">{result.data.reasoning}</p>
+          <p className="font-sans text-[11px] text-sts-subtle">Suggestions only — apply manually if they fit.</p>
         </div>
       )}
     </div>

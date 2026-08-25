@@ -62,22 +62,51 @@ export async function autoAssignTicket(params: {
   teamId: string;
   formValues: FormValues;
   excludeUserId: string | null;
+  /**
+   * The intake form the ticket came from, if any. Its per-form method override
+   * (IntakeFormConfig.assignmentMethod) wins over the team/department method
+   * when set. null/absent → resolve from team, then department.
+   */
+  formConfigId?: string | null;
 }): Promise<AutoAssignResult> {
-  const { departmentId, teamId, formValues, excludeUserId } = params;
+  const { departmentId, teamId, formValues, excludeUserId, formConfigId } = params;
 
-  const [department, team] = await Promise.all([
+  const [department, team, form] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
-    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true } }),
+    formConfigId
+      ? prisma.intakeFormConfig.findUnique({ where: { id: formConfigId }, select: { assignmentMethod: true } })
+      : Promise.resolve(null),
   ]);
-  const method: AssignmentMethod = department?.assignmentMethod ?? "ROUND_ROBIN";
+  // Precedence: per-form override → sub-department override → parent department
+  // → ROUND_ROBIN (preserves lib/rota.ts's historical default). Each level's
+  // null means "inherit from the next".
+  const method: AssignmentMethod =
+    form?.assignmentMethod ?? team?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
 
   let result: AutoAssignResult;
 
   if (method === "MANUAL") {
     result = { assigneeId: null, method, failed: false };
   } else if (method === "RULE_BASED") {
+    // Scope precedence, most specific first: form-scoped rules (formConfigId),
+    // then sub-department-scoped, then department-wide (both null). Non-null
+    // formConfigId sorts first, then non-null subDepartmentId, then `order`.
     const rules = await prisma.assignmentRule.findMany({
-      where: { departmentId, enabled: true },
+      where: {
+        departmentId,
+        enabled: true,
+        OR: [
+          ...(formConfigId ? [{ formConfigId }] : []),
+          { formConfigId: null, subDepartmentId: teamId },
+          { formConfigId: null, subDepartmentId: null },
+        ],
+      },
+      orderBy: [
+        { formConfigId: { sort: "desc", nulls: "last" } },
+        { subDepartmentId: { sort: "desc", nulls: "last" } },
+        { order: "asc" },
+      ],
       select: { id: true, conditions: true, agentId: true, enabled: true, order: true },
     });
     const candidateId = pickRuleBased(rules as AssignmentRuleLike[], formValues);
@@ -113,6 +142,7 @@ export async function recordAssignmentFailure(
   actorId: string,
   ticketTitle: string,
   humanId: string,
+  subDepartmentId?: string | null,
 ): Promise<void> {
   try {
     await prisma.activityLog.create({
@@ -140,6 +170,7 @@ export async function recordAssignmentFailure(
         humanId,
         ticketTitle,
         departmentId,
+        subDepartmentId,
       }).catch(() => undefined);
     }
   } catch {

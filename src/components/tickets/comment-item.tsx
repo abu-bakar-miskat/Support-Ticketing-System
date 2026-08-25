@@ -31,8 +31,8 @@ function replyFileTypeIcon(name: string) {
   if (ext === "pdf") return <FileText className="size-[22px] text-red-400" />
   if (["xls", "xlsx", "csv"].includes(ext)) return <FileSpreadsheet className="size-[22px] text-green-500" />
   if (["zip", "rar", "7z", "gz"].includes(ext)) return <FileArchive className="size-[22px] text-yellow-500" />
-  if (["doc", "docx"].includes(ext)) return <FileText className="size-[22px] text-pen-blue" />
-  return <FileIcon className="size-[22px] text-pen-subtle" />
+  if (["doc", "docx"].includes(ext)) return <FileText className="size-[22px] text-sts-blue" />
+  return <FileIcon className="size-[22px] text-sts-subtle" />
 }
 
 type CommentAttachment = {
@@ -78,8 +78,8 @@ function focusComment(id: string) {
   const el = document.getElementById(`comment-${id}`)
   if (!el) return
   el.scrollIntoView({ behavior: "smooth", block: "center" })
-  el.classList.add("pen-comment-flash")
-  window.setTimeout(() => el.classList.remove("pen-comment-flash"), 1600)
+  el.classList.add("sts-comment-flash")
+  window.setTimeout(() => el.classList.remove("sts-comment-flash"), 1600)
 }
 
 function Avatar({ name, src, size = 28 }: { name: string; src?: string | null; size?: number }) {
@@ -88,7 +88,7 @@ function Avatar({ name, src, size = 28 }: { name: string; src?: string | null; s
   return (
     <div
       style={{ width: size, height: size, fontSize: size * 0.36 }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-pen-blue/15 font-sans font-semibold text-pen-blue"
+      className="flex shrink-0 items-center justify-center rounded-full bg-sts-blue/15 font-sans font-semibold text-sts-blue"
     >
       {initials}
     </div>
@@ -129,11 +129,11 @@ function AttachmentList({ attachments }: { attachments: CommentAttachment[] }) {
           type="button"
           onClick={() => downloadFile(a.storageUrl, a.fileName)}
           title={`Download ${a.fileName}`}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 text-left font-sans text-[12px] text-pen-foreground transition-colors hover:border-pen-blue/40 hover:bg-pen-blue/5"
+          className="flex cursor-pointer items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
         >
-          <FileDown className="size-3.5 shrink-0 text-pen-blue" />
+          <FileDown className="size-3.5 shrink-0 text-sts-blue" />
           <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
-          <span className="shrink-0 text-[11.5px] text-pen-subtle">{formatBytes(a.fileSize)}</span>
+          <span className="shrink-0 text-[11.5px] text-sts-subtle">{formatBytes(a.fileSize)}</span>
         </button>
       ))}
     </div>
@@ -144,7 +144,7 @@ function renderBody(body: string | null | undefined) {
   if (!body) return null
   return body.split(/(@[\w.-]+)/).map((part, i) =>
     part.startsWith("@") ? (
-      <mark key={i} className="rounded-[3px] bg-pen-blue/10 px-0.5 font-semibold text-pen-blue not-italic">
+      <mark key={i} className="rounded-[3px] bg-sts-blue/10 px-0.5 font-semibold text-sts-blue not-italic">
         {part.replace(/_/g, " ")}
       </mark>
     ) : <span key={i}>{part}</span>
@@ -366,10 +366,10 @@ function InlineReplyBox({
   return (
     <div className="relative mt-2.5 flex gap-2.5">
       <div className="flex flex-col items-center pt-1">
-        <div className="size-[7px] rounded-full bg-pen-card-border" />
+        <div className="size-[7px] rounded-full bg-sts-card-border" />
       </div>
       <div ref={replyBoxRef} className="flex-1">
-        <div className="rounded-xl border border-pen-card-border bg-pen-bg px-3 py-2 focus-within:border-pen-blue/50 focus-within:ring-1 focus-within:ring-pen-blue/20 transition-all">
+        <div className="rounded-xl border border-sts-card-border bg-sts-bg px-3 py-2 focus-within:border-sts-blue/50 focus-within:ring-1 focus-within:ring-sts-blue/20 transition-all">
           <textarea
             ref={textRef}
             autoFocus
@@ -378,7 +378,7 @@ function InlineReplyBox({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="w-full resize-none bg-transparent font-sans text-[12.5px] leading-[19px] text-pen-foreground outline-none placeholder:text-pen-subtle overflow-hidden"
+            className="w-full resize-none bg-transparent font-sans text-[12.5px] leading-[19px] text-sts-foreground outline-none placeholder:text-sts-subtle overflow-hidden"
             style={{ minHeight: 26, maxHeight: 160 }}
           />
 
@@ -388,7 +388,7 @@ function InlineReplyBox({
               {fileEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="relative size-[72px] rounded-[6px] bg-pen-surface"
+                  className="relative size-[72px] rounded-[6px] bg-sts-surface"
                 >
                   {entry.previewUrl ? (
                     <img
@@ -399,7 +399,7 @@ function InlineReplyBox({
                   ) : (
                     <div className="flex size-full flex-col items-center justify-center gap-[4px] px-[5px]">
                       {replyFileTypeIcon(entry.file.name)}
-                      <span className="w-full truncate text-center font-sans text-[9.5px] text-pen-muted leading-tight">
+                      <span className="w-full truncate text-center font-sans text-[9.5px] text-sts-muted leading-tight">
                         {entry.file.name}
                       </span>
                     </div>
@@ -407,7 +407,7 @@ function InlineReplyBox({
                   <button
                     type="button"
                     onClick={() => removeFile(entry.id)}
-                    className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-pen-surface text-pen-subtle shadow hover:text-pen-foreground"
+                    className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                   >
                     <X className="size-[8px]" />
                   </button>
@@ -421,7 +421,7 @@ function InlineReplyBox({
             type="button"
             onClick={submit}
             disabled={submitting || uploading}
-            className="flex h-6 items-center gap-1.5 rounded-lg bg-pen-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="flex h-6 items-center gap-1.5 rounded-lg bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {submitting || uploading ? <LoadingSpinner className="size-3" /> : <SendHorizonal className="size-[11px]" />}
             {uploading ? "Uploading…" : submitting ? "Posting…" : "Reply"}
@@ -444,15 +444,15 @@ function InlineReplyBox({
             type="button"
             onClick={() => fileRef.current?.click()}
             title="Attach files"
-            className="flex h-6 items-center gap-1 rounded-lg px-2 font-sans text-[11.5px] text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-muted"
+            className="flex h-6 items-center gap-1 rounded-lg px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
           >
             <Paperclip className="size-[11px]" />
             Attach
           </button>
-          <button type="button" onClick={onCancel} className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-muted">
+          <button type="button" onClick={onCancel} className="font-sans text-[11.5px] text-sts-subtle hover:text-sts-muted">
             Cancel
           </button>
-          <span className="font-sans text-[11.5px] text-pen-subtle/50">↵ to send · ⇧↵ for newline</span>
+          <span className="font-sans text-[11.5px] text-sts-subtle/50">↵ to send · ⇧↵ for newline</span>
         </div>
       </div>
       <AnchoredDropdown
@@ -460,7 +460,7 @@ function InlineReplyBox({
         open={mentionQuery !== null && filtered.length > 0}
         placement="bottom"
         maxHeight={160}
-        className="rounded-lg border border-pen-card-border bg-pen-bg shadow-lg"
+        className="rounded-lg border border-sts-card-border bg-sts-bg shadow-lg"
       >
         <ul className="w-full">
           {filtered.map((m, i) => (
@@ -471,7 +471,7 @@ function InlineReplyBox({
                   className={[
                     userListPickerButtonClass,
                     "px-2.5 py-1.5 transition-colors",
-                    i === highlightedIndex ? "bg-pen-surface" : "hover:bg-pen-surface",
+                    i === highlightedIndex ? "bg-sts-surface" : "hover:bg-sts-surface",
                   ].join(" ")}
                 >
                   <UserListItem
@@ -646,7 +646,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
       id={`comment-${localComment.id}`}
       className={cn(
         "flex gap-3 rounded-lg transition-colors duration-500",
-        isReply && "border-l-2 border-pen-card-border/60 pl-3",
+        isReply && "border-l-2 border-sts-card-border/60 pl-3",
       )}
     >
       {/* Avatar */}
@@ -662,17 +662,17 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
             type="button"
             onClick={() => focusComment(parentRef.id)}
             title={`Go to ${parentRef.authorName}'s comment`}
-            className="mb-1 flex max-w-full items-center gap-1 rounded border-l-2 border-pen-blue/40 bg-pen-surface/50 py-0.5 pl-1.5 pr-2 text-[11px] leading-tight text-pen-subtle transition-colors hover:border-pen-blue hover:bg-pen-blue/5"
+            className="mb-1 flex max-w-full items-center gap-1 rounded border-l-2 border-sts-blue/40 bg-sts-surface/50 py-0.5 pl-1.5 pr-2 text-[11px] leading-tight text-sts-subtle transition-colors hover:border-sts-blue hover:bg-sts-blue/5"
           >
-            <CornerUpLeft className="size-2.5 shrink-0 text-pen-subtle" />
+            <CornerUpLeft className="size-2.5 shrink-0 text-sts-subtle" />
             <span className="truncate">
-              <span className="font-semibold text-pen-foreground">
+              <span className="font-semibold text-sts-foreground">
                 {parentRef.authorName}
               </span>
               {parentRef.isDeleted ? (
-                <span className="italic text-pen-subtle/60"> · deleted comment</span>
+                <span className="italic text-sts-subtle/60"> · deleted comment</span>
               ) : parentRef.snippet ? (
-                <span className="text-pen-subtle">: {parentRef.snippet}</span>
+                <span className="text-sts-subtle">: {parentRef.snippet}</span>
               ) : null}
             </span>
           </button>
@@ -680,24 +680,24 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
 
         {/* Name + meta row */}
         <div className="group/c flex min-w-0 items-baseline gap-2">
-          <span className="font-sans text-[12.5px] font-semibold leading-none text-pen-foreground">
+          <span className="font-sans text-[12.5px] font-semibold leading-none text-sts-foreground">
             {localComment.authorName}
           </span>
-          <span className="font-sans text-[11.5px] text-pen-subtle shrink-0">
+          <span className="font-sans text-[11.5px] text-sts-subtle shrink-0">
             {formatDateTime(new Date(localComment.createdAt))}
           </span>
           {localComment.editedAt && !isDeleted && (
-            <span className="font-sans text-[11.5px] text-pen-subtle/50 shrink-0">edited</span>
+            <span className="font-sans text-[11.5px] text-sts-subtle/50 shrink-0">edited</span>
           )}
           {/* Actions on hover */}
           {isAuthor && !isDeleted && mode === "view" && (
             <div className="ml-auto flex shrink-0 items-center gap-0.5 transition-opacity">
               <button onClick={beginEditing}
-                className="flex size-6 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground" title="Edit">
+                className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Edit">
                 <Pencil className="size-[11px]" />
               </button>
               <button onClick={() => setConfirmingDelete(true)}
-                className="flex size-6 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-red/10 hover:text-pen-red" title="Delete">
+                className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red" title="Delete">
                 <Trash2 className="size-[11px]" />
               </button>
             </div>
@@ -707,7 +707,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
         {/* Body */}
         <div className="mt-0.5">
           {isDeleted ? (
-            <p className="font-sans text-[12px] italic text-pen-subtle/50">This comment was deleted.</p>
+            <p className="font-sans text-[12px] italic text-sts-subtle/50">This comment was deleted.</p>
           ) : mode === "editing" ? (
             <div className="relative space-y-2">
               <textarea
@@ -718,14 +718,14 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
                 rows={3}
                 autoFocus
                 placeholder="Edit comment… use @ to mention a teammate or @all"
-                className="w-full resize-none rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue/50 focus:ring-1 focus:ring-pen-blue/20"
+                className="w-full resize-none rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/50 focus:ring-1 focus:ring-sts-blue/20"
               />
               <AnchoredDropdown
                 anchorRef={editRef}
                 open={mentionQuery !== null && suggestionCount > 0}
                 placement="bottom"
                 maxHeight={160}
-                className="rounded-lg border border-pen-card-border bg-pen-bg shadow-lg"
+                className="rounded-lg border border-sts-card-border bg-sts-bg shadow-lg"
               >
                 <ul className="w-full">
                   {showAll && (
@@ -739,11 +739,11 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
                         className={[
                           userListPickerButtonClass,
                           "w-full px-2.5 py-1.5 text-left transition-colors",
-                          highlightedIndex === 0 ? "bg-pen-surface" : "hover:bg-pen-surface",
+                          highlightedIndex === 0 ? "bg-sts-surface" : "hover:bg-sts-surface",
                         ].join(" ")}
                       >
-                        <span className="font-semibold text-pen-blue">@all</span>
-                        <span className="ml-2 text-pen-subtle">
+                        <span className="font-semibold text-sts-blue">@all</span>
+                        <span className="ml-2 text-sts-subtle">
                           — mention everyone ({(subDepartmentMembers ?? []).length})
                         </span>
                       </button>
@@ -762,7 +762,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
                           className={[
                             userListPickerButtonClass,
                             "px-2.5 py-1.5 transition-colors",
-                            idx === highlightedIndex ? "bg-pen-surface" : "hover:bg-pen-surface",
+                            idx === highlightedIndex ? "bg-sts-surface" : "hover:bg-sts-surface",
                           ].join(" ")}
                         >
                           <UserListItem
@@ -778,19 +778,19 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
               </AnchoredDropdown>
               <div className="flex gap-2">
                 <button onClick={saveEdit} disabled={saving}
-                  className="flex h-7 items-center gap-1.5 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+                  className="flex h-7 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
                   {saving && <LoadingSpinner className="size-3" />}
                   {saving ? "Saving…" : "Save"}
                 </button>
                 <button onClick={cancelEditing}
-                  className="h-7 rounded-lg border border-pen-card-border px-3 font-sans text-[11.5px] text-pen-muted hover:bg-pen-surface">
+                  className="h-7 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:bg-sts-surface">
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <p className="font-sans text-[12.5px] leading-[20px] text-pen-foreground whitespace-pre-wrap">
+              <p className="font-sans text-[12.5px] leading-[20px] text-sts-foreground whitespace-pre-wrap">
                 {renderBody(localComment.body)}
               </p>
               {(localComment.attachments?.length ?? 0) > 0 && (
@@ -805,12 +805,12 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
           <button
             type="button"
             onClick={() => setReplying((v) => !v)}
-            className="mt-1.5 flex items-center gap-1 font-sans text-[11.5px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+            className="mt-1.5 flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
           >
             <CornerDownRight className="size-[11px]" />
             {replying ? "Cancel reply" : "Reply"}
             {replyCount > 0 && !replying && (
-              <span className="ml-0.5 text-[11.5px] text-pen-subtle/60">· {replyCount}</span>
+              <span className="ml-0.5 text-[11.5px] text-sts-subtle/60">· {replyCount}</span>
             )}
           </button>
         )}
@@ -833,16 +833,16 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
         <div
-          className="absolute inset-0 pen-overlay-backdrop"
+          className="absolute inset-0 sts-overlay-backdrop"
           onClick={() => !deleting && setConfirmingDelete(false)}
         />
         {/* Panel */}
-        <div className="relative w-full max-w-[340px] rounded-2xl border border-pen-card-border bg-pen-card p-5 shadow-2xl">
+        <div className="relative w-full max-w-[340px] rounded-2xl border border-sts-card-border bg-sts-card p-5 shadow-2xl">
           <div className="mb-1 flex items-center gap-2">
             <Trash2 className="size-4 shrink-0 text-red-500" />
-            <p className="font-sans text-[14px] font-semibold text-pen-foreground">Delete comment?</p>
+            <p className="font-sans text-[14px] font-semibold text-sts-foreground">Delete comment?</p>
           </div>
-          <p className="mb-5 font-sans text-[12.5px] text-pen-muted">
+          <p className="mb-5 font-sans text-[12.5px] text-sts-muted">
             This comment will be permanently removed and cannot be recovered.
           </p>
           <div className="flex justify-end gap-2">
@@ -850,7 +850,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
               type="button"
               disabled={deleting}
               onClick={() => setConfirmingDelete(false)}
-              className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12px] text-pen-muted transition-colors hover:bg-pen-surface disabled:opacity-50"
+              className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface disabled:opacity-50"
             >
               Cancel
             </button>

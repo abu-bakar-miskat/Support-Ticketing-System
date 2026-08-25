@@ -44,13 +44,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "members",
       },
       {
-        label: "Sub departments & roles",
-        href: "/settings/sub-departments",
-        managerOnly: true,
-        deptSpecific: true,
-        templateFeatureKey: "teamsRoles",
-      },
-      {
         label: "Departments",
         href: "/settings/departments",
         managerOnly: true,
@@ -81,7 +74,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         href: "/settings/tags",
         managerOnly: true,
         deptSpecific: true,
-        templateFeatureKey: "tagsLabels",
       },
       {
         label: "Ticket Templates",
@@ -106,6 +98,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "Automation rules",
         href: "/settings/rules",
+        managerOnly: true,
+        deptSpecific: true,
+      },
+      {
+        label: "Assignment methods",
+        href: "/settings/assignment",
         managerOnly: true,
         deptSpecific: true,
       },
@@ -151,7 +149,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         label: "Templates",
         href: "/settings/templates-catalogue",
         adminOnly: true,
-        tenantScoped: true,
       },
     ],
   },

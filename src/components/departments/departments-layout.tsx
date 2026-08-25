@@ -104,7 +104,7 @@ export function DepartmentsLayout({
         toggleSidebar: () => {},
       }}
     >
-      <div className="pen-ambient-bg flex h-dvh w-full overflow-hidden">
+      <div className="sts-ambient-bg flex h-dvh w-full overflow-hidden">
         <CommandPalette open={open} onClose={() => setOpen(false)} />
 
         <DepartmentsSidebar
@@ -116,11 +116,11 @@ export function DepartmentsLayout({
         {sidebarOpen && (
           <>
             <div
-              className="pen-overlay-enter fixed inset-0 z-30 pen-overlay-backdrop lg:hidden"
+              className="sts-overlay-enter fixed inset-0 z-30 sts-overlay-backdrop lg:hidden"
               onClick={() => setSidebarOpen(false)}
               aria-hidden="true"
             />
-            <div className="pen-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden">
+            <div className="sts-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden">
               <DepartmentsSidebar
                 onClose={() => setSidebarOpen(false)}
                 brandingName={brandingName}

@@ -78,27 +78,27 @@ function LondonClockInner({ className, compact }: { className?: string; compact?
   if (compact) {
     return (
       <div className={cn("flex flex-col select-none", className)}>
-        <p className="pen-text-section-label">
+        <p className="sts-text-section-label">
           London
-          <span ref={tzRef} className="ml-1 font-semibold text-pen-blue" />
+          <span ref={tzRef} className="ml-1 font-semibold text-sts-blue" />
         </p>
         <div
           ref={containerRef}
-          className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.03em] text-pen-foreground"
+          className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.03em] text-sts-foreground"
           style={{ fontSize: "2.4rem" }}
           aria-live="polite"
           aria-label="London local time loading"
           suppressHydrationWarning
         >
           <span ref={hoursRef} className="tabular-nums">--</span>
-          <span ref={colon1Ref} className="text-pen-blue transition-opacity duration-150">:</span>
+          <span ref={colon1Ref} className="text-sts-blue transition-opacity duration-150">:</span>
           <span ref={minutesRef} className="tabular-nums">--</span>
-          <span ref={colon2Ref} className="text-pen-blue transition-opacity duration-150">:</span>
-          <span ref={secondsRef} className="tabular-nums text-pen-muted" style={{ fontSize: "0.7em" }}>--</span>
+          <span ref={colon2Ref} className="text-sts-blue transition-opacity duration-150">:</span>
+          <span ref={secondsRef} className="tabular-nums text-sts-muted" style={{ fontSize: "0.7em" }}>--</span>
         </div>
         <p
           ref={dateRef}
-          className="mt-0.5 font-sans text-[11.5px] text-pen-muted"
+          className="mt-0.5 font-sans text-[11.5px] text-sts-muted"
           suppressHydrationWarning
         >
           {"\u00a0"}
@@ -109,14 +109,14 @@ function LondonClockInner({ className, compact }: { className?: string; compact?
 
   return (
     <div className={cn("flex flex-col items-center text-center select-none", className)}>
-      <p className="font-sans text-[13px] font-semibold tracking-wide text-pen-foreground">
+      <p className="font-sans text-[13px] font-semibold tracking-wide text-sts-foreground">
         London Local Time
-        <span ref={tzRef} className="ml-1.5 font-semibold text-pen-blue" />
+        <span ref={tzRef} className="ml-1.5 font-semibold text-sts-blue" />
       </p>
 
       <div
         ref={containerRef}
-        className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.04em] text-pen-foreground"
+        className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.04em] text-sts-foreground"
         style={{ fontSize: "clamp(2.75rem, 5vw, 3.75rem)" }}
         aria-live="polite"
         aria-label="London local time loading"
@@ -127,7 +127,7 @@ function LondonClockInner({ className, compact }: { className?: string; compact?
         </span>
         <span
           ref={colon1Ref}
-          className="text-pen-blue transition-opacity duration-150"
+          className="text-sts-blue transition-opacity duration-150"
         >
           :
         </span>
@@ -136,13 +136,13 @@ function LondonClockInner({ className, compact }: { className?: string; compact?
         </span>
         <span
           ref={colon2Ref}
-          className="text-pen-blue transition-opacity duration-150"
+          className="text-sts-blue transition-opacity duration-150"
         >
           :
         </span>
         <span
           ref={secondsRef}
-          className="tabular-nums font-semibold text-pen-muted"
+          className="tabular-nums font-semibold text-sts-muted"
           style={{ fontSize: "0.68em" }}
         >
           --
@@ -151,7 +151,7 @@ function LondonClockInner({ className, compact }: { className?: string; compact?
 
       <p
         ref={dateRef}
-        className="mt-0.5 font-sans text-[12.5px] text-pen-muted"
+        className="mt-0.5 font-sans text-[12.5px] text-sts-muted"
         suppressHydrationWarning
       >
         {"\u00a0"}
@@ -240,12 +240,12 @@ function ClockFace({
 }) {
   return (
     <div className="flex flex-col items-end select-none">
-      <p className="pen-text-section-label flex items-center gap-1.5" aria-label={`${ariaLabel} time`}>
+      <p className="sts-text-section-label flex items-center gap-1.5" aria-label={`${ariaLabel} time`}>
         {flag}
         <span ref={tzRef} className="font-semibold normal-case tracking-normal" style={{ color }} />
       </p>
       <div
-        className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.03em] text-pen-foreground"
+        className="mt-0.5 flex items-baseline font-mono font-bold leading-none tracking-[-0.03em] text-sts-foreground"
         style={{ fontSize: "2.2rem" }}
         suppressHydrationWarning
       >
@@ -253,9 +253,9 @@ function ClockFace({
         <span ref={colon1Ref} className="transition-opacity duration-150" style={{ color }}>:</span>
         <span ref={minutesRef} className="tabular-nums">--</span>
         <span ref={colon2Ref} className="transition-opacity duration-150" style={{ color }}>:</span>
-        <span ref={secondsRef} className="tabular-nums text-pen-muted" style={{ fontSize: "0.65em" }}>--</span>
+        <span ref={secondsRef} className="tabular-nums text-sts-muted" style={{ fontSize: "0.65em" }}>--</span>
       </div>
-      <p ref={dateRef} className="mt-0.5 font-sans text-[11.5px] text-pen-muted" suppressHydrationWarning>
+      <p ref={dateRef} className="mt-0.5 font-sans text-[11.5px] text-sts-muted" suppressHydrationWarning>
         {" "}
       </p>
     </div>
@@ -324,23 +324,23 @@ function DualClockInner({
 
   if (compact) {
     return (
-      <div className={cn("flex items-center gap-3 font-mono text-[13px] text-pen-muted select-none", className)} suppressHydrationWarning>
+      <div className={cn("flex items-center gap-3 font-mono text-[13px] text-sts-muted select-none", className)} suppressHydrationWarning>
         {!hideBangladesh && (
           <>
             <span className="flex items-center gap-1.5">
               <FlagBangladesh className="h-3" />
-              <span ref={bdHours} className="font-semibold tabular-nums text-pen-foreground">--</span>
+              <span ref={bdHours} className="font-semibold tabular-nums text-sts-foreground">--</span>
               <span ref={bdColon1} className="-mx-1 transition-opacity duration-150" style={{ color: "#f97316" }}>:</span>
-              <span ref={bdMinutes} className="font-semibold tabular-nums text-pen-foreground">--</span>
+              <span ref={bdMinutes} className="font-semibold tabular-nums text-sts-foreground">--</span>
             </span>
-            <span className="h-3.5 w-px bg-pen-card-border" />
+            <span className="h-3.5 w-px bg-sts-card-border" />
           </>
         )}
         <span className="flex items-center gap-1.5">
           <FlagUk className="h-3" />
-          <span ref={ukHours} className="font-semibold tabular-nums text-pen-foreground">--</span>
+          <span ref={ukHours} className="font-semibold tabular-nums text-sts-foreground">--</span>
           <span ref={ukColon1} className="-mx-1 transition-opacity duration-150" style={{ color: "#0a76b9" }}>:</span>
-          <span ref={ukMinutes} className="font-semibold tabular-nums text-pen-foreground">--</span>
+          <span ref={ukMinutes} className="font-semibold tabular-nums text-sts-foreground">--</span>
         </span>
       </div>
     );
@@ -362,7 +362,7 @@ function DualClockInner({
             colon1Ref={bdColon1}
             colon2Ref={bdColon2}
           />
-          <div className="mt-1 self-stretch w-px bg-pen-card-border" />
+          <div className="mt-1 self-stretch w-px bg-sts-card-border" />
         </>
       )}
       <ClockFace

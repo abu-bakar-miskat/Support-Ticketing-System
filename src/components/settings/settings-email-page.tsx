@@ -75,7 +75,7 @@ function mergeSwitches(
 }
 
 const switchClassName =
-  "h-[22px] w-[38px] shrink-0 data-checked:bg-pen-blue data-unchecked:bg-pen-surface dark:data-unchecked:bg-pen-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
+  "h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-surface dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
 
 /**
  * The 6 notification toggles. "Workspace default" edits the workspace-wide
@@ -96,6 +96,8 @@ function EmailNotificationsCard({
   const [overrides, setOverrides] = useState<Partial<Record<NotifyKey, boolean | null>>>({});
   const [loading, setLoading] = useState(false);
 
+  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+
   useEffect(() => {
     if (!departmentId) {
       setOverrides({});
@@ -103,7 +105,7 @@ function EmailNotificationsCard({
     }
     let cancelled = false;
     setLoading(true);
-    fetchEmailNotifications(departmentId)
+    fetchEmailNotifications(departmentId, subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         const map: Partial<Record<NotifyKey, boolean | null>> = {};
@@ -113,7 +115,7 @@ function EmailNotificationsCard({
       .catch(() => toast.error("Failed to load department notification settings"))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [departmentId]);
+  }, [departmentId, subDepartmentId]);
 
   async function handleToggle(key: NotifyKey, checked: boolean) {
     if (!departmentId) {
@@ -123,7 +125,7 @@ function EmailNotificationsCard({
     const previous = overrides[key] ?? null;
     setOverrides((prev) => ({ ...prev, [key]: checked }));
     try {
-      await setEmailNotificationOverride(key, checked, departmentId);
+      await setEmailNotificationOverride(key, checked, departmentId, subDepartmentId);
     } catch {
       toast.error("Failed to save override");
       setOverrides((prev) => ({ ...prev, [key]: previous }));
@@ -133,18 +135,18 @@ function EmailNotificationsCard({
   const showSelector = departments.length > 1;
 
   return (
-    <section className="w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+    <section className="w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
       <div className="pb-1.5">
-        <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+        <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Email notifications
         </h2>
       </div>
 
       {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-pen-surface py-3">
-          <label className="pen-text-label">Applies to</label>
+        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
+          <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-pen-card-border bg-pen-bg font-sans text-[12.5px] text-pen-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select scope"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -155,7 +157,7 @@ function EmailNotificationsCard({
               ))}
             </SelectContent>
           </Select>
-          <p className="font-sans text-[11.5px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] text-sts-subtle">
             Overrides here only apply to tickets in this department — leave a toggle alone to keep following the workspace default.
           </p>
         </div>
@@ -166,7 +168,7 @@ function EmailNotificationsCard({
           ? NOTIFICATION_META.map((row) => (
               <div
                 key={row.id}
-                className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4"
+                className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <Skeleton className="h-[13px] w-40" />
@@ -183,13 +185,13 @@ function EmailNotificationsCard({
               return (
                 <div
                   key={row.id}
-                  className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4"
+                  className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4"
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-px">
-                    <label className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                    <label className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                       {row.label}
                     </label>
-                    <p className="font-sans text-[11.5px] text-pen-subtle">
+                    <p className="font-sans text-[11.5px] text-sts-subtle">
                       {row.description}
                     </p>
                   </div>
@@ -242,19 +244,19 @@ function ConnectionCard({
   }
 
   return (
-    <section className="w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-4">
+    <section className="w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
       <div className="pb-1.5">
-        <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+        <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Resend connection
         </h2>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
             Status
           </span>
-          <p className="font-sans text-[11.5px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] text-sts-subtle">
             Sending as{" "}
             <span className="font-mono">
               {fromName} &lt;{fromEmail}&gt;
@@ -275,12 +277,12 @@ function ConnectionCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
             Inbound webhook
           </span>
-          <p className="font-sans text-[11.5px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] text-sts-subtle">
             Receives inbound email events from Resend at{" "}
             <span className="font-mono">/api/webhooks/resend</span>
           </p>
@@ -299,12 +301,12 @@ function ConnectionCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
             Send a test email
           </span>
-          <p className="font-sans text-[11.5px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] text-sts-subtle">
             Delivers a sample message to your own address using the current
             settings.
           </p>
@@ -315,7 +317,7 @@ function ConnectionCard({
             onClick={sendTest}
             disabled={sending || !resendConfigured}
             className={cn(
-              "inline-flex h-8 items-center rounded-md bg-pen-blue px-3.5 font-sans text-xs font-medium text-white",
+              "inline-flex h-8 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
@@ -360,7 +362,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchEmailIdentity(department.id)
+    fetchEmailIdentity(department.id, department.subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         setDefaults({ fromName: data.defaultFromName, fromEmail: data.defaultFromEmail });
@@ -370,7 +372,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
       .catch(() => toast.error(`Failed to load email identity for ${department.name}`))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [department.id, department.name]);
+  }, [department.id, department.name, department.subDepartmentId]);
 
   useEffect(() => {
     const email = fromEmail.trim();
@@ -392,7 +394,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   async function saveName() {
     setSavingName(true);
     try {
-      await setEmailIdentity({ fromName: fromName.trim() }, department.id);
+      await setEmailIdentity({ fromName: fromName.trim() }, department.id, department.subDepartmentId);
       toast.success(`From name saved for ${department.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save From name");
@@ -404,7 +406,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   async function saveEmail() {
     setSavingEmail(true);
     try {
-      await setEmailIdentity({ fromEmail: fromEmail.trim() }, department.id);
+      await setEmailIdentity({ fromEmail: fromEmail.trim() }, department.id, department.subDepartmentId);
       toast.success(`From email saved for ${department.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save From email");
@@ -419,16 +421,16 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   const activeName = fromName.trim() || defaults.fromName;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-pen-surface py-3">
+    <div className="flex flex-col gap-3 border-t border-sts-surface py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="font-sans text-[12.5px] font-semibold text-pen-foreground">{department.name}</label>
+        <label className="font-sans text-[12.5px] font-semibold text-sts-foreground">{department.name}</label>
         {!loading && (
           <span
             className={cn(
               "inline-flex h-[20px] items-center rounded-full px-2 font-sans text-[11px] font-medium",
               hasCustomEmail
-                ? "bg-pen-blue/10 text-pen-blue"
-                : "bg-pen-surface text-pen-subtle",
+                ? "bg-sts-blue/10 text-sts-blue"
+                : "bg-sts-surface text-sts-subtle",
             )}
           >
             {hasCustomEmail ? "Custom address" : "Using workspace default"}
@@ -436,9 +438,9 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
         )}
       </div>
       {!loading && (
-        <p className="font-sans text-[11.5px] text-pen-subtle">
+        <p className="font-sans text-[11.5px] text-sts-subtle">
           Currently sending as{" "}
-          <span className="font-mono text-pen-foreground">
+          <span className="font-mono text-sts-foreground">
             {activeName} &lt;{activeEmail}&gt;
           </span>
         </p>
@@ -446,29 +448,29 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
         <div className="flex min-w-0 flex-1 items-end gap-2">
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <label className="pen-text-label">From name</label>
+            <label className="sts-text-label">From name</label>
             <input
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
               disabled={loading}
               placeholder={defaults.fromName}
-              className="h-9 w-full rounded-md border border-pen-card-border bg-pen-bg px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50"
+              className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
           </div>
           <button
             type="button"
             onClick={saveName}
             disabled={savingName || loading}
-            className="inline-flex h-9 shrink-0 items-center rounded-md bg-pen-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 shrink-0 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {savingName ? "Saving…" : "Save"}
           </button>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <label className="pen-text-label">From email</label>
+            <label className="sts-text-label">From email</label>
             {checkingDomain && (
-              <span className="font-sans text-[11px] text-pen-subtle">Checking domain…</span>
+              <span className="font-sans text-[11px] text-sts-subtle">Checking domain…</span>
             )}
             {!checkingDomain && domainStatus && DOMAIN_STATUS_META[domainStatus.status] && (
               <span
@@ -487,19 +489,19 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
               onChange={(e) => setFromEmail(e.target.value)}
               disabled={loading}
               placeholder={defaults.fromEmail}
-              className="h-9 min-w-0 flex-1 rounded-md border border-pen-card-border bg-pen-bg px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50"
+              className="h-9 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
             <button
               type="button"
               onClick={saveEmail}
               disabled={savingEmail || loading || checkingDomain || !emailSaveAllowed}
               title={!emailSaveAllowed ? "Domain must be verified in Resend before saving" : undefined}
-              className="inline-flex h-9 shrink-0 items-center rounded-md bg-pen-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-9 shrink-0 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {savingEmail ? "Saving…" : "Save"}
             </button>
           </div>
-          <p className="font-sans text-[11px] text-pen-subtle">
+          <p className="font-sans text-[11px] text-sts-subtle">
             Use an address on a domain you've verified in Resend, e.g. something@your_domain.com.
           </p>
         </div>
@@ -540,11 +542,13 @@ function EmailBrandingCard({
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+
   useEffect(() => {
     if (!departmentId) return;
     let cancelled = false;
     setLoading(true);
-    fetchEmailBranding(departmentId)
+    fetchEmailBranding(departmentId, subDepartmentId)
       .then((data) => {
         if (cancelled) return;
         const effective: EmailBrandingValues = {
@@ -567,7 +571,7 @@ function EmailBrandingCard({
     return () => {
       cancelled = true;
     };
-  }, [departmentId]);
+  }, [departmentId, subDepartmentId]);
 
   if (departments.length === 0) return null;
 
@@ -596,7 +600,7 @@ function EmailBrandingCard({
         logoUrl: logoUrl.trim(),
         footerText,
       };
-      await setEmailBranding(departmentId, next);
+      await setEmailBranding(departmentId, next, subDepartmentId);
       setSaved(next);
       setHasOverride(true);
       toast.success("Email branding saved");
@@ -618,8 +622,8 @@ function EmailBrandingCard({
     if (!departmentId) return;
     setResetting(true);
     try {
-      await resetEmailBranding(departmentId);
-      const data = await fetchEmailBranding(departmentId);
+      await resetEmailBranding(departmentId, subDepartmentId);
+      const data = await fetchEmailBranding(departmentId, subDepartmentId);
       const defaults = data.defaults;
       setBrandColor(defaults.brandColor);
       setHeaderColor(defaults.headerColor);
@@ -636,22 +640,22 @@ function EmailBrandingCard({
   }
 
   return (
-    <section className="w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-4">
+    <section className="w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
       <div className="pb-1.5">
-        <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+        <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Branding
         </h2>
-        <p className="font-sans text-[11.5px] text-pen-subtle">
+        <p className="font-sans text-[11.5px] text-sts-subtle">
           Logo, colors, and footer for this department&apos;s outgoing emails.
           Departments without a custom look fall back to the workspace default.
         </p>
       </div>
 
       {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-pen-surface py-3">
-          <label className="pen-text-label">Applies to</label>
+        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
+          <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-pen-card-border bg-pen-bg font-sans text-[12.5px] text-pen-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -665,13 +669,13 @@ function EmailBrandingCard({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-pen-surface pt-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-sts-surface pt-3">
         <span
           className={cn(
             "inline-flex h-[20px] items-center rounded-full px-2 font-sans text-[11px] font-medium",
             hasOverride
-              ? "bg-pen-blue/10 text-pen-blue"
-              : "bg-pen-surface text-pen-subtle",
+              ? "bg-sts-blue/10 text-sts-blue"
+              : "bg-sts-surface text-sts-subtle",
           )}
         >
           {loading ? "Loading…" : hasOverride ? "Custom branding" : "Using workspace default"}
@@ -681,22 +685,22 @@ function EmailBrandingCard({
       <div className="flex flex-col gap-4 py-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="pen-text-label">Logo URL</label>
+            <label className="sts-text-label">Logo URL</label>
             <input
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               disabled={loading}
               placeholder="https://…/logo.svg"
-              className="h-9 w-full rounded-md border border-pen-card-border bg-pen-bg px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50"
+              className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               Shown on the dark email header. Use a PNG or SVG hosted on a public
               URL; light-colored logos read best.
             </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="pen-text-label">Accent color</label>
+            <label className="sts-text-label">Accent color</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -704,7 +708,7 @@ function EmailBrandingCard({
                 onChange={(e) => setBrandColor(e.target.value)}
                 disabled={loading}
                 aria-label="Accent color picker"
-                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-pen-card-border bg-pen-bg p-1 disabled:opacity-50"
+                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-bg p-1 disabled:opacity-50"
               />
               <input
                 value={brandColor}
@@ -712,18 +716,18 @@ function EmailBrandingCard({
                 disabled={loading}
                 placeholder="#0a76b9"
                 className={cn(
-                  "h-9 w-full max-w-[140px] rounded-md border bg-pen-bg px-3 font-mono text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50",
-                  validColor ? "border-pen-card-border" : "border-red-400",
+                  "h-9 w-full max-w-[140px] rounded-md border bg-sts-bg px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50",
+                  validColor ? "border-sts-card-border" : "border-red-400",
                 )}
               />
             </div>
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               Used for email headings and call-to-action buttons.
             </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="pen-text-label">Header background</label>
+            <label className="sts-text-label">Header background</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -731,7 +735,7 @@ function EmailBrandingCard({
                 onChange={(e) => setHeaderColor(e.target.value)}
                 disabled={loading}
                 aria-label="Header background color picker"
-                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-pen-card-border bg-pen-bg p-1 disabled:opacity-50"
+                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-bg p-1 disabled:opacity-50"
               />
               <input
                 value={headerColor}
@@ -739,27 +743,27 @@ function EmailBrandingCard({
                 disabled={loading}
                 placeholder="#022941"
                 className={cn(
-                  "h-9 w-full max-w-[140px] rounded-md border bg-pen-bg px-3 font-mono text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50",
-                  validHeader ? "border-pen-card-border" : "border-red-400",
+                  "h-9 w-full max-w-[140px] rounded-md border bg-sts-bg px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50",
+                  validHeader ? "border-sts-card-border" : "border-red-400",
                 )}
               />
             </div>
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               The bar behind the logo at the top of every email. Use a dark
               color so a light logo stays legible.
             </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="pen-text-label">Footer text</label>
+            <label className="sts-text-label">Footer text</label>
             <input
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
               disabled={loading}
-              placeholder="© {year} PEN Global. This is an automated message."
-              className="h-9 w-full rounded-md border border-pen-card-border bg-pen-bg px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue disabled:opacity-50"
+              placeholder="© {year} Support Ticketing System. This is an automated message."
+              className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               Use <span className="font-mono">{"{year}"}</span> to insert the
               current year automatically.
             </p>
@@ -767,8 +771,8 @@ function EmailBrandingCard({
         </div>
 
         <div className="flex w-full flex-col gap-1.5 lg:max-w-[300px]">
-          <label className="pen-text-label">Preview</label>
-          <div className="overflow-hidden rounded-md border border-pen-card-border bg-white">
+          <label className="sts-text-label">Preview</label>
+          <div className="overflow-hidden rounded-md border border-sts-card-border bg-white">
             <div
               className="px-4 py-3"
               style={{ background: validHeader ? headerColor : "#022941" }}
@@ -812,12 +816,12 @@ function EmailBrandingCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-pen-surface pt-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-sts-surface pt-3">
         <button
           type="button"
           onClick={save}
           disabled={saving || loading || !dirty || !validColor || !validHeader}
-          className="inline-flex h-8 items-center rounded-md bg-pen-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save branding"}
         </button>
@@ -826,7 +830,7 @@ function EmailBrandingCard({
             type="button"
             onClick={resetToSaved}
             disabled={saving || resetting}
-            className="inline-flex h-8 items-center rounded-md border border-pen-card-border px-3.5 font-sans text-xs font-medium text-pen-muted hover:text-pen-foreground disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-md border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
           >
             Discard changes
           </button>
@@ -836,7 +840,7 @@ function EmailBrandingCard({
             type="button"
             onClick={clearOverride}
             disabled={saving || resetting || loading}
-            className="inline-flex h-8 items-center rounded-md border border-pen-card-border px-3.5 font-sans text-xs font-medium text-pen-muted hover:text-pen-foreground disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-md border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
           >
             {resetting ? "Resetting…" : "Use workspace default"}
           </button>
@@ -854,21 +858,21 @@ function EmailIdentityCard({ departments }: { departments: DeptOption[] }) {
   const visibleDepartments = departments.filter((d) => d.id === filterId);
 
   return (
-    <section className="w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-4">
+    <section className="w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
       <div className="pb-1.5">
-        <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+        <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Department sender identity
         </h2>
-        <p className="font-sans text-[11.5px] text-pen-subtle">
+        <p className="font-sans text-[11.5px] text-sts-subtle">
           Leave a field blank to use the workspace default. The address/domain must already be verified in Resend before saving.
         </p>
       </div>
 
       {departments.length > 1 && (
-        <div className="flex flex-col gap-1.5 border-t border-pen-surface py-3">
-          <label className="pen-text-label">Filter by department</label>
+        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
+          <label className="sts-text-label">Filter by department</label>
           <Select value={filterId} onValueChange={(v) => setFilterId(v ?? departments[0]?.id ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-pen-card-border bg-pen-bg font-sans text-[12.5px] text-pen-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === filterId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -896,7 +900,7 @@ export function SettingsEmailPage({
   isAdmin = true,
   isManager = false,
   departments = [],
-  fromName = "PEN Platform",
+  fromName = "Support Ticketing System",
   fromEmail = DEFAULT_FROM_EMAIL,
   branding,
 }: {
@@ -911,7 +915,7 @@ export function SettingsEmailPage({
   branding?: EmailBrandingValues;
 }) {
   const canSeeGeneral = isAdmin || isManager;
-  const [tab, setTab] = useState<"general" | "templates">(canSeeGeneral ? "general" : "templates");
+  const [tab, setTab] = useState<"general" | "branding" | "templates">(canSeeGeneral ? "general" : "templates");
   const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
     mergeSwitches(defaultSwitches(), initialConfig),
   );
@@ -928,19 +932,20 @@ export function SettingsEmailPage({
     <div className="flex flex-col">
       <div className="flex flex-col gap-4 px-5 pt-8 sm:px-8 lg:px-10">
         <header className="flex max-w-[920px] flex-col gap-[3px]">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             Email settings
           </h1>
-          <p className="font-sans text-[13px] text-pen-muted">
+          <p className="font-sans text-[13px] text-sts-muted">
             Notifications and templates for outgoing email.
           </p>
         </header>
 
-        <div className="flex max-w-[920px] gap-1 border-b border-pen-card-border">
+        <div className="flex max-w-[920px] gap-1 border-b border-sts-card-border">
           {(
             canSeeGeneral
               ? [
                   { id: "general" as const, label: "General" },
+                  { id: "branding" as const, label: "Branding" },
                   { id: "templates" as const, label: "Templates" },
                 ]
               : [{ id: "templates" as const, label: "Templates" }]
@@ -952,8 +957,8 @@ export function SettingsEmailPage({
               className={cn(
                 "h-9 rounded-t-md px-3.5 font-sans text-[12.5px] font-medium",
                 tab === t.id
-                  ? "border-b-2 border-pen-blue text-pen-foreground"
-                  : "text-pen-muted hover:text-pen-foreground",
+                  ? "border-b-2 border-sts-blue text-sts-foreground"
+                  : "text-sts-muted hover:text-sts-foreground",
               )}
             >
               {t.label}
@@ -971,13 +976,6 @@ export function SettingsEmailPage({
             fromEmail={fromEmail}
           />
 
-          {branding ? (
-            <EmailBrandingCard
-              departments={departments}
-              workspaceDefaults={branding}
-            />
-          ) : null}
-
           <EmailIdentityCard departments={departments} />
 
           <EmailNotificationsCard
@@ -985,6 +983,15 @@ export function SettingsEmailPage({
             switches={switches}
             onWorkspaceSwitchChange={onWorkspaceSwitchChange}
           />
+        </div>
+      ) : tab === "branding" && canSeeGeneral ? (
+        <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+          {branding ? (
+            <EmailBrandingCard
+              departments={departments}
+              workspaceDefaults={branding}
+            />
+          ) : null}
         </div>
       ) : (
         <SettingsEmailTemplatesPage departments={departments} />

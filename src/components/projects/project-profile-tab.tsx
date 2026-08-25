@@ -94,8 +94,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
-      <h3 className="mb-2.5 pen-text-section-label">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
+      <h3 className="mb-2.5 sts-text-section-label">
         {title}
       </h3>
       {children}
@@ -262,14 +262,14 @@ export function ProjectProfileTab({
   }
 
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h3 className="pen-text-section-label">
+        <h3 className="sts-text-section-label">
           Project details
         </h3>
         <div className="flex items-center gap-1.5">
           {!supportProject && statusSaving && (
-            <span className="font-sans text-[11.5px] text-pen-subtle">Saving…</span>
+            <span className="font-sans text-[11.5px] text-sts-subtle">Saving…</span>
           )}
           {!supportProject && statusSaved && (
             <span className="flex items-center gap-1 font-sans text-[11.5px] text-[#059669]">
@@ -295,11 +295,11 @@ export function ProjectProfileTab({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <h4 className="pen-text-section-label">
+        <h4 className="sts-text-section-label">
           Description
         </h4>
         {canEdit && descSaving && (
-          <span className="font-sans text-[11.5px] text-pen-subtle">Saving…</span>
+          <span className="font-sans text-[11.5px] text-sts-subtle">Saving…</span>
         )}
         {canEdit && descSaved && !descDirty && (
           <span className="flex items-center gap-1 font-sans text-[11.5px] text-[#059669]">
@@ -313,14 +313,14 @@ export function ProjectProfileTab({
         disabled={!canEdit}
         rows={4}
         placeholder="Describe the project goals, scope, and context…"
-        className="mt-1.5 w-full resize-none rounded-lg border border-pen-card-border bg-pen-surface px-2.5 py-2 font-sans text-[12px] leading-relaxed text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id disabled:opacity-60 dark:bg-white/5"
+        className="mt-1.5 w-full resize-none rounded-lg border border-sts-card-border bg-sts-surface px-2.5 py-2 font-sans text-[12px] leading-relaxed text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id disabled:opacity-60 dark:bg-white/5"
       />
       {canEdit && descDirty && (
         <div className="mt-2 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={cancelDescription}
-            className="h-7 rounded-lg border border-pen-card-border px-3 font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="h-7 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             Cancel
           </button>
@@ -328,7 +328,7 @@ export function ProjectProfileTab({
             type="button"
             onClick={saveDescription}
             disabled={descSaving}
-            className="flex h-7 items-center gap-1.5 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+            className="flex h-7 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
           >
             {descSaving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
             Save
@@ -399,23 +399,23 @@ function IntegrationCardShell({
   disabled?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-col overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card transition-shadow hover:shadow-sm", disabled && "opacity-50")}>
+    <div className={cn("flex flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card transition-shadow hover:shadow-sm", disabled && "opacity-50")}>
       <div className="flex items-center gap-4 px-4 py-4">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg }}>
           {icon}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="pen-text-card-title">{title}</p>
+            <p className="sts-text-card-title">{title}</p>
             {badge}
           </div>
-          <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-muted">
+          <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-muted">
             {subtitle ?? description}
           </p>
         </div>
       </div>
       {footer && (
-        <div className="border-t border-pen-card-border/70 bg-pen-surface/40 px-4 py-3 dark:bg-white/3">
+        <div className="border-t border-sts-card-border/70 bg-sts-surface/40 px-4 py-3 dark:bg-white/3">
           {footer}
         </div>
       )}
@@ -436,8 +436,8 @@ function ConnectedBadge() {
 
 function NotConnectedBadge() {
   return (
-    <span className="flex shrink-0 items-center gap-1 rounded-full border border-pen-card-border bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-muted">
-      <span className="size-1.5 rounded-full bg-pen-subtle" />
+    <span className="flex shrink-0 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
+      <span className="size-1.5 rounded-full bg-sts-subtle" />
       Not connected
     </span>
   );
@@ -445,7 +445,7 @@ function NotConnectedBadge() {
 
 function ComingSoonBadge() {
   return (
-    <span className="flex shrink-0 items-center rounded-full border border-pen-card-border bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-subtle">
+    <span className="flex shrink-0 items-center rounded-full border border-sts-card-border bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-subtle">
       Coming soon
     </span>
   );
@@ -540,20 +540,20 @@ function GitHubCard({
           {canEdit && (
             <div className="flex gap-2">
               <div className="relative min-w-0 flex-1">
-                <GitBranch className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+                <GitBranch className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
                 <input
                   value={githubInput}
                   onChange={(e) => setGithubInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveGithub()}
                   placeholder="owner/repo or full GitHub URL"
-                  className="h-9 w-full rounded-xl border border-pen-card-border bg-pen-card pl-9 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                  className="h-9 w-full rounded-xl border border-sts-card-border bg-sts-card pl-9 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                 />
               </div>
               <button
                 type="button"
                 onClick={saveGithub}
                 disabled={githubSaving || githubLoading}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-pen-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
               >
                 {(githubSaving || githubLoading) ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 {githubData ? "Update" : "Connect"}
@@ -570,18 +570,18 @@ function GitHubCard({
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-3">
                 {githubData.language && (
-                  <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
-                    <span className="size-2 rounded-full bg-pen-blue" />
+                  <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
+                    <span className="size-2 rounded-full bg-sts-blue" />
                     {githubData.language}
                   </span>
                 )}
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <Star className="size-3" /> {githubData.stargazers_count}
                 </span>
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <GitFork className="size-3" /> {githubData.forks_count}
                 </span>
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <AlertCircle className="size-3" /> {githubData.open_issues_count}
                 </span>
               </div>
@@ -590,7 +590,7 @@ function GitHubCard({
                   <button
                     type="button"
                     onClick={() => setShowPRs((v) => !v)}
-                    className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+                    className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
                   >
                     <GitPullRequest className="size-3.5" />
                     {githubPRs.length} PRs
@@ -601,7 +601,7 @@ function GitHubCard({
                   href={githubData.html_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 font-sans text-[11.5px] text-pen-id hover:underline"
+                  className="flex items-center gap-1 font-sans text-[11.5px] text-sts-id hover:underline"
                 >
                   View repo <ExternalLink className="size-3" />
                 </Link>
@@ -609,14 +609,14 @@ function GitHubCard({
             </div>
           )}
           {showPRs && githubPRs.length > 0 && (
-            <div className="mt-1 flex flex-col gap-1 rounded-lg border border-pen-card-border bg-pen-card p-1.5">
+            <div className="mt-1 flex flex-col gap-1 rounded-lg border border-sts-card-border bg-sts-card p-1.5">
               {githubPRs.map((pr) => (
                 <Link
                   key={pr.number}
                   href={pr.html_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-pen-surface"
+                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-sts-surface"
                 >
                   <GitPullRequest
                     className={cn(
@@ -624,7 +624,7 @@ function GitHubCard({
                       pr.merged_at ? "text-[#7c3aed]" : pr.state === "open" ? "text-[#059669]" : "text-[#dc2626]",
                     )}
                   />
-                  <p className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-foreground">{pr.title}</p>
+                  <p className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-foreground">{pr.title}</p>
                   <span className={cn(
                     "shrink-0 rounded-full px-1.5 py-0.5 font-sans text-[11.5px] font-medium",
                     pr.merged_at ? "bg-[#7c3aed20] text-[#7c3aed]" : pr.state === "open" ? "bg-[#05966920] text-[#059669]" : "bg-[#dc262620] text-[#dc2626]",
@@ -679,20 +679,20 @@ function LiveSiteCard({
           {canEdit && (
             <div className="flex gap-2">
               <div className="relative min-w-0 flex-1">
-                <Globe className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+                <Globe className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
                 <input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && save()}
                   placeholder="https://your-project.com"
-                  className="h-9 w-full rounded-xl border border-pen-card-border bg-pen-card pl-9 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                  className="h-9 w-full rounded-xl border border-sts-card-border bg-sts-card pl-9 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                 />
               </div>
               <button
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-pen-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
               >
                 {saving ? <Loader2 className="size-3.5 animate-spin" /> : saved ? <Check className="size-3.5" /> : null}
                 {saved ? "Saved" : "Save"}
@@ -704,7 +704,7 @@ function LiveSiteCard({
               href={displayUrl.startsWith("http") ? displayUrl : `https://${displayUrl}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-id hover:underline"
+              className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-id hover:underline"
             >
               <ExternalLink className="size-3.5" /> Open site
             </Link>
@@ -741,7 +741,7 @@ function AnalyticsLinkCard({
             href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 font-sans text-[11.5px] text-pen-id hover:underline"
+            className="flex items-center gap-1 font-sans text-[11.5px] text-sts-id hover:underline"
           >
             Open dashboard <ExternalLink className="size-3" />
           </Link>
@@ -749,7 +749,7 @@ function AnalyticsLinkCard({
             <button
               type="button"
               onClick={() => onRemove(link.id)}
-              className="flex items-center gap-1 font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-red-500"
+              className="flex items-center gap-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:text-red-500"
             >
               <Trash2 className="size-3.5" />
               Remove
@@ -784,7 +784,7 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-pen-card-border bg-pen-card px-4 font-sans text-[12px] font-medium text-pen-muted transition-colors hover:border-pen-id/60 hover:text-pen-foreground"
+        className="flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-sts-card-border bg-sts-card px-4 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-id/60 hover:text-sts-foreground"
       >
         <Plus className="size-3.5 shrink-0" />
         Add analytics dashboard
@@ -793,10 +793,10 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
   }
 
   return (
-    <div className="rounded-2xl border border-pen-card-border bg-pen-card p-4">
+    <div className="rounded-2xl border border-sts-card-border bg-sts-card p-4">
       <div className="mb-3 flex items-center gap-2">
-        <BarChart2 className="size-4 text-pen-id" />
-        <p className="font-sans text-[13px] font-semibold text-pen-foreground">Add analytics dashboard</p>
+        <BarChart2 className="size-4 text-sts-id" />
+        <p className="font-sans text-[13px] font-semibold text-sts-foreground">Add analytics dashboard</p>
       </div>
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -805,21 +805,21 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (e.g. Vercel Analytics)"
-            className="h-9 min-w-0 flex-1 rounded-xl border border-pen-card-border bg-pen-surface px-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id dark:bg-white/5"
+            className="h-9 min-w-0 flex-1 rounded-xl border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id dark:bg-white/5"
           />
           <input
             value={addUrl}
             onChange={(e) => setAddUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="https://…"
-            className="h-9 min-w-0 flex-1 rounded-xl border border-pen-card-border bg-pen-surface px-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id dark:bg-white/5"
+            className="h-9 min-w-0 flex-1 rounded-xl border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id dark:bg-white/5"
           />
         </div>
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="h-9 rounded-xl border border-pen-card-border px-4 font-sans text-[12px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="h-9 rounded-xl border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             Cancel
           </button>
@@ -827,7 +827,7 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
             type="button"
             onClick={handleAdd}
             disabled={saving || !name.trim() || !addUrl.trim()}
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-pen-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+            className="flex h-9 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
           >
             {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
             {saving ? "Adding…" : "Add"}
@@ -905,9 +905,9 @@ export function ProjectIntegrationTab({
       {/* Section: Active integrations */}
       <div>
         <div className="mb-3 flex items-center gap-2.5">
-          <div className="h-px flex-1 bg-pen-card-border/60" />
+          <div className="h-px flex-1 bg-sts-card-border/60" />
           <div className="flex items-center gap-2">
-            <span className="pen-text-label">
+            <span className="sts-text-label">
               Connected integrations
             </span>
             {connectedCount > 0 && (
@@ -916,7 +916,7 @@ export function ProjectIntegrationTab({
               </span>
             )}
           </div>
-          <div className="h-px flex-1 bg-pen-card-border/60" />
+          <div className="h-px flex-1 bg-sts-card-border/60" />
         </div>
 
         <div className="flex flex-col gap-3">
@@ -945,17 +945,17 @@ export function ProjectIntegrationTab({
       {/* Section: Coming soon */}
       <div>
         <div className="mb-3 flex items-center gap-2.5">
-          <div className="h-px flex-1 bg-pen-card-border/60" />
-          <span className="pen-text-label">
+          <div className="h-px flex-1 bg-sts-card-border/60" />
+          <span className="sts-text-label">
             More integrations
           </span>
-          <div className="h-px flex-1 bg-pen-card-border/60" />
+          <div className="h-px flex-1 bg-sts-card-border/60" />
         </div>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {COMING_SOON_INTEGRATIONS.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-pen-card-border bg-pen-card px-3 py-4 opacity-50"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-sts-card-border bg-sts-card px-3 py-4 opacity-50"
             >
               <div
                 className="flex size-10 items-center justify-center rounded-xl"
@@ -964,8 +964,8 @@ export function ProjectIntegrationTab({
                 {c.icon}
               </div>
               <div className="text-center">
-                <p className="font-sans text-[12px] font-semibold text-pen-foreground">{c.title}</p>
-                <p className="font-sans text-[11.5px] text-pen-subtle">Coming soon</p>
+                <p className="font-sans text-[12px] font-semibold text-sts-foreground">{c.title}</p>
+                <p className="font-sans text-[11.5px] text-sts-subtle">Coming soon</p>
               </div>
             </div>
           ))}
@@ -1013,7 +1013,7 @@ export function ProjectGuidelinesSection({
     <Section title="Guidelines">
       <div className="mb-2 flex items-center justify-end gap-2">
         {canEdit && saving && (
-          <span className="font-sans text-[11.5px] text-pen-subtle">Saving…</span>
+          <span className="font-sans text-[11.5px] text-sts-subtle">Saving…</span>
         )}
         {canEdit && saved && (
           <span className="flex items-center gap-1 font-sans text-[11.5px] text-[#059669]">
@@ -1028,10 +1028,10 @@ export function ProjectGuidelinesSection({
         disabled={!canEdit}
         rows={6}
         placeholder="Brand guidelines, file naming conventions, review checklists, design tokens…"
-        className="w-full resize-y rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2.5 font-sans text-[12.5px] leading-relaxed text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id disabled:opacity-60 dark:bg-white/5"
+        className="w-full resize-y rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2.5 font-sans text-[12.5px] leading-relaxed text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id disabled:opacity-60 dark:bg-white/5"
       />
       {!canEdit && !guidelines.trim() && (
-        <p className="mt-2 font-sans text-[12px] text-pen-subtle">No guidelines added yet.</p>
+        <p className="mt-2 font-sans text-[12px] text-sts-subtle">No guidelines added yet.</p>
       )}
     </Section>
   );

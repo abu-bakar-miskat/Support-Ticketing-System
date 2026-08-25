@@ -67,9 +67,12 @@ export default async function PublicIntakeFormPage({
     validation: f.validation as Record<string, unknown> | null,
   }))
 
-  const issues = await prisma.intakeIssue.findMany({
-    where: { formConfigId: uuid },
-    orderBy: { createdAt: "asc" },
+  // The form's selectable "issues" are now its enabled SLA policies — each
+  // policy carries the name, priority, assignee pool and SLA targets a ticket
+  // inherits when the requester picks it (see lib/intake-finalize).
+  const issues = await prisma.slaPolicy.findMany({
+    where: { formConfigId: uuid, enabled: true },
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: { id: true, name: true },
   })
 
@@ -90,7 +93,7 @@ export default async function PublicIntakeFormPage({
 
   return (
     <main
-      className="pen-light-scope h-full min-h-screen overflow-y-auto bg-pen-bg"
+      className="sts-light-scope h-full min-h-screen overflow-y-auto bg-sts-bg"
       style={brand.backgroundColor ? { background: brand.backgroundColor } : undefined}
     >
       {brand.logoUrl && (
@@ -108,13 +111,13 @@ export default async function PublicIntakeFormPage({
       <div className="mx-auto max-w-2xl px-4 pt-12 pb-16 sm:px-6 lg:pt-16 lg:pb-24">
         {/* Page header */}
         <div className="mb-8">
-          <p className="font-poppins text-[11px] font-semibold uppercase tracking-[1.4px] text-pen-muted">
+          <p className="font-poppins text-[11px] font-semibold uppercase tracking-[1.4px] text-sts-muted">
             {form.department.name}
           </p>
-          <h1 className="mt-1.5 font-poppins text-[28px] font-semibold leading-tight text-pen-foreground">
+          <h1 className="mt-1.5 font-poppins text-[28px] font-semibold leading-tight text-sts-foreground">
             {form.name}
           </h1>
-          <p className="mt-2 font-poppins text-[13px] text-pen-muted">
+          <p className="mt-2 font-poppins text-[13px] text-sts-muted">
             {brand.introText
               ? brand.introText
               : isChat
@@ -126,7 +129,7 @@ export default async function PublicIntakeFormPage({
         {isChat ? (
           <IntakeChat formId={form.id} fields={fields} issues={issues} />
         ) : (
-          <div className="rounded-2xl border border-pen-card-border bg-pen-card p-6 shadow-sm sm:p-8">
+          <div className="rounded-2xl border border-sts-card-border bg-sts-card p-6 shadow-sm sm:p-8">
             <IntakeForm
               formId={form.id}
               fields={fields}
@@ -150,11 +153,11 @@ function UnavailablePage({
   deptName: string
 }) {
   return (
-    <main className="pen-light-scope flex min-h-screen items-center justify-center bg-pen-bg px-4">
+    <main className="sts-light-scope flex min-h-screen items-center justify-center bg-sts-bg px-4">
       <div className="max-w-sm text-center">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-pen-surface">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-sts-surface">
           <svg
-            className="size-5 text-pen-muted"
+            className="size-5 text-sts-muted"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
@@ -167,10 +170,10 @@ function UnavailablePage({
             />
           </svg>
         </div>
-        <h1 className="pen-text-page-title">
+        <h1 className="sts-text-page-title">
           This form is currently unavailable
         </h1>
-        <p className="mt-2 font-sans text-[13px] text-pen-muted">
+        <p className="mt-2 font-sans text-[13px] text-sts-muted">
           {formName} · {deptName}
         </p>
       </div>

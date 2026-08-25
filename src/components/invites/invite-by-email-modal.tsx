@@ -52,20 +52,20 @@ export function InviteByEmailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl"
+        className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-pen-foreground">Invite by email</p>
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Invite by email</p>
           <button type="button" onClick={onClose} aria-label="Close">
-            <X className="size-4 text-pen-muted" />
+            <X className="size-4 text-sts-muted" />
           </button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-4 px-5 py-4">
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Email
             </label>
             <input
@@ -74,14 +74,14 @@ export function InviteByEmailModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
-              className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+              className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
             />
-            <p className="mt-1.5 font-sans text-[11px] text-pen-subtle">
+            <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
               Recipient must sign in with their Microsoft work account.
             </p>
           </div>
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Team
             </label>
             <SearchableSelect
@@ -92,14 +92,14 @@ export function InviteByEmailModal({
               placeholder={subDepartments.length === 0 ? "No teams available" : "Select a team…"}
               searchPlaceholder="Search teams…"
               emptyLabel="No teams available"
-              className="bg-pen-surface"
+              className="bg-sts-surface"
             />
           </div>
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Role
             </label>
-            <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
+            <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
               {(["agent", "sub_manager"] as const).map((r) => (
                 <button
                   key={r}
@@ -107,10 +107,10 @@ export function InviteByEmailModal({
                   onClick={() => setRole(r)}
                   className={cn(
                     "flex flex-1 items-center justify-center font-sans text-[12px] font-medium capitalize transition-colors",
-                    r !== "agent" && "border-l border-pen-card-border",
+                    r !== "agent" && "border-l border-sts-card-border",
                     role === r
-                      ? "bg-pen-blue text-white dark:text-gray-900"
-                      : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                      ? "bg-sts-blue text-white dark:text-gray-900"
+                      : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   {r}
@@ -119,8 +119,8 @@ export function InviteByEmailModal({
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">
-              Message <span className="font-normal text-pen-subtle">(optional)</span>
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+              Message <span className="font-normal text-sts-subtle">(optional)</span>
             </label>
             <textarea
               value={message}
@@ -128,7 +128,7 @@ export function InviteByEmailModal({
               rows={3}
               maxLength={2000}
               placeholder="Add a short note for the invitee…"
-              className="w-full resize-none rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+              className="w-full resize-none rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
             />
           </div>
           {error && (
@@ -136,18 +136,18 @@ export function InviteByEmailModal({
               {error}
             </p>
           )}
-          <div className="flex justify-end gap-2 border-t border-pen-card-border pt-4">
+          <div className="flex justify-end gap-2 border-t border-sts-card-border pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg px-3 font-sans text-[12.5px] font-medium text-pen-muted hover:text-pen-foreground"
+              className="h-8 rounded-lg px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !subDepartmentId}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-pen-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Send invite

@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { PenLogo } from "@/components/auth/pen-logo";
+import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
@@ -78,26 +78,26 @@ export default async function LoginPage({
   if (user) redirect(next);
 
   return (
-    <main className="pen-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
+    <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
       <ThemeToggle className="absolute right-6 top-6 z-20" />
 
       <div
         className={cn(
           "relative z-10 flex w-full max-w-100 flex-col items-center",
-          "pen-glass-panel pen-modal-enter rounded-2xl border px-10 pb-10 pt-12 ring-1 ring-white/40 dark:ring-white/10",
+          "sts-glass-panel sts-modal-enter rounded-2xl border px-10 pb-10 pt-12 ring-1 ring-white/40 dark:ring-white/10",
         )}
       >
         <PenLogo />
 
         <div className="h-8" />
 
-        <h1 className="pen-text-admin-title leading-normal">
-          Welcome to PEN Platform
+        <h1 className="sts-text-admin-title leading-normal">
+          Welcome to Support Ticketing System
         </h1>
 
         <div className="h-2" />
 
-        <p className="text-center text-[13.5px] leading-normal text-pen-muted">
+        <p className="text-center text-[13.5px] leading-normal text-sts-muted">
           Sign in with your PEN work account
         </p>
 
@@ -118,9 +118,9 @@ export default async function LoginPage({
             type="submit"
             className={cn(
               "flex h-12 w-full items-center justify-center gap-3 rounded-lg",
-              "bg-pen-button text-[14px] font-medium text-pen-button-fg",
-              "pen-pressable transition-colors hover:bg-pen-button/90",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+              "bg-sts-button text-[14px] font-medium text-sts-button-fg",
+              "sts-pressable transition-colors hover:bg-sts-button/90",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
             )}
           >
             <MicrosoftLogo />
@@ -132,7 +132,7 @@ export default async function LoginPage({
 
         <div className="flex w-full items-center gap-3">
           <div className="h-px flex-1 bg-border" />
-          <span className="text-[11.5px] text-pen-muted">or</span>
+          <span className="text-[11.5px] text-sts-muted">or</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
@@ -148,7 +148,7 @@ export default async function LoginPage({
             autoComplete="email"
             className={cn(
               "h-11 w-full rounded-lg border bg-transparent px-3.5 text-[13.5px]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
             )}
           />
           <input
@@ -159,7 +159,7 @@ export default async function LoginPage({
             autoComplete="current-password"
             className={cn(
               "h-11 w-full rounded-lg border bg-transparent px-3.5 text-[13.5px]",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
             )}
           />
           <button
@@ -167,8 +167,8 @@ export default async function LoginPage({
             className={cn(
               "flex h-11 w-full items-center justify-center rounded-lg border",
               "text-[13.5px] font-medium",
-              "pen-pressable transition-colors hover:bg-pen-button/10",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-accent/60",
+              "sts-pressable transition-colors hover:bg-sts-button/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
             )}
           >
             Sign in with email
@@ -179,10 +179,10 @@ export default async function LoginPage({
 
         <div className="flex items-center justify-center gap-1.5">
           <span
-            className="size-1.25 shrink-0 rounded-full bg-pen-accent"
+            className="size-1.25 shrink-0 rounded-full bg-sts-accent"
             aria-hidden
           />
-          <p className="text-[11.5px] text-pen-muted">
+          <p className="text-[11.5px] text-sts-muted">
             Restricted to PEN organization
           </p>
         </div>

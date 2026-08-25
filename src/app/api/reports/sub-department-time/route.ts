@@ -183,7 +183,7 @@ export async function GET(request: Request) {
       label: "TICKETS CLOSED",
       value: `${closedThisWeek}`,
       detail: closedDetail,
-      detailClassName: closedDiff >= 0 ? "text-pen-green" : undefined,
+      detailClassName: closedDiff >= 0 ? "text-sts-green" : undefined,
     },
   ]
 

@@ -100,28 +100,28 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
-        className="relative z-10 flex w-full max-w-md flex-col rounded-2xl border border-pen-card-border shadow-2xl"
-        style={{ background: "var(--pen-card-solid)", maxHeight: "min(600px, calc(90vh / var(--pen-font-scale, 1)))" }}
+        className="relative z-10 flex w-full max-w-md flex-col rounded-2xl border border-sts-card-border shadow-2xl"
+        style={{ background: "var(--sts-card-solid)", maxHeight: "min(600px, calc(90vh / var(--sts-font-scale, 1)))" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-pen-card-border px-5 py-4">
+        <div className="flex shrink-0 items-center gap-3 border-b border-sts-card-border px-5 py-4">
           <div className="min-w-0 flex-1">
-            <p className="font-sans text-[14px] font-semibold text-pen-foreground">
+            <p className="font-sans text-[14px] font-semibold text-sts-foreground">
               Manage members
             </p>
-            <p className="font-sans text-[12px] text-pen-muted">{projectName}</p>
+            <p className="font-sans text-[12px] text-sts-muted">{projectName}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-lg text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -130,33 +130,33 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
         <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-40 items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-pen-muted" />
+              <Loader2 className="size-5 animate-spin text-sts-muted" />
             </div>
           ) : (
             <>
               {/* Current members */}
               <div className="px-5 pt-4">
-                <p className="mb-2 pen-text-section-label">
+                <p className="mb-2 sts-text-section-label">
                   Current members ({members.length})
                 </p>
                 {members.length === 0 ? (
-                  <p className="py-3 font-sans text-[12.5px] text-pen-muted">No members yet.</p>
+                  <p className="py-3 font-sans text-[12.5px] text-sts-muted">No members yet.</p>
                 ) : (
                   <div className="flex flex-col gap-0.5">
                     {members.map((m) => (
                       <div
                         key={m.id}
-                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-pen-surface"
+                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-sts-surface"
                       >
                         <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={30} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                          <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                             {m.name}
                           </p>
-                          <p className="font-sans text-[11.5px] text-pen-muted">
+                          <p className="font-sans text-[11.5px] text-sts-muted">
                             {m.role}
                             {formatUserListSubtitle(m.departmentName, m.subDepartmentName) && (
-                              <span className="ml-1.5 text-pen-subtle">
+                              <span className="ml-1.5 text-sts-subtle">
                                 · {formatUserListSubtitle(m.departmentName, m.subDepartmentName)}
                               </span>
                             )}
@@ -167,7 +167,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                           onClick={() => removeMember(m)}
                           disabled={saving === m.id}
                           title="Remove from project"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-pen-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
                         >
                           {saving === m.id
                             ? <Loader2 className="size-3.5 animate-spin" />
@@ -181,22 +181,22 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
 
               {/* Add members */}
               <div className="px-5 pb-4 pt-4">
-                <p className="mb-2 pen-text-section-label">
+                <p className="mb-2 sts-text-section-label">
                   Add members
                 </p>
                 <div className="relative mb-2">
-                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+                  <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
                   <input
                     ref={searchRef}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search people…"
-                    className="h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface pl-8 pr-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue"
+                    className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
                   />
                 </div>
 
                 {filteredAvailable.length === 0 ? (
-                  <p className="py-2 font-sans text-[12px] text-pen-subtle">
+                  <p className="py-2 font-sans text-[12px] text-sts-subtle">
                     {search ? "No results" : "Everyone is already a member"}
                   </p>
                 ) : (
@@ -204,7 +204,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                     {filteredAvailable.map((u) => (
                       <div
                         key={u.id}
-                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-pen-surface"
+                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-sts-surface"
                       >
                         <UserListItem person={u} avatarSize={30} className="min-w-0 flex-1" />
                         <button
@@ -214,7 +214,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                           title="Add to project"
                           className={cn(
                             "flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-wait",
-                            "text-pen-subtle hover:bg-pen-blue hover:text-white",
+                            "text-sts-subtle hover:bg-sts-blue hover:text-white",
                           )}
                         >
                           {saving === u.id

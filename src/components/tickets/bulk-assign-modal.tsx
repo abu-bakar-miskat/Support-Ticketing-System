@@ -24,21 +24,21 @@ function MemberPickerList({
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-pen-card-border bg-pen-surface">
-      <div className="relative border-b border-pen-card-border px-2.5 py-2">
-        <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+    <div className="overflow-hidden rounded-lg border border-sts-card-border bg-sts-surface">
+      <div className="relative border-b border-sts-card-border px-2.5 py-2">
+        <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
         <input
           type="text"
           aria-label="Search members"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search members…"
-          className="w-full rounded-md border border-pen-card-border bg-transparent py-1.5 pl-8 pr-2 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+          className="w-full rounded-md border border-sts-card-border bg-transparent py-1.5 pl-8 pr-2 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
       </div>
       <div className="max-h-44 overflow-y-auto">
         {filtered.length === 0 ? (
-          <p className="px-3 py-2 font-sans text-[11.5px] text-pen-subtle">No matches</p>
+          <p className="px-3 py-2 font-sans text-[11.5px] text-sts-subtle">No matches</p>
         ) : (
           filtered.map((m) => (
             <button
@@ -46,13 +46,13 @@ function MemberPickerList({
               type="button"
               onClick={() => onSelect(m.id)}
               className={cn(
-                "flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-pen-card",
-                selected.has(m.id) && "bg-pen-blue/5",
+                "flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-sts-card",
+                selected.has(m.id) && "bg-sts-blue/5",
               )}
             >
               <AvatarVisual name={m.name} avatarUrl={m.avatarUrl} size={22} />
-              <span className="flex-1 font-sans text-[12.5px] text-pen-foreground">{m.name}</span>
-              {selected.has(m.id) && <Check className="size-3.5 shrink-0 text-pen-blue" />}
+              <span className="flex-1 font-sans text-[12.5px] text-sts-foreground">{m.name}</span>
+              {selected.has(m.id) && <Check className="size-3.5 shrink-0 text-sts-blue" />}
             </button>
           ))
         )}
@@ -151,11 +151,11 @@ export function BulkAssignModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 pen-overlay-backdrop" onClick={onClose} />
-      <div className="pen-glass-panel relative w-full max-w-md rounded-2xl border border-pen-card-border p-6 shadow-2xl">
+      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
+      <div className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="pen-text-modal-title">Assign {count} ticket{count !== 1 ? "s" : ""}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground">
+          <h2 className="sts-text-modal-title">Assign {count} ticket{count !== 1 ? "s" : ""}</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground">
             <X className="size-4" />
           </button>
         </div>
@@ -169,20 +169,20 @@ export function BulkAssignModal({
               className={cn(
                 "flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
                 mode === m.value
-                  ? "border-pen-blue bg-pen-blue/5"
-                  : "border-pen-card-border bg-pen-surface hover:border-pen-blue/40",
+                  ? "border-sts-blue bg-sts-blue/5"
+                  : "border-sts-card-border bg-sts-surface hover:border-sts-blue/40",
               )}
             >
-              <span className={cn("mt-0.5 shrink-0", mode === m.value ? "text-pen-blue" : "text-pen-muted")}>
+              <span className={cn("mt-0.5 shrink-0", mode === m.value ? "text-sts-blue" : "text-sts-muted")}>
                 {m.icon}
               </span>
               <div className="min-w-0 flex-1">
-                <p className={cn("font-sans text-[12.5px] font-semibold", mode === m.value ? "text-pen-blue" : "text-pen-foreground")}>
+                <p className={cn("font-sans text-[12.5px] font-semibold", mode === m.value ? "text-sts-blue" : "text-sts-foreground")}>
                   {m.label}
                 </p>
-                <p className="font-sans text-[11.5px] text-pen-subtle">{m.desc}</p>
+                <p className="font-sans text-[11.5px] text-sts-subtle">{m.desc}</p>
               </div>
-              {mode === m.value && <Check className="mt-0.5 size-3.5 shrink-0 text-pen-blue" />}
+              {mode === m.value && <Check className="mt-0.5 size-3.5 shrink-0 text-sts-blue" />}
             </button>
           ))}
         </div>
@@ -190,7 +190,7 @@ export function BulkAssignModal({
         {/* Single member picker */}
         {mode === "single" && (
           <div className="mt-4 flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">Member</label>
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">Member</label>
             <MemberPickerList
               members={subDepartmentMembers}
               selected={singleId ? new Set([singleId]) : new Set()}
@@ -202,8 +202,8 @@ export function BulkAssignModal({
         {/* Multi-member picker for round-robin-pick */}
         {mode === "round-robin-pick" && (
           <div className="mt-4 flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-              Members <span className="text-pen-subtle font-normal">({picked.size} selected)</span>
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+              Members <span className="text-sts-subtle font-normal">({picked.size} selected)</span>
             </label>
             <MemberPickerList
               members={rotationMembers}
@@ -213,13 +213,13 @@ export function BulkAssignModal({
           </div>
         )}
 
-        {error && <p className="mt-3 font-sans text-[11.5px] text-pen-red">{error}</p>}
+        {error && <p className="mt-3 font-sans text-[11.5px] text-sts-red">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-md border border-pen-card-border bg-transparent px-3 font-sans text-xs font-semibold text-pen-foreground hover:bg-pen-surface"
+            className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-surface"
           >
             Cancel
           </button>
@@ -227,7 +227,7 @@ export function BulkAssignModal({
             type="button"
             onClick={handleSubmit}
             disabled={assigning}
-            className="h-8 min-w-[100px] rounded-md bg-pen-blue px-3 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 disabled:opacity-50"
+            className="h-8 min-w-[100px] rounded-md bg-sts-blue px-3 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
           >
             {assigning ? "Assigning…" : `Assign ${count} ticket${count !== 1 ? "s" : ""}`}
           </button>

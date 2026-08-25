@@ -51,49 +51,49 @@ const STATUS_CONFIG: Record<
 > = {
   planned: {
     label: "Planned",
-    dot: "bg-pen-subtle",
-    bg: "bg-pen-surface",
-    text: "text-pen-muted",
+    dot: "bg-sts-subtle",
+    bg: "bg-sts-surface",
+    text: "text-sts-muted",
   },
   active: {
     label: "Active",
-    dot: "bg-pen-blue",
+    dot: "bg-sts-blue",
     bg: "bg-[#e7f7ec] dark:bg-[#26352b]",
-    text: "text-pen-green",
+    text: "text-sts-green",
   },
   completed: {
     label: "Completed",
-    dot: "bg-pen-id",
-    bg: "bg-pen-blue-tint",
-    text: "text-pen-id",
+    dot: "bg-sts-id",
+    bg: "bg-sts-blue-tint",
+    text: "text-sts-id",
   },
 };
 
 const PRIORITY_COLOR: Record<string, string> = {
   Urgent: "text-[#ff4500]",
-  Critical: "text-pen-red",
+  Critical: "text-sts-red",
   High: "text-orange-500",
   Medium: "text-pink-500",
-  Low: "text-pen-muted",
+  Low: "text-sts-muted",
 };
 
 const STATUS_DOT: Record<string, string> = {
-  "To Do": "bg-pen-subtle",
-  "In Progress": "bg-pen-blue",
+  "To Do": "bg-sts-subtle",
+  "In Progress": "bg-sts-blue",
   "In Review": "bg-yellow-400",
-  Live: "bg-pen-green",
-  Blocked: "bg-pen-red",
+  Live: "bg-sts-green",
+  Blocked: "bg-sts-red",
 };
 
 const TICKET_STATUS_PILL: Record<string, { bg: string; text: string }> = {
-  "To Do": { bg: "bg-pen-surface", text: "text-pen-muted" },
-  "In Progress": { bg: "bg-pen-blue-tint", text: "text-pen-blue" },
+  "To Do": { bg: "bg-sts-surface", text: "text-sts-muted" },
+  "In Progress": { bg: "bg-sts-blue-tint", text: "text-sts-blue" },
   "In Review": {
     bg: "bg-yellow-50 dark:bg-yellow-900/20",
     text: "text-yellow-600 dark:text-yellow-400",
   },
-  Live: { bg: "bg-[#e7f7ec] dark:bg-[#26352b]", text: "text-pen-green" },
-  Blocked: { bg: "bg-pen-red/10", text: "text-pen-red" },
+  Live: { bg: "bg-[#e7f7ec] dark:bg-[#26352b]", text: "text-sts-green" },
+  Blocked: { bg: "bg-sts-red/10", text: "text-sts-red" },
 };
 
 function StatusPill({ status }: { status: SprintStatus }) {
@@ -122,14 +122,14 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-pen-card-border bg-pen-surface px-4 py-3">
-      <div className="flex items-center gap-1.5 text-pen-muted">
+    <div className="flex flex-col gap-1 rounded-xl border border-sts-card-border bg-sts-surface px-4 py-3">
+      <div className="flex items-center gap-1.5 text-sts-muted">
         <Icon className="size-3.5" />
         <span className="font-sans text-[11.5px] tracking-wide">
           {label}
         </span>
       </div>
-      <p className="font-mono text-[18px] font-semibold text-pen-foreground">
+      <p className="font-mono text-[18px] font-semibold text-sts-foreground">
         {value}
       </p>
     </div>
@@ -173,11 +173,11 @@ export function SprintDetailDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop transition-opacity duration-200" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 flex h-[calc(90dvh/var(--pen-font-scale,1))] w-[min(680px,95vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl">
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop transition-opacity duration-200" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 flex h-[calc(90dvh/var(--sts-font-scale,1))] w-[min(680px,95vw)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl">
           {/* Loading / Error */}
           {loading && (
-            <div className="flex flex-1 items-center justify-center gap-2 text-pen-muted">
+            <div className="flex flex-1 items-center justify-center gap-2 text-sts-muted">
               <Loader2 className="size-5 animate-spin" />
               <span className="font-sans text-[13px]">Loading sprint…</span>
             </div>
@@ -185,7 +185,7 @@ export function SprintDetailDialog({
 
           {error && (
             <div className="flex flex-1 items-center justify-center">
-              <p className="font-sans text-[13px] text-pen-red">{error}</p>
+              <p className="font-sans text-[13px] text-sts-red">{error}</p>
             </div>
           )}
 
@@ -193,15 +193,15 @@ export function SprintDetailDialog({
           {data && !loading && (
             <>
               {/* Header */}
-              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-pen-card-border px-6 py-5">
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-sts-card-border px-6 py-5">
                 <div className="flex min-w-0 flex-col gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill status={data.status} />
-                    <span className="font-mono text-[11.5px] text-pen-muted">
+                    <span className="font-mono text-[11.5px] text-sts-muted">
                       {fmt(data.startDate)} – {fmt(data.endDate)}
                     </span>
                   </div>
-                  <h2 className="font-sans text-[18px] font-semibold text-pen-foreground">
+                  <h2 className="font-sans text-[18px] font-semibold text-sts-foreground">
                     {data.name}
                   </h2>
                 </div>
@@ -245,7 +245,7 @@ export function SprintDetailDialog({
                       onOpenChange(false);
                       onDelete(data.id);
                     }}
-                    className="h-7 gap-1.5 font-sans text-[11.5px] text-pen-red hover:border-pen-red/30 hover:bg-pen-red/5 hover:text-pen-red"
+                    className="h-7 gap-1.5 font-sans text-[11.5px] text-sts-red hover:border-sts-red/30 hover:bg-sts-red/5 hover:text-sts-red"
                   >
                     <Trash2 className="size-3.5" />
                     Delete
@@ -253,7 +253,7 @@ export function SprintDetailDialog({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="ml-1 rounded-md p-1 text-pen-muted hover:bg-pen-surface hover:text-pen-foreground"
+                    className="ml-1 rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
                   >
                     <X className="size-4" />
                   </button>
@@ -290,20 +290,20 @@ export function SprintDetailDialog({
                 {data.status !== "planned" && totalPoints > 0 && (
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-sans text-[11.5px] text-pen-muted">
+                      <span className="font-sans text-[11.5px] text-sts-muted">
                         Progress
                       </span>
-                      <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">
+                      <span className="font-mono text-[11.5px] font-semibold text-sts-foreground">
                         {completionPct}%
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-pen-surface">
+                    <div className="h-2 overflow-hidden rounded-full bg-sts-surface">
                       <div
                         className={cn(
                           "h-full rounded-full transition-[width]",
                           data.status === "completed"
-                            ? "bg-pen-id"
-                            : "bg-pen-blue",
+                            ? "bg-sts-id"
+                            : "bg-sts-blue",
                         )}
                         style={{ width: `${completionPct}%` }}
                       />
@@ -316,7 +316,7 @@ export function SprintDetailDialog({
                   <div className="flex flex-wrap gap-4">
                     {data.createdBy && (
                       <div className="flex items-center gap-2">
-                        <span className="font-sans text-[11.5px] text-pen-subtle">
+                        <span className="font-sans text-[11.5px] text-sts-subtle">
                           Created by
                         </span>
                         <UserAvatar
@@ -324,14 +324,14 @@ export function SprintDetailDialog({
                           avatarUrl={data.createdBy.avatarUrl}
                           size={18}
                         />
-                        <span className="font-sans text-[12px] text-pen-foreground">
+                        <span className="font-sans text-[12px] text-sts-foreground">
                           {data.createdBy.name}
                         </span>
                       </div>
                     )}
                     {data.project && (
                       <div className="flex items-center gap-2">
-                        <span className="font-sans text-[11.5px] text-pen-subtle">
+                        <span className="font-sans text-[11.5px] text-sts-subtle">
                           Project
                         </span>
                         {data.project.color && (
@@ -340,7 +340,7 @@ export function SprintDetailDialog({
                             style={{ backgroundColor: data.project.color }}
                           />
                         )}
-                        <span className="font-sans text-[12px] text-pen-foreground">
+                        <span className="font-sans text-[12px] text-sts-foreground">
                           {data.project.name}
                         </span>
                       </div>
@@ -351,10 +351,10 @@ export function SprintDetailDialog({
                 {/* Description */}
                 {data.goal && (
                   <div className="flex flex-col gap-2">
-                    <p className="font-sans text-[11.5px] font-medium tracking-wide text-pen-subtle">
+                    <p className="font-sans text-[11.5px] font-medium tracking-wide text-sts-subtle">
                       DESCRIPTION
                     </p>
-                    <div className="rounded-xl border border-pen-card-border bg-pen-surface px-4 py-3">
+                    <div className="rounded-xl border border-sts-card-border bg-sts-surface px-4 py-3">
                       <RichTextDisplay html={data.goal} />
                     </div>
                   </div>
@@ -363,19 +363,19 @@ export function SprintDetailDialog({
                 {/* Ticket list */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="font-sans text-[11.5px] font-medium tracking-wide text-pen-subtle">
+                    <p className="font-sans text-[11.5px] font-medium tracking-wide text-sts-subtle">
                       TICKETS ({totalTickets})
                     </p>
                   </div>
 
                   {totalTickets === 0 ? (
-                    <div className="flex h-16 items-center justify-center rounded-xl border border-pen-card-border">
-                      <p className="font-sans text-[12.5px] text-pen-muted">
+                    <div className="flex h-16 items-center justify-center rounded-xl border border-sts-card-border">
+                      <p className="font-sans text-[12.5px] text-sts-muted">
                         No tickets assigned to this sprint yet.
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-xl border border-pen-card-border">
+                    <div className="overflow-hidden rounded-xl border border-sts-card-border">
                       {data.tickets.map((ticket, i) => {
                         const isLast = i === data.tickets.length - 1;
                         return (
@@ -384,12 +384,12 @@ export function SprintDetailDialog({
                             ticketId={ticket.id}
                             href={`/tickets/${ticket.id}`}
                             className={cn(
-                              "flex items-center gap-3 px-4 py-3 hover:bg-pen-surface",
-                              !isLast && "border-b border-pen-card-border",
+                              "flex items-center gap-3 px-4 py-3 hover:bg-sts-surface",
+                              !isLast && "border-b border-sts-card-border",
                             )}
                           >
                             {/* ID */}
-                            <span className="shrink-0 font-mono text-[11.5px] text-pen-muted">
+                            <span className="shrink-0 font-mono text-[11.5px] text-sts-muted">
                               {ticket.subDepartment.prefix}-{ticket.ticketNumber}
                             </span>
 
@@ -400,15 +400,15 @@ export function SprintDetailDialog({
                                 <span
                                   className={cn(
                                     "hidden shrink-0 rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium sm:inline-flex items-center gap-1",
-                                    pill?.bg ?? "bg-pen-surface",
-                                    pill?.text ?? "text-pen-muted",
+                                    pill?.bg ?? "bg-sts-surface",
+                                    pill?.text ?? "text-sts-muted",
                                   )}
                                 >
                                   <span
                                     className={cn(
                                       "size-1.5 rounded-full",
                                       STATUS_DOT[ticket.status] ??
-                                        "bg-pen-subtle",
+                                        "bg-sts-subtle",
                                     )}
                                   />
                                   {ticket.status}
@@ -417,7 +417,7 @@ export function SprintDetailDialog({
                             })()}
 
                             {/* Title */}
-                            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                               {ticket.title}
                             </span>
 
@@ -426,7 +426,7 @@ export function SprintDetailDialog({
                               className={cn(
                                 "hidden shrink-0 font-sans text-[11.5px] font-medium sm:block",
                                 PRIORITY_COLOR[ticket.priority] ??
-                                  "text-pen-muted",
+                                  "text-sts-muted",
                               )}
                             >
                               {ticket.priority}
@@ -434,7 +434,7 @@ export function SprintDetailDialog({
 
                             {/* Story points */}
                             {ticket.storyPoints != null && (
-                              <span className="hidden shrink-0 rounded-md bg-pen-surface px-1.5 py-0.5 font-mono text-[11.5px] text-pen-muted sm:block">
+                              <span className="hidden shrink-0 rounded-md bg-sts-surface px-1.5 py-0.5 font-mono text-[11.5px] text-sts-muted sm:block">
                                 {ticket.storyPoints} pt
                               </span>
                             )}
@@ -447,7 +447,7 @@ export function SprintDetailDialog({
                                 size={22}
                               />
                             ) : (
-                              <Circle className="size-5 shrink-0 text-pen-surface" />
+                              <Circle className="size-5 shrink-0 text-sts-surface" />
                             )}
                           </DrawerLink>
                         );

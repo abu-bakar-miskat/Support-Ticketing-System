@@ -33,13 +33,13 @@ export function FilterDropdown({
           "flex shrink-0 items-center gap-1.5 rounded-lg border font-sans transition-colors",
           compact ? "h-7 px-2.5 text-[11.5px]" : "h-8 px-3 text-[12px]",
           count > 0
-            ? "border-pen-blue bg-pen-blue-tint font-semibold text-pen-id"
-            : "border-pen-card-border bg-transparent text-pen-muted hover:border-pen-id hover:text-pen-foreground",
+            ? "border-sts-blue bg-sts-blue-tint font-semibold text-sts-id"
+            : "border-sts-card-border bg-transparent text-sts-muted hover:border-sts-id hover:text-sts-foreground",
         )}
       >
         {label}
         {count > 0 && (
-          <span className="flex size-4 items-center justify-center rounded-full bg-pen-blue font-sans text-[11.5px] font-bold text-white dark:text-gray-900">
+          <span className="flex size-4 items-center justify-center rounded-full bg-sts-blue font-sans text-[11.5px] font-bold text-white dark:text-gray-900">
             {count}
           </span>
         )}
@@ -49,29 +49,29 @@ export function FilterDropdown({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-auto min-w-[180px] rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-auto min-w-[180px] rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-pen-card-border px-3 py-2">
-          <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">{label}</span>
+        <div className="flex items-center justify-between border-b border-sts-card-border px-3 py-2">
+          <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">{label}</span>
           {count > 0 && (
-            <button type="button" onClick={onClear} className="font-sans text-[11.5px] text-pen-muted hover:text-pen-red">
+            <button type="button" onClick={onClear} className="font-sans text-[11.5px] text-sts-muted hover:text-sts-red">
               Clear
             </button>
           )}
         </div>
-        <div className="relative border-b border-pen-card-border px-2.5 py-2">
-          <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+        <div className="relative border-b border-sts-card-border px-2.5 py-2">
+          <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search..."
-            className="w-full rounded-md border border-pen-card-border bg-transparent py-1 pl-8 pr-2 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+            className="w-full rounded-md border border-sts-card-border bg-transparent py-1 pl-8 pr-2 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
           />
         </div>
         <div className="max-h-52 overflow-y-auto p-1.5">
           {filteredOptions.length === 0 ? (
-            <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">No matches</p>
+            <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">No matches</p>
           ) : (
             filteredOptions.map((opt) => {
               const checked = selected.has(opt.id);
@@ -82,12 +82,12 @@ export function FilterDropdown({
                   onClick={() => onToggle(opt.id)}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                    checked ? "bg-pen-blue-tint" : "hover:bg-pen-surface dark:hover:bg-white/5",
+                    checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface dark:hover:bg-white/5",
                   )}
                 >
                   <span className={cn(
                     "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-                    checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border bg-transparent",
+                    checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border bg-transparent",
                   )}>
                     {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                   </span>
@@ -96,7 +96,7 @@ export function FilterDropdown({
                   )}
                   <span className={cn(
                     "font-sans text-[12.5px]",
-                    checked ? "font-semibold text-pen-foreground" : "text-pen-muted",
+                    checked ? "font-semibold text-sts-foreground" : "text-sts-muted",
                   )}>
                     {opt.label}
                   </span>
@@ -138,7 +138,7 @@ export function SortDropdown({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-3 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-id hover:text-pen-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <ArrowUpDown className="size-3 shrink-0" />
         {label}
         <ChevronDown className="size-3 shrink-0" />
@@ -146,7 +146,7 @@ export function SortDropdown({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-auto min-w-[170px] rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-auto min-w-[170px] rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
         <div className="p-1.5">
           {opts.map((opt) => (
@@ -156,7 +156,7 @@ export function SortDropdown({
               onClick={() => { onChange(opt.id); setOpen(false); }}
               className={cn(
                 "flex w-full items-center rounded-md px-3 py-1.5 text-left font-sans text-[12px] transition-colors",
-                value === opt.id ? "bg-pen-blue-tint font-semibold text-pen-id" : "text-pen-foreground hover:bg-pen-surface",
+                value === opt.id ? "bg-sts-blue-tint font-semibold text-sts-id" : "text-sts-foreground hover:bg-sts-surface",
               )}
             >
               {opt.label}

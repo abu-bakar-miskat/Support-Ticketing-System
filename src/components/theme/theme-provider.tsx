@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Public support-form pages are always neutral light, never dark — see
-  // `.pen-light-scope` and the theme init script.
+  // `.sts-light-scope` and the theme init script.
   const pathname = usePathname();
   const publicLight = pathname?.startsWith("/support") ?? false;
 
@@ -63,8 +63,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       // Pin the click origin for the CSS clip-path animation
       const x = event ? `${event.clientX}px` : "50%";
       const y = event ? `${event.clientY}px` : "0%";
-      document.documentElement.style.setProperty("--pen-theme-origin-x", x);
-      document.documentElement.style.setProperty("--pen-theme-origin-y", y);
+      document.documentElement.style.setProperty("--sts-theme-origin-x", x);
+      document.documentElement.style.setProperty("--sts-theme-origin-y", y);
 
       skipNextEffect.current = true;
       document.startViewTransition(() => {

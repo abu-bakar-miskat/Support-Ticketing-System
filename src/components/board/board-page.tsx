@@ -95,16 +95,16 @@ function SubTicketRow({ sub }: { sub: SubCardData }) {
       ticketId={sub.dbId}
       href={`/tickets/${sub.dbId}`}
       card={sub}
-      className="flex h-[28px] items-center gap-2 rounded-md px-2 hover:bg-pen-surface"
+      className="flex h-[28px] items-center gap-2 rounded-md px-2 hover:bg-sts-surface"
     >
       <span
         className="block size-[6px] shrink-0 rounded-full"
         style={{ backgroundColor: statusColor }}
       />
-      <span className="font-mono text-[11.5px] font-semibold text-pen-id shrink-0">
+      <span className="font-mono text-[11.5px] font-semibold text-sts-id shrink-0">
         {sub.humanId}
       </span>
-      <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-foreground">
+      <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-foreground">
         {sub.title}
       </span>
       {sub.assigneeName && (
@@ -214,7 +214,7 @@ function BoardCard({
       className={cn(
         "group/card board-card cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40",
-        isRunning && "ring-2 ring-pen-green/45 border-pen-green/50",
+        isRunning && "ring-2 ring-sts-green/45 border-sts-green/50",
       )}
     >
       {/* Main card body — opens drawer */}
@@ -225,12 +225,12 @@ function BoardCard({
         className="flex w-full flex-col gap-2 px-3 py-[10px]"
       >
         <div className="flex h-4 items-center">
-          <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">
+          <span className="font-mono text-[11.5px] font-semibold text-sts-foreground">
             {initialCard.humanId}
           </span>
           {isRunning && (
-            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-pen-green/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-pen-green">
-              <span className="block size-1.5 animate-pulse rounded-full bg-pen-green" />
+            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-sts-green/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-sts-green">
+              <span className="block size-1.5 animate-pulse rounded-full bg-sts-green" />
               Tracking
             </span>
           )}
@@ -241,7 +241,7 @@ function BoardCard({
           />
         </div>
 
-        <p className="font-sans text-[12.5px] font-semibold leading-[18px] text-pen-foreground">
+        <p className="font-sans text-[12.5px] font-semibold leading-[18px] text-sts-foreground">
           {initialCard.title}
         </p>
 
@@ -256,14 +256,14 @@ function BoardCard({
                 size={14}
                 meta={{}}
               />
-              <span className="font-sans text-[11.5px] text-pen-subtle truncate max-w-[110px]">
+              <span className="font-sans text-[11.5px] text-sts-subtle truncate max-w-[110px]">
                 {initialCard.assigneeName}
               </span>
             </>
           ) : (
             <>
-              <span className="block size-[14px] shrink-0 rounded-full border border-dashed border-pen-subtle" />
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <span className="block size-[14px] shrink-0 rounded-full border border-dashed border-sts-subtle" />
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 Unassigned
               </span>
             </>
@@ -277,12 +277,12 @@ function BoardCard({
                   avatarUrl={a.avatarUrl}
                   userId={a.id}
                   size={14}
-                  className="ring-1 ring-pen-card"
+                  className="ring-1 ring-sts-card"
                   meta={{}}
                 />
               ))}
               {initialCard.coAssignees.length > 3 && (
-                <span className="flex size-[14px] shrink-0 items-center justify-center rounded-full bg-pen-surface font-sans text-[9.5px] text-pen-subtle ring-1 ring-pen-card">
+                <span className="flex size-[14px] shrink-0 items-center justify-center rounded-full bg-sts-surface font-sans text-[9.5px] text-sts-subtle ring-1 ring-sts-card">
                   +{initialCard.coAssignees.length - 3}
                 </span>
               )}
@@ -299,7 +299,7 @@ function BoardCard({
                 name={initialCard.project}
                 size={16}
               />
-              <span className="font-sans text-[11.5px] text-pen-subtle truncate max-w-[90px]">
+              <span className="font-sans text-[11.5px] text-sts-subtle truncate max-w-[90px]">
                 {initialCard.project}
               </span>
             </>
@@ -311,8 +311,8 @@ function BoardCard({
           <span className="flex-1" />
           {initialCard.comments > 0 && (
             <>
-              <MessageCircle className="size-[11px] shrink-0 text-pen-subtle" />
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <MessageCircle className="size-[11px] shrink-0 text-sts-subtle" />
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 {initialCard.comments}
               </span>
             </>
@@ -321,10 +321,10 @@ function BoardCard({
             <>
               {initialCard.comments > 0 && <span className="w-1.5" />}
               <Mail
-                className="size-[11px] shrink-0 text-pen-subtle"
+                className="size-[11px] shrink-0 text-sts-subtle"
                 aria-label="Customer replies"
               />
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 {initialCard.messages}
               </span>
             </>
@@ -336,7 +336,7 @@ function BoardCard({
               avatarUrl={initialCard.creatorAvatarUrl}
               userId={initialCard.creatorId}
               size={18}
-              className="ring-1 ring-pen-card"
+              className="ring-1 ring-sts-card"
               meta={{}}
             />
           </div>
@@ -348,7 +348,7 @@ function BoardCard({
               <TagPill key={lbl} label={lbl} size="sm" />
             ))}
             {initialCard.labels.length > 3 && (
-              <span className="font-sans text-[10px] text-pen-subtle">+{initialCard.labels.length - 3}</span>
+              <span className="font-sans text-[10px] text-sts-subtle">+{initialCard.labels.length - 3}</span>
             )}
             {initialCard.lastMessageDirection && !initialCard.isComplete && (
               <span
@@ -370,30 +370,30 @@ function BoardCard({
           </div>
         )}
 
-        <div className="h-px bg-[#f0f4f8] dark:bg-pen-card-border" />
+        <div className="h-px bg-[#f0f4f8] dark:bg-sts-card-border" />
 
         <div className="flex h-4 items-center gap-[5px]">
-          <Clock className="size-3 shrink-0 text-pen-muted" />
+          <Clock className="size-3 shrink-0 text-sts-muted" />
           {initialCard.startDate && (
             <>
-              <span className="font-mono text-[11.5px] font-medium text-pen-muted">
+              <span className="font-mono text-[11.5px] font-medium text-sts-muted">
                 {initialCard.startDate}
               </span>
-              <span className="font-mono text-[11.5px] text-pen-subtle">→</span>
+              <span className="font-mono text-[11.5px] text-sts-subtle">→</span>
             </>
           )}
           <span
             className={cn(
               "font-mono text-[11.5px] font-medium",
               initialCard.due === "Complete"
-                ? "text-pen-green"
+                ? "text-sts-green"
                 : initialCard.dueOverdue
-                  ? "text-pen-red"
+                  ? "text-sts-red"
                   : initialCard.dueUrgent
                     ? "text-amber-500"
                     : initialCard.due
-                      ? "text-pen-muted"
-                      : "text-pen-subtle",
+                      ? "text-sts-muted"
+                      : "text-sts-subtle",
             )}
           >
             {initialCard.due ?? (initialCard.startDate ? null : "—")}
@@ -405,14 +405,14 @@ function BoardCard({
       <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
         <div className="flex items-center gap-1">
           {isRunning ? (
-            <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-pen-green" />
+            <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-sts-green" />
           ) : (
-            <Clock className="size-[10px] shrink-0 text-pen-subtle" />
+            <Clock className="size-[10px] shrink-0 text-sts-subtle" />
           )}
           <span
             className={cn(
               "font-mono text-[11.5px]",
-              isRunning ? "font-semibold text-pen-green" : "text-pen-subtle",
+              isRunning ? "font-semibold text-sts-green" : "text-sts-subtle",
             )}
           >
             {formatLoggedTime(displaySecs) ?? "—"}
@@ -424,7 +424,7 @@ function BoardCard({
             title="Pause timer"
             onClick={handleStopTimer}
             disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-red transition-colors hover:bg-pen-red/10 disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
           >
             <Pause className="size-[9px] fill-current" />
           </button>
@@ -434,7 +434,7 @@ function BoardCard({
             title="Start timer"
             onClick={handleStartTimer}
             disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-subtle transition-opacity hover:bg-pen-surface hover:text-pen-blue disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
           >
             <Play className="size-[10px]" />
           </button>
@@ -445,8 +445,8 @@ function BoardCard({
             type="button"
             onClick={toggleExpanded}
             className={cn(
-              "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-pen-surface",
-              subtasksDone ? "text-pen-green" : "text-pen-muted",
+              "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
+              subtasksDone ? "text-sts-green" : "text-sts-muted",
             )}
           >
             <ChevronRight
@@ -462,14 +462,14 @@ function BoardCard({
           type="button"
           title="Add sub-task"
           onClick={openSubTicketModal}
-          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-blue"
+          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
         >
           <Plus className="size-[11px] shrink-0" />
           <span>Sub-task</span>
         </button>
       </div>
       {subTotal > 0 && expanded && (
-        <div className="mx-3 mb-2 border-t border-pen-card-border pt-1">
+        <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">
           {subTicketCards.map((sub) => (
             <SubTicketRow key={sub.dbId} sub={sub} />
           ))}
@@ -535,7 +535,7 @@ function BoardColumn({
     <div
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        "flex h-full w-[320px] shrink-0 flex-col gap-2 rounded-[10px] bg-pen-surface p-3 transition-colors",
+        "flex h-full w-[320px] shrink-0 flex-col gap-2 rounded-[10px] bg-sts-surface p-3 transition-colors",
         isActive && "ring-2 ring-inset",
       )}
       style={
@@ -549,7 +549,7 @@ function BoardColumn({
           className="block size-[7px] shrink-0 rounded-full"
           style={{ backgroundColor: status.color }}
         />
-        <span className="font-sans text-[12px] font-semibold text-pen-foreground">
+        <span className="font-sans text-[12px] font-semibold text-sts-foreground">
           {status.label}
         </span>
         <span
@@ -563,7 +563,7 @@ function BoardColumn({
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex size-[18px] items-center justify-center rounded text-pen-subtle transition-colors hover:bg-pen-card hover:text-pen-foreground"
+            className="flex size-[18px] items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-card hover:text-sts-foreground"
             aria-label={`Add task to ${status.label}`}
           >
             <Plus className="size-3.5" />
@@ -584,7 +584,7 @@ function BoardColumn({
           <p
             className={cn(
               "py-3 text-center font-sans text-[11.5px] transition-colors",
-              isActive ? "text-pen-blue" : "text-pen-subtle",
+              isActive ? "text-sts-blue" : "text-sts-subtle",
             )}
           >
             {isActive ? "Drop here" : "No tickets"}
@@ -594,7 +594,7 @@ function BoardColumn({
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-pen-subtle transition-colors hover:bg-pen-card-border/50 hover:text-pen-foreground"
+            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
           >
             <Plus className="size-3 shrink-0" />
             <span className="font-sans text-[11.5px]">Add task</span>
@@ -1051,24 +1051,24 @@ export function BoardPage({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
             <div className="flex shrink-0 items-center gap-2">
               <SquareKanban
-                className="size-[18px] shrink-0 text-pen-blue sm:size-5"
+                className="size-[18px] shrink-0 text-sts-blue sm:size-5"
                 strokeWidth={1.8}
               />
-              <h1 className="pen-text-page-title leading-none">Board</h1>
-              <span className="rounded-full bg-pen-blue-tint px-1.5 py-px font-sans text-[11.5px] font-semibold text-pen-foreground sm:px-2 sm:py-0.5">
+              <h1 className="sts-text-page-title leading-none">Board</h1>
+              <span className="rounded-full bg-sts-blue-tint px-1.5 py-px font-sans text-[11.5px] font-semibold text-sts-foreground sm:px-2 sm:py-0.5">
                 {filtered.length}
                 {hasActiveFilters && filtered.length !== scopedCards.length && (
-                  <span className="text-pen-subtle">/{scopedCards.length}</span>
+                  <span className="text-sts-subtle">/{scopedCards.length}</span>
                 )}
               </span>
             </div>
 
             <span
-              className="hidden h-4 w-px shrink-0 bg-pen-card-border md:block"
+              className="hidden h-4 w-px shrink-0 bg-sts-card-border md:block"
               aria-hidden
             />
 
-            {/* Avoid .pen-header-scroll — its negative margins overlap trailing controls when zoomed. */}
+            {/* Avoid .sts-header-scroll — its negative margins overlap trailing controls when zoomed. */}
             <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <BoardFilterBar
                 view="board"
@@ -1118,7 +1118,7 @@ export function BoardPage({
                 onChange={(v) => setSortKey(v as SortKey)}
               />
 
-              <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-pen-card-border bg-pen-card">
+              <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() =>
@@ -1127,12 +1127,12 @@ export function BoardPage({
                       behavior: "smooth",
                     })
                   }
-                  className="flex h-[26px] w-7 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex h-[26px] w-7 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                   aria-label="Scroll board left"
                 >
                   <ChevronLeft className="size-3.5 shrink-0" />
                 </button>
-                <span className="w-px self-stretch bg-pen-card-border" />
+                <span className="w-px self-stretch bg-sts-card-border" />
                 <button
                   type="button"
                   onClick={() =>
@@ -1141,7 +1141,7 @@ export function BoardPage({
                       behavior: "smooth",
                     })
                   }
-                  className="flex h-[26px] w-7 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex h-[26px] w-7 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                   aria-label="Scroll board right"
                 >
                   <ChevronRight className="size-3.5 shrink-0" />

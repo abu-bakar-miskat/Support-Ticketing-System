@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useRef, useMemo } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import {
   Plus,
   Copy,
@@ -19,11 +19,13 @@ import {
   ArrowUpRight,
   Mail,
   Hash,
-  Tag,
   MessageCircle,
   FileText,
-  UserRound,
-  Search,
+  RefreshCw,
+  Gauge,
+  ListChecks,
+  UserCog,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -42,24 +44,14 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { UserAvatar } from "@/components/ui/user-avatar";
-import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-list-item";
-import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
+import { type UserListPerson } from "@/lib/user-list-person";
 import {
   DEFAULT_FIELD_KEYS,
   DEFAULT_INTAKE_FIELDS,
   type DefaultFieldKey,
   type ResolvedDefaultFields,
 } from "@/lib/intake-default-fields";
-import { sidebarDropdownPanelClass } from "@/components/tickets/sidebar-field-styles";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
@@ -71,14 +63,14 @@ import { Palette } from "lucide-react";
 
 const SWITCH_ACCENTS = {
   green: {
-    track: "border-pen-green/50 bg-pen-green-tint",
-    label: "text-pen-green",
-    thumb: "bg-pen-green",
+    track: "border-sts-green/50 bg-sts-green-tint",
+    label: "text-sts-green",
+    thumb: "bg-sts-green",
   },
   blue: {
-    track: "border-pen-blue/50 bg-pen-blue-tint",
-    label: "text-pen-blue",
-    thumb: "bg-pen-blue",
+    track: "border-sts-blue/50 bg-sts-blue-tint",
+    label: "text-sts-blue",
+    thumb: "bg-sts-blue",
   },
 } as const;
 
@@ -110,17 +102,17 @@ function LabeledSwitch({
       title={title}
       className={cn(
         "relative h-7 w-[80px] shrink-0 cursor-pointer overflow-hidden rounded-full border transition-colors duration-300",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-pen-bg",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-sts-bg",
         checked
           ? colors.track
-          : "border-pen-card-border bg-pen-surface hover:border-pen-muted/60",
+          : "border-sts-card-border bg-sts-surface hover:border-sts-muted/60",
         loading && "cursor-wait opacity-70",
       )}
     >
       <span
         className={cn(
           "absolute top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold tracking-wide transition-colors duration-300",
-          checked ? cn("left-3", colors.label) : "right-2.5 text-pen-muted",
+          checked ? cn("left-3", colors.label) : "right-2.5 text-sts-muted",
         )}
       >
         {loading ? (
@@ -134,12 +126,31 @@ function LabeledSwitch({
       <span
         className={cn(
           "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
-          checked ? cn("translate-x-[52px]", colors.thumb) : "translate-x-0 bg-pen-muted",
+          checked ? cn("translate-x-[52px]", colors.thumb) : "translate-x-0 bg-sts-muted",
         )}
       />
     </button>
   );
 }
+
+export type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+
+export const ASSIGNMENT_METHOD_LABELS: Record<AssignmentMethod, string> = {
+  RULE_BASED: "Rule-based",
+  ROUND_ROBIN: "Round-robin",
+  WORKLOAD_BASED: "Workload-based",
+  MANUAL: "Manual",
+};
+
+export const ASSIGNMENT_METHOD_STYLES: Record<
+  AssignmentMethod,
+  { icon: LucideIcon; className: string }
+> = {
+  RULE_BASED: { icon: ListChecks, className: "text-violet-600 dark:text-violet-400" },
+  ROUND_ROBIN: { icon: RefreshCw, className: "text-sky-600 dark:text-sky-400" },
+  WORKLOAD_BASED: { icon: Gauge, className: "text-amber-600 dark:text-amber-400" },
+  MANUAL: { icon: UserCog, className: "text-emerald-600 dark:text-emerald-400" },
+};
 
 export type IntakeFormRow = {
   id: string;
@@ -156,6 +167,10 @@ export type IntakeFormRow = {
   createdAt: string;
   defaultFields: ResolvedDefaultFields;
   branding: FormBranding;
+  /** This form's own method override (null = inherits sub-dept → dept). */
+  assignmentMethod: AssignmentMethod | null;
+  /** Resolved method actually used: form → sub-department → department → round-robin. */
+  effectiveMethod: AssignmentMethod;
 };
 
 export type SubDepartmentOption = { id: string; name: string };
@@ -176,7 +191,7 @@ function slugify(name: string) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -195,11 +210,11 @@ function CopyLinkButton({ url }: { url: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+      className="flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
       title={url}
     >
       {copied ? (
-        <Check className="size-3 text-pen-green" />
+        <Check className="size-3 text-sts-green" />
       ) : (
         <Copy className="size-3" />
       )}
@@ -313,18 +328,18 @@ function IntakeFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
-      <div className="pen-glass-panel relative w-full max-w-md rounded-2xl border border-pen-card-border p-6 shadow-2xl">
+      <div className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="pen-text-modal-title">
+          <h2 className="sts-text-modal-title">
             {isEdit ? "Edit support form" : "New support form"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -332,7 +347,7 @@ function IntakeFormModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Form name
             </label>
             <input
@@ -341,13 +356,13 @@ function IntakeFormModal({
               required
               autoFocus
               placeholder="e.g. IT Support Request"
-              className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+              className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
             />
           </div>
 
           {!isEdit && (
             <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Department
               </label>
               <Select
@@ -357,10 +372,10 @@ function IntakeFormModal({
                   setIntakeSubDepartmentId("");
                 }}
               >
-                <SelectTrigger className="h-9 w-full rounded-lg border-pen-card-border bg-pen-surface font-sans text-[13px] text-pen-foreground">
+                <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                   <span
                     className={
-                      departmentId ? "text-pen-foreground" : "text-pen-subtle"
+                      departmentId ? "text-sts-foreground" : "text-sts-subtle"
                     }
                   >
                     {departments.find((d) => d.id === departmentId)?.name ??
@@ -383,7 +398,7 @@ function IntakeFormModal({
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Support team
             </label>
             <Select
@@ -391,10 +406,10 @@ function IntakeFormModal({
               onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
               disabled={!departmentId && !isEdit}
             >
-              <SelectTrigger className="h-9 w-full rounded-lg border-pen-card-border bg-pen-surface font-sans text-[13px] text-pen-foreground">
+              <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                 <span
                   className={
-                    intakeSubDepartmentId ? "text-pen-foreground" : "text-pen-subtle"
+                    intakeSubDepartmentId ? "text-sts-foreground" : "text-sts-subtle"
                   }
                 >
                   {availableSubDepartments.find((t) => t.id === intakeSubDepartmentId)?.name ??
@@ -416,7 +431,7 @@ function IntakeFormModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Form style
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -433,8 +448,8 @@ function IntakeFormModal({
                   className={cn(
                     "flex h-9 items-center justify-center gap-1.5 rounded-lg border font-sans text-[12.5px] font-medium transition-colors",
                     displayMode === opt.value
-                      ? "border-pen-id bg-pen-blue-tint text-pen-id"
-                      : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                      ? "border-sts-id bg-sts-blue-tint text-sts-id"
+                      : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   {opt.icon}
@@ -442,13 +457,13 @@ function IntakeFormModal({
                 </button>
               ))}
             </div>
-            <p className="font-sans text-[11.5px] text-pen-subtle">
+            <p className="font-sans text-[11.5px] text-sts-subtle">
               Chat asks the form&apos;s questions one at a time, like a conversation.
             </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Workload threshold
             </label>
             <input
@@ -457,19 +472,19 @@ function IntakeFormModal({
               max={50}
               value={workloadThreshold}
               onChange={(e) => setWorkloadThreshold(Number(e.target.value))}
-              className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+              className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id focus:ring-1 focus:ring-sts-id"
             />
-            <p className="font-sans text-[11.5px] text-pen-subtle">
+            <p className="font-sans text-[11.5px] text-sts-subtle">
               Max open tickets before a member is considered at capacity.
             </p>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Auto-assign
               </label>
-              <p className="font-sans text-[11px] text-pen-subtle">
+              <p className="font-sans text-[11px] text-sts-subtle">
                 {autoAssign ? "New tickets assigned via ROTA round-robin" : "New tickets left unassigned for manual pick"}
               </p>
             </div>
@@ -483,7 +498,7 @@ function IntakeFormModal({
 
           {isEdit && (
             <div className="flex items-center justify-between">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Status
               </label>
               <LabeledSwitch
@@ -497,7 +512,7 @@ function IntakeFormModal({
           )}
 
           {error && (
-            <p className="font-sans text-[11.5px] text-pen-red">{error}</p>
+            <p className="font-sans text-[11.5px] text-sts-red">{error}</p>
           )}
 
           <div className="mt-1 flex justify-end gap-2">
@@ -512,7 +527,7 @@ function IntakeFormModal({
             <Button
               type="submit"
               disabled={saving}
-              className="bg-pen-blue font-sans text-xs text-white hover:bg-pen-blue/90 dark:text-gray-900"
+              className="bg-sts-blue font-sans text-xs text-white hover:bg-sts-blue/90 dark:text-gray-900"
             >
               {saving
                 ? isEdit
@@ -568,7 +583,7 @@ function typeLabel(type: FieldRow["type"]) {
 
 function FieldTypeIcon({ type }: { type: FieldRow["type"] }) {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-pen-surface text-pen-muted">
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-surface text-sts-muted">
       {FIELD_TYPES.find((t) => t.value === type)?.icon}
     </span>
   );
@@ -695,9 +710,9 @@ function FieldEditor({
   const hasValidation = state.type !== "select" && state.type !== "file";
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-pen-id/30 bg-pen-card px-4 py-3.5 shadow-sm">
+    <div className="flex flex-col gap-3 rounded-xl border border-sts-id/30 bg-sts-card px-4 py-3.5 shadow-sm">
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
           Label
         </label>
         <input
@@ -709,12 +724,12 @@ function FieldEditor({
             if (e.key === "Enter") onSave(state);
             if (e.key === "Escape") onCancel();
           }}
-          className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
           Type
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -726,8 +741,8 @@ function FieldEditor({
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                 state.type === t.value
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
               )}
             >
               {t.icon}
@@ -739,7 +754,7 @@ function FieldEditor({
 
       {state.type === "select" && (
         <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
             Options
           </label>
 
@@ -749,7 +764,7 @@ function FieldEditor({
               const isOpen = expandedOption === opt;
               const isEditingOpt = editingOption?.idx === idx;
               return (
-                <div key={opt} className="rounded-lg border border-pen-card-border bg-pen-surface">
+                <div key={opt} className="rounded-lg border border-sts-card-border bg-sts-surface">
                   <div className="flex items-center gap-2 px-2.5 py-1.5">
                     {isEditingOpt ? (
                       <>
@@ -761,24 +776,24 @@ function FieldEditor({
                             if (e.key === "Enter") { e.preventDefault(); confirmEditOption(); }
                             if (e.key === "Escape") setEditingOption(null);
                           }}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-pen-id bg-pen-card px-2 font-sans text-[12px] text-pen-foreground outline-none"
+                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-pen-blue px-2 text-white">
+                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
                           <Check className="size-3" />
                         </button>
-                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-pen-card-border px-2 text-pen-subtle hover:text-pen-foreground">
+                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                           <X className="size-3" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span className="flex-1 font-sans text-[12px] text-pen-foreground">{opt}</span>
+                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">{opt}</span>
                         <button
                           type="button"
                           onClick={() => setExpandedOption(isOpen ? null : opt)}
                           className={cn(
                             "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
-                            isOpen ? "bg-pen-blue-tint text-pen-id" : "text-pen-subtle hover:text-pen-foreground",
+                            isOpen ? "bg-sts-blue-tint text-sts-id" : "text-sts-subtle hover:text-sts-foreground",
                           )}
                         >
                           <ChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
@@ -787,14 +802,14 @@ function FieldEditor({
                         <button
                           type="button"
                           onClick={() => setEditingOption({ idx, draft: opt })}
-                          className="text-pen-subtle hover:text-pen-foreground"
+                          className="text-sts-subtle hover:text-sts-foreground"
                         >
                           <Pencil className="size-3" />
                         </button>
                         <button
                           type="button"
                           onClick={() => removeOption(opt)}
-                          className="text-pen-subtle hover:text-pen-red"
+                          className="text-sts-subtle hover:text-sts-red"
                         >
                           <X className="size-3" />
                         </button>
@@ -803,7 +818,7 @@ function FieldEditor({
                   </div>
 
                   {isOpen && (
-                    <div className="border-t border-pen-card-border px-2.5 py-2 flex flex-col gap-1.5">
+                    <div className="border-t border-sts-card-border px-2.5 py-2 flex flex-col gap-1.5">
                       {children.length > 0 && (
                         <div className="flex flex-col gap-1">
                           {children.map((child, idx) => {
@@ -818,29 +833,29 @@ function FieldEditor({
                                     if (e.key === "Enter") { e.preventDefault(); confirmEditChild(); }
                                     if (e.key === "Escape") setEditingChild(null);
                                   }}
-                                  className="h-6 min-w-0 flex-1 rounded-md border border-pen-id bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none"
+                                  className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-pen-blue px-2 text-white">
+                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
                                   <Check className="size-2.5" />
                                 </button>
-                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-pen-card-border px-2 text-pen-subtle hover:text-pen-foreground">
+                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                                   <X className="size-2.5" />
                                 </button>
                               </div>
                             ) : (
-                              <div key={child} className="flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-card px-2 py-1">
-                                <span className="flex-1 font-sans text-[11px] text-pen-foreground">{child}</span>
+                              <div key={child} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1">
+                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">{child}</span>
                                 <button
                                   type="button"
                                   onClick={() => setEditingChild({ parent: opt, idx, draft: child })}
-                                  className="text-pen-subtle hover:text-pen-foreground"
+                                  className="text-sts-subtle hover:text-sts-foreground"
                                 >
                                   <Pencil className="size-2.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removeChild(opt, child)}
-                                  className="text-pen-subtle hover:text-pen-red"
+                                  className="text-sts-subtle hover:text-sts-red"
                                 >
                                   <X className="size-2.5" />
                                 </button>
@@ -857,12 +872,12 @@ function FieldEditor({
                             if (e.key === "Enter") { e.preventDefault(); addChild(opt); }
                           }}
                           placeholder={`Add sub-option for "${opt}"…`}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-pen-card-border bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                         />
                         <button
                           type="button"
                           onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-md border border-pen-card-border bg-pen-card px-2 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+                          className="flex h-6 items-center gap-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
                         >
                           <Plus className="size-2.5" />
                           Add
@@ -881,12 +896,12 @@ function FieldEditor({
               onChange={(e) => setNewOption(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }}
               placeholder="Add option…"
-              className="h-7 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+              className="h-7 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+              className="flex h-7 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" />
               Add
@@ -898,61 +913,61 @@ function FieldEditor({
       {/* Placeholder */}
       {hasPlaceholder && (
         <div className="flex flex-col gap-1">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
             Placeholder text
           </label>
           <input
             value={state.placeholder}
             onChange={(e) => setState((s) => ({ ...s, placeholder: e.target.value }))}
             placeholder="e.g. Enter your answer here…"
-            className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+            className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
           />
         </div>
       )}
 
       {/* Helper text */}
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
           Helper text
         </label>
         <input
           value={state.helperText}
           onChange={(e) => setState((s) => ({ ...s, helperText: e.target.value }))}
           placeholder="e.g. Include your department and issue type"
-          className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
-        <p className="font-sans text-[10.5px] text-pen-subtle">Shown below the field to guide submitters.</p>
+        <p className="font-sans text-[10.5px] text-sts-subtle">Shown below the field to guide submitters.</p>
       </div>
 
       {/* Validation rules */}
       {hasValidation && (
-        <div className="flex flex-col gap-2 border-t border-pen-card-border pt-3">
-          <label className="font-sans text-[10.5px] font-medium uppercase tracking-[0.08em] text-pen-subtle/80">
+        <div className="flex flex-col gap-2 border-t border-sts-card-border pt-3">
+          <label className="font-sans text-[10.5px] font-medium uppercase tracking-[0.08em] text-sts-subtle/80">
             Validation · optional
           </label>
 
           {(state.type === "text" || state.type === "richtext") && (
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-pen-muted">Min length</span>
+                <span className="font-sans text-[11px] text-sts-muted">Min length</span>
                 <input
                   type="number"
                   min={0}
                   value={state.validation.minLength ?? ""}
                   onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, minLength: e.target.value ? Number(e.target.value) : undefined } }))}
                   placeholder="—"
-                  className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                  className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-pen-muted">Max length</span>
+                <span className="font-sans text-[11px] text-sts-muted">Max length</span>
                 <input
                   type="number"
                   min={0}
                   value={state.validation.maxLength ?? ""}
                   onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, maxLength: e.target.value ? Number(e.target.value) : undefined } }))}
                   placeholder="—"
-                  className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                  className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
             </div>
@@ -961,23 +976,23 @@ function FieldEditor({
           {state.type === "number" && (
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-pen-muted">Min value</span>
+                <span className="font-sans text-[11px] text-sts-muted">Min value</span>
                 <input
                   type="number"
                   value={state.validation.min ?? ""}
                   onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, min: e.target.value ? Number(e.target.value) : undefined } }))}
                   placeholder="—"
-                  className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                  className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-pen-muted">Max value</span>
+                <span className="font-sans text-[11px] text-sts-muted">Max value</span>
                 <input
                   type="number"
                   value={state.validation.max ?? ""}
                   onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, max: e.target.value ? Number(e.target.value) : undefined } }))}
                   placeholder="—"
-                  className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                  className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
             </div>
@@ -986,22 +1001,22 @@ function FieldEditor({
           {(state.type === "text" || state.type === "email") && (
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-pen-muted">Regex pattern</span>
+                <span className="font-sans text-[11px] text-sts-muted">Regex pattern</span>
                 <input
                   value={state.validation.pattern ?? ""}
                   onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, pattern: e.target.value || undefined } }))}
                   placeholder="e.g. ^[A-Z]{2}-\d{4}$"
-                  className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-mono text-[11.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                  className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-mono text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                 />
               </div>
               {state.validation.pattern && (
                 <div className="flex flex-col gap-1">
-                  <span className="font-sans text-[11px] text-pen-muted">Pattern error message</span>
+                  <span className="font-sans text-[11px] text-sts-muted">Pattern error message</span>
                   <input
                     value={state.validation.patternMessage ?? ""}
                     onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, patternMessage: e.target.value || undefined } }))}
                     placeholder="e.g. Must be in format XX-0000"
-                    className="h-7 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                    className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                   />
                 </div>
               )}
@@ -1010,26 +1025,26 @@ function FieldEditor({
         </div>
       )}
 
-      <label className="flex cursor-pointer items-center justify-between rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2">
+      <label className="flex cursor-pointer items-center justify-between rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2">
         <span className="flex flex-col">
-          <span className="font-sans text-[12px] font-medium text-pen-foreground">Required field</span>
-          <span className="font-sans text-[10.5px] text-pen-subtle">Submitters must fill this in.</span>
+          <span className="font-sans text-[12px] font-medium text-sts-foreground">Required field</span>
+          <span className="font-sans text-[10.5px] text-sts-subtle">Submitters must fill this in.</span>
         </span>
         <input
           type="checkbox"
           checked={state.isRequired}
           onChange={(e) => setState((s) => ({ ...s, isRequired: e.target.checked }))}
-          className="size-4 rounded accent-pen-blue"
+          className="size-4 rounded accent-sts-blue"
         />
       </label>
 
-      {error && <p className="font-sans text-[11.5px] text-pen-red">{error}</p>}
+      {error && <p className="font-sans text-[11.5px] text-sts-red">{error}</p>}
 
-      <div className="flex justify-end gap-2 border-t border-pen-card-border pt-3">
+      <div className="flex justify-end gap-2 border-t border-sts-card-border pt-3">
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           Cancel
         </button>
@@ -1037,583 +1052,12 @@ function FieldEditor({
           type="button"
           onClick={() => onSave(state)}
           disabled={saving}
-          className="flex h-7 items-center gap-1 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
+          className="flex h-7 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
         >
           <Check className="size-3" />
           {saving ? "Saving…" : "Save field"}
         </button>
       </div>
-    </div>
-  );
-}
-
-// ── Issue manager modal ───────────────────────────────────────────────────────
-
-type IssueRow = {
-  id: string;
-  name: string;
-  priority: string;
-  estimatedHours: number | null;
-  assigneeIds: string[];
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  Low:      "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
-  Medium:   "bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400",
-  High:     "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400",
-  Critical: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400",
-  Urgent:   "bg-orange-100 text-[#dd3300] dark:bg-[#40200f] dark:text-[#ff9466]",
-};
-
-function PriorityPill({ priority }: { priority: string }) {
-  return (
-    <span className={cn(
-      "inline-flex items-center rounded-full px-2.5 py-0.5 font-sans text-[11px] font-semibold",
-      PRIORITY_COLORS[priority] ?? "bg-pen-surface text-pen-foreground",
-    )}>
-      {priority}
-    </span>
-  );
-}
-
-type IssueEditorState = {
-  name: string;
-  priority: string;
-  estimatedHours: string;
-  assigneeIds: string[];
-};
-
-const EMPTY_ISSUE: IssueEditorState = { name: "", priority: "Medium", estimatedHours: "", assigneeIds: [] };
-
-/**
- * Multi-select assignee dropdown for the issue editor. Reuses the same building
- * blocks as the ticket "assign to" picker (Popover + UserListItem + UserAvatar)
- * but is fully controlled by the editor's `assigneeIds` state.
- */
-function IssueAssigneeSelect({
-  value,
-  onChange,
-  members,
-}: {
-  value: string[];
-  onChange: (ids: string[]) => void;
-  members: MemberOption[];
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = useMemo(
-    () => members.filter((m) => matchesUserListSearch(m, query)),
-    [members, query],
-  );
-  const selected = members.filter((m) => value.includes(m.id));
-
-  function handleOpenChange(o: boolean) {
-    setOpen(o);
-    if (o) {
-      setQuery("");
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }
-
-  function toggle(id: string) {
-    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
-  }
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger
-        className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 text-left transition-colors hover:border-pen-id focus:border-pen-id focus:outline-none"
-      >
-        {selected.length === 0 ? (
-          <>
-            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-pen-card text-pen-subtle">
-              <UserRound className="size-3.5" />
-            </span>
-            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-muted">Unassigned</span>
-          </>
-        ) : (
-          <>
-            <span className="flex shrink-0 -space-x-1.5">
-              {selected.slice(0, 4).map((m) => (
-                <span key={m.id} className="rounded-full ring-2 ring-pen-surface">
-                  <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.id} size={22} />
-                </span>
-              ))}
-            </span>
-            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
-              {selected.map((m) => m.name.split(" ")[0]).join(", ")}
-            </span>
-          </>
-        )}
-        <ChevronDown className={cn("size-3.5 shrink-0 opacity-60 transition-transform", open && "rotate-180")} />
-      </PopoverTrigger>
-
-      <PopoverContent
-        align="start"
-        sideOffset={4}
-        className={cn(sidebarDropdownPanelClass, "w-(--anchor-width) min-w-[240px] gap-0 overflow-hidden p-0")}
-      >
-        <div className="border-b border-pen-card-border p-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-pen-subtle" />
-            <Input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search members…"
-              className="h-8 border-pen-card-border bg-pen-surface pl-8 font-sans text-[12px]"
-            />
-          </div>
-        </div>
-        <ul className="max-h-52 overflow-y-auto p-1">
-          {filtered.length === 0 ? (
-            <li className="px-2 py-3 text-center font-sans text-[11.5px] text-pen-subtle">
-              No members match &ldquo;{query}&rdquo;
-            </li>
-          ) : (
-            filtered.map((member) => {
-              const isSelected = value.includes(member.id);
-              return (
-                <li key={member.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggle(member.id)}
-                    className={cn(
-                      "pen-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
-                      userListPickerButtonClass,
-                      isSelected && "bg-pen-surface",
-                    )}
-                  >
-                    <UserListItem
-                      person={member}
-                      avatarSize={22}
-                      trailing={isSelected ? <Check className="size-3.5 shrink-0 text-pen-blue" /> : null}
-                    />
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** Small avatar stack + name summary, or a null icon when unassigned. */
-function IssueAssigneeCell({ assigneeIds, members }: { assigneeIds: string[]; members: MemberOption[] }) {
-  const assigned = members.filter((m) => assigneeIds.includes(m.id));
-  if (assigned.length === 0) {
-    return (
-      <span className="flex size-7 items-center justify-center rounded-full bg-pen-surface text-pen-subtle" title="Unassigned">
-        <UserRound className="size-3.5" />
-      </span>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2">
-      <span className="flex shrink-0 -space-x-1.5">
-        {assigned.slice(0, 4).map((m) => (
-          <span key={m.id} className="rounded-full ring-2 ring-pen-card" title={m.name}>
-            <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.id} size={24} />
-          </span>
-        ))}
-      </span>
-      {assigned.length > 4 && (
-        <span className="font-sans text-[11px] text-pen-subtle">+{assigned.length - 4}</span>
-      )}
-    </div>
-  );
-}
-
-/** Add/edit form for a single intake issue. Module-level (stable identity) so
- * inputs and the assignee dropdown keep focus/open state across re-renders. */
-function IssueEditor({
-  editorState,
-  setEditorState,
-  editorError,
-  members,
-  saving,
-  onSave,
-  onCancel,
-}: {
-  editorState: IssueEditorState;
-  setEditorState: React.Dispatch<React.SetStateAction<IssueEditorState>>;
-  editorError: string | null;
-  members: MemberOption[];
-  saving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-pen-id/40 bg-pen-blue-tint px-4 py-3 flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">Issue name</label>
-        <input
-          autoFocus
-          value={editorState.name}
-          onChange={(e) => setEditorState((s) => ({ ...s, name: e.target.value }))}
-          placeholder="e.g. Cannot login"
-          className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">Priority</label>
-          <SearchableSelect
-            value={editorState.priority}
-            onChange={(v) => setEditorState((s) => ({ ...s, priority: v }))}
-            options={[
-              { value: "Low", label: "Low" },
-              { value: "Medium", label: "Medium" },
-              { value: "High", label: "High" },
-              { value: "Critical", label: "Critical" },
-              { value: "Urgent", label: "Urgent" },
-            ]}
-            searchable={false}
-            size="sm"
-            className="bg-pen-surface"
-            aria-label="Priority"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">Est. hours</label>
-          <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={editorState.estimatedHours}
-            onChange={(e) => setEditorState((s) => ({ ...s, estimatedHours: e.target.value }))}
-            placeholder="—"
-            className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-id"
-          />
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">Assign to</label>
-        {members.length === 0 ? (
-          <p className="font-sans text-[11.5px] text-pen-subtle">No members in this department to assign.</p>
-        ) : (
-          <IssueAssigneeSelect
-            value={editorState.assigneeIds}
-            onChange={(ids) => setEditorState((s) => ({ ...s, assigneeIds: ids }))}
-            members={members}
-          />
-        )}
-        <p className="font-sans text-[11px] text-pen-subtle">
-          One user → tickets auto-assign to them. Multiple → round-robin between them. Leave empty to use the team&apos;s rota.
-        </p>
-      </div>
-      {editorError && <p className="font-sans text-[11.5px] text-pen-red">{editorError}</p>}
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saving}
-          className="flex h-7 items-center gap-1 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
-        >
-          <Check className="size-3" />
-          {saving ? "Saving…" : "Save issue"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function IssueManagerModal({
-  form,
-  members,
-  onClose,
-}: {
-  form: IntakeFormRow;
-  members: MemberOption[];
-  onClose: () => void;
-}) {
-  const [issues, setIssues] = useState<IssueRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [addingIssue, setAddingIssue] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<IssueRow | null>(null);
-  const [editorState, setEditorState] = useState<IssueEditorState>(EMPTY_ISSUE);
-  const [saving, setSaving] = useState(false);
-  const [editorError, setEditorError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/intake/forms/${form.id}/issues`)
-      .then((r) => r.json())
-      .then((data: IssueRow[]) => setIssues(data))
-      .catch(() => setIssues([]))
-      .finally(() => setLoading(false));
-  }, [form.id]);
-
-  function startAdd() {
-    setEditorState(EMPTY_ISSUE);
-    setAddingIssue(true);
-    setEditingId(null);
-    setEditorError(null);
-  }
-
-  function startEdit(issue: IssueRow) {
-    setEditorState({
-      name: issue.name,
-      priority: issue.priority,
-      estimatedHours: issue.estimatedHours != null ? String(issue.estimatedHours) : "",
-      assigneeIds: issue.assigneeIds ?? [],
-    });
-    setEditingId(issue.id);
-    setAddingIssue(false);
-    setEditorError(null);
-  }
-
-  function cancelEditor() {
-    setAddingIssue(false);
-    setEditingId(null);
-    setEditorError(null);
-  }
-
-  async function handleSaveAdd() {
-    if (!editorState.name.trim()) { setEditorError("Name is required."); return; }
-    if (!editorState.priority) { setEditorError("Priority is required."); return; }
-    setSaving(true);
-    setEditorError(null);
-    try {
-      const res = await fetch(`/api/intake/forms/${form.id}/issues`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editorState.name.trim(),
-          priority: editorState.priority,
-          estimatedHours: editorState.estimatedHours ? Number(editorState.estimatedHours) : null,
-          assigneeIds: editorState.assigneeIds,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setEditorError((data as { error?: string }).error ?? "Failed to add issue.");
-        return;
-      }
-      const issue: IssueRow = await res.json();
-      setIssues((prev) => [...prev, issue]);
-      setAddingIssue(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSaveEdit() {
-    if (!editingId) return;
-    if (!editorState.name.trim()) { setEditorError("Name is required."); return; }
-    setSaving(true);
-    setEditorError(null);
-    try {
-      const res = await fetch(`/api/intake/forms/${form.id}/issues/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editorState.name.trim(),
-          priority: editorState.priority,
-          estimatedHours: editorState.estimatedHours ? Number(editorState.estimatedHours) : null,
-          assigneeIds: editorState.assigneeIds,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setEditorError((data as { error?: string }).error ?? "Failed to update issue.");
-        return;
-      }
-      const updated: IssueRow = await res.json();
-      setIssues((prev) => prev.map((i) => (i.id === editingId ? updated : i)));
-      setEditingId(null);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    const res = await fetch(`/api/intake/forms/${form.id}/issues/${deleteTarget.id}`, { method: "DELETE" });
-    if (res.ok) {
-      setIssues((prev) => prev.filter((i) => i.id !== deleteTarget.id));
-      setDeleteTarget(null);
-    }
-  }
-
-  const isEditing = addingIssue || !!editingId;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 pen-overlay-backdrop" onClick={onClose} />
-      <div className="pen-glass-panel relative flex w-full max-w-3xl flex-col rounded-2xl border border-pen-card-border shadow-2xl" style={{ height: "70vh", maxHeight: "70vh" }}>
-        {/* Header */}
-        <div className="flex shrink-0 items-start justify-between border-b border-pen-card-border px-6 py-4">
-          <div>
-            <h2 className="pen-text-modal-title">Issues</h2>
-            <p className="mt-0.5 font-sans text-[12px] text-pen-muted">
-              {form.name} · {form.departmentName}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={startAdd}
-              disabled={loading || isEditing}
-              className="flex items-center gap-1.5 rounded-[7px] bg-pen-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
-            >
-              <Plus className="size-3.5" strokeWidth={2.5} />
-              Add issue
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-pen-card-border p-1.5 text-pen-subtle hover:border-pen-muted hover:text-pen-foreground transition-colors"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {loading ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2">
-              <Loader2 className="size-5 animate-spin text-pen-muted" />
-              <p className="font-sans text-[12px] text-pen-subtle">Loading issues…</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {addingIssue && (
-                <IssueEditor
-                  editorState={editorState}
-                  setEditorState={setEditorState}
-                  editorError={editorError}
-                  members={members}
-                  saving={saving}
-                  onSave={handleSaveAdd}
-                  onCancel={cancelEditor}
-                />
-              )}
-
-              {/* Issues table */}
-              {issues.length > 0 && (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-pen-card-border">
-                      <th className="pb-2.5 text-left">
-                        <span className="font-sans text-[11px] font-semibold uppercase tracking-[1px] text-pen-subtle">Issue name</span>
-                      </th>
-                      <th className="pb-2.5 text-left">
-                        <span className="font-sans text-[11px] font-semibold uppercase tracking-[1px] text-pen-subtle">Priority</span>
-                      </th>
-                      <th className="pb-2.5 text-left">
-                        <span className="font-sans text-[11px] font-semibold uppercase tracking-[1px] text-pen-subtle">Est. hours</span>
-                      </th>
-                      <th className="pb-2.5 text-left">
-                        <span className="font-sans text-[11px] font-semibold uppercase tracking-[1px] text-pen-subtle">Assignee</span>
-                      </th>
-                      <th className="pb-2.5 w-[90px] text-right">
-                        <span className="font-sans text-[11px] font-semibold uppercase tracking-[1px] text-pen-subtle">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {issues.map((issue, idx) => {
-                      if (editingId === issue.id) {
-                        return (
-                          <tr key={issue.id}>
-                            <td colSpan={5} className="pt-3">
-                              <IssueEditor
-                                editorState={editorState}
-                                setEditorState={setEditorState}
-                                editorError={editorError}
-                                members={members}
-                                saving={saving}
-                                onSave={handleSaveEdit}
-                                onCancel={cancelEditor}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      }
-                      return (
-                        <tr
-                          key={issue.id}
-                          className={cn(
-                            idx !== issues.length - 1 && "border-b border-pen-card-border",
-                          )}
-                        >
-                          <td className="py-3 pr-4">
-                            <span className="font-sans text-[12.5px] font-medium text-pen-foreground">
-                              {issue.name}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-4">
-                            <PriorityPill priority={issue.priority} />
-                          </td>
-                          <td className="py-3 pr-4">
-                            <span className="font-sans text-[12.5px] text-pen-muted">
-                              {issue.estimatedHours != null ? `${issue.estimatedHours}h` : "—"}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-4">
-                            <IssueAssigneeCell assigneeIds={issue.assigneeIds} members={members} />
-                          </td>
-                          <td className="py-3">
-                            <div className="flex items-center justify-end gap-0.5">
-                              <button
-                                type="button"
-                                onClick={() => startEdit(issue)}
-                                className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
-                              >
-                                <Pencil className="size-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteTarget(issue)}
-                                className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-red"
-                              >
-                                <Trash2 className="size-3" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              {issues.length === 0 && !addingIssue && (
-                <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-pen-card-border py-12 text-center">
-                  <p className="font-sans text-[13px] text-pen-muted">No issues yet.</p>
-                  <p className="mt-1 font-sans text-[12px] text-pen-subtle">
-                    Add issues to automatically set priority when submitted.
-                  </p>
-                </div>
-              )}
-
-            </div>
-          )}
-        </div>
-      </div>
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-        title="Delete issue?"
-        description={`"${deleteTarget?.name}" will be permanently removed.`}
-        confirmLabel="Delete"
-        successMessage="Issue deleted."
-        onConfirm={handleDelete}
-      />
     </div>
   );
 }
@@ -1636,7 +1080,6 @@ function FieldBuilderModal({
   const [deleteTarget, setDeleteTarget] = useState<FieldRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
-  const [hasIssues, setHasIssues] = useState(false);
   const dragId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   // Editable default-field labels/placeholders (per form). Starts from the
@@ -1677,13 +1120,6 @@ function FieldBuilderModal({
       .finally(() => setLoadingFields(false));
   }, [form.id]);
 
-  useEffect(() => {
-    fetch(`/api/intake/forms/${form.id}/issues`)
-      .then((r) => r.json())
-      .then((data: IssueRow[]) => setHasIssues(data.length > 0))
-      .catch(() => setHasIssues(false));
-  }, [form.id]);
-
   async function reorder(fromId: string, toId: string) {
     if (fromId === toId) return;
     const fromIdx = fields.findIndex((f) => f.id === fromId);
@@ -1703,7 +1139,6 @@ function FieldBuilderModal({
 
   function collidesWithStaticField(label: string) {
     return DEFAULT_FIELD_KEYS
-      .filter((key) => key !== "issueType" || hasIssues)
       .some((key) => defaults[key].label.toLowerCase() === label.trim().toLowerCase());
   }
 
@@ -1774,15 +1209,15 @@ function FieldBuilderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 pen-overlay-backdrop" onClick={onClose} />
-      <div className="pen-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-pen-card-border shadow-2xl" style={{ height: "70vh", maxHeight: "70vh" }}>
+      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
+      <div className="sts-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl" style={{ height: "70vh", maxHeight: "70vh" }}>
         {/* Header */}
-        <div className="flex shrink-0 items-start justify-between border-b border-pen-card-border px-6 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
           <div>
-            <h2 className="pen-text-modal-title">
+            <h2 className="sts-text-modal-title">
               Form fields
             </h2>
-            <p className="mt-0.5 font-sans text-[12px] text-pen-muted">
+            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
               {form.name} · {form.departmentName}
             </p>
           </div>
@@ -1791,7 +1226,7 @@ function FieldBuilderModal({
               type="button"
               onClick={() => { setAddingField(true); setEditingId(null); setEditorError(null); }}
               disabled={loadingFields}
-              className="flex items-center gap-1.5 rounded-[7px] bg-pen-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
+              className="flex items-center gap-1.5 rounded-[7px] bg-sts-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               <Plus className="size-3.5" strokeWidth={2.5} />
               Add field
@@ -1799,7 +1234,7 @@ function FieldBuilderModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-pen-card-border p-1.5 text-pen-subtle hover:border-pen-muted hover:text-pen-foreground transition-colors"
+              className="rounded-md border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
             >
               <X className="size-3.5" />
             </button>
@@ -1810,15 +1245,15 @@ function FieldBuilderModal({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loadingFields ? (
             <div className="flex h-full flex-col items-center justify-center gap-2">
-              <Loader2 className="size-5 animate-spin text-pen-muted" />
-              <p className="font-sans text-[12px] text-pen-subtle">Loading fields…</p>
+              <Loader2 className="size-5 animate-spin text-sts-muted" />
+              <p className="font-sans text-[12px] text-sts-subtle">Loading fields…</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <div
                 className={cn(
-                  "flex items-center gap-2 rounded-xl border border-pen-card-border bg-pen-surface/40 px-3 py-2 transition-colors",
-                  defaultsCollapsed ? "hover:border-pen-id/40 hover:bg-pen-surface/70" : "rounded-b-none border-b-0",
+                  "flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-surface/40 px-3 py-2 transition-colors",
+                  defaultsCollapsed ? "hover:border-sts-id/40 hover:bg-sts-surface/70" : "rounded-b-none border-b-0",
                 )}
               >
                 <button
@@ -1829,18 +1264,18 @@ function FieldBuilderModal({
                 >
                   <ChevronDown
                     className={cn(
-                      "size-3.5 shrink-0 text-pen-subtle transition-transform group-hover:text-pen-foreground",
+                      "size-3.5 shrink-0 text-sts-subtle transition-transform group-hover:text-sts-foreground",
                       defaultsCollapsed && "-rotate-90",
                     )}
                   />
-                  <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle group-hover:text-pen-foreground">
+                  <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle group-hover:text-sts-foreground">
                     Default fields
                   </span>
-                  <span className="rounded-full bg-pen-surface px-1.5 py-px font-sans text-[10.5px] font-medium text-pen-subtle">
-                    {DEFAULT_FIELD_KEYS.filter((key) => key !== "issueType" || hasIssues).length}
+                  <span className="rounded-full bg-sts-surface px-1.5 py-px font-sans text-[10.5px] font-medium text-sts-subtle">
+                    {DEFAULT_FIELD_KEYS.length}
                   </span>
                   {defaultsDirty && (
-                    <span className="size-1.5 shrink-0 rounded-full bg-pen-blue" title="Unsaved changes" />
+                    <span className="size-1.5 shrink-0 rounded-full bg-sts-blue" title="Unsaved changes" />
                   )}
                 </button>
                 {!defaultsCollapsed && (
@@ -1848,7 +1283,7 @@ function FieldBuilderModal({
                     type="button"
                     onClick={saveDefaults}
                     disabled={!defaultsDirty || savingDefaults}
-                    className="flex h-7 shrink-0 items-center gap-1 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-40 dark:text-gray-900"
+                    className="flex h-7 shrink-0 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
                   >
                     {savingDefaults ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                     Save
@@ -1856,43 +1291,43 @@ function FieldBuilderModal({
                 )}
               </div>
               {!defaultsCollapsed && (
-                <div className="flex flex-col gap-2 rounded-b-xl border border-t-0 border-pen-card-border px-3 pb-3 pt-2">
-                  <p className="font-sans text-[11px] text-pen-subtle">
+                <div className="flex flex-col gap-2 rounded-b-xl border border-t-0 border-sts-card-border px-3 pb-3 pt-2">
+                  <p className="font-sans text-[11px] text-sts-subtle">
                     Rename the title &amp; placeholder for this form. These can&apos;t be removed.
                   </p>
-                  {DEFAULT_FIELD_KEYS.filter((key) => key !== "issueType" || hasIssues).map((key) => {
+                  {DEFAULT_FIELD_KEYS.map((key) => {
                     const meta = DEFAULT_FIELD_META[key];
                     return (
                       <div
                         key={key}
-                        className="flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-surface/40 px-3 py-2.5"
+                        className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-surface/40 px-3 py-2.5"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-pen-surface text-pen-muted">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-surface text-sts-muted">
                             {meta.icon}
                           </span>
-                          <span className="font-sans text-[11.5px] font-medium text-pen-subtle">
+                          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
                             {meta.typeLabel}
-                            {meta.required && <span className="ml-1 text-pen-red">*</span>}
+                            {meta.required && <span className="ml-1 text-sts-red">*</span>}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <div className="flex flex-col gap-1">
-                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-pen-subtle">Title</label>
+                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">Title</label>
                             <input
                               value={defaults[key].label}
                               onChange={(e) => setDefaults((d) => ({ ...d, [key]: { ...d[key], label: e.target.value } }))}
                               placeholder={DEFAULT_INTAKE_FIELDS[key].label}
-                              className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                              className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-pen-subtle">Placeholder</label>
+                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">Placeholder</label>
                             <input
                               value={defaults[key].placeholder}
                               onChange={(e) => setDefaults((d) => ({ ...d, [key]: { ...d[key], placeholder: e.target.value } }))}
                               placeholder={DEFAULT_INTAKE_FIELDS[key].placeholder}
-                              className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                              className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                             />
                           </div>
                         </div>
@@ -1902,13 +1337,13 @@ function FieldBuilderModal({
                 </div>
               )}
 
-              <p className="mt-2 font-sans text-[11px] font-medium uppercase tracking-wide text-pen-subtle">
+              <p className="mt-2 font-sans text-[11px] font-medium uppercase tracking-wide text-sts-subtle">
                 Custom fields
               </p>
               {fields.length === 0 && !addingField && (
-                <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-pen-card-border py-12 text-center">
-                  <p className="font-sans text-[13px] text-pen-muted">No fields yet.</p>
-                  <p className="mt-1 font-sans text-[12px] text-pen-subtle">
+                <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-12 text-center">
+                  <p className="font-sans text-[13px] text-sts-muted">No fields yet.</p>
+                  <p className="mt-1 font-sans text-[12px] text-sts-subtle">
                     Add fields to define what submitters will fill in.
                   </p>
                 </div>
@@ -1937,18 +1372,18 @@ function FieldBuilderModal({
                     onDrop={() => { setDragOverId(null); if (dragId.current) reorder(dragId.current, field.id); dragId.current = null; }}
                     onDragEnd={() => { dragId.current = null; setDragOverId(null); }}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl border border-pen-card-border bg-pen-card px-3 py-2.5 transition-colors",
-                      dragOverId === field.id && "border-pen-id bg-pen-blue-tint",
+                      "group flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                      dragOverId === field.id && "border-sts-id bg-sts-blue-tint",
                     )}
                   >
-                    <GripVertical className="size-4 shrink-0 cursor-grab text-pen-subtle opacity-30 group-hover:opacity-70 active:cursor-grabbing" />
+                    <GripVertical className="size-4 shrink-0 cursor-grab text-sts-subtle opacity-30 group-hover:opacity-70 active:cursor-grabbing" />
                     <FieldTypeIcon type={field.type} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                      <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                         {field.label}
-                        {field.isRequired && <span className="ml-1 text-pen-red">*</span>}
+                        {field.isRequired && <span className="ml-1 text-sts-red">*</span>}
                       </p>
-                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                      <p className="font-sans text-[11.5px] text-sts-subtle">
                         {typeLabel(field.type)}
                         {field.type === "select" && field.options.length > 0 && (
                           <> · {field.options.length} option{field.options.length !== 1 ? "s" : ""}</>
@@ -1959,14 +1394,14 @@ function FieldBuilderModal({
                       <button
                         type="button"
                         onClick={() => { setEditingId(field.id); setAddingField(false); setEditorError(null); }}
-                        className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+                        className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                       >
                         <Pencil className="size-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(field)}
-                        className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-red"
+                        className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                       >
                         <Trash2 className="size-3" />
                       </button>
@@ -2022,7 +1457,7 @@ function BrandColorRow({
   const valid = !active || isHexColor(value);
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+      <label className="font-sans text-[12px] font-semibold text-sts-foreground">
         {label}
       </label>
       <div className="flex items-center gap-2">
@@ -2031,28 +1466,28 @@ function BrandColorRow({
           value={isHexColor(value) ? value : fallback}
           onChange={(e) => onChange(e.target.value)}
           aria-label={`${label} picker`}
-          className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-pen-card-border bg-pen-surface p-1"
+          className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-surface p-1"
         />
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`${fallback} (default)`}
           className={cn(
-            "h-9 w-full max-w-[150px] rounded-lg border bg-pen-surface px-3 font-mono text-[12.5px] text-pen-foreground outline-none focus:border-pen-id focus:ring-1 focus:ring-pen-id",
-            valid ? "border-pen-card-border" : "border-pen-red",
+            "h-9 w-full min-w-0 rounded-lg border bg-sts-surface px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-id focus:ring-1 focus:ring-sts-id",
+            valid ? "border-sts-card-border" : "border-sts-red",
           )}
         />
         {active && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground"
+            className="font-sans text-[11.5px] text-sts-subtle hover:text-sts-foreground"
           >
             Use default
           </button>
         )}
       </div>
-      <p className="font-sans text-[11px] text-pen-subtle">{hint}</p>
+      <p className="font-sans text-[11px] text-sts-subtle">{hint}</p>
     </div>
   );
 }
@@ -2077,6 +1512,7 @@ function FormDesignModal({
   const [confirmationText, setConfirmationText] = useState(b.confirmationText ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"edit" | "preview">("edit");
 
   const colorsValid =
     (!headerColor.trim() || isHexColor(headerColor)) &&
@@ -2123,12 +1559,12 @@ function FormDesignModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 pen-overlay-backdrop" onClick={onClose} />
-      <div className="pen-glass-panel relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-pen-card-border shadow-2xl">
-        <div className="flex items-center justify-between border-b border-pen-card-border px-6 py-4">
+      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
+      <div className="sts-glass-panel relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-sts-card-border shadow-2xl">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-6 py-4">
           <div>
-            <h2 className="pen-text-modal-title">Form design</h2>
-            <p className="mt-0.5 font-sans text-[12px] text-pen-muted">
+            <h2 className="sts-text-modal-title">Form design</h2>
+            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
               Branding for the public “{form.name}” page. Empty fields fall back
               to the workspace brand.
             </p>
@@ -2136,114 +1572,171 @@ function FormDesignModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6 lg:flex-row">
+        {/* Edit / Preview toggle */}
+        <div className="flex items-center gap-1 border-b border-sts-card-border px-6 py-3">
+          <div className="inline-flex rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("edit")}
+              className={`inline-flex h-7 items-center rounded-md px-3 font-sans text-[12px] font-semibold transition-colors ${
+                view === "edit"
+                  ? "bg-sts-blue text-white dark:text-gray-900"
+                  : "text-sts-muted hover:text-sts-foreground"
+              }`}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("preview")}
+              className={`inline-flex h-7 items-center rounded-md px-3 font-sans text-[12px] font-semibold transition-colors ${
+                view === "preview"
+                  ? "bg-sts-blue text-white dark:text-gray-900"
+                  : "text-sts-muted hover:text-sts-foreground"
+              }`}
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
           {/* Controls */}
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-                Logo URL
-              </label>
-              <input
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://…/logo.svg"
-                className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
-              />
-              <p className="font-sans text-[11px] text-pen-subtle">
-                Shown in a banner at the top of the form. Leave blank to use the
-                workspace logo.
-              </p>
-            </div>
+          <div
+            className={`min-w-0 flex-col gap-6 ${view === "edit" ? "flex" : "hidden"}`}
+          >
+            {/* Branding */}
+            <section className="flex flex-col gap-4">
+              <div className="flex flex-col gap-0.5">
+                <h3 className="font-sans text-[13px] font-semibold text-sts-foreground">
+                  Branding
+                </h3>
+                <p className="font-sans text-[11.5px] text-sts-subtle">
+                  Logo and colors used across the public form page.
+                </p>
+              </div>
 
-            <BrandColorRow
-              label="Header background"
-              hint="Banner color behind the logo."
-              value={headerColor}
-              fallback={defaults.headerColor}
-              onChange={setHeaderColor}
-            />
-            <BrandColorRow
-              label="Page background"
-              hint="Background of the whole form page."
-              value={backgroundColor}
-              fallback="#f8f8fc"
-              onChange={setBackgroundColor}
-            />
-            <BrandColorRow
-              label="Accent color"
-              hint="Submit button and highlights."
-              value={accentColor}
-              fallback={defaults.accentColor}
-              onChange={setAccentColor}
-            />
+              <div className="flex flex-col gap-1.5">
+                <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+                  Logo URL
+                </label>
+                <input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://…/logo.svg"
+                  className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
+                />
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  Shown in a banner at the top of the form. Leave blank to use the
+                  workspace logo.
+                </p>
+              </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-                Intro text
-              </label>
-              <textarea
-                value={introText}
-                onChange={(e) => setIntroText(e.target.value)}
-                rows={2}
-                placeholder="Fill in the details below and we'll get back to you…"
-                className="rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
-              />
-            </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <BrandColorRow
+                  label="Header background"
+                  hint="Banner color behind the logo."
+                  value={headerColor}
+                  fallback={defaults.headerColor}
+                  onChange={setHeaderColor}
+                />
+                <BrandColorRow
+                  label="Page background"
+                  hint="Background of the whole form page."
+                  value={backgroundColor}
+                  fallback="#f8f8fc"
+                  onChange={setBackgroundColor}
+                />
+                <BrandColorRow
+                  label="Accent color"
+                  hint="Submit button and highlights."
+                  value={accentColor}
+                  fallback={defaults.accentColor}
+                  onChange={setAccentColor}
+                />
+              </div>
+            </section>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-                Confirmation message
-              </label>
-              <textarea
-                value={confirmationText}
-                onChange={(e) => setConfirmationText(e.target.value)}
-                rows={2}
-                placeholder="Shown after a successful submission."
-                className="rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
-              />
-            </div>
+            {/* Copy */}
+            <section className="flex flex-col gap-4 border-t border-sts-card-border pt-6">
+              <div className="flex flex-col gap-0.5">
+                <h3 className="font-sans text-[13px] font-semibold text-sts-foreground">
+                  Messaging
+                </h3>
+                <p className="font-sans text-[11.5px] text-sts-subtle">
+                  Text shown to people filling out and submitting the form.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+                    Intro text
+                  </label>
+                  <textarea
+                    value={introText}
+                    onChange={(e) => setIntroText(e.target.value)}
+                    rows={3}
+                    placeholder="Fill in the details below and we'll get back to you…"
+                    className="rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+                    Confirmation message
+                  </label>
+                  <textarea
+                    value={confirmationText}
+                    onChange={(e) => setConfirmationText(e.target.value)}
+                    rows={3}
+                    placeholder="Shown after a successful submission."
+                    className="rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
+                  />
+                </div>
+              </div>
+            </section>
           </div>
 
           {/* Live preview */}
-          <div className="flex w-full flex-col gap-1.5 lg:max-w-[320px]">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
-              Preview
-            </label>
-            <div className="overflow-hidden rounded-xl border border-pen-card-border" style={{ background: previewBg }}>
-              <div className="px-4 py-3" style={{ background: previewHeader }}>
+          <div
+            className={`w-full flex-col items-center gap-1.5 ${view === "preview" ? "flex" : "hidden"}`}
+          >
+            <div className="w-full max-w-[560px] overflow-hidden rounded-xl border border-sts-card-border" style={{ background: previewBg }}>
+              <div className="px-6 py-5" style={{ background: previewHeader }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewLogo}
                   alt="Logo preview"
-                  className="h-7 w-auto"
+                  className="h-10 w-auto"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
                   }}
                 />
               </div>
-              <div className="px-4 py-4">
-                <p className="font-sans text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+              <div className="px-6 py-6">
+                <p className="font-sans text-[12px] font-semibold uppercase tracking-wide text-gray-500">
                   {form.departmentName}
                 </p>
-                <h3 className="mt-1 font-sans text-[16px] font-semibold text-gray-900">
+                <h3 className="mt-1.5 font-sans text-[22px] font-semibold text-gray-900">
                   {form.name}
                 </h3>
-                <p className="mt-1 font-sans text-[11px] text-gray-500">
+                <p className="mt-1.5 font-sans text-[14px] text-gray-500">
                   {introText.trim() ||
                     "Fill in the details below and we'll get back to you as soon as possible."}
                 </p>
-                <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
-                  <div className="h-2 w-16 rounded bg-gray-200" />
-                  <div className="mt-2 h-7 rounded-md bg-gray-100" />
+                <div className="mt-5 rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="h-2.5 w-24 rounded bg-gray-200" />
+                  <div className="mt-3 h-10 rounded-md bg-gray-100" />
                 </div>
                 <span
-                  className="mt-3 inline-flex h-9 items-center rounded-lg px-4 font-sans text-[12px] font-semibold text-white"
+                  className="mt-5 inline-flex h-11 items-center rounded-lg px-6 font-sans text-[14px] font-semibold text-white"
                   style={{ background: previewAccent }}
                 >
                   Submit request
@@ -2253,13 +1746,13 @@ function FormDesignModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-pen-card-border px-6 py-4">
-          <span className="font-sans text-[11.5px] text-pen-red">{error}</span>
+        <div className="flex items-center justify-between gap-2 border-t border-sts-card-border px-6 py-4">
+          <span className="font-sans text-[11.5px] text-sts-red">{error}</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 items-center rounded-lg border border-pen-card-border px-4 font-sans text-[12.5px] font-medium text-pen-muted hover:text-pen-foreground"
+              className="inline-flex h-9 items-center rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -2267,7 +1760,7 @@ function FormDesignModal({
               type="button"
               onClick={handleSave}
               disabled={saving || !colorsValid}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-semibold text-white hover:bg-pen-blue/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-900"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-900"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               {saving ? "Saving…" : "Save design"}
@@ -2296,47 +1789,18 @@ export function SettingsIntakeFormsPage({
   const [, startTransition] = useTransition();
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [fieldModal, setFieldModal] = useState<IntakeFormRow | null>(null);
-  const [issueModal, setIssueModal] = useState<IntakeFormRow | null>(null);
   const [designModal, setDesignModal] = useState<IntakeFormRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IntakeFormRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [optimisticActive, setOptimisticActive] = useState<Record<string, boolean>>({});
-  const [togglingAutoAssignId, setTogglingAutoAssignId] = useState<string | null>(null);
-  const [optimisticAutoAssign, setOptimisticAutoAssign] = useState<Record<string, boolean>>({});
 
   function getIsActive(form: IntakeFormRow) {
     return optimisticActive[form.id] ?? form.isActive;
   }
 
-  function getAutoAssign(form: IntakeFormRow) {
-    return optimisticAutoAssign[form.id] ?? form.autoAssign;
-  }
-
   function handleSuccess() {
     setModal(null);
     startTransition(() => router.refresh());
-  }
-
-  async function handleToggleAutoAssign(form: IntakeFormRow) {
-    const current = getAutoAssign(form);
-    setOptimisticAutoAssign((prev) => ({ ...prev, [form.id]: !current }));
-    setTogglingAutoAssignId(form.id);
-    try {
-      const res = await fetch(`/api/intake/forms/${form.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoAssign: !current }),
-      });
-      if (res.ok) {
-        startTransition(() => router.refresh());
-      } else {
-        setOptimisticAutoAssign((prev) => ({ ...prev, [form.id]: current }));
-      }
-    } catch {
-      setOptimisticAutoAssign((prev) => ({ ...prev, [form.id]: current }));
-    } finally {
-      setTogglingAutoAssignId(null);
-    }
   }
 
   async function handleToggleActive(form: IntakeFormRow) {
@@ -2381,10 +1845,10 @@ export function SettingsIntakeFormsPage({
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             Support forms
           </h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             {scopedDepartmentName
               ? `Public submission forms for ${scopedDepartmentName}.`
               : "Public submission forms across all departments."}
@@ -2392,7 +1856,7 @@ export function SettingsIntakeFormsPage({
         </div>
         <Button
           onClick={() => setModal({ type: "create" })}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm hover:bg-pen-blue/90 sm:w-auto dark:text-gray-900"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm hover:bg-sts-blue/90 sm:w-auto dark:text-gray-900"
         >
           <Plus className="size-3.5" strokeWidth={2.5} />
           New form
@@ -2400,16 +1864,16 @@ export function SettingsIntakeFormsPage({
       </div>
 
       {initialForms.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-pen-card-border py-16 text-center">
-          <p className="font-sans text-[13px] text-pen-muted">
+        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-16 text-center">
+          <p className="font-sans text-[13px] text-sts-muted">
             No support forms yet.
           </p>
-          <p className="mt-1 font-sans text-[12px] text-pen-subtle">
+          <p className="mt-1 font-sans text-[12px] text-sts-subtle">
             Create your first form to start accepting public submissions.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[780px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -2443,16 +1907,16 @@ export function SettingsIntakeFormsPage({
                 return (
                   <TableRow
                     key={form.id}
-                    className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
+                    className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"
                   >
                     {/* Form name */}
                     <TableCell className="py-0">
                       <div className="flex h-[56px] flex-col justify-center gap-0.5">
-                        <span className="flex items-center gap-1.5 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                        <span className="flex items-center gap-1.5 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {form.name}
                           {form.displayMode === "CHAT" && (
                             <span
-                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-pen-id/25 bg-pen-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-semibold text-pen-id"
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sts-id/25 bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-semibold text-sts-id"
                               title="Renders as a chat conversation"
                             >
                               <MessageCircle className="size-2.5" />
@@ -2466,7 +1930,7 @@ export function SettingsIntakeFormsPage({
                     {showDepartmentColumn && (
                       <TableCell className="py-0">
                         <div className="flex h-[56px] items-center">
-                          <span className="inline-flex max-w-full items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted">
+                          <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
                             <span className="truncate">{form.departmentName}</span>
                           </span>
                         </div>
@@ -2493,21 +1957,29 @@ export function SettingsIntakeFormsPage({
                     </TableCell>
 
 
-                    {/* Assignment mode toggle */}
+                    {/* Assignment method (configured on the Assignment methods page) */}
                     <TableCell className="py-0">
                       <div className="flex h-[56px] items-center">
-                        <LabeledSwitch
-                          checked={getAutoAssign(form)}
-                          onLabel="Auto"
-                          offLabel="Manual"
-                          loading={togglingAutoAssignId === form.id}
-                          title={
-                            getAutoAssign(form)
-                              ? "Switch to manual assignment"
-                              : "Switch to auto-assign"
-                          }
-                          onToggle={() => handleToggleAutoAssign(form)}
-                        />
+                        {(() => {
+                          const style = ASSIGNMENT_METHOD_STYLES[form.effectiveMethod];
+                          const MethodIcon = style.icon;
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 font-sans text-[11.5px] font-semibold ${style.className}`}
+                              title={
+                                form.assignmentMethod === null
+                                  ? `Inherited from the sub-department (${ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]})`
+                                  : "Set on the Assignment methods page"
+                              }
+                            >
+                              <MethodIcon className="size-3.5" />
+                              {ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]}
+                              {form.assignmentMethod === null && (
+                                <span className="text-sts-subtle">· inherited</span>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </TableCell>
 
@@ -2517,15 +1989,15 @@ export function SettingsIntakeFormsPage({
                         {form.intakeCount > 0 ? (
                           <Link
                             href={`/settings/intake-forms/${form.id}/submissions`}
-                            className="group/sub inline-flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface py-1 pl-2.5 pr-2 font-sans text-[11.5px] font-semibold text-pen-foreground shadow-sm transition-colors hover:border-pen-id hover:bg-pen-blue-tint hover:text-pen-id"
+                            className="group/sub inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-2.5 pr-2 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
                             title="View submissions"
                           >
-                            <Inbox className="size-3 text-pen-muted transition-colors group-hover/sub:text-pen-id" />
+                            <Inbox className="size-3 text-sts-muted transition-colors group-hover/sub:text-sts-id" />
                             {form.intakeCount}
-                            <ArrowUpRight className="size-3 text-pen-subtle transition-colors group-hover/sub:text-pen-id" />
+                            <ArrowUpRight className="size-3 text-sts-subtle transition-colors group-hover/sub:text-sts-id" />
                           </Link>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-pen-card-border py-1 pl-2.5 pr-2.5 font-sans text-[11.5px] font-medium text-pen-subtle">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-sts-card-border py-1 pl-2.5 pr-2.5 font-sans text-[11.5px] font-medium text-sts-subtle">
                             <Inbox className="size-3" />
                             0
                           </span>
@@ -2544,31 +2016,20 @@ export function SettingsIntakeFormsPage({
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[56px] items-center justify-end gap-1">
                         {form.displayMode !== "CHAT" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setIssueModal(form)}
-                              className="flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-pen-muted transition-colors hover:border-pen-muted hover:bg-pen-card hover:text-pen-foreground"
-                              title="Manage issues for this form"
-                            >
-                              <Tag className="size-3.5" />
-                              Issues
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setFieldModal(form)}
-                              className="flex items-center gap-1.5 rounded-lg border border-pen-id/25 bg-pen-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-pen-id transition-colors hover:bg-pen-blue/20"
-                              title="Add or edit the fields shown on this form"
-                            >
-                              <Settings2 className="size-3.5" />
-                              Add Field
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={() => setFieldModal(form)}
+                            className="flex items-center gap-1.5 rounded-lg border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
+                            title="Add or edit the fields shown on this form"
+                          >
+                            <Settings2 className="size-3.5" />
+                            Add Field
+                          </button>
                         )}
                         <button
                           type="button"
                           onClick={() => setDesignModal(form)}
-                          className="flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-pen-muted transition-colors hover:border-pen-muted hover:bg-pen-card hover:text-pen-foreground"
+                          className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
                           title="Customize the public form's logo and colors"
                         >
                           <Palette className="size-3.5" />
@@ -2577,7 +2038,7 @@ export function SettingsIntakeFormsPage({
                         <button
                           type="button"
                           onClick={() => setModal({ type: "edit", form })}
-                          className="cursor-pointer rounded-lg p-1.5 text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                          className="cursor-pointer rounded-lg p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                           title="Edit form settings"
                         >
                           <Pencil className="size-3.5" />
@@ -2585,7 +2046,7 @@ export function SettingsIntakeFormsPage({
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(form)}
-                          className="cursor-pointer rounded-lg p-1.5 text-pen-muted transition-colors hover:bg-red-500/10 hover:text-pen-red dark:hover:bg-red-950/30"
+                          className="cursor-pointer rounded-lg p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
                           title="Delete this form"
                         >
                           <Trash2 className="size-3.5" />
@@ -2614,14 +2075,6 @@ export function SettingsIntakeFormsPage({
           form={fieldModal}
           defaultFields={fieldModal.defaultFields}
           onClose={() => setFieldModal(null)}
-        />
-      )}
-
-      {issueModal && (
-        <IssueManagerModal
-          form={issueModal}
-          members={departments.find((d) => d.id === issueModal.departmentId)?.members ?? []}
-          onClose={() => setIssueModal(null)}
         />
       )}
 

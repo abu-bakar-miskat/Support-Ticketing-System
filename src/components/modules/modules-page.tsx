@@ -96,21 +96,21 @@ const MODULE_STATUS_CONFIG: Record<
 > = {
   planned: {
     label: "Planned",
-    dot: "bg-pen-subtle",
-    bg: "bg-pen-surface",
-    text: "text-pen-muted",
+    dot: "bg-sts-subtle",
+    bg: "bg-sts-surface",
+    text: "text-sts-muted",
   },
   in_progress: {
     label: "In Progress",
-    dot: "bg-pen-blue",
-    bg: "bg-pen-blue-tint",
-    text: "text-pen-blue",
+    dot: "bg-sts-blue",
+    bg: "bg-sts-blue-tint",
+    text: "text-sts-blue",
   },
   completed: {
     label: "Completed",
-    dot: "bg-pen-green",
+    dot: "bg-sts-green",
     bg: "bg-[#e7f7ec] dark:bg-[#26352b]",
-    text: "text-pen-green",
+    text: "text-sts-green",
   },
 };
 
@@ -151,16 +151,16 @@ function buildStatusCounts(
 
 function StatCard({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex min-w-[130px] flex-col gap-0.5 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3">
-      <span className="font-mono text-[22px] font-semibold text-pen-foreground">{value}</span>
-      <span className="font-sans text-[12.5px] text-pen-subtle">{label}</span>
+    <div className="flex min-w-[130px] flex-col gap-0.5 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
+      <span className="font-mono text-[22px] font-semibold text-sts-foreground">{value}</span>
+      <span className="font-sans text-[12.5px] text-sts-subtle">{label}</span>
     </div>
   );
 }
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted">
+    <span className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted">
       <span className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
       {label}
     </span>
@@ -180,7 +180,7 @@ function UrgentBadge({ count }: { count: number }) {
 function CriticalBadge({ count }: { count: number }) {
   if (count === 0) return null;
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-pen-red/10 px-2 py-0.5 font-sans text-[11px] font-semibold text-pen-red">
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-red/10 px-2 py-0.5 font-sans text-[11px] font-semibold text-sts-red">
       {count} critical
     </span>
   );
@@ -192,8 +192,8 @@ function TicketRow({ ticket, indent }: { ticket: ModuleTicket; indent: boolean }
       ticketId={ticket.id}
       href={`/tickets/${ticket.id}`}
       className={cn(
-        "flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-pen-surface",
-        indent && "ml-5 border-l border-pen-card-border pl-2.5",
+        "flex items-center gap-2 rounded-md px-1.5 py-1.5 hover:bg-sts-surface",
+        indent && "ml-5 border-l border-sts-card-border pl-2.5",
       )}
     >
       <span
@@ -201,10 +201,10 @@ function TicketRow({ ticket, indent }: { ticket: ModuleTicket; indent: boolean }
         style={{ backgroundColor: TYPE_DOT[ticket.type] ?? "#64748b" }}
         title={ticket.type}
       />
-      <span className="shrink-0 font-mono text-[12px] font-semibold text-pen-id">
+      <span className="shrink-0 font-mono text-[12px] font-semibold text-sts-id">
         {ticket.subDepartment.prefix}-{ticket.ticketNumber}
       </span>
-      <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-pen-foreground">
+      <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-sts-foreground">
         {ticket.title}
       </span>
       {isUrgentTicket(ticket) && (
@@ -213,19 +213,19 @@ function TicketRow({ ticket, indent }: { ticket: ModuleTicket; indent: boolean }
         </span>
       )}
       {isCriticalTicket(ticket) && (
-        <span className="shrink-0 rounded bg-pen-red/10 px-1.5 py-px font-sans text-[10px] font-semibold text-pen-red">
+        <span className="shrink-0 rounded bg-sts-red/10 px-1.5 py-px font-sans text-[10px] font-semibold text-sts-red">
           critical
         </span>
       )}
       {ticket.storyPoints != null && (
-        <span className="shrink-0 rounded bg-pen-surface px-1.5 py-px font-mono text-[10.5px] text-pen-muted">
+        <span className="shrink-0 rounded bg-sts-surface px-1.5 py-px font-mono text-[10.5px] text-sts-muted">
           {ticket.storyPoints}
         </span>
       )}
       {ticket.assignee ? (
         <UserAvatar name={ticket.assignee.name} avatarUrl={ticket.assignee.avatarUrl} size={18} />
       ) : (
-        <span className="size-[18px] shrink-0 rounded-full border border-dashed border-pen-card-border" />
+        <span className="size-[18px] shrink-0 rounded-full border border-dashed border-sts-card-border" />
       )}
     </DrawerLink>
   );
@@ -304,12 +304,12 @@ function ModuleTicketsPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 pen-overlay-backdrop" onClick={onClose} />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col border-l border-pen-card-border bg-pen-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-pen-card-border px-4 py-3">
+      <div className="fixed inset-0 z-40 sts-overlay-backdrop" onClick={onClose} />
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col border-l border-sts-card-border bg-sts-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-4 py-3">
           <div>
-            <h2 className="font-sans text-[15px] font-semibold text-pen-foreground">{title}</h2>
-            <p className="font-sans text-[12.5px] text-pen-subtle">
+            <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">{title}</h2>
+            <p className="font-sans text-[12.5px] text-sts-subtle">
               {rows.length} ticket{rows.length !== 1 ? "s" : ""}
               {status ? ` · ${status}` : ""}
             </p>
@@ -317,22 +317,22 @@ function ModuleTicketsPanel({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
         </div>
 
         {/* Status filter chips — exact workflow labels */}
-        <div className="flex flex-wrap gap-1.5 border-b border-pen-card-border px-4 py-2.5">
+        <div className="flex flex-wrap gap-1.5 border-b border-sts-card-border px-4 py-2.5">
           <button
             type="button"
             onClick={() => setStatus(null)}
             className={cn(
               "rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
               status === null
-                ? "border-pen-blue/50 bg-pen-blue-tint text-pen-foreground"
-                : "border-pen-card-border bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
+                : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
             )}
           >
             All ({tickets.length})
@@ -345,8 +345,8 @@ function ModuleTicketsPanel({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                 status === s.label
-                  ? "border-pen-blue/50 bg-pen-blue-tint text-pen-foreground"
-                  : "border-pen-card-border bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                  ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
+                  : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
               )}
             >
               <span
@@ -360,7 +360,7 @@ function ModuleTicketsPanel({
 
         {/* Priority filter chips */}
         {priorityCounts.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 border-b border-pen-card-border px-4 py-2.5">
+          <div className="flex flex-wrap gap-1.5 border-b border-sts-card-border px-4 py-2.5">
             {priorityCounts.map((p) => (
               <button
                 key={p.priority}
@@ -369,8 +369,8 @@ function ModuleTicketsPanel({
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                   priority === p.priority
-                    ? "border-pen-blue/50 bg-pen-blue-tint text-pen-foreground"
-                    : "border-pen-card-border bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                    ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
+                    : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 <span
@@ -385,7 +385,7 @@ function ModuleTicketsPanel({
 
         {/* Label filter chips */}
         {labelCounts.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 border-b border-pen-card-border px-4 py-2.5">
+          <div className="flex flex-wrap gap-1.5 border-b border-sts-card-border px-4 py-2.5">
             {labelCounts.map(([l, count]) => (
               <button
                 key={l}
@@ -394,8 +394,8 @@ function ModuleTicketsPanel({
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                   label === l
-                    ? "border-pen-blue/50 bg-pen-blue-tint text-pen-foreground"
-                    : "border-pen-card-border bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                    ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
+                    : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 <span
@@ -410,7 +410,7 @@ function ModuleTicketsPanel({
 
         <div className="flex-1 overflow-y-auto px-2.5 py-2">
           {rows.length === 0 ? (
-            <p className="py-10 text-center font-sans text-[12.5px] text-pen-subtle">No tickets</p>
+            <p className="py-10 text-center font-sans text-[12.5px] text-sts-subtle">No tickets</p>
           ) : (
             rows.map(({ ticket, indent }) => (
               <TicketRow key={ticket.id} ticket={ticket} indent={indent} />
@@ -507,12 +507,12 @@ function ModuleCard({
           onShowTickets(null);
         }
       }}
-      className="flex h-full cursor-pointer flex-col rounded-2xl border border-pen-card-border bg-pen-card p-5 text-left transition-colors hover:border-pen-subtle/50"
+      className="flex h-full cursor-pointer flex-col rounded-2xl border border-sts-card-border bg-sts-card p-5 text-left transition-colors hover:border-sts-subtle/50"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="truncate font-sans text-[16px] font-semibold text-pen-foreground">
+          <h3 className="truncate font-sans text-[16px] font-semibold text-sts-foreground">
             {title}
           </h3>
           {statusConfig && (
@@ -536,7 +536,7 @@ function ModuleCard({
               <DropdownMenuTrigger
                 type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
@@ -549,7 +549,7 @@ function ModuleCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={onDelete}
-                  className="gap-2 font-sans text-[12.5px] text-pen-red focus:text-pen-red"
+                  className="gap-2 font-sans text-[12.5px] text-sts-red focus:text-sts-red"
                 >
                   <Trash2 className="size-3.5" /> Delete module
                 </DropdownMenuItem>
@@ -560,23 +560,23 @@ function ModuleCard({
       </div>
 
       {/* Range figures */}
-      <p className="mt-1 font-sans text-[12.5px] text-pen-subtle">
+      <p className="mt-1 font-sans text-[12.5px] text-sts-subtle">
         {rangeLabel}: +{createdInRange} created, {resolvedInRange} resolved
       </p>
       {description && (
-        <p className="mt-1 line-clamp-2 font-sans text-[12.5px] text-pen-subtle/80">{description}</p>
+        <p className="mt-1 line-clamp-2 font-sans text-[12.5px] text-sts-subtle/80">{description}</p>
       )}
 
       {/* Type breakdown */}
       {typeCounts.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {typeCounts.map(([type, count]) => (
-            <span key={type} className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted">
+            <span key={type} className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted">
               <span
                 className="size-1.5 rounded-full"
                 style={{ backgroundColor: TYPE_DOT[type] ?? "#64748b" }}
               />
-              <span className="font-semibold text-pen-foreground">{count}</span>
+              <span className="font-semibold text-sts-foreground">{count}</span>
               {type.toLowerCase()}
             </span>
           ))}
@@ -589,13 +589,13 @@ function ModuleCard({
           {priorityCounts.map((p) => (
             <span
               key={p.priority}
-              className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted"
+              className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted"
             >
               <span
                 className="size-1.5 rounded-full"
                 style={{ backgroundColor: UI_PRIORITY_DOT_HEX[uiPriorityFromDb(p.priority)] }}
               />
-              <span className="font-semibold text-pen-foreground">{p.count}</span>
+              <span className="font-semibold text-sts-foreground">{p.count}</span>
               {p.priority.toLowerCase()}
             </span>
           ))}
@@ -606,12 +606,12 @@ function ModuleCard({
       {labelCounts.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           {labelCounts.map(([l, count]) => (
-            <span key={l} className="inline-flex items-center gap-1.5 font-sans text-[12px] text-pen-muted">
+            <span key={l} className="inline-flex items-center gap-1.5 font-sans text-[12px] text-sts-muted">
               <span
                 className="size-1.5 rounded-full"
                 style={{ backgroundColor: labelColor(l) }}
               />
-              <span className="font-semibold text-pen-foreground">{count}</span>
+              <span className="font-semibold text-sts-foreground">{count}</span>
               <span className="max-w-[110px] truncate">{l}</span>
             </span>
           ))}
@@ -630,14 +630,14 @@ function ModuleCard({
                 onShowTickets(statusLabel);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-bg px-2.5 py-1.5 font-sans text-[12.5px] transition-colors hover:border-pen-subtle/60 hover:text-pen-foreground",
-                count === 0 ? "text-pen-subtle/70" : "text-pen-muted",
+                "inline-flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-bg px-2.5 py-1.5 font-sans text-[12.5px] transition-colors hover:border-sts-subtle/60 hover:text-sts-foreground",
+                count === 0 ? "text-sts-subtle/70" : "text-sts-muted",
               )}
             >
               <span
                 className={cn(
                   "font-semibold",
-                  count === 0 ? "text-pen-subtle" : "text-pen-foreground",
+                  count === 0 ? "text-sts-subtle" : "text-sts-foreground",
                 )}
               >
                 {count}
@@ -656,7 +656,7 @@ function ModuleCard({
           ))}
         </div>
       ) : (
-        <p className="mt-3 font-sans text-[13px] text-pen-subtle">
+        <p className="mt-3 font-sans text-[13px] text-sts-subtle">
           No tickets match the current filters.
         </p>
       )}
@@ -778,7 +778,7 @@ function ModulesBody({
       <Button
         size="sm"
         onClick={() => { setEditTarget(null); setShowForm(true); }}
-        className="ml-auto h-8 gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+        className="ml-auto h-8 gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
       >
         <Plus className="size-3.5" />
         New module
@@ -802,12 +802,12 @@ function ModulesBody({
 
   if (allProjects.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-pen-card-border py-16">
-        <Boxes className="size-8 text-pen-subtle" />
-        <p className="font-sans text-[13px] font-medium text-pen-foreground">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-16">
+        <Boxes className="size-8 text-sts-subtle" />
+        <p className="font-sans text-[13px] font-medium text-sts-foreground">
           No projects in this department
         </p>
-        <p className="max-w-sm text-center font-sans text-[12px] text-pen-subtle">
+        <p className="max-w-sm text-center font-sans text-[12px] text-sts-subtle">
           Create a project first, then add modules to organize its tickets.
         </p>
       </div>
@@ -818,17 +818,17 @@ function ModulesBody({
     return (
       <>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="shrink-0 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+          <span className="shrink-0 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
             Project
           </span>
           {newModuleButton}
         </div>
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-pen-card-border py-16">
-          <Boxes className="size-8 text-pen-subtle" />
-          <p className="font-sans text-[13px] font-medium text-pen-foreground">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-16">
+          <Boxes className="size-8 text-sts-subtle" />
+          <p className="font-sans text-[13px] font-medium text-sts-foreground">
             No modules yet
           </p>
-          <p className="max-w-sm text-center font-sans text-[12px] text-pen-subtle">
+          <p className="max-w-sm text-center font-sans text-[12px] text-sts-subtle">
             {canManage
               ? "Create a module for any project — that turns on the module system for it automatically."
               : "Managers haven't enabled modules for any project yet."}
@@ -842,7 +842,7 @@ function ModulesBody({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="shrink-0 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+        <span className="shrink-0 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
           Project
         </span>
         {enabledProjects.map((p) => (
@@ -853,8 +853,8 @@ function ModulesBody({
             className={cn(
               "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-sans text-[12.5px] transition-colors",
               p.id === selectedProjectId
-                ? "border-pen-blue/50 bg-pen-blue-tint text-pen-foreground"
-                : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
+                : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
             )}
           >
             <ProjectAvatar name={p.name} color={p.color ?? "#0a76b9"} avatarUrl={p.avatarUrl} size={18} />
@@ -867,7 +867,7 @@ function ModulesBody({
       {(!ready || isLoading) && <ModulesSectionsSkeleton />}
 
       {error instanceof Error && !isLoading && ready && (
-        <p className="py-8 text-center font-sans text-[13px] text-pen-red">{error.message}</p>
+        <p className="py-8 text-center font-sans text-[13px] text-sts-red">{error.message}</p>
       )}
 
       {data && !isLoading && ready && (
@@ -884,14 +884,14 @@ function ModulesBody({
             {(data.statuses ?? []).map((s) => (
               <LegendDot key={s.label} color={s.color} label={s.label} />
             ))}
-            <span className="h-3 w-px bg-pen-card-border" />
+            <span className="h-3 w-px bg-sts-card-border" />
             {Object.entries(TYPE_DOT).map(([type, color]) => (
               <LegendDot key={type} color={color} label={type} />
             ))}
           </div>
 
           <div className="flex flex-col gap-3">
-            <h2 className="border-t border-pen-card-border pt-4 font-sans text-[15px] font-semibold text-pen-foreground">
+            <h2 className="border-t border-sts-card-border pt-4 font-sans text-[15px] font-semibold text-sts-foreground">
               By module
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -937,11 +937,11 @@ function ModulesBody({
             </div>
 
             {data.modules.length === 0 && (
-              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-pen-card-border py-10">
-                <p className="font-sans text-[13px] font-medium text-pen-foreground">
+              <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-sts-card-border py-10">
+                <p className="font-sans text-[13px] font-medium text-sts-foreground">
                   No modules yet
                 </p>
-                <p className="font-sans text-[12px] text-pen-subtle">
+                <p className="font-sans text-[12px] text-sts-subtle">
                   {canManage
                     ? "Create the first module to start sub-categorizing this project."
                     : "Managers haven't created any modules for this project yet."}
@@ -979,14 +979,14 @@ function ModulesBody({
         onOpenChange={(next) => { if (!next && !deleteMutation.isPending) setDeleteTarget(null); }}
       >
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-          <AlertDialog.Popup className="pen-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-            <AlertDialog.Title className="pen-text-modal-title">Delete module</AlertDialog.Title>
-            <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-pen-subtle">
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+          <AlertDialog.Popup className="sts-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+            <AlertDialog.Title className="sts-text-modal-title">Delete module</AlertDialog.Title>
+            <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-sts-subtle">
               Tickets in this module won&apos;t be deleted — they&apos;ll move back to Module 0 (General).
             </AlertDialog.Description>
             {deleteTarget && (
-              <p className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[12.5px] text-pen-foreground">
+              <p className="mt-3 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[12.5px] text-sts-foreground">
                 {deleteTarget.name}
               </p>
             )}
@@ -1039,11 +1039,11 @@ export function ModulesPage({
         <PageHeader
           title="Modules"
           icon={Boxes}
-          iconClassName="text-pen-blue"
+          iconClassName="text-sts-blue"
           description="Ticket overview per module — counts reflect current state; the date range changes the created/resolved figures."
           actions={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex h-8 overflow-hidden rounded-lg border border-pen-card-border bg-pen-surface">
+            <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border bg-sts-surface">
               {RANGES.map((r) => (
                 <button
                   key={r.key}
@@ -1052,8 +1052,8 @@ export function ModulesPage({
                   className={cn(
                     "px-3 font-sans text-[12px] transition-colors",
                     rangeKey === r.key
-                      ? "bg-pen-card font-semibold text-pen-foreground shadow-sm"
-                      : "text-pen-muted hover:text-pen-foreground",
+                      ? "bg-sts-card font-semibold text-sts-foreground shadow-sm"
+                      : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   {r.label}
@@ -1061,7 +1061,7 @@ export function ModulesPage({
               ))}
             </div>
 
-            <div className="flex h-8 items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-1.5">
+            <div className="flex h-8 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-1.5">
               {PRIORITY_OPTIONS.map((p) => (
                 <button
                   key={p}
@@ -1078,8 +1078,8 @@ export function ModulesPage({
                   className={cn(
                     "flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[12px] transition-colors",
                     priorityFilter.has(p)
-                      ? "bg-pen-card font-semibold text-pen-foreground shadow-sm"
-                      : "text-pen-muted hover:text-pen-foreground",
+                      ? "bg-sts-card font-semibold text-sts-foreground shadow-sm"
+                      : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   <span
@@ -1098,7 +1098,7 @@ export function ModulesPage({
                 "flex h-8 items-center gap-1.5 rounded-lg border px-3 font-sans text-[12px] font-medium transition-colors",
                 urgentOnly
                   ? "border-[#ff4500]/50 bg-[#ff4500]/10 text-[#dd3300] dark:text-[#ff9466]"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
               )}
             >
               <Flame className="size-3.5" />

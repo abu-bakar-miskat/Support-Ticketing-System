@@ -33,8 +33,8 @@ function SettingsNavLink({
       className={cn(
         "flex h-7 items-center gap-[7px] rounded-[5px] px-[9px] font-sans text-[13px] transition-colors",
         active
-          ? "border border-pen-card-border bg-pen-settings-subnav-active font-semibold text-pen-foreground"
-          : "font-normal text-pen-muted hover:text-pen-foreground",
+          ? "border border-sts-card-border bg-sts-settings-subnav-active font-semibold text-sts-foreground"
+          : "font-normal text-sts-muted hover:text-sts-foreground",
       )}
     >
       <span className="truncate">{item.label}</span>
@@ -42,7 +42,7 @@ function SettingsNavLink({
         <>
           <span className="min-w-0 flex-1" aria-hidden />
           <span
-            className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-pen-id
+            className="flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-sts-id
             px-[4px] font-sans text-[8.5px] font-semibold text-white"
           >
             {item.count > 99 ? "99+" : item.count}
@@ -74,9 +74,9 @@ function SettingsSubNav({
   return (
     <nav
       aria-label="Settings"
-      className="hidden w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-pen-card-border bg-pen-settings-subnav px-[18px] pt-[22px] pb-[18px] lg:flex lg:self-stretch"
+      className="hidden w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-sts-card-border bg-sts-settings-subnav px-[18px] pt-[22px] pb-[18px] lg:flex lg:self-stretch"
     >
-      <p className="font-sans text-base font-semibold text-pen-foreground">
+      <p className="font-sans text-base font-semibold text-sts-foreground">
         Settings
       </p>
       <div className="h-3.5" />
@@ -84,7 +84,7 @@ function SettingsSubNav({
       {nav.map((group, groupIndex) => (
         <div key={group.label}>
           {groupIndex > 0 && <div className="h-3" />}
-          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
             {group.label}
           </p>
           <div className="h-[3px]" />
@@ -127,7 +127,7 @@ function SettingsMobileNav({
     allItems.find((item) => item.href === activeHref) ?? allItems[0];
 
   return (
-    <div className="border-b border-pen-card-border bg-pen-settings-subnav px-4 py-3 lg:hidden">
+    <div className="border-b border-sts-card-border bg-sts-settings-subnav px-4 py-3 lg:hidden">
       <Select
         value={activeItem?.href}
         onValueChange={(href) => {
@@ -140,7 +140,7 @@ function SettingsMobileNav({
         <SelectContent>
           {nav.map((group) => (
             <SelectGroup key={group.label}>
-              <SelectLabel className="font-sans text-[11.5px] tracking-[1px] text-pen-subtle">
+              <SelectLabel className="font-sans text-[11.5px] tracking-[1px] text-sts-subtle">
                 {group.label}
               </SelectLabel>
               {group.items.map((item) => (

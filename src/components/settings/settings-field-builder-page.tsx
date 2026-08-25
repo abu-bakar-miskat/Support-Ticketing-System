@@ -47,7 +47,7 @@ function typeLabel(type: FieldRow["type"]) {
 
 function FieldTypeIcon({ type }: { type: FieldRow["type"] }) {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-pen-surface text-pen-muted">
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-surface text-sts-muted">
       {FIELD_TYPES.find((t) => t.value === type)?.icon}
     </span>
   )
@@ -158,10 +158,10 @@ function FieldEditor({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
+    <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5">
       {/* Label */}
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-medium text-pen-subtle uppercase tracking-wide">
+        <label className="font-sans text-[11.5px] font-medium text-sts-subtle uppercase tracking-wide">
           Label
         </label>
         <input
@@ -173,13 +173,13 @@ function FieldEditor({
             if (e.key === "Enter") onSave(state)
             if (e.key === "Escape") onCancel()
           }}
-          className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
       </div>
 
       {/* Type selector */}
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-medium text-pen-subtle uppercase tracking-wide">
+        <label className="font-sans text-[11.5px] font-medium text-sts-subtle uppercase tracking-wide">
           Type
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -191,8 +191,8 @@ function FieldEditor({
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                 state.type === t.value
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
               )}
             >
               {t.icon}
@@ -205,7 +205,7 @@ function FieldEditor({
       {/* Options editor — only for select */}
       {state.type === "select" && (
         <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11.5px] font-medium text-pen-subtle uppercase tracking-wide">
+          <label className="font-sans text-[11.5px] font-medium text-sts-subtle uppercase tracking-wide">
             Options
           </label>
 
@@ -216,7 +216,7 @@ function FieldEditor({
               const isOpen = expandedOption === opt
               const isEditingOpt = editingOption?.idx === idx
               return (
-                <div key={opt} className="rounded-lg border border-pen-card-border bg-pen-surface">
+                <div key={opt} className="rounded-lg border border-sts-card-border bg-sts-surface">
                   {/* Option row */}
                   <div className="flex items-center gap-2 px-2.5 py-1.5">
                     {isEditingOpt ? (
@@ -229,26 +229,26 @@ function FieldEditor({
                             if (e.key === "Enter") { e.preventDefault(); confirmEditOption() }
                             if (e.key === "Escape") setEditingOption(null)
                           }}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-pen-id bg-pen-card px-2 font-sans text-[12px] text-pen-foreground outline-none"
+                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-pen-blue px-2 text-white">
+                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
                           <Check className="size-3" />
                         </button>
-                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-pen-card-border px-2 text-pen-subtle hover:text-pen-foreground">
+                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                           <X className="size-3" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span className="flex-1 font-sans text-[12px] text-pen-foreground">{opt}</span>
+                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">{opt}</span>
                         <button
                           type="button"
                           onClick={() => setExpandedOption(isOpen ? null : opt)}
                           className={cn(
                             "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
                             isOpen
-                              ? "bg-pen-blue-tint text-pen-id"
-                              : "text-pen-subtle hover:text-pen-foreground",
+                              ? "bg-sts-blue-tint text-sts-id"
+                              : "text-sts-subtle hover:text-sts-foreground",
                           )}
                         >
                           <ChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
@@ -257,14 +257,14 @@ function FieldEditor({
                         <button
                           type="button"
                           onClick={() => setEditingOption({ idx, draft: opt })}
-                          className="text-pen-subtle hover:text-pen-foreground"
+                          className="text-sts-subtle hover:text-sts-foreground"
                         >
                           <Pencil className="size-3" />
                         </button>
                         <button
                           type="button"
                           onClick={() => removeOption(opt)}
-                          className="text-pen-subtle hover:text-pen-red"
+                          className="text-sts-subtle hover:text-sts-red"
                         >
                           <X className="size-3" />
                         </button>
@@ -274,7 +274,7 @@ function FieldEditor({
 
                   {/* Child options panel */}
                   {isOpen && (
-                    <div className="border-t border-pen-card-border px-2.5 py-2 flex flex-col gap-1.5">
+                    <div className="border-t border-sts-card-border px-2.5 py-2 flex flex-col gap-1.5">
                       {children.length > 0 && (
                         <div className="flex flex-col gap-1">
                           {children.map((child, idx) => {
@@ -289,29 +289,29 @@ function FieldEditor({
                                     if (e.key === "Enter") { e.preventDefault(); confirmEditChild() }
                                     if (e.key === "Escape") setEditingChild(null)
                                   }}
-                                  className="h-6 min-w-0 flex-1 rounded-md border border-pen-id bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none"
+                                  className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-pen-blue px-2 text-white">
+                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
                                   <Check className="size-2.5" />
                                 </button>
-                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-pen-card-border px-2 text-pen-subtle hover:text-pen-foreground">
+                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                                   <X className="size-2.5" />
                                 </button>
                               </div>
                             ) : (
-                              <div key={child} className="flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-card px-2 py-1">
-                                <span className="flex-1 font-sans text-[11px] text-pen-foreground">{child}</span>
+                              <div key={child} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1">
+                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">{child}</span>
                                 <button
                                   type="button"
                                   onClick={() => setEditingChild({ parent: opt, idx, draft: child })}
-                                  className="text-pen-subtle hover:text-pen-foreground"
+                                  className="text-sts-subtle hover:text-sts-foreground"
                                 >
                                   <Pencil className="size-2.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removeChild(opt, child)}
-                                  className="text-pen-subtle hover:text-pen-red"
+                                  className="text-sts-subtle hover:text-sts-red"
                                 >
                                   <X className="size-2.5" />
                                 </button>
@@ -328,12 +328,12 @@ function FieldEditor({
                             if (e.key === "Enter") { e.preventDefault(); addChild(opt) }
                           }}
                           placeholder={`Add sub-option for "${opt}"…`}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-pen-card-border bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                         />
                         <button
                           type="button"
                           onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-md border border-pen-card-border bg-pen-card px-2 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+                          className="flex h-6 items-center gap-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
                         >
                           <Plus className="size-2.5" />
                           Add
@@ -355,12 +355,12 @@ function FieldEditor({
                 if (e.key === "Enter") { e.preventDefault(); addOption() }
               }}
               placeholder="Add option…"
-              className="h-7 min-w-0 flex-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+              className="h-7 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+              className="flex h-7 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" />
               Add
@@ -375,18 +375,18 @@ function FieldEditor({
           type="checkbox"
           checked={state.isRequired}
           onChange={(e) => setState((s) => ({ ...s, isRequired: e.target.checked }))}
-          className="size-3.5 rounded accent-pen-blue"
+          className="size-3.5 rounded accent-sts-blue"
         />
-        <span className="font-sans text-[12px] text-pen-foreground">Required</span>
+        <span className="font-sans text-[12px] text-sts-foreground">Required</span>
       </label>
 
-      {error && <p className="font-sans text-[11.5px] text-pen-red">{error}</p>}
+      {error && <p className="font-sans text-[11.5px] text-sts-red">{error}</p>}
 
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           Cancel
         </button>
@@ -394,7 +394,7 @@ function FieldEditor({
           type="button"
           onClick={() => onSave(state)}
           disabled={saving}
-          className="flex h-7 items-center gap-1 rounded-lg bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
+          className="flex h-7 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
         >
           <Check className="size-3" />
           {saving ? "Saving…" : "Save field"}
@@ -537,17 +537,17 @@ export function SettingsFieldBuilderPage({
         <button
           type="button"
           onClick={() => startTransition(() => router.push("/settings/intake-forms"))}
-          className="flex w-fit items-center gap-1 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+          className="flex w-fit items-center gap-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ChevronLeft className="size-3.5" />
           Support forms
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="pen-text-admin-title">
+            <h1 className="sts-text-admin-title">
               {formName}
             </h1>
-            <p className="mt-[3px] font-sans text-[13px] text-pen-muted">{departmentName}</p>
+            <p className="mt-[3px] font-sans text-[13px] text-sts-muted">{departmentName}</p>
           </div>
           <Button
             onClick={() => {
@@ -555,7 +555,7 @@ export function SettingsFieldBuilderPage({
               setEditingId(null)
               setEditorError(null)
             }}
-            className="h-[34px] shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-4 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90"
+            className="h-[34px] shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
             Add field
@@ -566,9 +566,9 @@ export function SettingsFieldBuilderPage({
       {/* Field list */}
       <div className="flex flex-col gap-2">
         {fields.length === 0 && !addingField && (
-          <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-pen-card-border py-12 text-center">
-            <p className="font-sans text-[13px] text-pen-muted">No fields yet.</p>
-            <p className="mt-1 font-sans text-[12px] text-pen-subtle">
+          <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-12 text-center">
+            <p className="font-sans text-[13px] text-sts-muted">No fields yet.</p>
+            <p className="mt-1 font-sans text-[12px] text-sts-subtle">
               Add fields to define what submitters will fill in.
             </p>
           </div>
@@ -611,20 +611,20 @@ export function SettingsFieldBuilderPage({
               }}
               onDragEnd={() => { dragId.current = null; setDragOverId(null) }}
               className={cn(
-                "group flex items-center gap-3 rounded-xl border border-pen-card-border bg-pen-card px-3 py-2.5 transition-colors",
-                isDragOver && "border-pen-id bg-pen-blue-tint",
+                "group flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                isDragOver && "border-sts-id bg-sts-blue-tint",
               )}
             >
-              <GripVertical className="size-4 shrink-0 cursor-grab text-pen-subtle opacity-30 group-hover:opacity-70 active:cursor-grabbing" />
+              <GripVertical className="size-4 shrink-0 cursor-grab text-sts-subtle opacity-30 group-hover:opacity-70 active:cursor-grabbing" />
               <FieldTypeIcon type={field.type} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {field.label}
                   {field.isRequired && (
-                    <span className="ml-1 text-pen-red">*</span>
+                    <span className="ml-1 text-sts-red">*</span>
                   )}
                 </p>
-                <p className="font-sans text-[11.5px] text-pen-subtle">
+                <p className="font-sans text-[11.5px] text-sts-subtle">
                   {typeLabel(field.type)}
                   {field.type === "select" && field.options.length > 0 && (
                     <> · {field.options.length} option{field.options.length !== 1 ? "s" : ""}</>
@@ -639,14 +639,14 @@ export function SettingsFieldBuilderPage({
                     setAddingField(false)
                     setEditorError(null)
                   }}
-                  className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <Pencil className="size-3" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(field)}
-                  className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-red"
+                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                 >
                   <Trash2 className="size-3" />
                 </button>

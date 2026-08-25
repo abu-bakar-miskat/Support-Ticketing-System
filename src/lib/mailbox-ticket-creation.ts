@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine";
-import { resolveColumnIdForStatus } from "@/lib/board-columns";
 import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
@@ -59,8 +58,6 @@ export async function createTicketFromInboundEmail(params: {
     excludeUserId: managerRow?.userId ?? null,
   });
 
-  const boardColumnId = await resolveColumnIdForStatus(prisma, { departmentId, status });
-
   const ticket = await prisma.$transaction(async (tx) => {
     const created = await tx.ticket.create({
       data: {
@@ -74,7 +71,6 @@ export async function createTicketFromInboundEmail(params: {
         subDepartmentId: teamId,
         projectId,
         assigneeId: assignResult.assigneeId,
-        ...(boardColumnId ? { boardColumnId } : {}),
       },
       select: { id: true, ticketNumber: true },
     });
@@ -100,7 +96,7 @@ export async function createTicketFromInboundEmail(params: {
   }
 
   const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName };
-  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues);
+  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues, undefined, teamId);
 
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
@@ -117,7 +113,7 @@ export async function createTicketFromInboundEmail(params: {
   const humanId = `${team.prefix}-${ticket.ticketNumber}`;
 
   if (assignResult.failed) {
-    await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId);
+    await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId, teamId);
   } else if (assignResult.assigneeId) {
     const assignee = await prisma.profile.findUnique({
       where: { id: assignResult.assigneeId },
@@ -140,6 +136,7 @@ export async function createTicketFromInboundEmail(params: {
         assignedByName: "System",
         assignedById: creatorId,
         departmentId,
+        subDepartmentId: teamId,
       }).catch(() => undefined);
     }
   }

@@ -70,15 +70,16 @@ export async function sendAssignmentEmail(args: {
   assignedByName: string;
   assignedById?: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyAssignment) return;
   if (!await isEmailPrefEnabled(args.assigneeId, "emailOnAssign")) return;
 
-  const { to, assigneeId, assignedById, departmentId, ...rest } = args;
+  const { to, assigneeId, assignedById, departmentId, subDepartmentId, ...rest } = args;
   const signature = await getUserSignature(assignedById);
-  const overrides = await getEmailTemplateOverrides(departmentId);
+  const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderAssignment({
     ...rest,
     signature,
@@ -109,11 +110,12 @@ export async function sendIntakeConfirmationEmail(args: {
   responses?: { label: string; value: string }[];
   replyToken?: string | null;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }): Promise<{ providerMessageId: string | null; bodyText: string }> {
   if (!resend) return { providerMessageId: null, bodyText: "" };
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyIntakeConfirmation) return { providerMessageId: null, bodyText: "" };
-  const overrides = await getEmailTemplateOverrides(args.departmentId);
+  const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
   const { subject, html, text } = renderIntakeConfirmation({
     submitterName: args.submitterName,
     submitterEmail: args.submitterEmail,
@@ -150,9 +152,10 @@ export async function sendIntakeVerificationEmail(args: {
   formName: string;
   verifyUrl: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }): Promise<{ ok: boolean; skipped: boolean }> {
   if (!resend) return { ok: false, skipped: true };
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyIntakeConfirmation) return { ok: false, skipped: true };
   const { subject, html, text } = renderIntakeVerification({
     submitterName: args.submitterName,
@@ -184,12 +187,13 @@ export async function sendIntakeManagerAlertEmail(args: {
   formName: string;
   submitterName: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!await isEmailPrefEnabled(args.managerId, "emailOnIntakeManagerAlert")) return;
 
-  const { to, managerId, departmentId, ...rest } = args;
+  const { to, managerId, departmentId, subDepartmentId, ...rest } = args;
   const { subject, html, text } = renderIntakeManagerAlert({
     ...rest,
     branding: brandingFrom(config),
@@ -215,13 +219,14 @@ export async function sendAssignmentFailedAlertEmail(args: {
   humanId: string;
   ticketTitle: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyAssignmentFailed) return;
   if (!await isEmailPrefEnabled(args.managerId, "emailOnAssignmentFailed")) return;
 
-  const { to, managerId, departmentId, ...rest } = args;
+  const { to, managerId, departmentId, subDepartmentId, ...rest } = args;
   const { subject, html, text } = renderAssignmentFailedAlert({
     ...rest,
     branding: brandingFrom(config),
@@ -272,12 +277,13 @@ export async function sendResolutionEmail(args: {
   formName: string;
   ticketTitle: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyResolution) return;
-  const { to, departmentId, ...rest } = args;
-  const overrides = await getEmailTemplateOverrides(departmentId);
+  const { to, departmentId, subDepartmentId, ...rest } = args;
+  const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderResolution({
     ...rest,
     branding: brandingFrom(config),
@@ -305,14 +311,15 @@ export async function sendTicketCompletedEmail(args: {
   ticketTitle: string;
   completedByName: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyTicketCompleted) return;
   if (!await isEmailPrefEnabled(args.recipientId, "emailOnTicketComplete")) return;
 
-  const { to, recipientId, departmentId, ...rest } = args;
-  const overrides = await getEmailTemplateOverrides(departmentId);
+  const { to, recipientId, departmentId, subDepartmentId, ...rest } = args;
+  const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderTicketCompleted({
     ...rest,
     branding: brandingFrom(config),
@@ -349,12 +356,13 @@ export async function sendCustomerReplyEmail(args: {
   inReplyTo?: string | null;
   attachments?: Array<{ content: Buffer; filename: string }>;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }): Promise<string | null> {
   if (!resend) return null;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyCustomerReply) return null;
   const signature = await getUserSignature(args.agentId);
-  const overrides = await getEmailTemplateOverrides(args.departmentId);
+  const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
 
   const { html, text } = renderCustomerReply({
     submitterName: args.submitterName,
@@ -438,15 +446,16 @@ export async function sendMentionEmail(args: {
   ticketTitle: string;
   actorId?: string;
   departmentId?: string | null;
+  subDepartmentId?: string | null;
 }) {
   if (!resend) return;
-  const config = await getEmailConfig(args.departmentId);
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyMention) return;
   if (!await isEmailPrefEnabled(args.mentionedUserId, "emailOnMention")) return;
 
-  const { to, mentionedUserId, actorId, departmentId, ...rest } = args;
+  const { to, mentionedUserId, actorId, departmentId, subDepartmentId, ...rest } = args;
   const signature = await getUserSignature(actorId);
-  const overrides = await getEmailTemplateOverrides(departmentId);
+  const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderMention({
     ...rest,
     signature,

@@ -126,6 +126,46 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result.method).toBe("ROUND_ROBIN")
     expect(result.assigneeId).toBe("solo")
   })
+
+  it("sub-department override wins over the parent department's method", async () => {
+    // Parent says ROUND_ROBIN; sub-department overrides to MANUAL.
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
+    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "MANUAL" } as never)
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
+  })
+
+  it("inherits the parent department's method when the sub-department override is null", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED" } as never)
+    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 3 }, { userId: "b", count: 0 }])
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false })
+  })
+
+  it("RULE_BASED: queries rules scoped to the sub-department plus department-wide, sub-dept first", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
+    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
+    mockRulesFindMany.mockResolvedValue([
+      { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
+    ] as never)
+    mockProfileFind.mockResolvedValue({ isActive: true } as never)
+    mockMembershipFind.mockResolvedValue({ isActive: true, doNotAssign: false } as never)
+
+    await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+
+    expect(mockRulesFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          departmentId: "d1",
+          enabled: true,
+          OR: [{ subDepartmentId: "t1" }, { subDepartmentId: null }],
+        }),
+        orderBy: [{ subDepartmentId: { sort: "desc", nulls: "last" } }, { order: "asc" }],
+      }),
+    )
+  })
 })
 
 describe("recordAssignmentFailure — ASG-02/03", () => {

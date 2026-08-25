@@ -22,8 +22,6 @@ export const TEMPLATE_FEATURE_KEYS = [
   "importForm",
   /** Members — sidebar "Members" (/department) + /settings/members. */
   "members",
-  /** Teams & roles — /settings/sub-departments. */
-  "teamsRoles",
   /** Departments management — /settings/departments. */
   "departmentsSettings",
   /** Branding — /settings/branding. */
@@ -50,8 +48,6 @@ export const TEMPLATE_FEATURE_KEYS = [
   "myTime",
   /** Activity feed — sidebar "Activity" (/activity). */
   "activity",
-  /** Recruitment — sidebar "Recruitment" (/recruitment). */
-  "recruitment",
   /** Team Reports — sidebar "Sub Departments" (/sub-departments). */
   "teamReports",
   /** Help Center — sidebar "Help Center" (/docs). */
@@ -71,7 +67,6 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   apiKeys: "API keys",
   importForm: "Import from Notion",
   members: "Members",
-  teamsRoles: "Sub departments & roles",
   departmentsSettings: "Departments",
   branding: "Branding",
   projects: "Projects",
@@ -85,7 +80,6 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   calendar: "Calendar",
   myTime: "My Time",
   activity: "Activity",
-  recruitment: "Recruitment",
   teamReports: "Sub Departments",
   helpCenter: "Help Center",
 };
@@ -95,12 +89,12 @@ export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; 
   {
     label: "Sidebar",
     icon: LayoutGrid,
-    keys: ["board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "recruitment", "teamReports", "helpCenter"],
+    keys: ["board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "teamReports", "helpCenter"],
   },
   {
     label: "Workspace settings",
     icon: Users2,
-    keys: ["members", "teamsRoles", "departmentsSettings", "branding"],
+    keys: ["members", "departmentsSettings", "branding"],
   },
   {
     label: "Configuration settings",

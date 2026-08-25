@@ -36,7 +36,7 @@ export type SubmissionRow = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -52,7 +52,7 @@ function PriorityPill({ priority }: { priority: string }) {
         "inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11.5px] font-medium",
         urgent
           ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-          : "bg-pen-surface text-pen-muted",
+          : "bg-sts-surface text-sts-muted",
       )}
     >
       {priority}
@@ -243,21 +243,21 @@ export function SettingsIntakeSubmissionsPage({
       <div className="flex flex-col gap-3">
         <Link
           href="/settings/intake-forms"
-          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-pen-muted hover:text-pen-foreground transition-colors"
+          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           Support forms
         </Link>
         <div className="min-w-0">
-          <h1 className="pen-text-admin-title">{formName}</h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+          <h1 className="sts-text-admin-title">{formName}</h1>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             {departmentName} · {submissions.length} submission{submissions.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 rounded-lg border border-pen-card-border bg-pen-card p-1 w-fit">
+      <div className="flex items-center gap-1 rounded-lg border border-sts-card-border bg-sts-card p-1 w-fit">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -266,14 +266,14 @@ export function SettingsIntakeSubmissionsPage({
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
               filter === tab.value
-                ? "bg-pen-blue text-white dark:text-gray-900 shadow-sm"
-                : "text-pen-muted hover:text-pen-foreground hover:bg-pen-surface",
+                ? "bg-sts-blue text-white dark:text-gray-900 shadow-sm"
+                : "text-sts-muted hover:text-sts-foreground hover:bg-sts-surface",
             )}
           >
             {tab.label}
             <span className={cn(
               "rounded-full px-1.5 py-0.5 font-sans text-[10.5px] font-semibold",
-              filter === tab.value ? "bg-white/20 text-white dark:text-gray-900" : "bg-pen-surface text-pen-subtle",
+              filter === tab.value ? "bg-white/20 text-white dark:text-gray-900" : "bg-sts-surface text-sts-subtle",
             )}>
               {tab.count}
             </span>
@@ -283,8 +283,8 @@ export function SettingsIntakeSubmissionsPage({
 
       {/* Floating action bar */}
       {someSelected && (
-        <div className="flex items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-2.5 shadow-sm">
-          <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+        <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-2.5 shadow-sm">
+          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
             {selected.size} selected
           </span>
           <div className="flex-1" />
@@ -292,7 +292,7 @@ export function SettingsIntakeSubmissionsPage({
             <button
               type="button"
               onClick={() => setAssignModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-semibold text-white dark:text-gray-900 hover:bg-pen-blue/90 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-semibold text-white dark:text-gray-900 hover:bg-sts-blue/90 transition-colors"
             >
               <Users className="size-3.5" />
               Assign {selectedWithTicket.length} ticket{selectedWithTicket.length !== 1 ? "s" : ""}
@@ -301,7 +301,7 @@ export function SettingsIntakeSubmissionsPage({
           <button
             type="button"
             onClick={() => setBulkConfirm(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-pen-red/40 bg-red-50 px-3 py-1.5 font-sans text-[12px] font-semibold text-pen-red hover:bg-red-100 transition-colors dark:bg-red-950/30 dark:hover:bg-red-950/50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sts-red/40 bg-red-50 px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-red hover:bg-red-100 transition-colors dark:bg-red-950/30 dark:hover:bg-red-950/50"
           >
             <Trash2 className="size-3.5" />
             Delete
@@ -309,7 +309,7 @@ export function SettingsIntakeSubmissionsPage({
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="rounded-md p-1.5 text-pen-muted hover:bg-pen-surface hover:text-pen-foreground transition-colors"
+            className="rounded-md p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
             title="Clear selection"
           >
             <X className="size-3.5" />
@@ -318,18 +318,18 @@ export function SettingsIntakeSubmissionsPage({
       )}
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-pen-card-border py-16 text-center">
-          <p className="font-sans text-[13px] text-pen-muted">
+        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-16 text-center">
+          <p className="font-sans text-[13px] text-sts-muted">
             {filter === "unassigned" ? "No unassigned tickets." : filter === "assigned" ? "No assigned tickets." : "No submissions yet."}
           </p>
           {filter !== "all" && (
-            <button type="button" onClick={() => setFilter("all")} className="mt-2 font-sans text-[12px] text-pen-id hover:underline">
+            <button type="button" onClick={() => setFilter("all")} className="mt-2 font-sans text-[12px] text-sts-id hover:underline">
               Show all submissions
             </button>
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -340,7 +340,7 @@ export function SettingsIntakeSubmissionsPage({
                     ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
                     onChange={toggleAll}
                     aria-label="Select all"
-                    className="size-3.5 cursor-pointer rounded accent-pen-blue"
+                    className="size-3.5 cursor-pointer rounded accent-sts-blue"
                   />
                 </TableHead>
                 <TableHead className="h-8 w-[24%]"><SectionLabel>Submitter</SectionLabel></TableHead>
@@ -353,7 +353,7 @@ export function SettingsIntakeSubmissionsPage({
             </TableHeader>
             <TableBody>
               {filtered.map((s) => (
-                <TableRow key={s.id} className={cn("border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]", selected.has(s.id) && "bg-pen-blue/[0.03]")}>
+                <TableRow key={s.id} className={cn("border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]", selected.has(s.id) && "bg-sts-blue/[0.03]")}>
                   <TableCell className="py-0">
                     <div className="flex h-[56px] items-center">
                       <input
@@ -362,15 +362,15 @@ export function SettingsIntakeSubmissionsPage({
                         onChange={() => toggleOne(s.id)}
                         disabled={!s.ticketId}
                         aria-label={`Select submission from ${s.submitterName}`}
-                        className="size-3.5 cursor-pointer rounded accent-pen-blue disabled:cursor-not-allowed disabled:opacity-40"
+                        className="size-3.5 cursor-pointer rounded accent-sts-blue disabled:cursor-not-allowed disabled:opacity-40"
                       />
                     </div>
                   </TableCell>
 
                   <TableCell className="py-0">
                     <Link href={`/settings/intake-forms/${formId}/submissions/${s.id}`} className="flex h-[56px] flex-col justify-center gap-0.5">
-                      <span className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">{s.submitterName}</span>
-                      <span className="truncate font-sans text-[11.5px] text-pen-subtle">{s.submitterEmail}</span>
+                      <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{s.submitterName}</span>
+                      <span className="truncate font-sans text-[11.5px] text-sts-subtle">{s.submitterEmail}</span>
                     </Link>
                   </TableCell>
 
@@ -382,7 +382,7 @@ export function SettingsIntakeSubmissionsPage({
 
                   <TableCell className="py-0">
                     <div className="flex h-[56px] items-center">
-                      <span className="font-sans text-[12px] text-pen-foreground">{formatDate(s.createdAt)}</span>
+                      <span className="font-sans text-[12px] text-sts-foreground">{formatDate(s.createdAt)}</span>
                     </div>
                   </TableCell>
 
@@ -396,25 +396,25 @@ export function SettingsIntakeSubmissionsPage({
                           onSelect={(member) => handleAssign(s, member)}
                         >
                           {({ ref, onClick }) => (
-                            <button ref={ref} type="button" onClick={onClick} className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-pen-surface max-w-[160px]">
+                            <button ref={ref} type="button" onClick={onClick} className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-sts-surface max-w-[160px]">
                               {getAssignee(s).name ? (
                                 <>
                                   <AvatarVisual name={getAssignee(s).name!} avatarUrl={getAssignee(s).avatarUrl} size={20} />
-                                  <span className="truncate font-sans text-[12px] text-pen-foreground">{getAssignee(s).name}</span>
+                                  <span className="truncate font-sans text-[12px] text-sts-foreground">{getAssignee(s).name}</span>
                                 </>
                               ) : (
                                 <>
-                                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-surface">
-                                    <UserRound className="size-3 text-pen-subtle" />
+                                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-surface">
+                                    <UserRound className="size-3 text-sts-subtle" />
                                   </span>
-                                  <span className="font-sans text-[12px] text-pen-subtle">Unassigned</span>
+                                  <span className="font-sans text-[12px] text-sts-subtle">Unassigned</span>
                                 </>
                               )}
                             </button>
                           )}
                         </InlineAssigneePicker>
                       ) : (
-                        <span className="font-sans text-[12px] text-pen-subtle pl-2">—</span>
+                        <span className="font-sans text-[12px] text-sts-subtle pl-2">—</span>
                       )}
                     </div>
                   </TableCell>
@@ -422,12 +422,12 @@ export function SettingsIntakeSubmissionsPage({
                   <TableCell className="py-0">
                     <div className="flex h-[56px] items-center">
                       {s.ticketId ? (
-                        <Link href={`/tickets/${s.ticketId}`} className="font-sans text-[12px] font-medium text-pen-id hover:underline">
+                        <Link href={`/tickets/${s.ticketId}`} className="font-sans text-[12px] font-medium text-sts-id hover:underline">
                           #{s.ticketNumber}
-                          {s.ticketStatus ? <span className="ml-1 text-pen-subtle">· {s.ticketStatus}</span> : null}
+                          {s.ticketStatus ? <span className="ml-1 text-sts-subtle">· {s.ticketStatus}</span> : null}
                         </Link>
                       ) : (
-                        <span className="font-sans text-[12px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[12px] text-sts-subtle">—</span>
                       )}
                     </div>
                   </TableCell>
@@ -437,14 +437,14 @@ export function SettingsIntakeSubmissionsPage({
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(s)}
-                        className="cursor-pointer rounded-md p-1.5 text-pen-muted hover:bg-red-50 hover:text-pen-red transition-colors dark:hover:bg-red-950/30"
+                        className="cursor-pointer rounded-md p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
                         title="Delete submission"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
                       <Link
                         href={`/settings/intake-forms/${formId}/submissions/${s.id}`}
-                        className="flex items-center gap-1 rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-pen-foreground shadow-sm transition-colors hover:border-pen-id hover:bg-pen-blue-tint hover:text-pen-id"
+                        className="flex items-center gap-1 rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
                         title="View submission details"
                       >
                         <Eye className="size-3.5" />

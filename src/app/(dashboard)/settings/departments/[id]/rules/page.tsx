@@ -18,11 +18,21 @@ export default async function DepartmentRulesSettingsRoute({
 
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
   });
   if (!department) notFound();
 
   if (!canManageDeptCalendar(profile, departmentId)) redirect("/settings/departments");
 
-  return <RulesSettingsPage departmentId={department.id} departmentName={department.name} />;
+  return (
+    <RulesSettingsPage
+      departmentId={department.id}
+      departmentName={department.name}
+      subDepartments={department.subDepartments}
+    />
+  );
 }

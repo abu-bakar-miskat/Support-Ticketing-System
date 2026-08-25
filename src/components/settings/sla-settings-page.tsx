@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IssueAssigneeSelect, type MemberOption } from "@/components/ui/issue-assignee-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 
@@ -99,18 +100,25 @@ export function SlaSettingsPage({
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Department page only: a scope tab bar to view policies sub-department-wise.
+  // Department page only: a scope dropdown to view policies sub-department-wise.
   // "all" merges every sub-department, "" is department-wide, else a sub-dept id.
-  const showTabs = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
-  const [activeScope, setActiveScope] = useState<string>(showTabs ? "all" : "");
+  const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
+  const [activeScope, setActiveScope] = useState<string>(showScopeSelect ? "all" : "");
   const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name]));
 
+  // Options for the scope dropdown, in display order.
+  const scopeOptions = [
+    { value: "all", label: "All sub-departments" },
+    { value: "", label: "Only Department" },
+    ...(subDepartments ?? []).map((s) => ({ value: s.id, label: s.name })),
+  ];
+
   // Working hours + members stay at the surface's own scope (the sub-department on
-  // the scoped surface, else department-wide), independent of the active tab.
+  // the scoped surface, else department-wide), independent of the selected scope.
   const settingsScopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
   const settingsScopeBody = subDepartmentId ? { subDepartmentId } : {};
 
-  // Policies + forms follow the active tab on the department page.
+  // Policies + forms follow the selected scope on the department page.
   const policiesScopeQs = subDepartmentId
     ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}`
     : activeScope === "all"
@@ -120,9 +128,9 @@ export function SlaSettingsPage({
         : "";
 
   // On the merged "All" overview the target scope is ambiguous, so creating is
-  // disabled there; otherwise new policies land in the active scope.
-  const creationDisabled = showTabs && activeScope === "all";
-  const showPolicySubDept = showTabs && activeScope === "all";
+  // disabled there; otherwise new policies land in the selected scope.
+  const creationDisabled = showScopeSelect && activeScope === "all";
+  const showPolicySubDept = showScopeSelect && activeScope === "all";
   const createScopeBody = subDepartmentId
     ? { subDepartmentId }
     : activeScope && activeScope !== "all"
@@ -295,28 +303,23 @@ export function SlaSettingsPage({
         </div>
       )}
 
-      {/* ── Sub-department scope tabs (department page only) ── */}
-      {showTabs && (
-        <div className="mb-5 flex flex-wrap gap-1 border-b border-sts-card-border">
-          {[
-            { id: "all", name: "All" },
-            { id: "", name: "Department-wide" },
-            ...(subDepartments ?? []),
-          ].map((tab) => (
-            <button
-              key={tab.id || "dept-wide"}
-              type="button"
-              onClick={() => setActiveScope(tab.id)}
-              className={cn(
-                "-mb-px border-b-2 px-3 py-2 font-sans text-[12.5px] font-medium transition-colors",
-                activeScope === tab.id
-                  ? "border-sts-blue text-sts-foreground"
-                  : "border-transparent text-sts-muted hover:text-sts-foreground",
-              )}
-            >
-              {tab.name}
-            </button>
-          ))}
+      {/* ── Sub-department scope selector (department page only) ── */}
+      {showScopeSelect && (
+        <div className="mb-5 flex items-center gap-2">
+          <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
+          <Select items={scopeOptions} value={activeScope} onValueChange={(v) => setActiveScope(v ?? "")}>
+            <SelectTrigger className="w-60 border-sts-blue/30 bg-sts-blue/5 font-sans text-[12.5px] font-medium text-sts-blue hover:bg-sts-blue/10">
+              <FileText className="size-3.5 text-sts-blue" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((opt) => (
+                <SelectItem key={opt.value || "dept-wide"} value={opt.value} className="font-sans text-[12.5px]">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -558,11 +561,11 @@ function PolicyGroup({
                   policy={policy}
                   people={people}
                   subDeptName={
-                    showSubDept && policy.subDepartmentId
-                      ? subDeptNameById.get(policy.subDepartmentId) ?? null
-                      : showSubDept
-                        ? "Department-wide"
-                        : null
+                    showSubDept
+                      ? policy.subDepartmentId
+                        ? subDeptNameById.get(policy.subDepartmentId) ?? null
+                        : "Only Department"
+                      : null
                   }
                   onSave={onSave}
                   onDelete={onDelete}
@@ -586,7 +589,7 @@ function PolicyRow({
 }: {
   policy: SlaPolicy;
   people: Person[];
-  /** Sub-department label to show under the name in the "All" overview, else null. */
+  /** Sub-department label shown under the name in the "All" overview, else null. */
   subDeptName: string | null;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -651,7 +654,7 @@ function PolicyRow({
           className="w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15"
         />
         {subDeptName && (
-          <span className="mt-1 inline-block rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+          <span className="mt-1 inline-block rounded-full border border-sts-blue/20 bg-sts-blue/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
             {subDeptName}
           </span>
         )}

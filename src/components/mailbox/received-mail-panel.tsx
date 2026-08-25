@@ -47,7 +47,7 @@ async function jsonOrThrow(res: Response) {
 const STATUS_STYLES: Record<MailboxMessage["status"], string> = {
   trusted: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   quarantined: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  system: "bg-pen-surface text-pen-subtle",
+  system: "bg-sts-surface text-sts-subtle",
 };
 
 function formatDate(iso: string) {
@@ -132,24 +132,24 @@ export function ReceivedMailPanel({
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
-      <div className="flex flex-col gap-3 border-b border-pen-card-border px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
+      <div className="flex flex-col gap-3 border-b border-sts-card-border px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Inbox className="size-4 shrink-0 text-pen-muted" />
+          <Inbox className="size-4 shrink-0 text-sts-muted" />
           <div>
-            <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">Received mail</h2>
-            <p className="font-sans text-[11.5px] text-pen-muted">
+            <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Received mail</h2>
+            <p className="font-sans text-[11.5px] text-sts-muted">
               Every email these mailboxes received — filed tickets, mail awaiting review, and suppressed mail.
             </p>
           </div>
         </div>
         {mailboxes.length > 0 && (
-          <label className="flex shrink-0 items-center gap-2 font-sans text-[11.5px] text-pen-muted">
+          <label className="flex shrink-0 items-center gap-2 font-sans text-[11.5px] text-sts-muted">
             <span className="hidden sm:inline">Mailbox</span>
             <select
               value={selectedMailbox}
               onChange={(e) => { setSelectedMailbox(e.target.value); setExpandedId(null); }}
-              className="h-8 max-w-[220px] rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/50"
+              className="h-8 max-w-[220px] rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/50"
             >
               <option value={ALL_MAILBOXES}>All mailboxes</option>
               {mailboxes.map((m) => (
@@ -161,18 +161,18 @@ export function ReceivedMailPanel({
       </div>
 
       {activeMailbox && (
-        <div className="flex items-center gap-2 border-b border-pen-blue/30 bg-pen-blue/5 px-4 py-2">
-          <Mail className="size-3.5 shrink-0 text-pen-blue" />
-          <p className="font-sans text-[11.5px] text-pen-foreground">
+        <div className="flex items-center gap-2 border-b border-sts-blue/30 bg-sts-blue/5 px-4 py-2">
+          <Mail className="size-3.5 shrink-0 text-sts-blue" />
+          <p className="font-sans text-[11.5px] text-sts-foreground">
             Showing mail for{" "}
-            <span className="rounded bg-pen-blue/15 px-1.5 py-0.5 font-medium text-pen-blue">
+            <span className="rounded bg-sts-blue/15 px-1.5 py-0.5 font-medium text-sts-blue">
               {activeMailbox.address}
             </span>
           </p>
           <button
             type="button"
             onClick={() => setSelectedMailbox(ALL_MAILBOXES)}
-            className="ml-auto font-sans text-[11px] font-medium text-pen-muted hover:text-pen-foreground"
+            className="ml-auto font-sans text-[11px] font-medium text-sts-muted hover:text-sts-foreground"
           >
             Show all
           </button>
@@ -180,13 +180,13 @@ export function ReceivedMailPanel({
       )}
 
       {error && (
-        <p className="border-b border-pen-card-border bg-red-50/60 px-4 py-2.5 font-sans text-[12px] text-red-600 dark:bg-red-900/10 dark:text-red-400">
+        <p className="border-b border-sts-card-border bg-red-50/60 px-4 py-2.5 font-sans text-[12px] text-red-600 dark:bg-red-900/10 dark:text-red-400">
           {error}
         </p>
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-pen-card-border px-2">
+      <div className="flex items-center gap-1 border-b border-sts-card-border px-2">
         {(
           [
             { key: "mail" as const, label: `Mail${shownMessages ? ` (${shownMessages.length})` : ""}` },
@@ -200,8 +200,8 @@ export function ReceivedMailPanel({
             className={cn(
               "relative -mb-px px-3 py-2.5 font-sans text-[12.5px] font-medium transition-colors",
               tab === t.key
-                ? "text-pen-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-pen-blue"
-                : "text-pen-muted hover:text-pen-foreground",
+                ? "text-sts-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-sts-blue"
+                : "text-sts-muted hover:text-sts-foreground",
             )}
           >
             {t.label}
@@ -212,15 +212,15 @@ export function ReceivedMailPanel({
       <div className="p-3">
         {tab === "mail" &&
           (shownMessages === null ? (
-            <p className="px-1 py-3 font-sans text-[12.5px] text-pen-muted">Loading…</p>
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">Loading…</p>
           ) : shownMessages.length === 0 ? (
-            <p className="px-1 py-3 font-sans text-[12.5px] text-pen-muted">
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No mail for ${activeMailbox.address} yet.` : "No mail received yet."}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
               {shownMessages.map((m) => (
-                <div key={m.id} className="rounded-lg border border-pen-card-border bg-pen-surface/40">
+                <div key={m.id} className="rounded-lg border border-sts-card-border bg-sts-surface/40">
                   <button
                     type="button"
                     onClick={() => setExpandedId((id) => (id === m.id ? null : m.id))}
@@ -235,15 +235,15 @@ export function ReceivedMailPanel({
                       {m.status}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                      <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                         {m.fromName}{" "}
-                        <span className="font-normal text-pen-subtle">&lt;{m.fromEmail}&gt;</span>
+                        <span className="font-normal text-sts-subtle">&lt;{m.fromEmail}&gt;</span>
                       </p>
-                      <p className="truncate font-sans text-[11px] text-pen-subtle">
+                      <p className="truncate font-sans text-[11px] text-sts-subtle">
                         {m.ticket.humanId} · {m.ticket.title}
                       </p>
                     </div>
-                    <span className="hidden shrink-0 font-sans text-[11px] text-pen-subtle sm:inline">
+                    <span className="hidden shrink-0 font-sans text-[11px] text-sts-subtle sm:inline">
                       {formatDate(m.createdAt)}
                     </span>
                     {canManage && m.status === "quarantined" ? (
@@ -270,26 +270,26 @@ export function ReceivedMailPanel({
                     ) : (
                       <ChevronDown
                         className={cn(
-                          "size-3.5 shrink-0 text-pen-subtle transition-transform",
+                          "size-3.5 shrink-0 text-sts-subtle transition-transform",
                           expandedId === m.id && "rotate-180",
                         )}
                       />
                     )}
                   </button>
                   {expandedId === m.id && (
-                    <div className="border-t border-pen-card-border px-3 py-3">
+                    <div className="border-t border-sts-card-border px-3 py-3">
                       {m.acceptedAt && (
-                        <p className="mb-2 font-sans text-[11px] text-pen-subtle">
+                        <p className="mb-2 font-sans text-[11px] text-sts-subtle">
                           Accepted{m.acceptedByName ? ` by ${m.acceptedByName}` : ""} on {formatDate(m.acceptedAt)}
                         </p>
                       )}
                       <div
-                        className="prose prose-sm max-w-none font-sans text-[12.5px] text-pen-foreground"
+                        className="prose prose-sm max-w-none font-sans text-[12.5px] text-sts-foreground"
                         dangerouslySetInnerHTML={{ __html: m.bodyHtml }}
                       />
                       <Link
                         href={`/tasks/${m.ticket.id}`}
-                        className="mt-3 inline-flex font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+                        className="mt-3 inline-flex font-sans text-[11.5px] font-medium text-sts-blue hover:underline"
                       >
                         Open {m.ticket.humanId} →
                       </Link>
@@ -302,9 +302,9 @@ export function ReceivedMailPanel({
 
         {tab === "suppressed" &&
           (shownSuppressed === null ? (
-            <p className="px-1 py-3 font-sans text-[12.5px] text-pen-muted">Loading…</p>
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">Loading…</p>
           ) : shownSuppressed.length === 0 ? (
-            <p className="px-1 py-3 font-sans text-[12.5px] text-pen-muted">
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No suppressed mail for ${activeMailbox.address}.` : "No suppressed mail."}
             </p>
           ) : (
@@ -312,20 +312,20 @@ export function ReceivedMailPanel({
               {shownSuppressed.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center gap-3 rounded-lg border border-pen-card-border bg-pen-surface/40 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-surface/40 px-3 py-2.5"
                 >
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[10px] font-semibold tracking-wide text-pen-subtle uppercase">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[10px] font-semibold tracking-wide text-sts-subtle uppercase">
                     <Ban className="size-2.5" /> {s.reason}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                    <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                       {s.subject ?? "(no subject)"}
                     </p>
-                    <p className="truncate font-sans text-[11px] text-pen-subtle">
+                    <p className="truncate font-sans text-[11px] text-sts-subtle">
                       {s.fromEmail ?? "unknown sender"} → {s.toAddress ?? "unknown address"}
                     </p>
                   </div>
-                  <span className="hidden shrink-0 font-sans text-[11px] text-pen-subtle sm:inline">
+                  <span className="hidden shrink-0 font-sans text-[11px] text-sts-subtle sm:inline">
                     {formatDate(s.createdAt)}
                   </span>
                 </div>

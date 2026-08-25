@@ -134,16 +134,16 @@ export function ModuleFormDialog({
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop transition-opacity duration-200" />
-        <Dialog.Popup className="pen-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-pen-card-border shadow-2xl">
-          <div className="flex items-center justify-between border-b border-pen-card-border px-6 py-4">
-            <Dialog.Title className="pen-text-modal-title">
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop transition-opacity duration-200" />
+        <Dialog.Popup className="sts-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-sts-card-border shadow-2xl">
+          <div className="flex items-center justify-between border-b border-sts-card-border px-6 py-4">
+            <Dialog.Title className="sts-text-modal-title">
               {isEdit ? "Edit module" : "New module"}
             </Dialog.Title>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="shrink-0 rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+              className="shrink-0 rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -151,20 +151,20 @@ export function ModuleFormDialog({
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-6 py-5">
             {isEdit ? (
-              <p className="flex min-w-0 items-center gap-1.5 font-sans text-[12px] text-pen-muted">
+              <p className="flex min-w-0 items-center gap-1.5 font-sans text-[12px] text-sts-muted">
                 <span className="shrink-0">In</span>
                 <span
                   className="size-2 shrink-0 rounded-sm"
                   style={{ backgroundColor: selectedProject?.color ?? "#0a76b9" }}
                   aria-hidden
                 />
-                <span className="truncate font-medium text-pen-foreground">
+                <span className="truncate font-medium text-sts-foreground">
                   {selectedProject?.name ?? "project"}
                 </span>
               </p>
             ) : (
               <div className="flex flex-col gap-1.5">
-                <label className="pen-text-label">
+                <label className="sts-text-label">
                   Project <span className="text-red-500">*</span>
                 </label>
                 <Select
@@ -175,7 +175,7 @@ export function ModuleFormDialog({
                 >
                   <SelectTrigger
                     className={cn(
-                      "h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground",
+                      "h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground",
                     )}
                   >
                     <SelectValue placeholder="Select a project">
@@ -193,7 +193,7 @@ export function ModuleFormDialog({
                   <SelectContent className="max-h-72 overflow-y-auto font-sans">
                     {projectsByDept.map(([key, group]) => (
                       <SelectGroup key={key}>
-                        <SelectLabel className="px-2 py-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+                        <SelectLabel className="px-2 py-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                           {group.label}
                         </SelectLabel>
                         {group.projects.map((p) => (
@@ -208,7 +208,7 @@ export function ModuleFormDialog({
                             />
                             <span className="min-w-0 flex-1 truncate">{p.name}</span>
                             {!p.moduleSystemEnabled ? (
-                              <span className="shrink-0 text-[10.5px] text-pen-subtle">
+                              <span className="shrink-0 text-[10.5px] text-sts-subtle">
                                 off → on
                               </span>
                             ) : null}
@@ -219,7 +219,7 @@ export function ModuleFormDialog({
                   </SelectContent>
                 </Select>
                 {selectedProject && !selectedProject.moduleSystemEnabled && (
-                  <p className="font-sans text-[11.5px] text-pen-muted">
+                  <p className="font-sans text-[11.5px] text-sts-muted">
                     Module system is off for this project — creating a module will turn it on.
                   </p>
                 )}
@@ -227,7 +227,7 @@ export function ModuleFormDialog({
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label className="pen-text-label">
+              <label className="sts-text-label">
                 Module name <span className="text-red-500">*</span>
               </label>
               <input
@@ -236,25 +236,25 @@ export function ModuleFormDialog({
                 required
                 autoFocus={isEdit}
                 placeholder="e.g. Payments, Onboarding, Reporting"
-                className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+                className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="pen-text-label">
-                Description <span className="text-pen-subtle">(optional)</span>
+              <label className="sts-text-label">
+                Description <span className="text-sts-subtle">(optional)</span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 placeholder="What does this module cover?"
-                className="resize-none rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+                className="resize-none rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
             </div>
 
             {error && (
-              <p className="font-sans text-[12px] text-pen-red">{error}</p>
+              <p className="font-sans text-[12px] text-sts-red">{error}</p>
             )}
 
             <div className="flex justify-end gap-2 pt-1">
@@ -272,7 +272,7 @@ export function ModuleFormDialog({
                 type="submit"
                 size="sm"
                 disabled={saving || (!isEdit && !selectedProjectId)}
-                className="gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+                className="gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
               >
                 {saving && <Loader2 className="size-3.5 animate-spin" />}
                 {isEdit ? "Save changes" : "Create module"}

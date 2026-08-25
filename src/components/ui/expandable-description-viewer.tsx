@@ -19,7 +19,7 @@ export function ExpandDescriptionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex size-7 items-center justify-center rounded-md border border-pen-card-border text-pen-muted transition-colors hover:border-pen-blue/40 hover:bg-pen-surface hover:text-pen-foreground",
+        "flex size-7 items-center justify-center rounded-md border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground",
         className,
       )}
       aria-label="Expand description"
@@ -65,19 +65,19 @@ export function ExpandableDescriptionViewer({
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={() => onExpandedChange(false)}
       />
-      <div className="pen-glass-panel relative flex max-h-[calc(100svh/var(--pen-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
-        <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-pen-card-border px-4 sm:px-5">
-          <h3 className="font-sans text-[14px] font-semibold text-pen-foreground">
+      <div className="sts-glass-panel relative flex max-h-[calc(100svh/var(--sts-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
+        <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-sts-card-border px-4 sm:px-5">
+          <h3 className="font-sans text-[14px] font-semibold text-sts-foreground">
             {label}
           </h3>
-          <span className="font-sans text-[11.5px] text-pen-subtle">
+          <span className="font-sans text-[11.5px] text-sts-subtle">
             {subtitle}
           </span>
           <div className="flex-1" />
           <button
             type="button"
             onClick={() => onExpandedChange(false)}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] border border-pen-card-border px-2.5 font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <Minimize2 className="size-3.5" strokeWidth={2} />
             Collapse
@@ -86,7 +86,7 @@ export function ExpandableDescriptionViewer({
             type="button"
             onClick={() => onExpandedChange(false)}
             aria-label="Close"
-            className="flex size-8 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-8 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X size={16} strokeWidth={2} />
           </button>
@@ -94,8 +94,8 @@ export function ExpandableDescriptionViewer({
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           <RichTextDisplay html={html} className="text-[13px]" />
         </div>
-        <div className="flex h-10 shrink-0 items-center border-t border-pen-card-border px-4 sm:px-5">
-          <span className="font-sans text-[11px] text-pen-subtle">
+        <div className="flex h-10 shrink-0 items-center border-t border-sts-card-border px-4 sm:px-5">
+          <span className="font-sans text-[11px] text-sts-subtle">
             Press Esc to collapse
           </span>
         </div>

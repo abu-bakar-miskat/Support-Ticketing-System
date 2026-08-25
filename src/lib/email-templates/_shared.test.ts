@@ -169,6 +169,6 @@ describe("layout — footerOverride precedence", () => {
 
   it("falls back to the platform default when neither is set", () => {
     const html = layout({ heading: "H", bodyHtml: "<p>B</p>" });
-    expect(html).toContain("PEN Global. This is an automated message.");
+    expect(html).toContain("Support Ticketing System. This is an automated message.");
   });
 });

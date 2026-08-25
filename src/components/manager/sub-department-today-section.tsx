@@ -22,7 +22,7 @@ function WorkloadBar({ m, max }: { m: MemberWorkload; max: number }) {
   const activeN = m.open - m.overdue;
   const width = (total / max) * 100;
   return (
-    <div className="h-[5px] w-full overflow-hidden rounded-full bg-pen-surface">
+    <div className="h-[5px] w-full overflow-hidden rounded-full bg-sts-surface">
       <div className="flex h-full gap-[1px]" style={{ width: `${width}%` }}>
         {activeN > 0 && <div className="h-full" style={{ flex: activeN, backgroundColor: "#0a76b9" }} />}
         {m.overdue > 0 && <div className="h-full" style={{ flex: m.overdue, backgroundColor: "#ef4444" }} />}
@@ -34,16 +34,16 @@ function WorkloadBar({ m, max }: { m: MemberWorkload; max: number }) {
 
 function MemberRow({ m, max }: { m: MemberWorkload; max: number }) {
   return (
-    <div className="flex flex-col gap-1.5 border-b border-pen-card-border/40 px-4 py-3 last:border-b-0">
+    <div className="flex flex-col gap-1.5 border-b border-sts-card-border/40 px-4 py-3 last:border-b-0">
       <div className="flex items-center gap-2.5">
         <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={26} />
-        <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+        <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
           {m.name}
         </span>
-        <span className="shrink-0 font-mono text-[11px] tabular-nums text-pen-muted">
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-sts-muted">
           {m.open + m.inReview > 0 ? (
             <>
-              <span className="text-pen-foreground">{m.open + m.inReview}</span>
+              <span className="text-sts-foreground">{m.open + m.inReview}</span>
               {m.overdue > 0 && <span className="text-red-500"> · {m.overdue} late</span>}
             </>
           ) : (
@@ -61,15 +61,15 @@ function MemberRow({ m, max }: { m: MemberWorkload; max: number }) {
             href={`/tickets/${m.current.id}`}
             className="group flex min-w-0 items-baseline gap-1.5"
           >
-            <span className="shrink-0 font-sans text-[10.5px] text-pen-subtle">now</span>
-            <span className="shrink-0 font-mono text-[10.5px] font-semibold text-pen-id group-hover:text-pen-blue">{m.current.humanId}</span>
-            <span className="min-w-0 truncate font-sans text-[11.5px] text-pen-muted group-hover:text-pen-blue">{m.current.title}</span>
+            <span className="shrink-0 font-sans text-[10.5px] text-sts-subtle">now</span>
+            <span className="shrink-0 font-mono text-[10.5px] font-semibold text-sts-id group-hover:text-sts-blue">{m.current.humanId}</span>
+            <span className="min-w-0 truncate font-sans text-[11.5px] text-sts-muted group-hover:text-sts-blue">{m.current.title}</span>
           </DrawerLink>
         ) : (
-          <span className="font-sans text-[11.5px] italic text-pen-subtle">nothing in progress</span>
+          <span className="font-sans text-[11.5px] italic text-sts-subtle">nothing in progress</span>
         )}
         {m.lastActivityAt && (
-          <span className="shrink-0 font-sans text-[10.5px] text-pen-subtle">{activeAgo(m.lastActivityAt)}</span>
+          <span className="shrink-0 font-sans text-[10.5px] text-sts-subtle">{activeAgo(m.lastActivityAt)}</span>
         )}
       </div>
     </div>
@@ -91,7 +91,7 @@ export function SubDepartmentTodaySection({ members }: { members: MemberWorkload
       accent="#0a76b9"
       title="Team today"
       aside={
-        <span className="flex items-center gap-3 font-sans text-[10px] text-pen-subtle">
+        <span className="flex items-center gap-3 font-sans text-[10px] text-sts-subtle">
           <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#0a76b9]" />active</span>
           <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#ef4444]" />late</span>
           <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#7c3aed]" />review</span>
@@ -107,7 +107,7 @@ export function SubDepartmentTodaySection({ members }: { members: MemberWorkload
             <button
               type="button"
               onClick={() => setShowIdle((v) => !v)}
-              className="w-full px-4 py-2.5 text-center font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:bg-pen-surface/50 hover:text-pen-foreground"
+              className="w-full px-4 py-2.5 text-center font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface/50 hover:text-sts-foreground"
             >
               {showIdle ? "Hide idle members" : `Show ${idle.length} idle member${idle.length === 1 ? "" : "s"}`}
             </button>

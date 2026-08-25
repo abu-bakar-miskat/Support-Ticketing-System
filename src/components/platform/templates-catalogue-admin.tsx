@@ -152,21 +152,21 @@ export function TemplatesCatalogueAdmin({
         {/* Pending requests */}
         {requests.length > 0 && (
           <div className="mt-8">
-            <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">
+            <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
               Pending requests ({requests.length})
             </h2>
             <ul className="mt-3 flex flex-col gap-2">
               {requests.map((r) => (
                 <li
                   key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-pen-card-border bg-pen-card p-3 shadow-pen-card"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sts-card-border bg-sts-card p-3 shadow-sts-card"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="font-sans text-[13px] text-pen-foreground">
+                    <p className="font-sans text-[13px] text-sts-foreground">
                       <span className="font-semibold">{r.tenant.name}</span> requested{" "}
                       <span className="font-semibold">{r.template.name}</span>
                     </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+                    <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
                       {r.requestedBy?.name ?? r.requestedBy?.email ?? "Unknown"} ·{" "}
                       {new Date(r.requestedAt).toLocaleDateString()}
                       {r.message ? ` — "${r.message}"` : ""}
@@ -195,15 +195,15 @@ export function TemplatesCatalogueAdmin({
 
         {/* Templates list */}
         <div className="mt-8">
-          <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">Templates</h2>
+          <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Templates</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((t) => (
               <li
                 key={t.id}
-                className="flex flex-col rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card"
+                className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-pen-foreground">
+                  <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
                     {t.name}
                   </span>
                   <div className="flex shrink-0 items-center gap-1">
@@ -213,7 +213,7 @@ export function TemplatesCatalogueAdmin({
                           type="button"
                           aria-label="Edit template"
                           onClick={() => openEditModal(t)}
-                          className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground"
+                          className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <Pencil className="size-3.5" />
                         </button>
@@ -222,7 +222,7 @@ export function TemplatesCatalogueAdmin({
                           aria-label="Delete template"
                           disabled={busy === t.id}
                           onClick={() => setDeletingTemplate(t)}
-                          className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                          className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
@@ -233,7 +233,7 @@ export function TemplatesCatalogueAdmin({
                         aria-label="Restore template"
                         disabled={busy === t.id}
                         onClick={() => restoreTemplate(t)}
-                        className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+                        className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
                       >
                         <RotateCcw className="size-3.5" />
                       </button>
@@ -241,7 +241,7 @@ export function TemplatesCatalogueAdmin({
                   </div>
                 </div>
                 {t.description && (
-                  <p className="mt-1 font-sans text-[12px] text-pen-muted">{t.description}</p>
+                  <p className="mt-1 font-sans text-[12px] text-sts-muted">{t.description}</p>
                 )}
                 <div className="mt-2 flex flex-col gap-2">
                   {TEMPLATE_FEATURE_GROUPS.map((group) => {
@@ -250,15 +250,15 @@ export function TemplatesCatalogueAdmin({
                     const Icon = group.icon;
                     return (
                       <div key={group.label}>
-                        <div className="flex items-center gap-1 font-sans text-[10px] font-semibold tracking-[0.5px] text-pen-subtle uppercase">
-                          <Icon className="size-3 text-pen-subtle" />
+                        <div className="flex items-center gap-1 font-sans text-[10px] font-semibold tracking-[0.5px] text-sts-subtle uppercase">
+                          <Icon className="size-3 text-sts-subtle" />
                           {group.label}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {groupKeys.map((key) => (
                             <span
                               key={key}
-                              className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue"
+                              className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue"
                             >
                               {TEMPLATE_FEATURE_LABELS[key]}
                             </span>
@@ -268,11 +268,11 @@ export function TemplatesCatalogueAdmin({
                     );
                   })}
                 </div>
-                <div className="mt-3 flex items-center gap-1.5 border-t border-pen-card-border/60 pt-3 font-sans text-[11.5px] text-pen-subtle">
+                <div className="mt-3 flex items-center gap-1.5 border-t border-sts-card-border/60 pt-3 font-sans text-[11.5px] text-sts-subtle">
                   {t.isActive ? (
                     <span>{t.activeTenantCount} tenant{t.activeTenantCount === 1 ? "" : "s"} active</span>
                   ) : (
-                    <span className="flex items-center gap-1 text-pen-muted">
+                    <span className="flex items-center gap-1 text-sts-muted">
                       <Archive className="size-3" /> Archived
                     </span>
                   )}

@@ -169,7 +169,7 @@ export function InviteForm() {
   }
 
   return (
-    <form onSubmit={submit} className="pen-glass-panel border-border rounded-2xl border p-4">
+    <form onSubmit={submit} className="sts-glass-panel border-border rounded-2xl border p-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="relative" ref={nameBoxRef}>
           <Input

@@ -66,10 +66,10 @@ function UserAvatar({
 function roleBadgeClass(role: string | undefined) {
   return cn(
     "shrink-0 rounded-sm px-1 py-px font-sans text-[11.5px] font-semibold uppercase tracking-wide",
-    role === "admin" && "bg-pen-blue/15 text-pen-blue",
+    role === "admin" && "bg-sts-blue/15 text-sts-blue",
     role === "manager" && "bg-purple-500/15 text-purple-500",
     role === "sub_manager" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    role === "agent" && "bg-pen-surface text-pen-subtle",
+    role === "agent" && "bg-sts-surface text-sts-subtle",
   );
 }
 
@@ -108,10 +108,10 @@ export function UserProfileMenu({
         className={cn(
           "outline-none transition-colors",
           isTopBar
-            ? "flex size-8 items-center justify-center rounded-full hover:bg-pen-bg data-popup-open:bg-pen-bg"
+            ? "flex size-8 items-center justify-center rounded-full hover:bg-sts-bg data-popup-open:bg-sts-bg"
             : cn(
                 "flex w-full items-center rounded-lg text-left",
-                "hover:bg-pen-blue-tint data-popup-open:bg-pen-blue-tint",
+                "hover:bg-sts-blue-tint data-popup-open:bg-sts-blue-tint",
                 collapsed ? "justify-center p-1.5" : "gap-2 p-2",
               ),
         )}
@@ -126,26 +126,26 @@ export function UserProfileMenu({
           <>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-left leading-tight">
               <div className="flex items-center gap-1.5">
-                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {userName}
                 </span>
                 <span className={roleBadgeClass(user?.role)}>
                   {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "agent")}
                 </span>
               </div>
-              <span className="truncate font-sans text-[11.5px] text-pen-subtle">
+              <span className="truncate font-sans text-[11.5px] text-sts-subtle">
                 {userEmail}
               </span>
             </div>
-            <ChevronsUpDown className="ml-auto size-4 shrink-0 text-pen-subtle" />
+            <ChevronsUpDown className="ml-auto size-4 shrink-0 text-sts-subtle" />
           </>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className={cn(
           "min-w-56 w-auto rounded-lg font-sans",
-          "[&_[data-slot=dropdown-menu-item]]:text-[12.5px] [&_[data-slot=dropdown-menu-item]]:text-pen-foreground",
-          "[&_[data-slot=dropdown-menu-item]]:focus:bg-pen-blue-tint [&_[data-slot=dropdown-menu-item]]:focus:text-pen-foreground",
+          "[&_[data-slot=dropdown-menu-item]]:text-[12.5px] [&_[data-slot=dropdown-menu-item]]:text-sts-foreground",
+          "[&_[data-slot=dropdown-menu-item]]:focus:bg-sts-blue-tint [&_[data-slot=dropdown-menu-item]]:focus:text-sts-foreground",
         )}
         side={isTopBar ? "bottom" : "right"}
         align="end"
@@ -161,14 +161,14 @@ export function UserProfileMenu({
               />
               <div className="grid min-w-0 flex-1 leading-tight">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate font-sans text-sm font-semibold text-pen-foreground">
+                  <span className="truncate font-sans text-sm font-semibold text-sts-foreground">
                     {userName}
                   </span>
                   <span className={roleBadgeClass(user?.role)}>
                     {user?.role === "sub_manager" ? "sub-manager" : (user?.role ?? "agent")}
                   </span>
                 </div>
-                <span className="truncate font-sans text-xs text-pen-subtle">
+                <span className="truncate font-sans text-xs text-sts-subtle">
                   {userEmail}
                 </span>
               </div>

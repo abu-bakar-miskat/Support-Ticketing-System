@@ -37,7 +37,7 @@ const COLOR_PRESETS = [
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -53,7 +53,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
           onClick={() => onChange(c)}
           className={cn(
             "size-5 rounded-full transition-transform hover:scale-110",
-            value === c && "ring-2 ring-offset-1 ring-pen-foreground",
+            value === c && "ring-2 ring-offset-1 ring-sts-foreground",
           )}
           style={{ backgroundColor: c }}
           aria-label={c}
@@ -142,19 +142,19 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
       />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">Tags & labels</h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">Categorise tickets across projects.</p>
+          <h1 className="sts-text-admin-title">Tags & labels</h1>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Categorise tickets across projects.</p>
         </div>
         <Button
           onClick={() => { setCreating(true); setEditingId(null); }}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[140px]"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
         >
           <Plus className="size-[13px]" strokeWidth={2.5} />
           New label
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -176,7 +176,7 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                       onChange={(e) => setNewName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setCreating(false); }}
                       placeholder="Label name…"
-                      className="w-full rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12.5px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue"
+                      className="w-full rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue"
                     />
                   </div>
                 </TableCell>
@@ -188,10 +188,10 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                 <TableCell />
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[54px] items-center justify-end gap-1">
-                    <button type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-pen-blue text-white hover:bg-pen-blue/90 disabled:opacity-50">
+                    <button type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
                       <Check className="size-3.5" />
                     </button>
-                    <button type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface">
+                    <button type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
                       <X className="size-3.5" />
                     </button>
                   </div>
@@ -203,14 +203,14 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableCell colSpan={4} className="py-0">
                   <div className="flex h-[46px] items-center">
-                    <span className="font-sans text-[11.5px] text-pen-muted">No labels yet</span>
+                    <span className="font-sans text-[11.5px] text-sts-muted">No labels yet</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : null}
 
             {labels.map((label) => (
-              <TableRow key={label.id} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+              <TableRow key={label.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">
                     {editingId === label.id ? (
@@ -219,7 +219,7 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(label.id); if (e.key === "Escape") setEditingId(null); }}
-                        className="w-full rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue"
+                        className="w-full rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
                       />
                     ) : (
                       <TagPill label={label.name} color={label.color} size="md" />
@@ -237,23 +237,23 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                 </TableCell>
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">
-                    <span className="font-sans text-[11.5px] text-pen-muted">{label.count} {label.count === 1 ? "ticket" : "tickets"}</span>
+                    <span className="font-sans text-[11.5px] text-sts-muted">{label.count} {label.count === 1 ? "ticket" : "tickets"}</span>
                   </div>
                 </TableCell>
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[46px] items-center justify-end gap-1">
                     {editingId === label.id ? (
                       <>
-                        <button type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-pen-blue text-white hover:bg-pen-blue/90 disabled:opacity-50">
+                        <button type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
                           <Check className="size-3.5" />
                         </button>
-                        <button type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface">
+                        <button type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
                           <X className="size-3.5" />
                         </button>
                       </>
                     ) : (
                       <DropdownMenu>
-                        <DropdownMenuTrigger type="button" className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground" aria-label={`Actions for ${label.name}`}>
+                        <DropdownMenuTrigger type="button" className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground" aria-label={`Actions for ${label.name}`}>
                           <MoreHorizontal className="size-3.5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-36">

@@ -110,14 +110,14 @@ export function AssigneeSelect({
           {assigneeName ? (
             <MemberAvatar name={assigneeName} avatarUrl={assigneeAvatarUrl} size={22} userId={assigneeId} />
           ) : (
-            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-pen-surface text-pen-subtle">
+            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-sts-surface text-sts-subtle">
               <UserRound className="size-3.5" />
             </span>
           )}
           <span
             className={cn(
               "min-w-0 flex-1 truncate text-left font-medium",
-              assigneeName ? "text-pen-foreground" : "text-pen-muted",
+              assigneeName ? "text-sts-foreground" : "text-sts-muted",
             )}
           >
             {assigneeName ?? "Unassigned"}
@@ -135,15 +135,15 @@ export function AssigneeSelect({
             "w-(--anchor-width) min-w-0 gap-0 overflow-hidden p-0",
           )}
         >
-          <div className="border-b border-pen-card-border p-2">
+          <div className="border-b border-sts-card-border p-2">
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-pen-subtle" />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-sts-subtle" />
               <Input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search members…"
-                className="h-8 border-pen-card-border bg-pen-surface pl-8 font-sans text-[12px] "
+                className="h-8 border-sts-card-border bg-sts-surface pl-8 font-sans text-[12px] "
               />
             </div>
           </div>
@@ -154,21 +154,21 @@ export function AssigneeSelect({
                 type="button"
                 onClick={() => selectMember(null)}
                 className={cn(
-                  "pen-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                  "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
                   userListPickerButtonClass,
-                  !assigneeId && "bg-pen-surface ",
+                  !assigneeId && "bg-sts-surface ",
                 )}
               >
-                <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-pen-surface text-pen-subtle">
+                <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-sts-surface text-sts-subtle">
                   <UserRound className="size-3.5" />
                 </span>
-                <span className="flex-1 text-left text-pen-muted">Unassigned</span>
-                {!assigneeId ? <Check className="size-3.5 text-pen-blue" /> : null}
+                <span className="flex-1 text-left text-sts-muted">Unassigned</span>
+                {!assigneeId ? <Check className="size-3.5 text-sts-blue" /> : null}
               </button>
             </li>
 
             {filtered.length === 0 ? (
-              <li className="px-2 py-3 text-center font-sans text-[11.5px] text-pen-subtle">
+              <li className="px-2 py-3 text-center font-sans text-[11.5px] text-sts-subtle">
                 No members match &ldquo;{query}&rdquo;
               </li>
             ) : (
@@ -180,16 +180,16 @@ export function AssigneeSelect({
                       type="button"
                       onClick={() => selectMember(member.id)}
                       className={cn(
-                        "pen-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                        "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
                         userListPickerButtonClass,
-                        selected && "bg-pen-surface ",
+                        selected && "bg-sts-surface ",
                       )}
                     >
                       <UserListItem
                         person={member}
                         avatarSize={22}
                         trailing={
-                          selected ? <Check className="size-3.5 shrink-0 text-pen-blue" /> : null
+                          selected ? <Check className="size-3.5 shrink-0 text-sts-blue" /> : null
                         }
                       />
                     </button>
@@ -201,7 +201,7 @@ export function AssigneeSelect({
         </PopoverContent>
       </Popover>
 
-      {error ? <p className="font-sans text-[11.5px] text-pen-red">{error}</p> : null}
+      {error ? <p className="font-sans text-[11.5px] text-sts-red">{error}</p> : null}
     </div>
   )
 }

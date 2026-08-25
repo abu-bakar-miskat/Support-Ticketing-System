@@ -1,4 +1,4 @@
-export const FONT_SIZE_STORAGE_KEY = "pen-font-size";
+export const FONT_SIZE_STORAGE_KEY = "sts-font-size";
 
 export const FONT_SIZES = ["default", "large"] as const;
 export type FontSize = (typeof FONT_SIZES)[number];

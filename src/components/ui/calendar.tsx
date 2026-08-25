@@ -119,7 +119,7 @@ function Calendar({
           defaultClassNames.range_end
         ),
         today: cn(
-          "rounded-(--cell-radius) bg-pen-blue/20 font-semibold text-pen-blue ring-1 ring-pen-blue/40 data-[selected=true]:rounded-none",
+          "rounded-(--cell-radius) bg-sts-blue/20 font-semibold text-sts-blue ring-1 ring-sts-blue/40 data-[selected=true]:rounded-none",
           defaultClassNames.today
         ),
         outside: cn(

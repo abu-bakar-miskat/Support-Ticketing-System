@@ -26,11 +26,11 @@ function toDateInputValue(date: string | Date | null | undefined): string {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  "To Do": "bg-pen-subtle",
-  "In Progress": "bg-pen-blue",
+  "To Do": "bg-sts-subtle",
+  "In Progress": "bg-sts-blue",
   "In Review": "bg-yellow-400",
-  Live: "bg-pen-green",
-  Blocked: "bg-pen-red",
+  Live: "bg-sts-green",
+  Blocked: "bg-sts-red",
 };
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -201,20 +201,20 @@ export function SprintFormDialog({
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 flex w-[min(560px,95vw)] max-h-[calc(92dvh/var(--pen-font-scale,1))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl">
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 flex w-[min(560px,95vw)] max-h-[calc(92dvh/var(--sts-font-scale,1))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl">
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
 
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-pen-card-border px-5 py-4">
-              <Dialog.Title className="font-sans text-[14px] font-semibold text-pen-foreground">
+            <div className="flex shrink-0 items-center justify-between border-b border-sts-card-border px-5 py-4">
+              <Dialog.Title className="font-sans text-[14px] font-semibold text-sts-foreground">
                 {isEdit ? "Edit sprint" : "New sprint"}
               </Dialog.Title>
               <button
                 type="button"
                 onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="rounded-md p-1 text-pen-muted hover:bg-pen-surface hover:text-pen-foreground"
+                className="rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <X className="size-4" />
               </button>
@@ -225,8 +225,8 @@ export function SprintFormDialog({
 
               {/* Sprint name */}
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="sprint-name" className="font-sans text-[12px] text-pen-foreground">
-                  Sprint name <span className="text-pen-red">*</span>
+                <Label htmlFor="sprint-name" className="font-sans text-[12px] text-sts-foreground">
+                  Sprint name <span className="text-sts-red">*</span>
                 </Label>
                 <Input
                   id="sprint-name"
@@ -237,13 +237,13 @@ export function SprintFormDialog({
                   disabled={isPending}
                 />
                 {errors.name && (
-                  <p className="font-sans text-[11.5px] text-pen-red">{errors.name}</p>
+                  <p className="font-sans text-[11.5px] text-sts-red">{errors.name}</p>
                 )}
               </div>
 
               {/* Description (rich text) */}
               <div className="flex flex-col gap-1.5">
-                <Label className="font-sans text-[12px] text-pen-foreground">
+                <Label className="font-sans text-[12px] text-sts-foreground">
                   Description
                 </Label>
                 <RichTextEditor
@@ -257,8 +257,8 @@ export function SprintFormDialog({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="sprint-start" className="font-sans text-[12px] text-pen-foreground">
-                    Start date <span className="text-pen-red">*</span>
+                  <Label htmlFor="sprint-start" className="font-sans text-[12px] text-sts-foreground">
+                    Start date <span className="text-sts-red">*</span>
                   </Label>
                   <Input
                     id="sprint-start"
@@ -269,12 +269,12 @@ export function SprintFormDialog({
                     disabled={isPending}
                   />
                   {errors.startDate && (
-                    <p className="font-sans text-[11.5px] text-pen-red">{errors.startDate}</p>
+                    <p className="font-sans text-[11.5px] text-sts-red">{errors.startDate}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="sprint-end" className="font-sans text-[12px] text-pen-foreground">
-                    End date <span className="text-pen-red">*</span>
+                  <Label htmlFor="sprint-end" className="font-sans text-[12px] text-sts-foreground">
+                    End date <span className="text-sts-red">*</span>
                   </Label>
                   <Input
                     id="sprint-end"
@@ -285,14 +285,14 @@ export function SprintFormDialog({
                     disabled={isPending}
                   />
                   {errors.endDate && (
-                    <p className="font-sans text-[11.5px] text-pen-red">{errors.endDate}</p>
+                    <p className="font-sans text-[11.5px] text-sts-red">{errors.endDate}</p>
                   )}
                 </div>
               </div>
 
               {/* Points target */}
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="sprint-points" className="font-sans text-[12px] text-pen-foreground">
+                <Label htmlFor="sprint-points" className="font-sans text-[12px] text-sts-foreground">
                   Points target
                 </Label>
                 <Input
@@ -306,17 +306,17 @@ export function SprintFormDialog({
                   disabled={isPending}
                 />
                 {errors.pointsTarget && (
-                  <p className="font-sans text-[11.5px] text-pen-red">{errors.pointsTarget}</p>
+                  <p className="font-sans text-[11.5px] text-sts-red">{errors.pointsTarget}</p>
                 )}
               </div>
 
-              <div className="h-px bg-pen-card-border" />
+              <div className="h-px bg-sts-card-border" />
 
               {/* Project selector — hidden when locked to a specific project */}
               {!lockedProjectId && (
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="sprint-project" className="font-sans text-[12px] text-pen-foreground">
-                    Project <span className="text-pen-red">*</span>
+                  <Label htmlFor="sprint-project" className="font-sans text-[12px] text-sts-foreground">
+                    Project <span className="text-sts-red">*</span>
                   </Label>
                   <SearchableSelect
                     aria-label="Project"
@@ -329,7 +329,7 @@ export function SprintFormDialog({
                     size="sm"
                   />
                   {errors.projectId && (
-                    <p className="font-sans text-[11.5px] text-pen-red">{errors.projectId}</p>
+                    <p className="font-sans text-[11.5px] text-sts-red">{errors.projectId}</p>
                   )}
                 </div>
               )}
@@ -338,31 +338,31 @@ export function SprintFormDialog({
               {projectId && (
                 <div className="flex flex-col gap-2">
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-muted" />
+                    <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-muted" />
                     <input
                       type="text"
                       value={ticketSearch}
                       onChange={(e) => setTicketSearch(e.target.value)}
                       placeholder="Search tickets…"
-                      className="h-8 w-full rounded-lg border border-input bg-transparent pl-8 pr-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="h-8 w-full rounded-lg border border-input bg-transparent pl-8 pr-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     />
                   </div>
 
                   {selectedIds.size > 0 && (
-                    <p className="font-sans text-[11.5px] text-pen-blue">
+                    <p className="font-sans text-[11.5px] text-sts-blue">
                       {selectedIds.size} ticket{selectedIds.size !== 1 ? "s" : ""} selected
                     </p>
                   )}
 
-                  <div className="max-h-[220px] overflow-y-auto rounded-xl border border-pen-card-border">
+                  <div className="max-h-[220px] overflow-y-auto rounded-xl border border-sts-card-border">
                     {ticketsLoading ? (
-                      <div className="flex h-16 items-center justify-center gap-2 text-pen-muted">
+                      <div className="flex h-16 items-center justify-center gap-2 text-sts-muted">
                         <Loader2 className="size-4 animate-spin" />
                         <span className="font-sans text-[12.5px]">Loading tickets…</span>
                       </div>
                     ) : filteredTickets.length === 0 ? (
                       <div className="flex h-16 items-center justify-center">
-                        <span className="font-sans text-[12.5px] text-pen-muted">
+                        <span className="font-sans text-[12.5px] text-sts-muted">
                           {ticketSearch ? "No tickets match your search" : "No tickets in this project"}
                         </span>
                       </div>
@@ -374,36 +374,36 @@ export function SprintFormDialog({
                           <label
                             key={ticket.id}
                             className={cn(
-                              "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-pen-surface",
-                              !isLast && "border-b border-pen-card-border",
-                              checked && "bg-pen-blue-tint dark:bg-[#1a2a3a]",
+                              "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-sts-surface",
+                              !isLast && "border-b border-sts-card-border",
+                              checked && "bg-sts-blue-tint dark:bg-[#1a2a3a]",
                             )}
                           >
                             <input
                               type="checkbox"
                               checked={checked}
                               onChange={() => toggleTicket(ticket.id)}
-                              className="size-3.5 accent-pen-blue"
+                              className="size-3.5 accent-sts-blue"
                             />
-                            <span className="shrink-0 font-mono text-[11.5px] text-pen-muted">
+                            <span className="shrink-0 font-mono text-[11.5px] text-sts-muted">
                               {ticket.subDepartment.prefix}-{ticket.ticketNumber}
                             </span>
-                            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                               {ticket.title}
                             </span>
                             <span className="flex shrink-0 items-center gap-1">
                               <span
                                 className={cn(
                                   "size-1.5 rounded-full",
-                                  STATUS_DOT[ticket.status] ?? "bg-pen-subtle",
+                                  STATUS_DOT[ticket.status] ?? "bg-sts-subtle",
                                 )}
                               />
-                              <span className="hidden font-sans text-[11.5px] text-pen-muted sm:inline">
+                              <span className="hidden font-sans text-[11.5px] text-sts-muted sm:inline">
                                 {ticket.status}
                               </span>
                             </span>
                             {ticket.sprintId && ticket.sprintId !== sprint?.id && (
-                              <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-0.5 font-sans text-[9.5px] text-pen-muted">
+                              <span className="shrink-0 rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] text-sts-muted">
                                 in sprint
                               </span>
                             )}
@@ -417,7 +417,7 @@ export function SprintFormDialog({
             </div>
 
             {/* Footer */}
-            <div className="flex shrink-0 justify-end gap-2 border-t border-pen-card-border px-5 py-4">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-sts-card-border px-5 py-4">
               <Button
                 type="button"
                 variant="outline"
@@ -432,7 +432,7 @@ export function SprintFormDialog({
                 type="submit"
                 size="sm"
                 disabled={isPending}
-                className="gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+                className="gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
               >
                 {isPending && <Loader2 className="size-3.5 animate-spin" />}
                 {isEdit ? "Save changes" : "Create sprint"}

@@ -37,13 +37,13 @@ function StateOfPlay({ d }: { d: Distribution }) {
   if (d.total === 0) return null;
   const pctDone = Math.round((d.done / d.total) * 100);
   return (
-    <div className="rounded-2xl border border-pen-card-border bg-pen-card px-5 py-4 shadow-pen-card">
+    <div className="rounded-2xl border border-sts-card-border bg-sts-card px-5 py-4 shadow-sts-card">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="pen-text-label">State of play · {d.total} tickets</span>
+          <span className="sts-text-label">State of play · {d.total} tickets</span>
           <span className="font-mono text-[12px] font-semibold tabular-nums text-emerald-500">{pctDone}% done</span>
         </div>
-        <div className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-pen-surface">
+        <div className="flex h-2.5 w-full gap-[2px] overflow-hidden rounded-full bg-sts-surface">
           {SEGMENTS.map(({ key, color }) => {
             const n = d[key];
             if (n === 0) return null;
@@ -62,9 +62,9 @@ function StateOfPlay({ d }: { d: Distribution }) {
             const n = d[key];
             if (n === 0) return null;
             return (
-              <span key={key} className="flex items-center gap-1.5 font-sans text-[11px] text-pen-muted">
+              <span key={key} className="flex items-center gap-1.5 font-sans text-[11px] text-sts-muted">
                 <span className="block size-[7px] rounded-[2px]" style={{ backgroundColor: color, opacity: key === "todo" ? 0.35 : 1 }} />
-                <span className="font-mono font-semibold tabular-nums text-pen-foreground">{n}</span>
+                <span className="font-mono font-semibold tabular-nums text-sts-foreground">{n}</span>
                 {label}
               </span>
             );
@@ -134,16 +134,16 @@ export function ManagerDashboard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="pen-text-display">
+              <h1 className="sts-text-display">
                 {timeGreeting}, {firstName}.
               </h1>
               {departmentName && (
-                <span className="inline-flex items-center rounded-full border border-pen-card-border bg-pen-surface px-2.5 py-0.5 font-sans text-[11px] font-medium text-pen-muted">
+                <span className="inline-flex items-center rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-0.5 font-sans text-[11px] font-medium text-sts-muted">
                   {departmentName}
                 </span>
               )}
             </div>
-            <p className="mt-1.5 max-w-[68ch] font-sans text-[13px] leading-relaxed text-pen-muted">{digest}</p>
+            <p className="mt-1.5 max-w-[68ch] font-sans text-[13px] leading-relaxed text-sts-muted">{digest}</p>
           </div>
           <DualClock className="shrink-0 justify-end" />
         </div>
@@ -175,8 +175,8 @@ export function ManagerDashboard({
       </header>
 
       {noSubDepartments ? (
-        <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-8 text-center">
-          <p className="font-sans text-[13px] text-pen-muted">No teams in your scope.</p>
+        <div className="rounded-2xl border border-sts-card-border bg-sts-card px-4 py-8 text-center">
+          <p className="font-sans text-[13px] text-sts-muted">No teams in your scope.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-7">

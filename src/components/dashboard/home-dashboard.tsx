@@ -104,17 +104,17 @@ function AttentionRow({ t }: { t: AttentionTask }) {
     <DrawerLink
       ticketId={t.dbId}
       href={`/tickets/${t.dbId}`}
-      className="group flex items-center gap-3 border-b border-pen-card-border/40 px-4 py-3 transition-colors last:border-b-0 hover:bg-pen-surface/60"
+      className="group flex items-center gap-3 border-b border-sts-card-border/40 px-4 py-3 transition-colors last:border-b-0 hover:bg-sts-surface/60"
     >
       <span
         className="block size-[8px] shrink-0 rounded-full"
         style={{ backgroundColor: PRIORITY_COLOR[t.priority] }}
         title={t.priority}
       />
-      <span className="shrink-0 font-mono text-[11.5px] font-semibold text-pen-id group-hover:text-pen-blue">
+      <span className="shrink-0 font-mono text-[11.5px] font-semibold text-sts-id group-hover:text-sts-blue">
         {t.id}
       </span>
-      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground group-hover:text-pen-blue">
+      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground group-hover:text-sts-blue">
         {t.title}
       </span>
       <span
@@ -130,14 +130,14 @@ function AttentionRow({ t }: { t: AttentionTask }) {
 
 function AttentionCard({ attention }: { attention: AttentionTask[] }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card shadow-pen-card">
-      <div className="flex items-center gap-2.5 border-b border-pen-card-border px-4 py-3">
+    <section className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sts-card">
+      <div className="flex items-center gap-2.5 border-b border-sts-card-border px-4 py-3">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: "#ef444418" }}>
           <ListTodo className="size-3.5" style={{ color: "#ef4444" }} />
         </span>
-        <span className="pen-text-card-title">Needs attention</span>
+        <span className="sts-text-card-title">Needs attention</span>
         {attention.length > 0 && (
-          <span className="ml-auto rounded-full bg-pen-surface px-2 py-0.5 font-mono text-[11px] tabular-nums text-pen-muted">
+          <span className="ml-auto rounded-full bg-sts-surface px-2 py-0.5 font-mono text-[11px] tabular-nums text-sts-muted">
             {attention.length}
           </span>
         )}
@@ -145,7 +145,7 @@ function AttentionCard({ attention }: { attention: AttentionTask[] }) {
       {attention.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
           <CheckCircle2 className="size-6 text-emerald-500" />
-          <p className="font-sans text-[12.5px] text-pen-muted">
+          <p className="font-sans text-[12.5px] text-sts-muted">
             Nothing overdue, due soon, or blocked. Nice.
           </p>
         </div>
@@ -166,20 +166,20 @@ function MyProjectsRail({ projects }: { projects: MyProject[] }) {
   if (projects.length === 0) return null;
   return (
     <RailCard id="my-projects" icon={FolderKanban} accent="#0a76b9" title="My projects" aside={
-      <span className="font-sans text-[11px] text-pen-subtle">{projects.length}</span>
+      <span className="font-sans text-[11px] text-sts-subtle">{projects.length}</span>
     }>
       {projects.map((p) => (
         <Link
           key={p.id}
           href={`/projects/${p.slug}`}
-          className="group flex items-center gap-2.5 border-b border-pen-card-border/40 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-pen-surface/60"
+          className="group flex items-center gap-2.5 border-b border-sts-card-border/40 px-4 py-2.5 transition-colors last:border-b-0 hover:bg-sts-surface/60"
         >
           <span className="block size-[8px] shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
-          <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-pen-foreground group-hover:text-pen-blue">
+          <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-sts-foreground group-hover:text-sts-blue">
             {p.name}
           </span>
           {p.openCount > 0 && (
-            <span className="shrink-0 font-mono text-[11px] tabular-nums text-pen-muted">
+            <span className="shrink-0 font-mono text-[11px] tabular-nums text-sts-muted">
               {p.openCount} open
             </span>
           )}
@@ -198,10 +198,10 @@ function MyActivityRail({ activity }: { activity: ActivityItem[] }) {
           <div key={a.id} className="flex items-start gap-2.5">
             <UserAvatar name={a.actor} avatarUrl={a.actorAvatarUrl ?? undefined} size={22} />
             <div className="min-w-0 flex-1">
-              <p className="font-sans text-[11.5px] leading-[1.5] text-pen-muted">
-                <span className="font-semibold text-pen-foreground">{a.actor}</span> {a.action}
+              <p className="font-sans text-[11.5px] leading-[1.5] text-sts-muted">
+                <span className="font-semibold text-sts-foreground">{a.actor}</span> {a.action}
               </p>
-              <p className="font-sans text-[10.5px] text-pen-subtle">{a.timestamp}</p>
+              <p className="font-sans text-[10.5px] text-sts-subtle">{a.timestamp}</p>
             </div>
           </div>
         ))}
@@ -234,13 +234,13 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               {userName ? (
-                <h1 className="pen-text-display">
+                <h1 className="sts-text-display">
                   {timeGreeting}, {firstName}.
                 </h1>
               ) : (
-                <h1 className="pen-text-display">{timeGreeting}.</h1>
+                <h1 className="sts-text-display">{timeGreeting}.</h1>
               )}
-              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-pen-muted">
+              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-sts-muted">
                 {data ? buildDigest(data.metrics) : "Loading your day…"}
               </p>
             </div>

@@ -26,7 +26,7 @@ function notifyKeyFor(templateKey: string): string {
 export type DeptOption = { id: string; name: string; subDepartmentId?: string | null };
 
 const inputClass =
-  "h-9 w-full rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-[12.5px] text-pen-foreground shadow-none outline-none focus:border-pen-blue";
+  "h-9 w-full rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none outline-none focus:border-sts-blue";
 
 const PLACEHOLDER_HINTS: Record<string, string> = {
   viewTicketButton:
@@ -108,8 +108,8 @@ function TemplateEditor({
   const hasSignaturePlaceholder = template.placeholders.includes("signature");
 
   return (
-    <div className="flex flex-col gap-4 border-t border-pen-surface pt-4">
-      <div className="flex gap-1 border-b border-pen-card-border">
+    <div className="flex flex-col gap-4 border-t border-sts-surface pt-4">
+      <div className="flex gap-1 border-b border-sts-card-border">
         {(
           [
             { id: "preview" as const, label: "Preview" },
@@ -123,8 +123,8 @@ function TemplateEditor({
             className={cn(
               "h-9 rounded-t-md px-3.5 font-sans text-[12.5px] font-medium",
               tab === t.id
-                ? "border-b-2 border-pen-blue text-pen-foreground"
-                : "text-pen-muted hover:text-pen-foreground",
+                ? "border-b-2 border-sts-blue text-sts-foreground"
+                : "text-sts-muted hover:text-sts-foreground",
             )}
           >
             {t.label}
@@ -134,9 +134,9 @@ function TemplateEditor({
 
       {tab === "preview" ? (
         <div className="flex w-full flex-col gap-[5px]">
-          <div className="overflow-hidden rounded-md border border-pen-card-border bg-pen-bg">
-            <p className="border-b border-pen-card-border px-3 py-2 font-sans text-[11.5px] text-pen-muted">
-              Subject: <span className="text-pen-foreground">{preview?.subject ?? draft.subject}</span>
+          <div className="overflow-hidden rounded-md border border-sts-card-border bg-sts-bg">
+            <p className="border-b border-sts-card-border px-3 py-2 font-sans text-[11.5px] text-sts-muted">
+              Subject: <span className="text-sts-foreground">{preview?.subject ?? draft.subject}</span>
             </p>
             {preview ? (
               <iframe
@@ -151,7 +151,7 @@ function TemplateEditor({
                 className="w-full bg-white"
               />
             ) : (
-              <div className="flex h-[320px] items-center justify-center font-sans text-[12px] text-pen-subtle">
+              <div className="flex h-[320px] items-center justify-center font-sans text-[12px] text-sts-subtle">
                 {loadingPreview ? "Rendering…" : "No preview yet"}
               </div>
             )}
@@ -161,7 +161,7 @@ function TemplateEditor({
         <div className="flex w-full flex-col gap-3">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
-              <label className="pen-text-label">Subject</label>
+              <label className="sts-text-label">Subject</label>
               <input
                 value={draft.subject}
                 onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
@@ -169,7 +169,7 @@ function TemplateEditor({
               />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
-              <label className="pen-text-label">Heading</label>
+              <label className="sts-text-label">Heading</label>
               <input
                 value={draft.heading}
                 onChange={(e) => setDraft((d) => ({ ...d, heading: e.target.value }))}
@@ -178,13 +178,13 @@ function TemplateEditor({
             </div>
           </div>
           <div className="flex flex-col gap-[5px]">
-            <label className="pen-text-label">Body HTML</label>
+            <label className="sts-text-label">Body HTML</label>
             <textarea
               value={draft.bodyHtml}
               onChange={(e) => setDraft((d) => ({ ...d, bodyHtml: e.target.value }))}
               rows={16}
               spellCheck={false}
-              className="w-full resize-y rounded-md border border-pen-card-border bg-pen-bg px-[11px] py-2 font-mono text-[11.5px] leading-relaxed text-pen-foreground shadow-none outline-none focus:border-pen-blue"
+              className="w-full resize-y rounded-md border border-sts-card-border bg-sts-bg px-[11px] py-2 font-mono text-[11.5px] leading-relaxed text-sts-foreground shadow-none outline-none focus:border-sts-blue"
             />
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -192,15 +192,15 @@ function TemplateEditor({
               <span
                 key={p}
                 title={PLACEHOLDER_HINTS[p]}
-                className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-mono text-[11px] text-pen-blue"
+                className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-mono text-[11px] text-sts-blue"
               >
                 {`{{${p}}}`}
               </span>
             ))}
           </div>
           {hasSignaturePlaceholder ? (
-            <p className="font-sans text-[11.5px] text-pen-subtle">
-              <span className="font-mono text-pen-blue">{"{{signature}}"}</span> inserts the sender&rsquo;s personal
+            <p className="font-sans text-[11.5px] text-sts-subtle">
+              <span className="font-mono text-sts-blue">{"{{signature}}"}</span> inserts the sender&rsquo;s personal
               signature card (set in Profile → Email signature) when they&rsquo;ve filled it in and turned it on;
               otherwise it falls back to the placeholder signature card shown below.
             </p>
@@ -208,12 +208,12 @@ function TemplateEditor({
         </div>
       )}
 
-      <div className="flex items-center gap-2 border-t border-pen-surface pt-4">
+      <div className="flex items-center gap-2 border-t border-sts-surface pt-4">
         <button
           type="button"
           onClick={() => runPreview(draft)}
           disabled={loadingPreview}
-          className="h-8 rounded-md border border-pen-card-border bg-transparent px-3 font-sans text-xs font-semibold text-pen-foreground hover:bg-pen-blue-tint disabled:opacity-50"
+          className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:opacity-50"
         >
           {loadingPreview ? "Rendering…" : "Refresh preview"}
         </button>
@@ -221,7 +221,7 @@ function TemplateEditor({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="h-8 rounded-md bg-pen-blue px-3.5 font-sans text-xs font-medium text-white disabled:opacity-50"
+          className="h-8 rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -230,7 +230,7 @@ function TemplateEditor({
             type="button"
             onClick={handleReset}
             disabled={saving}
-            className="h-8 rounded-md border border-pen-card-border bg-transparent px-3 font-sans text-xs font-semibold text-pen-muted hover:bg-pen-blue-tint disabled:opacity-50"
+            className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-muted hover:bg-sts-blue-tint disabled:opacity-50"
           >
             Reset to default
           </button>
@@ -289,7 +289,7 @@ export function SettingsEmailTemplatesPage({
   if (departments.length === 0) {
     return (
       <div className="flex flex-col gap-3 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-        <p className="max-w-[1040px] font-sans text-[13px] text-pen-muted">
+        <p className="max-w-[1040px] font-sans text-[13px] text-sts-muted">
           No departments available. Assign a department to edit email templates.
         </p>
       </div>
@@ -302,9 +302,9 @@ export function SettingsEmailTemplatesPage({
     <div className="flex flex-col gap-3 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       {showSelector ? (
         <div className="flex max-w-[1040px] flex-col gap-1.5">
-          <label className="pen-text-label">Applies to</label>
+          <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-pen-card-border bg-pen-bg font-sans text-[12.5px] text-pen-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((o) => o.id === departmentId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -315,15 +315,15 @@ export function SettingsEmailTemplatesPage({
               ))}
             </SelectContent>
           </Select>
-          <p className="font-sans text-[11.5px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] text-sts-subtle">
             Subject, heading, and body for this department&apos;s outgoing emails.
             Templates without a customization use the built-in default.
           </p>
         </div>
       ) : (
-        <p className="max-w-[1040px] font-sans text-[11.5px] text-pen-subtle">
+        <p className="max-w-[1040px] font-sans text-[11.5px] text-sts-subtle">
           Subject, heading, and body for{" "}
-          <span className="font-medium text-pen-foreground">
+          <span className="font-medium text-sts-foreground">
             {departments[0]?.name ?? "this department"}
           </span>
           &apos;s outgoing emails. Templates without a customization use the built-in
@@ -335,7 +335,7 @@ export function SettingsEmailTemplatesPage({
         Array.from({ length: TEMPLATE_SKELETON_COUNT }).map((_, i) => (
           <section
             key={i}
-            className="w-full max-w-[1040px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-4"
+            className="w-full max-w-[1040px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
           >
             <div className="flex w-full items-center justify-between gap-3">
               <div className="flex flex-col gap-1.5">
@@ -353,7 +353,7 @@ export function SettingsEmailTemplatesPage({
           return (
             <section
               key={template.key}
-              className="w-full max-w-[1040px] rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-4"
+              className="w-full max-w-[1040px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
             >
               <button
                 type="button"
@@ -361,18 +361,18 @@ export function SettingsEmailTemplatesPage({
                 className="flex w-full items-center justify-between gap-3 text-left"
               >
                 <div className="flex flex-col gap-px">
-                  <span className="flex items-center gap-1.5 font-sans text-sm font-semibold text-pen-foreground">
+                  <span className="flex items-center gap-1.5 font-sans text-sm font-semibold text-sts-foreground">
                     {template.label}
                     {notifyDisabled ? (
                       <BellOff
-                        className="size-3.5 text-pen-subtle"
+                        className="size-3.5 text-sts-subtle"
                         aria-label="This email is currently disabled"
                       >
                         <title>This email is currently disabled</title>
                       </BellOff>
                     ) : null}
                   </span>
-                  <span className="font-sans text-[11.5px] text-pen-subtle">
+                  <span className="font-sans text-[11.5px] text-sts-subtle">
                     {template.description}
                   </span>
                 </div>
@@ -381,7 +381,7 @@ export function SettingsEmailTemplatesPage({
                     "shrink-0 rounded-full px-2.5 py-0.5 font-sans text-[11px] font-medium",
                     template.override
                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                      : "bg-pen-surface text-pen-muted",
+                      : "bg-sts-surface text-sts-muted",
                   )}
                 >
                   {template.override ? "Customized" : "Default"}

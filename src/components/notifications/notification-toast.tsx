@@ -6,7 +6,7 @@ import type { NotificationBroadcastPayload } from "@/lib/realtime";
 import { getNotificationHref } from "@/lib/notification-routing";
 
 const TOAST_DURATION_MS = 2000;
-const toastIcon = <Bell className="size-4 text-pen-blue" />;
+const toastIcon = <Bell className="size-4 text-sts-blue" />;
 const OS_ICON = "/android-chrome-192x192.png";
 
 /** OS-level notification for when the tab is open but not focused. */
@@ -23,7 +23,7 @@ export function showOsNotification(
       body: payload.body ?? undefined,
       icon: OS_ICON,
       badge: OS_ICON,
-      tag: `pen-${payload.id}`,
+      tag: `sts-${payload.id}`,
       data: { url: getNotificationHref(payload) },
     });
     n.onclick = () => {

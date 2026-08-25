@@ -83,21 +83,21 @@ const STATUS_CONFIG: Record<
 > = {
   planned: {
     label: "Planned",
-    dot: "bg-pen-subtle",
-    bg: "bg-pen-surface",
-    text: "text-pen-muted",
+    dot: "bg-sts-subtle",
+    bg: "bg-sts-surface",
+    text: "text-sts-muted",
   },
   active: {
     label: "Active",
-    dot: "bg-pen-blue",
+    dot: "bg-sts-blue",
     bg: "bg-[#e7f7ec] dark:bg-[#26352b]",
-    text: "text-pen-green",
+    text: "text-sts-green",
   },
   completed: {
     label: "Completed",
-    dot: "bg-pen-id",
-    bg: "bg-pen-blue-tint",
-    text: "text-pen-id",
+    dot: "bg-sts-id",
+    bg: "bg-sts-blue-tint",
+    text: "text-sts-id",
   },
 };
 
@@ -131,14 +131,14 @@ function ProgressBar({
   return (
     <div
       className={cn(
-        "h-1.5 w-full overflow-hidden rounded-[3px] bg-pen-surface",
+        "h-1.5 w-full overflow-hidden rounded-[3px] bg-sts-surface",
         className,
       )}
     >
       <div
         className={cn(
           "h-full rounded-[3px] transition-[width]",
-          variant === "completed" ? "bg-pen-id" : "bg-pen-blue",
+          variant === "completed" ? "bg-sts-id" : "bg-sts-blue",
         )}
         style={{ width: `${value}%` }}
       />
@@ -167,7 +167,7 @@ function SprintRowMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         type="button"
-        className="inline-flex size-7 items-center justify-center rounded-md text-pen-muted outline-none hover:bg-pen-surface hover:text-pen-foreground"
+        className="inline-flex size-7 items-center justify-center rounded-md text-sts-muted outline-none hover:bg-sts-surface hover:text-sts-foreground"
         aria-label="Sprint actions"
       >
         <MoreHorizontal className="size-3.5" />
@@ -186,7 +186,7 @@ function SprintRowMenu({
         )}
         <DropdownMenuItem
           onClick={() => onDelete(sprint)}
-          className="text-pen-red focus:text-pen-red"
+          className="text-sts-red focus:text-sts-red"
         >
           Delete sprint
         </DropdownMenuItem>
@@ -335,12 +335,12 @@ export function ProjectSprintsTab({
       {/* Header actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Zap className="size-4 text-pen-blue" />
-          <h2 className="font-sans text-[14px] font-semibold text-pen-foreground">
+          <Zap className="size-4 text-sts-blue" />
+          <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
             Sprints
           </h2>
           {activeSprints.length > 0 && (
-            <span className="rounded-full bg-[#e7f7ec] px-1.5 py-px font-mono text-[11.5px] text-pen-green dark:bg-[#26352b]">
+            <span className="rounded-full bg-[#e7f7ec] px-1.5 py-px font-mono text-[11.5px] text-sts-green dark:bg-[#26352b]">
               {activeSprints.length} active
             </span>
           )}
@@ -360,7 +360,7 @@ export function ProjectSprintsTab({
               type="button"
               size="sm"
               onClick={() => setCreateOpen(true)}
-              className="h-[30px] shrink-0 gap-1.5 bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-pen-blue/90 dark:text-gray-900"
+              className="h-[30px] shrink-0 gap-1.5 bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
             >
               <Plus className="size-3" /> New sprint
             </Button>
@@ -375,7 +375,7 @@ export function ProjectSprintsTab({
           {/* Active sprint cards */}
           {activeSprints.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <p className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-pen-subtle uppercase">
+              <p className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
                 Running now
               </p>
               <div
@@ -390,17 +390,17 @@ export function ProjectSprintsTab({
                   <section
                     key={s.id}
                     onClick={() => setDetailSprintId(s.id)}
-                    className="flex cursor-pointer flex-col gap-3 rounded-xl border border-pen-card-border bg-pen-card px-4 py-4 ring-1 ring-pen-blue/25 transition-colors hover:bg-pen-surface"
+                    className="flex cursor-pointer flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4 ring-1 ring-sts-blue/25 transition-colors hover:bg-sts-surface"
                   >
                     <div className="flex min-w-0 items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-col gap-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="size-[7px] shrink-0 rounded-full bg-pen-green" />
-                          <span className="pen-text-card-title truncate">
+                          <span className="size-[7px] shrink-0 rounded-full bg-sts-green" />
+                          <span className="sts-text-card-title truncate">
                             {s.name}
                           </span>
                         </div>
-                        <span className="font-mono text-[11.5px] text-pen-muted">
+                        <span className="font-mono text-[11.5px] text-sts-muted">
                           {s.dates}
                         </span>
                       </div>
@@ -408,8 +408,8 @@ export function ProjectSprintsTab({
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium",
                           s.daysLeftUrgent
-                            ? "bg-pen-red/10 text-pen-red"
-                            : "bg-pen-surface text-pen-muted",
+                            ? "bg-sts-red/10 text-sts-red"
+                            : "bg-sts-surface text-sts-muted",
                         )}
                       >
                         {s.daysLeft}
@@ -424,10 +424,10 @@ export function ProjectSprintsTab({
                         { value: `${s.progress}%`, label: "DONE" },
                       ].map((stat) => (
                         <div key={stat.label} className="flex flex-col gap-0.5">
-                          <span className="font-mono text-[13px] font-semibold text-pen-foreground">
+                          <span className="font-mono text-[13px] font-semibold text-sts-foreground">
                             {stat.value}
                           </span>
-                          <span className="font-sans text-[11.5px] tracking-[0.6px] text-pen-subtle">
+                          <span className="font-sans text-[11.5px] tracking-[0.6px] text-sts-subtle">
                             {stat.label}
                           </span>
                         </div>
@@ -439,7 +439,7 @@ export function ProjectSprintsTab({
                       <span
                         className={cn(
                           "font-sans text-[11.5px]",
-                          s.isOnTrack ? "text-pen-green" : "text-pen-red",
+                          s.isOnTrack ? "text-sts-green" : "text-sts-red",
                         )}
                       >
                         {s.progressLabel}
@@ -450,11 +450,11 @@ export function ProjectSprintsTab({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-pen-card-border py-12">
-              <p className="font-sans text-[13px] font-medium text-pen-muted">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-sts-card-border py-12">
+              <p className="font-sans text-[13px] font-medium text-sts-muted">
                 No active sprints
               </p>
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 {canManage
                   ? "Start a planned sprint or create a new one."
                   : "No sprint is currently running for this project."}
@@ -463,7 +463,7 @@ export function ProjectSprintsTab({
                 <button
                   type="button"
                   onClick={() => setCreateOpen(true)}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
+                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
                 >
                   <Plus className="size-3" /> New sprint
                 </button>
@@ -475,38 +475,38 @@ export function ProjectSprintsTab({
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-muted" />
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-muted" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search sprints…"
-                  className="h-[30px] rounded-[7px] border border-pen-card-border bg-pen-card pl-8 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-muted focus:border-pen-blue"
+                  className="h-[30px] rounded-[7px] border border-sts-card-border bg-sts-card pl-8 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-muted focus:border-sts-blue"
                 />
               </div>
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 {filteredRows.length} sprint{filteredRows.length !== 1 ? "s" : ""}
               </span>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+            <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
               <div className="overflow-x-auto">
                 <table className="w-full caption-bottom text-sm">
-                  <thead className="bg-pen-card [&_tr]:border-b">
-                    <tr className="h-[34px] border-pen-card-border">
-                      <th className="min-w-[140px] pl-[18px] text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle whitespace-nowrap">
+                  <thead className="bg-sts-card [&_tr]:border-b">
+                    <tr className="h-[34px] border-sts-card-border">
+                      <th className="min-w-[140px] pl-[18px] text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle whitespace-nowrap">
                         SPRINT
                       </th>
-                      <th className="hidden min-w-[160px] sm:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle whitespace-nowrap">
+                      <th className="hidden min-w-[160px] sm:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle whitespace-nowrap">
                         DATES
                       </th>
-                      <th className="hidden min-w-[100px] md:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle whitespace-nowrap">
+                      <th className="hidden min-w-[100px] md:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle whitespace-nowrap">
                         STATUS
                       </th>
-                      <th className="hidden min-w-[90px] lg:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle whitespace-nowrap">
+                      <th className="hidden min-w-[90px] lg:table-cell text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle whitespace-nowrap">
                         POINTS
                       </th>
-                      <th className="min-w-[120px] text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle whitespace-nowrap">
+                      <th className="min-w-[120px] text-left font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle whitespace-nowrap">
                         COMPLETED
                       </th>
                       <th className="w-10 pr-[18px]" />
@@ -517,7 +517,7 @@ export function ProjectSprintsTab({
                       <tr>
                         <td
                           colSpan={6}
-                          className="h-[52px] pl-[18px] font-sans text-[12.5px] text-pen-muted"
+                          className="h-[52px] pl-[18px] font-sans text-[12.5px] text-sts-muted"
                         >
                           {rows.length === 0
                             ? "No sprints yet for this project."
@@ -531,20 +531,20 @@ export function ProjectSprintsTab({
                         <tr
                           key={sprint.id}
                           onClick={() => setDetailSprintId(sprint.id)}
-                          className="h-[52px] cursor-pointer border-b border-[#f0f4f8] transition-colors hover:bg-pen-bg dark:border-[#3a3a37]"
+                          className="h-[52px] cursor-pointer border-b border-[#f0f4f8] transition-colors hover:bg-sts-bg dark:border-[#3a3a37]"
                         >
                           <td className="p-2 pl-[18px] align-middle whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <span
                                 className={cn("size-2 shrink-0 rounded-full", cfg.dot)}
                               />
-                              <span className="font-sans text-[13px] font-semibold text-pen-foreground">
+                              <span className="font-sans text-[13px] font-semibold text-sts-foreground">
                                 {sprint.name}
                               </span>
                             </div>
                           </td>
                           <td className="hidden p-2 align-middle whitespace-nowrap sm:table-cell">
-                            <span className="font-mono text-[11.5px] text-pen-muted">
+                            <span className="font-mono text-[11.5px] text-sts-muted">
                               {sprint.dates}
                             </span>
                           </td>
@@ -552,14 +552,14 @@ export function ProjectSprintsTab({
                             <StatusPill status={sprint.status} />
                           </td>
                           <td className="hidden p-2 align-middle whitespace-nowrap lg:table-cell">
-                            <span className="font-mono text-xs font-semibold text-pen-foreground">
+                            <span className="font-mono text-xs font-semibold text-sts-foreground">
                               {sprint.points} pts
                             </span>
                           </td>
                           <td className="p-2 align-middle">
                             {sprint.completed != null ? (
                               <div className="flex max-w-[160px] flex-col gap-1">
-                                <span className="font-mono text-[11.5px] font-medium text-pen-muted">
+                                <span className="font-mono text-[11.5px] font-medium text-sts-muted">
                                   {sprint.completed}%
                                 </span>
                                 <ProgressBar
@@ -573,7 +573,7 @@ export function ProjectSprintsTab({
                                 />
                               </div>
                             ) : (
-                              <span className="font-mono text-[11.5px] font-medium text-pen-muted">
+                              <span className="font-mono text-[11.5px] font-medium text-sts-muted">
                                 —
                               </span>
                             )}

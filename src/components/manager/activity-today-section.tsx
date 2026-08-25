@@ -34,38 +34,38 @@ export function ActivityTodaySection({ items, total }: { items: ActivityItem[]; 
       title="Today's activity"
       defaultOpen={false}
       aside={
-        <span className="font-sans text-[11px] text-pen-subtle">
+        <span className="font-sans text-[11px] text-sts-subtle">
           {total} event{total === 1 ? "" : "s"}{total > items.length ? ` · last ${items.length}` : ""}
         </span>
       }
     >
       <div className="relative max-h-[min(420px,48vh)] overflow-y-auto overscroll-contain px-4 py-3">
         {/* timeline rule */}
-        <div className="absolute bottom-4 left-[59px] top-4 w-px bg-pen-card-border/70" />
+        <div className="absolute bottom-4 left-[59px] top-4 w-px bg-sts-card-border/70" />
 
         <div className="flex flex-col gap-2.5">
           {items.map((a) => {
             const phrase = ACTION_PHRASE[a.action] ?? a.action.replaceAll("_", " ").toLowerCase();
             return (
               <div key={a.id} className="relative flex items-start gap-2.5">
-                <span className="w-[34px] shrink-0 pt-[2px] font-mono text-[10px] tabular-nums text-pen-subtle">
+                <span className="w-[34px] shrink-0 pt-[2px] font-mono text-[10px] tabular-nums text-sts-subtle">
                   {timeFmt.format(new Date(a.createdAt))}
                 </span>
-                <span className="relative z-10 mt-[3px] shrink-0 rounded-full ring-4 ring-pen-card">
+                <span className="relative z-10 mt-[3px] shrink-0 rounded-full ring-4 ring-sts-card">
                   <UserAvatar name={a.actor.name} avatarUrl={a.actor.avatarUrl} size={18} />
                 </span>
-                <span className="min-w-0 flex-1 font-sans text-[11.5px] leading-[1.5] text-pen-muted">
-                  <span className="font-semibold text-pen-foreground">{a.actor.name}</span>
+                <span className="min-w-0 flex-1 font-sans text-[11.5px] leading-[1.5] text-sts-muted">
+                  <span className="font-semibold text-sts-foreground">{a.actor.name}</span>
                   {" "}{phrase}{" "}
                   <DrawerLink
                     ticketId={a.ticket.id}
                     href={`/tickets/${a.ticket.id}`}
-                    className="font-mono text-[10.5px] font-semibold text-pen-id hover:text-pen-blue"
+                    className="font-mono text-[10.5px] font-semibold text-sts-id hover:text-sts-blue"
                   >
                     {a.ticket.humanId}
                   </DrawerLink>
                   {a.statusTo && (
-                    <span className="text-pen-subtle"> → <span className="text-pen-foreground">{a.statusTo}</span></span>
+                    <span className="text-sts-subtle"> → <span className="text-sts-foreground">{a.statusTo}</span></span>
                   )}
                 </span>
               </div>

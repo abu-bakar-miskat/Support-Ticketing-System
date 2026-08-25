@@ -11,7 +11,7 @@ function layoutClasses(layout: PanelLayout) {
     case "scroll-pad":
       return "flex h-full min-h-0 flex-col overflow-y-auto p-2 sm:p-3";
     case "scroll-page":
-      return "h-full min-h-0 overflow-y-auto pen-page-pad";
+      return "h-full min-h-0 overflow-y-auto sts-page-pad";
   }
 }
 

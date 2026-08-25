@@ -33,7 +33,7 @@ const REVEAL_CSS = `
 `;
 
 const STATUS_DOT: Record<string, string> = {
-  ACTIVE: "bg-pen-green",
+  ACTIVE: "bg-sts-green",
   AUTH_ERROR: "bg-red-500",
   UNREACHABLE: "bg-amber-500",
 };
@@ -65,7 +65,7 @@ export function SubDepartmentAbout({
 
       {/* ── Identity hero: the team's colour + its ticket-key plate ── */}
       <header
-        className="sd-rise relative overflow-hidden rounded-2xl border bg-pen-card"
+        className="sd-rise relative overflow-hidden rounded-2xl border bg-sts-card"
         style={{
           borderColor: tint(accent, 32),
           backgroundImage: `radial-gradient(130% 150% at 0% 0%, ${tint(accent, 16)}, transparent 55%)`,
@@ -82,14 +82,14 @@ export function SubDepartmentAbout({
           <div className="min-w-0 flex-1">
             <p
               className="font-sans text-[11px] font-semibold tracking-[1.2px] uppercase"
-              style={{ color: `color-mix(in srgb, ${accent} 65%, var(--pen-muted, #6b7280))` }}
+              style={{ color: `color-mix(in srgb, ${accent} 65%, var(--sts-muted, #6b7280))` }}
             >
               {subDepartment.departmentName} · Sub department
             </p>
-            <h1 className="mt-1 truncate font-sans text-[26px] leading-tight font-semibold text-pen-foreground">
+            <h1 className="mt-1 truncate font-sans text-[26px] leading-tight font-semibold text-sts-foreground">
               {subDepartment.name}
             </h1>
-            <p className="mt-1 font-sans text-[13px] text-pen-muted">
+            <p className="mt-1 font-sans text-[13px] text-sts-muted">
               {subDepartment.memberCount} member{subDepartment.memberCount === 1 ? "" : "s"}
               {subDepartment.subManagers.length > 0 &&
                 ` · ${subDepartment.subManagers.length} sub-manager${subDepartment.subManagers.length === 1 ? "" : "s"}`}
@@ -107,7 +107,7 @@ export function SubDepartmentAbout({
             >
               {latestKey}
             </span>
-            <span className="font-sans text-[11px] text-pen-subtle">
+            <span className="font-sans text-[11px] text-sts-subtle">
               {subDepartment.ticketsKeyed > 0 ? "Latest ticket key" : "First ticket key"}
             </span>
           </div>
@@ -139,7 +139,7 @@ export function SubDepartmentAbout({
         >
           {subDepartment.subManagers.length === 0 ? (
             <Empty
-              icon={<Shield className="size-4 text-pen-subtle" />}
+              icon={<Shield className="size-4 text-sts-subtle" />}
               text="No sub-managers assigned yet."
             />
           ) : (
@@ -157,7 +157,7 @@ export function SubDepartmentAbout({
           action={
             <Link
               href={mailboxHref}
-              className="flex items-center gap-0.5 font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              className="flex items-center gap-0.5 font-sans text-[11.5px] font-medium text-sts-blue hover:underline"
             >
               Manage
               <ArrowUpRight className="size-3" />
@@ -166,10 +166,10 @@ export function SubDepartmentAbout({
         >
           {subDepartment.mailboxes.length === 0 ? (
             <Empty
-              icon={<UserPlus className="size-4 text-pen-subtle" />}
+              icon={<UserPlus className="size-4 text-sts-subtle" />}
               text="No mailbox connected."
               cta={
-                <Link href={mailboxHref} className="font-medium text-pen-blue hover:underline">
+                <Link href={mailboxHref} className="font-medium text-sts-blue hover:underline">
                   Connect one
                 </Link>
               }
@@ -179,13 +179,13 @@ export function SubDepartmentAbout({
               {subDepartment.mailboxes.map((mb) => (
                 <li
                   key={mb.address}
-                  className="flex items-center gap-2.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2"
+                  className="flex items-center gap-2.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2"
                 >
-                  <span className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[mb.status] ?? "bg-pen-subtle"}`} />
-                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                  <span className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[mb.status] ?? "bg-sts-subtle"}`} />
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                     {mb.address}
                   </span>
-                  <span className="shrink-0 font-sans text-[11px] text-pen-subtle">
+                  <span className="shrink-0 font-sans text-[11px] text-sts-subtle">
                     {STATUS_LABEL[mb.status] ?? mb.status}
                   </span>
                 </li>
@@ -203,7 +203,7 @@ export function SubDepartmentAbout({
         >
           {roster.length === 0 ? (
             <Empty
-              icon={<Users className="size-4 text-pen-subtle" />}
+              icon={<Users className="size-4 text-sts-subtle" />}
               text="No members yet — invite someone to get started."
             />
           ) : (
@@ -211,14 +211,14 @@ export function SubDepartmentAbout({
               {roster.map((m) => (
                 <li
                   key={m.userId}
-                  className="flex items-center gap-3 rounded-xl border border-pen-card-border bg-pen-surface px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-surface px-3 py-2.5"
                 >
                   <AvatarVisual name={m.name} avatarUrl={m.avatarUrl} size={30} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[13px] font-medium text-pen-foreground">
+                    <p className="truncate font-sans text-[13px] font-medium text-sts-foreground">
                       {m.name}
                     </p>
-                    <p className="truncate font-sans text-[11px] text-pen-subtle">
+                    <p className="truncate font-sans text-[11px] text-sts-subtle">
                       {m.role === "sub_manager"
                         ? "Sub-manager"
                         : m.doNotAssign
@@ -258,7 +258,7 @@ function Stat({
   accent: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-pen-card-border bg-pen-card p-4">
+    <div className="flex flex-col gap-2 rounded-2xl border border-sts-card-border bg-sts-card p-4">
       <span
         className="flex size-8 items-center justify-center rounded-lg"
         style={{ backgroundColor: tint(accent, 12), color: accent }}
@@ -266,11 +266,11 @@ function Stat({
         {icon}
       </span>
       <div>
-        <p className="font-mono text-[22px] leading-none font-semibold text-pen-foreground">
+        <p className="font-mono text-[22px] leading-none font-semibold text-sts-foreground">
           {value}
         </p>
-        <p className="mt-1.5 font-sans text-[11.5px] font-medium text-pen-muted">{label}</p>
-        {hint && <p className="font-sans text-[10.5px] text-pen-subtle">{hint}</p>}
+        <p className="mt-1.5 font-sans text-[11.5px] font-medium text-sts-muted">{label}</p>
+        {hint && <p className="font-sans text-[10.5px] text-sts-subtle">{hint}</p>}
       </div>
     </div>
   );
@@ -288,12 +288,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
-      <div className="flex items-start justify-between gap-3 border-b border-pen-card-border px-4 py-3.5">
+    <section className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
+      <div className="flex items-start justify-between gap-3 border-b border-sts-card-border px-4 py-3.5">
         <div className="min-w-0">
-          <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">{title}</h2>
+          <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">{title}</h2>
           {subtitle && (
-            <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">{subtitle}</p>
+            <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">{subtitle}</p>
           )}
         </div>
         {action && <div className="shrink-0 pt-0.5">{action}</div>}
@@ -316,7 +316,7 @@ function MemberRow({
     <li className="flex items-center gap-3">
       <AvatarVisual name={member.name} avatarUrl={member.avatarUrl} size={30} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-sans text-[13px] font-medium text-pen-foreground">
+        <p className="truncate font-sans text-[13px] font-medium text-sts-foreground">
           {member.name}
         </p>
         {showRole && (
@@ -339,9 +339,9 @@ function Empty({
   cta?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-pen-card-border px-4 py-6 text-center">
+    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-sts-card-border px-4 py-6 text-center">
       {icon}
-      <p className="font-sans text-[12px] text-pen-muted">
+      <p className="font-sans text-[12px] text-sts-muted">
         {text} {cta}
       </p>
     </div>

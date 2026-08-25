@@ -1,4 +1,4 @@
-export const THEME_STORAGE_KEY = "pen-theme";
+export const THEME_STORAGE_KEY = "sts-theme";
 
 export type LightVariant = "tangerine";
 export type DarkVariant = "amoled";

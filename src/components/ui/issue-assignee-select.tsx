@@ -55,27 +55,27 @@ export function IssueAssigneeSelect({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         className={cn(
-          "flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 text-left transition-colors hover:border-pen-id focus:border-pen-id focus:outline-none",
+          "flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 text-left transition-colors hover:border-sts-id focus:border-sts-id focus:outline-none",
           className,
         )}
       >
         {selected.length === 0 ? (
           <>
-            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-pen-card text-pen-subtle">
+            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-sts-card text-sts-subtle">
               <UserRound className="size-3.5" />
             </span>
-            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-muted">Unassigned</span>
+            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-muted">Unassigned</span>
           </>
         ) : (
           <>
             <span className="flex shrink-0 -space-x-1.5">
               {selected.slice(0, 4).map((m) => (
-                <span key={m.id} className="rounded-full ring-2 ring-pen-surface">
+                <span key={m.id} className="rounded-full ring-2 ring-sts-surface">
                   <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.id} size={22} />
                 </span>
               ))}
             </span>
-            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
               {selected.map((m) => m.name.split(" ")[0]).join(", ")}
             </span>
           </>
@@ -88,21 +88,21 @@ export function IssueAssigneeSelect({
         sideOffset={4}
         className={cn(sidebarDropdownPanelClass, "w-(--anchor-width) min-w-[240px] gap-0 overflow-hidden p-0")}
       >
-        <div className="border-b border-pen-card-border p-2">
+        <div className="border-b border-sts-card-border p-2">
           <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-pen-subtle" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-sts-subtle" />
             <Input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search members…"
-              className="h-8 border-pen-card-border bg-pen-surface pl-8 font-sans text-[12px]"
+              className="h-8 border-sts-card-border bg-sts-surface pl-8 font-sans text-[12px]"
             />
           </div>
         </div>
         <ul className="max-h-52 overflow-y-auto p-1">
           {filtered.length === 0 ? (
-            <li className="px-2 py-3 text-center font-sans text-[11.5px] text-pen-subtle">
+            <li className="px-2 py-3 text-center font-sans text-[11.5px] text-sts-subtle">
               No members match &ldquo;{query}&rdquo;
             </li>
           ) : (
@@ -114,15 +114,15 @@ export function IssueAssigneeSelect({
                     type="button"
                     onClick={() => toggle(member.id)}
                     className={cn(
-                      "pen-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                      "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
                       userListPickerButtonClass,
-                      isSelected && "bg-pen-surface",
+                      isSelected && "bg-sts-surface",
                     )}
                   >
                     <UserListItem
                       person={member}
                       avatarSize={22}
-                      trailing={isSelected ? <Check className="size-3.5 shrink-0 text-pen-blue" /> : null}
+                      trailing={isSelected ? <Check className="size-3.5 shrink-0 text-sts-blue" /> : null}
                     />
                   </button>
                 </li>

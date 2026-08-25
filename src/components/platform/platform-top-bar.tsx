@@ -13,8 +13,8 @@ export function PlatformTopBar({ onNotifClick }: { onNotifClick: () => void }) {
   const badgeCount = useNotificationStore((s) => s.unreadCount);
 
   return (
-    <header className="pen-glass-panel flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 lg:px-5">
-      <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold leading-none text-pen-foreground">
+    <header className="sts-glass-panel flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 lg:px-5">
+      <p className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold leading-none text-sts-foreground">
         Platform
       </p>
 
@@ -24,7 +24,7 @@ export function PlatformTopBar({ onNotifClick }: { onNotifClick: () => void }) {
         <button
           type="button"
           onClick={onNotifClick}
-          className="relative flex size-7 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-bg hover:text-pen-foreground"
+          className="relative flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
           aria-label="Notifications"
         >
           <Bell className="size-4" />

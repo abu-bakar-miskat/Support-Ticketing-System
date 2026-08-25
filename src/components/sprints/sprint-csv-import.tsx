@@ -92,18 +92,18 @@ export function SprintCSVImport({
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(520px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl">
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(520px,95vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
-            <Dialog.Title className="font-sans text-[14px] font-semibold text-pen-foreground">
+          <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+            <Dialog.Title className="font-sans text-[14px] font-semibold text-sts-foreground">
               Import sprints from CSV
             </Dialog.Title>
             <button
               type="button"
               onClick={() => handleOpenChange(false)}
               disabled={isLoading}
-              className="rounded-md p-1 text-pen-muted hover:bg-pen-surface hover:text-pen-foreground"
+              className="rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -111,12 +111,12 @@ export function SprintCSVImport({
 
           <div className="flex flex-col gap-4 px-5 py-5">
             {/* Template download */}
-            <div className="flex items-center justify-between rounded-xl border border-pen-card-border bg-pen-surface px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-sts-card-border bg-sts-surface px-4 py-3">
               <div>
-                <p className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <p className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                   Download template
                 </p>
-                <p className="font-sans text-[11.5px] text-pen-muted">
+                <p className="font-sans text-[11.5px] text-sts-muted">
                   Required columns: name, startDate, endDate
                 </p>
               </div>
@@ -144,10 +144,10 @@ export function SprintCSVImport({
               className={cn(
                 "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 transition-colors",
                 dragOver
-                  ? "border-pen-blue bg-pen-blue-tint"
+                  ? "border-sts-blue bg-sts-blue-tint"
                   : selectedFile
-                    ? "border-pen-green bg-[#e7f7ec] dark:bg-[#26352b]"
-                    : "border-pen-card-border hover:border-pen-blue/50 hover:bg-pen-surface",
+                    ? "border-sts-green bg-[#e7f7ec] dark:bg-[#26352b]"
+                    : "border-sts-card-border hover:border-sts-blue/50 hover:bg-sts-surface",
               )}
             >
               <input
@@ -160,24 +160,24 @@ export function SprintCSVImport({
               <Upload
                 className={cn(
                   "size-5",
-                  selectedFile ? "text-pen-green" : "text-pen-muted",
+                  selectedFile ? "text-sts-green" : "text-sts-muted",
                 )}
               />
               {selectedFile ? (
                 <>
-                  <p className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                  <p className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                     {selectedFile.name}
                   </p>
-                  <p className="font-sans text-[11.5px] text-pen-muted">
+                  <p className="font-sans text-[11.5px] text-sts-muted">
                     {(selectedFile.size / 1024).toFixed(1)} KB — click to change
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                  <p className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                     Drop your CSV file here
                   </p>
-                  <p className="font-sans text-[11.5px] text-pen-muted">
+                  <p className="font-sans text-[11.5px] text-sts-muted">
                     or click to browse
                   </p>
                 </>
@@ -188,13 +188,13 @@ export function SprintCSVImport({
             {showResult && result && (
               <div className="flex flex-col gap-2">
                 {hasCreated && (
-                  <div className="flex items-center gap-2 rounded-lg border border-pen-green/30 bg-[#e7f7ec] px-3 py-2.5 dark:bg-[#26352b]">
-                    <CheckCircle2 className="size-4 shrink-0 text-pen-green" />
-                    <p className="font-sans text-[12.5px] text-pen-foreground">
+                  <div className="flex items-center gap-2 rounded-lg border border-sts-green/30 bg-[#e7f7ec] px-3 py-2.5 dark:bg-[#26352b]">
+                    <CheckCircle2 className="size-4 shrink-0 text-sts-green" />
+                    <p className="font-sans text-[12.5px] text-sts-foreground">
                       <span className="font-semibold">{result.created}</span>{" "}
                       sprint{result.created !== 1 ? "s" : ""} created successfully
                       {result.skipped > 0 && (
-                        <span className="text-pen-muted">
+                        <span className="text-sts-muted">
                           {" "}· {result.skipped} duplicate{result.skipped !== 1 ? "s" : ""} skipped
                         </span>
                       )}
@@ -202,17 +202,17 @@ export function SprintCSVImport({
                   </div>
                 )}
                 {!hasCreated && !hasErrors && (
-                  <div className="rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2.5">
-                    <p className="font-sans text-[12.5px] text-pen-muted">
+                  <div className="rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2.5">
+                    <p className="font-sans text-[12.5px] text-sts-muted">
                       No new sprints were created. All rows were duplicates or had errors.
                     </p>
                   </div>
                 )}
                 {hasErrors && (
-                  <div className="max-h-[180px] overflow-y-auto rounded-lg border border-pen-red/30 bg-pen-red/5 px-3 py-2.5">
+                  <div className="max-h-[180px] overflow-y-auto rounded-lg border border-sts-red/30 bg-sts-red/5 px-3 py-2.5">
                     <div className="mb-2 flex items-center gap-2">
-                      <AlertCircle className="size-4 shrink-0 text-pen-red" />
-                      <p className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                      <AlertCircle className="size-4 shrink-0 text-sts-red" />
+                      <p className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                         {result.errors.length} row{result.errors.length !== 1 ? "s" : ""} had errors
                       </p>
                     </div>
@@ -220,7 +220,7 @@ export function SprintCSVImport({
                       {result.errors.map((e, i) => (
                         <li
                           key={i}
-                          className="font-mono text-[11.5px] text-pen-red"
+                          className="font-mono text-[11.5px] text-sts-red"
                         >
                           Row {e.row}: {e.message}
                         </li>
@@ -233,7 +233,7 @@ export function SprintCSVImport({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 border-t border-pen-card-border px-5 py-4">
+          <div className="flex items-center justify-end gap-2 border-t border-sts-card-border px-5 py-4">
             {showResult ? (
               <>
                 <Button
@@ -247,7 +247,7 @@ export function SprintCSVImport({
                 <Button
                   size="sm"
                   onClick={() => handleOpenChange(false)}
-                  className="bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+                  className="bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
                 >
                   Done
                 </Button>
@@ -268,7 +268,7 @@ export function SprintCSVImport({
                   size="sm"
                   disabled={!selectedFile || isLoading}
                   onClick={handleImport}
-                  className="gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90 disabled:opacity-50"
+                  className="gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
                 >
                   {isLoading && (
                     <Loader2 className="size-3.5 animate-spin" />

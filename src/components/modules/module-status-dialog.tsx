@@ -19,9 +19,9 @@ type ModuleStatusDialogProps = {
 };
 
 const STATUS_OPTIONS: { value: ModuleStatus; label: string; dot: string; hint: string }[] = [
-  { value: "planned", label: "Planned", dot: "bg-pen-subtle", hint: "Not started yet" },
-  { value: "in_progress", label: "In Progress", dot: "bg-pen-blue", hint: "Actively being worked on" },
-  { value: "completed", label: "Completed", dot: "bg-pen-green", hint: "All work wrapped up" },
+  { value: "planned", label: "Planned", dot: "bg-sts-subtle", hint: "Not started yet" },
+  { value: "in_progress", label: "In Progress", dot: "bg-sts-blue", hint: "Actively being worked on" },
+  { value: "completed", label: "Completed", dot: "bg-sts-green", hint: "All work wrapped up" },
 ];
 
 export function ModuleStatusDialog({
@@ -62,12 +62,12 @@ export function ModuleStatusDialog({
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <AlertDialog.Popup className="pen-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-          <AlertDialog.Title className="pen-text-modal-title">
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <AlertDialog.Popup className="sts-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <AlertDialog.Title className="sts-text-modal-title">
             Change module status
           </AlertDialog.Title>
-          <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-pen-subtle">
+          <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-sts-subtle">
             Set the current lifecycle status of “{moduleName}”.
           </AlertDialog.Description>
 
@@ -80,16 +80,16 @@ export function ModuleStatusDialog({
                 className={cn(
                   "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
                   selected === opt.value
-                    ? "border-pen-blue/50 bg-pen-blue-tint"
-                    : "border-pen-card-border bg-pen-surface hover:border-pen-subtle/50",
+                    ? "border-sts-blue/50 bg-sts-blue-tint"
+                    : "border-sts-card-border bg-sts-surface hover:border-sts-subtle/50",
                 )}
               >
                 <span className={cn("size-2 shrink-0 rounded-full", opt.dot)} />
                 <span className="flex flex-col">
-                  <span className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                  <span className="font-sans text-[12.5px] font-medium text-sts-foreground">
                     {opt.label}
                   </span>
-                  <span className="font-sans text-[11px] text-pen-subtle">{opt.hint}</span>
+                  <span className="font-sans text-[11px] text-sts-subtle">{opt.hint}</span>
                 </span>
               </button>
             ))}
@@ -109,7 +109,7 @@ export function ModuleStatusDialog({
               size="sm"
               disabled={mutation.isPending}
               onClick={handleConfirm}
-              className="gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+              className="gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
             >
               {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
               Update status

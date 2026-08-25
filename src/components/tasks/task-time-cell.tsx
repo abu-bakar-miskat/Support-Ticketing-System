@@ -81,12 +81,12 @@ export function TaskTimeCell({
   return (
     <div className="flex items-center gap-1">
       {isRunning && (
-        <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-pen-green" />
+        <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-sts-green" />
       )}
       <span
         className={cn(
           "font-mono text-[11.5px] whitespace-nowrap",
-          isRunning ? "font-semibold text-pen-green" : "text-pen-muted",
+          isRunning ? "font-semibold text-sts-green" : "text-sts-muted",
         )}
       >
         {timeLabel}
@@ -98,7 +98,7 @@ export function TaskTimeCell({
             title="Pause timer"
             onClick={handleStopTimer}
             disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-red transition-colors hover:bg-pen-red/10 disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
           >
             <Pause className="size-[9px] fill-current" />
           </button>
@@ -108,7 +108,7 @@ export function TaskTimeCell({
             title="Start timer"
             onClick={handleStartTimer}
             disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-blue disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
           >
             <Play className="size-[10px]" />
           </button>

@@ -265,19 +265,19 @@ export function MemberConfigPanel({
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end pen-overlay-backdrop">
-      <div className="flex h-full w-full max-w-[440px] flex-col bg-pen-card shadow-xl border-l border-pen-card-border overflow-hidden">
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4 shrink-0">
+    <div className="fixed inset-0 z-50 flex justify-end sts-overlay-backdrop">
+      <div className="flex h-full w-full max-w-[440px] flex-col bg-sts-card shadow-xl border-l border-sts-card-border overflow-hidden">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4 shrink-0">
           <div className="min-w-0">
-            <p className="font-sans text-[14px] font-semibold text-pen-foreground truncate">
+            <p className="font-sans text-[14px] font-semibold text-sts-foreground truncate">
               Configure — {member.name}
             </p>
-            <p className="font-sans text-[11.5px] text-pen-subtle truncate">{member.email}</p>
+            <p className="font-sans text-[11.5px] text-sts-subtle truncate">{member.email}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -285,25 +285,25 @@ export function MemberConfigPanel({
 
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-pen-subtle" />
+            <Loader2 className="size-5 animate-spin text-sts-subtle" />
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col gap-6 px-5 py-5">
               <section>
-                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Location
                 </p>
                 <input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Dhaka, BD or Remote"
-                  className="h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12.5px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+                  className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
                 />
               </section>
 
               <section>
-                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Timezone
                 </p>
                 <SearchableSelect
@@ -312,16 +312,16 @@ export function MemberConfigPanel({
                   options={timezoneOptions}
                   searchable
                   searchPlaceholder="Search timezone…"
-                  className="bg-pen-bg"
+                  className="bg-sts-bg"
                   aria-label="Timezone"
                 />
-                <p className="mt-1.5 font-sans text-[11px] text-pen-subtle">
+                <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
                   Used for rota availability and working-hours checks.
                 </p>
               </section>
 
               <section>
-                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Working days
                 </p>
                 <div className="flex gap-1.5 flex-wrap">
@@ -333,8 +333,8 @@ export function MemberConfigPanel({
                       className={cn(
                         "h-8 w-11 rounded-[6px] border font-sans text-[12px] font-medium transition-colors",
                         schedule.workingDays.includes(i)
-                          ? "border-pen-blue bg-pen-blue text-white"
-                          : "border-pen-card-border bg-pen-surface text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground"
+                          ? "border-sts-blue bg-sts-blue text-white"
+                          : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground"
                       )}
                     >
                       {day}
@@ -344,7 +344,7 @@ export function MemberConfigPanel({
               </section>
 
               <section>
-                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Working hours
                 </p>
                 <div className="flex items-center gap-2">
@@ -352,31 +352,31 @@ export function MemberConfigPanel({
                     type="time"
                     value={schedule.workStartTime}
                     onChange={(e) => setSchedule((s) => ({ ...s, workStartTime: e.target.value }))}
-                    className="h-9 rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue/60"
+                    className="h-9 rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/60"
                   />
-                  <span className="font-sans text-[12px] text-pen-subtle">to</span>
+                  <span className="font-sans text-[12px] text-sts-subtle">to</span>
                   <input
                     type="time"
                     value={schedule.workEndTime}
                     onChange={(e) => setSchedule((s) => ({ ...s, workEndTime: e.target.value }))}
-                    className="h-9 rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue/60"
+                    className="h-9 rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/60"
                   />
                 </div>
               </section>
 
               {subDepartmentMemberships.length > 0 && (
                 <section>
-                  <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                  <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                     Assignment blocking
                   </p>
                   <div className="flex flex-col gap-2">
                     {subDepartmentMemberships.map((tm) => (
-                      <div key={tm.subDepartmentId} className="flex items-center justify-between rounded-[8px] border border-pen-card-border bg-pen-bg px-3 py-2.5">
+                      <div key={tm.subDepartmentId} className="flex items-center justify-between rounded-[8px] border border-sts-card-border bg-sts-bg px-3 py-2.5">
                         <div>
-                          <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                          <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                             {tm.subDepartmentName}
                           </p>
-                          <p className="font-sans text-[11px] text-pen-subtle">
+                          <p className="font-sans text-[11px] text-sts-subtle">
                             {tm.doNotAssign ? "Excluded from assignment" : "Active in rotation"}
                           </p>
                         </div>
@@ -385,7 +385,7 @@ export function MemberConfigPanel({
                           onClick={() => toggleDoNotAssign(tm.subDepartmentId, tm.doNotAssign)}
                           className={cn(
                             "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                            tm.doNotAssign ? "bg-red-500" : "bg-pen-blue"
+                            tm.doNotAssign ? "bg-red-500" : "bg-sts-blue"
                           )}
                           role="switch"
                           aria-checked={!tm.doNotAssign}
@@ -404,26 +404,26 @@ export function MemberConfigPanel({
               )}
 
               <section>
-                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Individual holidays
                 </p>
 
                 {holidays.length > 0 && (
                   <div className="mb-3 flex flex-col gap-1.5">
                     {holidays.map((h) => (
-                      <div key={h.id} className="flex items-center justify-between rounded-[6px] border border-pen-card-border bg-pen-bg px-3 py-2">
+                      <div key={h.id} className="flex items-center justify-between rounded-[6px] border border-sts-card-border bg-sts-bg px-3 py-2">
                         <div>
-                          <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                          <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                             {new Date(h.date.slice(0, 10) + "T00:00:00").toLocaleDateString(undefined, { dateStyle: "medium" })}
                           </p>
                           {h.reason && (
-                            <p className="font-sans text-[11px] text-pen-subtle">{h.reason}</p>
+                            <p className="font-sans text-[11px] text-sts-subtle">{h.reason}</p>
                           )}
                         </div>
                         <button
                           type="button"
                           onClick={() => removeHoliday(h.id)}
-                          className="ml-2 inline-flex size-6 items-center justify-center rounded text-pen-subtle hover:text-red-500"
+                          className="ml-2 inline-flex size-6 items-center justify-center rounded text-sts-subtle hover:text-red-500"
                         >
                           <X className="size-3.5" />
                         </button>
@@ -432,18 +432,18 @@ export function MemberConfigPanel({
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2 rounded-[8px] border border-dashed border-pen-card-border p-3">
-                  <p className="font-sans text-[11px] text-pen-subtle">Add a holiday date range</p>
+                <div className="flex flex-col gap-2 rounded-[8px] border border-dashed border-sts-card-border p-3">
+                  <p className="font-sans text-[11px] text-sts-subtle">Add a holiday date range</p>
                   <div className="flex gap-2">
                     <Popover>
                       <PopoverTrigger
                         className={cn(
-                          "flex h-8 flex-1 items-center gap-1.5 rounded-[6px] border border-pen-card-border",
-                          "bg-pen-bg px-2 font-sans text-[12px] text-pen-foreground",
-                          "outline-none focus:border-pen-blue/60"
+                          "flex h-8 flex-1 items-center gap-1.5 rounded-[6px] border border-sts-card-border",
+                          "bg-sts-bg px-2 font-sans text-[12px] text-sts-foreground",
+                          "outline-none focus:border-sts-blue/60"
                         )}
                       >
-                        <CalendarDays className="size-3.5 shrink-0 text-pen-subtle" />
+                        <CalendarDays className="size-3.5 shrink-0 text-sts-subtle" />
                         {newHolidayRange?.from ? (
                           <span className="truncate">
                             {format(newHolidayRange.from, "MMM d, yyyy")}
@@ -452,7 +452,7 @@ export function MemberConfigPanel({
                             )}
                           </span>
                         ) : (
-                          <span className="text-pen-subtle">Pick date range</span>
+                          <span className="text-sts-subtle">Pick date range</span>
                         )}
                       </PopoverTrigger>
                       <PopoverContent align="start" className="w-auto p-0">
@@ -470,14 +470,14 @@ export function MemberConfigPanel({
                       value={newHolidayReason}
                       onChange={(e) => setNewHolidayReason(e.target.value)}
                       placeholder="Reason (optional)"
-                      className="h-8 flex-1 rounded-[6px] border border-pen-card-border bg-pen-bg px-2 font-sans text-[12px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+                      className="h-8 flex-1 rounded-[6px] border border-sts-card-border bg-sts-bg px-2 font-sans text-[12px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
                     />
                   </div>
                   <button
                     type="button"
                     disabled={!newHolidayRange?.from || addingHoliday}
                     onClick={addHoliday}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
                   >
                     {addingHoliday ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
                     Add holiday
@@ -487,16 +487,16 @@ export function MemberConfigPanel({
 
               {reassignContext && (
                 <section>
-                  <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                  <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                     Reassign open tickets
                   </p>
-                  <p className="mb-2.5 font-sans text-[11px] text-pen-subtle">
+                  <p className="mb-2.5 font-sans text-[11px] text-sts-subtle">
                     Move all of {member.name}&apos;s open tickets in this department to another
                     agent, a team, or back into the department pool (auto-routed by the
                     department&apos;s assignment method).
                   </p>
 
-                  <div className="flex flex-col gap-2 rounded-[8px] border border-pen-card-border bg-pen-bg p-3">
+                  <div className="flex flex-col gap-2 rounded-[8px] border border-sts-card-border bg-sts-bg p-3">
                     <div className="grid grid-cols-3 gap-1.5">
                       {([
                         ["DEPARTMENT_POOL", "Dept pool"],
@@ -510,8 +510,8 @@ export function MemberConfigPanel({
                           className={cn(
                             "h-8 rounded-[6px] border font-sans text-[12px] font-medium transition-colors",
                             reassignType === val
-                              ? "border-pen-blue bg-pen-blue text-white"
-                              : "border-pen-card-border bg-pen-surface text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                              ? "border-sts-blue bg-sts-blue text-white"
+                              : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
                           )}
                         >
                           {label}
@@ -527,7 +527,7 @@ export function MemberConfigPanel({
                         placeholder="Select an agent…"
                         searchPlaceholder="Search agents…"
                         emptyLabel="No other agents"
-                        className="bg-pen-bg"
+                        className="bg-sts-bg"
                       />
                     )}
                     {reassignType === "GROUP" && (
@@ -538,7 +538,7 @@ export function MemberConfigPanel({
                         placeholder="Select a team…"
                         searchPlaceholder="Search teams…"
                         emptyLabel="No teams"
-                        className="bg-pen-bg"
+                        className="bg-sts-bg"
                       />
                     )}
 
@@ -550,14 +550,14 @@ export function MemberConfigPanel({
                         (reassignType === "GROUP" && !reassignTeamId)
                       }
                       onClick={handleReassign}
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
                     >
                       {reassigning ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowRightLeft className="size-3.5" />}
                       Reassign tickets
                     </button>
 
                     {reassignResult && (
-                      <p className="font-sans text-[11.5px] text-pen-foreground">{reassignResult}</p>
+                      <p className="font-sans text-[11.5px] text-sts-foreground">{reassignResult}</p>
                     )}
                   </div>
                 </section>
@@ -567,11 +567,11 @@ export function MemberConfigPanel({
         )}
 
         {!loading && (
-          <div className="shrink-0 border-t border-pen-card-border px-5 py-4 flex justify-end gap-2">
+          <div className="shrink-0 border-t border-sts-card-border px-5 py-4 flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-[7px] border border-pen-card-border bg-pen-surface px-4 font-sans text-[12.5px] font-medium text-pen-muted hover:text-pen-foreground"
+              className="h-9 rounded-[7px] border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -579,7 +579,7 @@ export function MemberConfigPanel({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Save

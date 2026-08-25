@@ -87,7 +87,7 @@ function PersonCell({
         meta={subDepartment ? { subDepartment } : undefined}
       />
       <span
-        className="min-w-0 truncate font-sans text-[12px] text-pen-foreground"
+        className="min-w-0 truncate font-sans text-[12px] text-sts-foreground"
         title={name}
       >
         {name}
@@ -124,11 +124,11 @@ function SubTicketRowInline({ sub }: { sub: SubCardData }) {
       ticketId={sub.dbId}
       href={`/tickets/${sub.dbId}`}
       card={sub}
-      className="flex h-[26px] items-center gap-2 rounded px-1.5 hover:bg-pen-surface"
+      className="flex h-[26px] items-center gap-2 rounded px-1.5 hover:bg-sts-surface"
     >
       <span className="block size-[6px] shrink-0 rounded-full" style={{ backgroundColor: statusColor }} />
-      <span className="font-mono text-[9.5px] font-semibold text-pen-id shrink-0">{sub.humanId}</span>
-      <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-foreground">{sub.title}</span>
+      <span className="font-mono text-[9.5px] font-semibold text-sts-id shrink-0">{sub.humanId}</span>
+      <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-foreground">{sub.title}</span>
       {sub.assigneeName && (
         <UserAvatar name={sub.assigneeName} avatarUrl={sub.assigneeAvatarUrl} userId={sub.assigneeId} size={14} meta={{}} />
       )}
@@ -201,7 +201,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
       className={cn(
         "group/card board-card cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40",
-        isRunning && "ring-2 ring-pen-green/45 border-pen-green/50",
+        isRunning && "ring-2 ring-sts-green/45 border-sts-green/50",
       )}
     >
       <DrawerLink
@@ -211,10 +211,10 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
         className="flex w-full flex-col gap-2 px-3 py-[10px]"
       >
         <div className="flex h-4 items-center">
-          <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">{initialCard.humanId}</span>
+          <span className="font-mono text-[11.5px] font-semibold text-sts-foreground">{initialCard.humanId}</span>
           {isRunning && (
-            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-pen-green/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-pen-green">
-              <span className="block size-1.5 animate-pulse rounded-full bg-pen-green" />
+            <span className="ml-1.5 flex items-center gap-1 rounded-full bg-sts-green/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-sts-green">
+              <span className="block size-1.5 animate-pulse rounded-full bg-sts-green" />
               Tracking
             </span>
           )}
@@ -222,28 +222,28 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
           <PriorityPill priority={initialCard.priority} status={initialCard.status} />
         </div>
 
-        <p className="font-sans text-[12.5px] font-semibold leading-[18px] text-pen-foreground">{initialCard.title}</p>
+        <p className="font-sans text-[12.5px] font-semibold leading-[18px] text-sts-foreground">{initialCard.title}</p>
 
         {/* Assignee + co-assignees + QA */}
         <div className="flex items-center gap-1">
           {initialCard.assigneeName ? (
             <>
               <UserAvatar name={initialCard.assigneeName} avatarUrl={initialCard.assigneeAvatarUrl} userId={initialCard.assigneeId} size={14} meta={{}} />
-              <span className="font-sans text-[11.5px] text-pen-subtle truncate max-w-[110px]">{initialCard.assigneeName}</span>
+              <span className="font-sans text-[11.5px] text-sts-subtle truncate max-w-[110px]">{initialCard.assigneeName}</span>
             </>
           ) : (
             <>
-              <span className="block size-[14px] shrink-0 rounded-full border border-dashed border-pen-subtle" />
-              <span className="font-sans text-[11.5px] text-pen-subtle">Unassigned</span>
+              <span className="block size-[14px] shrink-0 rounded-full border border-dashed border-sts-subtle" />
+              <span className="font-sans text-[11.5px] text-sts-subtle">Unassigned</span>
             </>
           )}
           {(initialCard.coAssignees ?? []).length > 0 && (
             <div className="flex items-center -space-x-1 pl-0.5">
               {(initialCard.coAssignees ?? []).slice(0, 3).map((a: { id: string; name: string; color: string; avatarUrl?: string | null }) => (
-                <UserAvatar key={a.id} name={a.name} avatarUrl={a.avatarUrl} userId={a.id} size={14} className="ring-1 ring-pen-card" meta={{}} />
+                <UserAvatar key={a.id} name={a.name} avatarUrl={a.avatarUrl} userId={a.id} size={14} className="ring-1 ring-sts-card" meta={{}} />
               ))}
               {(initialCard.coAssignees ?? []).length > 3 && (
-                <span className="flex size-[14px] shrink-0 items-center justify-center rounded-full bg-pen-surface font-sans text-[9.5px] text-pen-subtle ring-1 ring-pen-card">
+                <span className="flex size-[14px] shrink-0 items-center justify-center rounded-full bg-sts-surface font-sans text-[9.5px] text-sts-subtle ring-1 ring-sts-card">
                   +{(initialCard.coAssignees ?? []).length - 3}
                 </span>
               )}
@@ -256,18 +256,18 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
           <span className="flex-1" />
           {initialCard.comments > 0 && (
             <>
-              <MessageCircle className="size-[11px] shrink-0 text-pen-subtle" />
-              <span className="font-sans text-[11.5px] text-pen-subtle">{initialCard.comments}</span>
+              <MessageCircle className="size-[11px] shrink-0 text-sts-subtle" />
+              <span className="font-sans text-[11.5px] text-sts-subtle">{initialCard.comments}</span>
             </>
           )}
           {initialCard.messages > 0 && (
             <>
               {initialCard.comments > 0 && <span className="w-1.5" />}
               <Mail
-                className="size-[11px] shrink-0 text-pen-subtle"
+                className="size-[11px] shrink-0 text-sts-subtle"
                 aria-label="Customer replies"
               />
-              <span className="font-sans text-[11.5px] text-pen-subtle">{initialCard.messages}</span>
+              <span className="font-sans text-[11.5px] text-sts-subtle">{initialCard.messages}</span>
             </>
           )}
           <span className="w-1.5" />
@@ -278,11 +278,11 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
                 avatarUrl={initialCard.creatorAvatarUrl}
                 userId={initialCard.creatorId}
                 size={18}
-                className="ring-1 ring-pen-card"
+                className="ring-1 ring-sts-card"
                 meta={{}}
               />
             ) : (
-              <span className="block size-[18px] shrink-0 rounded-full border border-dashed border-pen-subtle" />
+              <span className="block size-[18px] shrink-0 rounded-full border border-dashed border-sts-subtle" />
             )}
           </div>
         </div>
@@ -293,7 +293,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
               <TagPill key={lbl} label={lbl} size="sm" />
             ))}
             {initialCard.labels.length > 3 && (
-              <span className="font-sans text-[10px] text-pen-subtle">+{initialCard.labels.length - 3}</span>
+              <span className="font-sans text-[10px] text-sts-subtle">+{initialCard.labels.length - 3}</span>
             )}
             {initialCard.lastMessageDirection && !initialCard.isComplete && (
               <span
@@ -315,24 +315,24 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
           </div>
         )}
 
-        <div className="h-px bg-[#f0f4f8] dark:bg-pen-card-border" />
+        <div className="h-px bg-[#f0f4f8] dark:bg-sts-card-border" />
 
         <div className="flex h-4 items-center gap-[5px]">
-          <Clock className="size-3 shrink-0 text-pen-muted" />
+          <Clock className="size-3 shrink-0 text-sts-muted" />
           {initialCard.startDate && (
             <>
-              <span className="font-mono text-[11.5px] font-medium text-pen-muted">{initialCard.startDate}</span>
-              <span className="font-mono text-[11.5px] text-pen-subtle">→</span>
+              <span className="font-mono text-[11.5px] font-medium text-sts-muted">{initialCard.startDate}</span>
+              <span className="font-mono text-[11.5px] text-sts-subtle">→</span>
             </>
           )}
           <span
             className={cn(
               "font-mono text-[11.5px] font-medium",
-              initialCard.due === "Complete" ? "text-pen-green"
-                : initialCard.dueOverdue ? "text-pen-red"
+              initialCard.due === "Complete" ? "text-sts-green"
+                : initialCard.dueOverdue ? "text-sts-red"
                 : initialCard.dueUrgent ? "text-amber-500"
-                : initialCard.due ? "text-pen-muted"
-                : "text-pen-subtle",
+                : initialCard.due ? "text-sts-muted"
+                : "text-sts-subtle",
             )}
           >
             {initialCard.due ?? (initialCard.startDate ? null : "—")}
@@ -344,11 +344,11 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
       <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
         <div className="flex items-center gap-1">
           {isRunning ? (
-            <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-pen-green" />
+            <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-sts-green" />
           ) : (
-            <Clock className="size-[10px] shrink-0 text-pen-subtle" />
+            <Clock className="size-[10px] shrink-0 text-sts-subtle" />
           )}
-          <span className={cn("font-mono text-[11.5px]", isRunning ? "font-semibold text-pen-green" : "text-pen-subtle")}>
+          <span className={cn("font-mono text-[11.5px]", isRunning ? "font-semibold text-sts-green" : "text-sts-subtle")}>
             {formatLoggedTime(displaySecs) ?? "—"}
           </span>
         </div>
@@ -358,7 +358,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
             title="Pause timer"
             onClick={handleStopTimer}
             disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-red transition-colors hover:bg-pen-red/10 disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
           >
             <Pause className="size-[9px] fill-current" />
           </button>
@@ -368,7 +368,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
             title="Start timer"
             onClick={handleStartTimer}
             disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-subtle transition-opacity hover:bg-pen-surface hover:text-pen-blue disabled:cursor-wait"
+            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
           >
             <Play className="size-[10px]" />
           </button>
@@ -379,8 +379,8 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
             type="button"
             onClick={toggleExpanded}
             className={cn(
-              "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-pen-surface",
-              subtasksDone ? "text-pen-green" : "text-pen-muted",
+              "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
+              subtasksDone ? "text-sts-green" : "text-sts-muted",
             )}
           >
             <ChevronRight className={cn("size-[11px] shrink-0 transition-transform", expanded && "rotate-90")} />
@@ -392,7 +392,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
             type="button"
             title="Add sub-task"
             onClick={openSubTicketModal}
-            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-blue"
+            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
           >
             <Plus className="size-[11px] shrink-0" />
             <span>Sub-task</span>
@@ -400,7 +400,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
         )}
       </div>
       {subTotal > 0 && expanded && (
-        <div className="mx-3 mb-2 border-t border-pen-card-border pt-1">
+        <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">
           {subTicketCards.map((sub) => <SubTicketRowInline key={sub.dbId} sub={sub} />)}
         </div>
       )}
@@ -458,7 +458,7 @@ function ProjectColumn({
     <div
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        "flex h-full w-[280px] shrink-0 flex-col gap-[9px] rounded-[12px] bg-pen-surface px-2.5 py-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
+        "flex h-full w-[280px] shrink-0 flex-col gap-[9px] rounded-[12px] bg-sts-surface px-2.5 py-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
         isActive && "ring-2 ring-inset",
       )}
       style={isActive ? ({ "--tw-ring-color": status.color } as React.CSSProperties) : undefined}
@@ -468,10 +468,10 @@ function ProjectColumn({
           className="block size-2 shrink-0 rounded-full"
           style={{ backgroundColor: status.color }}
         />
-        <span className="font-sans text-[12px] font-semibold text-pen-foreground">
+        <span className="font-sans text-[12px] font-semibold text-sts-foreground">
           {status.label}
         </span>
-        <span className="font-sans text-[11.5px] text-pen-subtle">
+        <span className="font-sans text-[11.5px] text-sts-subtle">
           {cards.length}
         </span>
         <span className="flex-1" />
@@ -479,7 +479,7 @@ function ProjectColumn({
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex size-[18px] items-center justify-center rounded text-pen-subtle transition-colors hover:bg-pen-card hover:text-pen-foreground"
+            className="flex size-[18px] items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-card hover:text-sts-foreground"
             aria-label={`Add task to ${status.label}`}
           >
             <Plus className="size-3.5" />
@@ -495,14 +495,14 @@ function ProjectColumn({
             className="py-2 text-center font-sans text-[11.5px] transition-colors"
             style={{ color: isActive ? status.color : undefined }}
           >
-            {isActive ? "Drop here" : <span className="text-pen-subtle">No tickets</span>}
+            {isActive ? "Drop here" : <span className="text-sts-subtle">No tickets</span>}
           </p>
         )}
         {canCreate && (
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-pen-subtle transition-colors hover:bg-pen-card-border/50 hover:text-pen-foreground"
+            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
           >
             <Plus className="size-3 shrink-0" />
             <span className="font-sans text-[11.5px]">Add task</span>
@@ -618,14 +618,14 @@ function ListRow({
 
   return (
     <>
-      <tr className="group border-b border-[#f0f4f8] transition-colors hover:bg-pen-bg dark:border-[#3a3a37]">
+      <tr className="group border-b border-[#f0f4f8] transition-colors hover:bg-sts-bg dark:border-[#3a3a37]">
         {/* Priority dot — always shown */}
         <td className="align-middle py-2 pl-3 pr-0">
           <PriorityDot priority={card.priority} status={card.status} />
         </td>
         {/* ID */}
         <td className="align-middle py-2 pl-2 pr-2">
-          <DrawerLink ticketId={card.dbId} href={href} className="font-mono text-[11.5px] font-semibold text-pen-id hover:underline">
+          <DrawerLink ticketId={card.dbId} href={href} className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline">
             {card.humanId}
           </DrawerLink>
         </td>
@@ -633,7 +633,7 @@ function ListRow({
         <td className="max-w-0 align-middle px-2 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <DrawerLink ticketId={card.dbId} href={href} className="flex min-w-0 shrink items-center gap-2">
-              <span className="truncate font-sans text-[13px] text-pen-foreground group-hover:text-pen-id" title={card.title}>
+              <span className="truncate font-sans text-[13px] text-sts-foreground group-hover:text-sts-id" title={card.title}>
                 {truncateTitle(card.title)}
               </span>
             </DrawerLink>
@@ -643,7 +643,7 @@ function ListRow({
                   <TagPill key={lbl} label={lbl} size="sm" />
                 ))}
                 {card.labels.length > 3 && (
-                  <span className="font-sans text-[10px] text-pen-subtle">+{card.labels.length - 3}</span>
+                  <span className="font-sans text-[10px] text-sts-subtle">+{card.labels.length - 3}</span>
                 )}
               </div>
             )}
@@ -666,13 +666,13 @@ function ListRow({
             )}
             {hasChildren && (
               <>
-                <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-px font-sans text-[11.5px] text-pen-subtle">
+                <span className="shrink-0 rounded-full bg-sts-surface px-1.5 py-px font-sans text-[11.5px] text-sts-subtle">
                   {card.subTicketCards.length}
                 </span>
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
-                  className="flex shrink-0 items-center justify-center rounded p-0.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex shrink-0 items-center justify-center rounded p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <ChevronRight className={cn("size-[12px] transition-transform", expanded && "rotate-90")} />
                 </button>
@@ -682,7 +682,7 @@ function ListRow({
               <button
                 type="button"
                 onClick={() => onAddSub(card.dbId, card.humanId)}
-                className="flex shrink-0 items-center gap-1 rounded px-1 py-px text-pen-subtle transition-opacity hover:bg-pen-surface hover:text-pen-foreground"
+                className="flex shrink-0 items-center gap-1 rounded px-1 py-px text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <Plus className="size-3" />
                 <span className="font-sans text-[11.5px]">Sub-task</span>
@@ -722,7 +722,7 @@ function ListRow({
                 ref={ref}
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onClick(); }}
-                className="flex min-w-0 max-w-full items-center rounded px-1 py-0.5 text-left transition-colors hover:bg-pen-surface"
+                className="flex min-w-0 max-w-full items-center rounded px-1 py-0.5 text-left transition-colors hover:bg-sts-surface"
               >
                 {liveAssigneeName ? (
                   <PersonCell
@@ -732,7 +732,7 @@ function ListRow({
                     size={20}
                   />
                 ) : (
-                  <span className="font-sans text-[11.5px] text-pen-subtle">Unassigned</span>
+                  <span className="font-sans text-[11.5px] text-sts-subtle">Unassigned</span>
                 )}
               </button>
             )}
@@ -754,14 +754,14 @@ function ListRow({
               size={20}
             />
           ) : (
-            <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+            <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
           )}
         </td>
         {/* Logged time */}
         <td className="hidden align-middle px-2 py-2 sm:table-cell">
           <div className="flex items-center gap-1">
-            {isRunning && <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-pen-green" />}
-            <span className={cn("font-mono text-[11.5px]", isRunning ? "text-pen-green" : "text-pen-muted")}>
+            {isRunning && <span className="block size-[7px] shrink-0 animate-pulse rounded-full bg-sts-green" />}
+            <span className={cn("font-mono text-[11.5px]", isRunning ? "text-sts-green" : "text-sts-muted")}>
               {formatLoggedTime(displaySecs) ?? "—"}
             </span>
             {isRunning ? (
@@ -770,7 +770,7 @@ function ListRow({
                 title="Pause timer"
                 onClick={handleStopTimer}
                 disabled={stoppingTimer}
-                className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-red transition-opacity hover:bg-pen-red/10 disabled:cursor-wait"
+                className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-opacity hover:bg-sts-red/10 disabled:cursor-wait"
               >
                 <Pause className="size-[9px] fill-current" />
               </button>
@@ -780,7 +780,7 @@ function ListRow({
                 title="Start timer"
                 onClick={handleStartTimer}
                 disabled={startingTimer}
-                className="flex size-[18px] shrink-0 items-center justify-center rounded text-pen-subtle transition-opacity hover:bg-pen-surface hover:text-pen-blue disabled:cursor-wait"
+                className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
               >
                 <Play className="size-[10px]" />
               </button>
@@ -805,22 +805,22 @@ function ListRow({
         const subColor = statusColorMap[sub.status] ?? UI_STATUS_DOT[normalizeStatus(sub.status)] ?? "#94a3b8";
         const isLast = idx === card.subTicketCards.length - 1;
         return (
-          <tr key={sub.dbId} className="border-b border-[#f0f4f8] bg-pen-bg transition-colors hover:bg-pen-surface dark:border-[#3a3a37]">
+          <tr key={sub.dbId} className="border-b border-[#f0f4f8] bg-sts-bg transition-colors hover:bg-sts-surface dark:border-[#3a3a37]">
             {/* Tree line decoration in the ● column */}
             <td className="align-middle py-2 pl-3 pr-0">
-              <div className="relative flex h-[22px] w-4 items-center justify-center text-pen-card-border">
-                <div className={cn("absolute left-[7px] w-px bg-pen-card-border", isLast ? "top-0 h-1/2" : "inset-y-0")} />
-                <div className="absolute top-1/2 left-[7px] h-px w-[9px] bg-pen-card-border" />
+              <div className="relative flex h-[22px] w-4 items-center justify-center text-sts-card-border">
+                <div className={cn("absolute left-[7px] w-px bg-sts-card-border", isLast ? "top-0 h-1/2" : "inset-y-0")} />
+                <div className="absolute top-1/2 left-[7px] h-px w-[9px] bg-sts-card-border" />
               </div>
             </td>
             <td className="align-middle py-2 pl-2 pr-2">
-              <DrawerLink ticketId={sub.dbId} href={`/tickets/${sub.dbId}`} className="font-mono text-[11.5px] font-semibold text-pen-id hover:underline">
+              <DrawerLink ticketId={sub.dbId} href={`/tickets/${sub.dbId}`} className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline">
                 {sub.humanId}
               </DrawerLink>
             </td>
             <td className="max-w-0 align-middle px-2 py-2">
               <DrawerLink ticketId={sub.dbId} href={`/tickets/${sub.dbId}`} className="flex min-w-0 items-center">
-                <span className="truncate font-sans text-[12px] text-pen-foreground">{sub.title}</span>
+                <span className="truncate font-sans text-[12px] text-sts-foreground">{sub.title}</span>
               </DrawerLink>
             </td>
             <td className="hidden align-middle px-2 py-2 md:table-cell">
@@ -835,7 +835,7 @@ function ListRow({
                   size={20}
                 />
               ) : (
-                <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
               )}
             </td>
             {moduleSystemEnabled && <td className="hidden px-2 py-2 xl:table-cell" />}
@@ -1205,10 +1205,10 @@ export function ProjectBoardPage({
               style={{ backgroundColor: color }}
             />
             <div className="flex flex-col gap-px">
-              <h1 className="pen-text-page-title leading-none">
+              <h1 className="sts-text-page-title leading-none">
                 {name}
               </h1>
-              <p className="font-sans text-[12px] text-pen-muted">
+              <p className="font-sans text-[12px] text-sts-muted">
                 {description}
               </p>
             </div>
@@ -1220,7 +1220,7 @@ export function ProjectBoardPage({
                 key={`${av.initials}-${i}`}
                 title={av.name}
                 className={cn(
-                  "flex size-[30px] shrink-0 items-center justify-center rounded-full border-2 border-pen-card font-sans text-[11.5px] font-medium text-white",
+                  "flex size-[30px] shrink-0 items-center justify-center rounded-full border-2 border-sts-card font-sans text-[11.5px] font-medium text-white",
                   i > 0 && "-ml-2",
                 )}
                 style={{ backgroundColor: av.bg }}
@@ -1229,7 +1229,7 @@ export function ProjectBoardPage({
               </span>
             ))}
             {extraMembers > 0 && (
-              <span className="-ml-2 flex size-[30px] shrink-0 items-center justify-center rounded-full border-2 border-pen-card bg-pen-surface font-sans text-[11.5px] font-medium text-pen-muted dark:bg-[#3a3a36]">
+              <span className="-ml-2 flex size-[30px] shrink-0 items-center justify-center rounded-full border-2 border-sts-card bg-sts-surface font-sans text-[11.5px] font-medium text-sts-muted dark:bg-[#3a3a36]">
                 +{extraMembers}
               </span>
             )}
@@ -1237,8 +1237,8 @@ export function ProjectBoardPage({
         </div>
 
         {externalView === undefined && (
-          <div className={cn("flex shrink-0 items-center gap-2 px-4 sm:px-6 xl:px-8", view === "board" ? "mb-3 sm:mb-4" : "mb-0 border-b border-pen-card-border pb-2 pt-2")}>
-            <div className="flex h-7 overflow-hidden rounded-md border border-pen-card-border bg-pen-card">
+          <div className={cn("flex shrink-0 items-center gap-2 px-4 sm:px-6 xl:px-8", view === "board" ? "mb-3 sm:mb-4" : "mb-0 border-b border-sts-card-border pb-2 pt-2")}>
+            <div className="flex h-7 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
               {(["board", "list"] as const).map((v) => (
                 <button
                   key={v}
@@ -1248,8 +1248,8 @@ export function ProjectBoardPage({
                   className={cn(
                     "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                     view === v
-                      ? "rounded-md bg-pen-blue-tint font-semibold text-pen-id"
-                      : "text-pen-muted hover:text-pen-foreground",
+                      ? "rounded-md bg-sts-blue-tint font-semibold text-sts-id"
+                      : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   {v === "board" ? (
@@ -1263,7 +1263,7 @@ export function ProjectBoardPage({
             </div>
             <span className="flex-1" />
             <SortDropdown value={sortKey} onChange={(v) => setSortKey(v as SortKey)} />
-            <span className="font-sans text-[11.5px] text-pen-subtle">
+            <span className="font-sans text-[11.5px] text-sts-subtle">
               {filteredCards.length === localCards.length
                 ? `${localCards.length} tickets`
                 : `${filteredCards.length} of ${localCards.length} tickets`}
@@ -1304,20 +1304,20 @@ export function ProjectBoardPage({
               )}
             >
               <ListTableColgroup moduleSystemEnabled={moduleSystemEnabled} />
-              <thead className="sticky top-0 z-10 bg-pen-card">
-                <tr className="border-b border-pen-card-border">
-                  <th className="py-2 pl-3 pr-0 text-left pen-text-table-head">●</th>
-                  <th className="py-2 pl-2 pr-2 text-left pen-text-table-head">ID</th>
-                  <th className="px-2 py-2 text-left pen-text-table-head">Title</th>
-                  <th className="hidden px-2 py-2 text-left pen-text-table-head md:table-cell">Status</th>
-                  <th className="hidden px-2 py-2 text-left pen-text-table-head lg:table-cell">Assignee</th>
+              <thead className="sticky top-0 z-10 bg-sts-card">
+                <tr className="border-b border-sts-card-border">
+                  <th className="py-2 pl-3 pr-0 text-left sts-text-table-head">●</th>
+                  <th className="py-2 pl-2 pr-2 text-left sts-text-table-head">ID</th>
+                  <th className="px-2 py-2 text-left sts-text-table-head">Title</th>
+                  <th className="hidden px-2 py-2 text-left sts-text-table-head md:table-cell">Status</th>
+                  <th className="hidden px-2 py-2 text-left sts-text-table-head lg:table-cell">Assignee</th>
                   {moduleSystemEnabled && (
-                    <th className="hidden px-2 py-2 text-left pen-text-table-head xl:table-cell">Module</th>
+                    <th className="hidden px-2 py-2 text-left sts-text-table-head xl:table-cell">Module</th>
                   )}
-                  <th className="hidden px-2 py-2 text-left pen-text-table-head xl:table-cell">Creator</th>
-                  <th className="hidden px-2 py-2 text-left pen-text-table-head sm:table-cell">Logged</th>
-                  <th className="hidden px-2 py-2 text-left pen-text-table-head md:table-cell">Created</th>
-                  <th className="px-2 py-2 pr-3 text-left pen-text-table-head">Due</th>
+                  <th className="hidden px-2 py-2 text-left sts-text-table-head xl:table-cell">Creator</th>
+                  <th className="hidden px-2 py-2 text-left sts-text-table-head sm:table-cell">Logged</th>
+                  <th className="hidden px-2 py-2 text-left sts-text-table-head md:table-cell">Created</th>
+                  <th className="px-2 py-2 pr-3 text-left sts-text-table-head">Due</th>
                 </tr>
               </thead>
               <tbody>
@@ -1336,10 +1336,10 @@ export function ProjectBoardPage({
                   <tr>
                     <td colSpan={moduleSystemEnabled ? 10 : 9} className="py-24">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
-                        <p className="font-sans text-[14px] font-medium text-pen-foreground">
+                        <p className="font-sans text-[14px] font-medium text-sts-foreground">
                           No tickets in this team yet
                         </p>
-                        <p className="max-w-sm font-sans text-[13px] text-pen-muted">
+                        <p className="max-w-sm font-sans text-[13px] text-sts-muted">
                           Create a task to start tracking work for {name}.
                         </p>
                         {projectId && canCreate && (
@@ -1363,7 +1363,7 @@ export function ProjectBoardPage({
                       <button
                         type="button"
                         onClick={openCreateTask}
-                        className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-pen-subtle transition-colors hover:bg-pen-card-border/50 hover:text-pen-foreground"
+                        className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
                       >
                         <Plus className="size-3 shrink-0" />
                         <span className="font-sans text-[11.5px]">Add task</span>

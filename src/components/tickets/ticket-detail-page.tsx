@@ -140,14 +140,14 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="pen-text-label">{children}</p>;
+  return <p className="sts-text-label">{children}</p>;
 }
 
 function ProgressBar({ percent }: { percent: number }) {
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-[3px] bg-pen-surface">
+    <div className="h-1.5 w-full overflow-hidden rounded-[3px] bg-sts-surface">
       <div
-        className="h-full rounded-[3px] bg-pen-green transition-all"
+        className="h-full rounded-[3px] bg-sts-green transition-all"
         style={{ width: `${Math.min(100, percent)}%` }}
       />
     </div>
@@ -185,7 +185,7 @@ function Avatar({
   return (
     <div
       style={{ ...style, fontSize: size * 0.38 }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-pen-blue font-medium text-white dark:text-gray-900"
+      className="flex shrink-0 items-center justify-center rounded-full bg-sts-blue font-medium text-white dark:text-gray-900"
     >
       {initials}
     </div>
@@ -359,18 +359,18 @@ function DateRangeEditor({
         <Popover open={open} onOpenChange={handleOpenChange}>
           <PopoverTrigger
             className={cn(
-              "flex h-9 w-full items-center gap-2 rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 text-left font-sans text-[12px] outline-none transition-colors",
-              "hover:border-pen-blue/40 focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30",
+              "flex h-9 w-full items-center gap-2 rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 text-left font-sans text-[12px] outline-none transition-colors",
+              "hover:border-sts-blue/40 focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30",
             )}
           >
             <CalendarDays
               size={13}
               strokeWidth={2}
-              className="shrink-0 text-pen-muted"
+              className="shrink-0 text-sts-muted"
             />
             <span
               className={
-                range?.from ? "text-pen-foreground" : "text-pen-subtle"
+                range?.from ? "text-sts-foreground" : "text-sts-subtle"
               }
             >
               {label}
@@ -384,10 +384,10 @@ function DateRangeEditor({
               numberOfMonths={2}
             />
             {range?.from && (
-              <div className="flex items-center gap-3 border-t border-pen-card-border px-3 py-2.5">
+              <div className="flex items-center gap-3 border-t border-sts-card-border px-3 py-2.5">
                 {showTime ? (
                   <>
-                    <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                    <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                       End time
                       <input
                         type="time"
@@ -398,7 +398,7 @@ function DateRangeEditor({
                           endTimeRef.current = v;
                           touchedRef.current = true;
                         }}
-                        className="pen-date-input-native h-7 rounded-md border border-pen-card-border bg-pen-bg px-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue"
+                        className="sts-date-input-native h-7 rounded-md border border-sts-card-border bg-sts-bg px-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue"
                       />
                     </label>
                     <button
@@ -409,7 +409,7 @@ function DateRangeEditor({
                         setShowTime(false);
                         touchedRef.current = true;
                       }}
-                      className="ml-auto font-sans text-[11px] text-pen-subtle hover:text-pen-foreground"
+                      className="ml-auto font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
                     >
                       Clear time
                     </button>
@@ -418,7 +418,7 @@ function DateRangeEditor({
                   <button
                     type="button"
                     onClick={() => setShowTime(true)}
-                    className="font-sans text-[11.5px] text-pen-blue hover:underline"
+                    className="font-sans text-[11.5px] text-sts-blue hover:underline"
                   >
                     Add end time
                   </button>
@@ -428,14 +428,14 @@ function DateRangeEditor({
           </PopoverContent>
         </Popover>
       ) : (
-        <div className="flex h-9 items-center gap-2 rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12px]">
+        <div className="flex h-9 items-center gap-2 rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12px]">
           <CalendarDays
             size={13}
             strokeWidth={2}
-            className="shrink-0 text-pen-muted"
+            className="shrink-0 text-sts-muted"
           />
           <span
-            className={range?.from ? "text-pen-foreground" : "text-pen-subtle"}
+            className={range?.from ? "text-sts-foreground" : "text-sts-subtle"}
           >
             {label}
           </span>
@@ -1572,7 +1572,7 @@ export function TicketDetailPage({
           }
           toast("Submitter replied", {
             description: "A new reply arrived — check the Reply to User tab.",
-            icon: <MessageSquare className="size-4 text-pen-blue" />,
+            icon: <MessageSquare className="size-4 text-sts-blue" />,
             action: {
               label: "View",
               onClick: () => setActiveTab("conversation"),
@@ -2093,7 +2093,7 @@ export function TicketDetailPage({
       />
       <div
         className={cn(
-          "flex min-h-0 w-full overflow-hidden bg-pen-bg",
+          "flex min-h-0 w-full overflow-hidden bg-sts-bg",
           isDrawer ? "h-full" : "h-[calc(100dvh-3rem)]",
         )}
       >
@@ -2120,7 +2120,7 @@ export function TicketDetailPage({
                     type="button"
                     disabled={publishingDraft}
                     onClick={() => void publishDraft()}
-                    className="flex h-7 items-center rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                    className="flex h-7 items-center rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
                   >
                     {publishingDraft ? "Publishing…" : "Publish draft"}
                   </button>
@@ -2133,7 +2133,7 @@ export function TicketDetailPage({
                 {backHref && (
                   <Link
                     href={backHref}
-                    className="mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                    className="mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                     aria-label="Go back"
                   >
                     <ArrowLeft className="size-3.5" strokeWidth={2} />
@@ -2143,17 +2143,17 @@ export function TicketDetailPage({
                   <span key={c.href} className="flex items-center gap-1.5">
                     {i > 0 && (
                       <ChevronRight
-                        className="size-3 shrink-0 text-pen-subtle"
+                        className="size-3 shrink-0 text-sts-subtle"
                         strokeWidth={1.5}
                       />
                     )}
                     <Link
                       href={c.href}
                       className={cn(
-                        "font-sans text-[11.5px] transition-colors hover:text-pen-foreground",
+                        "font-sans text-[11.5px] transition-colors hover:text-sts-foreground",
                         i === crumbs.length - 1
-                          ? "font-semibold text-pen-foreground"
-                          : "text-pen-muted",
+                          ? "font-semibold text-sts-foreground"
+                          : "text-sts-muted",
                       )}
                     >
                       {c.label}
@@ -2167,7 +2167,7 @@ export function TicketDetailPage({
             <div className="flex min-w-0 items-center gap-2">
               <span
                 title={`Ticket number ${ticketId}`}
-                className="shrink-0 whitespace-nowrap font-mono text-[11.5px] font-semibold text-pen-id"
+                className="shrink-0 whitespace-nowrap font-mono text-[11.5px] font-semibold text-sts-id"
               >
                 {ticketId}
               </span>
@@ -2177,13 +2177,13 @@ export function TicketDetailPage({
                     href={`/projects/${projectId}`}
                     onClick={isDrawer ? onClose : undefined}
                     title={`Go to ${projectName}`}
-                    className="group/proj flex min-w-0 items-center gap-1.5 transition-colors hover:text-pen-blue"
+                    className="group/proj flex min-w-0 items-center gap-1.5 transition-colors hover:text-sts-blue"
                   >
                     <span
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: projectColor || "#0a76b9" }}
                     />
-                    <span className="truncate font-sans text-[12px] font-semibold text-pen-foreground group-hover/proj:text-pen-blue">
+                    <span className="truncate font-sans text-[12px] font-semibold text-sts-foreground group-hover/proj:text-sts-blue">
                       {projectName}
                     </span>
                   </Link>
@@ -2193,7 +2193,7 @@ export function TicketDetailPage({
                       className="size-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: projectColor || "#0a76b9" }}
                     />
-                    <span className="truncate font-sans text-[12px] font-semibold text-pen-foreground">
+                    <span className="truncate font-sans text-[12px] font-semibold text-sts-foreground">
                       {projectName}
                     </span>
                   </div>
@@ -2204,7 +2204,7 @@ export function TicketDetailPage({
                   href={`/tasks/${dbId}`}
                   title="Open this ticket as a full page"
                   onClick={onClose}
-                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-pen-foreground transition-opacity hover:opacity-70"
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground transition-opacity hover:opacity-70"
                 >
                   <Maximize2 className="size-3" />
                   Open full page
@@ -2213,7 +2213,7 @@ export function TicketDetailPage({
               <button
                 type="button"
                 onClick={copyLink}
-                className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-pen-foreground hover:opacity-70"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
               >
                 <Copy className="size-3" />
                 {copied ? "Copied" : "Copy link"}
@@ -2223,7 +2223,7 @@ export function TicketDetailPage({
                   type="button"
                   onClick={() => setTransferOpen(true)}
                   title="Transfer to another department or sub-department"
-                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-pen-foreground hover:opacity-70"
+                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
                 >
                   <ArrowRightLeft className="size-3" />
                   Transfer
@@ -2234,7 +2234,7 @@ export function TicketDetailPage({
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   title="Delete ticket"
-                  className="flex size-6 items-center justify-center rounded-md text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                  className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -2248,10 +2248,10 @@ export function TicketDetailPage({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex items-center gap-1.5 rounded-md bg-pen-surface px-2 py-1 font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-card-border hover:text-pen-foreground"
+                    className="flex items-center gap-1.5 rounded-md bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
                   >
                     <ChevronRight className="size-3 shrink-0 rotate-180" />
-                    <span className="font-mono font-semibold text-pen-id">
+                    <span className="font-mono font-semibold text-sts-id">
                       {parentTicket.humanId}
                     </span>
                     <span className="truncate max-w-50">
@@ -2261,10 +2261,10 @@ export function TicketDetailPage({
                 ) : (
                   <Link
                     href={`/tickets/${parentTicket.dbId}`}
-                    className="flex items-center gap-1.5 rounded-md bg-pen-surface px-2 py-1 font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-card-border hover:text-pen-foreground"
+                    className="flex items-center gap-1.5 rounded-md bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
                   >
                     <ChevronRight className="size-3 shrink-0 rotate-180" />
-                    <span className="font-mono font-semibold text-pen-id">
+                    <span className="font-mono font-semibold text-sts-id">
                       {parentTicket.humanId}
                     </span>
                     <span className="truncate max-w-50">
@@ -2299,7 +2299,7 @@ export function TicketDetailPage({
                     }}
                     disabled={titleSaving}
                     rows={1}
-                    className="min-w-0 flex-1 resize-none overflow-hidden bg-transparent font-sans text-[21px] font-semibold leading-6.75 text-pen-foreground outline-none disabled:opacity-60"
+                    className="min-w-0 flex-1 resize-none overflow-hidden bg-transparent font-sans text-[21px] font-semibold leading-6.75 text-sts-foreground outline-none disabled:opacity-60"
                     style={{ minHeight: "36px" }}
                     autoFocus
                     onFocus={(e) => {
@@ -2321,7 +2321,7 @@ export function TicketDetailPage({
                       onClick={saveTitle}
                       disabled={titleSaving}
                       title="Save"
-                      className="flex size-6 items-center justify-center rounded-md bg-pen-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                      className="flex size-6 items-center justify-center rounded-md bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
                       {titleSaving ? (
                         <Loader2 className="size-3 animate-spin" />
@@ -2337,7 +2337,7 @@ export function TicketDetailPage({
                       }}
                       disabled={titleSaving}
                       title="Cancel"
-                      className="flex size-6 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-60"
+                      className="flex size-6 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
                     >
                       <X className="size-3" />
                     </button>
@@ -2345,7 +2345,7 @@ export function TicketDetailPage({
                 </>
               ) : (
                 <>
-                  <h1 className="min-w-0 flex-1 pen-text-title-lg leading-[27px]">
+                  <h1 className="min-w-0 flex-1 sts-text-title-lg leading-[27px]">
                     {titleValue}
                   </h1>
                   {canEditTicket && (
@@ -2355,7 +2355,7 @@ export function TicketDetailPage({
                         setTitleValue(title);
                         setTitleEditing(true);
                       }}
-                      className="mt-1 shrink-0 rounded-md p-1 text-pen-subtle transition-opacity hover:bg-pen-surface hover:text-pen-foreground"
+                      className="mt-1 shrink-0 rounded-md p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
                       title="Edit title"
                     >
                       <Pencil className="size-3.5" />
@@ -2390,7 +2390,7 @@ export function TicketDetailPage({
                     onClick={() =>
                       handleLabelsChange(liveLabels.filter((l) => l !== lbl))
                     }
-                    className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-pen-red text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100"
                   >
                     <X className="size-2" />
                   </button>
@@ -2481,23 +2481,23 @@ export function TicketDetailPage({
               return (
                 <div className="flex flex-col gap-2">
      
-                  <div className="flex items-center gap-1.5 font-sans text-[12px] text-pen-muted">
-                    <Clock className="size-[13px] shrink-0 text-pen-subtle" />
+                  <div className="flex items-center gap-1.5 font-sans text-[12px] text-sts-muted">
+                    <Clock className="size-[13px] shrink-0 text-sts-subtle" />
                     {start ? (
                       <span>{fmtDate(start)}</span>
                     ) : (
-                      <span className="text-pen-subtle">No start</span>
+                      <span className="text-sts-subtle">No start</span>
                     )}
-                    <ArrowRight size={11} strokeWidth={2} className="shrink-0 text-pen-subtle" />
+                    <ArrowRight size={11} strokeWidth={2} className="shrink-0 text-sts-subtle" />
                     {due ? (
-                      <span className={cn("font-semibold", dueOverdue ? "text-pen-red" : "text-pen-foreground")}>
+                      <span className={cn("font-semibold", dueOverdue ? "text-sts-red" : "text-sts-foreground")}>
                         {fmtDate(due)}
                       </span>
                     ) : (
-                      <span className="text-pen-subtle">No due date</span>
+                      <span className="text-sts-subtle">No due date</span>
                     )}
                     {dueOverdue && !closed && (
-                      <span className="rounded-full bg-pen-red/10 px-[7px] py-[2px] font-sans text-[11.5px] font-semibold text-pen-red">
+                      <span className="rounded-full bg-sts-red/10 px-[7px] py-[2px] font-sans text-[11.5px] font-semibold text-sts-red">
                         Overdue
                       </span>
                     )}
@@ -2507,35 +2507,35 @@ export function TicketDetailPage({
                   <div className="flex flex-wrap gap-1.5">
    
                     {plannedMs !== null && (
-                      <span className="rounded-full bg-pen-surface px-[8px] py-[3px] font-sans text-[11px] text-pen-muted">
+                      <span className="rounded-full bg-sts-surface px-[8px] py-[3px] font-sans text-[11px] text-sts-muted">
                         {fmtDuration(plannedMs)} planned
                       </span>
                     )}
 
                 
                     {remainingMs !== null && remainingMs > 0 && (
-                      <span className="rounded-full bg-pen-surface px-[8px] py-[3px] font-sans text-[11px] text-pen-muted">
+                      <span className="rounded-full bg-sts-surface px-[8px] py-[3px] font-sans text-[11px] text-sts-muted">
                         {fmtDuration(remainingMs)} remaining
                       </span>
                     )}
 
            
                     {overdueMs !== null && overdueMs > 0 && (
-                      <span className="rounded-full bg-pen-red/10 px-[8px] py-[3px] font-sans text-[11px] font-semibold text-pen-red">
+                      <span className="rounded-full bg-sts-red/10 px-[8px] py-[3px] font-sans text-[11px] font-semibold text-sts-red">
                         {fmtDuration(overdueMs)} overdue
                       </span>
                     )}
 
                 
                     {closed && (
-                      <span className="rounded-full bg-pen-green/10 px-[8px] py-[3px] font-sans text-[11px] text-pen-green">
+                      <span className="rounded-full bg-sts-green/10 px-[8px] py-[3px] font-sans text-[11px] text-sts-green">
                         Closed {fmtDateTime(closed)}
                       </span>
                     )}
 
                
                     {cycleMs !== null && (
-                      <span className="rounded-full bg-pen-surface px-[8px] py-[3px] font-sans text-[11px] text-pen-muted">
+                      <span className="rounded-full bg-sts-surface px-[8px] py-[3px] font-sans text-[11px] text-sts-muted">
                         {fmtDuration(cycleMs)} cycle time
                       </span>
                     )}
@@ -2545,7 +2545,7 @@ export function TicketDetailPage({
                       <span
                         className={cn(
                           "rounded-full px-[8px] py-[3px] font-sans text-[11px] font-semibold",
-                          earlyLateMs >= 0 ? "bg-pen-green/10 text-pen-green" : "bg-pen-red/10 text-pen-red",
+                          earlyLateMs >= 0 ? "bg-sts-green/10 text-sts-green" : "bg-sts-red/10 text-sts-red",
                         )}
                       >
                         {earlyLateMs >= 0
@@ -2558,16 +2558,16 @@ export function TicketDetailPage({
             
                   {elapsedPct !== null && (
                     <div className="flex items-center gap-2">
-                      <div className="h-[4px] flex-1 overflow-hidden rounded-full bg-pen-surface">
+                      <div className="h-[4px] flex-1 overflow-hidden rounded-full bg-sts-surface">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            elapsedPct >= 90 ? "bg-pen-red" : elapsedPct >= 70 ? "bg-yellow-400" : "bg-pen-blue",
+                            elapsedPct >= 90 ? "bg-sts-red" : elapsedPct >= 70 ? "bg-yellow-400" : "bg-sts-blue",
                           )}
                           style={{ width: `${elapsedPct}%` }}
                         />
                       </div>
-                      <span className="shrink-0 font-sans text-[10.5px] text-pen-subtle">{elapsedPct}%</span>
+                      <span className="shrink-0 font-sans text-[10.5px] text-sts-subtle">{elapsedPct}%</span>
                     </div>
                   )}
                 </div>
@@ -2589,12 +2589,12 @@ export function TicketDetailPage({
                   >
                     <ChevronDown
                       className={cn(
-                        "size-4 shrink-0 text-pen-muted transition-transform duration-200",
+                        "size-4 shrink-0 text-sts-muted transition-transform duration-200",
                         !descExpanded && "-rotate-90",
                         descEditing && "opacity-40",
                       )}
                     />
-                    <span className="font-sans text-[13px] font-semibold uppercase tracking-wide text-pen-foreground">
+                    <span className="font-sans text-[13px] font-semibold uppercase tracking-wide text-sts-foreground">
                       Description
                     </span>
                   </button>
@@ -2611,7 +2611,7 @@ export function TicketDetailPage({
                       <button
                         type="button"
                         onClick={startDescriptionEdit}
-                        className="font-sans text-[13px] font-medium text-pen-muted hover:text-pen-id"
+                        className="font-sans text-[13px] font-medium text-sts-muted hover:text-sts-id"
                       >
                         {descValue ? "Edit" : "Add"}
                       </button>
@@ -2644,7 +2644,7 @@ export function TicketDetailPage({
                             <button
                               type="button"
                               onClick={cancelDescription}
-                              className="h-7 rounded-md border border-pen-card-border px-3 font-sans text-[12px] text-pen-muted hover:bg-pen-surface"
+                              className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
                             >
                               Cancel
                             </button>
@@ -2652,7 +2652,7 @@ export function TicketDetailPage({
                               type="button"
                               disabled={descSaving}
                               onClick={saveDescription}
-                              className="h-7 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                              className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
                             >
                               {descSaving ? "Saving…" : "Save"}
                             </button>
@@ -2671,11 +2671,11 @@ export function TicketDetailPage({
                         />
                       </>
                     ) : canEditDescription ? (
-                      <p className="font-sans text-[12.5px] text-pen-subtle">
+                      <p className="font-sans text-[12.5px] text-sts-subtle">
                         No description
                       </p>
                     ) : (
-                      <p className="font-sans text-[12.5px] text-pen-subtle">
+                      <p className="font-sans text-[12.5px] text-sts-subtle">
                         No description
                       </p>
                     )}
@@ -2686,10 +2686,10 @@ export function TicketDetailPage({
 
             {/* Template Fields — shown in place of the description for template-based tickets */}
             {hasTemplateData && (
-              <div className="flex flex-col rounded-xl border border-pen-card-border bg-pen-card">
-                <div className="flex items-center justify-between border-b border-pen-card-border px-4 py-3">
+              <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card">
+                <div className="flex items-center justify-between border-b border-sts-card-border px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-pen-blue-tint text-pen-id">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
                       <LayoutTemplate className="size-3.5" />
                     </span>
                     <SectionLabel>Template Fields</SectionLabel>
@@ -2698,7 +2698,7 @@ export function TicketDetailPage({
                     <button
                       type="button"
                       onClick={() => setTemplateEditing(true)}
-                      className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-id"
+                      className="font-sans text-[11.5px] text-sts-subtle hover:text-sts-id"
                     >
                       Edit
                     </button>
@@ -2718,7 +2718,7 @@ export function TicketDetailPage({
                       if (type === "file") {
                         return (
                           <div key={fieldId} className="space-y-1">
-                            <label className="font-sans text-[12px] font-medium text-pen-foreground">
+                            <label className="font-sans text-[12px] font-medium text-sts-foreground">
                               {label}
                             </label>
                             <div className="flex flex-wrap gap-2">
@@ -2728,9 +2728,9 @@ export function TicketDetailPage({
                               ).map((file: any, idx: number) => (
                                 <div
                                   key={idx}
-                                  className="flex items-center gap-2 rounded-md bg-pen-surface px-2.5 py-1.5"
+                                  className="flex items-center gap-2 rounded-md bg-sts-surface px-2.5 py-1.5"
                                 >
-                                  <span className="font-sans text-[12px] text-pen-foreground">
+                                  <span className="font-sans text-[12px] text-sts-foreground">
                                     {file.fileName || "File"}
                                   </span>
                                 </div>
@@ -2742,7 +2742,7 @@ export function TicketDetailPage({
 
                       return (
                         <div key={fieldId} className="space-y-1">
-                          <label className="font-sans text-[12px] font-medium text-pen-foreground">
+                          <label className="font-sans text-[12px] font-medium text-sts-foreground">
                             {label}
                           </label>
                           {type === "textarea" ||
@@ -2753,7 +2753,7 @@ export function TicketDetailPage({
                               onChange={(e) =>
                                 setTemplateFieldValue(fieldId, e.target.value)
                               }
-                              className="min-h-24 w-full rounded-md border border-pen-card-border bg-pen-bg px-3 py-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30"
+                              className="min-h-24 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 py-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30"
                             />
                           ) : (
                             <input
@@ -2762,7 +2762,7 @@ export function TicketDetailPage({
                               onChange={(e) =>
                                 setTemplateFieldValue(fieldId, e.target.value)
                               }
-                              className="w-full rounded-md border border-pen-card-border bg-pen-bg px-3 py-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30"
+                              className="w-full rounded-md border border-sts-card-border bg-sts-bg px-3 py-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30"
                             />
                           )}
                         </div>
@@ -2772,7 +2772,7 @@ export function TicketDetailPage({
                       <button
                         type="button"
                         onClick={cancelTemplateFields}
-                        className="h-7 rounded-md border border-pen-card-border px-3 font-sans text-[12px] text-pen-muted hover:bg-pen-surface"
+                        className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
                       >
                         Cancel
                       </button>
@@ -2780,7 +2780,7 @@ export function TicketDetailPage({
                         type="button"
                         disabled={templateSaving}
                         onClick={saveTemplateFields}
-                        className="h-7 rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                        className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
                       >
                         {templateSaving ? "Saving…" : "Save"}
                       </button>
@@ -2804,13 +2804,13 @@ export function TicketDetailPage({
                         return (
                           <div
                             key={fieldId}
-                            className="rounded-lg border border-pen-card-border bg-pen-surface px-3.5 py-3"
+                            className="rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3"
                           >
-                            <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                            <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                               {label}
                             </p>
                             {files.length === 0 && (
-                              <p className="font-sans text-[12.5px] text-pen-subtle">
+                              <p className="font-sans text-[12.5px] text-sts-subtle">
                                 No files
                               </p>
                             )}
@@ -2822,7 +2822,7 @@ export function TicketDetailPage({
                                     href={file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="group relative block overflow-hidden rounded-lg border border-pen-card-border bg-pen-bg"
+                                    className="group relative block overflow-hidden rounded-lg border border-sts-card-border bg-sts-bg"
                                     title={file.fileName}
                                   >
                                     <img
@@ -2853,13 +2853,13 @@ export function TicketDetailPage({
                                     href={file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-bg px-3 py-2 transition-colors hover:border-pen-blue/50 hover:bg-pen-blue-tint/30"
+                                    className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-bg px-3 py-2 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
                                     title={file.fileName}
                                   >
-                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-pen-blue-tint text-pen-id">
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-blue-tint text-sts-id">
                                       <Download className="size-3.5" />
                                     </span>
-                                    <span className="max-w-48 truncate font-sans text-[12px] font-medium text-pen-foreground">
+                                    <span className="max-w-48 truncate font-sans text-[12px] font-medium text-sts-foreground">
                                       {file.fileName || "File"}
                                     </span>
                                   </a>
@@ -2874,12 +2874,12 @@ export function TicketDetailPage({
                       return (
                         <div
                           key={fieldId}
-                          className="rounded-lg border border-pen-card-border bg-pen-surface px-3.5 py-3"
+                          className="rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3"
                         >
-                          <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                          <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                             {label}
                           </p>
-                          <p className="font-sans text-[12.5px] text-pen-foreground whitespace-pre-wrap wrap-break-word">
+                          <p className="font-sans text-[12.5px] text-sts-foreground whitespace-pre-wrap wrap-break-word">
                             {value || "-"}
                           </p>
                         </div>
@@ -2901,7 +2901,7 @@ export function TicketDetailPage({
 
             {/* Sub-tickets — not shown for support tickets */}
             {!isSupport && (
-              <div className="rounded-lg border border-pen-card-border/70 bg-pen-surface/40">
+              <div className="rounded-lg border border-sts-card-border/70 bg-sts-surface/40">
                 {/* Header */}
                 <div className="flex items-center gap-2.5 px-3 py-2.5">
                   <button
@@ -2910,9 +2910,9 @@ export function TicketDetailPage({
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                   >
                     {subsCollapsed ? (
-                      <ChevronRight className="size-3.5 shrink-0 text-pen-subtle" />
+                      <ChevronRight className="size-3.5 shrink-0 text-sts-subtle" />
                     ) : (
-                      <ChevronDown className="size-3.5 shrink-0 text-pen-subtle" />
+                      <ChevronDown className="size-3.5 shrink-0 text-sts-subtle" />
                     )}
                     <SectionLabel>Sub-tickets</SectionLabel>
                     {subTickets.length > 0 && (
@@ -2920,24 +2920,24 @@ export function TicketDetailPage({
                         className={cn(
                           "rounded-full px-2 py-px font-sans text-[11.5px] font-medium",
                           subPercent === 100
-                            ? "bg-pen-green/10 text-pen-green"
-                            : "bg-pen-surface text-pen-subtle",
+                            ? "bg-sts-green/10 text-sts-green"
+                            : "bg-sts-surface text-sts-subtle",
                         )}
                       >
                         {doneSubs}/{subTickets.length}
                       </span>
                     )}
                     {subsCollapsed && subTickets.length > 0 && (
-                      <span className="h-[3px] w-16 overflow-hidden rounded-full bg-pen-surface">
+                      <span className="h-[3px] w-16 overflow-hidden rounded-full bg-sts-surface">
                         <span
-                          className="block h-full rounded-full bg-pen-green"
+                          className="block h-full rounded-full bg-sts-green"
                           style={{ width: `${subPercent}%` }}
                         />
                       </span>
                     )}
                     <span className="flex-1" />
                     {subTickets.length === 0 && (
-                      <span className="font-sans text-[11.5px] text-pen-subtle">
+                      <span className="font-sans text-[11.5px] text-sts-subtle">
                         None
                       </span>
                     )}
@@ -2953,7 +2953,7 @@ export function TicketDetailPage({
                           setAddingSubTicket(true);
                           setTimeout(() => subTitleRef.current?.focus(), 0);
                         }}
-                        className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+                        className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
                       >
                         <Plus className="size-3.5" />
                         Add
@@ -2961,7 +2961,7 @@ export function TicketDetailPage({
                       <button
                         type="button"
                         onClick={openLinkPicker}
-                        className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+                        className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
                       >
                         <Link2 className="size-3.5" />
                         Link
@@ -2974,9 +2974,9 @@ export function TicketDetailPage({
                   <div className="px-3 pb-2.5">
                     {/* Slim progress bar */}
                     {subTickets.length > 0 && (
-                      <div className="mb-2.5 h-[3px] w-full overflow-hidden rounded-full bg-pen-surface">
+                      <div className="mb-2.5 h-[3px] w-full overflow-hidden rounded-full bg-sts-surface">
                         <div
-                          className="h-full rounded-full bg-pen-green transition-all duration-500"
+                          className="h-full rounded-full bg-sts-green transition-all duration-500"
                           style={{ width: `${subPercent}%` }}
                         />
                       </div>
@@ -2997,16 +2997,16 @@ export function TicketDetailPage({
                                   }
                                 : undefined
                             }
-                            className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-pen-surface"
+                            className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-sts-surface"
                           >
                             {/* Completion checkbox (reflects status.isComplete) */}
                             {st.done ? (
-                              <CheckSquare className="size-4 shrink-0 text-pen-green" />
+                              <CheckSquare className="size-4 shrink-0 text-sts-green" />
                             ) : (
-                              <Square className="size-4 shrink-0 text-pen-subtle" />
+                              <Square className="size-4 shrink-0 text-sts-subtle" />
                             )}
                             {/* ID */}
-                            <span className="font-mono text-[11.5px] font-semibold text-pen-id shrink-0">
+                            <span className="font-mono text-[11.5px] font-semibold text-sts-id shrink-0">
                               {st.humanId}
                             </span>
                             {/* Title */}
@@ -3014,8 +3014,8 @@ export function TicketDetailPage({
                               className={cn(
                                 "min-w-0 flex-1 truncate font-sans text-[12.5px]",
                                 st.done
-                                  ? "text-pen-subtle line-through decoration-pen-subtle/50"
-                                  : "text-pen-foreground",
+                                  ? "text-sts-subtle line-through decoration-sts-subtle/50"
+                                  : "text-sts-foreground",
                               )}
                             >
                               {st.title}
@@ -3027,7 +3027,7 @@ export function TicketDetailPage({
                               </span>
                             )}
                             {st.priority === "critical" && !st.done && (
-                              <span className="shrink-0 rounded-full bg-pen-red/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-pen-red">
+                              <span className="shrink-0 rounded-full bg-sts-red/10 px-1.5 py-px font-sans text-[9.5px] font-semibold text-sts-red">
                                 Critical
                               </span>
                             )}
@@ -3044,7 +3044,7 @@ export function TicketDetailPage({
                                 size={18}
                               />
                             ) : (
-                              <span className="block size-[18px] shrink-0 rounded-full border border-dashed border-pen-card-border" />
+                              <span className="block size-[18px] shrink-0 rounded-full border border-dashed border-sts-card-border" />
                             )}
                             {/* Unlink (detach from parent, keep the ticket) */}
                             {canEditTicket && (
@@ -3059,7 +3059,7 @@ export function TicketDetailPage({
                                   });
                                 }}
                                 title={`Remove ${st.humanId} from sub-tickets`}
-                                className="shrink-0 rounded p-1 text-pen-subtle transition-colors hover:bg-pen-blue/10 hover:text-pen-blue"
+                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-blue/10 hover:text-sts-blue"
                               >
                                 <Unlink className="size-3.5" />
                               </button>
@@ -3077,7 +3077,7 @@ export function TicketDetailPage({
                                   });
                                 }}
                                 title={`Delete ${st.humanId}`}
-                                className="shrink-0 rounded p-1 text-pen-subtle transition-colors hover:bg-pen-red/10 hover:text-pen-red"
+                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-red/10 hover:text-sts-red"
                               >
                                 <Trash2 className="size-3.5" />
                               </button>
@@ -3091,7 +3091,7 @@ export function TicketDetailPage({
                     {subTickets.length === 0 &&
                       !addingSubTicket &&
                       !linking && (
-                        <p className="px-2 py-1 font-sans text-[12px] text-pen-subtle">
+                        <p className="px-2 py-1 font-sans text-[12px] text-sts-subtle">
                           No sub-tickets yet.
                         </p>
                       )}
@@ -3100,12 +3100,12 @@ export function TicketDetailPage({
                     {linking && (
                       <div
                         className={cn(
-                          "rounded-md border border-pen-blue/40 bg-pen-surface",
+                          "rounded-md border border-sts-blue/40 bg-sts-surface",
                           subTickets.length > 0 && "mt-1",
                         )}
                       >
-                        <div className="flex items-center gap-2 border-b border-pen-card-border px-3 py-2 focus-within:border-pen-blue">
-                          <Link2 className="size-3.5 shrink-0 text-pen-subtle" />
+                        <div className="flex items-center gap-2 border-b border-sts-card-border px-3 py-2 focus-within:border-sts-blue">
+                          <Link2 className="size-3.5 shrink-0 text-sts-subtle" />
                           <input
                             ref={linkInputRef}
                             value={linkQuery}
@@ -3118,30 +3118,30 @@ export function TicketDetailPage({
                             onKeyDown={(e) => {
                               if (e.key === "Escape") closeLinkPicker();
                             }}
-                            className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle"
+                            className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
                           />
                           <button
                             type="button"
                             onClick={closeLinkPicker}
-                            className="shrink-0 text-pen-subtle hover:text-pen-muted"
+                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
                           >
                             <X className="size-3.5" />
                           </button>
                         </div>
                         <div className="max-h-56 overflow-y-auto py-1">
                           {linkLoading ? (
-                            <div className="flex items-center justify-center gap-2 py-4 text-pen-subtle">
+                            <div className="flex items-center justify-center gap-2 py-4 text-sts-subtle">
                               <Loader2 className="size-3.5 animate-spin" />
                               <span className="font-sans text-[11.5px]">
                                 Loading…
                               </span>
                             </div>
                           ) : linkError ? (
-                            <p className="px-3 py-3 font-sans text-[11.5px] text-pen-red">
+                            <p className="px-3 py-3 font-sans text-[11.5px] text-sts-red">
                               {linkError}
                             </p>
                           ) : linkCandidates.length === 0 ? (
-                            <p className="px-3 py-3 font-sans text-[11.5px] text-pen-subtle">
+                            <p className="px-3 py-3 font-sans text-[11.5px] text-sts-subtle">
                               {linkQuery.trim()
                                 ? "No matching tickets"
                                 : "No other tickets in this project"}
@@ -3153,18 +3153,18 @@ export function TicketDetailPage({
                                 type="button"
                                 disabled={linkSavingId !== null}
                                 onClick={() => linkSubTicket(c)}
-                                className="flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-pen-card-border/40 disabled:opacity-50"
+                                className="flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-sts-card-border/40 disabled:opacity-50"
                               >
-                                <span className="shrink-0 font-mono text-[11.5px] font-semibold text-pen-id">
+                                <span className="shrink-0 font-mono text-[11.5px] font-semibold text-sts-id">
                                   {c.subDepartment.prefix}-{c.ticketNumber}
                                 </span>
-                                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                                   {c.title}
                                 </span>
                                 {linkSavingId === c.id ? (
-                                  <Loader2 className="size-3.5 shrink-0 animate-spin text-pen-subtle" />
+                                  <Loader2 className="size-3.5 shrink-0 animate-spin text-sts-subtle" />
                                 ) : (
-                                  <span className="shrink-0 font-sans text-[11px] text-pen-subtle">
+                                  <span className="shrink-0 font-sans text-[11px] text-sts-subtle">
                                     {c.status}
                                   </span>
                                 )}
@@ -3181,8 +3181,8 @@ export function TicketDetailPage({
                         onSubmit={createSubTicket}
                         className={cn(subTickets.length > 0 && "mt-1")}
                       >
-                        <div className="flex items-center gap-2 rounded-md border border-pen-blue/40 bg-pen-surface px-3 py-2 focus-within:border-pen-blue">
-                          <span className="block size-1.75 shrink-0 rounded-full bg-pen-subtle" />
+                        <div className="flex items-center gap-2 rounded-md border border-sts-blue/40 bg-sts-surface px-3 py-2 focus-within:border-sts-blue">
+                          <span className="block size-1.75 shrink-0 rounded-full bg-sts-subtle" />
                           <input
                             ref={subTitleRef}
                             value={subTitle}
@@ -3195,12 +3195,12 @@ export function TicketDetailPage({
                                 setSubTitle("");
                               }
                             }}
-                            className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle"
+                            className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
                           />
                           <button
                             type="submit"
                             disabled={subSaving || !subTitle.trim()}
-                            className="h-6 shrink-0 rounded bg-pen-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
+                            className="h-6 shrink-0 rounded bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
                           >
                             {subSaving ? "…" : "Create"}
                           </button>
@@ -3210,7 +3210,7 @@ export function TicketDetailPage({
                               setAddingSubTicket(false);
                               setSubTitle("");
                             }}
-                            className="shrink-0 text-pen-subtle hover:text-pen-muted"
+                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
                           >
                             <X className="size-3.5" />
                           </button>
@@ -3220,7 +3220,7 @@ export function TicketDetailPage({
 
                     {/* Footer actions */}
                     {canEditTicket && !addingSubTicket && !linking && (
-                      <div className="mt-1.5 flex items-center gap-4 border-t border-pen-card-border/60 pt-2">
+                      <div className="mt-1.5 flex items-center gap-4 border-t border-sts-card-border/60 pt-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -3228,7 +3228,7 @@ export function TicketDetailPage({
                             setAddingSubTicket(true);
                             setTimeout(() => subTitleRef.current?.focus(), 0);
                           }}
-                          className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+                          className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
                         >
                           <Plus className="size-3.5" />
                           Add
@@ -3236,7 +3236,7 @@ export function TicketDetailPage({
                         <button
                           type="button"
                           onClick={openLinkPicker}
-                          className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-pen-subtle transition-colors hover:text-pen-blue"
+                          className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
                         >
                           <Link2 className="size-3.5" />
                           Link existing
@@ -3249,7 +3249,7 @@ export function TicketDetailPage({
             )}
 
             {/* Tabs */}
-            <div className="relative border-b border-pen-card-border">
+            <div className="relative border-b border-sts-card-border">
               <div className="flex items-center">
                 {[
                   {
@@ -3274,16 +3274,16 @@ export function TicketDetailPage({
                       className={cn(
                         "relative flex h-[30px] items-center gap-[5px] pr-[16px] font-sans text-[12px]",
                         activeTab === tab.key
-                          ? "font-semibold text-pen-foreground"
-                          : "text-pen-muted hover:text-pen-foreground",
+                          ? "font-semibold text-sts-foreground"
+                          : "text-sts-muted hover:text-sts-foreground",
                       )}
                     >
                       {tab.label}
-                      <span className="font-sans text-[11.5px] text-pen-subtle">
+                      <span className="font-sans text-[11.5px] text-sts-subtle">
                         {tab.count}
                       </span>
                       {activeTab === tab.key && (
-                        <span className="absolute bottom-0 left-0 right-[16px] h-[2px] rounded-full bg-pen-blue" />
+                        <span className="absolute bottom-0 left-0 right-[16px] h-[2px] rounded-full bg-sts-blue" />
                       )}
                     </button>
                   ))}
@@ -3298,7 +3298,7 @@ export function TicketDetailPage({
                     }}
                     disabled={refreshingMessages}
                     title="Refresh messages"
-                    className="mb-0.5 flex items-center justify-center rounded-md p-1 text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+                    className="mb-0.5 flex items-center justify-center rounded-md p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
                   >
                     <RefreshCw
                       className={cn(
@@ -3319,17 +3319,17 @@ export function TicketDetailPage({
                 {/* CM-01: customer messages and staff comments/notes merged into
                     one chronological feed, visually distinguished by kind. */}
                 {unifiedFeed.length === 0 ? (
-                  <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border py-8 text-center">
-                    <Mail className="size-5 text-pen-subtle/50" />
-                    <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                  <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
+                    <Mail className="size-5 text-sts-subtle/50" />
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                       Nothing here yet
                     </p>
-                    <p className="font-sans text-[11.5px] text-pen-subtle">
+                    <p className="font-sans text-[11.5px] text-sts-subtle">
                       Post a note or send the first reply below.
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col divide-y divide-pen-card-border">
+                  <div className="flex flex-col divide-y divide-sts-card-border">
                     {unifiedFeed.map((item) =>
                       item.kind === "message" ? (
                         <div key={item.key} className="py-8">
@@ -3359,7 +3359,7 @@ export function TicketDetailPage({
 
                 {/* CM-02: one composer, author chooses Internal Note or Reply
                     before posting — pinned to the bottom, chat-style. */}
-                <div className="sticky bottom-0 z-10 -mx-1 border-t border-pen-card-border bg-pen-bg px-1 pb-2 pt-3">
+                <div className="sticky bottom-0 z-10 -mx-1 border-t border-sts-card-border bg-sts-bg px-1 pb-2 pt-3">
                   <UnifiedReplyComposer
                     ticketId={dbId}
                     subDepartmentMembers={mentionableUsers}
@@ -3396,14 +3396,14 @@ export function TicketDetailPage({
             ) : (
               <div className="space-y-1">
                 {liveActivity.length === 0 && (
-                  <p className="py-2 font-sans text-[12px] text-pen-subtle">
+                  <p className="py-2 font-sans text-[12px] text-sts-subtle">
                     No activity yet.
                   </p>
                 )}
                 {liveActivity.slice(0, activityLimit).map((a) => (
                   <div key={a.id} className="flex h-7 items-center gap-2">
-                    <Clock className="size-3 shrink-0 text-pen-subtle" />
-                    <span className="truncate font-sans text-[12px] text-pen-foreground">
+                    <Clock className="size-3 shrink-0 text-sts-subtle" />
+                    <span className="truncate font-sans text-[12px] text-sts-foreground">
                       <span className="font-semibold">
                         {a.metadata.source === "github"
                           ? "PR merge"
@@ -3415,7 +3415,7 @@ export function TicketDetailPage({
                       )(a.metadata)}
                     </span>
                     <span className="flex-1" />
-                    <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">
+                    <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">
                       {timeAgo(a.createdAt)}
                     </span>
                   </div>
@@ -3424,7 +3424,7 @@ export function TicketDetailPage({
                   <button
                     type="button"
                     onClick={() => setActivityLimit((n) => n + 10)}
-                    className="mt-1 w-full rounded-md py-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                    className="mt-1 w-full rounded-md py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                   >
                     See more ({liveActivity.length - activityLimit} remaining)
                   </button>
@@ -3435,16 +3435,16 @@ export function TicketDetailPage({
         </div>
 
         {/* ── Right sidebar ────────────────────────────────────────────────── */}
-        <aside className="relative hidden w-[300px] shrink-0 flex-col overflow-hidden border-l border-pen-card-border bg-pen-card lg:flex">
+        <aside className="relative hidden w-[300px] shrink-0 flex-col overflow-hidden border-l border-sts-card-border bg-sts-card lg:flex">
           {/* X close button — overlay so content can start higher */}
           {isDrawer && onClose && (
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="absolute top-2.5 right-3 z-10 flex size-7 items-center justify-center rounded-full bg-pen-surface ring-1 ring-pen-card-border transition-colors hover:bg-pen-card-border"
+              className="absolute top-2.5 right-3 z-10 flex size-7 items-center justify-center rounded-full bg-sts-surface ring-1 ring-sts-card-border transition-colors hover:bg-sts-card-border"
             >
-              <X className="size-[14px] text-pen-foreground" />
+              <X className="size-[14px] text-sts-foreground" />
             </button>
           )}
           <div
@@ -3465,7 +3465,7 @@ export function TicketDetailPage({
                       className="size-6 shrink-0 rounded-full object-cover"
                     />
                   ) : (
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-pen-blue/15 font-sans text-[10px] font-semibold text-pen-blue">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sts-blue/15 font-sans text-[10px] font-semibold text-sts-blue">
                       {creatorName
                         .split(" ")
                         .map((w) => w[0])
@@ -3475,11 +3475,11 @@ export function TicketDetailPage({
                     </span>
                   )}
                   <div className="flex min-w-0 flex-col">
-                    <span className="min-w-0 truncate font-sans text-[13px] font-medium text-pen-foreground">
+                    <span className="min-w-0 truncate font-sans text-[13px] font-medium text-sts-foreground">
                       {creatorName}
                     </span>
                     {createdAtIso && (
-                      <span className="font-sans text-[11.5px] text-pen-subtle">
+                      <span className="font-sans text-[11.5px] text-sts-subtle">
                         {formatDateTime(new Date(createdAtIso))}
                       </span>
                     )}
@@ -3705,7 +3705,7 @@ function AssetLinksEditor({
           <button
             type="button"
             onClick={() => setAdding((v) => !v)}
-            className="ml-auto flex h-5 w-5 items-center justify-center rounded text-pen-subtle hover:bg-pen-surface hover:text-pen-blue"
+            className="ml-auto flex h-5 w-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-blue"
           >
             <Plus size={12} />
           </button>
@@ -3717,7 +3717,7 @@ function AssetLinksEditor({
           {links.map((link, i) => (
             <div
               key={i}
-              className="flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1"
+              className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1"
             >
               <Link2
                 size={12}
@@ -3728,7 +3728,7 @@ function AssetLinksEditor({
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 flex-1 truncate font-sans text-[12px] text-pen-foreground hover:text-pen-blue hover:underline"
+                className="min-w-0 flex-1 truncate font-sans text-[12px] text-sts-foreground hover:text-sts-blue hover:underline"
               >
                 {link.label || link.url}
               </a>
@@ -3736,7 +3736,7 @@ function AssetLinksEditor({
                 <button
                   type="button"
                   onClick={() => handleRemove(i)}
-                  className="shrink-0 text-pen-subtle hover:text-pen-red"
+                  className="shrink-0 text-sts-subtle hover:text-sts-red"
                   disabled={saving}
                 >
                   <X size={10} />
@@ -3754,13 +3754,13 @@ function AssetLinksEditor({
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               placeholder="https://…"
-              className="h-8 flex-1 rounded-md border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+              className="h-8 flex-1 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
             />
             <input
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               placeholder="Label"
-              className="h-8 w-28 rounded-md border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+              className="h-8 w-28 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
             />
           </div>
           <div className="flex gap-1.5">
@@ -3768,7 +3768,7 @@ function AssetLinksEditor({
               type="button"
               onClick={handleAdd}
               disabled={saving || !newUrl.trim()}
-              className="flex h-7 items-center rounded-md bg-pen-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+              className="flex h-7 items-center rounded-md bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
             >
               Save
             </button>
@@ -3779,7 +3779,7 @@ function AssetLinksEditor({
                 setNewUrl("");
                 setNewLabel("");
               }}
-              className="flex h-7 items-center rounded-md border border-pen-card-border px-3 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+              className="flex h-7 items-center rounded-md border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -3846,13 +3846,13 @@ function StoryPointsEditor({
             }}
             autoFocus
             placeholder="pts"
-            className="h-6 w-[52px] rounded-md border border-pen-blue/50 bg-transparent px-2 text-center font-sans text-[11.5px] text-pen-foreground outline-none focus:border-pen-blue"
+            className="h-6 w-[52px] rounded-md border border-sts-blue/50 bg-transparent px-2 text-center font-sans text-[11.5px] text-sts-foreground outline-none focus:border-sts-blue"
           />
           <button
             type="button"
             onClick={save}
             disabled={saving}
-            className="h-6 rounded-md bg-pen-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="h-6 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {saving ? "…" : "Save"}
           </button>
@@ -3862,7 +3862,7 @@ function StoryPointsEditor({
               setEditing(false);
               setInputVal(sp?.toString() ?? "");
             }}
-            className="flex size-5 items-center justify-center rounded text-pen-subtle hover:text-pen-muted"
+            className="flex size-5 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
           >
             <X className="size-3" />
           </button>
@@ -3882,10 +3882,10 @@ function StoryPointsEditor({
           className={cn(
             "flex h-6 min-w-11 items-center justify-center rounded-md px-2.5 font-sans text-[11.5px] font-semibold transition-colors",
             sp != null
-              ? "bg-pen-blue/10 text-pen-blue hover:bg-pen-blue/15"
+              ? "bg-sts-blue/10 text-sts-blue hover:bg-sts-blue/15"
               : canEdit
-                ? "border border-dashed border-pen-card-border text-pen-subtle hover:border-pen-blue/50 hover:text-pen-blue"
-                : "text-pen-subtle",
+                ? "border border-dashed border-sts-card-border text-sts-subtle hover:border-sts-blue/50 hover:text-sts-blue"
+                : "text-sts-subtle",
           )}
         >
           {sp != null ? `${sp} pts` : canEdit ? "Set" : "—"}
@@ -3918,7 +3918,7 @@ function TimerToggleButton({
       className={cn(
         "flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-[6px] font-sans text-[11.5px] font-medium transition-all disabled:opacity-50",
         running
-          ? "bg-pen-red/10 text-pen-red ring-1 ring-pen-red/20 hover:bg-pen-red/15"
+          ? "bg-sts-red/10 text-sts-red ring-1 ring-sts-red/20 hover:bg-sts-red/15"
           : idleClassName,
       )}
     >
@@ -3948,12 +3948,12 @@ function SubTicketTimeSection({ data }: { data: SubTicketTimeData }) {
     <div className="flex flex-col gap-[8px]">
       <div className="flex items-center gap-1.5">
         <SectionLabel>Sub-ticket time</SectionLabel>
-        <span className="ml-auto font-mono text-[11.5px] font-semibold text-pen-foreground">
+        <span className="ml-auto font-mono text-[11.5px] font-semibold text-sts-foreground">
           {formatSecs(data.totalSecs)}
         </span>
       </div>
 
-      <div className="rounded-[8px] border border-pen-card-border bg-pen-surface/60 px-[11px] py-[9px] space-y-[8px]">
+      <div className="rounded-[8px] border border-sts-card-border bg-sts-surface/60 px-[11px] py-[9px] space-y-[8px]">
         {/* Per sub-ticket totals */}
         <div className="flex flex-col gap-[6px]">
           {data.perTicket.map((t) => (
@@ -3962,13 +3962,13 @@ function SubTicketTimeSection({ data }: { data: SubTicketTimeData }) {
               href={`/tickets/${t.dbId}`}
               className="flex items-center gap-2 leading-none hover:opacity-80"
             >
-              <span className="shrink-0 font-mono text-[11.5px] font-semibold text-pen-id">
+              <span className="shrink-0 font-mono text-[11.5px] font-semibold text-sts-id">
                 {t.humanId}
               </span>
-              <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-muted">
+              <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-muted">
                 {t.title}
               </span>
-              <span className="shrink-0 font-mono text-[11.5px] font-semibold text-pen-foreground">
+              <span className="shrink-0 font-mono text-[11.5px] font-semibold text-sts-foreground">
                 {formatSecs(t.totalSecs)}
               </span>
             </Link>
@@ -3977,11 +3977,11 @@ function SubTicketTimeSection({ data }: { data: SubTicketTimeData }) {
 
         {/* Combined session log across sub-tickets */}
         {data.sessions.length > 0 && (
-          <div className="border-t border-pen-card-border/60 pt-[7px]">
+          <div className="border-t border-sts-card-border/60 pt-[7px]">
             <button
               type="button"
               onClick={() => setShowLog((v) => !v)}
-              className="flex w-full items-center gap-1 font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-pen-muted"
+              className="flex w-full items-center gap-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:text-sts-muted"
             >
               {showLog ? (
                 <ChevronDown className="size-3 shrink-0" />
@@ -3989,20 +3989,20 @@ function SubTicketTimeSection({ data }: { data: SubTicketTimeData }) {
                 <ChevronRight className="size-3 shrink-0" />
               )}
               <span>Time log</span>
-              <span className="text-pen-subtle/60">({data.sessions.length})</span>
+              <span className="text-sts-subtle/60">({data.sessions.length})</span>
             </button>
             {showLog && (
               <div className="mt-[6px] space-y-[5px]">
                 {data.sessions.map((s) => (
                   <div key={s.id} className="flex items-center gap-1.5 leading-none">
                     <Avatar name={s.userName} src={s.avatarUrl} size={14} />
-                    <span className="shrink-0 font-mono text-[11px] text-pen-id">
+                    <span className="shrink-0 font-mono text-[11px] text-sts-id">
                       {s.subTicketHumanId}
                     </span>
-                    <span className="font-sans text-[11.5px] text-pen-muted">
+                    <span className="font-sans text-[11.5px] text-sts-muted">
                       {format(parseISO(s.startedAt), "d MMM")}
                     </span>
-                    <span className="ml-auto font-mono text-[11.5px] font-semibold text-pen-foreground">
+                    <span className="ml-auto font-mono text-[11.5px] font-semibold text-sts-foreground">
                       {formatSecs(s.durationSecs)}
                     </span>
                   </div>
@@ -4042,7 +4042,7 @@ function PersonalEstimatesSection({
   return (
     <div className="flex flex-col gap-[8px]">
       <SectionLabel>Personal estimates</SectionLabel>
-      <div className="space-y-[6px] rounded-[8px] border border-pen-card-border bg-pen-surface/60 px-[11px] py-[9px]">
+      <div className="space-y-[6px] rounded-[8px] border border-sts-card-border bg-sts-surface/60 px-[11px] py-[9px]">
         {people.map((p) => (
           <PersonalEstimateRow
             key={p.id}
@@ -4128,22 +4128,22 @@ function PersonalEstimateRow({
     !!local && (local.estimatedMinutes != null || !!local.targetDateIso);
 
   return (
-    <div className="border-b border-pen-card-border/50 pb-[6px] last:border-0 last:pb-0">
+    <div className="border-b border-sts-card-border/50 pb-[6px] last:border-0 last:pb-0">
       <div className="flex items-center gap-1.5">
         <Avatar name={person.name} src={person.avatarUrl} size={16} />
-        <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-muted">
+        <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-muted">
           {person.name.split(" ")[0]}
-          <span className="ml-1 text-pen-subtle/60">{person.role}</span>
+          <span className="ml-1 text-sts-subtle/60">{person.role}</span>
         </span>
         {!editing && hasEstimate && (
-          <span className="shrink-0 font-sans text-[11.5px] text-pen-foreground">
+          <span className="shrink-0 font-sans text-[11.5px] text-sts-foreground">
             <span className="font-semibold">
               {local!.estimatedMinutes != null
                 ? formatMins(local!.estimatedMinutes)
                 : "—"}
             </span>
             {local!.targetDateIso && (
-              <span className="ml-1 font-normal text-pen-subtle">
+              <span className="ml-1 font-normal text-sts-subtle">
                 · {format(parseCalendarDate(local!.targetDateIso), "d MMM yyyy")}
               </span>
             )}
@@ -4153,7 +4153,7 @@ function PersonalEstimateRow({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="ml-1 shrink-0 font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-pen-blue"
+            className="ml-1 shrink-0 font-sans text-[11.5px] text-sts-subtle transition-colors hover:text-sts-blue"
           >
             {hasEstimate ? "Edit" : "Set"}
           </button>
@@ -4172,13 +4172,13 @@ function PersonalEstimateRow({
                 if (e.key === "Escape") setEditing(false);
               }}
               autoFocus
-              className="h-6 min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none focus:border-pen-blue"
+              className="h-6 min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none focus:border-sts-blue"
             />
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-6 shrink-0 rounded-md border border-pen-card-border bg-pen-card px-1.5 font-sans text-[11.5px] text-pen-foreground outline-none focus:border-pen-blue"
+              className="h-6 shrink-0 rounded-md border border-sts-card-border bg-sts-card px-1.5 font-sans text-[11.5px] text-sts-foreground outline-none focus:border-sts-blue"
             />
           </div>
           <div className="flex items-center gap-1">
@@ -4186,14 +4186,14 @@ function PersonalEstimateRow({
               type="button"
               onClick={save}
               disabled={saving}
-              className="h-6 rounded-md bg-pen-blue px-2 font-sans text-[11.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="h-6 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? "…" : "Save"}
             </button>
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="h-6 rounded-md px-2 font-sans text-[11.5px] text-pen-subtle hover:text-pen-muted"
+              className="h-6 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle hover:text-sts-muted"
             >
               Cancel
             </button>
@@ -4202,7 +4202,7 @@ function PersonalEstimateRow({
                 type="button"
                 onClick={clear}
                 disabled={saving}
-                className="ml-auto h-6 rounded-md px-2 font-sans text-[11.5px] text-pen-red/80 hover:text-pen-red disabled:opacity-50"
+                className="ml-auto h-6 rounded-md px-2 font-sans text-[11.5px] text-sts-red/80 hover:text-sts-red disabled:opacity-50"
               >
                 Clear
               </button>
@@ -4521,14 +4521,14 @@ function TimeTrackingSection({
       <div className="flex items-center gap-1.5">
         <SectionLabel>Time Tracking</SectionLabel>
         {overrunSecs > 0 && (
-          <span className="ml-auto rounded-full bg-pen-red/10 px-[6px] py-[1.5px] font-sans text-[11.5px] font-semibold text-pen-red">
+          <span className="ml-auto rounded-full bg-sts-red/10 px-[6px] py-[1.5px] font-sans text-[11.5px] font-semibold text-sts-red">
             +{formatSecs(overrunSecs)} over
           </span>
         )}
       </div>
 
       {/* Stats card */}
-      <div className="rounded-[8px] border border-pen-card-border bg-pen-surface/60 px-[11px] py-[9px] space-y-[8px]">
+      <div className="rounded-[8px] border border-sts-card-border bg-sts-surface/60 px-[11px] py-[9px] space-y-[8px]">
         {/* Progress bar + estimate row */}
         <div className="flex flex-col gap-[5px]">
           {/* Logged / estimated summary */}
@@ -4536,23 +4536,23 @@ function TimeTrackingSection({
             <span
               className={cn(
                 "font-mono text-[14px] font-semibold leading-none",
-                totalSecs > 0 ? "text-pen-foreground" : "text-pen-subtle",
+                totalSecs > 0 ? "text-sts-foreground" : "text-sts-subtle",
               )}
             >
               {totalSecs > 0 ? formatSecs(totalSecs) : "0s"}
             </span>
             {estimatedTime ? (
-              <span className="font-sans text-[11.5px] text-pen-muted">
+              <span className="font-sans text-[11.5px] text-sts-muted">
                 / {formatMins(estimatedTime)} est.
               </span>
             ) : (
-              <span className="font-sans text-[11.5px] text-pen-subtle/60">
+              <span className="font-sans text-[11.5px] text-sts-subtle/60">
                 logged
               </span>
             )}
             {activeTimerId && (
-              <span className="ml-auto flex items-center gap-1 font-sans text-[11.5px] text-pen-green">
-                <span className="block size-[5px] rounded-full bg-pen-green animate-pulse" />
+              <span className="ml-auto flex items-center gap-1 font-sans text-[11.5px] text-sts-green">
+                <span className="block size-[5px] rounded-full bg-sts-green animate-pulse" />
                 {formatSecs(myElapsed)}
               </span>
             )}
@@ -4560,27 +4560,27 @@ function TimeTrackingSection({
 
           {/* Progress bar */}
           {estimatedSecs !== null ? (
-            <div className="h-[4px] w-full overflow-hidden rounded-full bg-pen-card-border">
+            <div className="h-[4px] w-full overflow-hidden rounded-full bg-sts-card-border">
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
                   overrunSecs > 0
-                    ? "bg-pen-red"
+                    ? "bg-sts-red"
                     : pct! > 75
                       ? "bg-amber-400"
-                      : "bg-pen-blue",
+                      : "bg-sts-blue",
                 )}
                 style={{ width: `${Math.max(2, pct!)}%` }}
               />
             </div>
           ) : (
-            <div className="h-[4px] w-full rounded-full bg-pen-card-border" />
+            <div className="h-[4px] w-full rounded-full bg-sts-card-border" />
           )}
         </div>
 
         {/* Per-user breakdown */}
         {displayEntries.length > 0 && (
-          <div className="space-y-[5px] border-t border-pen-card-border/60 pt-[7px]">
+          <div className="space-y-[5px] border-t border-sts-card-border/60 pt-[7px]">
             {displayEntries.map((entry) => {
               const secs =
                 entry.userId === currentUserId
@@ -4597,13 +4597,13 @@ function TimeTrackingSection({
                     src={entry.avatarUrl}
                     size={16}
                   />
-                  <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-pen-muted">
+                  <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] text-sts-muted">
                     {entry.userName.split(" ")[0]}
                   </span>
                   {running && (
-                    <span className="block size-[5px] shrink-0 rounded-full bg-pen-green animate-pulse" />
+                    <span className="block size-[5px] shrink-0 rounded-full bg-sts-green animate-pulse" />
                   )}
-                  <span className="font-mono text-[11.5px] font-semibold text-pen-foreground">
+                  <span className="font-mono text-[11.5px] font-semibold text-sts-foreground">
                     {formatSecs(secs)}
                   </span>
                 </div>
@@ -4614,11 +4614,11 @@ function TimeTrackingSection({
 
         {/* Session log */}
         {allSessions.length > 0 && (
-          <div className="border-t border-pen-card-border/60 pt-[7px]">
+          <div className="border-t border-sts-card-border/60 pt-[7px]">
             <button
               type="button"
               onClick={() => setShowLog((v) => !v)}
-              className="flex w-full items-center gap-1 font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-pen-muted"
+              className="flex w-full items-center gap-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:text-sts-muted"
             >
               {showLog ? (
                 <ChevronDown className="size-3 shrink-0" />
@@ -4626,7 +4626,7 @@ function TimeTrackingSection({
                 <ChevronRight className="size-3 shrink-0" />
               )}
               <span>Time log</span>
-              <span className="text-pen-subtle/60">({allSessions.length})</span>
+              <span className="text-sts-subtle/60">({allSessions.length})</span>
             </button>
             {showLog && (
               <div className="mt-[6px] space-y-[5px]">
@@ -4656,14 +4656,14 @@ function TimeTrackingSection({
                       className="flex items-center gap-1.5 leading-none"
                     >
                       <Avatar name={s.userName} src={s.avatarUrl} size={14} />
-                      <span className="font-sans text-[11.5px] text-pen-muted">
+                      <span className="font-sans text-[11.5px] text-sts-muted">
                         {format(parseISO(s.startedAt), "d MMM")}
                       </span>
-                      <span className="font-mono text-[11.5px] text-pen-subtle">
+                      <span className="font-mono text-[11.5px] text-sts-subtle">
                         {format(parseISO(s.startedAt), "HH:mm")}
                         {" – "}
                         {running ? (
-                          <span className="text-pen-green">running</span>
+                          <span className="text-sts-green">running</span>
                         ) : (
                           format(parseISO(s.endedAt!), "HH:mm")
                         )}
@@ -4671,7 +4671,7 @@ function TimeTrackingSection({
                       <span
                         className={cn(
                           "ml-auto font-mono text-[11.5px] font-semibold",
-                          running ? "text-pen-green" : "text-pen-foreground",
+                          running ? "text-sts-green" : "text-sts-foreground",
                         )}
                       >
                         {formatSecs(durSecs)}
@@ -4685,7 +4685,7 @@ function TimeTrackingSection({
         )}
 
         {/* Estimate row — editable for support tickets, roll-up otherwise */}
-        <div className="border-t border-pen-card-border/60 pt-[7px]">
+        <div className="border-t border-sts-card-border/60 pt-[7px]">
           {estimateEditable && editingEst ? (
             <div className="flex items-center gap-1">
               <input
@@ -4697,36 +4697,36 @@ function TimeTrackingSection({
                   if (e.key === "Escape") setEditingEst(false);
                 }}
                 autoFocus
-                className="h-6 min-w-0 flex-1 rounded-md border border-pen-blue/50 bg-pen-card px-2 font-sans text-[11.5px] text-pen-foreground outline-none focus:border-pen-blue"
+                className="h-6 min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none focus:border-sts-blue"
               />
               <button
                 type="button"
                 onClick={saveEstimate}
                 disabled={savingEst}
-                className="h-6 shrink-0 rounded-md bg-pen-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-6 shrink-0 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {savingEst ? "…" : "Save"}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingEst(false)}
-                className="flex size-5 shrink-0 items-center justify-center rounded text-pen-subtle hover:text-pen-muted"
+                className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
               >
                 <X className="size-3" />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
-              <Timer className="size-[11px] shrink-0 text-pen-subtle" />
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <Timer className="size-[11px] shrink-0 text-sts-subtle" />
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 Estimate
               </span>
               <span
                 className={cn(
                   "font-sans text-[11.5px]",
                   estimatedTime
-                    ? "font-semibold text-pen-foreground"
-                    : "font-medium text-pen-subtle/60",
+                    ? "font-semibold text-sts-foreground"
+                    : "font-medium text-sts-subtle/60",
                 )}
               >
                 {estimatedTime ? formatMins(estimatedTime) : "—"}
@@ -4741,13 +4741,13 @@ function TimeTrackingSection({
                         estimatedTime ? formatMins(estimatedTime) : "",
                       );
                     }}
-                    className="ml-auto font-sans text-[11.5px] text-pen-subtle transition-colors hover:text-pen-blue"
+                    className="ml-auto font-sans text-[11.5px] text-sts-subtle transition-colors hover:text-sts-blue"
                   >
                     {estimatedTime ? "Edit" : "Set"}
                   </button>
                 )
               ) : (
-                <span className="ml-auto font-sans text-[11px] text-pen-subtle/60">
+                <span className="ml-auto font-sans text-[11px] text-sts-subtle/60">
                   rolled up
                 </span>
               )}
@@ -4767,7 +4767,7 @@ function TimeTrackingSection({
               onToggle={() => {
                 void (activeTimerId ? pauseTimer() : startTimer());
               }}
-              idleClassName="bg-pen-blue/10 text-pen-blue ring-1 ring-pen-blue/20 hover:bg-pen-blue/15"
+              idleClassName="bg-sts-blue/10 text-sts-blue ring-1 ring-sts-blue/20 hover:bg-sts-blue/15"
             />
           </div>
           {canReset && (
@@ -4776,7 +4776,7 @@ function TimeTrackingSection({
               onClick={resetMyTime}
               disabled={resetting}
               title="Reset your time on this ticket to 0"
-              className="flex shrink-0 items-center justify-center gap-1 rounded-[7px] px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-pen-muted ring-1 ring-pen-card-border transition-all hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+              className="flex shrink-0 items-center justify-center gap-1 rounded-[7px] px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-[11px]" />
               {resetting ? "…" : "Reset"}
@@ -4785,9 +4785,9 @@ function TimeTrackingSection({
         </div>
       ) : isAssignee ? (
         <div className="space-y-1.5">
-          <p className="rounded-[7px] bg-pen-surface px-3 py-[7px] text-center font-sans text-[11.5px] text-pen-muted">
+          <p className="rounded-[7px] bg-sts-surface px-3 py-[7px] text-center font-sans text-[11.5px] text-sts-muted">
             Timer auto-starts when status is{" "}
-            <span className="font-semibold text-pen-foreground">
+            <span className="font-semibold text-sts-foreground">
               In Progress
             </span>
             . Move there to track time.
@@ -4797,7 +4797,7 @@ function TimeTrackingSection({
               type="button"
               onClick={resetMyTime}
               disabled={resetting}
-              className="flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-[6px] font-sans text-[11.5px] font-medium text-pen-muted ring-1 ring-pen-card-border transition-all hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-[11px]" />
               {resetting ? "Resetting…" : "Reset my time to 0"}
@@ -4824,7 +4824,7 @@ function SubTicketPanel({
   const { data, isLoading } = useTicketDetail(ticketId);
   return isLoading || !data ? (
     <div className="flex flex-1 items-center justify-center">
-      <div className="size-6 animate-spin rounded-full border-2 border-pen-card-border border-t-pen-blue" />
+      <div className="size-6 animate-spin rounded-full border-2 border-sts-card-border border-t-sts-blue" />
     </div>
   ) : (
     <TicketDetailPage {...data} isDrawer onClose={onClose} />
@@ -4846,8 +4846,8 @@ function SubTicketModal({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-[60] pen-overlay-backdrop transition-opacity duration-200" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-[61] w-[min(900px,95vw)] h-[calc(90dvh/var(--pen-font-scale,1))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl flex flex-col">
+        <Dialog.Backdrop className="fixed inset-0 z-[60] sts-overlay-backdrop transition-opacity duration-200" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-[61] w-[min(900px,95vw)] h-[calc(90dvh/var(--sts-font-scale,1))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl flex flex-col">
           {ticketId && <SubTicketPanel ticketId={ticketId} onClose={onClose} />}
         </Dialog.Popup>
       </Dialog.Portal>

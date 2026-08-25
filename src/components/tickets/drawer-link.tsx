@@ -81,7 +81,7 @@ export function DrawerLink({ ticketId, href, className, children, card }: Props)
   return (
     <Link
       href={href}
-      data-pen-drawer-link
+      data-sts-drawer-link
       onClick={handleClick}
       onMouseEnter={() => prefetchDetail()}
       onFocus={() => prefetchDetail()}

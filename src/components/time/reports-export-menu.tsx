@@ -52,18 +52,18 @@ export function ReportsExportMenu({
         type="button"
         disabled={!ready || busy}
         title="Export reports"
-        className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-card px-3 font-sans text-[11.5px] font-semibold text-pen-foreground outline-none transition-colors hover:bg-pen-bg disabled:opacity-50"
+        className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none transition-colors hover:bg-sts-bg disabled:opacity-50"
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
         <span>Export</span>
-        <ChevronDown className="size-3 shrink-0 text-pen-subtle" />
+        <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
       </PopoverTrigger>
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-48 rounded-xl border border-pen-card-border bg-pen-bg p-1.5 shadow-xl"
+        className="w-48 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
       >
-        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-pen-subtle">
+        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-sts-subtle">
           Export current report
         </p>
         {EXPORT_OPTIONS.map((opt) => (
@@ -71,9 +71,9 @@ export function ReportsExportMenu({
             key={opt.format}
             type="button"
             onClick={() => handleExport(opt.format)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-pen-foreground transition-colors hover:bg-pen-surface"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:bg-sts-surface"
           >
-            <Download className="size-3.5 shrink-0 text-pen-subtle" />
+            <Download className="size-3.5 shrink-0 text-sts-subtle" />
             {opt.label}
           </button>
         ))}

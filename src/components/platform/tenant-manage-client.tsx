@@ -84,36 +84,36 @@ function DepartmentMultiSelect({
   return (
     <div className={compact ? "shrink-0" : undefined}>
       {!compact && (
-        <p className="font-sans text-[11.5px] font-medium text-pen-foreground">
+        <p className="font-sans text-[11.5px] font-medium text-sts-foreground">
           {label}
-          <span className="ml-1 font-normal text-pen-subtle">— pick one or more</span>
+          <span className="ml-1 font-normal text-sts-subtle">— pick one or more</span>
         </p>
       )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           title={label}
           className={cn(
-            "flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5 text-left font-sans text-[12.5px] text-pen-foreground transition-colors hover:border-pen-muted",
+            "flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
             compact ? "min-w-[190px]" : "mt-1.5 w-full",
           )}
         >
           <span className="min-w-0 flex-1 truncate">{triggerLabel}</span>
-          <ChevronDown className="size-3.5 shrink-0 text-pen-subtle" />
+          <ChevronDown className="size-3.5 shrink-0 text-sts-subtle" />
         </PopoverTrigger>
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-64 rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+          className="w-64 rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
         >
-          <div className="flex items-center justify-between border-b border-pen-card-border px-3 py-2">
-            <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+          <div className="flex items-center justify-between border-b border-sts-card-border px-3 py-2">
+            <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
               Departments
             </span>
             {selected.length > 0 && (
               <button
                 type="button"
                 onClick={() => selected.forEach(onToggle)}
-                className="font-sans text-[11.5px] text-pen-muted hover:text-pen-red"
+                className="font-sans text-[11.5px] text-sts-muted hover:text-sts-red"
               >
                 Clear
               </button>
@@ -121,7 +121,7 @@ function DepartmentMultiSelect({
           </div>
           <div className="max-h-56 overflow-y-auto p-1.5">
             {departments.length === 0 ? (
-              <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+              <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">
                 This tenant has no departments yet.
               </p>
             ) : (
@@ -134,18 +134,18 @@ function DepartmentMultiSelect({
                     onClick={() => onToggle(d.id)}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
-                      checked ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                      checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                     )}
                   >
                     <span
                       className={cn(
                         "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-                        checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border bg-transparent",
+                        checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border bg-transparent",
                       )}
                     >
                       {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                     </span>
-                    <span className="truncate font-sans text-[12.5px] text-pen-foreground">{d.name}</span>
+                    <span className="truncate font-sans text-[12.5px] text-sts-foreground">{d.name}</span>
                   </button>
                 );
               })
@@ -442,16 +442,16 @@ export function TenantManageClient({
   const canEnter = !deleted && tenantStatus === "active";
 
   const sectionCard =
-    "rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card";
+    "rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card";
   const labelClass =
-    "block font-sans text-[12.5px] font-medium text-pen-foreground";
+    "block font-sans text-[12.5px] font-medium text-sts-foreground";
 
   return (
     <div className="min-h-screen overflow-y-auto">
       <div className="w-full px-6 py-8 pb-20 lg:px-10">
         <Link
           href="/platform"
-          className="inline-flex items-center gap-1 font-sans text-[12.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+          className="inline-flex items-center gap-1 font-sans text-[12.5px] text-sts-muted transition-colors hover:text-sts-foreground"
         >
           <ArrowLeft className="size-3.5" />
           All tenants
@@ -467,11 +467,11 @@ export function TenantManageClient({
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="pen-text-page-title leading-none">
+                <h1 className="sts-text-page-title leading-none">
                   {tenant.name}
                 </h1>
                 {deleted ? (
-                  <span className="rounded-full bg-pen-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-red">
+                  <span className="rounded-full bg-sts-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-red">
                     Deleted
                   </span>
                 ) : tenantStatus === "suspended" ? (
@@ -479,12 +479,12 @@ export function TenantManageClient({
                     Suspended
                   </span>
                 ) : (
-                  <span className="rounded-full bg-pen-green/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-green">
+                  <span className="rounded-full bg-sts-green/10 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-green">
                     Active
                   </span>
                 )}
               </div>
-              <div className="mt-1 font-sans text-[11.5px] text-pen-subtle">
+              <div className="mt-1 font-sans text-[11.5px] text-sts-subtle">
                 /{tenant.slug} · {tenant.departments} dept
                 {tenant.departments === 1 ? "" : "s"} · {tenant.members} member
                 {tenant.members === 1 ? "" : "s"}
@@ -502,7 +502,7 @@ export function TenantManageClient({
           </div>
         )}
         {status && (
-          <div className="mt-4 rounded-lg border border-pen-green/30 bg-pen-green/10 px-3 py-2 font-sans text-[12.5px] text-pen-green">
+          <div className="mt-4 rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12.5px] text-sts-green">
             {status}
           </div>
         )}
@@ -516,7 +516,7 @@ export function TenantManageClient({
             {/* Branding editor + live preview */}
             <section className={cn(sectionCard, "space-y-4")}>
               <form onSubmit={saveBranding} className="space-y-4">
-                <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                   Logo &amp; name
                 </h2>
 
@@ -560,7 +560,7 @@ export function TenantManageClient({
                       />
                     </Button>
                   </div>
-                  <p className="mt-1 font-sans text-[11px] text-pen-subtle">
+                  <p className="mt-1 font-sans text-[11px] text-sts-subtle">
                     Paste a URL or upload an image (≤5 MB).
                   </p>
                 </div>
@@ -571,8 +571,8 @@ export function TenantManageClient({
               </form>
 
               {/* Live preview — how the tenant's logo + name appear in the sidebar. */}
-              <div className="rounded-lg border border-pen-card-border p-3">
-                <div className="mb-2 font-sans text-[11px] font-medium tracking-[0.6px] text-pen-subtle uppercase">
+              <div className="rounded-lg border border-sts-card-border p-3">
+                <div className="mb-2 font-sans text-[11px] font-medium tracking-[0.6px] text-sts-subtle uppercase">
                   Preview
                 </div>
                 <div className="flex items-center gap-2">
@@ -581,7 +581,7 @@ export function TenantManageClient({
                     logoUrl={logoUrl.trim() || null}
                     size={32}
                   />
-                  <span className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
+                  <span className="truncate font-sans text-[13px] font-semibold text-sts-foreground">
                     {previewName}
                   </span>
                 </div>
@@ -590,17 +590,17 @@ export function TenantManageClient({
 
             {/* Status & lifecycle (SA-01) */}
             <section className={sectionCard}>
-              <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+              <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                 Status &amp; lifecycle
               </h2>
-              <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
+              <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">
                 Suspend to temporarily block sign-in for every member.
                 Soft-delete is reversible — no data is ever removed.
               </p>
 
               {deleted ? (
-                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-pen-red/30 bg-pen-red/5 p-3">
-                  <p className="font-sans text-[12px] text-pen-foreground">
+                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-sts-red/30 bg-sts-red/5 p-3">
+                  <p className="font-sans text-[12px] text-sts-foreground">
                     This tenant is soft-deleted. Members cannot sign in.
                   </p>
                   <Button
@@ -615,12 +615,12 @@ export function TenantManageClient({
                 </div>
               ) : (
                 <>
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-pen-card-border p-3">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-sts-card-border p-3">
                     <div>
-                      <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                      <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                         {tenantStatus === "suspended" ? "Suspended" : "Active"}
                       </p>
-                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                      <p className="font-sans text-[11.5px] text-sts-subtle">
                         {tenantStatus === "suspended"
                           ? "Members are locked out."
                           : "Members can sign in normally."}
@@ -641,12 +641,12 @@ export function TenantManageClient({
                     </Button>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-pen-red/25 bg-pen-red/5 p-3">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-sts-red/25 bg-sts-red/5 p-3">
                     <div>
-                      <p className="font-sans text-[12.5px] font-medium text-pen-red">
+                      <p className="font-sans text-[12.5px] font-medium text-sts-red">
                         Soft-delete tenant
                       </p>
-                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                      <p className="font-sans text-[11.5px] text-sts-subtle">
                         Reversible — restore anytime.
                       </p>
                     </div>
@@ -668,10 +668,10 @@ export function TenantManageClient({
           {/* Members */}
           <section className={cn(sectionCard, "h-fit xl:col-span-2")}>
             <div className="flex items-center justify-between">
-              <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">
+              <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                 Members
               </h2>
-              <span className="font-sans text-[11.5px] text-pen-subtle">
+              <span className="font-sans text-[11.5px] text-sts-subtle">
                 {members.length} member{members.length === 1 ? "" : "s"}
               </span>
             </div>
@@ -681,20 +681,20 @@ export function TenantManageClient({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative min-w-[220px] flex-1">
                   {pickedUser ? (
-                    <div className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5">
+                    <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5">
                       <UserAvatar
                         name={pickedUser.name}
                         avatarUrl={pickedUser.avatarUrl}
                         size={20}
                       />
-                      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                         {pickedUser.name || pickedUser.email}
                       </span>
                       <button
                         type="button"
                         aria-label="Clear selected user"
                         onClick={clearPickedUser}
-                        className="pen-pressable rounded-full p-0.5 text-pen-subtle hover:text-pen-foreground"
+                        className="sts-pressable rounded-full p-0.5 text-sts-subtle hover:text-sts-foreground"
                       >
                         <X className="size-3.5" />
                       </button>
@@ -714,13 +714,13 @@ export function TenantManageClient({
                   {!pickedUser &&
                     searchOpen &&
                     inviteEmail.trim().length >= 2 && (
-                      <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-xl">
+                      <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg shadow-xl">
                         {searching ? (
-                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">
                             Searching…
                           </p>
                         ) : searchResults.length === 0 ? (
-                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                          <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">
                             No existing users match — an invite will be sent to
                             this email.
                           </p>
@@ -732,7 +732,7 @@ export function TenantManageClient({
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => pickUser(u)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-pen-surface"
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sts-surface"
                               >
                                 <UserAvatar
                                   name={u.name}
@@ -740,10 +740,10 @@ export function TenantManageClient({
                                   size={22}
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                                  <div className="truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                                     {u.name || u.email}
                                   </div>
-                                  <div className="truncate font-sans text-[11px] text-pen-subtle">
+                                  <div className="truncate font-sans text-[11px] text-sts-subtle">
                                     {u.email}
                                   </div>
                                 </div>
@@ -758,7 +758,7 @@ export function TenantManageClient({
                   value={inviteRole}
                   onValueChange={(v) => setInviteRole(v ?? "agent")}
                 >
-                  <SelectTrigger className="h-9! min-w-[150px] bg-pen-card! hover:bg-pen-surface!">
+                  <SelectTrigger className="h-9! min-w-[150px] bg-sts-card! hover:bg-sts-surface!">
                     <span className="font-sans text-[12.5px]">
                       {roleLabel(inviteRole)}
                     </span>
@@ -803,42 +803,42 @@ export function TenantManageClient({
                 </div>
               )}
             </form>
-            <p className="mt-1 font-sans text-[11px] text-pen-subtle">
+            <p className="mt-1 font-sans text-[11px] text-sts-subtle">
               Admins get the whole tenant; managers/leads/staff are scoped to
               the departments you pick. Existing users are added instantly; a
               new email gets an invitation link.
             </p>
 
             {inviteLink && (
-              <div className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface p-2">
-                <p className="font-sans text-[11px] text-pen-muted">
+              <div className="mt-3 rounded-lg border border-sts-card-border bg-sts-surface p-2">
+                <p className="font-sans text-[11px] text-sts-muted">
                   Invitation link (share with the invitee):
                 </p>
-                <code className="mt-1 block truncate font-mono text-[11.5px] text-pen-foreground">
+                <code className="mt-1 block truncate font-mono text-[11.5px] text-sts-foreground">
                   {typeof window !== "undefined" ? window.location.origin : ""}
                   {inviteLink}
                 </code>
               </div>
             )}
 
-            <ul className="mt-4 max-h-[530px] divide-y divide-pen-card-border overflow-y-auto">
+            <ul className="mt-4 max-h-[530px] divide-y divide-sts-card-border overflow-y-auto">
               {members.map((m) => (
                 <li key={m.id} className="flex items-center gap-3 py-2">
                   <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                    <div className="truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                       {m.name || m.email}
                     </div>
-                    <div className="truncate font-sans text-[11px] text-pen-subtle">
+                    <div className="truncate font-sans text-[11px] text-sts-subtle">
                       {m.email}
                     </div>
                   </div>
                   {!m.isActive && (
-                    <span className="rounded-full bg-pen-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-pen-red">
+                    <span className="rounded-full bg-sts-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-red">
                       Restricted
                     </span>
                   )}
-                  <span className="rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[11px] font-medium text-pen-blue">
+                  <span className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[11px] font-medium text-sts-blue">
                     {roleLabel(m.role)}
                   </span>
                   <Button
@@ -859,7 +859,7 @@ export function TenantManageClient({
                 </li>
               ))}
               {members.length === 0 && (
-                <li className="py-3 font-sans text-[12px] text-pen-subtle">
+                <li className="py-3 font-sans text-[12px] text-sts-subtle">
                   No members yet.
                 </li>
               )}

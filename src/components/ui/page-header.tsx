@@ -41,12 +41,12 @@ export function PageHeader({
               <Icon
                 className={cn(
                   "size-[18px] shrink-0 sm:size-5",
-                  iconClassName ?? "text-pen-foreground",
+                  iconClassName ?? "text-sts-foreground",
                 )}
                 strokeWidth={1.8}
               />
             )}
-            <h1 className="pen-text-page-title leading-none">{title}</h1>
+            <h1 className="sts-text-page-title leading-none">{title}</h1>
           </div>
           {(badge || titleExtra) && (
             <div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ export function PageHeader({
         {description && (
           <p
             className={cn(
-              "mt-0.5 pen-text-page-desc",
+              "mt-0.5 sts-text-page-desc",
               Icon && "pl-7",
               clampDescription && "line-clamp-2",
             )}

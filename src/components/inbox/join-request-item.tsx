@@ -49,46 +49,46 @@ export function JoinRequestRow({
       onClick={onSelect}
       className={cn(
         "flex h-[72px] w-full items-center gap-2.5 border-b border-[#f0f4f8] px-3.5 text-left transition-colors dark:border-[#3a3a37]",
-        selected && "bg-pen-blue-tint",
-        !selected && item.unread && "bg-pen-bg/50 dark:bg-[rgba(38,38,36,0.5)]",
+        selected && "bg-sts-blue-tint",
+        !selected && item.unread && "bg-sts-bg/50 dark:bg-[rgba(38,38,36,0.5)]",
       )}
     >
       {/* Unread indicator */}
       <span className="relative h-[72px] w-2 shrink-0">
         {item.unread && (
-          <span className="absolute inset-y-0 left-0 w-[3px] bg-pen-blue" />
+          <span className="absolute inset-y-0 left-0 w-[3px] bg-sts-blue" />
         )}
       </span>
 
       <span className="flex size-[17px] shrink-0 items-center justify-center">
-        <Users className="size-[15px] text-pen-green" strokeWidth={2} />
+        <Users className="size-[15px] text-sts-green" strokeWidth={2} />
       </span>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
         <div className="flex min-w-0 items-center gap-1">
           <UserAvatar name={item.actor} size={15} avatarUrl={item.actorAvatarUrl ?? null} />
-          <span className="shrink-0 font-sans text-xs font-semibold text-pen-foreground">
+          <span className="shrink-0 font-sans text-xs font-semibold text-sts-foreground">
             {item.actor}
           </span>
-          <span className="truncate font-sans text-[11.5px] font-normal text-pen-muted">
+          <span className="truncate font-sans text-[11.5px] font-normal text-sts-muted">
             wants to join {item.subDepartmentName}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 text-[11.5px]">
           {item.requestStatus === "approved" && (
-            <span className="font-sans font-semibold text-pen-green">Approved</span>
+            <span className="font-sans font-semibold text-sts-green">Approved</span>
           )}
           {item.requestStatus === "rejected" && (
-            <span className="font-sans font-semibold text-pen-red">Rejected</span>
+            <span className="font-sans font-semibold text-sts-red">Rejected</span>
           )}
           {item.requestStatus === "pending" && (
-            <span className="flex items-center gap-1 font-sans font-medium text-pen-subtle">
+            <span className="flex items-center gap-1 font-sans font-medium text-sts-subtle">
               <Clock className="size-2.5" />
               Pending · review in Settings
             </span>
           )}
-          <span className="font-sans font-normal text-pen-subtle">· {item.time}</span>
+          <span className="font-sans font-normal text-sts-subtle">· {item.time}</span>
         </div>
       </div>
     </button>
@@ -140,9 +140,9 @@ export function JoinRequestDetailPane({
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-pen-bg">
+    <div className="flex min-h-0 w-full flex-1 flex-col bg-sts-bg">
       {/* Header */}
-      <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-pen-card-border bg-pen-card pl-6 pr-[18px]">
+      <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-sts-card-border bg-sts-card pl-6 pr-[18px]">
         {showBack && (
           <Button
             variant="ghost"
@@ -154,11 +154,11 @@ export function JoinRequestDetailPane({
             <ChevronLeft className="size-4" />
           </Button>
         )}
-        <Users className="size-4 shrink-0 text-pen-green" strokeWidth={2} />
-        <p className="shrink-0 font-sans text-[13px] font-semibold text-pen-foreground">
+        <Users className="size-4 shrink-0 text-sts-green" strokeWidth={2} />
+        <p className="shrink-0 font-sans text-[13px] font-semibold text-sts-foreground">
           Join Request
         </p>
-        <span className="shrink-0 font-sans text-[11.5px] font-normal text-pen-muted">
+        <span className="shrink-0 font-sans text-[11.5px] font-normal text-sts-muted">
           · {notification.time}
         </span>
         <span className="flex-1" />
@@ -167,7 +167,7 @@ export function JoinRequestDetailPane({
             variant="outline"
             size="sm"
             onClick={() => onMarkDone(notification.id)}
-            className="h-[30px] w-24 gap-1.5 rounded-md border-pen-card-border bg-transparent px-0 font-sans text-[11.5px] font-semibold text-pen-foreground hover:bg-pen-bg"
+            className="h-[30px] w-24 gap-1.5 rounded-md border-sts-card-border bg-transparent px-0 font-sans text-[11.5px] font-semibold text-sts-foreground hover:bg-sts-bg"
           >
             <Check className="size-3" />
             Mark done
@@ -178,29 +178,29 @@ export function JoinRequestDetailPane({
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-7 py-6">
         {/* Request card */}
-        <div className="rounded-[10px] border border-pen-card-border bg-pen-card px-[18px] py-3.5">
+        <div className="rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-3.5">
           <div className="flex items-center gap-3">
             <UserAvatar name={notification.actor} size={36} avatarUrl={notification.actorAvatarUrl ?? null} />
             <div className="min-w-0 flex-1">
-              <p className="pen-text-card-title">
+              <p className="sts-text-card-title">
                 {notification.actor}
               </p>
-              <p className="font-sans text-[11.5px] text-pen-subtle">
-                wants to join <span className="font-semibold text-pen-foreground">{notification.subDepartmentName}</span>
+              <p className="font-sans text-[11.5px] text-sts-subtle">
+                wants to join <span className="font-semibold text-sts-foreground">{notification.subDepartmentName}</span>
               </p>
             </div>
             {localStatus === "approved" && (
-              <span className="rounded-full bg-pen-green/10 px-3 py-1 font-sans text-[11.5px] font-semibold text-pen-green">
+              <span className="rounded-full bg-sts-green/10 px-3 py-1 font-sans text-[11.5px] font-semibold text-sts-green">
                 Approved
               </span>
             )}
             {localStatus === "rejected" && (
-              <span className="rounded-full bg-pen-red-tint px-3 py-1 font-sans text-[11.5px] font-semibold text-pen-red">
+              <span className="rounded-full bg-sts-red-tint px-3 py-1 font-sans text-[11.5px] font-semibold text-sts-red">
                 Rejected
               </span>
             )}
             {localStatus === "pending" && (
-              <span className="flex items-center gap-1 rounded-full bg-pen-blue-tint px-3 py-1 font-sans text-[11.5px] font-semibold text-pen-id">
+              <span className="flex items-center gap-1 rounded-full bg-sts-blue-tint px-3 py-1 font-sans text-[11.5px] font-semibold text-sts-id">
                 <Clock className="size-3" />
                 Pending
               </span>
@@ -208,7 +208,7 @@ export function JoinRequestDetailPane({
           </div>
 
           {notification.message && (
-            <p className="mt-3 font-sans text-[12.5px] text-pen-foreground italic">
+            <p className="mt-3 font-sans text-[12.5px] text-sts-foreground italic">
               "{notification.message}"
             </p>
           )}
@@ -216,14 +216,14 @@ export function JoinRequestDetailPane({
 
         {/* Approval form — only show if pending */}
         {isPending && notification.requestId && (
-          <div className="rounded-[10px] border border-pen-card-border bg-pen-card px-[18px] py-4">
-            <p className="mb-3 font-sans text-[11.5px] font-medium tracking-[0.8px] text-pen-subtle">
+          <div className="rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-4">
+            <p className="mb-3 font-sans text-[11.5px] font-medium tracking-[0.8px] text-sts-subtle">
               APPROVAL OPTIONS
             </p>
 
             {/* Access type toggle */}
             <div className="mb-3">
-              <label className="mb-1.5 block font-sans text-[11.5px] text-pen-subtle">
+              <label className="mb-1.5 block font-sans text-[11.5px] text-sts-subtle">
                 Access type
               </label>
               <div className="flex gap-2">
@@ -235,17 +235,17 @@ export function JoinRequestDetailPane({
                     className={cn(
                       "flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-all",
                       accessType === type
-                        ? "border-pen-id bg-pen-blue-tint"
-                        : "border-pen-card-border bg-pen-bg hover:border-pen-id/40",
+                        ? "border-sts-id bg-sts-blue-tint"
+                        : "border-sts-card-border bg-sts-bg hover:border-sts-id/40",
                     )}
                   >
                     <span className={cn(
                       "font-sans text-[12px] font-semibold",
-                      accessType === type ? "text-pen-id" : "text-pen-foreground",
+                      accessType === type ? "text-sts-id" : "text-sts-foreground",
                     )}>
                       {type === "full" ? "Full member" : "Cross-dept access"}
                     </span>
-                    <span className="font-sans text-[11px] text-pen-subtle">
+                    <span className="font-sans text-[11px] text-sts-subtle">
                       {type === "full" ? "Joins as team member" : "Guest access, no team"}
                     </span>
                   </button>
@@ -257,7 +257,7 @@ export function JoinRequestDetailPane({
             {accessType === "full" && (<>
             {/* Role selector */}
             <div className="mb-3">
-              <label className="mb-1 block font-sans text-[11.5px] text-pen-subtle">
+              <label className="mb-1 block font-sans text-[11.5px] text-sts-subtle">
                 Role
               </label>
               <SearchableSelect
@@ -266,14 +266,14 @@ export function JoinRequestDetailPane({
                 options={ROLE_OPTIONS}
                 searchable={false}
                 size="sm"
-                className="bg-pen-bg"
+                className="bg-sts-bg"
                 aria-label="Role"
               />
             </div>
 
             {/* Nickname */}
             <div className="mb-3">
-              <label className="mb-1 block font-sans text-[11.5px] text-pen-subtle">
+              <label className="mb-1 block font-sans text-[11.5px] text-sts-subtle">
                 Nickname (optional)
               </label>
               <input
@@ -281,7 +281,7 @@ export function JoinRequestDetailPane({
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="Display name in this team"
-                className="w-full rounded-md border border-pen-card-border bg-pen-bg px-2.5 py-1.5 font-sans text-[12.5px] text-pen-foreground placeholder:text-pen-muted outline-none focus:border-pen-id"
+                className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2.5 py-1.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-muted outline-none focus:border-sts-id"
               />
             </div>
 
@@ -294,7 +294,7 @@ export function JoinRequestDetailPane({
                 onClick={() => setIsActive((v) => !v)}
                 className={cn(
                   "relative h-5 w-9 rounded-full transition-colors",
-                  isActive ? "bg-pen-id" : "bg-pen-card-border",
+                  isActive ? "bg-sts-id" : "bg-sts-card-border",
                 )}
               >
                 <span
@@ -304,7 +304,7 @@ export function JoinRequestDetailPane({
                   )}
                 />
               </button>
-              <span className="font-sans text-[12px] text-pen-foreground">
+              <span className="font-sans text-[12px] text-sts-foreground">
                 Active membership
               </span>
             </div>
@@ -316,7 +316,7 @@ export function JoinRequestDetailPane({
                 type="button"
                 onClick={() => void handleAction("approve")}
                 disabled={submitting !== null}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-pen-green px-4 py-2 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sts-green px-4 py-2 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
               >
                 {submitting === "approve" ? (
                   <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -329,10 +329,10 @@ export function JoinRequestDetailPane({
                 type="button"
                 onClick={() => void handleAction("reject")}
                 disabled={submitting !== null}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-pen-card-border bg-transparent px-4 py-2 font-sans text-[12.5px] font-semibold text-pen-foreground hover:bg-pen-bg disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-4 py-2 font-sans text-[12.5px] font-semibold text-sts-foreground hover:bg-sts-bg disabled:opacity-60"
               >
                 {submitting === "reject" ? (
-                  <span className="size-3.5 animate-spin rounded-full border-2 border-pen-foreground border-t-transparent" />
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-sts-foreground border-t-transparent" />
                 ) : (
                   <X className="size-3.5" />
                 )}

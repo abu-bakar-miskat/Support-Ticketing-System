@@ -32,14 +32,14 @@ export function MetricCard({
 
   const body = (
     <>
-      <span className="pen-text-label">{label}</span>
+      <span className="sts-text-label">{label}</span>
       <span
         className="font-mono text-[28px] font-bold leading-none tabular-nums tracking-tight"
-        style={{ color: hasValue ? color : "var(--pen-subtle, #64748b)" }}
+        style={{ color: hasValue ? color : "var(--sts-subtle, #64748b)" }}
       >
         {display ?? value}
       </span>
-      <span className="font-sans text-[11px] leading-tight text-pen-subtle">{sub}</span>
+      <span className="font-sans text-[11px] leading-tight text-sts-subtle">{sub}</span>
     </>
   );
 
@@ -47,15 +47,15 @@ export function MetricCard({
     "flex flex-col gap-1.5 rounded-xl border px-4 py-3.5 text-left transition-all",
     hasValue ? "shadow-sm" : "opacity-80",
     active
-      ? "ring-1 ring-offset-1 ring-offset-pen-bg"
+      ? "ring-1 ring-offset-1 ring-offset-sts-bg"
       : (onClick || href) && hasValue
-        ? "hover:border-pen-muted/50 hover:shadow-md"
-        : "hover:border-pen-muted/50",
+        ? "hover:border-sts-muted/50 hover:shadow-md"
+        : "hover:border-sts-muted/50",
   );
 
   const style = {
-    borderColor: active ? color : hasValue ? `${color}30` : "var(--pen-card-border)",
-    backgroundColor: hasValue ? `${color}0a` : "var(--pen-card)",
+    borderColor: active ? color : hasValue ? `${color}30` : "var(--sts-card-border)",
+    backgroundColor: hasValue ? `${color}0a` : "var(--sts-card)",
     ...(active ? { ringColor: `${color}55` } : {}),
   } as React.CSSProperties;
 

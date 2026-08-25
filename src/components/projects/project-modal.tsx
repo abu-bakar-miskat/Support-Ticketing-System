@@ -71,7 +71,7 @@ const PRESET_COLORS = [
 ];
 
 const fieldInputClass =
-  "h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id";
+  "h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id";
 
 // ── Member picker ──────────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ function MemberPicker({
     open && menuPos ? (
       <div
         ref={menuRef}
-        className="pen-field-dropdown fixed z-10000 flex flex-col overflow-hidden rounded-lg border border-pen-card-border shadow-lg"
+        className="sts-field-dropdown fixed z-10000 flex flex-col overflow-hidden rounded-lg border border-sts-card-border shadow-lg"
         style={{
           left: menuPos.left,
           width: menuPos.width,
@@ -191,12 +191,12 @@ function MemberPicker({
             : { bottom: menuPos.bottom }),
         }}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-pen-card-border/80 px-2.5 py-1.5">
-          <span className="font-sans text-[10px] font-medium uppercase tracking-wide text-pen-subtle">
+        <div className="flex shrink-0 items-center justify-between border-b border-sts-card-border/80 px-2.5 py-1.5">
+          <span className="font-sans text-[10px] font-medium uppercase tracking-wide text-sts-subtle">
             {debouncedSearch ? `${filtered.length} found` : "People"}
           </span>
           {selected.length > 0 && (
-            <span className="font-sans text-[10px] font-medium text-pen-id">
+            <span className="font-sans text-[10px] font-medium text-sts-id">
               {selected.length} selected
             </span>
           )}
@@ -207,18 +207,18 @@ function MemberPicker({
             <div className="flex flex-col gap-1.5 px-1.5 py-1.5">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex animate-pulse items-center gap-2 rounded-md px-1.5 py-1">
-                  <div className="size-6 shrink-0 rounded-full bg-pen-surface" />
+                  <div className="size-6 shrink-0 rounded-full bg-sts-surface" />
                   <div className="flex flex-1 flex-col gap-1">
-                    <div className="h-2 w-24 rounded bg-pen-surface" />
-                    <div className="h-1.5 w-16 rounded bg-pen-surface" />
+                    <div className="h-2 w-24 rounded bg-sts-surface" />
+                    <div className="h-1.5 w-16 rounded bg-sts-surface" />
                   </div>
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-1 px-3 py-6 text-center">
-              <Users className="size-4 text-pen-subtle" strokeWidth={1.5} />
-              <p className="font-sans text-[11.5px] text-pen-muted">No people found</p>
+              <Users className="size-4 text-sts-subtle" strokeWidth={1.5} />
+              <p className="font-sans text-[11.5px] text-sts-muted">No people found</p>
             </div>
           ) : (
             filtered.map((u) => {
@@ -230,25 +230,25 @@ function MemberPicker({
                   type="button"
                   onClick={() => toggle(u.id)}
                   className={cn(
-                    "pen-field-dropdown-item mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors",
-                    isSelected && "bg-pen-blue-tint/50",
+                    "sts-field-dropdown-item mx-1 flex w-[calc(100%-8px)] items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors",
+                    isSelected && "bg-sts-blue-tint/50",
                   )}
                 >
                   <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={22} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[12px] font-medium text-pen-foreground">
+                    <p className="truncate font-sans text-[12px] font-medium text-sts-foreground">
                       {u.name}
                     </p>
                     {subtitle && (
-                      <p className="truncate font-sans text-[10.5px] text-pen-subtle">{subtitle}</p>
+                      <p className="truncate font-sans text-[10.5px] text-sts-subtle">{subtitle}</p>
                     )}
                   </div>
                   <span
                     className={cn(
                       "flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
                       isSelected
-                        ? "border-pen-id bg-pen-id text-white"
-                        : "border-pen-card-border bg-transparent",
+                        ? "border-sts-id bg-sts-id text-white"
+                        : "border-sts-card-border bg-transparent",
                     )}
                   >
                     {isSelected && <Check className="size-2.5" strokeWidth={2.5} />}
@@ -267,25 +267,25 @@ function MemberPicker({
         ref={triggerRef}
         onClick={openPicker}
         className={cn(
-          "flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2 py-1.5 cursor-text transition-colors",
-          open && "border-pen-id ring-1 ring-pen-id/30",
+          "flex min-h-9 w-full flex-wrap items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2 py-1.5 cursor-text transition-colors",
+          open && "border-sts-id ring-1 ring-sts-id/30",
         )}
       >
-        <Search className="size-3.5 shrink-0 text-pen-subtle" />
+        <Search className="size-3.5 shrink-0 text-sts-subtle" />
         {selectedUsers.length === 0 && !open && (
-          <span className="font-sans text-[12px] text-pen-subtle">Search and add people…</span>
+          <span className="font-sans text-[12px] text-sts-subtle">Search and add people…</span>
         )}
         {selectedUsers.map((u) => (
           <span
             key={u.id}
-            className="flex items-center gap-1 rounded-full border border-pen-card-border/80 bg-pen-card py-0.5 pl-0.5 pr-1"
+            className="flex items-center gap-1 rounded-full border border-sts-card-border/80 bg-sts-card py-0.5 pl-0.5 pr-1"
           >
             <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={16} />
-            <span className="max-w-[120px] truncate font-sans text-[11px] text-pen-foreground">{u.name}</span>
+            <span className="max-w-[120px] truncate font-sans text-[11px] text-sts-foreground">{u.name}</span>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); toggle(u.id); }}
-              className="flex size-3.5 items-center justify-center rounded-full text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+              className="flex size-3.5 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <X className="size-2.5" />
             </button>
@@ -298,7 +298,7 @@ function MemberPicker({
             onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
             onClick={(e) => { e.stopPropagation(); openPicker(); }}
             placeholder={selectedUsers.length > 0 ? "Add more…" : ""}
-            className="min-w-[72px] flex-1 bg-transparent font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle"
+            className="min-w-[72px] flex-1 bg-transparent font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle"
           />
         )}
       </div>
@@ -518,26 +518,26 @@ export function ProjectModal({
   const isCustomColor = !PRESET_COLORS.includes(color);
 
   return (
-    <div className="pen-overlay-enter fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+    <div className="sts-overlay-enter fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="project-modal-title"
-        className="pen-glass-panel pen-modal-enter relative flex max-h-[calc(90vh/var(--pen-font-scale,1))] w-full max-w-[580px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        className="sts-glass-panel sts-modal-enter relative flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-[580px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-pen-card-border pl-[22px] pr-3.5">
+        <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-sts-card-border pl-[22px] pr-3.5">
           <ProjectAvatar
             name={name || "P"}
             color={color}
             avatarUrl={avatarUrl}
             size={28}
           />
-          <h2 id="project-modal-title" className="pen-text-modal-title">
+          <h2 id="project-modal-title" className="sts-text-modal-title">
             {isEdit ? "Edit project" : "New project"}
           </h2>
           <div className="flex-1" />
@@ -545,7 +545,7 @@ export function ProjectModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -555,8 +555,8 @@ export function ProjectModal({
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-[22px] py-5">
             {/* Name */}
             <div className="flex flex-col gap-[5px]">
-              <label className="pen-text-label">
-                Project name <span className="text-pen-red">*</span>
+              <label className="sts-text-label">
+                Project name <span className="text-sts-red">*</span>
               </label>
               <input
                 value={name}
@@ -569,10 +569,10 @@ export function ProjectModal({
             </div>
 
             {/* Members */}
-            <div className="rounded-xl border border-pen-card-border bg-pen-surface/35 p-3.5">
+            <div className="rounded-xl border border-sts-card-border bg-sts-surface/35 p-3.5">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="pen-text-section-label">Members</p>
-                <span className="font-sans text-[10.5px] text-pen-subtle">Optional</span>
+                <p className="sts-text-section-label">Members</p>
+                <span className="font-sans text-[10.5px] text-sts-subtle">Optional</span>
               </div>
               <MemberPicker
                 users={users}
@@ -585,14 +585,14 @@ export function ProjectModal({
             {/* Department */}
             {departments.length > 0 && (
               <div className="flex flex-col gap-[5px]">
-                <label className="pen-text-label">Department</label>
+                <label className="sts-text-label">Department</label>
                 {lockedDepartment ? (
-                  <div className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface/60 px-3">
-                    <Building2 className="size-3.5 shrink-0 text-pen-subtle" />
-                    <span className="truncate font-sans text-[13px] text-pen-foreground">
+                  <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface/60 px-3">
+                    <Building2 className="size-3.5 shrink-0 text-sts-subtle" />
+                    <span className="truncate font-sans text-[13px] text-sts-foreground">
                       {lockedDepartment.name || "—"}
                     </span>
-                    <span className="ml-auto shrink-0 font-sans text-[10.5px] text-pen-subtle">
+                    <span className="ml-auto shrink-0 font-sans text-[10.5px] text-sts-subtle">
                       auto-assigned
                     </span>
                   </div>
@@ -603,7 +603,7 @@ export function ProjectModal({
                     onChange={setDepartmentId}
                     options={departments.map((d) => ({ value: d.id, label: d.name }))}
                     searchPlaceholder="Search departments…"
-                    className="bg-pen-surface"
+                    className="bg-sts-surface"
                   />
                 )}
               </div>
@@ -626,14 +626,14 @@ export function ProjectModal({
             />
 
             {/* Module system */}
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-pen-card-border bg-pen-surface/35 px-3.5 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-sts-card-border bg-sts-surface/35 px-3.5 py-3">
               <div className="flex min-w-0 items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-pen-blue/10 text-pen-blue">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10 text-sts-blue">
                   <Layers className="size-4" strokeWidth={2} />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-sans text-[12.5px] font-medium text-pen-foreground">Module system</p>
-                  <p className="mt-0.5 font-sans text-[11px] leading-snug text-pen-subtle">
+                  <p className="font-sans text-[12.5px] font-medium text-sts-foreground">Module system</p>
+                  <p className="mt-0.5 font-sans text-[11px] leading-snug text-sts-subtle">
                     Sub-categorize tickets into custom modules. Turning off hides modules without deleting them.
                   </p>
                 </div>
@@ -641,13 +641,13 @@ export function ProjectModal({
               <Switch
                 checked={moduleSystemEnabled}
                 onCheckedChange={setModuleSystemEnabled}
-                className="shrink-0 data-checked:bg-pen-blue"
+                className="shrink-0 data-checked:bg-sts-blue"
               />
             </div>
 
             {/* Appearance */}
-            <div className="rounded-xl border border-pen-card-border bg-pen-surface/35 p-3.5">
-              <p className="mb-3 pen-text-section-label">Appearance</p>
+            <div className="rounded-xl border border-sts-card-border bg-sts-surface/35 p-3.5">
+              <p className="mb-3 sts-text-section-label">Appearance</p>
               <div className="flex items-center gap-4">
                 <div className="flex shrink-0 flex-col items-center gap-1.5">
                   <ProjectAvatar
@@ -661,7 +661,7 @@ export function ProjectModal({
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
                       disabled={avatarUploading}
-                      className="flex items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[10.5px] text-pen-foreground transition-colors hover:bg-pen-card disabled:opacity-50"
+                      className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[10.5px] text-sts-foreground transition-colors hover:bg-sts-card disabled:opacity-50"
                     >
                       <ImagePlus className="size-3" strokeWidth={2} />
                       {avatarUploading ? "…" : "Upload"}
@@ -671,7 +671,7 @@ export function ProjectModal({
                         type="button"
                         onClick={handleRemoveAvatar}
                         title="Remove photo"
-                        className="flex size-6 items-center justify-center rounded-md border border-pen-card-border text-pen-muted transition-colors hover:bg-pen-card hover:text-pen-red"
+                        className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-red"
                       >
                         <Trash2 className="size-3" strokeWidth={2} />
                       </button>
@@ -687,8 +687,8 @@ export function ProjectModal({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="mb-2 pen-text-label">
-                    Colour <span className="font-normal normal-case text-pen-subtle">(when no photo)</span>
+                  <p className="mb-2 sts-text-label">
+                    Colour <span className="font-normal normal-case text-sts-subtle">(when no photo)</span>
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {PRESET_COLORS.map((c) => {
@@ -700,7 +700,7 @@ export function ProjectModal({
                           onClick={() => setColor(c)}
                           className={cn(
                             "size-6 rounded-full transition-transform hover:scale-105",
-                            selected && "ring-2 ring-offset-2 ring-offset-pen-card",
+                            selected && "ring-2 ring-offset-2 ring-offset-sts-card",
                           )}
                           style={{
                             backgroundColor: c,
@@ -715,7 +715,7 @@ export function ProjectModal({
                       title="Custom colour"
                       className={cn(
                         "relative flex size-6 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-105",
-                        isCustomColor && "ring-2 ring-pen-foreground ring-offset-2 ring-offset-pen-card",
+                        isCustomColor && "ring-2 ring-sts-foreground ring-offset-2 ring-offset-sts-card",
                       )}
                     >
                       <span
@@ -736,22 +736,22 @@ export function ProjectModal({
 
             {/* Description */}
             <div className="flex flex-col gap-[5px]">
-              <label className="pen-text-label">
-                Description <span className="font-normal normal-case text-pen-subtle">(optional)</span>
+              <label className="sts-text-label">
+                Description <span className="font-normal normal-case text-sts-subtle">(optional)</span>
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="What is this project for?"
-                className="resize-none rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2.5 font-sans text-[12.5px] leading-relaxed text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+                className="resize-none rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2.5 font-sans text-[12.5px] leading-relaxed text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
             </div>
 
             {/* Live Domain */}
             <div className="flex flex-col gap-[5px]">
-              <label className="pen-text-label">
-                Live domain <span className="font-normal normal-case text-pen-subtle">(optional)</span>
+              <label className="sts-text-label">
+                Live domain <span className="font-normal normal-case text-sts-subtle">(optional)</span>
               </label>
               <input
                 type="url"
@@ -763,18 +763,18 @@ export function ProjectModal({
             </div>
 
             {error && (
-              <p role="alert" className="rounded-md bg-pen-red/10 px-3 py-2 font-sans text-[12px] text-pen-red">
+              <p role="alert" className="rounded-md bg-sts-red/10 px-3 py-2 font-sans text-[12px] text-sts-red">
                 {error}
               </p>
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 border-t border-pen-card-border px-[22px] py-3.5">
+          <div className="flex shrink-0 items-center gap-2 border-t border-sts-card-border px-[22px] py-3.5">
             {isEdit && canDeleteProjects && (
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-pen-red/30 px-3 font-sans text-[12.5px] font-medium text-pen-red transition-colors hover:bg-pen-red/10"
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-red/30 px-3 font-sans text-[12.5px] font-medium text-sts-red transition-colors hover:bg-sts-red/10"
               >
                 <Trash2 className="size-3.5" strokeWidth={2} />
                 Delete project
@@ -784,14 +784,14 @@ export function ProjectModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg px-4 font-sans text-[12.5px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+              className="h-8 rounded-lg px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !name.trim()}
-              className="h-8 rounded-lg bg-pen-id px-4 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-pen-id/90 disabled:opacity-60"
+              className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-id/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : isEdit ? "Save changes" : "Create project"}
             </button>

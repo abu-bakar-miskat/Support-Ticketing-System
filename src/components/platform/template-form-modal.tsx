@@ -34,7 +34,7 @@ function GroupCheckbox({
       type="checkbox"
       checked={checked}
       onChange={onChange}
-      className="size-3.5 shrink-0 rounded border-pen-card-border text-pen-blue accent-pen-blue"
+      className="size-3.5 shrink-0 rounded border-sts-card-border text-sts-blue accent-sts-blue"
     />
   );
 }
@@ -142,15 +142,15 @@ export function TemplateFormModal({
   }
 
   return (
-    <div className="pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="pen-glass-panel flex max-h-[calc(90vh/var(--pen-font-scale,1))] w-full max-w-lg flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
-        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pen-card-border px-[22px]">
-          <h2 className="pen-text-modal-title">{isEdit ? "Edit template" : "Create template"}</h2>
+    <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-lg flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
+        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
+          <h2 className="sts-text-modal-title">{isEdit ? "Edit template" : "Create template"}</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -158,7 +158,7 @@ export function TemplateFormModal({
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Template name</label>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Template name</label>
             <Input
               autoFocus
               value={name}
@@ -169,7 +169,7 @@ export function TemplateFormModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Description</label>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Description</label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -181,12 +181,12 @@ export function TemplateFormModal({
           <div className="space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
               <div>
-                <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Feature gates</label>
-                <p className="font-sans text-[11px] text-pen-subtle">
+                <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Feature gates</label>
+                <p className="font-sans text-[11px] text-sts-subtle">
                   {featureKeys.size} of {ALL_FEATURE_KEYS.length} selected
                 </p>
               </div>
-              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] font-medium text-pen-foreground">
+              <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] font-medium text-sts-foreground">
                 <GroupCheckbox
                   checked={featureKeys.size === ALL_FEATURE_KEYS.length}
                   indeterminate={featureKeys.size > 0 && featureKeys.size < ALL_FEATURE_KEYS.length}
@@ -204,17 +204,17 @@ export function TemplateFormModal({
                 return (
                   <div
                     key={group.label}
-                    className="rounded-lg border border-pen-card-border bg-pen-surface/50 p-2.5"
+                    className="rounded-lg border border-sts-card-border bg-sts-surface/50 p-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-sans text-[11px] font-semibold tracking-[0.5px] text-pen-subtle uppercase">
-                        <Icon className="size-3.5 text-pen-subtle" />
+                      <div className="flex items-center gap-1.5 font-sans text-[11px] font-semibold tracking-[0.5px] text-sts-subtle uppercase">
+                        <Icon className="size-3.5 text-sts-subtle" />
                         {group.label}
-                        <span className="font-sans text-[10.5px] font-normal normal-case text-pen-subtle/80">
+                        <span className="font-sans text-[10.5px] font-normal normal-case text-sts-subtle/80">
                           {groupSelectedCount}/{group.keys.length}
                         </span>
                       </div>
-                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11px] font-medium text-pen-muted">
+                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11px] font-medium text-sts-muted">
                         <GroupCheckbox
                           checked={groupFullySelected}
                           indeterminate={groupSelectedCount > 0 && !groupFullySelected}
@@ -235,8 +235,8 @@ export function TemplateFormModal({
                             className={cn(
                               "flex items-center gap-1 rounded-full border px-2.5 py-1 font-sans text-[12px] font-medium transition-colors",
                               selected
-                                ? "border-pen-blue/40 bg-pen-blue-tint text-pen-blue"
-                                : "border-pen-card-border text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                                ? "border-sts-blue/40 bg-sts-blue-tint text-sts-blue"
+                                : "border-sts-card-border text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
                             )}
                           >
                             {selected && <Check className="size-3" strokeWidth={2.5} />}
@@ -258,7 +258,7 @@ export function TemplateFormModal({
           )}
         </form>
 
-        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-pen-card-border px-[22px]">
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-sts-card-border px-[22px]">
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>

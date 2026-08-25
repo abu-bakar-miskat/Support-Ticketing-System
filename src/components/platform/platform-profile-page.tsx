@@ -26,22 +26,22 @@ export function PlatformProfilePage({
           description="Your account details for the platform area."
         />
 
-        <div className="mt-6 max-w-md rounded-xl border border-pen-id/30 bg-pen-card px-5 py-5 shadow-sm">
+        <div className="mt-6 max-w-md rounded-xl border border-sts-id/30 bg-sts-card px-5 py-5 shadow-sm">
           <div className="flex items-center gap-3">
             <AvatarVisual name={name} avatarUrl={avatarUrl} size={48} />
             <div className="min-w-0">
-              <p className="truncate font-sans text-sm font-semibold text-pen-foreground">
+              <p className="truncate font-sans text-sm font-semibold text-sts-foreground">
                 {name}
               </p>
-              <p className="truncate font-sans text-[12.5px] text-pen-subtle">
+              <p className="truncate font-sans text-[12.5px] text-sts-subtle">
                 {email}
               </p>
             </div>
           </div>
 
-          <div className="mt-5 flex items-center justify-between border-t border-pen-id/20 pt-4">
-            <span className="font-sans text-[12.5px] text-pen-subtle">Access level</span>
-            <span className="rounded-sm bg-pen-blue/15 px-1.5 py-px font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-blue">
+          <div className="mt-5 flex items-center justify-between border-t border-sts-id/20 pt-4">
+            <span className="font-sans text-[12.5px] text-sts-subtle">Access level</span>
+            <span className="rounded-sm bg-sts-blue/15 px-1.5 py-px font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-blue">
               {isSuperAdmin ? "Super admin" : "Tenant admin"}
             </span>
           </div>

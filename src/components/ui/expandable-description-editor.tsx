@@ -72,7 +72,7 @@ export function ExpandableDescriptionEditor({
     <button
       type="button"
       onClick={() => onExpandedChange(true)}
-      className="flex size-7 items-center justify-center rounded-md border border-pen-card-border text-pen-muted transition-colors hover:border-pen-blue/40 hover:bg-pen-surface hover:text-pen-foreground"
+      className="flex size-7 items-center justify-center rounded-md border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground"
       aria-label="Expand description editor"
       title="Expand"
     >
@@ -90,7 +90,7 @@ export function ExpandableDescriptionEditor({
       className={expanded ? "flex min-h-0 flex-1 flex-col" : inlineClassName}
       contentClassName={
         expanded
-          ? "min-h-[calc(100svh/var(--pen-font-scale,1)-220px)] max-h-none flex-1"
+          ? "min-h-[calc(100svh/var(--sts-font-scale,1)-220px)] max-h-none flex-1"
           : undefined
       }
     />
@@ -104,7 +104,7 @@ export function ExpandableDescriptionEditor({
             <button
               type="button"
               onClick={focusEditor}
-              className="cursor-text pen-text-label"
+              className="cursor-text sts-text-label"
             >
               {label}
             </button>
@@ -130,20 +130,20 @@ export function ExpandableDescriptionEditor({
             />
             <div
               id={expandedEditorId}
-              className="pen-glass-panel relative flex max-h-[calc(100svh/var(--pen-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+              className="sts-glass-panel relative flex max-h-[calc(100svh/var(--sts-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
             >
-              <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-pen-card-border px-4 sm:px-5">
-                <h3 className="font-sans text-[14px] font-semibold text-pen-foreground">
+              <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-sts-card-border px-4 sm:px-5">
+                <h3 className="font-sans text-[14px] font-semibold text-sts-foreground">
                   {label}
                 </h3>
-                <span className="font-sans text-[11.5px] text-pen-subtle">
+                <span className="font-sans text-[11.5px] text-sts-subtle">
                   {subtitle}
                 </span>
                 <div className="flex-1" />
                 <button
                   type="button"
                   onClick={() => onExpandedChange(false)}
-                  className="flex h-8 items-center gap-1.5 rounded-[6px] border border-pen-card-border px-2.5 font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <Minimize2 className="size-3.5" strokeWidth={2} />
                   Collapse
@@ -152,7 +152,7 @@ export function ExpandableDescriptionEditor({
                   type="button"
                   onClick={() => onExpandedChange(false)}
                   aria-label="Close"
-                  className="flex size-8 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                  className="flex size-8 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <X size={16} strokeWidth={2} />
                 </button>
@@ -160,8 +160,8 @@ export function ExpandableDescriptionEditor({
               <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
                 {editor}
               </div>
-              <div className="flex min-h-10 shrink-0 items-center gap-3 border-t border-pen-card-border px-4 sm:px-5">
-                <span className="font-sans text-[11px] text-pen-subtle">
+              <div className="flex min-h-10 shrink-0 items-center gap-3 border-t border-sts-card-border px-4 sm:px-5">
+                <span className="font-sans text-[11px] text-sts-subtle">
                   Press Esc to collapse
                 </span>
                 {footer ? <div className="ml-auto flex items-center gap-2">{footer}</div> : null}

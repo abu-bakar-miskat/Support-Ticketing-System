@@ -58,12 +58,12 @@ export function AssigneeAvatars({
           name={assigneeName}
           avatarUrl={assigneeAvatarUrl}
           size={size}
-          className="ring-1 ring-pen-card"
+          className="ring-1 ring-sts-card"
           meta={{}}
         />
       ) : (
         <span
-          className="block shrink-0 rounded-full border border-dashed border-pen-subtle ring-1 ring-pen-card"
+          className="block shrink-0 rounded-full border border-dashed border-sts-subtle ring-1 ring-sts-card"
           style={{ width: size, height: size }}
         />
       )}
@@ -73,13 +73,13 @@ export function AssigneeAvatars({
           name={a.name}
           avatarUrl={a.avatarUrl}
           size={size}
-          className="ring-1 ring-pen-card"
+          className="ring-1 ring-sts-card"
           meta={{}}
         />
       ))}
       {overflow > 0 && (
         <span
-          className="flex shrink-0 items-center justify-center rounded-full bg-pen-surface font-sans text-pen-subtle ring-1 ring-pen-card"
+          className="flex shrink-0 items-center justify-center rounded-full bg-sts-surface font-sans text-sts-subtle ring-1 ring-sts-card"
           style={{ width: size, height: size, fontSize: Math.max(9, size * 0.38) }}
         >
           +{overflow}
@@ -104,7 +104,7 @@ export function TaskListLabels({
         <TagPill key={lbl} label={lbl} size="sm" />
       ))}
       {labels.length > 3 && (
-        <span className="shrink-0 font-sans text-[10px] text-pen-subtle">
+        <span className="shrink-0 font-sans text-[10px] text-sts-subtle">
           +{labels.length - 3}
         </span>
       )}
@@ -134,7 +134,7 @@ export function ListDueCell({
     // Blocked tickets with no due date show nothing — no deadline to track.
     if (isBlockedStatus(status)) return null;
     return (
-      <span className={cn("font-sans text-[11.5px] text-pen-subtle", className)}>
+      <span className={cn("font-sans text-[11.5px] text-sts-subtle", className)}>
         —
       </span>
     );
@@ -144,12 +144,12 @@ export function ListDueCell({
       className={cn(
         "whitespace-nowrap font-sans text-[11.5px]",
         due === "Complete"
-          ? "font-medium text-pen-green"
+          ? "font-medium text-sts-green"
           : dueOverdue
-            ? "font-semibold text-pen-red"
+            ? "font-semibold text-sts-red"
             : dueUrgent
               ? "font-semibold text-amber-500"
-              : "text-pen-muted",
+              : "text-sts-muted",
         align === "right" && "block text-right",
         className,
       )}
@@ -172,7 +172,7 @@ export function ListCreatedCell({
   return (
     <span
       className={cn(
-        "whitespace-nowrap font-sans text-[11.5px] text-pen-muted",
+        "whitespace-nowrap font-sans text-[11.5px] text-sts-muted",
         className,
       )}
       title={formatDateTime(date)}
@@ -216,11 +216,11 @@ export const MY_TASKS_COLGROUP = (
 /** @deprecated Use MY_TASKS_COLGROUP */
 export const TASK_LIST_COLGROUP = MY_TASKS_COLGROUP;
 
-const TABLE_HEAD = "pen-text-table-head max-xl:tracking-[0.4px] max-xl:normal-case";
+const TABLE_HEAD = "sts-text-table-head max-xl:tracking-[0.4px] max-xl:normal-case";
 
 export function ReviewTaskHeadRow() {
   return (
-    <tr className="border-b border-pen-card-border">
+    <tr className="border-b border-sts-card-border">
       <th className={cn("w-[68px] pl-4 text-left", TABLE_HEAD, LIST_TH)}>ID</th>
       <th className={cn("text-left", TABLE_HEAD, LIST_TH)}>Title</th>
       <th className={cn("hidden w-[160px] text-left sm:table-cell", TABLE_HEAD, LIST_TH)}>Project</th>
@@ -237,7 +237,7 @@ export function TaskListHeadRow({
   creatorLabel?: string;
 }) {
   return (
-    <tr className="border-b border-pen-card-border">
+    <tr className="border-b border-sts-card-border">
       <th className={cn("w-[72px] pl-4 text-left", TABLE_HEAD, LIST_TH)}>ID</th>
       <th className={cn("text-left", TABLE_HEAD, LIST_TH)}>Title</th>
       <th className={cn(COL_STATUS, "w-[118px] text-left", TABLE_HEAD, LIST_TH)}>Status</th>
@@ -262,7 +262,7 @@ export function AllTasksHeadRow({
   onToggleAll?: () => void;
 } = {}) {
   return (
-    <tr className="border-b border-pen-card-border">
+    <tr className="border-b border-sts-card-border">
       {showCheckbox && (
         <th className="w-9 py-2.5 pl-4 align-middle">
           <div className="flex items-center">
@@ -270,7 +270,7 @@ export function AllTasksHeadRow({
               type="checkbox"
               checked={allSelected}
               onChange={() => onToggleAll?.()}
-              className="size-3.5 shrink-0 rounded border-pen-card-border accent-pen-blue cursor-pointer"
+              className="size-3.5 shrink-0 rounded border-sts-card-border accent-sts-blue cursor-pointer"
               aria-label="Select all"
             />
           </div>

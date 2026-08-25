@@ -104,23 +104,23 @@ function NotificationToggle({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-4 border-t border-pen-surface py-3">
+    <div className="flex items-center gap-4 border-t border-sts-surface py-3">
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <label
           htmlFor={id}
-          className="font-sans text-[12.5px] font-semibold text-pen-foreground"
+          className="font-sans text-[12.5px] font-semibold text-sts-foreground"
         >
           {label}
         </label>
         {description ? (
-          <p className="font-sans text-[11.5px] text-pen-subtle">{description}</p>
+          <p className="font-sans text-[11.5px] text-sts-subtle">{description}</p>
         ) : null}
       </div>
       <Switch
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="h-[22px] w-[38px] shrink-0 data-checked:bg-pen-blue data-unchecked:bg-[#d1d5db] dark:data-unchecked:bg-pen-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)] [&_[data-slot=switch-thumb]]:data-unchecked:translate-x-0.5"
+        className="h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-[#d1d5db] dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)] [&_[data-slot=switch-thumb]]:data-unchecked:translate-x-0.5"
       />
     </div>
   );
@@ -140,11 +140,11 @@ function NotificationCard({
   return (
     <section
       className={cn(
-        "w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card",
+        "w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card",
         "px-[22px] pt-4 pb-2",
       )}
     >
-      <h2 className="pb-1.5 font-sans text-sm font-semibold text-pen-foreground">
+      <h2 className="pb-1.5 font-sans text-sm font-semibold text-sts-foreground">
         {title}
       </h2>
       <div className="flex flex-col">
@@ -190,10 +190,10 @@ export function SettingsNotificationsPage({
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-[3px]">
-        <h1 className="pen-text-admin-title">
+        <h1 className="sts-text-admin-title">
           Notifications
         </h1>
-        <p className="font-sans text-[13px] text-pen-muted">
+        <p className="font-sans text-[13px] text-sts-muted">
           Choose what reaches you and how.
         </p>
       </header>

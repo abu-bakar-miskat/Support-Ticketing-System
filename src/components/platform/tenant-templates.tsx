@@ -16,7 +16,7 @@ export type CatalogueEntry = {
   status: "active" | "requested" | "available";
 };
 
-const sectionCard = "rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card";
+const sectionCard = "rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card";
 
 /**
  * Super-Admin view of the Template Catalogue for one tenant — replaces the
@@ -132,8 +132,8 @@ export function TenantTemplates({
     <section className={sectionCard}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">Templates</h2>
-          <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
+          <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Templates</h2>
+          <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">
             Which Template Catalogue entries this tenant runs. A tenant can run several at once.
           </p>
         </div>
@@ -162,22 +162,22 @@ export function TenantTemplates({
       }}>
         <PopoverTrigger
           className={cn(
-            "mt-2 flex h-9 w-full items-center gap-2 rounded-lg border bg-pen-card px-2.5 text-left font-sans text-[12.5px] text-pen-foreground transition-colors hover:border-pen-muted",
-            isDirty ? "border-pen-blue/60" : "border-pen-card-border",
+            "mt-2 flex h-9 w-full items-center gap-2 rounded-lg border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
+            isDirty ? "border-sts-blue/60" : "border-sts-card-border",
           )}
         >
           <span className="min-w-0 flex-1 truncate">{triggerLabel}</span>
-          {isDirty && <span className="size-1.5 shrink-0 rounded-full bg-pen-blue" aria-hidden />}
-          <ChevronDown className="size-3.5 shrink-0 text-pen-subtle" />
+          {isDirty && <span className="size-1.5 shrink-0 rounded-full bg-sts-blue" aria-hidden />}
+          <ChevronDown className="size-3.5 shrink-0 text-sts-subtle" />
         </PopoverTrigger>
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-80 gap-0 rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+          className="w-80 gap-0 rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
         >
-          <div className="border-b border-pen-card-border p-2">
+          <div className="border-b border-sts-card-border p-2">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -188,7 +188,7 @@ export function TenantTemplates({
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                  className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <X className="size-3" />
                 </button>
@@ -197,11 +197,11 @@ export function TenantTemplates({
           </div>
           <div className="max-h-72 overflow-y-auto p-1.5">
             {catalogue.length === 0 ? (
-              <p className="px-2.5 py-3 text-center font-sans text-[11.5px] text-pen-subtle">
+              <p className="px-2.5 py-3 text-center font-sans text-[11.5px] text-sts-subtle">
                 No templates in the catalogue yet.
               </p>
             ) : filtered.length === 0 ? (
-              <p className="px-2.5 py-3 text-center font-sans text-[11.5px] text-pen-subtle">
+              <p className="px-2.5 py-3 text-center font-sans text-[11.5px] text-sts-subtle">
                 No templates match &ldquo;{query}&rdquo;.
               </p>
             ) : (
@@ -215,23 +215,23 @@ export function TenantTemplates({
                     onClick={() => toggle(t.id)}
                     className={cn(
                       "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                      checked ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                      checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                     )}
                   >
                     <span
                       className={cn(
                         "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
                         checked
-                          ? "border-pen-blue bg-pen-blue"
-                          : "border-pen-card-border bg-transparent group-hover:border-pen-muted",
+                          ? "border-sts-blue bg-sts-blue"
+                          : "border-sts-card-border bg-transparent group-hover:border-sts-muted",
                       )}
                     >
                       {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-sans text-[12.5px] text-pen-foreground">{t.name}</span>
+                      <span className="block truncate font-sans text-[12.5px] text-sts-foreground">{t.name}</span>
                       {t.description && (
-                        <span className="block truncate font-sans text-[11px] text-pen-subtle">{t.description}</span>
+                        <span className="block truncate font-sans text-[11px] text-sts-subtle">{t.description}</span>
                       )}
                     </span>
                     {t.status === "requested" && !checked && (
@@ -244,11 +244,11 @@ export function TenantTemplates({
               })
             )}
           </div>
-          <div className="flex items-center justify-between border-t border-pen-card-border px-3 py-2">
-            <span className="font-sans text-[11px] text-pen-subtle">
+          <div className="flex items-center justify-between border-t border-sts-card-border px-3 py-2">
+            <span className="font-sans text-[11px] text-sts-subtle">
               {selected.size} of {catalogue.length} selected
             </span>
-            {isDirty && <span className="font-sans text-[11px] font-medium text-pen-blue">Unsaved changes</span>}
+            {isDirty && <span className="font-sans text-[11px] font-medium text-sts-blue">Unsaved changes</span>}
           </div>
         </PopoverContent>
       </Popover>

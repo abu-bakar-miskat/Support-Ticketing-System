@@ -20,7 +20,7 @@ export function coloredTriggerStyles(accent: string): CSSProperties {
 
 export const coloredSelectTriggerClass = cn(
   "h-9 w-full rounded-lg border px-2.5 shadow-none",
-  "font-sans text-[12px] font-semibold text-pen-foreground",
+  "font-sans text-[12px] font-semibold text-sts-foreground",
   "bg-transparent transition-[filter,box-shadow,border-color]",
   "hover:brightness-105 dark:bg-transparent dark:hover:bg-transparent",
   "focus-visible:ring-2 focus-visible:ring-offset-0",
@@ -30,7 +30,7 @@ export const coloredSelectTriggerClass = cn(
 /** Neutral trigger for unassigned assignee */
 export const neutralSelectTriggerClass = cn(
   coloredSelectTriggerClass,
-  "border-pen-card-border/80",
+  "border-sts-card-border/80",
 )
 
 export const neutralTriggerStyles: CSSProperties = {
@@ -39,27 +39,27 @@ export const neutralTriggerStyles: CSSProperties = {
 }
 
 export const sidebarSelectContentClass = cn(
-  "pen-field-dropdown min-w-(--anchor-width)",
-  "border-pen-card-border bg-white text-pen-foreground shadow-lg",
-  "ring-1 ring-black/5 dark:bg-[#2a2e36] dark:text-pen-foreground dark:ring-white/10",
+  "sts-field-dropdown min-w-(--anchor-width)",
+  "border-sts-card-border bg-white text-sts-foreground shadow-lg",
+  "ring-1 ring-black/5 dark:bg-[#2a2e36] dark:text-sts-foreground dark:ring-white/10",
   "[backdrop-filter:none] [-webkit-backdrop-filter:none]",
 )
 
 export const sidebarDropdownPanelClass = cn(
-  "pen-field-dropdown rounded-lg",
-  "border-pen-card-border bg-white text-pen-foreground shadow-lg",
-  "ring-1 ring-black/5 dark:bg-[#2a2e36] dark:text-pen-foreground dark:ring-white/10",
+  "sts-field-dropdown rounded-lg",
+  "border-sts-card-border bg-white text-sts-foreground shadow-lg",
+  "ring-1 ring-black/5 dark:bg-[#2a2e36] dark:text-sts-foreground dark:ring-white/10",
   "[backdrop-filter:none] [-webkit-backdrop-filter:none]",
 )
 
 export const sidebarSelectItemClass = cn(
-  "pen-field-dropdown-item font-sans text-[12px]",
+  "sts-field-dropdown-item font-sans text-[12px]",
 )
 
 export const sidebarDateInputClass = cn(
-  "relative h-8 w-full min-w-0 rounded-[6px] border border-pen-card-border bg-pen-surface px-2 pr-8",
-  "font-sans text-[11.5px] text-pen-foreground",
-  "outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30",
+  "relative h-8 w-full min-w-0 rounded-[6px] border border-sts-card-border bg-sts-surface px-2 pr-8",
+  "font-sans text-[11.5px] text-sts-foreground",
+  "outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30",
   "dark:bg-[#2a2e36]",
 )
 

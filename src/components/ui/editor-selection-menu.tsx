@@ -83,8 +83,8 @@ function FormatButton({
       className={cn(
         "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
         item.active
-          ? "bg-pen-blue-tint text-pen-id"
-          : "text-pen-muted hover:bg-pen-surface hover:text-pen-foreground",
+          ? "bg-sts-blue-tint text-sts-id"
+          : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
       )}
     >
       {item.icon}
@@ -93,7 +93,7 @@ function FormatButton({
 }
 
 function MenuDivider() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-pen-card-border" />;
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-sts-card-border" />;
 }
 
 export function EditorSelectionMenu({
@@ -261,7 +261,7 @@ export function EditorSelectionMenu({
       ref={ref}
       role="toolbar"
       aria-label="Text formatting"
-      className="fixed flex max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-lg border border-pen-card-border bg-pen-card p-1 shadow-lg"
+      className="fixed flex max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-lg border border-sts-card-border bg-sts-card p-1 shadow-lg"
       style={{
         left: position?.left ?? -9999,
         top: position?.top ?? -9999,
@@ -304,8 +304,8 @@ export function EditorSelectionMenu({
               className={cn(
                 "flex size-5 shrink-0 items-center justify-center rounded-md border font-sans text-[12px] font-bold transition-transform hover:scale-110",
                 editor.isActive("textStyle", { color: c.value })
-                  ? "border-pen-id ring-1 ring-pen-id"
-                  : "border-pen-card-border",
+                  ? "border-sts-id ring-1 ring-sts-id"
+                  : "border-sts-card-border",
               )}
               style={{ color: c.value }}
             >
@@ -318,7 +318,7 @@ export function EditorSelectionMenu({
             aria-label="Default color"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().unsetColor().run()}
-            className="flex size-8 shrink-0 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <Ban className="size-4" strokeWidth={2} />
           </button>

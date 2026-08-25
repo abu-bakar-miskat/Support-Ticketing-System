@@ -37,7 +37,7 @@ function level(count: number): 0 | 1 | 2 | 3 | 4 {
 }
 
 const LEVEL_CLASS: Record<number, string> = {
-  0: "bg-pen-surface",
+  0: "bg-sts-surface",
   1: "bg-emerald-500/30",
   2: "bg-emerald-500/55",
   3: "bg-emerald-500/80",
@@ -112,10 +112,10 @@ export function ContributionHeatmap({
   if (!username) return null;
 
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-4">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
       <div className="mb-3 flex items-center gap-2">
-        <GitBranch className="size-4 text-pen-subtle" />
-        <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+        <GitBranch className="size-4 text-sts-subtle" />
+        <p className="font-sans text-[13px] font-semibold text-sts-foreground">
           {total.toLocaleString()} contribution{total === 1 ? "" : "s"} in the last year
         </p>
       </div>
@@ -126,7 +126,7 @@ export function ContributionHeatmap({
         <div className="flex gap-[3px]">
           <div className="w-10 shrink-0" />
           <div
-            className="grid flex-1 gap-[3px] text-[11px] leading-none text-pen-subtle"
+            className="grid flex-1 gap-[3px] text-[11px] leading-none text-sts-subtle"
             style={{ gridTemplateColumns: COLS_TEMPLATE }}
           >
             {weeks.map((_, w) => {
@@ -143,7 +143,7 @@ export function ContributionHeatmap({
         <div className="flex gap-[3px]">
           {/* Weekday labels — 7 equal rows matching the cell rows so they line up */}
           <div
-            className="grid w-10 shrink-0 gap-[3px] text-[11px] text-pen-subtle"
+            className="grid w-10 shrink-0 gap-[3px] text-[11px] text-sts-subtle"
             style={{ gridTemplateRows: ROWS_TEMPLATE }}
           >
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((lbl, i) => (
@@ -187,10 +187,10 @@ export function ContributionHeatmap({
                           : cn(
                               LEVEL_CLASS[level(day.count)],
                               day.count === 0 &&
-                                "ring-1 ring-inset ring-pen-card-border/60",
+                                "ring-1 ring-inset ring-sts-card-border/60",
                             ),
-                        clickable && "cursor-pointer hover:ring-2 hover:ring-pen-id",
-                        selected === day.key && "ring-2 ring-pen-id",
+                        clickable && "cursor-pointer hover:ring-2 hover:ring-sts-id",
+                        selected === day.key && "ring-2 ring-sts-id",
                       )}
                     />
                   );
@@ -202,7 +202,7 @@ export function ContributionHeatmap({
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-pen-subtle">
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-sts-subtle">
         <span>Less</span>
         {[0, 1, 2, 3, 4].map((l) => (
           <span
@@ -210,7 +210,7 @@ export function ContributionHeatmap({
             className={cn(
               "size-[10px] rounded-[2px]",
               LEVEL_CLASS[l],
-              l === 0 && "ring-1 ring-inset ring-pen-card-border/60",
+              l === 0 && "ring-1 ring-inset ring-sts-card-border/60",
             )}
           />
         ))}
@@ -219,9 +219,9 @@ export function ContributionHeatmap({
 
       {/* Selected-day details */}
       {selectedDate && (
-        <div className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface/40 p-3">
+        <div className="mt-3 rounded-lg border border-sts-card-border bg-sts-surface/40 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <p className="font-sans text-[12px] font-semibold text-sts-foreground">
               {longDate(selectedDate)}
               {selectedDay?.count
                 ? ` · ${selectedDay.count} contribution${selectedDay.count === 1 ? "" : "s"}`
@@ -230,7 +230,7 @@ export function ContributionHeatmap({
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="font-sans text-[11px] text-pen-subtle hover:text-pen-foreground"
+              className="font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
             >
               Close
             </button>
@@ -244,7 +244,7 @@ export function ContributionHeatmap({
               ))}
             </ul>
           ) : (
-            <p className="font-sans text-[12px] text-pen-subtle">
+            <p className="font-sans text-[12px] text-sts-subtle">
               No contributions on this day.
             </p>
           )}
@@ -273,7 +273,7 @@ function ContributionRow({ item }: { item: ContributionItem }) {
       ? "text-purple-400"
       : item.kind === "pr_opened"
         ? "text-emerald-400"
-        : "text-pen-subtle";
+        : "text-sts-subtle";
 
   const label = isCommit
     ? item.message.split("\n")[0]
@@ -287,11 +287,11 @@ function ContributionRow({ item }: { item: ContributionItem }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-pen-card"
+      className="group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sts-card"
     >
       <Icon className={cn("mt-[1px] size-3.5 shrink-0", iconColor)} />
-      <span className="min-w-0 font-sans text-[12px] text-pen-foreground">
-        <span className="mr-1.5 font-mono text-[11px] text-pen-subtle">
+      <span className="min-w-0 font-sans text-[12px] text-sts-foreground">
+        <span className="mr-1.5 font-mono text-[11px] text-sts-subtle">
           {prefix}
         </span>
         <span className="group-hover:underline">{label || "(no title)"}</span>

@@ -86,42 +86,42 @@ function LabelMultiSelect({
         className={cn(
           "flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 font-sans text-[11.5px] transition-colors",
           active
-            ? "border-pen-blue/40 bg-pen-blue-tint text-pen-foreground"
-            : "border-pen-card-border bg-pen-card text-pen-foreground hover:border-pen-muted",
+            ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
+            : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
         )}
       >
-        <Tag className={cn("size-3.5 shrink-0", active ? "text-pen-blue" : "text-pen-subtle")} />
+        <Tag className={cn("size-3.5 shrink-0", active ? "text-sts-blue" : "text-sts-subtle")} />
         <span className="max-w-[120px] truncate">{label}</span>
-        <ChevronDown className="size-3 shrink-0 text-pen-subtle" />
+        <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-52 rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-52 rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-pen-card-border px-3 py-2">
-          <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-pen-subtle">Labels</span>
+        <div className="flex items-center justify-between border-b border-sts-card-border px-3 py-2">
+          <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">Labels</span>
           {value.length > 0 && (
-            <button type="button" onClick={() => onChange([])} className="font-sans text-[11.5px] text-pen-muted hover:text-pen-red">
+            <button type="button" onClick={() => onChange([])} className="font-sans text-[11.5px] text-sts-muted hover:text-sts-red">
               Clear
             </button>
           )}
         </div>
-        <div className="relative border-b border-pen-card-border px-2.5 py-2">
-          <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+        <div className="relative border-b border-sts-card-border px-2.5 py-2">
+          <Search className="pointer-events-none absolute left-[18px] top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search..."
-            className="w-full rounded-md border border-pen-card-border bg-transparent py-1 pl-8 pr-2 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+            className="w-full rounded-md border border-sts-card-border bg-transparent py-1 pl-8 pr-2 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
           />
         </div>
         <div className="max-h-56 overflow-y-auto p-1.5">
           {options.length === 0 ? (
-            <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">No labels in current view</p>
+            <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">No labels in current view</p>
           ) : filteredOptions.length === 0 ? (
-            <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">No matches</p>
+            <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">No matches</p>
           ) : (
             filteredOptions.map((lbl) => {
               const savedColor = colorsMap.get(lbl);
@@ -134,19 +134,19 @@ function LabelMultiSelect({
                   onClick={() => toggle(lbl)}
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
-                    checked ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                    checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                   )}
                 >
                   <span
                     className={cn(
                       "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-                      checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border bg-transparent",
+                      checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border bg-transparent",
                     )}
                   >
                     {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                   </span>
                   <span
-                    className="inline-flex items-center whitespace-nowrap font-sans text-[10.5px] font-medium text-pen-foreground"
+                    className="inline-flex items-center whitespace-nowrap font-sans text-[10.5px] font-medium text-sts-foreground"
                     style={{
                       clipPath: "polygon(0 0, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 0 100%, 4px 50%)",
                       paddingLeft: "8px",
@@ -315,11 +315,11 @@ function HybridDueDateFilter({
         className={cn(
           "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 font-sans text-[12px] transition-colors",
           active
-            ? "border-pen-blue/40 bg-pen-blue-tint text-pen-foreground"
-            : "border-pen-card-border bg-pen-card text-pen-foreground hover:border-pen-muted",
+            ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
+            : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
         )}
       >
-        <TriggerIcon className={cn("size-3.5 shrink-0", active ? "text-pen-blue" : "text-pen-subtle")} />
+        <TriggerIcon className={cn("size-3.5 shrink-0", active ? "text-sts-blue" : "text-sts-subtle")} />
         <span className="max-w-[10rem] truncate">{label}</span>
         {active ? (
           <span
@@ -341,16 +341,16 @@ function HybridDueDateFilter({
             <X className="size-3" />
           </span>
         ) : (
-          <ChevronDown className="size-3 shrink-0 text-pen-muted" />
+          <ChevronDown className="size-3 shrink-0 text-sts-muted" />
         )}
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-72 overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-72 overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
-        <div className="border-b border-pen-card-border px-1.5 py-1.5">
-          <p className="px-2 pb-1 pt-1.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-pen-subtle">
+        <div className="border-b border-sts-card-border px-1.5 py-1.5">
+          <p className="px-2 pb-1 pt-1.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-sts-subtle">
             {copy.statusHeading}
           </p>
           {copy.options.map((opt) => {
@@ -362,13 +362,13 @@ function HybridDueDateFilter({
                 onClick={() => selectPreset(opt.value)}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-sans text-[12.5px] transition-colors",
-                  checked ? "bg-pen-blue-tint text-pen-foreground" : "text-pen-foreground hover:bg-pen-surface",
+                  checked ? "bg-sts-blue-tint text-sts-foreground" : "text-sts-foreground hover:bg-sts-surface",
                 )}
               >
                 <span
                   className={cn(
                     "flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
-                    checked ? "border-pen-blue bg-pen-blue" : "border-pen-card-border",
+                    checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border",
                   )}
                 >
                   {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
@@ -379,8 +379,8 @@ function HybridDueDateFilter({
           })}
         </div>
 
-        <div className="border-b border-pen-card-border bg-pen-surface/60 px-3 py-3 dark:bg-white/[0.03]">
-          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-pen-subtle">
+        <div className="border-b border-sts-card-border bg-sts-surface/60 px-3 py-3 dark:bg-white/[0.03]">
+          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-sts-subtle">
             {copy.withinHeading}
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -396,8 +396,8 @@ function HybridDueDateFilter({
                   className={cn(
                     "rounded-md border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                     selected
-                      ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                      : "border-pen-card-border bg-pen-bg text-pen-muted hover:border-pen-id hover:text-pen-foreground dark:bg-white/5",
+                      ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                      : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-id hover:text-sts-foreground dark:bg-white/5",
                   )}
                 >
                   {p.label}
@@ -408,20 +408,20 @@ function HybridDueDateFilter({
         </div>
 
         <div className="px-3 py-3">
-          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-pen-subtle">
+          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-sts-subtle">
             {copy.customHeading}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {(["From", "To"] as const).map((field) => (
               <div key={field} className="flex flex-col gap-1">
-                <span className="font-sans text-[11.5px] text-pen-subtle">{field}</span>
+                <span className="font-sans text-[11.5px] text-sts-subtle">{field}</span>
                 <input
                   type="date"
                   value={field === "From" ? customFrom : customTo}
                   onChange={(e) =>
                     field === "From" ? setCustomFrom(e.target.value) : setCustomTo(e.target.value)
                   }
-                  className="h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface px-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id dark:bg-white/5"
+                  className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id dark:bg-white/5"
                 />
               </div>
             ))}
@@ -429,7 +429,7 @@ function HybridDueDateFilter({
           <button
             type="button"
             onClick={applyCustom}
-            className="mt-3 w-full rounded-lg bg-pen-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+            className="mt-3 w-full rounded-lg bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             {copy.applyLabel}
           </button>
@@ -574,14 +574,14 @@ export function BoardFilterBar({
           className="w-auto max-w-[11rem] shrink-0"
         />
       ) : (
-        <div className="flex h-7 items-center gap-1 rounded-md border border-pen-blue/30 bg-pen-blue-tint px-2 font-sans text-[11.5px] text-pen-foreground">
+        <div className="flex h-7 items-center gap-1 rounded-md border border-sts-blue/30 bg-sts-blue-tint px-2 font-sans text-[11.5px] text-sts-foreground">
           <UserAvatar
             name={currentUserName || "Me"}
             size={16}
             meta={{}}
           />
           <span className="font-medium whitespace-nowrap">My tasks</span>
-          <span className="font-sans text-[11.5px] text-pen-subtle">
+          <span className="font-sans text-[11.5px] text-sts-subtle">
             {assigneeCounts.me}
           </span>
         </div>
@@ -688,7 +688,7 @@ export function BoardFilterBar({
         <button
           type="button"
           onClick={onClearFilters}
-          className="flex h-7 items-center gap-1 rounded-md px-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+          className="flex h-7 items-center gap-1 rounded-md px-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
         >
           <X className="size-3.5" />
           Clear

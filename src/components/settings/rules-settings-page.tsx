@@ -73,7 +73,7 @@ const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"];
 const CATEGORIES = ["Bug", "FeatureRequest", "Question", "TechnicalIssue", "AccountAccess", "Billing", "Other"];
 
 const inputCls =
-  "h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none transition-colors focus:border-pen-blue/60 focus:ring-2 focus:ring-pen-blue/15";
+  "h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none transition-colors focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15";
 
 async function jsonOrThrow(res: Response) {
   if (!res.ok) {
@@ -240,16 +240,16 @@ export function RulesSettingsPage({
       {!subDepartmentId && (
         <Link
           href="/settings/departments"
-          className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
+          className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ArrowLeft className="size-3.5" /> Back to departments
         </Link>
       )}
 
-      <h1 className="pen-text-modal-title mb-1">
+      <h1 className="sts-text-modal-title mb-1">
         Automation rules — {subDepartmentName ?? departmentName}
       </h1>
-      <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+      <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
         {subDepartmentId
           ? "These rules run in addition to the parent department's rules, on this sub-department's tickets only. "
           : ""}
@@ -263,12 +263,12 @@ export function RulesSettingsPage({
         </div>
       )}
 
-      <div className="mb-8 rounded-2xl border border-pen-card-border bg-pen-card p-5">
+      <div className="mb-8 rounded-2xl border border-sts-card-border bg-sts-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <h2 className="font-sans text-[13.5px] font-semibold text-pen-foreground">Rules</h2>
+            <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Rules</h2>
             {rules !== null && rules.length > 0 && (
-              <p className="mt-0.5 font-sans text-[11px] text-pen-subtle">
+              <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
                 {rules.length} {rules.length === 1 ? "rule" : "rules"} ·{" "}
                 {rules.filter((r) => r.enabled).length} active · run top to bottom
               </p>
@@ -277,29 +277,29 @@ export function RulesSettingsPage({
           <button
             type="button"
             onClick={() => setShowNewRule(true)}
-            className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
+            className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
           >
             <Plus className="size-3.5" /> New rule
           </button>
         </div>
 
         {rules === null ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : rules.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-pen-card-border py-10 text-center">
-            <div className="flex size-10 items-center justify-center rounded-full bg-pen-blue/10">
-              <Zap className="size-5 text-pen-blue" />
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-sts-card-border py-10 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
+              <Zap className="size-5 text-sts-blue" />
             </div>
             <div>
-              <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No automation rules yet</p>
-              <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+              <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No automation rules yet</p>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
                 Add a rule to auto-assign, prioritise, or tag new tickets.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setShowNewRule(true)}
-              className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
+              className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
             >
               <Plus className="size-3.5" /> New rule
             </button>
@@ -325,11 +325,11 @@ export function RulesSettingsPage({
       </div>
 
       {/* ── Test panel (RE-04) ── */}
-      <div className="rounded-2xl border border-pen-card-border bg-pen-card p-5">
-        <h2 className="mb-1 flex items-center gap-1.5 font-sans text-[13.5px] font-semibold text-pen-foreground">
+      <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
+        <h2 className="mb-1 flex items-center gap-1.5 font-sans text-[13.5px] font-semibold text-sts-foreground">
           <FlaskConical className="size-3.5" /> Test with sample data
         </h2>
-        <p className="mb-3 font-sans text-[11.5px] text-pen-muted">
+        <p className="mb-3 font-sans text-[11.5px] text-sts-muted">
           Enter sample form field values to see which rules match — dry-run, nothing is changed.
         </p>
         <div className="flex flex-col gap-2">
@@ -343,7 +343,7 @@ export function RulesSettingsPage({
                 }
                 className={cn(inputCls, "w-48")}
               />
-              <span className="text-pen-subtle">=</span>
+              <span className="text-sts-subtle">=</span>
               <input
                 placeholder="value"
                 value={f.value}
@@ -355,7 +355,7 @@ export function RulesSettingsPage({
               <button
                 type="button"
                 onClick={() => setTestFields((prev) => prev.filter((_, xi) => xi !== i))}
-                className="rounded-md p-1.5 text-pen-subtle hover:text-red-500"
+                className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -365,7 +365,7 @@ export function RulesSettingsPage({
             <button
               type="button"
               onClick={() => setTestFields((prev) => [...prev, { key: "", value: "" }])}
-              className="inline-flex items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+              className="inline-flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" /> Add field
             </button>
@@ -373,7 +373,7 @@ export function RulesSettingsPage({
               type="button"
               onClick={runTest}
               disabled={testing || !rules}
-              className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-3 py-1 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-3 py-1 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
             >
               {testing ? "Running…" : "Run test"}
             </button>
@@ -381,8 +381,8 @@ export function RulesSettingsPage({
         </div>
 
         {testResult && (
-          <div className="mt-4 rounded-lg border border-pen-card-border bg-pen-surface p-3">
-            <p className="mb-2 font-sans text-[12px] font-semibold text-pen-foreground">
+          <div className="mt-4 rounded-lg border border-sts-card-border bg-sts-surface p-3">
+            <p className="mb-2 font-sans text-[12px] font-semibold text-sts-foreground">
               {testResult.firedActions.length} action(s) would fire
               {testResult.stoppedAtRuleId ? " (stopped early)" : ""}
             </p>
@@ -393,19 +393,19 @@ export function RulesSettingsPage({
                     className={cn(
                       "inline-flex w-16 justify-center rounded px-1.5 py-0.5 font-medium",
                       ev.matched
-                        ? "bg-pen-green/15 text-pen-green"
-                        : "bg-pen-surface text-pen-subtle",
+                        ? "bg-sts-green/15 text-sts-green"
+                        : "bg-sts-surface text-sts-subtle",
                     )}
                   >
                     {ev.matched ? "matched" : "no match"}
                   </span>
-                  <span className="text-pen-foreground">{ev.name}</span>
+                  <span className="text-sts-foreground">{ev.name}</span>
                   {ev.matched && ev.actions.length > 0 && (
-                    <span className="text-pen-muted">
+                    <span className="text-sts-muted">
                       → {ev.actions.map((a) => a.type).join(", ")}
                     </span>
                   )}
-                  {ev.stoppedHere && <span className="text-pen-subtle">(stops here)</span>}
+                  {ev.stoppedHere && <span className="text-sts-subtle">(stops here)</span>}
                 </div>
               ))}
             </div>
@@ -450,19 +450,19 @@ function NewRuleModal({
   const canSubmit = name.trim().length > 0 && !creating;
 
   return (
-    <div className="pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
+    <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
       <div
-        className="pen-glass-panel pen-modal-enter flex w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        className="sts-glass-panel sts-modal-enter flex w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pen-card-border px-[22px]">
-          <h2 className="pen-text-modal-title">New automation rule</h2>
+        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
+          <h2 className="sts-text-modal-title">New automation rule</h2>
           <button
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -470,47 +470,47 @@ function NewRuleModal({
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-[22px] py-5">
-          <p className="font-sans text-[11.5px] text-pen-muted">
-            Create the rule for <span className="font-medium text-pen-foreground">{scopeName}</span>, then add its
+          <p className="font-sans text-[11.5px] text-sts-muted">
+            Create the rule for <span className="font-medium text-sts-foreground">{scopeName}</span>, then add its
             conditions and actions on the card.
           </p>
 
           <div className="space-y-1.5">
-            <label className="pen-text-label">Rule name</label>
+            <label className="sts-text-label">Rule name</label>
             <input
               autoFocus
               placeholder="e.g. Route billing to Finance"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && canSubmit) onCreate({ name: name.trim(), enabled, stopProcessing }); }}
-              className="h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30"
+              className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30"
             />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-pen-surface px-3 py-2.5">
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-sts-surface px-3 py-2.5">
             <Switch checked={enabled} onCheckedChange={setEnabled} />
             <span className="flex flex-col">
-              <span className="font-sans text-[12.5px] font-medium text-pen-foreground">Enabled</span>
-              <span className="font-sans text-[11px] text-pen-muted">Start evaluating this rule on new tickets right away.</span>
+              <span className="font-sans text-[12.5px] font-medium text-sts-foreground">Enabled</span>
+              <span className="font-sans text-[11px] text-sts-muted">Start evaluating this rule on new tickets right away.</span>
             </span>
           </label>
 
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-pen-surface px-3 py-2.5">
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-sts-surface px-3 py-2.5">
             <Switch checked={stopProcessing} onCheckedChange={setStopProcessing} />
             <span className="flex flex-col">
-              <span className="font-sans text-[12.5px] font-medium text-pen-foreground">Stop after this rule matches</span>
-              <span className="font-sans text-[11px] text-pen-muted">Skip all later rules once this one fires.</span>
+              <span className="font-sans text-[12.5px] font-medium text-sts-foreground">Stop after this rule matches</span>
+              <span className="font-sans text-[11px] text-sts-muted">Skip all later rules once this one fires.</span>
             </span>
           </label>
         </div>
 
         {/* Footer */}
-        <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-pen-card-border bg-pen-bg px-[22px]">
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-sts-card-border bg-sts-bg px-[22px]">
           <button
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-pen-card-border font-sans text-[12px] font-semibold text-pen-foreground transition-colors hover:bg-pen-card-border disabled:opacity-50"
+            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
           >
             Cancel
           </button>
@@ -518,7 +518,7 @@ function NewRuleModal({
             type="button"
             onClick={() => onCreate({ name: name.trim(), enabled, stopProcessing })}
             disabled={!canSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creating ? "Creating…" : "Create rule"}
           </button>
@@ -554,31 +554,31 @@ function RuleCard({
   const setActions = (actions: RuleAction[]) => onChange({ ...rule, actions });
 
   return (
-    <div className="rounded-lg border border-pen-card-border p-3">
+    <div className="rounded-lg border border-sts-card-border p-3">
       <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] text-pen-subtle">#{index + 1}</span>
+        <span className="font-mono text-[11px] text-sts-subtle">#{index + 1}</span>
         <input
           value={rule.name}
           onChange={(e) => onChange({ ...rule, name: e.target.value })}
           className={cn(inputCls, "min-w-0 flex-1 font-medium")}
         />
-        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground disabled:opacity-30" title="Move up">
+        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30" title="Move up">
           <ArrowUp className="size-3.5" />
         </button>
-        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1} className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground disabled:opacity-30" title="Move down">
+        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30" title="Move down">
           <ArrowDown className="size-3.5" />
         </button>
-        <button type="button" onClick={onDelete} className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Delete rule">
+        <button type="button" onClick={onDelete} className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Delete rule">
           <Trash2 className="size-3.5" />
         </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-5">
-        <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-pen-foreground">
+        <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-sts-foreground">
           <Switch checked={rule.enabled} onCheckedChange={(v) => onChange({ ...rule, enabled: v })} />
           Enabled
         </label>
-        <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-pen-foreground">
+        <label className="flex cursor-pointer items-center gap-2 font-sans text-[12px] text-sts-foreground">
           <Switch checked={rule.stopProcessing} onCheckedChange={(v) => onChange({ ...rule, stopProcessing: v })} />
           Stop after this rule matches
         </label>
@@ -587,7 +587,7 @@ function RuleCard({
       {/* Conditions */}
       <div className="mt-3">
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">When</span>
+          <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">When</span>
           <select
             value={rule.conditions.combinator}
             onChange={(e) => setConditions({ ...rule.conditions, combinator: e.target.value as "AND" | "OR" })}
@@ -596,7 +596,7 @@ function RuleCard({
             <option value="AND">all (AND)</option>
             <option value="OR">any (OR)</option>
           </select>
-          <span className="font-sans text-[11px] text-pen-subtle">of these match</span>
+          <span className="font-sans text-[11px] text-sts-subtle">of these match</span>
         </div>
         <div className="flex flex-col gap-1.5">
           {rule.conditions.conditions.map((c, ci) => (
@@ -644,7 +644,7 @@ function RuleCard({
                 onClick={() =>
                   setConditions({ ...rule.conditions, conditions: rule.conditions.conditions.filter((_, xi) => xi !== ci) })
                 }
-                className="rounded-md p-1.5 text-pen-subtle hover:text-red-500"
+                className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -655,19 +655,19 @@ function RuleCard({
             onClick={() =>
               setConditions({ ...rule.conditions, conditions: [...rule.conditions.conditions, { fieldId: "", operator: "equals", value: "" }] })
             }
-            className="inline-flex w-fit items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+            className="inline-flex w-fit items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
           >
             <Plus className="size-3" /> Add condition
           </button>
           {rule.conditions.conditions.length === 0 && (
-            <p className="font-sans text-[11px] text-pen-subtle">No conditions — matches every ticket.</p>
+            <p className="font-sans text-[11px] text-sts-subtle">No conditions — matches every ticket.</p>
           )}
         </div>
       </div>
 
       {/* Actions */}
       <div className="mt-3">
-        <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">Then</span>
+        <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">Then</span>
         <div className="mt-1.5 flex flex-col gap-1.5">
           {rule.actions.map((a, ai) => (
             <div key={ai} className="flex items-center gap-2">
@@ -690,7 +690,7 @@ function RuleCard({
               <button
                 type="button"
                 onClick={() => setActions(rule.actions.filter((_, xi) => xi !== ai))}
-                className="rounded-md p-1.5 text-pen-subtle hover:text-red-500"
+                className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -699,7 +699,7 @@ function RuleCard({
           <button
             type="button"
             onClick={() => setActions([...rule.actions, { type: "set_priority", params: {} }])}
-            className="inline-flex w-fit items-center gap-1 rounded-md border border-pen-card-border px-2 py-1 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+            className="inline-flex w-fit items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
           >
             <Plus className="size-3" /> Add action
           </button>
@@ -711,7 +711,7 @@ function RuleCard({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-60"
+          className="rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save rule"}
         </button>

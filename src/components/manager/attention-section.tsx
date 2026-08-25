@@ -62,11 +62,11 @@ const GRID = "grid grid-cols-[92px_minmax(0,1fr)_92px] items-center gap-3 sm:gri
 
 function TableHead({ last }: { last: string }) {
   return (
-    <div className={cn(GRID, "sticky top-0 z-10 border-b border-pen-card-border bg-pen-card/95 px-4 py-2 backdrop-blur-sm")}>
-      <span className="pen-text-table-head">Ticket</span>
-      <span className="pen-text-table-head">Title</span>
-      <span className="pen-text-table-head hidden sm:block">Assignee</span>
-      <span className="pen-text-table-head text-right">{last}</span>
+    <div className={cn(GRID, "sticky top-0 z-10 border-b border-sts-card-border bg-sts-card/95 px-4 py-2 backdrop-blur-sm")}>
+      <span className="sts-text-table-head">Ticket</span>
+      <span className="sts-text-table-head">Title</span>
+      <span className="sts-text-table-head hidden sm:block">Assignee</span>
+      <span className="sts-text-table-head text-right">{last}</span>
     </div>
   );
 }
@@ -78,16 +78,16 @@ function TicketRow({ t, last }: { t: SimpleTicket; last: React.ReactNode }) {
     <DrawerLink
       ticketId={t.id}
       href={`/tickets/${t.id}`}
-      className={cn(GRID, "group h-[42px] border-b border-pen-card-border/40 px-4 last:border-b-0 transition-colors hover:bg-pen-surface/60")}
+      className={cn(GRID, "group h-[42px] border-b border-sts-card-border/40 px-4 last:border-b-0 transition-colors hover:bg-sts-surface/60")}
     >
       <span className="flex items-center gap-2">
         <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: priorityColor }} title={t.priority} />
-        <span className="font-mono text-[11.5px] font-semibold text-pen-id">{t.humanId}</span>
+        <span className="font-mono text-[11.5px] font-semibold text-sts-id">{t.humanId}</span>
       </span>
-      <span className="truncate font-sans text-[12.5px] text-pen-foreground group-hover:text-pen-blue">
+      <span className="truncate font-sans text-[12.5px] text-sts-foreground group-hover:text-sts-blue">
         {t.title}
         {t.comments > 0 && (
-          <span className="ml-2 inline-flex translate-y-[1px] items-center gap-0.5 text-pen-subtle">
+          <span className="ml-2 inline-flex translate-y-[1px] items-center gap-0.5 text-sts-subtle">
             <MessageCircle className="size-3" />
             <span className="font-sans text-[11px]">{t.comments}</span>
           </span>
@@ -97,10 +97,10 @@ function TicketRow({ t, last }: { t: SimpleTicket; last: React.ReactNode }) {
         {person ? (
           <>
             <UserAvatar name={person.name} avatarUrl={person.avatarUrl} size={20} />
-            <span className="truncate font-sans text-[12px] text-pen-muted">{person.name}</span>
+            <span className="truncate font-sans text-[12px] text-sts-muted">{person.name}</span>
           </>
         ) : (
-          <span className="font-sans text-[12px] italic text-pen-subtle">unassigned</span>
+          <span className="font-sans text-[12px] italic text-sts-subtle">unassigned</span>
         )}
       </span>
       <span className="text-right">{last}</span>
@@ -113,7 +113,7 @@ function StatusPill({ status }: { status: string }) {
   return (
     <span className={cn(
       "inline-block rounded-md px-2 py-0.5 font-sans text-[10.5px] font-medium",
-      isPR ? "bg-purple-500/10 text-purple-500" : "bg-pen-blue/10 text-pen-blue",
+      isPR ? "bg-purple-500/10 text-purple-500" : "bg-sts-blue/10 text-sts-blue",
     )}>
       {status}
     </span>
@@ -124,7 +124,7 @@ function StatusPill({ status }: { status: string }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card shadow-pen-card">
+    <div className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sts-card">
       {children}
     </div>
   );
@@ -134,11 +134,11 @@ function CardTitle({ icon: Icon, accent, title, count, aside }: {
   icon: React.ElementType; accent: string; title: string; count: number; aside?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2.5 border-b border-pen-card-border px-4 py-3">
+    <div className="flex items-center gap-2.5 border-b border-sts-card-border px-4 py-3">
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: `${accent}18` }}>
         <Icon className="size-3.5" style={{ color: accent }} />
       </span>
-      <span className="pen-text-card-title">{title}</span>
+      <span className="sts-text-card-title">{title}</span>
       <span
         className="flex h-5 min-w-[22px] items-center justify-center rounded-full px-1.5 font-mono text-[10.5px] font-bold tabular-nums"
         style={{ backgroundColor: `${accent}18`, color: accent }}
@@ -146,7 +146,7 @@ function CardTitle({ icon: Icon, accent, title, count, aside }: {
         {count}
       </span>
       {aside && (
-        <div className="ml-auto flex items-center gap-3 font-sans text-[11px] text-pen-subtle">
+        <div className="ml-auto flex items-center gap-3 font-sans text-[11px] text-sts-subtle">
           {aside}
         </div>
       )}
@@ -161,9 +161,9 @@ function GroupRow({ open, onToggle, children }: {
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center gap-2.5 border-b border-pen-card-border/60 bg-pen-surface/30 px-4 py-2 text-left transition-colors hover:bg-pen-surface/70"
+      className="flex w-full items-center gap-2.5 border-b border-sts-card-border/60 bg-sts-surface/30 px-4 py-2 text-left transition-colors hover:bg-sts-surface/70"
     >
-      <ChevronDown className={cn("size-3.5 shrink-0 text-pen-subtle transition-transform", !open && "-rotate-90")} />
+      <ChevronDown className={cn("size-3.5 shrink-0 text-sts-subtle transition-transform", !open && "-rotate-90")} />
       {children}
     </button>
   );
@@ -174,7 +174,7 @@ function AvatarStack({ people }: { people: { name: string; avatarUrl: string | n
   return (
     <span className="flex items-center">
       {unique.map((p, i) => (
-        <span key={p.name} className={cn("rounded-full ring-2 ring-pen-card", i > 0 && "-ml-1.5")}>
+        <span key={p.name} className={cn("rounded-full ring-2 ring-sts-card", i > 0 && "-ml-1.5")}>
           <UserAvatar name={p.name} avatarUrl={p.avatarUrl} size={18} />
         </span>
       ))}
@@ -201,19 +201,19 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
   }
 
   return (
-    <div className="flex items-center gap-3 border-b border-pen-card-border/40 px-4 py-3 last:border-b-0 transition-colors hover:bg-pen-surface/60">
+    <div className="flex items-center gap-3 border-b border-sts-card-border/40 px-4 py-3 last:border-b-0 transition-colors hover:bg-sts-surface/60">
       <UserAvatar name={req.user.name} avatarUrl={req.user.avatarUrl} size={28} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">{req.user.name}</span>
-          <span className="font-sans text-[11px] text-pen-subtle">→</span>
-          <span className="truncate font-sans text-[12px] text-pen-muted">{req.target}</span>
+          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">{req.user.name}</span>
+          <span className="font-sans text-[11px] text-sts-subtle">→</span>
+          <span className="truncate font-sans text-[12px] text-sts-muted">{req.target}</span>
         </div>
         {req.message && (
-          <p className="truncate font-sans text-[11px] italic text-pen-subtle">&quot;{req.message}&quot;</p>
+          <p className="truncate font-sans text-[11px] italic text-sts-subtle">&quot;{req.message}&quot;</p>
         )}
       </div>
-      <span className="shrink-0 font-sans text-[11px] text-pen-subtle">{timeAgo(req.requestedAt)}</span>
+      <span className="shrink-0 font-sans text-[11px] text-sts-subtle">{timeAgo(req.requestedAt)}</span>
       <button
         type="button" disabled={!!loading} onClick={() => handle("approve")}
         className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
@@ -222,7 +222,7 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
       </button>
       <button
         type="button" disabled={!!loading} onClick={() => handle("reject")}
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-pen-card-border bg-pen-surface text-pen-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
+        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
       >
         <X className="size-3.5" strokeWidth={2.5} />
       </button>
@@ -248,7 +248,7 @@ function AttentionTabs({
 }) {
   if (tabs.length <= 1) return null;
   return (
-    <div className="flex flex-wrap gap-2 border-b border-pen-card-border px-4 py-3">
+    <div className="flex flex-wrap gap-2 border-b border-sts-card-border px-4 py-3">
       {tabs.map(({ id, count }) => {
         const meta = TAB_META[id];
         const isActive = active === id;
@@ -261,7 +261,7 @@ function AttentionTabs({
               "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-sans text-[11.5px] font-semibold transition-colors",
               isActive
                 ? "border-transparent text-white dark:text-gray-900"
-                : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
             )}
             style={isActive ? { backgroundColor: meta.accent } : undefined}
           >
@@ -269,7 +269,7 @@ function AttentionTabs({
             <span
               className={cn(
                 "font-mono text-[10px] font-bold tabular-nums",
-                isActive ? "text-white/90 dark:text-gray-900/80" : "text-pen-subtle",
+                isActive ? "text-white/90 dark:text-gray-900/80" : "text-sts-subtle",
               )}
             >
               {count}
@@ -369,7 +369,7 @@ export function AttentionSection({
         <Card>
           <div className="flex items-center gap-2.5 px-4 py-5">
             <Check className="size-4 text-emerald-500" />
-            <p className="font-sans text-[12.5px] text-pen-muted">Nothing needs your attention.</p>
+            <p className="font-sans text-[12.5px] text-sts-muted">Nothing needs your attention.</p>
           </div>
         </Card>
       </section>
@@ -394,7 +394,7 @@ export function AttentionSection({
                 <button
                   type="button"
                   onClick={toggleAllOverdue}
-                  className="font-sans text-[11px] font-medium text-pen-id hover:underline"
+                  className="font-sans text-[11px] font-medium text-sts-id hover:underline"
                 >
                   {allOverdueOpen ? "Collapse all" : "Expand all"}
                 </button>
@@ -410,8 +410,8 @@ export function AttentionSection({
                 <div key={g.key}>
                   <GroupRow open={open} onToggle={() => toggle(setOpenOverdue, g.key)}>
                     <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
-                    <span className="font-sans text-[12px] font-semibold text-pen-foreground">{g.name}</span>
-                    <span className="font-mono text-[11px] tabular-nums text-pen-subtle">{g.tickets.length}</span>
+                    <span className="font-sans text-[12px] font-semibold text-sts-foreground">{g.name}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-sts-subtle">{g.tickets.length}</span>
                     <span className="ml-auto flex items-center gap-3">
                       <AvatarStack people={g.tickets.map((t) => t.assignee).filter(Boolean) as { name: string; avatarUrl: string | null }[]} />
                       <span className="font-sans text-[11px] font-semibold tabular-nums text-red-500">up to {g.worstDaysLate}d</span>
@@ -463,8 +463,8 @@ export function AttentionSection({
                 <div key={g.key}>
                   <GroupRow open={open} onToggle={() => toggle(setOpenReview, g.key)}>
                     <UserAvatar name={g.name} avatarUrl={g.avatarUrl} size={20} />
-                    <span className="font-sans text-[12px] font-semibold text-pen-foreground">{g.name}</span>
-                    <span className="font-mono text-[11px] tabular-nums text-pen-subtle">{g.tickets.length}</span>
+                    <span className="font-sans text-[12px] font-semibold text-sts-foreground">{g.name}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-sts-subtle">{g.tickets.length}</span>
                     <span className="ml-auto flex items-center gap-1.5">
                       {[...new Set(g.tickets.map((t) => t.status))].slice(0, 2).map((s) => <StatusPill key={s} status={s} />)}
                     </span>
@@ -473,7 +473,7 @@ export function AttentionSection({
                     <TicketRow
                       key={t.id}
                       t={t}
-                      last={<span className="font-sans text-[11.5px] text-pen-muted">{timeAgo(t.updatedAt)}</span>}
+                      last={<span className="font-sans text-[11.5px] text-sts-muted">{timeAgo(t.updatedAt)}</span>}
                     />
                   ))}
                 </div>

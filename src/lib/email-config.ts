@@ -48,11 +48,11 @@ function defaultFromEmail(): string {
 }
 
 export const DEFAULT_FOOTER_TEXT =
-  "© {year} PEN Global. This is an automated message.";
+  "© {year} Support Ticketing System. This is an automated message.";
 
 export function emailConfigDefaults(): EmailConfig {
   return {
-    fromName: "PEN Platform",
+    fromName: "Support Ticketing System",
     fromEmail: defaultFromEmail(),
     replyTo: "",
     notifyAssignment: true,
@@ -458,7 +458,7 @@ export async function getEmailConfig(
   return config;
 }
 
-/** The Resend `from` header, e.g. `PEN Platform <onboarding@mail.pengroup.com>`. */
+/** The Resend `from` header, e.g. `Support Ticketing System <onboarding@mail.pengroup.com>`. */
 export function fromHeader(config: EmailConfig): string {
   return `${config.fromName} <${config.fromEmail}>`;
 }

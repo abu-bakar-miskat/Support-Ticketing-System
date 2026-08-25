@@ -10,10 +10,10 @@ let _root: HTMLElement | null = null;
 export function getPortalRoot(): HTMLElement | null {
   if (typeof document === "undefined") return null;
   if (!_root) {
-    _root = document.getElementById("pen-portal-root") as HTMLElement | null;
+    _root = document.getElementById("sts-portal-root") as HTMLElement | null;
     if (!_root) {
       _root = document.createElement("div");
-      _root.id = "pen-portal-root";
+      _root.id = "sts-portal-root";
       document.documentElement.appendChild(_root);
     }
   }

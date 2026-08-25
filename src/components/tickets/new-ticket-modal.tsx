@@ -491,7 +491,7 @@ export function NewTicketModal({
     /* Backdrop — click outside does NOT close */
     <div
       ref={overlayRef}
-      className="pen-overlay-enter pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-3 py-3 sm:px-4 lg:px-5"
+      className="sts-overlay-enter sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-3 py-3 sm:px-4 lg:px-5"
     >
       {/* Modal */}
       <div
@@ -499,29 +499,29 @@ export function NewTicketModal({
         aria-modal="true"
         aria-labelledby="modal-title"
         className="
-          pen-glass-panel pen-modal-enter flex max-h-[calc(100svh/var(--pen-font-scale,1)-24px)] w-full max-w-[720px] flex-col overflow-hidden
+          sts-glass-panel sts-modal-enter flex max-h-[calc(100svh/var(--sts-font-scale,1)-24px)] w-full max-w-[720px] flex-col overflow-hidden
           rounded-[14px] ring-1 ring-white/35 dark:ring-white/10
         "
       >
         {/* ── Header ── */}
-        <div className="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-pen-card-border pl-[22px] pr-3.5">
-          <span className="font-sans text-[15px] font-semibold text-pen-blue">
+        <div className="flex h-[52px] shrink-0 items-center gap-2.5 border-b border-sts-card-border pl-[22px] pr-3.5">
+          <span className="font-sans text-[15px] font-semibold text-sts-blue">
             +
           </span>
           <h2
             id="modal-title"
-            className="pen-text-modal-title"
+            className="sts-text-modal-title"
           >
             {parentHumanId ? "New sub-ticket" : "New ticket"}
           </h2>
           {parentHumanId && (
-            <span className="rounded-full bg-pen-surface px-[7px] py-[2px] font-sans text-[11.5px] font-medium text-pen-muted">
+            <span className="rounded-full bg-sts-surface px-[7px] py-[2px] font-sans text-[11.5px] font-medium text-sts-muted">
               sub of{" "}
-              <span className="font-mono font-semibold text-pen-id">{parentHumanId}</span>
+              <span className="font-mono font-semibold text-sts-id">{parentHumanId}</span>
             </span>
           )}
           {!parentHumanId && defaultProjectName && (
-            <span className="rounded-full bg-pen-blue-tint px-[7px] py-[2px] font-sans text-[11.5px] font-semibold text-pen-blue">
+            <span className="rounded-full bg-sts-blue-tint px-[7px] py-[2px] font-sans text-[11.5px] font-semibold text-sts-blue">
               {defaultProjectName}
             </span>
           )}
@@ -530,7 +530,7 @@ export function NewTicketModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -542,7 +542,7 @@ export function NewTicketModal({
             {error && (
               <p
                 role="alert"
-                className="mb-4 rounded-md bg-pen-red/10 px-3 py-2 font-sans text-sm text-pen-red"
+                className="mb-4 rounded-md bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
               >
                 {error}
               </p>
@@ -551,7 +551,7 @@ export function NewTicketModal({
             <div className="flex flex-col gap-3">
             {/* Title */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="title" className="pen-text-label">
+              <label htmlFor="title" className="sts-text-label">
                 Title
               </label>
               <div className="relative">
@@ -581,7 +581,7 @@ export function NewTicketModal({
               <div className="flex flex-col gap-1">
                 <label
                   htmlFor="template"
-                  className="pen-text-label"
+                  className="sts-text-label"
                 >
                   Template
                 </label>
@@ -593,15 +593,15 @@ export function NewTicketModal({
                   placeholder="Choose a template…"
                   searchPlaceholder="Search templates…"
                   size="lg"
-                  className="bg-pen-bg"
+                  className="bg-sts-bg"
                 />
               </div>
             )}
 
             {/* Template Fields - Show instead of Description when template selected */}
             {selectedTemplateId && (templates.find((t) => t.id === selectedTemplateId)?.customFields.length ?? 0) > 0 && (
-              <div className="mx-[-22px] px-[22px] border-y border-pen-card-border py-4">
-                <h3 className="mb-4 text-right pen-text-section-label">
+              <div className="mx-[-22px] px-[22px] border-y border-sts-card-border py-4">
+                <h3 className="mb-4 text-right sts-text-section-label">
                   Template Fields
                 </h3>
                 <div className="space-y-3">
@@ -609,10 +609,10 @@ export function NewTicketModal({
                       <div key={field.id} className="flex flex-col gap-[5px]">
                         <label
                           htmlFor={`custom-${field.id}`}
-                          className="pen-text-label"
+                          className="sts-text-label"
                         >
                           {field.label}
-                          {field.required && <span className="text-pen-red"> *</span>}
+                          {field.required && <span className="text-sts-red"> *</span>}
                         </label>
 
                         {field.type === "textarea" ? (
@@ -628,10 +628,10 @@ export function NewTicketModal({
                                 }
                                 required={field.required}
                                 className="
-                                  min-h-[80px] w-full rounded-[6px] border border-pen-card-border
-                                  bg-pen-bg px-3 py-2 font-sans text-[13px]
-                                  text-pen-foreground placeholder:text-pen-subtle
-                                  outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30
+                                  min-h-[80px] w-full rounded-[6px] border border-sts-card-border
+                                  bg-sts-bg px-3 py-2 font-sans text-[13px]
+                                  text-sts-foreground placeholder:text-sts-subtle
+                                  outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30
                                 "
                               />
                             ) : field.type === "select" ? (
@@ -650,19 +650,19 @@ export function NewTicketModal({
                                 }))}
                                 placeholder="Select…"
                                 size="lg"
-                                className="bg-pen-bg"
+                                className="bg-sts-bg"
                               />
                             ) : field.type === "file" ? (
                               <div className="space-y-2">
                                 <label
                                   htmlFor={`custom-${field.id}`}
-                                  className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-pen-card-border rounded-[6px] bg-pen-bg/50 hover:bg-pen-surface cursor-pointer transition-colors"
+                                  className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-sts-card-border rounded-[6px] bg-sts-bg/50 hover:bg-sts-surface cursor-pointer transition-colors"
                                 >
                                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <svg className="w-5 h-5 text-pen-muted mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 text-sts-muted mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
-                                    <span className="font-sans text-xs text-pen-muted">Click to upload or drag files</span>
+                                    <span className="font-sans text-xs text-sts-muted">Click to upload or drag files</span>
                                   </div>
                                   <input
                                     id={`custom-${field.id}`}
@@ -730,7 +730,7 @@ export function NewTicketModal({
                                       return (
                                         <div key={fileIndex} className="relative group">
                                           {isImage ? (
-                                            <div className="relative w-20 h-20 rounded-[6px] border border-pen-card-border overflow-hidden bg-pen-surface">
+                                            <div className="relative w-20 h-20 rounded-[6px] border border-sts-card-border overflow-hidden bg-sts-surface">
                                               <img
                                                 src={fileObj.url}
                                                 alt={fileObj.fileName}
@@ -741,10 +741,10 @@ export function NewTicketModal({
                                               <p className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[8px] p-1 truncate">{fileObj.fileName}</p>
                                             </div>
                                           ) : (
-                                            <div className="max-w-[140px] rounded-[6px] border border-pen-card-border bg-pen-surface p-2.5 flex flex-col items-center gap-2 relative">
-                                              {isDeleting && <div className="absolute inset-0 bg-pen-surface/40 flex items-center justify-center rounded-[6px] z-10"><LoadingSpinner className="size-4" /></div>}
+                                            <div className="max-w-[140px] rounded-[6px] border border-sts-card-border bg-sts-surface p-2.5 flex flex-col items-center gap-2 relative">
+                                              {isDeleting && <div className="absolute inset-0 bg-sts-surface/40 flex items-center justify-center rounded-[6px] z-10"><LoadingSpinner className="size-4" /></div>}
                                               <span className="text-2xl">{getFileIcon()}</span>
-                                              <span className="font-sans text-[11px] text-pen-foreground text-center wrap-break-word w-full line-clamp-2">{fileObj.fileName}</span>
+                                              <span className="font-sans text-[11px] text-sts-foreground text-center wrap-break-word w-full line-clamp-2">{fileObj.fileName}</span>
                                             </div>
                                           )}
                                           <button
@@ -779,7 +779,7 @@ export function NewTicketModal({
                                                 }));
                                               }
                                             }}
-                                            className="absolute -top-2 -right-2 bg-pen-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
+                                            className="absolute -top-2 -right-2 bg-sts-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
                                           >
                                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -789,9 +789,9 @@ export function NewTicketModal({
                                       );
                                     })}
                                     {uploadingFiles[field.id] && Object.entries(uploadingFiles[field.id]).filter(([_, isUploading]) => isUploading).map(([fileId]) => (
-                                      <div key={fileId} className="max-w-[140px] rounded-[6px] border border-dashed border-pen-card-border bg-pen-surface/50 p-2.5 flex flex-col items-center gap-2">
+                                      <div key={fileId} className="max-w-[140px] rounded-[6px] border border-dashed border-sts-card-border bg-sts-surface/50 p-2.5 flex flex-col items-center gap-2">
                                         <LoadingSpinner className="size-4" />
-                                        <span className="font-sans text-[11px] text-pen-muted">Uploading...</span>
+                                        <span className="font-sans text-[11px] text-sts-muted">Uploading...</span>
                                       </div>
                                     ))}
                                   </div>
@@ -811,10 +811,10 @@ export function NewTicketModal({
                                 }
                                 required={field.required}
                                 className="
-                                  h-10 w-full rounded-[6px] border border-pen-card-border
-                                  bg-pen-bg px-3 font-sans text-[13px]
-                                  text-pen-foreground placeholder:text-pen-subtle
-                                  outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30
+                                  h-10 w-full rounded-[6px] border border-sts-card-border
+                                  bg-sts-bg px-3 font-sans text-[13px]
+                                  text-sts-foreground placeholder:text-sts-subtle
+                                  outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30
                                 "
                               />
                             ) : (
@@ -831,10 +831,10 @@ export function NewTicketModal({
                                 }
                                 required={field.required}
                                 className="
-                                  h-10 w-full rounded-[6px] border border-pen-card-border
-                                  bg-pen-bg px-3 font-sans text-[13px]
-                                  text-pen-foreground placeholder:text-pen-subtle
-                                  outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30
+                                  h-10 w-full rounded-[6px] border border-sts-card-border
+                                  bg-sts-bg px-3 font-sans text-[13px]
+                                  text-sts-foreground placeholder:text-sts-subtle
+                                  outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30
                                 "
                               />
                             )}
@@ -995,12 +995,12 @@ export function NewTicketModal({
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex h-14 shrink-0 items-center gap-2.5 border-t border-pen-card-border bg-pen-bg px-6">
+          <div className="flex h-14 shrink-0 items-center gap-2.5 border-t border-sts-card-border bg-sts-bg px-6">
             <div className="flex-1" />
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-pen-card-border font-sans text-[12px] font-semibold text-pen-foreground transition-colors hover:bg-pen-card-border"
+              className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border"
             >
               Cancel
             </button>
@@ -1009,7 +1009,7 @@ export function NewTicketModal({
                 type="button"
                 disabled={submitting !== null}
                 onClick={() => void createTicket(true)}
-                className="flex h-8 items-center gap-1.5 rounded-[6px] border border-pen-card-border bg-pen-card px-3 font-sans text-[12px] font-medium text-pen-foreground transition-colors hover:bg-pen-surface disabled:opacity-50"
+                className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-50"
               >
                 {submitting === "draft" ? "Saving…" : "Save draft"}
               </button>
@@ -1017,12 +1017,12 @@ export function NewTicketModal({
             <button
               type="submit"
               disabled={submitting !== null}
-              className="flex h-8 items-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {submitting === "create" && <LoadingSpinner className="size-3.5" />}
               {submitting === "create" ? "Creating…" : "Create ticket"}
               {submitting !== "create" && (
-                <span className="flex size-4 items-center justify-center rounded-[3px] bg-pen-brand/35 dark:bg-pen-foreground/35">
+                <span className="flex size-4 items-center justify-center rounded-[3px] bg-sts-brand/35 dark:bg-sts-foreground/35">
                   <CornerDownLeft size={9} strokeWidth={2.5} />
                 </span>
               )}
@@ -1036,9 +1036,9 @@ export function NewTicketModal({
 
 /* ── Layout helpers ── */
 const INPUT_CLASS =
-  "h-10 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30";
+  "h-10 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30";
 const READONLY_CLASS =
-  "flex h-10 items-center rounded-[6px] border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground";
+  "flex h-10 items-center rounded-[6px] border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground";
 
 function FormGrid({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -1065,11 +1065,11 @@ function FormField({
     <div className="flex flex-col gap-1">
       <div className="flex min-h-[20px] items-center justify-between gap-2">
         {htmlFor ? (
-          <label htmlFor={htmlFor} className="pen-text-label">
+          <label htmlFor={htmlFor} className="sts-text-label">
             {label}
           </label>
         ) : (
-          <span className="pen-text-label">{label}</span>
+          <span className="sts-text-label">{label}</span>
         )}
         {labelExtra}
       </div>
@@ -1144,12 +1144,12 @@ function DateRangeField({
       <Popover>
         <PopoverTrigger
           className={cn(
-            "flex h-10 w-full items-center gap-2.5 rounded-[6px] border border-pen-card-border",
-            "bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground",
-            "outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30",
+            "flex h-10 w-full items-center gap-2.5 rounded-[6px] border border-sts-card-border",
+            "bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground",
+            "outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30",
           )}
         >
-          <CalendarDays size={13} strokeWidth={2} className="shrink-0 text-pen-muted" />
+          <CalendarDays size={13} strokeWidth={2} className="shrink-0 text-sts-muted" />
           {dateRange?.from ? (
             <span className="truncate">
               {dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
@@ -1167,7 +1167,7 @@ function DateRangeField({
               )}
             </span>
           ) : (
-            <span className="text-pen-subtle">Pick a date</span>
+            <span className="text-sts-subtle">Pick a date</span>
           )}
           {dateRange?.from && (
             <span
@@ -1175,7 +1175,7 @@ function DateRangeField({
               tabIndex={0}
               onClick={clearAll}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") clearAll(e); }}
-              className="ml-auto cursor-pointer text-pen-muted hover:text-pen-foreground"
+              className="ml-auto cursor-pointer text-sts-muted hover:text-sts-foreground"
               aria-label="Clear dates"
             >
               <X size={11} strokeWidth={2.5} />
@@ -1190,16 +1190,16 @@ function DateRangeField({
             numberOfMonths={2}
           />
           {dateRange?.from && (
-            <div className="flex items-center gap-3 border-t border-pen-card-border px-3 py-2.5">
+            <div className="flex items-center gap-3 border-t border-sts-card-border px-3 py-2.5">
               {endTime || showTimeInput ? (
                 <>
-                  <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                  <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                     End time
                     <input
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="pen-date-input-native h-7 rounded-md border border-pen-card-border bg-pen-bg px-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue"
+                      className="sts-date-input-native h-7 rounded-md border border-sts-card-border bg-sts-bg px-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue"
                     />
                   </label>
                   <button
@@ -1208,7 +1208,7 @@ function DateRangeField({
                       setEndTime("");
                       setShowTimeInput(false);
                     }}
-                    className="ml-auto font-sans text-[11px] text-pen-subtle hover:text-pen-foreground"
+                    className="ml-auto font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
                   >
                     Clear time
                   </button>
@@ -1217,7 +1217,7 @@ function DateRangeField({
                 <button
                   type="button"
                   onClick={() => setShowTimeInput(true)}
-                  className="font-sans text-[11.5px] text-pen-blue hover:underline"
+                  className="font-sans text-[11.5px] text-sts-blue hover:underline"
                 >
                   Add end time
                 </button>
@@ -1245,7 +1245,7 @@ function EstimatedTimeField({
       label="Estimated time"
       footer={
         parsed !== null ? (
-          <span className="font-sans text-[11.5px] text-pen-blue">
+          <span className="font-sans text-[11.5px] text-sts-blue">
             = {(() => {
               const m = parsed;
               const h = Math.floor(m / 60);
@@ -1285,8 +1285,8 @@ function StoryPointsField({
             className={cn(
               "flex size-8 items-center justify-center rounded-[5px] border font-sans text-[12px] font-semibold transition-colors",
               storyPoints === pt
-                ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                : "border-pen-card-border bg-pen-bg text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
             )}
           >
             {pt}
@@ -1372,7 +1372,7 @@ function AssetLinksField({
           <button
             type="button"
             onClick={() => setAddingAsset(true)}
-            className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-pen-blue/10 px-2 font-sans text-[10.5px] font-semibold text-pen-blue transition-colors hover:bg-pen-blue/20"
+            className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-sts-blue/10 px-2 font-sans text-[10.5px] font-semibold text-sts-blue transition-colors hover:bg-sts-blue/20"
           >
             <Plus className="size-3" /> Add
           </button>
@@ -1380,17 +1380,17 @@ function AssetLinksField({
       }
     >
       {assetLinks.length > 0 ? (
-        <div className="flex max-h-20 flex-col gap-1 overflow-y-auto rounded-[6px] border border-pen-blue/20 bg-pen-blue/4 p-1.5">
+        <div className="flex max-h-20 flex-col gap-1 overflow-y-auto rounded-[6px] border border-sts-blue/20 bg-sts-blue/4 p-1.5">
           {assetLinks.map((link, i) => (
-            <div key={i} className="group flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-pen-blue/6">
-              <Link2 className="size-3 shrink-0 text-pen-blue" />
-              <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] font-medium text-pen-blue">
+            <div key={i} className="group flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-sts-blue/6">
+              <Link2 className="size-3 shrink-0 text-sts-blue" />
+              <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] font-medium text-sts-blue">
                 {link.label || link.url}
               </span>
               <button
                 type="button"
                 onClick={() => setAssetLinks((prev) => prev.filter((_, j) => j !== i))}
-                className="shrink-0 text-pen-subtle hover:text-pen-red"
+                className="shrink-0 text-sts-subtle hover:text-sts-red"
               >
                 <X size={10} />
               </button>
@@ -1398,19 +1398,19 @@ function AssetLinksField({
           ))}
         </div>
       ) : addingAsset ? (
-        <div className="flex flex-col gap-1 rounded-[6px] border border-pen-blue/25 bg-pen-blue/4 p-2">
+        <div className="flex flex-col gap-1 rounded-[6px] border border-sts-blue/25 bg-sts-blue/4 p-2">
           <input
             autoFocus
             value={newAssetUrl}
             onChange={(e) => setNewAssetUrl(e.target.value)}
             placeholder="https://…"
-            className="h-7 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2 font-sans text-[11.5px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+            className="h-7 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2 font-sans text-[11.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
           />
           <input
             value={newAssetLabel}
             onChange={(e) => setNewAssetLabel(e.target.value)}
             placeholder="Label (optional)"
-            className="h-7 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2 font-sans text-[11.5px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+            className="h-7 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2 font-sans text-[11.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
           />
           <div className="flex gap-1">
             <button
@@ -1420,21 +1420,21 @@ function AssetLinksField({
                 setAssetLinks((prev) => [...prev, { url: newAssetUrl.trim(), label: newAssetLabel.trim() }]);
                 setNewAssetUrl(""); setNewAssetLabel(""); setAddingAsset(false);
               }}
-              className="flex h-6 items-center rounded-md bg-pen-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
+              className="flex h-6 items-center rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
             >
               Add
             </button>
             <button
               type="button"
               onClick={() => { setAddingAsset(false); setNewAssetUrl(""); setNewAssetLabel(""); }}
-              className="flex h-6 items-center rounded-md border border-pen-card-border px-2.5 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+              className="flex h-6 items-center rounded-md border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="flex h-10 items-center rounded-[6px] border border-dashed border-pen-card-border bg-pen-bg/40 px-3 font-sans text-[12px] text-pen-subtle">
+        <div className="flex h-10 items-center rounded-[6px] border border-dashed border-sts-card-border bg-sts-bg/40 px-3 font-sans text-[12px] text-sts-subtle">
           No links added
         </div>
       )}
@@ -1451,7 +1451,7 @@ function LabelsField({
 }) {
   return (
     <FormField label="Labels">
-      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-[6px] border border-dashed border-pen-card-border bg-pen-bg/40 px-3 py-2">
+      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-[6px] border border-dashed border-sts-card-border bg-sts-bg/40 px-3 py-2">
         {labels.map((lbl) => (
           <button
             key={lbl}
@@ -1460,7 +1460,7 @@ function LabelsField({
             className="group relative inline-flex"
           >
             <TagPill label={lbl} size="sm" />
-            <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-pen-red text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100">
               <X size={8} />
             </span>
           </button>
@@ -1573,33 +1573,33 @@ function StyledSelect({
             type="button"
             onClick={() => (open ? closeDropdown() : openDropdown())}
             className={cn(
-              "flex h-10 w-full items-center gap-2 rounded-[6px] border border-pen-card-border bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30",
+              "flex h-10 w-full items-center gap-2 rounded-[6px] border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30",
               leadingDot && "pl-[26px]",
             )}
           >
-            <span className={cn("truncate", !selected && "text-pen-subtle")}>
+            <span className={cn("truncate", !selected && "text-sts-subtle")}>
               {selected ? selected.label : placeholder}
             </span>
-            <ChevronDown size={10} strokeWidth={2} className="ml-auto shrink-0 text-pen-muted" />
+            <ChevronDown size={10} strokeWidth={2} className="ml-auto shrink-0 text-sts-muted" />
           </button>
         </div>
       </FormField>
       {open && dropPos && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-9999 overflow-hidden rounded-[8px] border border-pen-card-border bg-pen-bg shadow-xl"
+          className="fixed z-9999 overflow-hidden rounded-[8px] border border-sts-card-border bg-sts-bg shadow-xl"
           style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
         >
           {showSearch && (
-            <div className="border-b border-pen-card-border p-2">
+            <div className="border-b border-sts-card-border p-2">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-pen-subtle" />
+                <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-sts-subtle" />
                 <input
                   autoFocus
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={searchPlaceholder}
-                  className="h-7 w-full rounded-md border border-pen-card-border bg-pen-surface pl-6 pr-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue"
+                  className="h-7 w-full rounded-md border border-sts-card-border bg-sts-surface pl-6 pr-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue"
                 />
               </div>
             </div>
@@ -1614,7 +1614,7 @@ function StyledSelect({
                   onClick={() => pick(o.value)}
                   className={cn(
                     "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-sans text-[12.5px] transition-colors",
-                    isSel ? "bg-pen-blue-tint text-pen-blue" : "text-pen-foreground hover:bg-pen-surface",
+                    isSel ? "bg-sts-blue-tint text-sts-blue" : "text-sts-foreground hover:bg-sts-surface",
                   )}
                 >
                   {leadingDot && (
@@ -1624,12 +1624,12 @@ function StyledSelect({
                     />
                   )}
                   <span className="truncate">{o.label}</span>
-                  {isSel && <Check size={12} strokeWidth={2.5} className="ml-auto shrink-0 text-pen-blue" />}
+                  {isSel && <Check size={12} strokeWidth={2.5} className="ml-auto shrink-0 text-sts-blue" />}
                 </button>
               );
             })}
             {filtered.length === 0 && (
-              <p className="py-3 text-center font-sans text-[11.5px] text-pen-subtle">{emptyLabel}</p>
+              <p className="py-3 text-center font-sans text-[11.5px] text-sts-subtle">{emptyLabel}</p>
             )}
           </div>
         </div>,
@@ -1727,14 +1727,14 @@ function AssigneePicker({
             className={cn(
               "flex items-center gap-1 rounded-full border px-2 py-0.5 font-sans text-[10.5px] transition-all",
               keepUnassigned
-                ? "border-pen-blue bg-pen-blue font-medium text-white dark:text-gray-900"
-                : "border-pen-card-border bg-transparent text-pen-muted hover:border-pen-blue/40 hover:text-pen-id",
+                ? "border-sts-blue bg-sts-blue font-medium text-white dark:text-gray-900"
+                : "border-sts-card-border bg-transparent text-sts-muted hover:border-sts-blue/40 hover:text-sts-id",
             )}
           >
             <UserX
               className={cn(
                 "size-3 shrink-0 transition-colors",
-                keepUnassigned ? "text-white dark:text-gray-900" : "text-pen-subtle",
+                keepUnassigned ? "text-white dark:text-gray-900" : "text-sts-subtle",
               )}
               strokeWidth={2}
             />
@@ -1752,12 +1752,12 @@ function AssigneePicker({
             else openDropdown();
           }}
           className={cn(
-            "flex h-10 w-full flex-wrap items-center gap-1.5 rounded-[6px] border border-pen-card-border bg-pen-bg px-3 py-2 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30",
+            "flex h-10 w-full flex-wrap items-center gap-1.5 rounded-[6px] border border-sts-card-border bg-sts-bg px-3 py-2 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30",
             keepUnassigned && "cursor-not-allowed opacity-50",
           )}
         >
           {assigneeIds.length === 0 ? (
-            <span className="text-pen-subtle">Unassigned</span>
+            <span className="text-sts-subtle">Unassigned</span>
           ) : (
             assigneeIds.map((id) => {
               const member = effectiveMembers.find((m) => m.id === id);
@@ -1765,7 +1765,7 @@ function AssigneePicker({
               return (
                 <span
                   key={id}
-                  className="flex items-center gap-1 rounded-full bg-pen-blue/15 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-blue"
+                  className="flex items-center gap-1 rounded-full bg-sts-blue/15 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-blue"
                 >
                   <AvatarVisual name={member.name} avatarUrl={member.avatarUrl} size={16} />
                   {member.name}
@@ -1780,31 +1780,31 @@ function AssigneePicker({
               );
             })
           )}
-          <ChevronDown size={10} strokeWidth={2} className="ml-auto shrink-0 text-pen-muted" />
+          <ChevronDown size={10} strokeWidth={2} className="ml-auto shrink-0 text-sts-muted" />
         </button>
       </FormField>
       {assigneeOpen && dropPos && createPortal(
         <div
           ref={dropdownRef}
-          className="fixed z-9999 overflow-hidden rounded-[8px] border border-pen-card-border bg-pen-bg shadow-xl"
+          className="fixed z-9999 overflow-hidden rounded-[8px] border border-sts-card-border bg-sts-bg shadow-xl"
           style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
         >
-          <div className="border-b border-pen-card-border p-2">
+          <div className="border-b border-sts-card-border p-2">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-pen-subtle" />
+              <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-sts-subtle" />
               <input
                 autoFocus
                 value={assigneeSearch}
                 onChange={(e) => setAssigneeSearch(e.target.value)}
                 placeholder="Search members…"
-                className="h-7 w-full rounded-md border border-pen-card-border bg-pen-surface pl-6 pr-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue"
+                className="h-7 w-full rounded-md border border-sts-card-border bg-sts-surface pl-6 pr-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue"
               />
             </div>
           </div>
           <div className="max-h-40 overflow-y-auto p-1">
             {membersLoading ? (
               <div className="flex justify-center py-6">
-                <LoadingSpinner className="size-4 text-pen-subtle" />
+                <LoadingSpinner className="size-4 text-sts-subtle" />
               </div>
             ) : (
               <>
@@ -1822,28 +1822,28 @@ function AssigneePicker({
                         className={cn(
                           userListPickerButtonClass,
                           "rounded-md px-2 py-1.5 transition-colors",
-                          selected ? "bg-pen-blue-tint" : "hover:bg-pen-surface",
+                          selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                         )}
                       >
                         <UserListItem
                           person={m}
                           avatarSize={22}
                           trailing={
-                            selected ? <Check size={12} strokeWidth={2.5} className="shrink-0 text-pen-blue" /> : null
+                            selected ? <Check size={12} strokeWidth={2.5} className="shrink-0 text-sts-blue" /> : null
                           }
                         />
                       </button>
                     );
                   })}
                 {effectiveMembers.filter((m) => matchesUserListSearch(m, assigneeSearch)).length === 0 && (
-                  <p className="py-3 text-center font-sans text-[11.5px] text-pen-subtle">No members found</p>
+                  <p className="py-3 text-center font-sans text-[11.5px] text-sts-subtle">No members found</p>
                 )}
               </>
             )}
           </div>
           {assigneeIds.length > 0 && (
-            <div className="border-t border-pen-card-border px-2 py-1.5">
-              <button type="button" onClick={() => setAssigneeIds([])} className="font-sans text-[11.5px] text-pen-subtle hover:text-pen-foreground">
+            <div className="border-t border-sts-card-border px-2 py-1.5">
+              <button type="button" onClick={() => setAssigneeIds([])} className="font-sans text-[11.5px] text-sts-subtle hover:text-sts-foreground">
                 Clear all
               </button>
             </div>

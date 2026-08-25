@@ -185,8 +185,8 @@ export function DashboardLayout({
       <AvailabilityProvider>
       <div
         className={cn(
-          "pen-ambient-bg flex h-dvh w-full overflow-hidden",
-          ready && collapsed && "pen-sidebar-collapsed",
+          "sts-ambient-bg flex h-dvh w-full overflow-hidden",
+          ready && collapsed && "sts-sidebar-collapsed",
         )}
       >
         <CommandPalette open={open} onClose={() => setOpen(false)} />
@@ -206,11 +206,11 @@ export function DashboardLayout({
         {sidebarOpen && (
           <>
             <div
-              className="pen-overlay-enter fixed inset-0 z-30 pen-overlay-backdrop lg:hidden"
+              className="sts-overlay-enter fixed inset-0 z-30 sts-overlay-backdrop lg:hidden"
               onClick={() => setSidebarOpen(false)}
               aria-hidden="true"
             />
-            <div className="pen-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden">
+            <div className="sts-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden">
               <Sidebar
                 isDrawer
                 onClose={() => setSidebarOpen(false)}

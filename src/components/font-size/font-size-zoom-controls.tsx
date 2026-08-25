@@ -21,7 +21,7 @@ export function FontSizeZoomControls({ className }: Props) {
   return (
     <div
       className={cn(
-        "flex h-7 shrink-0 overflow-hidden rounded-md border border-pen-card-border bg-pen-surface dark:border-white/10 dark:bg-white/5",
+        "flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-surface dark:border-white/10 dark:bg-white/5",
         className,
       )}
     >
@@ -29,18 +29,18 @@ export function FontSizeZoomControls({ className }: Props) {
         type="button"
         onClick={() => setFontSize(stepFontSize(fontSize, "out"))}
         disabled={!canZoomOut}
-        className="flex size-7 items-center justify-center text-pen-subtle transition-colors hover:text-pen-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Decrease font size"
         title="Decrease font size"
       >
         <ZoomOut className="size-3.5 shrink-0" />
       </button>
-      <span className="w-px self-stretch bg-pen-card-border dark:bg-white/10" />
+      <span className="w-px self-stretch bg-sts-card-border dark:bg-white/10" />
       <button
         type="button"
         onClick={() => setFontSize(stepFontSize(fontSize, "in"))}
         disabled={!canZoomIn}
-        className="flex size-7 items-center justify-center text-pen-subtle transition-colors hover:text-pen-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Increase font size"
         title="Increase font size"
       >

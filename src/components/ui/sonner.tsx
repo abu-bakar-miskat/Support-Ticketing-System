@@ -37,12 +37,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={{
         success: (
-          <ToastIcon bg="bg-pen-green-tint" color="text-pen-green">
+          <ToastIcon bg="bg-sts-green-tint" color="text-sts-green">
             <CircleCheckIcon className="size-4" strokeWidth={2.2} />
           </ToastIcon>
         ),
         info: (
-          <ToastIcon bg="bg-pen-blue-tint" color="text-pen-blue">
+          <ToastIcon bg="bg-sts-blue-tint" color="text-sts-blue">
             <InfoIcon className="size-4" strokeWidth={2.2} />
           </ToastIcon>
         ),
@@ -52,12 +52,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           </ToastIcon>
         ),
         error: (
-          <ToastIcon bg="bg-pen-red-tint" color="text-pen-red">
+          <ToastIcon bg="bg-sts-red-tint" color="text-sts-red">
             <OctagonXIcon className="size-4" strokeWidth={2.2} />
           </ToastIcon>
         ),
         loading: (
-          <ToastIcon bg="bg-pen-blue-tint" color="text-pen-blue">
+          <ToastIcon bg="bg-sts-blue-tint" color="text-sts-blue">
             <Loader2Icon className="size-4 animate-spin" />
           </ToastIcon>
         ),
@@ -66,32 +66,32 @@ const Toaster = ({ ...props }: ToasterProps) => {
         {
           "--width": "420px",
           "--border-radius": "14px",
-          "--normal-bg": "var(--pen-card)",
-          "--normal-text": "var(--pen-foreground)",
-          "--normal-border": "var(--pen-card-border)",
+          "--normal-bg": "var(--sts-card)",
+          "--normal-text": "var(--sts-foreground)",
+          "--normal-border": "var(--sts-card-border)",
           "--font-family": "var(--font-sans)",
         } as React.CSSProperties
       }
       toastOptions={{
         classNames: {
           toast: [
-            "font-sans !rounded-xl !border !border-pen-card-border",
-            "!bg-pen-card backdrop-blur-[var(--pen-glass-blur)] saturate-[var(--pen-glass-saturate)]",
-            "!text-pen-foreground",
+            "font-sans !rounded-xl !border !border-sts-card-border",
+            "!bg-sts-card backdrop-blur-[var(--sts-glass-blur)] saturate-[var(--sts-glass-saturate)]",
+            "!text-sts-foreground",
             "!px-5 !py-4 !gap-3.5 !items-center",
-            "pen-toast-enter",
+            "sts-toast-enter",
           ].join(" "),
-          title: "!text-[14px] !font-semibold !text-pen-foreground !leading-tight",
-          description: "!text-[12.5px] !text-pen-muted !leading-snug",
+          title: "!text-[14px] !font-semibold !text-sts-foreground !leading-tight",
+          description: "!text-[12.5px] !text-sts-muted !leading-snug",
           icon: "!size-[26px]",
           closeButton: [
-            "!border-pen-card-border !bg-pen-surface !text-pen-subtle",
-            "hover:!bg-pen-secondary-bg hover:!text-pen-foreground",
+            "!border-sts-card-border !bg-sts-surface !text-sts-subtle",
+            "hover:!bg-sts-secondary-bg hover:!text-sts-foreground",
           ].join(" "),
           actionButton:
-            "!bg-pen-button !text-pen-button-fg !font-sans !text-xs !rounded-md !font-medium",
+            "!bg-sts-button !text-sts-button-fg !font-sans !text-xs !rounded-md !font-medium",
           cancelButton:
-            "!bg-pen-surface !text-pen-muted !font-sans !text-xs !rounded-md",
+            "!bg-sts-surface !text-sts-muted !font-sans !text-xs !rounded-md",
         },
       }}
       {...props}

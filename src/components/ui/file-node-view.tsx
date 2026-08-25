@@ -48,10 +48,10 @@ export function FileNodeView(props: any) {
 
   return (
     <NodeViewWrapper
-      className={`my-2 w-full ${selected ? "ring-2 ring-pen-id rounded-lg" : ""}`}
+      className={`my-2 w-full ${selected ? "ring-2 ring-sts-id rounded-lg" : ""}`}
       as="div"
     >
-      <div className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card p-3 hover:border-pen-id group">
+      <div className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card p-3 hover:border-sts-id group">
         {/* Left side - File info */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {isPdf ? (
@@ -59,13 +59,13 @@ export function FileNodeView(props: any) {
               <span className="text-xs font-bold text-red-600 dark:text-red-400">PDF</span>
             </div>
           ) : (
-            <div className="flex-shrink-0 rounded bg-pen-surface p-2">
-              <File className="size-5 text-pen-muted" />
+            <div className="flex-shrink-0 rounded bg-sts-surface p-2">
+              <File className="size-5 text-sts-muted" />
             </div>
           )}
           <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-xs font-medium text-pen-foreground truncate">{fileName}</p>
-            <p className="text-xs text-pen-muted">{sizeInKb} KB</p>
+            <p className="text-xs font-medium text-sts-foreground truncate">{fileName}</p>
+            <p className="text-xs text-sts-muted">{sizeInKb} KB</p>
           </div>
         </div>
 
@@ -75,7 +75,7 @@ export function FileNodeView(props: any) {
             type="button"
             onClick={handleDownload}
             disabled={isDownloading}
-            className="p-2 text-pen-blue hover:bg-pen-surface rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 text-sts-blue hover:bg-sts-surface rounded-lg transition-colors disabled:opacity-50"
             title={`Download ${fileName}`}
           >
             {isDownloading ? (
@@ -89,7 +89,7 @@ export function FileNodeView(props: any) {
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="p-2 text-pen-muted hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete file"
           >
             {isDeleting ? (

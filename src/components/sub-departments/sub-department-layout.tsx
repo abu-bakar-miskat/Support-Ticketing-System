@@ -40,8 +40,8 @@ function SubDepartmentNavLink({
       className={cn(
         "flex h-7 items-center gap-[7px] rounded-[5px] px-[9px] font-sans text-[13px] transition-colors",
         active
-          ? "border border-pen-card-border bg-pen-settings-subnav-active font-semibold text-pen-foreground"
-          : "font-normal text-pen-muted hover:text-pen-foreground",
+          ? "border border-sts-card-border bg-sts-settings-subnav-active font-semibold text-sts-foreground"
+          : "font-normal text-sts-muted hover:text-sts-foreground",
       )}
     >
       <span className="truncate">{item.label}</span>
@@ -64,28 +64,28 @@ function SubDepartmentSubNav({
   return (
     <nav
       aria-label="Sub-department"
-      className="hidden w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-pen-card-border bg-pen-settings-subnav px-[18px] pt-[22px] pb-[18px] lg:flex lg:self-stretch"
+      className="hidden w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-sts-card-border bg-sts-settings-subnav px-[18px] pt-[22px] pb-[18px] lg:flex lg:self-stretch"
     >
       <Link
         href="/sub-departments"
-        className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:text-pen-foreground"
+        className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3" />
         Sub-departments
       </Link>
       <div className="h-2" />
-      <p className="truncate font-sans text-base font-semibold text-pen-foreground">
+      <p className="truncate font-sans text-base font-semibold text-sts-foreground">
         {title}
       </p>
       {subtitle && (
-        <p className="truncate font-sans text-[11.5px] text-pen-subtle">{subtitle}</p>
+        <p className="truncate font-sans text-[11.5px] text-sts-subtle">{subtitle}</p>
       )}
       <div className="h-3.5" />
 
       {nav.map((group, groupIndex) => (
         <div key={group.label}>
           {groupIndex > 0 && <div className="h-3" />}
-          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
             {group.label}
           </p>
           <div className="h-[3px]" />
@@ -120,11 +120,11 @@ function SubDepartmentMobileNav({
     allItems.find((item) => isActiveHref(activeHref, item.href)) ?? allItems[0];
 
   return (
-    <div className="flex items-center gap-2 border-b border-pen-card-border bg-pen-settings-subnav px-4 py-3 lg:hidden">
+    <div className="flex items-center gap-2 border-b border-sts-card-border bg-sts-settings-subnav px-4 py-3 lg:hidden">
       <Link
         href="/sub-departments"
         aria-label="Back to sub-departments"
-        className="flex size-9 shrink-0 items-center justify-center rounded-md border border-pen-card-border text-pen-muted hover:text-pen-foreground"
+        className="flex size-9 shrink-0 items-center justify-center rounded-md border border-sts-card-border text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-4" />
       </Link>
@@ -140,7 +140,7 @@ function SubDepartmentMobileNav({
         <SelectContent>
           {nav.map((group) => (
             <SelectGroup key={group.label}>
-              <SelectLabel className="font-sans text-[11.5px] tracking-[1px] text-pen-subtle">
+              <SelectLabel className="font-sans text-[11.5px] tracking-[1px] text-sts-subtle">
                 {title}
               </SelectLabel>
               {group.items.map((item) => (

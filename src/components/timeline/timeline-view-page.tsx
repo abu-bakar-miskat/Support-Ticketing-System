@@ -106,8 +106,8 @@ function renderRowIcon(row: AssigneeRow, isUnassigned: boolean) {
   }
   if (isUnassigned) {
     return (
-      <div className="flex size-7 items-center justify-center rounded-full border border-dashed border-pen-subtle bg-pen-surface">
-        <span className="font-sans text-[9px] text-pen-subtle">?</span>
+      <div className="flex size-7 items-center justify-center rounded-full border border-dashed border-sts-subtle bg-sts-surface">
+        <span className="font-sans text-[9px] text-sts-subtle">?</span>
       </div>
     );
   }
@@ -174,17 +174,17 @@ function TimelineRowCell({
   if (groupMode === "project") {
     return (
       <div
-        className="flex shrink-0 items-center gap-2 overflow-hidden border-b border-pen-card-border/80 px-2.5 transition-colors hover:bg-pen-surface/30"
+        className="flex shrink-0 items-center gap-2 overflow-hidden border-b border-sts-card-border/80 px-2.5 transition-colors hover:bg-sts-surface/30"
         style={{ height: rowH, minHeight: rowH }}
         title={displayName}
       >
         <div className="shrink-0">{renderRowIcon(row, isUnassigned)}</div>
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 font-sans text-[12px] font-semibold leading-snug text-pen-foreground">
+          <p className="line-clamp-2 font-sans text-[12px] font-semibold leading-snug text-sts-foreground">
             {displayName}
           </p>
           {row.subDepartmentLabel && (
-            <p className="mt-0.5 truncate font-sans text-[11px] leading-snug text-pen-subtle">
+            <p className="mt-0.5 truncate font-sans text-[11px] leading-snug text-sts-subtle">
               {row.subDepartmentLabel}
             </p>
           )}
@@ -197,7 +197,7 @@ function TimelineRowCell({
     <>
       <div
         ref={triggerRef}
-        className="flex shrink-0 items-center justify-center border-b border-pen-card-border/80 transition-colors hover:bg-pen-surface/30"
+        className="flex shrink-0 items-center justify-center border-b border-sts-card-border/80 transition-colors hover:bg-sts-surface/30"
         style={{ height: rowH, minHeight: rowH }}
         onMouseEnter={showPanel}
         onMouseLeave={hidePanel}
@@ -217,21 +217,21 @@ function TimelineRowCell({
             width: ASSIGNEE_EXPANDED_WIDTH,
             zIndex: 9999,
           }}
-          className="flex items-center gap-2.5 overflow-hidden border border-pen-card-border bg-pen-card pl-2 pr-3 shadow-pen-card"
+          className="flex items-center gap-2.5 overflow-hidden border border-sts-card-border bg-sts-card pl-2 pr-3 shadow-sts-card"
         >
           <div className="flex w-[28px] shrink-0 items-center justify-center">
             {renderRowIcon(row, isUnassigned)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-sans text-[12.5px] font-semibold leading-tight text-pen-foreground">
+            <p className="truncate font-sans text-[12.5px] font-semibold leading-tight text-sts-foreground">
               {displayName}
             </p>
             {row.subDepartmentLabel && (
-              <p className="truncate font-sans text-[11.5px] leading-tight text-pen-subtle">
+              <p className="truncate font-sans text-[11.5px] leading-tight text-sts-subtle">
                 {row.subDepartmentLabel}
               </p>
             )}
-            <p className="truncate font-sans text-[11.5px] leading-tight text-pen-muted">
+            <p className="truncate font-sans text-[11.5px] leading-tight text-sts-muted">
               {taskLabel}
             </p>
           </div>
@@ -291,7 +291,7 @@ function TimelineBarHoverCard({
         transform: "translate(-50%, -100%)",
         zIndex: 10000,
       }}
-      className="pointer-events-auto w-[min(288px,calc(100vw-24px))] rounded-lg border border-pen-card-border bg-pen-card p-3 shadow-pen-card"
+      className="pointer-events-auto w-[min(288px,calc(100vw-24px))] rounded-lg border border-sts-card-border bg-sts-card p-3 shadow-sts-card"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -302,28 +302,28 @@ function TimelineBarHoverCard({
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="font-mono text-[12px] font-semibold text-pen-id">
+            <span className="font-mono text-[12px] font-semibold text-sts-id">
               {task.humanId}
             </span>
             {task.isSubTicket && task.parentHumanId && (
-              <span className="font-mono text-[10px] text-pen-subtle">
+              <span className="font-mono text-[10px] text-sts-subtle">
                 ↳ {task.parentHumanId}
               </span>
             )}
           </div>
-          <p className="mt-0.5 font-sans text-[13px] font-semibold leading-snug text-pen-foreground">
+          <p className="mt-0.5 font-sans text-[13px] font-semibold leading-snug text-sts-foreground">
             {task.title}
           </p>
         </div>
       </div>
-      <div className="mt-2.5 space-y-1 font-sans text-[11.5px] leading-snug text-pen-muted">
+      <div className="mt-2.5 space-y-1 font-sans text-[11.5px] leading-snug text-sts-muted">
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className="inline-block size-2 shrink-0 rounded-full"
             style={{ backgroundColor: statusColor }}
           />
           <span>{task.status}</span>
-          <span className="text-pen-subtle">·</span>
+          <span className="text-sts-subtle">·</span>
           <span>{capitalizeLabel(task.priority)}</span>
         </div>
         {task.assigneeName ? <p>Assignee: {task.assigneeName}</p> : null}
@@ -481,7 +481,7 @@ function TimelineBar({
         task.isSubTicket ? "border-dashed" : "border-solid",
         canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         dragging
-          ? "z-20 shadow-lg ring-2 ring-pen-blue/40"
+          ? "z-20 shadow-lg ring-2 ring-sts-blue/40"
           : canEdit
             ? "hover:z-10 hover:shadow-md"
             : "opacity-90",
@@ -540,19 +540,19 @@ function TimelineBar({
             style={{ backgroundColor: priorityColor }}
           />
           {task.isSubTicket && task.parentHumanId && !isCompact && (
-            <span className="shrink-0 font-mono text-[9px] font-medium text-pen-subtle">
+            <span className="shrink-0 font-mono text-[9px] font-medium text-sts-subtle">
               ↳{task.parentHumanId}
             </span>
           )}
           {!isCompact && (
-            <span className="truncate font-mono text-[11.5px] font-semibold text-pen-id/80">
+            <span className="truncate font-mono text-[11.5px] font-semibold text-sts-id/80">
               {task.humanId}
             </span>
           )}
           {!isCompact && (
             <span
               className={cn(
-                "min-w-0 flex-1 truncate font-sans font-semibold text-pen-foreground",
+                "min-w-0 flex-1 truncate font-sans font-semibold text-sts-foreground",
                 task.isSubTicket ? "text-[11.5px]" : "text-[12px]",
               )}
             >
@@ -944,18 +944,18 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
   }, [zoom]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-pen-bg">
+    <div className="flex h-full flex-col overflow-hidden bg-sts-bg">
       {/* Header toolbar */}
-      <div className="shrink-0 border-b border-pen-card-border bg-pen-card px-4 py-2.5 sm:px-6 xl:px-8">
+      <div className="shrink-0 border-b border-sts-card-border bg-sts-card px-4 py-2.5 sm:px-6 xl:px-8">
         <PageHeader
           title="Timeline"
           icon={CalendarDays}
-          iconClassName="text-pen-blue"
+          iconClassName="text-sts-blue"
           badge={
-            <span className="inline-flex items-center rounded-full bg-pen-blue-tint px-2.5 py-0.5 font-sans text-[12px] font-semibold leading-none text-pen-id">
+            <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-2.5 py-0.5 font-sans text-[12px] font-semibold leading-none text-sts-id">
               {scheduledTasks.length} scheduled
               {subTicketCount > 0 && (
-                <span className="text-pen-subtle">
+                <span className="text-sts-subtle">
                   {" "}
                   · {subTicketCount} sub
                 </span>
@@ -964,7 +964,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
           }
           titleExtra={
             unscheduledCount > 0 ? (
-              <span className="font-sans text-[12px] leading-none text-pen-subtle">
+              <span className="font-sans text-[12px] leading-none text-sts-subtle">
                 · {unscheduledCount} without dates
               </span>
             ) : undefined
@@ -979,8 +979,8 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors",
                     groupMode === mode
-                      ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                      : "border-pen-card-border bg-pen-card text-pen-foreground hover:border-pen-muted",
+                      ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                      : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
                   )}
                 >
                   {mode === "assignee" ? "By person" : "By project"}
@@ -995,21 +995,21 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 font-sans text-[13px] font-medium transition-colors",
                     activeFilter === f
-                      ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                      : "border-pen-card-border bg-pen-card text-pen-foreground hover:border-pen-muted",
+                      ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                      : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
                   )}
                 >
                   {f === "all" ? "Everyone" : "My tasks"}
                 </button>
               ))}
 
-              <div className="flex items-center overflow-hidden rounded-lg border border-pen-card-border bg-pen-card">
+              <div className="flex items-center overflow-hidden rounded-lg border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => scrollTimelineBy(-dayWidth * 7)}
                   disabled={!canScrollLeft}
                   aria-label="Scroll timeline left"
-                  className="flex size-9 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-40"
+                  className="flex size-9 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -1018,23 +1018,23 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                   onClick={() => scrollTimelineBy(dayWidth * 7)}
                   disabled={!canScrollRight}
                   aria-label="Scroll timeline right"
-                  className="flex size-9 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-40"
+                  className="flex size-9 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
                 >
                   <ChevronRight className="size-4" />
                 </button>
               </div>
 
-              <div className="flex items-center overflow-hidden rounded-lg border border-pen-card-border bg-pen-card">
+              <div className="flex items-center overflow-hidden rounded-lg border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => changeZoom(-1)}
                   disabled={zoom === "quarter"}
                   aria-label="Zoom out"
-                  className="flex size-9 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-40"
+                  className="flex size-9 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
                 >
                   <ZoomOut className="size-4" />
                 </button>
-                <span className="border-x border-pen-card-border px-3 font-sans text-[12.5px] font-semibold capitalize text-pen-foreground">
+                <span className="border-x border-sts-card-border px-3 font-sans text-[12.5px] font-semibold capitalize text-sts-foreground">
                   {zoom}
                 </span>
                 <button
@@ -1042,7 +1042,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                   onClick={() => changeZoom(1)}
                   disabled={zoom === "week"}
                   aria-label="Zoom in"
-                  className="flex size-9 items-center justify-center text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-40"
+                  className="flex size-9 items-center justify-center text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
                 >
                   <ZoomIn className="size-4" />
                 </button>
@@ -1051,7 +1051,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
               <button
                 type="button"
                 onClick={scrollToToday}
-                className="flex h-9 items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-card px-3.5 font-sans text-[13px] font-semibold text-pen-foreground transition-colors hover:border-pen-blue hover:text-pen-id"
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3.5 font-sans text-[13px] font-semibold text-sts-foreground transition-colors hover:border-sts-blue hover:text-sts-id"
               >
                 Today
               </button>
@@ -1063,13 +1063,13 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
       {/* Timeline grid */}
       {scheduledTasks.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-pen-blue-tint">
-            <CalendarDays className="size-7 text-pen-blue" strokeWidth={1.5} />
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-sts-blue-tint">
+            <CalendarDays className="size-7 text-sts-blue" strokeWidth={1.5} />
           </div>
-          <p className="font-sans text-[16px] font-semibold text-pen-foreground">
+          <p className="font-sans text-[16px] font-semibold text-sts-foreground">
             No scheduled tasks yet
           </p>
-          <p className="max-w-sm font-sans text-[14px] text-pen-muted">
+          <p className="max-w-sm font-sans text-[14px] text-sts-muted">
             Add start and due dates on tickets to see them on the timeline,
             grouped by {groupMode === "project" ? "project" : "assignee"}.
           </p>
@@ -1079,12 +1079,12 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
           <div className="relative flex min-h-0 flex-1">
             {/* Fixed assignee column — vertical scroll only, synced with timeline */}
             <div
-              className="flex shrink-0 flex-col overflow-hidden border-r border-pen-card-border bg-pen-card"
+              className="flex shrink-0 flex-col overflow-hidden border-r border-sts-card-border bg-sts-card"
               style={{ width: labelColWidth }}
             >
               <div
                 className={cn(
-                  "flex shrink-0 items-center border-b border-pen-card-border",
+                  "flex shrink-0 items-center border-b border-sts-card-border",
                   groupMode === "project"
                     ? "gap-2 px-2.5"
                     : "justify-center",
@@ -1094,17 +1094,17 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                 {groupMode === "project" ? (
                   <>
                     <FolderKanban
-                      className="size-4 shrink-0 text-pen-subtle"
+                      className="size-4 shrink-0 text-sts-subtle"
                       strokeWidth={1.75}
                       aria-hidden
                     />
-                    <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                    <span className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                       Project
                     </span>
                   </>
                 ) : (
                   <Users
-                    className="size-4 text-pen-subtle"
+                    className="size-4 text-sts-subtle"
                     strokeWidth={1.75}
                     aria-label="Assignee"
                   />
@@ -1148,21 +1148,21 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
               >
                 {/* Date header — sticks to top while scrolling vertically */}
                 <div
-                  className="sticky top-0 z-20 flex border-b border-pen-card-border bg-pen-card/95 backdrop-blur-sm"
+                  className="sticky top-0 z-20 flex border-b border-sts-card-border bg-sts-card/95 backdrop-blur-sm"
                   style={{ height: headerHeight, width: totalWidth }}
                 >
                   {dayHeaders.map((h) => (
                     <div
                       key={h.iso}
                       className={cn(
-                        "relative flex shrink-0 flex-col items-center justify-end border-r border-pen-card-border/60 pb-1",
-                        h.isWeekend && "bg-pen-surface/50 dark:bg-white/[0.02]",
-                        h.isToday && "bg-pen-blue-tint/60",
+                        "relative flex shrink-0 flex-col items-center justify-end border-r border-sts-card-border/60 pb-1",
+                        h.isWeekend && "bg-sts-surface/50 dark:bg-white/[0.02]",
+                        h.isToday && "bg-sts-blue-tint/60",
                       )}
                       style={{ width: dayWidth }}
                     >
                       {h.showMonth && (
-                        <span className="mb-0.5 font-sans text-[9.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+                        <span className="mb-0.5 font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                           {h.monthLabel}
                         </span>
                       )}
@@ -1170,8 +1170,8 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                         className={cn(
                           "font-sans text-[9.5px] uppercase tracking-wide",
                           h.isToday
-                            ? "font-semibold text-pen-blue"
-                            : "text-pen-subtle",
+                            ? "font-semibold text-sts-blue"
+                            : "text-sts-subtle",
                         )}
                       >
                         {h.weekday}
@@ -1180,8 +1180,8 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                         className={cn(
                           "mt-0.5 flex size-6 items-center justify-center rounded-full font-mono text-[11.5px] font-medium",
                           h.isToday
-                            ? "bg-pen-blue text-white dark:text-gray-900"
-                            : "text-pen-foreground",
+                            ? "bg-sts-blue text-white dark:text-gray-900"
+                            : "text-sts-foreground",
                         )}
                       >
                         {h.dayLabel}
@@ -1192,14 +1192,14 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
 
                 {/* Today marker */}
                 <div
-                  className="pointer-events-none absolute z-[15] w-px bg-pen-blue/70"
+                  className="pointer-events-none absolute z-[15] w-px bg-sts-blue/70"
                   style={{
                     left: todayOffset + dayWidth / 2,
                     top: headerHeight,
                     height: bodyHeight - headerHeight,
                   }}
                 >
-                  <div className="absolute top-0 left-1/2 size-2 -translate-x-1/2 rounded-full bg-pen-blue" />
+                  <div className="absolute top-0 left-1/2 size-2 -translate-x-1/2 rounded-full bg-sts-blue" />
                 </div>
 
                 {/* Parent ↔ sub-ticket relation lines */}
@@ -1218,7 +1218,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                           stroke="currentColor"
                           strokeWidth={1.5}
                           strokeLinecap="round"
-                          className="text-pen-subtle/50"
+                          className="text-sts-subtle/50"
                         />
                         {(() => {
                           const child = barPositions.get(link.childId);
@@ -1228,7 +1228,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                               cx={child.centerX}
                               cy={child.topY}
                               r={2.5}
-                              className="fill-pen-subtle/60"
+                              className="fill-sts-subtle/60"
                             />
                           );
                         })()}
@@ -1245,7 +1245,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                   return (
                     <div
                       key={row.id}
-                      className="relative border-b border-pen-card-border/80 transition-colors hover:bg-pen-surface/30"
+                      className="relative border-b border-sts-card-border/80 transition-colors hover:bg-sts-surface/30"
                       style={{
                         width: totalWidth,
                         height: rowH,
@@ -1258,10 +1258,10 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
                           <div
                             key={h.iso}
                             className={cn(
-                              "shrink-0 border-r border-pen-card-border/40",
+                              "shrink-0 border-r border-sts-card-border/40",
                               h.isWeekend &&
-                                "bg-pen-surface/40 dark:bg-white/[0.015]",
-                              h.isToday && "bg-pen-blue/[0.04]",
+                                "bg-sts-surface/40 dark:bg-white/[0.015]",
+                              h.isToday && "bg-sts-blue/[0.04]",
                             )}
                             style={{ width: dayWidth }}
                           />
@@ -1297,22 +1297,22 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
           </div>
 
           {/* Legend footer */}
-          <div className="shrink-0 border-t border-pen-card-border bg-pen-card px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] sm:px-6">
+          <div className="shrink-0 border-t border-sts-card-border bg-sts-card px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] sm:px-6">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface/80 px-2.5 py-1 font-sans text-[11.5px] text-pen-muted">
-                  <span className="block h-3 w-6 rounded-sm bg-pen-blue/20 ring-1 ring-pen-blue/30" />
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface/80 px-2.5 py-1 font-sans text-[11.5px] text-sts-muted">
+                  <span className="block h-3 w-6 rounded-sm bg-sts-blue/20 ring-1 ring-sts-blue/30" />
                   Today
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface/80 px-2.5 py-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface/80 px-2.5 py-1 font-sans text-[11.5px] text-sts-muted">
                   <PriorityDot priority="critical" />
                   Priority on bars
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-pen-card-border bg-pen-surface/50 px-2.5 py-1 font-sans text-[11.5px] text-pen-muted">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-sts-card-border bg-sts-surface/50 px-2.5 py-1 font-sans text-[11.5px] text-sts-muted">
                   Dashed = sub-ticket
                 </span>
               </div>
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 Drag sideways to pan dates · scroll vertically for rows
               </p>
             </div>

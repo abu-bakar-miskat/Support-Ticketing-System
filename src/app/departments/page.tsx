@@ -88,14 +88,22 @@ export default async function DepartmentsPage() {
       by: ["departmentId", "status"],
       where: { tenantId },
       _count: { _all: true },
+      _max: { lastCheckedAt: true },
     });
-    const mailboxByDept = new Map<string, { total: number; active: number; issues: number }>();
+    const mailboxByDept = new Map<
+      string,
+      { total: number; active: number; issues: number; lastCheckedAt: Date | null }
+    >();
     for (const g of mailboxGroups) {
-      const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0 };
+      const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
       const count = g._count._all;
       entry.total += count;
       if (g.status === "ACTIVE") entry.active += count;
       else entry.issues += count; // AUTH_ERROR + UNREACHABLE
+      const checked = g._max.lastCheckedAt;
+      if (checked && (!entry.lastCheckedAt || checked > entry.lastCheckedAt)) {
+        entry.lastCheckedAt = checked;
+      }
       mailboxByDept.set(g.departmentId, entry);
     }
 
@@ -225,8 +233,15 @@ export default async function DepartmentsPage() {
       readTenantBranding(tenantRow?.branding).displayName ?? tenantRow?.name ?? null;
 
     const mailboxUsage = rawDepts.map((d) => {
-      const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0 };
-      return { departmentId: d.id, name: d.name, total: u.total, active: u.active, issues: u.issues };
+      const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
+      return {
+        departmentId: d.id,
+        name: d.name,
+        total: u.total,
+        active: u.active,
+        issues: u.issues,
+        lastCheckedAt: u.lastCheckedAt ? u.lastCheckedAt.toISOString() : null,
+      };
     });
 
     return (

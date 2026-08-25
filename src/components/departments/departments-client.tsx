@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
 import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
-import { SettingsMembersPage, type MemberRow } from "@/components/settings/settings-members-page";
-import { DepartmentsMailboxes, type DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
+import { type MemberRow } from "@/components/settings/settings-members-page";
+import { type DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
 
 type UserOption = { id: string; name: string; email: string; role: string };
 
@@ -81,8 +80,6 @@ export function DepartmentsClient({
   orgStats,
   tenantName,
   tenantId,
-  members,
-  currentUserId,
   mailboxUsage,
 }: {
   departments: DepartmentRow[];
@@ -95,7 +92,6 @@ export function DepartmentsClient({
   mailboxUsage?: DepartmentMailboxUsage[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"departments" | "users" | "mailboxes">("departments");
   const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
 
   async function enterWorkspace(deptId: string) {
@@ -141,55 +137,22 @@ export function DepartmentsClient({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
             <StatCard icon={Users}        label="Teams"             value={orgStats.subDepartmentCount} />
-            <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    onClick={() => setTab("users")} />
-            <StatCard icon={Mail}         label="Mailboxes"         value={mailboxTotal}            onClick={() => setTab("mailboxes")} />
+            <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    href="/departments/users" />
+            <StatCard icon={Mail}         label="Mailboxes"         value={mailboxTotal}            href="/departments/mailboxes" />
             <StatCard icon={FolderKanban} label="Projects"          value={orgStats.projectCount}   href="/projects" />
             <StatCard icon={LayoutList}   label="Open tickets"      value={orgStats.openTickets}    href="/all-tasks" />
             <StatCard icon={AlertCircle}  label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/sub-departments" />
           </div>
-
-          {/* Tabs */}
-          <div className="mt-5 flex items-center gap-1 border-b border-sts-card-border">
-            {([
-              { key: "departments" as const, label: "Departments" },
-              { key: "users" as const, label: `Users${members ? ` (${members.length})` : ""}` },
-              { key: "mailboxes" as const, label: `Mailboxes${mailboxUsage ? ` (${mailboxTotal})` : ""}` },
-            ]).map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "relative -mb-px px-3 py-2.5 font-sans text-[13px] font-medium transition-colors",
-                  tab === t.key
-                    ? "text-sts-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-sts-blue"
-                    : "text-sts-muted hover:text-sts-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
-      {/* ── Department management / Users / Mailboxes ───────────────────────── */}
-      {tab === "users" && members ? (
-        <SettingsMembersPage
-          members={members}
-          isAdmin
-          currentUserId={currentUserId}
-        />
-      ) : tab === "mailboxes" ? (
-        <DepartmentsMailboxes rows={mailboxUsage ?? []} />
-      ) : (
-        <SettingsDepartmentsPage
-          departments={departments}
-          allUsers={allUsers}
-          isAdmin
-          onEnterWorkspace={enterWorkspace}
-        />
-      )}
+      {/* ── Department management ───────────────────────────────────────────── */}
+      <SettingsDepartmentsPage
+        departments={departments}
+        allUsers={allUsers}
+        isAdmin
+        onEnterWorkspace={enterWorkspace}
+      />
     </div>
   );
 }

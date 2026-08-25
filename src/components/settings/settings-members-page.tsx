@@ -626,11 +626,14 @@ export function SettingsMembersPage({
       />
     )}
 
-    <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="sts-text-admin-title">
             Members
+            <span className="ml-2 font-sans text-[13px] font-normal text-sts-muted">
+              ({liveMembers.length})
+            </span>
           </h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Manage roles, teams, status, and availability for everyone in the workspace.

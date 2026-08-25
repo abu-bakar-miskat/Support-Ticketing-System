@@ -1886,6 +1886,9 @@ export function SettingsIntakeFormsPage({
                   </TableHead>
                 )}
                 <TableHead className="h-8 w-[14%]">
+                  <SectionLabel>Sub department</SectionLabel>
+                </TableHead>
+                <TableHead className="h-8 w-[14%]">
                   <SectionLabel>Status</SectionLabel>
                 </TableHead>
                 <TableHead className="h-8 w-[14%]">
@@ -1936,6 +1939,19 @@ export function SettingsIntakeFormsPage({
                         </div>
                       </TableCell>
                     )}
+
+                    {/* Sub department the form is created from */}
+                    <TableCell className="py-0">
+                      <div className="flex h-[56px] items-center">
+                        {form.intakeSubDepartmentName ? (
+                          <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
+                            <span className="truncate">{form.intakeSubDepartmentName}</span>
+                          </span>
+                        ) : (
+                          <span className="font-sans text-[11.5px] text-sts-muted">—</span>
+                        )}
+                      </div>
+                    </TableCell>
 
                     {/* Status toggle */}
                     <TableCell className="py-0">

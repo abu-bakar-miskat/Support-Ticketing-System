@@ -105,11 +105,11 @@ export function PlatformSettingsAdmin({ tenants }: { tenants: TenantOption[] }) 
 
         {tenantId && (
           <div className="mt-8">
-            <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">Feature flags</h2>
-            <div className="mt-3 flex flex-col gap-2 rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card">
+            <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Feature flags</h2>
+            <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card">
               {PLATFORM_FEATURE_KEYS.map((key) => (
                 <div key={key} className="flex items-center justify-between gap-3 py-1">
-                  <span className="font-sans text-[13px] text-pen-foreground">{FEATURE_LABELS[key]}</span>
+                  <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
                   <Switch
                     checked={flags ? flags[key] : true}
                     disabled={loading || !flags}

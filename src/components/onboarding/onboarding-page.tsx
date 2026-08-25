@@ -17,7 +17,7 @@ function SignOutButton() {
     <button
       type="button"
       onClick={() => void handleSignOut()}
-      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] text-pen-muted hover:bg-pen-surface hover:text-pen-foreground transition-colors"
+      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
     >
       <LogOut className="size-3.5" />
       Sign out
@@ -101,14 +101,14 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
     return (
       <div className="flex min-h-svh items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-pen-green/10">
-            <Check className="size-8 text-pen-green" strokeWidth={2} />
+          <div className="flex size-16 items-center justify-center rounded-full bg-sts-green/10">
+            <Check className="size-8 text-sts-green" strokeWidth={2} />
           </div>
-          <p className="pen-text-modal-title">
+          <p className="sts-text-modal-title">
             You&apos;ve been approved!
           </p>
-          <p className="font-sans text-[13px] text-pen-muted">Redirecting to your workspace…</p>
-          <Loader2 className="size-5 animate-spin text-pen-muted" />
+          <p className="font-sans text-[13px] text-sts-muted">Redirecting to your workspace…</p>
+          <Loader2 className="size-5 animate-spin text-sts-muted" />
         </div>
       </div>
     )
@@ -120,7 +120,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
   return (
     <div className="flex min-h-svh flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-pen-card-border bg-pen-card/80 px-5 backdrop-blur-md sm:px-8">
+      <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-between border-b border-sts-card-border bg-sts-card/80 px-5 backdrop-blur-md sm:px-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/support-logo-horizontal.png" alt="Support Ticketing System" height={28} className="h-7 w-auto object-contain dark:hidden" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -131,7 +131,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
       {/* Gradient backdrop */}
       <div
         className="pointer-events-none fixed inset-0 -z-10"
-        style={{ background: "var(--pen-bg-gradient, var(--pen-bg))" }}
+        style={{ background: "var(--sts-bg-gradient, var(--sts-bg))" }}
         aria-hidden
       />
 
@@ -141,14 +141,14 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
         <div className="flex flex-col gap-1.5">
           <div className="mb-2 flex items-center gap-2.5">
             <UserAvatar name={userName} size={30} />
-            <span className="font-sans text-[12.5px] text-pen-muted">
-              Signed in as <span className="font-semibold text-pen-foreground">{userName}</span>
+            <span className="font-sans text-[12.5px] text-sts-muted">
+              Signed in as <span className="font-semibold text-sts-foreground">{userName}</span>
             </span>
           </div>
-          <h1 className="pen-text-admin-title leading-snug">
+          <h1 className="sts-text-admin-title leading-snug">
             Join a department to get started
           </h1>
-          <p className="font-sans text-[13px] leading-relaxed text-pen-muted">
+          <p className="font-sans text-[13px] leading-relaxed text-sts-muted">
             Request access below. Once an admin or manager approves,
             you&apos;ll be redirected automatically — no refresh needed.
           </p>
@@ -156,13 +156,13 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
 
         {/* Status banners */}
         {pendingCount > 0 && (
-          <div className="flex items-start gap-3 rounded-xl border border-pen-blue/25 bg-pen-blue-tint px-4 py-3">
-            <Clock className="mt-[1px] size-4 shrink-0 text-pen-id" />
+          <div className="flex items-start gap-3 rounded-xl border border-sts-blue/25 bg-sts-blue-tint px-4 py-3">
+            <Clock className="mt-[1px] size-4 shrink-0 text-sts-id" />
             <div className="min-w-0">
-              <p className="font-sans text-[12.5px] font-semibold text-pen-id">
+              <p className="font-sans text-[12.5px] font-semibold text-sts-id">
                 {pendingCount === 1 ? "1 request pending" : `${pendingCount} requests pending`}
               </p>
-              <p className="font-sans text-[11.5px] text-pen-id/70">
+              <p className="font-sans text-[11.5px] text-sts-id/70">
                 This page will redirect automatically once your request is approved.
               </p>
             </div>
@@ -170,13 +170,13 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
         )}
 
         {rejectedCount > 0 && (
-          <div className="flex items-start gap-3 rounded-xl border border-pen-red/20 bg-pen-red-tint px-4 py-3">
-            <XCircle className="mt-[1px] size-4 shrink-0 text-pen-red" />
+          <div className="flex items-start gap-3 rounded-xl border border-sts-red/20 bg-sts-red-tint px-4 py-3">
+            <XCircle className="mt-[1px] size-4 shrink-0 text-sts-red" />
             <div className="min-w-0">
-              <p className="font-sans text-[12.5px] font-semibold text-pen-red">
+              <p className="font-sans text-[12.5px] font-semibold text-sts-red">
                 {rejectedCount === 1 ? "1 request was not approved" : `${rejectedCount} requests were not approved`}
               </p>
-              <p className="font-sans text-[11.5px] text-pen-red/70">
+              <p className="font-sans text-[11.5px] text-sts-red/70">
                 You can send a new request to any department below.
               </p>
             </div>
@@ -185,11 +185,11 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
 
         {/* Department cards */}
         {departments.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-pen-card-border bg-pen-card py-16 text-center">
-            <Building2 className="size-8 text-pen-subtle" strokeWidth={1.2} />
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-sts-card-border bg-sts-card py-16 text-center">
+            <Building2 className="size-8 text-sts-subtle" strokeWidth={1.2} />
             <div>
-              <p className="font-sans text-[13px] font-medium text-pen-muted">No departments yet</p>
-              <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[13px] font-medium text-sts-muted">No departments yet</p>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
                 Contact your workspace admin to create one.
               </p>
             </div>
@@ -205,23 +205,23 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
                 <div
                   key={dept.id}
                   className={cn(
-                    "group flex items-center gap-4 rounded-2xl border bg-pen-card px-5 py-4 transition-all",
-                    isPending  && "border-pen-blue/20 bg-pen-blue-tint/20",
-                    isRejected && "border-pen-red/15 bg-pen-red-tint/20",
-                    !isPending && !isRejected && "border-pen-card-border hover:border-pen-id/40 hover:shadow-sm",
+                    "group flex items-center gap-4 rounded-2xl border bg-sts-card px-5 py-4 transition-all",
+                    isPending  && "border-sts-blue/20 bg-sts-blue-tint/20",
+                    isRejected && "border-sts-red/15 bg-sts-red-tint/20",
+                    !isPending && !isRejected && "border-sts-card-border hover:border-sts-id/40 hover:shadow-sm",
                   )}
                 >
                   {/* Icon */}
                   <div className={cn(
                     "flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors",
-                    isPending  && "border-pen-blue/20 bg-pen-blue-tint",
-                    isRejected && "border-pen-red/20 bg-pen-red-tint",
-                    !isPending && !isRejected && "border-pen-card-border bg-pen-surface group-hover:border-pen-id/20",
+                    isPending  && "border-sts-blue/20 bg-sts-blue-tint",
+                    isRejected && "border-sts-red/20 bg-sts-red-tint",
+                    !isPending && !isRejected && "border-sts-card-border bg-sts-surface group-hover:border-sts-id/20",
                   )}>
                     <Building2
                       className={cn(
                         "size-[18px]",
-                        isPending  ? "text-pen-id"  : isRejected ? "text-pen-red/60" : "text-pen-muted",
+                        isPending  ? "text-sts-id"  : isRejected ? "text-sts-red/60" : "text-sts-muted",
                       )}
                       strokeWidth={1.5}
                     />
@@ -229,18 +229,18 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
 
                   {/* Info */}
                   <div className="min-w-0 flex-1">
-                    <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+                    <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                       {dept.name}
                     </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                      <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-subtle">
+                      <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-subtle">
                         <Users className="size-3" />
                         {dept.subDepartmentCount} {dept.subDepartmentCount === 1 ? "team" : "teams"}
                       </span>
                       {dept.managers.length > 0 && (
                         <>
-                          <span className="text-pen-subtle/40">·</span>
-                          <span className="font-sans text-[11.5px] text-pen-subtle">
+                          <span className="text-sts-subtle/40">·</span>
+                          <span className="font-sans text-[11.5px] text-sts-subtle">
                             {dept.managers.join(", ")}
                           </span>
                         </>
@@ -250,13 +250,13 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
 
                   {/* Action */}
                   {isPending ? (
-                    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-pen-blue/20 bg-pen-blue-tint px-3 py-1.5 font-sans text-[11.5px] font-semibold text-pen-id">
+                    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-sts-blue/20 bg-sts-blue-tint px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id">
                       <Clock className="size-3" />
                       Pending
                     </span>
                   ) : isRejected ? (
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <span className="flex items-center gap-1 font-sans text-[11.5px] font-semibold text-pen-red/80">
+                      <span className="flex items-center gap-1 font-sans text-[11.5px] font-semibold text-sts-red/80">
                         <XCircle className="size-3" />
                         Not approved
                       </span>
@@ -264,7 +264,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
                         type="button"
                         onClick={() => requestToJoin(dept.id)}
                         disabled={isRequesting || approved}
-                        className="flex items-center gap-1.5 rounded-lg border border-pen-card-border px-3 py-1.5 font-sans text-[11.5px] font-semibold text-pen-foreground transition-colors hover:border-pen-id/40 hover:bg-pen-surface disabled:opacity-60"
+                        className="flex items-center gap-1.5 rounded-lg border border-sts-card-border px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-foreground transition-colors hover:border-sts-id/40 hover:bg-sts-surface disabled:opacity-60"
                       >
                         {isRequesting
                           ? <Loader2 className="size-3 animate-spin" />
@@ -277,7 +277,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
                       type="button"
                       onClick={() => requestToJoin(dept.id)}
                       disabled={isRequesting || approved}
-                      className="flex shrink-0 items-center gap-1.5 rounded-lg bg-pen-blue px-4 py-2 font-sans text-[11.5px] font-medium text-white transition-colors hover:bg-pen-blue/90 disabled:opacity-60 dark:text-gray-900"
+                      className="flex shrink-0 items-center gap-1.5 rounded-lg bg-sts-blue px-4 py-2 font-sans text-[11.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60 dark:text-gray-900"
                     >
                       {isRequesting
                         ? <Loader2 className="size-3.5 animate-spin" />
@@ -291,7 +291,7 @@ export function OnboardingPage({ departments, pendingDeptIds, userId, userName }
           </div>
         )}
 
-        <p className="text-center font-sans text-[11.5px] text-pen-subtle">
+        <p className="text-center font-sans text-[11.5px] text-sts-subtle">
           Need help? Contact your workspace administrator.
         </p>
       </div>

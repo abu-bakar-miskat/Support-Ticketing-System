@@ -44,7 +44,7 @@ export function UnifiedReplyComposer({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="inline-flex w-fit rounded-md border border-pen-card-border p-0.5">
+      <div className="inline-flex w-fit rounded-md border border-sts-card-border p-0.5">
         {(
           [
             { key: "note" as const, label: "Internal Note" },
@@ -58,8 +58,8 @@ export function UnifiedReplyComposer({
             className={cn(
               "rounded-[5px] px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
               mode === opt.key
-                ? "bg-pen-blue text-white"
-                : "text-pen-muted hover:text-pen-foreground",
+                ? "bg-sts-blue text-white"
+                : "text-sts-muted hover:text-sts-foreground",
             )}
           >
             {opt.label}

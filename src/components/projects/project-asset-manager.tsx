@@ -152,7 +152,7 @@ function AssetDownloadButton({
         downloadAsset(node);
       }}
       className={cn(
-        "flex items-center gap-1 rounded-lg bg-pen-surface px-2.5 py-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground",
+        "flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground",
         className,
       )}
       title={`Download ${node.name}`}
@@ -226,18 +226,18 @@ function PreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 pen-overlay-backdrop" />
+      <div className="absolute inset-0 sts-overlay-backdrop" />
       <div
-        className="relative z-10 flex max-h-[calc(90vh/var(--pen-font-scale,1))] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card shadow-2xl"
+        className="relative z-10 flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-pen-card-border px-4 py-3">
+        <div className="flex shrink-0 items-center gap-3 border-b border-sts-card-border px-4 py-3">
           {(() => {
             const Icon = getNodeIcon(node.type);
             return <Icon className="size-4 shrink-0" style={{ color: getNodeColor(node.type) }} />;
           })()}
-          <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-semibold text-pen-foreground">
+          <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-semibold text-sts-foreground">
             {node.name}
           </span>
           <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ function PreviewModal({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="flex items-center gap-1 rounded-lg bg-pen-surface px-2.5 py-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+                className="flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <Edit3 className="size-3" /> Edit
               </button>
@@ -254,7 +254,7 @@ function PreviewModal({
               <button
                 type="button"
                 onClick={save}
-                className="flex items-center gap-1 rounded-lg bg-pen-blue px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900"
+                className="flex items-center gap-1 rounded-lg bg-sts-blue px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900"
               >
                 <Check className="size-3" /> Save
               </button>
@@ -266,7 +266,7 @@ function PreviewModal({
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-lg bg-pen-surface px-2.5 py-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+                  className="flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
                 >
                   <ExternalLink className="size-3" /> Open
                 </Link>
@@ -278,7 +278,7 @@ function PreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+              className="flex size-7 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -290,7 +290,7 @@ function PreviewModal({
           {node.type === "image" && node.url && (
             <div className="flex items-center justify-center p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={node.url} alt={node.name} className="max-h-[calc(70vh/var(--pen-font-scale,1))] rounded-lg object-contain" />
+              <img src={node.url} alt={node.name} className="max-h-[calc(70vh/var(--sts-font-scale,1))] rounded-lg object-contain" />
             </div>
           )}
           {node.type === "video" && (
@@ -318,12 +318,12 @@ function PreviewModal({
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  className="h-80 w-full resize-y rounded-lg border border-pen-card-border bg-pen-surface p-3 font-mono text-[12.5px] text-pen-foreground outline-none focus:border-pen-id dark:bg-white/5"
+                  className="h-80 w-full resize-y rounded-lg border border-sts-card-border bg-sts-surface p-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-id dark:bg-white/5"
                   placeholder="# Title&#10;&#10;Write markdown here…"
                 />
               ) : (
                 <div
-                  className="prose prose-sm max-w-none font-sans text-[13px] text-pen-foreground [&_a]:text-pen-id [&_a]:underline [&_code]:rounded [&_code]:bg-pen-surface [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[11.5px] [&_h1]:mb-2 [&_h1]:text-[17px] [&_h1]:font-bold [&_h2]:mb-1.5 [&_h2]:text-[15px] [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:text-[13.5px] [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_ul]:mb-2"
+                  className="prose prose-sm max-w-none font-sans text-[13px] text-sts-foreground [&_a]:text-sts-id [&_a]:underline [&_code]:rounded [&_code]:bg-sts-surface [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[11.5px] [&_h1]:mb-2 [&_h1]:text-[17px] [&_h1]:font-bold [&_h2]:mb-1.5 [&_h2]:text-[15px] [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:text-[13.5px] [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_ul]:mb-2"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(node.content ?? "") }}
                 />
               )}
@@ -335,18 +335,18 @@ function PreviewModal({
                 const Icon = getNodeIcon(node.type);
                 return <Icon className="size-16 opacity-30" style={{ color: getNodeColor(node.type) }} />;
               })()}
-              <p className="font-sans text-[13px] text-pen-muted">{node.name}</p>
+              <p className="font-sans text-[13px] text-sts-muted">{node.name}</p>
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <AssetDownloadButton
                   node={node}
                   label="Download"
-                  className="bg-pen-blue px-4 py-2 font-medium text-white hover:text-white dark:text-gray-900"
+                  className="bg-sts-blue px-4 py-2 font-medium text-white hover:text-white dark:text-gray-900"
                 />
                 <Link
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-4 py-2 font-sans text-[12.5px] font-medium text-pen-foreground transition-colors hover:border-pen-id/40"
+                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
                 >
                   <ExternalLink className="size-4" /> Open file
                 </Link>
@@ -355,19 +355,19 @@ function PreviewModal({
           )}
           {node.type === "link" && node.url && (
             <div className="flex flex-col items-center gap-4 p-8">
-              <Link2 className="size-12 opacity-30 text-pen-subtle" />
-              <p className="font-sans text-[13px] text-pen-muted break-all">{node.url}</p>
+              <Link2 className="size-12 opacity-30 text-sts-subtle" />
+              <p className="font-sans text-[13px] text-sts-muted break-all">{node.url}</p>
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <AssetDownloadButton
                   node={node}
                   label="Download"
-                  className="bg-pen-blue px-4 py-2 font-medium text-white hover:text-white dark:text-gray-900"
+                  className="bg-sts-blue px-4 py-2 font-medium text-white hover:text-white dark:text-gray-900"
                 />
                 <Link
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-surface px-4 py-2 font-sans text-[12.5px] font-medium text-pen-foreground transition-colors hover:border-pen-id/40"
+                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
                 >
                   <ExternalLink className="size-4" /> Open link
                 </Link>
@@ -462,17 +462,17 @@ function AddPanel({
   const TitleIcon = icons[mode!];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-pen-card-border bg-pen-card shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-pen-card-border bg-pen-surface/60 px-4 py-3 dark:bg-white/5">
-        <TitleIcon className="size-4 shrink-0 text-pen-id" />
-        <p className="flex-1 font-sans text-[13px] font-semibold text-pen-foreground">
+      <div className="flex items-center gap-3 border-b border-sts-card-border bg-sts-surface/60 px-4 py-3 dark:bg-white/5">
+        <TitleIcon className="size-4 shrink-0 text-sts-id" />
+        <p className="flex-1 font-sans text-[13px] font-semibold text-sts-foreground">
           {titles[mode!]}
         </p>
         <button
           type="button"
           onClick={onClose}
-          className="flex size-6 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-card-border hover:text-pen-foreground"
+          className="flex size-6 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
         >
           <X className="size-3.5" />
         </button>
@@ -481,7 +481,7 @@ function AddPanel({
       {/* Body */}
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
+          <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
             {mode === "folder" ? "Folder name" : mode === "markdown" ? "Document name" : "Name"}
           </label>
           <input
@@ -491,12 +491,12 @@ function AddPanel({
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
             placeholder={placeholders[mode!]}
-            className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id dark:bg-white/5"
+            className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id dark:bg-white/5"
           />
         </div>
         {mode === "folder" && (
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[11.5px] font-medium text-pen-subtle">Color</label>
+            <label className="font-sans text-[11.5px] font-medium text-sts-subtle">Color</label>
             <div className="flex flex-wrap gap-2">
               {FOLDER_COLORS.map((c) => (
                 <button
@@ -505,7 +505,7 @@ function AddPanel({
                   onClick={() => setFolderColor(c)}
                   className={cn(
                     "size-6 rounded-full transition-transform hover:scale-110",
-                    folderColor === c && "ring-2 ring-offset-2 ring-offset-pen-card scale-110",
+                    folderColor === c && "ring-2 ring-offset-2 ring-offset-sts-card scale-110",
                   )}
                   style={{ backgroundColor: c, ["--tw-ring-color" as string]: c }}
                 />
@@ -515,7 +515,7 @@ function AddPanel({
         )}
         {(mode === "link" || mode === "video") && (
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
+            <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
               {mode === "video" ? "Video URL" : "URL"}
             </label>
             <input
@@ -523,21 +523,21 @@ function AddPanel({
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder={mode === "video" ? "https://youtube.com/watch?v=… or Vimeo" : "https://…"}
-              className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id dark:bg-white/5"
+              className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id dark:bg-white/5"
             />
           </div>
         )}
         {mode === "markdown" && (
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
-              Content <span className="normal-case text-pen-subtle/60">(optional — you can edit after creating)</span>
+            <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
+              Content <span className="normal-case text-sts-subtle/60">(optional — you can edit after creating)</span>
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={5}
               placeholder="# Title&#10;&#10;Write markdown here…"
-              className="resize-none rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2.5 font-mono text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id dark:bg-white/5"
+              className="resize-none rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2.5 font-mono text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id dark:bg-white/5"
             />
           </div>
         )}
@@ -545,7 +545,7 @@ function AddPanel({
         {/* Footer actions */}
         <div className="flex items-center gap-2 pt-1">
           {mode === "link" && addedCount > 0 && (
-            <p className="font-sans text-[11.5px] text-pen-green">
+            <p className="font-sans text-[11.5px] text-sts-green">
               {addedCount} link{addedCount === 1 ? "" : "s"} added
             </p>
           )}
@@ -553,7 +553,7 @@ function AddPanel({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-lg border border-pen-card-border px-4 font-sans text-[12.5px] text-pen-muted transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+              className="h-9 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               {mode === "link" && addedCount > 0 ? "Done" : "Cancel"}
             </button>
@@ -561,7 +561,7 @@ function AddPanel({
               type="button"
               onClick={submit}
               disabled={!name.trim() || ((mode === "link" || mode === "video") && !url.trim())}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
             >
               <Plus className="size-3.5" />
               {mode === "folder" ? "Create folder" : mode === "markdown" ? "Create doc" : mode === "link" ? "Add link" : "Add"}
@@ -709,17 +709,17 @@ export function ProjectAssetManager({
           <button
             type="button"
             onClick={() => setCurrentFolderId(null)}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
           >
             <Home className="size-3.5" />
           </button>
           {breadcrumb.map((b) => (
             <span key={b.id} className="flex items-center gap-1">
-              <ChevronRight className="size-3 shrink-0 text-pen-subtle" />
+              <ChevronRight className="size-3 shrink-0 text-sts-subtle" />
               <button
                 type="button"
                 onClick={() => setCurrentFolderId(b.id)}
-                className="max-w-[120px] truncate rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+                className="max-w-[120px] truncate rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 {b.name}
               </button>
@@ -736,8 +736,8 @@ export function ProjectAssetManager({
               className={cn(
                 "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "folder"
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground dark:bg-white/5",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
               )}
             >
               <FolderPlus className="size-3.5" /> Folder
@@ -746,7 +746,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => !uploading && fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground disabled:opacity-50 dark:bg-white/5"
+              className="flex items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50 dark:bg-white/5"
             >
               {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
               Upload
@@ -757,8 +757,8 @@ export function ProjectAssetManager({
               className={cn(
                 "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "video"
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground dark:bg-white/5",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
               )}
             >
               <Video className="size-3.5" /> Video
@@ -769,8 +769,8 @@ export function ProjectAssetManager({
               className={cn(
                 "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "markdown"
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground dark:bg-white/5",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
               )}
             >
               <Code className="size-3.5" /> Markdown
@@ -781,8 +781,8 @@ export function ProjectAssetManager({
               className={cn(
                 "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "link"
-                  ? "border-pen-id bg-pen-blue-tint font-semibold text-pen-id"
-                  : "border-pen-card-border bg-pen-surface text-pen-muted hover:text-pen-foreground dark:bg-white/5",
+                  ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
+                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
               )}
             >
               <Link2 className="size-3.5" /> Link
@@ -823,30 +823,30 @@ export function ProjectAssetManager({
         className={cn(
           "relative flex min-h-0 flex-1 flex-col rounded-xl border-2 transition-colors",
           isDragOver
-            ? "border-pen-blue bg-pen-blue/5"
-            : "border-dashed border-pen-card-border bg-pen-surface/30 dark:bg-white/3",
+            ? "border-sts-blue bg-sts-blue/5"
+            : "border-dashed border-sts-card-border bg-sts-surface/30 dark:bg-white/3",
         )}
       >
         {/* Upload overlay */}
         {uploading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[10px] bg-pen-surface/80 backdrop-blur-sm dark:bg-pen-bg/70">
-            <div className="flex size-14 items-center justify-center rounded-2xl border border-pen-card-border bg-pen-card shadow-lg">
-              <Loader2 className="size-7 animate-spin text-pen-id" />
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[10px] bg-sts-surface/80 backdrop-blur-sm dark:bg-sts-bg/70">
+            <div className="flex size-14 items-center justify-center rounded-2xl border border-sts-card-border bg-sts-card shadow-lg">
+              <Loader2 className="size-7 animate-spin text-sts-id" />
             </div>
-            <p className="font-sans text-[13px] font-semibold text-pen-foreground">Uploading…</p>
+            <p className="font-sans text-[13px] font-semibold text-sts-foreground">Uploading…</p>
           </div>
         )}
         {folders.length === 0 && files.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3">
             {canAdd ? (
               <>
-                <Upload className="size-10 text-pen-subtle/40" />
-                <p className="font-sans text-[13px] text-pen-subtle">
+                <Upload className="size-10 text-sts-subtle/40" />
+                <p className="font-sans text-[13px] text-sts-subtle">
                   Drop files here or use the buttons above
                 </p>
               </>
             ) : (
-              <p className="font-sans text-[13px] text-pen-subtle">No files in this folder.</p>
+              <p className="font-sans text-[13px] text-sts-subtle">No files in this folder.</p>
             )}
           </div>
         ) : (
@@ -854,7 +854,7 @@ export function ProjectAssetManager({
             {/* Folders first */}
             {folders.length > 0 && (
               <div className="mb-3">
-                <p className="mb-1.5 pen-text-label text-pen-subtle/70">
+                <p className="mb-1.5 sts-text-label text-sts-subtle/70">
                   Folders
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -879,7 +879,7 @@ export function ProjectAssetManager({
             {/* Files */}
             {files.length > 0 && (
               <div>
-                <p className="mb-1.5 pen-text-label text-pen-subtle/70">
+                <p className="mb-1.5 sts-text-label text-sts-subtle/70">
                   Files
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -954,7 +954,7 @@ function FolderCard({
 
   return (
     <div
-      className="group relative flex flex-col items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card p-4 transition-colors"
+      className="group relative flex flex-col items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4 transition-colors"
       style={{ ["--folder-color" as string]: node.color ?? "#f97316" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${node.color ?? "#f97316"}80`)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
@@ -969,11 +969,11 @@ function FolderCard({
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={onCommitRename}
           onKeyDown={(e) => e.key === "Enter" && onCommitRename()}
-          className="w-full rounded border border-pen-id bg-pen-surface px-1 py-0.5 text-center font-sans text-[11.5px] text-pen-foreground outline-none"
+          className="w-full rounded border border-sts-id bg-sts-surface px-1 py-0.5 text-center font-sans text-[11.5px] text-sts-foreground outline-none"
         />
       ) : (
         <span
-          className="w-full truncate text-center font-sans text-[11.5px] text-pen-foreground"
+          className="w-full truncate text-center font-sans text-[11.5px] text-sts-foreground"
           onDoubleClick={canDelete ? onStartRename : undefined}
           title={node.name}
         >
@@ -1023,7 +1023,7 @@ function FileCard({
   const isRenaming = renamingId === node.id;
 
   return (
-    <div className="group relative flex flex-col items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card p-4 transition-colors hover:border-pen-id/40">
+    <div className="group relative flex flex-col items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4 transition-colors hover:border-sts-id/40">
       <button type="button" onClick={onOpen} className="flex flex-col items-center gap-1.5 w-full">
         {node.type === "image" && node.url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -1043,11 +1043,11 @@ function FileCard({
           onChange={(e) => setRenameValue(e.target.value)}
           onBlur={onCommitRename}
           onKeyDown={(e) => e.key === "Enter" && onCommitRename()}
-          className="w-full rounded border border-pen-id bg-pen-surface px-1 py-0.5 text-center font-sans text-[11.5px] text-pen-foreground outline-none"
+          className="w-full rounded border border-sts-id bg-sts-surface px-1 py-0.5 text-center font-sans text-[11.5px] text-sts-foreground outline-none"
         />
       ) : (
         <span
-          className="w-full truncate text-center font-sans text-[11.5px] text-pen-foreground"
+          className="w-full truncate text-center font-sans text-[11.5px] text-sts-foreground"
           onDoubleClick={canDelete ? onStartRename : undefined}
           title={node.name}
         >
@@ -1063,7 +1063,7 @@ function FileCard({
                 e.stopPropagation();
                 downloadAsset(node);
               }}
-              className="flex size-5 items-center justify-center rounded bg-pen-blue/15 text-pen-blue hover:bg-pen-blue/25"
+              className="flex size-5 items-center justify-center rounded bg-sts-blue/15 text-sts-blue hover:bg-sts-blue/25"
               title={`Download ${node.name}`}
             >
               <Download className="size-3" />

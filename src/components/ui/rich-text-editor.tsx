@@ -210,7 +210,7 @@ export function RichTextEditor({
         link: {
           openOnClick: false,
           HTMLAttributes: {
-            class: "text-pen-id underline underline-offset-2",
+            class: "text-sts-id underline underline-offset-2",
           },
         },
       }),
@@ -372,8 +372,8 @@ export function RichTextEditor({
     <div
       ref={containerRef}
       className={cn(
-        "relative flex min-h-[100px] flex-col rounded-lg border bg-pen-surface transition-colors",
-        focused ? "border-pen-id" : "border-pen-card-border",
+        "relative flex min-h-[100px] flex-col rounded-lg border bg-sts-surface transition-colors",
+        focused ? "border-sts-id" : "border-sts-card-border",
         className,
       )}
       data-uploading={uploading || undefined}
@@ -386,7 +386,7 @@ export function RichTextEditor({
       onContextMenu={handleContextMenu}
     >
       {editable && (
-        <div className="flex flex-wrap items-center gap-0.5 overflow-visible border-b border-pen-card-border bg-pen-card px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-0.5 overflow-visible border-b border-sts-card-border bg-sts-card px-2 py-1.5">
           <ToolBtn
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive("bold")}
@@ -422,7 +422,7 @@ export function RichTextEditor({
           >
             <Heading3 className="size-3.5" />
           </ToolBtn>
-          <div className="mx-1 h-4 w-px bg-pen-card-border" />
+          <div className="mx-1 h-4 w-px bg-sts-card-border" />
           <ToolBtn
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive("bulletList")}
@@ -445,9 +445,9 @@ export function RichTextEditor({
             <Code className="size-3.5" />
           </ToolBtn>
           <TextColorPopover editor={editor} />
-          <div className="mx-1 h-4 w-px bg-pen-card-border" />
+          <div className="mx-1 h-4 w-px bg-sts-card-border" />
           <InsertTablePopover editor={editor} />
-          <div className="mx-1 h-4 w-px bg-pen-card-border" />
+          <div className="mx-1 h-4 w-px bg-sts-card-border" />
           <ToolBtn
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
@@ -464,7 +464,7 @@ export function RichTextEditor({
           </ToolBtn>
           {showAttachButton && (
             <>
-              <div className="mx-1 h-4 w-px bg-pen-card-border" />
+              <div className="mx-1 h-4 w-px bg-sts-card-border" />
               <ToolBtn
                 onClick={openFilePicker}
                 disabled={uploading}
@@ -499,18 +499,18 @@ export function RichTextEditor({
       )}
 
       {uploads.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-pen-card-border bg-pen-surface/40 px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-sts-card-border bg-sts-surface/40 px-2 py-1.5">
           {uploads.map((u) => (
             <span
               key={u.id}
               className={cn(
                 "inline-flex max-w-[280px] items-center gap-1.5 rounded-full border px-2 py-0.5 font-sans text-[11px]",
                 u.status === "uploading" &&
-                  "border-pen-card-border bg-pen-surface text-pen-muted",
+                  "border-sts-card-border bg-sts-surface text-sts-muted",
                 u.status === "done" &&
-                  "border-pen-green/40 bg-pen-green-tint text-pen-green",
+                  "border-sts-green/40 bg-sts-green-tint text-sts-green",
                 u.status === "error" &&
-                  "border-pen-red/40 bg-pen-red-tint text-pen-red",
+                  "border-sts-red/40 bg-sts-red-tint text-sts-red",
               )}
             >
               {u.status === "uploading" ? (
@@ -567,7 +567,7 @@ export function RichTextEditor({
         <EditorContent
           editor={editor}
           className={cn(
-            "rich-text min-h-0 flex-1 overflow-x-hidden overflow-y-auto font-sans text-[13px] leading-relaxed text-pen-foreground",
+            "rich-text min-h-0 flex-1 overflow-x-hidden overflow-y-auto font-sans text-[13px] leading-relaxed text-sts-foreground",
             contentClassName ?? "max-h-[480px]",
           )}
         />
@@ -612,8 +612,8 @@ function ToolBtn({
       className={cn(
         "flex size-6 items-center justify-center rounded transition-colors",
         active
-          ? "bg-pen-blue-tint font-semibold text-pen-id"
-          : "text-pen-muted hover:bg-pen-card hover:text-pen-foreground",
+          ? "bg-sts-blue-tint font-semibold text-sts-id"
+          : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
         disabled && "cursor-not-allowed opacity-30",
       )}
     >
@@ -642,7 +642,7 @@ function transformFileNodesHtml(html: string): string {
 
     const container = doc.createElement("div");
     container.className =
-      "flex items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-3 py-2 hover:border-pen-id my-2 text-xs";
+      "flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-3 py-2 hover:border-sts-id my-2 text-xs";
 
     const infoDiv = doc.createElement("div");
     infoDiv.className = "flex items-center gap-2 flex-1 min-w-0";
@@ -650,18 +650,18 @@ function transformFileNodesHtml(html: string): string {
     const iconDiv = doc.createElement("div");
     iconDiv.className = isPdf
       ? "flex-shrink-0 rounded w-8 h-8 bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-400 font-bold text-xs"
-      : "flex-shrink-0 rounded bg-pen-surface p-1 text-pen-muted text-lg";
+      : "flex-shrink-0 rounded bg-sts-surface p-1 text-sts-muted text-lg";
     iconDiv.textContent = isPdf ? "PDF" : "📎";
 
     const textDiv = doc.createElement("div");
     textDiv.className = "flex flex-col gap-0.5 min-w-0";
 
     const nameSpan = doc.createElement("p");
-    nameSpan.className = "text-xs font-medium text-pen-foreground truncate";
+    nameSpan.className = "text-xs font-medium text-sts-foreground truncate";
     nameSpan.textContent = fileName;
 
     const infoSpan = doc.createElement("p");
-    infoSpan.className = "text-xs text-pen-muted";
+    infoSpan.className = "text-xs text-sts-muted";
     infoSpan.textContent = "Download";
 
     textDiv.appendChild(nameSpan);
@@ -676,7 +676,7 @@ function transformFileNodesHtml(html: string): string {
     downloadLink.target = "_blank";
     downloadLink.rel = "noopener noreferrer";
     downloadLink.className =
-      "flex-shrink-0 text-pen-blue hover:bg-pen-surface p-1.5 rounded-lg transition-colors";
+      "flex-shrink-0 text-sts-blue hover:bg-sts-surface p-1.5 rounded-lg transition-colors";
     downloadLink.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
     </svg>`;
@@ -699,7 +699,7 @@ function transformFileNodesHtml(html: string): string {
 
     const container = doc.createElement("div");
     container.className =
-      "my-2 overflow-hidden rounded-lg border border-pen-card-border bg-black";
+      "my-2 overflow-hidden rounded-lg border border-sts-card-border bg-black";
 
     const video = doc.createElement("video");
     video.setAttribute("controls", "");
@@ -737,7 +737,7 @@ export function RichTextDisplay({
   return (
     <div
       className={cn(
-        "rich-text font-sans text-[12.5px] leading-relaxed text-pen-foreground",
+        "rich-text font-sans text-[12.5px] leading-relaxed text-sts-foreground",
         className,
       )}
       dangerouslySetInnerHTML={{ __html: transformedHtml ?? html }}

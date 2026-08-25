@@ -325,7 +325,7 @@ export function layout({
   const logo = branding?.logoUrl || LOGO_URL;
   const normalizedBodyHtml = normalizeTemplateBodyHtml(bodyHtml, branding);
   const year = new Date().getFullYear();
-  const footer = (footerOverride || branding?.footerText || `© ${year} PEN Global. This is an automated message.`).replace(
+  const footer = (footerOverride || branding?.footerText || `© ${year} Support Ticketing System. This is an automated message.`).replace(
     /\{year\}/g,
     String(year),
   );

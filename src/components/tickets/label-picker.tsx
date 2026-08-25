@@ -56,7 +56,7 @@ export function LabelPicker({ current, onChange, allowedLabels }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        className="flex h-[26px] items-center gap-1 rounded-md border border-dashed border-pen-card-border px-2 font-sans text-[11.5px] text-pen-subtle transition-colors hover:border-pen-blue/40 hover:text-pen-blue"
+        className="flex h-[26px] items-center gap-1 rounded-md border border-dashed border-sts-card-border px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-blue/40 hover:text-sts-blue"
       >
         <Tag className="size-3 shrink-0" />
         Add label
@@ -64,25 +64,25 @@ export function LabelPicker({ current, onChange, allowedLabels }: Props) {
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-[220px] gap-0 rounded-[9px] border border-pen-card-border bg-pen-card p-0 shadow-lg"
+        className="w-[220px] gap-0 rounded-[9px] border border-sts-card-border bg-sts-card p-0 shadow-lg"
       >
-        <div className="border-b border-pen-card-border px-2.5 py-2">
+        <div className="border-b border-sts-card-border px-2.5 py-2">
           <input
             autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search labels…"
-            className="w-full bg-transparent font-sans text-[12.5px] text-pen-foreground placeholder:text-pen-subtle outline-none"
+            className="w-full bg-transparent font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none"
           />
         </div>
         <div className="max-h-[200px] overflow-y-auto py-1">
           {loading ? (
-            <div className="flex items-center gap-2 px-3 py-2 font-sans text-[11.5px] text-pen-subtle">
+            <div className="flex items-center gap-2 px-3 py-2 font-sans text-[11.5px] text-sts-subtle">
               <LoadingSpinner className="size-3.5 shrink-0" />
               Loading labels…
             </div>
           ) : filtered.length === 0 ? (
-            <p className="px-3 py-2 font-sans text-[11.5px] text-pen-subtle">
+            <p className="px-3 py-2 font-sans text-[11.5px] text-sts-subtle">
               No labels found
             </p>
           ) : (
@@ -93,16 +93,16 @@ export function LabelPicker({ current, onChange, allowedLabels }: Props) {
                   key={opt.id}
                   type="button"
                   onClick={() => toggle(opt.name)}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 hover:bg-pen-surface"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 hover:bg-sts-surface"
                 >
                   <span
                     className="size-[10px] shrink-0 rounded-full"
                     style={{ backgroundColor: opt.color }}
                   />
-                  <span className="flex-1 text-left font-sans text-[12.5px] text-pen-foreground">
+                  <span className="flex-1 text-left font-sans text-[12.5px] text-sts-foreground">
                     {opt.name}
                   </span>
-                  {active && <Check className="size-3 shrink-0 text-pen-blue" />}
+                  {active && <Check className="size-3 shrink-0 text-sts-blue" />}
                 </button>
               );
             })

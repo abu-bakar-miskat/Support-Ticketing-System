@@ -16,7 +16,7 @@ const PRIORITY_TO_UI: Record<string, string> = {
   Low: "low",
 };
 
-const AVATAR_CLASSES = ["bg-pen-blue", "bg-pen-purple", "bg-pen-green", "bg-pen-red"];
+const AVATAR_CLASSES = ["bg-sts-blue", "bg-sts-purple", "bg-sts-green", "bg-sts-red"];
 
 function entryDuration(
   e: { startedAt: Date; endedAt: Date | null; durationSecs: number | null },

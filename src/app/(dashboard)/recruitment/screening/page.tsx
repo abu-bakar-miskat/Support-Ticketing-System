@@ -176,7 +176,7 @@ export default async function ScreeningQueuePage({
           </Link>
         </div>
 
-        <div className="pen-glass-panel border-border mt-4 overflow-hidden rounded-2xl border">
+        <div className="sts-glass-panel border-border mt-4 overflow-hidden rounded-2xl border">
           <Table className="text-[15px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -212,7 +212,7 @@ export default async function ScreeningQueuePage({
                 const uploaded = s.answers.filter((a) => a.objectKey).length
                 const status = STATUS_STYLE[s.status] ?? STATUS_STYLE.sent
                 return (
-                  <TableRow key={s.id} className="pen-row-interactive">
+                  <TableRow key={s.id} className="sts-row-interactive">
                     <TableCell className="py-4 pl-5">
                       <Link href={`/recruitment/screening/${s.id}`} className="flex items-center gap-3">
                         <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold">

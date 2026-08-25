@@ -170,20 +170,20 @@ function NotificationCard({
       className={cn(
         "group relative flex items-start gap-3.5 rounded-xl border px-4 py-3.5 transition-all hover:shadow-sm",
         item.unread
-          ? "border-pen-card-border bg-pen-card hover:border-pen-id/20"
-          : "border-transparent bg-pen-surface/30 hover:bg-pen-surface/60",
+          ? "border-sts-card-border bg-sts-card hover:border-sts-id/20"
+          : "border-transparent bg-sts-surface/30 hover:bg-sts-surface/60",
       )}
     >
       {/* Unread accent bar */}
       {item.unread && (
-        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-pen-blue" />
+        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-sts-blue" />
       )}
 
       {/* Avatar + type badge */}
       <div className="relative mt-0.5 shrink-0">
         <UserAvatar name={item.actor} avatarUrl={item.actorAvatarUrl} size={32} meta={{}} />
         <span
-          className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-pen-card"
+          className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-sts-card"
           style={{ backgroundColor: meta.bg }}
         >
           <Icon className="size-[8px] text-white" strokeWidth={2.5} />
@@ -197,28 +197,28 @@ function NotificationCard({
           <span
             className={cn(
               "shrink-0 font-sans text-[12.5px] font-semibold leading-none",
-              item.unread ? "text-pen-foreground" : "text-pen-muted",
+              item.unread ? "text-sts-foreground" : "text-sts-muted",
             )}
           >
             {item.actor}
           </span>
-          <span className="shrink-0 font-sans text-[11.5px] leading-none text-pen-muted">
+          <span className="shrink-0 font-sans text-[11.5px] leading-none text-sts-muted">
             {item.action}
           </span>
-          <span className="ml-auto shrink-0 font-sans text-[11px] leading-none text-pen-subtle">
+          <span className="ml-auto shrink-0 font-sans text-[11px] leading-none text-sts-subtle">
             {item.time}
           </span>
         </div>
 
         {/* Row 2: ticket id + title */}
         <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 rounded bg-pen-surface px-1.5 py-px font-mono text-[10.5px] font-semibold text-pen-id">
+          <span className="shrink-0 rounded bg-sts-surface px-1.5 py-px font-mono text-[10.5px] font-semibold text-sts-id">
             {detail.ticketHumanId}
           </span>
           <span
             className={cn(
               "min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium leading-none",
-              item.unread ? "text-pen-foreground" : "text-pen-muted/80",
+              item.unread ? "text-sts-foreground" : "text-sts-muted/80",
             )}
           >
             {detail.title}
@@ -227,7 +227,7 @@ function NotificationCard({
 
         {/* Row 3: status + priority + comment preview */}
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-pen-surface px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-muted">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-muted">
             <span className="size-[5px] rounded-full bg-current opacity-50" />
             {detail.status}
           </span>
@@ -238,10 +238,10 @@ function NotificationCard({
             {detail.priority}
           </span>
           {detail.comment && (
-            <span className="min-w-0 flex-1 truncate font-sans text-[11px] text-pen-subtle">
-              <span className="mr-1 text-pen-subtle/50">"</span>
+            <span className="min-w-0 flex-1 truncate font-sans text-[11px] text-sts-subtle">
+              <span className="mr-1 text-sts-subtle/50">"</span>
               {detail.comment.body}
-              <span className="ml-1 text-pen-subtle/50">"</span>
+              <span className="ml-1 text-sts-subtle/50">"</span>
             </span>
           )}
         </div>
@@ -257,12 +257,12 @@ function NotificationCard({
               onMarkDone(item.id);
             }}
             title="Mark as read"
-            className="flex size-6 items-center justify-center rounded-md border border-pen-card-border text-pen-subtle transition-all hover:border-pen-blue hover:bg-pen-blue-tint hover:text-pen-blue"
+            className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
           >
             <Check className="size-3" strokeWidth={2.5} />
           </button>
         )}
-        <span className="flex size-6 items-center justify-center rounded-md border border-pen-card-border text-pen-subtle transition-colors group-hover:border-pen-id/30 group-hover:text-pen-id">
+        <span className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
           <ArrowRight className="size-3" strokeWidth={2} />
         </span>
       </div>
@@ -275,11 +275,11 @@ function NotificationCard({
 function GroupHeader({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex items-center gap-2.5 py-1">
-      <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.8px] text-pen-subtle">
+      <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.8px] text-sts-subtle">
         {label}
       </span>
-      <span className="font-sans text-[11px] text-pen-subtle/60">({count})</span>
-      <div className="h-px flex-1 bg-pen-card-border/50" />
+      <span className="font-sans text-[11px] text-sts-subtle/60">({count})</span>
+      <div className="h-px flex-1 bg-sts-card-border/50" />
     </div>
   );
 }
@@ -300,8 +300,8 @@ function JoinRequestCard({
       className={cn(
         "group relative flex w-full items-start gap-3.5 rounded-xl border px-4 py-3.5 text-left transition-all hover:shadow-sm",
         item.unread
-          ? "border-pen-card-border bg-pen-card hover:border-pen-id/20"
-          : "border-transparent bg-pen-surface/30 hover:bg-pen-surface/60",
+          ? "border-sts-card-border bg-sts-card hover:border-sts-id/20"
+          : "border-transparent bg-sts-surface/30 hover:bg-sts-surface/60",
       )}
     >
       {item.unread && (
@@ -309,22 +309,22 @@ function JoinRequestCard({
       )}
       <div className="relative mt-0.5 shrink-0">
         <UserAvatar name={item.actor} avatarUrl={item.actorAvatarUrl} size={32} />
-        <span className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-pen-card bg-[#059669]">
+        <span className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-sts-card bg-[#059669]">
           <Users className="size-[8px] text-white" strokeWidth={2.5} />
         </span>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex min-w-0 items-baseline gap-1.5">
-          <span className="shrink-0 font-sans text-[12.5px] font-semibold text-pen-foreground">
+          <span className="shrink-0 font-sans text-[12.5px] font-semibold text-sts-foreground">
             {item.actor}
           </span>
-          <span className="shrink-0 font-sans text-[11.5px] text-pen-muted">
+          <span className="shrink-0 font-sans text-[11.5px] text-sts-muted">
             wants to join
           </span>
-          <span className="shrink-0 font-sans text-[11.5px] font-semibold text-pen-foreground">
+          <span className="shrink-0 font-sans text-[11.5px] font-semibold text-sts-foreground">
             {item.subDepartmentName}
           </span>
-          <span className="ml-auto shrink-0 font-sans text-[11px] text-pen-subtle">
+          <span className="ml-auto shrink-0 font-sans text-[11px] text-sts-subtle">
             {item.time}
           </span>
         </div>
@@ -346,7 +346,7 @@ function JoinRequestCard({
           )}
         </div>
       </div>
-      <span className="flex size-6 shrink-0 items-center justify-center self-center rounded-md border border-pen-card-border text-pen-subtle transition-colors group-hover:border-pen-id/30 group-hover:text-pen-id">
+      <span className="flex size-6 shrink-0 items-center justify-center self-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
         <ArrowRight className="size-3" strokeWidth={2} />
       </span>
     </button>
@@ -468,11 +468,11 @@ export function InboxPage({
         className="mb-5"
         title="Notifications"
         icon={Bell}
-        iconClassName="text-pen-blue"
+        iconClassName="text-sts-blue"
         description="Mentions, assignments, comments, and team updates"
         badge={
           unreadCount > 0 ? (
-            <span className="rounded-full bg-pen-blue px-2 py-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
+            <span className="rounded-full bg-sts-blue px-2 py-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
               {unreadCount} new
             </span>
           ) : undefined
@@ -482,7 +482,7 @@ export function InboxPage({
             <button
               type="button"
               onClick={markAllRead}
-              className="flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-card px-3 py-2 font-sans text-[11.5px] font-medium text-pen-muted transition-colors hover:border-pen-id/30 hover:text-pen-foreground"
+              className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-2 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground"
             >
               <CheckCheck className="size-3.5" />
               Mark all read
@@ -493,8 +493,8 @@ export function InboxPage({
 
       {/* Tabs */}
       <div className="mb-5 flex items-center gap-2">
-        <Filter className="size-3.5 shrink-0 text-pen-subtle" />
-        <div className="flex gap-0.5 self-start rounded-lg border border-pen-card-border bg-pen-surface p-0.5">
+        <Filter className="size-3.5 shrink-0 text-sts-subtle" />
+        <div className="flex gap-0.5 self-start rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const tabCount =
@@ -516,8 +516,8 @@ export function InboxPage({
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
                   activeTab === tab.id
-                    ? "bg-pen-blue text-white shadow-sm dark:text-gray-900"
-                    : "text-pen-muted hover:text-pen-foreground",
+                    ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
+                    : "text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 <Icon className="size-3.5 shrink-0" strokeWidth={1.8} />
@@ -528,7 +528,7 @@ export function InboxPage({
                       "rounded-full px-1.5 py-px font-sans text-[10px] font-semibold",
                       activeTab === tab.id
                         ? "bg-white/25 text-white dark:text-gray-900"
-                        : "bg-pen-blue/10 text-pen-blue",
+                        : "bg-sts-blue/10 text-sts-blue",
                     )}
                   >
                     {tabCount}
@@ -543,14 +543,14 @@ export function InboxPage({
       {/* Feed */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="flex size-12 items-center justify-center rounded-xl border border-pen-card-border bg-pen-card">
-            <Inbox className="size-5 text-pen-subtle" strokeWidth={1.2} />
+          <div className="flex size-12 items-center justify-center rounded-xl border border-sts-card-border bg-sts-card">
+            <Inbox className="size-5 text-sts-subtle" strokeWidth={1.2} />
           </div>
           <div>
-            <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+            <p className="font-sans text-[13px] font-semibold text-sts-foreground">
               All caught up
             </p>
-            <p className="mt-0.5 font-sans text-[12px] text-pen-muted">
+            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
               No notifications match this filter.
             </p>
           </div>

@@ -37,19 +37,19 @@ export function GlobalTimerIndicator() {
       className={cn(
         "flex h-7 max-w-[220px] items-center gap-1.5 rounded-md border px-2",
         "transition-colors sm:max-w-[260px]",
-        "border-pen-green/35 bg-pen-green/10 hover:border-pen-green/50 hover:bg-pen-green/15",
+        "border-sts-green/35 bg-sts-green/10 hover:border-sts-green/50 hover:bg-sts-green/15",
       )}
     >
       <span className="relative flex size-2 shrink-0">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-pen-green opacity-50" />
-        <span className="relative inline-flex size-2 rounded-full bg-pen-green" />
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-sts-green opacity-50" />
+        <span className="relative inline-flex size-2 rounded-full bg-sts-green" />
       </span>
       {ticketHumanId && (
-        <span className="truncate font-mono text-[11px] font-semibold text-pen-green">
+        <span className="truncate font-mono text-[11px] font-semibold text-sts-green">
           {ticketHumanId}
         </span>
       )}
-      <span className="font-mono text-[11.5px] font-medium tabular-nums text-pen-green">
+      <span className="font-mono text-[11.5px] font-medium tabular-nums text-sts-green">
         {formatElapsed(elapsedSecs)}
       </span>
     </Link>

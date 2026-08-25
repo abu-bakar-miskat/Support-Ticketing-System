@@ -104,10 +104,10 @@ const ROLE_OPTIONS_MANAGER = [
   { value: "agent", label: "Agent" },
 ];
 const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-pen-blue/10 text-pen-blue",
-  manager: "bg-pen-purple/10 text-pen-purple",
-  sub_manager: "bg-pen-green/10 text-pen-green",
-  agent: "bg-pen-surface text-pen-subtle",
+  admin: "bg-sts-blue/10 text-sts-blue",
+  manager: "bg-sts-purple/10 text-sts-purple",
+  sub_manager: "bg-sts-green/10 text-sts-green",
+  agent: "bg-sts-surface text-sts-subtle",
 };
 
 // ── Edit Access Modal ────────────────────────────────────────────────────────
@@ -174,27 +174,27 @@ function EditAccessModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-pen-foreground">Edit access — {grant.user.name}</p>
-          <button type="button" onClick={onClose}><X className="size-4 text-pen-muted" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Edit access — {grant.user.name}</p>
+          <button type="button" onClick={onClose}><X className="size-4 text-sts-muted" /></button>
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-pen-subtle" />
+            <Loader2 className="size-5 animate-spin text-sts-subtle" />
           </div>
         ) : (
           <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
             <div>
-              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Access duration</label>
-              <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
+              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
+              <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
                 <button
                   type="button"
                   onClick={() => setPermanent(true)}
                   className={cn(
                     "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                    permanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                    permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   Permanent
@@ -203,8 +203,8 @@ function EditAccessModal({
                   type="button"
                   onClick={() => setPermanent(false)}
                   className={cn(
-                    "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[12px] font-medium transition-colors",
-                    !permanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                    "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
+                    !permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                   )}
                 >
                   Set expiry
@@ -215,7 +215,7 @@ function EditAccessModal({
                   type="date"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
-                  className="mt-2 h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+                  className="mt-2 h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               )}
             </div>
@@ -228,18 +228,18 @@ function EditAccessModal({
               onToggleProject={toggleProject}
             />
             <div>
-              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-muted">Reason (optional)</label>
+              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Reason (optional)</label>
               <input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
               />
             </div>
           </div>
         )}
-        <div className="flex justify-end gap-2 border-t border-pen-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12.5px] text-pen-muted hover:bg-pen-surface">Cancel</button>
-          <button type="button" disabled={!canSubmit || saving || loading} onClick={submit} className="h-8 rounded-lg bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+        <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
+          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
+          <button type="button" disabled={!canSubmit || saving || loading} onClick={submit} className="h-8 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
@@ -266,9 +266,9 @@ function Section({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Icon className="size-4 text-pen-muted" />
-        <h2 className="font-sans text-[15px] font-semibold text-pen-foreground">
-          {title} <span className="font-normal text-pen-subtle">({count})</span>
+        <Icon className="size-4 text-sts-muted" />
+        <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+          {title} <span className="font-normal text-sts-subtle">({count})</span>
         </h2>
         <span className="flex-1" />
         {action}
@@ -280,7 +280,7 @@ function Section({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-muted uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-muted uppercase">
       {children}
     </span>
   );
@@ -430,18 +430,18 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-6 py-8 sm:px-10 lg:px-12">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-pen-blue/10">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
           <DepartmentIconVisual
             name={data.name}
             id={data.id}
             isHub={data.isHub}
             size="lg"
-            className="text-pen-blue"
+            className="text-sts-blue"
           />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="pen-text-admin-title">{data.name}</h1>
+            <h1 className="sts-text-admin-title">{data.name}</h1>
             {data.isHub && (
               <span className="inline-flex items-center rounded-full bg-violet-100 px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
                 Hub
@@ -449,13 +449,13 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1 font-sans text-[12.5px] text-pen-muted">
+            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} team{data.subDepartmentCount !== 1 ? "s" : ""}
             </span>
-            <span className="flex items-center gap-1 font-sans text-[12.5px] text-pen-muted">
+            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
             </span>
-            <span className="flex items-center gap-1 font-sans text-[12.5px] text-pen-muted">
+            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <Users className="size-3.5 shrink-0" /> {data.memberCount} member{data.memberCount !== 1 ? "s" : ""}
             </span>
           </div>
@@ -469,7 +469,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         count={managers.length}
         action={<UserPickerDropdown label="Assign manager" users={managerCandidates} excludeIds={managerIds} onSelect={assignManager} />}
       >
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[480px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -483,21 +483,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={3} className="py-0">
                     <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">No managers assigned yet</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">No managers assigned yet</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 managers.map((m) => (
-                  <TableRow key={m.id} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+                  <TableRow key={m.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                     <TableCell className="py-0">
                       <div className="flex h-[54px] items-center gap-2.5">
                         <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={28} />
-                        <span className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">{m.name}</span>
+                        <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
                       </div>
                     </TableCell>
                     <TableCell className="py-0">
-                      <span className="font-sans text-[11.5px] text-pen-subtle">{m.email}</span>
+                      <span className="font-sans text-[11.5px] text-sts-subtle">{m.email}</span>
                     </TableCell>
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-0.5">
@@ -505,7 +505,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           type="button"
                           title="Configure availability"
                           onClick={() => setConfigMember(toConfigTarget(m))}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <Settings2 className="size-3.5" />
                         </button>
@@ -513,7 +513,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           type="button"
                           onClick={() => removeManager(m.userId)}
                           title="Remove manager"
-                          className="rounded-md border border-pen-card-border p-1.5 text-pen-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                         >
                           <X className="size-3.5" />
                         </button>
@@ -539,7 +539,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               onClick={() => setShowInviteModal(true)}
               disabled={data.availableSubDepartments.length === 0}
               title={data.availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border px-3 font-sans text-[11.5px] font-medium text-pen-muted hover:border-pen-blue/40 hover:text-pen-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3" /> Invite by email
             </button>
@@ -547,7 +547,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </div>
         }
       >
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -563,7 +563,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={5} className="py-0">
                     <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">No members yet</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">No members yet</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -572,15 +572,15 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                   const role = currentRole(m);
                   const subDepartmentId = currentSubDepartmentId(m);
                   return (
-                    <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+                    <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                       <TableCell className="py-0">
                         <div className="flex h-[54px] items-center gap-2.5">
                           <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={28} />
-                          <span className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">{m.name}</span>
+                          <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-0">
-                        <span className="font-sans text-[11.5px] text-pen-muted">{m.email}</span>
+                        <span className="font-sans text-[11.5px] text-sts-muted">{m.email}</span>
                       </TableCell>
                       <TableCell className="py-0">
                         <RoleDropdown
@@ -604,7 +604,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             title="Configure availability"
                             onClick={() => setConfigMember(toConfigTarget(m))}
-                            className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                           >
                             <Settings2 className="size-3.5" />
                           </button>
@@ -612,7 +612,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             onClick={() => setConfirmRemoveMember(m)}
                             title="Remove from department"
-                            className="rounded-md border border-pen-card-border p-1.5 text-pen-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                            className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                           >
                             <X className="size-3.5" />
                           </button>
@@ -630,7 +630,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
       {/* Pending invites */}
       {pendingInvites.length > 0 && (
         <Section icon={Clock} title="Pending invites" count={pendingInvites.length}>
-          <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+          <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
             <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -643,15 +643,15 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               </TableHeader>
               <TableBody>
                 {pendingInvites.map((inv) => (
-                  <TableRow key={inv.id} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+                  <TableRow key={inv.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                     <TableCell className="py-0">
                       <div className="flex h-[54px] flex-col justify-center">
-                        <span className="font-sans text-[12.5px] font-semibold text-pen-foreground">{inv.email}</span>
-                        <span className="font-sans text-[11px] text-pen-subtle">Invited by {inv.inviter.name}</span>
+                        <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">{inv.email}</span>
+                        <span className="font-sans text-[11px] text-sts-subtle">Invited by {inv.inviter.name}</span>
                       </div>
                     </TableCell>
                     <TableCell className="py-0">
-                      <span className="font-sans text-[11.5px] text-pen-muted">{inv.subDepartment.name}</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">{inv.subDepartment.name}</span>
                     </TableCell>
                     <TableCell className="py-0">
                       <span className={cn("inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize", ROLE_COLORS[inv.role] ?? ROLE_COLORS.staff)}>
@@ -659,7 +659,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       </span>
                     </TableCell>
                     <TableCell className="py-0">
-                      <span className="font-sans text-[11.5px] text-pen-muted">
+                      <span className="font-sans text-[11.5px] text-sts-muted">
                         {new Date(inv.expiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                     </TableCell>
@@ -671,7 +671,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           await revokeDepartmentInvite(data.id, inv.id).catch(() => null);
                           setPendingInvites((prev) => prev.filter((p) => p.id !== inv.id));
                         }}
-                        className="rounded-md border border-pen-card-border p-1.5 text-pen-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                       >
                         <X className="size-3.5" />
                       </button>
@@ -693,13 +693,13 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           <button
             type="button"
             onClick={() => setShowGrantModal(true)}
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-pen-card-border px-3 font-sans text-[11.5px] font-medium text-pen-muted hover:border-pen-blue/40 hover:text-pen-blue transition-colors"
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
           >
             <Plus className="size-3" /> Grant access
           </button>
         }
       >
-        <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -716,7 +716,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={6} className="py-0">
                     <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-pen-muted">No cross-department access grants</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">No cross-department access grants</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -724,21 +724,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 accessGrants.map((g) => {
                   const expired = !!g.expiresAt && new Date(g.expiresAt) < new Date();
                   return (
-                    <TableRow key={g.id} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+                    <TableRow key={g.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                       <TableCell className="py-0">
                         <div className="flex h-[54px] items-center gap-2.5">
                           <UserAvatar name={g.user.name} avatarUrl={g.user.avatarUrl ?? null} size={28} />
-                          <span className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">{g.user.name}</span>
+                          <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{g.user.name}</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-0">
-                        <span className="font-sans text-[11.5px] text-pen-muted">{g.user.email}</span>
+                        <span className="font-sans text-[11.5px] text-sts-muted">{g.user.email}</span>
                       </TableCell>
                       <TableCell className="py-0">
                         <span
                           className={cn(
                             "inline-flex rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium",
-                            g.fullAccess ? "bg-pen-blue/10 text-pen-blue" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                            g.fullAccess ? "bg-sts-blue/10 text-sts-blue" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
                           )}
                         >
                           {g.fullAccess ? "Full access" : "Limited"}
@@ -754,14 +754,14 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                         )}
                       </TableCell>
                       <TableCell className="py-0">
-                        <span className="block max-w-[160px] truncate font-sans text-[11.5px] text-pen-muted">{g.reason ?? "No reason"}</span>
+                        <span className="block max-w-[160px] truncate font-sans text-[11.5px] text-sts-muted">{g.reason ?? "No reason"}</span>
                       </TableCell>
                       <TableCell className="py-0 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button type="button" onClick={() => setEditingGrant(g)} title="Edit access" className="font-sans text-[11.5px] font-medium text-pen-id hover:underline">
+                          <button type="button" onClick={() => setEditingGrant(g)} title="Edit access" className="font-sans text-[11.5px] font-medium text-sts-id hover:underline">
                             Edit
                           </button>
-                          <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="rounded-md border border-pen-card-border p-1.5 text-pen-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
+                          <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
                             <X className="size-3.5" />
                           </button>
                         </div>
@@ -851,7 +851,7 @@ function RoleDropdown({
         disabled={saving}
         className={cn(
           "inline-flex h-[26px] items-center gap-1.5 rounded-full pl-2.5 pr-2 font-sans text-[11.5px] font-medium capitalize outline-none transition-opacity disabled:opacity-60",
-          ROLE_COLORS[role] ?? "bg-pen-surface text-pen-subtle",
+          ROLE_COLORS[role] ?? "bg-sts-surface text-sts-subtle",
         )}
       >
         {role}
@@ -860,19 +860,19 @@ function RoleDropdown({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-auto min-w-[110px] gap-0 rounded-lg border border-pen-card-border bg-pen-bg p-1 shadow-lg"
+        className="w-auto min-w-[110px] gap-0 rounded-lg border border-sts-card-border bg-sts-bg p-1 shadow-lg"
       >
         {options.map((o) => (
           <button
             key={o.value}
             type="button"
             onClick={() => { onChange(o.value); setOpen(false); }}
-            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", role === o.value && "font-semibold")}
+            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", role === o.value && "font-semibold")}
           >
-            <span className={cn("inline-flex rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium", ROLE_COLORS[o.value] ?? "bg-pen-surface text-pen-subtle")}>
+            <span className={cn("inline-flex rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium", ROLE_COLORS[o.value] ?? "bg-sts-surface text-sts-subtle")}>
               {o.label}
             </span>
-            {role === o.value && <Check className="ml-auto size-3 text-pen-id" />}
+            {role === o.value && <Check className="ml-auto size-3 text-sts-id" />}
           </button>
         ))}
       </PopoverContent>
@@ -897,7 +897,7 @@ function SubDepartmentDropdown({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         disabled={saving}
-        className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface pl-2.5 pr-2 font-sans text-[11.5px] text-pen-muted outline-none transition-opacity disabled:opacity-60 hover:border-pen-blue/50 hover:text-pen-foreground"
+        className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
       >
         <span className="max-w-[120px] truncate">{current}</span>
         {saving ? <Loader2 className="size-3 animate-spin opacity-70" /> : <ChevronDown className="size-3 opacity-60" />}
@@ -905,23 +905,23 @@ function SubDepartmentDropdown({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-auto min-w-[150px] gap-0 rounded-lg border border-pen-card-border bg-pen-bg p-1 shadow-lg"
+        className="w-auto min-w-[150px] gap-0 rounded-lg border border-sts-card-border bg-sts-bg p-1 shadow-lg"
       >
         <button
           type="button"
           onClick={() => { onChange(""); setOpen(false); }}
-          className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", !subDepartmentId && "font-semibold")}
+          className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", !subDepartmentId && "font-semibold")}
         >
-          <span className="inline-flex rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-pen-subtle">No team</span>
+          <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-subtle">No team</span>
         </button>
         {subDepartments.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => { onChange(t.id); setOpen(false); }}
-            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-pen-surface", subDepartmentId === t.id && "font-semibold")}
+            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", subDepartmentId === t.id && "font-semibold")}
           >
-            <span className="inline-flex rounded-full bg-pen-blue/10 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-blue">{t.name}</span>
+            <span className="inline-flex rounded-full bg-sts-blue/10 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-blue">{t.name}</span>
           </button>
         ))}
       </PopoverContent>

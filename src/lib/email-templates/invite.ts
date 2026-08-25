@@ -100,7 +100,7 @@ export function renderInvite({
   const heading = "You're invited to join a department";
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
-    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on PEN Platform as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>
+    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>
     ${messageHtml}
     ${infoHtml}
     ${button({ href: url, label: "Accept invitation", branding })}
@@ -111,7 +111,7 @@ export function renderInvite({
   const textParts = [
     `Hello,`,
     "",
-    `${inviterName} has invited you to join ${departmentName} on PEN Platform as ${role} on the ${subDepartmentName} team.`,
+    `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} team.`,
   ];
   if (messageText) {
     textParts.push("", messageText);

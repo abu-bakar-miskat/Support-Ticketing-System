@@ -80,7 +80,7 @@ describe("PATCH /api/tickets/[id]", () => {
       id: "ticket-1",
       ticketNumber: 3,
       subDepartment: { prefix: "DEV", name: "Dev" },
-      project: { name: "PEN Platform" },
+      project: { name: "Support Ticketing System" },
       assignee: { id: "user-3", name: "Sara", email: "sara@pen.com" },
     } as never)
 
@@ -109,7 +109,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
       subDepartment: { prefix: "DEV", name: "Dev" },
-      project: { name: "PEN Platform" },
+      project: { name: "Support Ticketing System" },
       assignee: { id: sameAssigneeId, name: "Same", email: "same@pen.com" },
     } as never)
 
@@ -124,7 +124,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
       subDepartment: { prefix: "DEV", name: "Dev" },
-      project: { name: "PEN Platform" },
+      project: { name: "Support Ticketing System" },
       assignee: null,
     } as never)
 
@@ -146,7 +146,7 @@ describe("PATCH /api/tickets/[id]", () => {
       id: "ticket-1",
       priority: "High",
       subDepartment: { prefix: "DEV", name: "Dev" },
-      project: { name: "PEN Platform" },
+      project: { name: "Support Ticketing System" },
       assignee: { id: "user-2", name: "Same", email: "same@pen.com" },
     } as never)
 
@@ -188,7 +188,7 @@ describe("PATCH /api/tickets/[id]", () => {
     mockUpdate.mockResolvedValue({
       id: "ticket-1",
       subDepartment: { prefix: "DEV", name: "Dev" },
-      project: { name: "PEN Platform" },
+      project: { name: "Support Ticketing System" },
       assignee: { id: "user-3", name: "Sara", email: "sara@pen.com" },
     } as never)
     const res = await PATCH(makeRequest({ assigneeId: "user-3" }), { params: mockParams })

@@ -95,7 +95,7 @@ export function PlatformAdministrators({
         />
 
         <div className="mt-6 max-w-sm">
-          <label className="mb-1.5 block font-sans text-[12.5px] font-medium text-pen-foreground">
+          <label className="mb-1.5 block font-sans text-[12.5px] font-medium text-sts-foreground">
             Add administrator
           </label>
           <div className="relative">
@@ -110,11 +110,11 @@ export function PlatformAdministrators({
               autoComplete="off"
             />
             {searchOpen && query.trim().length >= 2 && (
-              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-xl">
+              <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg shadow-xl">
                 {searching ? (
-                  <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">Searching…</p>
+                  <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">Searching…</p>
                 ) : searchResults.length === 0 ? (
-                  <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">No matching users.</p>
+                  <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">No matching users.</p>
                 ) : (
                   <div className="max-h-56 overflow-y-auto p-1">
                     {searchResults.map((u) => {
@@ -126,16 +126,16 @@ export function PlatformAdministrators({
                           disabled={already}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => addAdmin(u)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-pen-surface disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sts-surface disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={22} />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                            <div className="truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                               {u.name || u.email}
                             </div>
-                            <div className="truncate font-sans text-[11px] text-pen-subtle">{u.email}</div>
+                            <div className="truncate font-sans text-[11px] text-sts-subtle">{u.email}</div>
                           </div>
-                          {already && <span className="font-sans text-[11px] text-pen-subtle">Already admin</span>}
+                          {already && <span className="font-sans text-[11px] text-sts-subtle">Already admin</span>}
                         </button>
                       );
                     })}
@@ -153,10 +153,10 @@ export function PlatformAdministrators({
         )}
 
         <div className="mt-8">
-          <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">
+          <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
             Current administrators ({admins.length})
           </h2>
-          <div className="mt-3 flex flex-col gap-1 rounded-xl border border-pen-card-border bg-pen-card p-2 shadow-pen-card">
+          <div className="mt-3 flex flex-col gap-1 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
             {admins.map((admin) => {
               const isSelf = admin.id === currentUserId;
               return (
@@ -164,11 +164,11 @@ export function PlatformAdministrators({
                   <div className="flex min-w-0 items-center gap-2.5">
                     <UserAvatar name={admin.name} avatarUrl={admin.avatarUrl} size={28} />
                     <div className="min-w-0">
-                      <div className="truncate font-sans text-[13px] font-medium text-pen-foreground">
+                      <div className="truncate font-sans text-[13px] font-medium text-sts-foreground">
                         {admin.name || admin.email}
-                        {isSelf && <span className="ml-1.5 font-sans text-[11px] text-pen-subtle">(you)</span>}
+                        {isSelf && <span className="ml-1.5 font-sans text-[11px] text-sts-subtle">(you)</span>}
                       </div>
-                      <div className="truncate font-sans text-[11.5px] text-pen-subtle">{admin.email}</div>
+                      <div className="truncate font-sans text-[11.5px] text-sts-subtle">{admin.email}</div>
                     </div>
                   </div>
                   <Button

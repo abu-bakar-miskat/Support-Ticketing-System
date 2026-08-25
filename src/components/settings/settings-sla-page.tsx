@@ -20,15 +20,15 @@ export type SlaRow = {
 };
 
 const PRIORITY_PILL: Record<SlaPriority, string> = {
-  urgent: "bg-pen-red-tint text-pen-red",
+  urgent: "bg-sts-red-tint text-sts-red",
   high: "bg-[#fff7ed] text-[#c2410c] dark:bg-[#3a3026] dark:text-[#e0a96a]",
-  normal: "bg-pen-surface text-pen-muted",
-  low: "bg-pen-surface text-pen-muted",
+  normal: "bg-sts-surface text-sts-muted",
+  low: "bg-sts-surface text-sts-muted",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -79,13 +79,13 @@ function SlaMobileList({ rows }: { rows: SlaRow[] }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-0.5">
               <SectionLabel>First response</SectionLabel>
-              <span className="font-mono text-xs font-semibold text-pen-foreground">
+              <span className="font-mono text-xs font-semibold text-sts-foreground">
                 {row.firstResponse}
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
               <SectionLabel>Resolution</SectionLabel>
-              <span className="font-mono text-xs font-semibold text-pen-foreground">
+              <span className="font-mono text-xs font-semibold text-sts-foreground">
                 {row.resolution}
               </span>
             </div>
@@ -100,22 +100,22 @@ export function SettingsSlaPage({ rows }: { rows: SlaRow[] }) {
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="min-w-0">
-        <h1 className="pen-text-admin-title">
+        <h1 className="sts-text-admin-title">
           SLA policies
         </h1>
-        <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+        <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
           Response and resolution targets.
         </p>
       </div>
 
       <Phase2Banner />
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <div className="pb-1.5">
-          <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+          <h2 className="font-sans text-sm font-semibold text-sts-foreground">
             Response & resolution targets
           </h2>
-          <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+          <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
             Time limits per priority for student-facing tickets. Breaches escalate
             to the team lead.
           </p>
@@ -151,14 +151,14 @@ export function SettingsSlaPage({ rows }: { rows: SlaRow[] }) {
                   </TableCell>
                   <TableCell className="py-0">
                     <div className="flex h-[46px] items-center">
-                      <span className="font-mono text-xs font-semibold text-pen-foreground">
+                      <span className="font-mono text-xs font-semibold text-sts-foreground">
                         {row.firstResponse}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="py-0">
                     <div className="flex h-[46px] items-center">
-                      <span className="font-mono text-xs font-semibold text-pen-foreground">
+                      <span className="font-mono text-xs font-semibold text-sts-foreground">
                         {row.resolution}
                       </span>
                     </div>

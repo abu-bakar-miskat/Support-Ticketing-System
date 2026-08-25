@@ -159,8 +159,8 @@ function SidebarNavLink({
           // instant transitions (fresh for staleTimes.dynamic seconds).
           prefetch={true}
           className={cn(
-            "pen-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-pen-foreground hover:bg-pen-blue-tint",
-            active && "bg-pen-blue-tint font-semibold text-pen-id",
+            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
+            active && "bg-sts-blue-tint font-semibold text-sts-id",
           )}
           style={{ height: "28px" }}
         >
@@ -169,7 +169,7 @@ function SidebarNavLink({
           {item.badge != null && (
             <>
               <span className="flex-1" />
-              <span className="text-[11.5px] text-pen-subtle">
+              <span className="text-[11.5px] text-sts-subtle">
                 {item.badge}
               </span>
             </>
@@ -183,7 +183,7 @@ function SidebarNavLink({
           }}
           aria-label={`New ${item.label}`}
           title={`New ${item.label.toLowerCase()}`}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-pen-subtle hover:bg-pen-blue-tint hover:text-pen-id"
+          className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-id"
         >
           <Plus className="size-3" aria-hidden="true" />
         </button>
@@ -197,15 +197,15 @@ function SidebarNavLink({
       prefetch={true}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "pen-nav-link relative flex h-7 items-center rounded-md font-sans text-[13px] text-pen-foreground hover:bg-pen-blue-tint",
+        "sts-nav-link relative flex h-7 items-center rounded-md font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
         collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "bg-pen-blue-tint font-semibold text-pen-id",
+        active && "bg-sts-blue-tint font-semibold text-sts-id",
       )}
     >
       <span className="relative shrink-0">
         <SidebarNavIcon icon={Icon} />
         {collapsed && item.badge != null && item.badge > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-pen-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
+          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sts-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
             {item.badge > 9 ? "9+" : item.badge}
           </span>
         )}
@@ -216,7 +216,7 @@ function SidebarNavLink({
           {item.badge != null && (
             <>
               <span className="flex-1" />
-              <span className="text-[11.5px] text-pen-subtle">
+              <span className="text-[11.5px] text-sts-subtle">
                 {item.badge}
               </span>
             </>
@@ -238,11 +238,11 @@ function DeptContextLabel({
 }) {
   return (
     <div className="min-w-0 flex-1">
-      <span className="block truncate font-sans text-[12px] font-semibold leading-snug text-pen-foreground">
+      <span className="block truncate font-sans text-[12px] font-semibold leading-snug text-sts-foreground">
         {name}
       </span>
       {isCrossAccess && (
-        <span className="mt-0.5 flex items-center gap-1 font-sans text-[10px] leading-none text-pen-subtle">
+        <span className="mt-0.5 flex items-center gap-1 font-sans text-[10px] leading-none text-sts-subtle">
           <KeyRound className="size-2.5 shrink-0 opacity-70" aria-hidden />
           Guest access
         </span>
@@ -260,8 +260,8 @@ function DeptContextIcon({
 }) {
   const Icon = getDepartmentIcon(name, id);
   return (
-    <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-pen-blue/10">
-      <SidebarNavIcon icon={Icon} size="sm" className="text-pen-blue" />
+    <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-sts-blue/10">
+      <SidebarNavIcon icon={Icon} size="sm" className="text-sts-blue" />
     </span>
   );
 }
@@ -270,7 +270,7 @@ function CrossAccessMenuHint({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "shrink-0 font-sans text-[10px] leading-none text-pen-subtle",
+        "shrink-0 font-sans text-[10px] leading-none text-sts-subtle",
         className,
       )}
     >
@@ -382,8 +382,8 @@ export function Sidebar({
   }
 
   const deptContextClassName = cn(
-    "flex w-full items-center rounded-lg border border-pen-card-border bg-pen-surface text-left outline-none transition-colors",
-    "hover:border-pen-blue/40 hover:bg-pen-blue-tint data-popup-open:border-pen-blue/40 data-popup-open:bg-pen-blue-tint",
+    "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors",
+    "hover:border-sts-blue/40 hover:bg-sts-blue-tint data-popup-open:border-sts-blue/40 data-popup-open:bg-sts-blue-tint",
   );
 
   const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
@@ -474,7 +474,7 @@ export function Sidebar({
     <>
       <aside
         className={cn(
-          "pen-glass-panel flex h-full shrink-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
+          "sts-glass-panel flex h-full shrink-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
           isCollapsed ? "w-[68px] px-2" : "w-[220px] px-3",
           className,
         )}
@@ -490,7 +490,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="flex size-8 items-center justify-center rounded-lg hover:bg-pen-blue-tint"
+              className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-blue-tint"
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
@@ -520,7 +520,7 @@ export function Sidebar({
               className="h-9 w-auto max-w-[140px] object-contain"
             />
           ) : brandingName ? (
-            <span className="truncate text-[15px] font-semibold text-pen-foreground">
+            <span className="truncate text-[15px] font-semibold text-sts-foreground">
               {brandingName}
             </span>
           ) : (
@@ -545,7 +545,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto rounded p-1 text-pen-subtle hover:text-pen-foreground lg:hidden"
+              className="ml-auto rounded p-1 text-sts-subtle hover:text-sts-foreground lg:hidden"
               aria-label="Close sidebar"
             >
               <X className="size-4" />
@@ -555,7 +555,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="ml-auto rounded p-1 text-pen-subtle hover:bg-pen-blue-tint hover:text-pen-foreground"
+              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
             >
@@ -582,7 +582,7 @@ export function Sidebar({
                   });
                   window.location.href = "/departments";
                 }}
-                className="flex h-7 w-full items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+                className="flex h-7 w-full items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
               >
                 <ArrowLeft className="size-3.5" />
               </button>
@@ -599,7 +599,7 @@ export function Sidebar({
                   });
                   window.location.href = "/departments";
                 }}
-                className="flex h-6 items-center gap-1.5 rounded-md px-1.5 font-sans text-[11.5px] text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+                className="flex h-6 items-center gap-1.5 rounded-md px-1.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
               >
                 <ArrowLeft className="size-3 shrink-0" />
                 All Departments
@@ -629,18 +629,18 @@ export function Sidebar({
                         name={activeDept.name}
                         isCrossAccess={isCrossAccessDept}
                       />
-                      <ChevronDown className="size-3 shrink-0 self-center text-pen-subtle" />
+                      <ChevronDown className="size-3 shrink-0 self-center text-sts-subtle" />
                     </>
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="min-w-[200px] font-sans [&_[data-slot=dropdown-menu-item]]:text-[12px] [&_[data-slot=dropdown-menu-item]]:text-pen-foreground [&_[data-slot=dropdown-menu-item]]:focus:bg-pen-blue-tint"
+                  className="min-w-[200px] font-sans [&_[data-slot=dropdown-menu-item]]:text-[12px] [&_[data-slot=dropdown-menu-item]]:text-sts-foreground [&_[data-slot=dropdown-menu-item]]:focus:bg-sts-blue-tint"
                   side="right"
                   align="start"
                   sideOffset={8}
                 >
                   <DropdownMenuGroup>
-                    <DropdownMenuLabel className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase px-2 py-1.5">
+                    <DropdownMenuLabel className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase px-2 py-1.5">
                       My Departments
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
@@ -652,11 +652,11 @@ export function Sidebar({
                         key={dept.id}
                         onClick={() => switchDept(dept.id)}
                       >
-                        <span className="flex size-5 items-center justify-center rounded-md bg-pen-blue/10">
+                        <span className="flex size-5 items-center justify-center rounded-md bg-sts-blue/10">
                           <SidebarNavIcon
                             icon={DeptItemIcon}
                             size="sm"
-                            className="text-pen-blue"
+                            className="text-sts-blue"
                           />
                         </span>
                         <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -664,7 +664,7 @@ export function Sidebar({
                           {isGuestDept && <CrossAccessMenuHint />}
                         </span>
                         {activeDeptId === dept.id && (
-                          <Check className="ml-auto size-3 shrink-0 text-pen-blue" />
+                          <Check className="ml-auto size-3 shrink-0 text-sts-blue" />
                         )}
                       </DropdownMenuItem>
                     );
@@ -699,7 +699,7 @@ export function Sidebar({
             href="/platform"
             title={isCollapsed ? "Platform" : undefined}
             className={cn(
-              "flex items-center rounded-lg text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground",
+              "flex items-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
             )}
           >
@@ -712,7 +712,7 @@ export function Sidebar({
         {isAdmin && isAdminGlobalView && (
           <div
             className={cn(
-              "flex items-center rounded-lg border border-pen-blue/30 bg-pen-blue-tint",
+              "flex items-center rounded-lg border border-sts-blue/30 bg-sts-blue-tint",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
             )}
             title={isCollapsed ? "All Departments" : undefined}
@@ -720,10 +720,10 @@ export function Sidebar({
             <SidebarNavIcon
               icon={DepartmentIcon}
               size="sm"
-              className="shrink-0 text-pen-blue"
+              className="shrink-0 text-sts-blue"
             />
             {!isCollapsed && (
-              <span className="font-sans text-[12px] font-semibold text-pen-id">
+              <span className="font-sans text-[12px] font-semibold text-sts-id">
                 All Departments
               </span>
             )}
@@ -805,18 +805,18 @@ export function Sidebar({
                         ? "Collapse pinned projects"
                         : "Expand pinned projects"
                     }
-                    className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-pen-surface"
+                    className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-sts-surface"
                   >
                     <ChevronRight
                       className={cn(
-                        "size-3 shrink-0 text-pen-subtle transition-transform",
+                        "size-3 shrink-0 text-sts-subtle transition-transform",
                         projectsExpanded && "rotate-90",
                       )}
                     />
-                    <p className="min-w-0 flex-1 font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+                    <p className="min-w-0 flex-1 font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
                       PINNED PROJECTS
                     </p>
-                    <span className="font-sans text-[11.5px] text-pen-subtle">
+                    <span className="font-sans text-[11.5px] text-sts-subtle">
                       {sorted.length}
                     </span>
                   </button>
@@ -825,7 +825,7 @@ export function Sidebar({
                       type="button"
                       onClick={() => setShowCreateProject(true)}
                       aria-label="New project"
-                      className="flex size-4 shrink-0 items-center justify-center rounded text-pen-subtle hover:bg-pen-blue-tint hover:text-pen-id"
+                      className="flex size-4 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-id"
                     >
                       <Plus className="size-3" aria-hidden="true" />
                     </button>
@@ -841,9 +841,9 @@ export function Sidebar({
                           key={p.id}
                           href={p.href}
                           className={cn(
-                            "group pen-nav-link flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-pen-foreground hover:bg-pen-blue-tint",
+                            "group sts-nav-link flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
                             pathname === p.href &&
-                              "bg-pen-blue-tint font-semibold text-pen-id",
+                              "bg-sts-blue-tint font-semibold text-sts-id",
                           )}
                         >
                           <ProjectDot
@@ -867,8 +867,8 @@ export function Sidebar({
                             className={cn(
                               "flex size-4 shrink-0 items-center justify-center rounded transition-colors",
                               isPinned
-                                ? "text-pen-blue hover:text-red-400"
-                                : "text-pen-subtle hover:text-pen-id",
+                                ? "text-sts-blue hover:text-red-400"
+                                : "text-sts-subtle hover:text-sts-id",
                             )}
                           >
                             {isPinned ? (
@@ -878,12 +878,12 @@ export function Sidebar({
                             )}
                           </button>
                           {!isPinned && (
-                            <span className="text-[11.5px] text-pen-subtle">
+                            <span className="text-[11.5px] text-sts-subtle">
                               {p.count}
                             </span>
                           )}
                           {isPinned && (
-                            <span className="text-[11.5px] text-pen-blue">
+                            <span className="text-[11.5px] text-sts-blue">
                               {p.count}
                             </span>
                           )}
@@ -900,7 +900,7 @@ export function Sidebar({
           <>
             <div className="h-3.5" />
             {!isCollapsed && (
-              <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
                 VIEWS
               </p>
             )}

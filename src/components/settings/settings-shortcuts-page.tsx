@@ -28,8 +28,8 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
 
 function ShortcutRow({ label, keys }: Shortcut) {
   return (
-    <div className="flex items-center gap-4 border-t border-pen-surface py-2.5">
-      <span className="min-w-0 font-sans text-[12.5px] text-pen-foreground">
+    <div className="flex items-center gap-4 border-t border-sts-surface py-2.5">
+      <span className="min-w-0 font-sans text-[12.5px] text-sts-foreground">
         {label}
       </span>
       <div className="min-w-0 flex-1" aria-hidden />
@@ -46,11 +46,11 @@ function ShortcutCard({ title, shortcuts }: ShortcutSection) {
   return (
     <section
       className={cn(
-        "w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card",
+        "w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card",
         "px-[22px] pt-4 pb-2",
       )}
     >
-      <h2 className="pb-1.5 font-sans text-sm font-semibold text-pen-foreground">
+      <h2 className="pb-1.5 font-sans text-sm font-semibold text-sts-foreground">
         {title}
       </h2>
       <div className="flex flex-col">
@@ -66,10 +66,10 @@ export function SettingsShortcutsPage() {
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-[3px]">
-        <h1 className="pen-text-admin-title">
+        <h1 className="sts-text-admin-title">
           Keyboard shortcuts
         </h1>
-        <p className="font-sans text-[13px] text-pen-muted">
+        <p className="font-sans text-[13px] text-sts-muted">
           Move faster without the mouse.
         </p>
       </header>

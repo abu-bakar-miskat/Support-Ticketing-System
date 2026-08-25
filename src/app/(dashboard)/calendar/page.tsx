@@ -16,8 +16,8 @@ export default async function CalendarPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-sm text-center">
-          <h1 className="pen-text-page-title">Select a department</h1>
-          <p className="mt-2 font-sans text-[13px] text-pen-muted">
+          <h1 className="sts-text-page-title">Select a department</h1>
+          <p className="mt-2 font-sans text-[13px] text-sts-muted">
             The calendar is department-specific. Choose a department from the sidebar to see its
             holidays and team availability.
           </p>

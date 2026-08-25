@@ -31,11 +31,11 @@ const STATUS_LABEL: Record<RenewalStatus, string> = {
 };
 
 const STATUS_CLASS: Record<RenewalStatus, string> = {
-  ACTIVE: "bg-pen-green/10 text-pen-green",
+  ACTIVE: "bg-sts-green/10 text-sts-green",
   PENDING_RENEWAL: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  RENEWED: "bg-pen-blue/10 text-pen-blue",
-  EXPIRED: "bg-pen-red/10 text-pen-red",
-  CANCELLED: "bg-pen-surface text-pen-subtle",
+  RENEWED: "bg-sts-blue/10 text-sts-blue",
+  EXPIRED: "bg-sts-red/10 text-sts-red",
+  CANCELLED: "bg-sts-surface text-sts-subtle",
 };
 
 type SummaryRow = {
@@ -105,11 +105,11 @@ export function TenantStatusSummary() {
   return (
     <div className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-sans text-[13px] font-semibold text-pen-foreground">Tenant status summary</h2>
+        <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Tenant status summary</h2>
         <Select value={renewalFilter || "__all__"} onValueChange={(v) => setRenewalFilter(v === "__all__" ? "" : v ?? "")}>
           <SelectTrigger className="h-8 min-w-[180px]">
             <div className="flex items-center gap-1.5">
-              <ListFilter className="size-3.5 text-pen-subtle" />
+              <ListFilter className="size-3.5 text-sts-subtle" />
               <span className="font-sans text-[12px]">
                 {renewalFilter ? STATUS_LABEL[renewalFilter as RenewalStatus] : "All renewal statuses"}
               </span>
@@ -134,7 +134,7 @@ export function TenantStatusSummary() {
         </div>
       )}
 
-      <div className="mt-3 overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+      <div className="mt-3 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -160,34 +160,34 @@ export function TenantStatusSummary() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={COLUMNS.length} className="py-6 text-center font-sans text-[12.5px] text-pen-muted">
+                <TableCell colSpan={COLUMNS.length} className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
                   {loading ? "Loading…" : "No tenants yet"}
                 </TableCell>
               </TableRow>
             ) : (
               rows.map((r) => (
                 <TableRow key={r.tenantId}>
-                  <TableCell className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                  <TableCell className="font-sans text-[12.5px] font-medium text-sts-foreground">
                     <Link href={`/platform/${r.tenantId}`} className="hover:underline">
                       {r.tenantName}
                     </Link>
                   </TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-pen-muted">
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 font-sans text-[11px] font-medium",
                         r.tenantStatus === "suspended"
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : "bg-pen-green/10 text-pen-green",
+                          : "bg-sts-green/10 text-sts-green",
                       )}
                     >
                       {r.tenantStatus === "suspended" ? "Suspended" : "Active"}
                     </span>
                   </TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-pen-muted">
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     {r.agreementEndDate ? new Date(r.agreementEndDate).toLocaleDateString() : "—"}
                   </TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-pen-muted">
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     {r.renewalStatus ? (
                       <span className={cn("rounded-full px-2 py-0.5 font-sans text-[11px] font-medium", STATUS_CLASS[r.renewalStatus])}>
                         {STATUS_LABEL[r.renewalStatus]}
@@ -196,8 +196,8 @@ export function TenantStatusSummary() {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-pen-muted">{r.departmentCount}</TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-pen-muted">{r.activeUserCount}</TableCell>
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">{r.departmentCount}</TableCell>
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">{r.activeUserCount}</TableCell>
                 </TableRow>
               ))
             )}

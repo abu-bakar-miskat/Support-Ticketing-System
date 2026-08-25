@@ -43,12 +43,12 @@ export function ConfirmDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={(o) => { if (!loading) onOpenChange(o); }}>
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <AlertDialog.Popup className="pen-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-          <AlertDialog.Title className="pen-text-modal-title">
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <AlertDialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <AlertDialog.Title className="sts-text-modal-title">
             {title}
           </AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 font-sans text-[13px] text-pen-subtle">
+          <AlertDialog.Description className="mt-2 font-sans text-[13px] text-sts-subtle">
             {description}
           </AlertDialog.Description>
           <div className="mt-6 flex justify-end gap-2">

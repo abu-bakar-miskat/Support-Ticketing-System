@@ -124,7 +124,7 @@ export function MentionTextarea({
         open={mentionQuery !== null && count > 0}
         placement="bottom"
         maxHeight={160}
-        className="rounded-lg border border-pen-card-border bg-pen-bg shadow-lg"
+        className="rounded-lg border border-sts-card-border bg-sts-bg shadow-lg"
       >
         <ul className="w-full">
           {showAll && (
@@ -138,11 +138,11 @@ export function MentionTextarea({
                 className={cn(
                   userListPickerButtonClass,
                   "w-full px-2.5 py-1.5 text-left transition-colors",
-                  highlightedIndex === 0 ? "bg-pen-surface" : "hover:bg-pen-surface",
+                  highlightedIndex === 0 ? "bg-sts-surface" : "hover:bg-sts-surface",
                 )}
               >
-                <span className="font-semibold text-pen-blue">@all</span>
-                <span className="ml-2 text-pen-subtle">
+                <span className="font-semibold text-sts-blue">@all</span>
+                <span className="ml-2 text-sts-subtle">
                   — mention everyone ({subDepartmentMembers.length})
                 </span>
               </button>
@@ -161,7 +161,7 @@ export function MentionTextarea({
                   className={cn(
                     userListPickerButtonClass,
                     "px-2.5 py-1.5 transition-colors",
-                    idx === highlightedIndex ? "bg-pen-surface" : "hover:bg-pen-surface",
+                    idx === highlightedIndex ? "bg-sts-surface" : "hover:bg-sts-surface",
                   )}
                 >
                   <UserListItem person={m} avatarSize={22} nameClassName="font-normal" />

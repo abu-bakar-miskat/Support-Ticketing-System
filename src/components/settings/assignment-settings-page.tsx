@@ -53,28 +53,28 @@ const METHODS: MethodMeta[] = [
     label: "Rule-based",
     description: "Conditions decide which specific agent gets each ticket.",
     icon: Filter,
-    chip: "bg-pen-purple-tint text-pen-purple",
+    chip: "bg-sts-purple-tint text-sts-purple",
   },
   {
     value: "ROUND_ROBIN",
     label: "Round-robin",
     description: "Strict rotation through the team, in order.",
     icon: Repeat,
-    chip: "bg-pen-blue-tint text-pen-blue",
+    chip: "bg-sts-blue-tint text-sts-blue",
   },
   {
     value: "WORKLOAD_BASED",
     label: "Workload-based",
     description: "Always goes to whoever has the fewest open tickets.",
     icon: Scale,
-    chip: "bg-pen-green-tint text-pen-green",
+    chip: "bg-sts-green-tint text-sts-green",
   },
   {
     value: "MANUAL",
     label: "Manual",
     description: "Tickets are created unassigned; a human picks the agent.",
     icon: Hand,
-    chip: "bg-pen-surface text-pen-muted",
+    chip: "bg-sts-surface text-sts-muted",
   },
 ];
 
@@ -103,11 +103,11 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-pen-card-border bg-pen-card p-5 shadow-[var(--pen-card-shadow)]">
+    <section className="rounded-2xl border border-sts-card-border bg-sts-card p-5 shadow-[var(--sts-card-shadow)]">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-sans text-[13.5px] font-semibold text-pen-foreground">{title}</h2>
-          {description && <p className="mt-0.5 pen-text-meta">{description}</p>}
+          <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">{title}</h2>
+          {description && <p className="mt-0.5 sts-text-meta">{description}</p>}
         </div>
         {action}
       </div>
@@ -120,7 +120,7 @@ function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: 
   return (
     <div className="flex flex-col gap-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={cn("animate-pulse rounded-lg bg-pen-surface", height)} />
+        <div key={i} className={cn("animate-pulse rounded-lg bg-sts-surface", height)} />
       ))}
     </div>
   );
@@ -378,22 +378,22 @@ export function AssignmentSettingsPage({
   }
 
   const inputClass =
-    "rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1.5 font-sans text-[12.5px] text-pen-foreground outline-none transition-shadow focus:border-pen-blue focus:ring-2 focus:ring-pen-blue/25";
+    "rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[12.5px] text-sts-foreground outline-none transition-shadow focus:border-sts-blue focus:ring-2 focus:ring-sts-blue/25";
 
   return (
     <div className="w-full px-5 py-8 sm:px-6 lg:px-8">
       {/* ── Header ── */}
       <Link
         href={backHref}
-        className="group mb-5 inline-flex items-center gap-1.5 font-sans text-[12px] text-pen-muted transition-colors hover:text-pen-foreground"
+        className="group mb-5 inline-flex items-center gap-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
         {backLabel}
       </Link>
 
-      <p className="pen-text-section-label mb-1.5">Assignment</p>
-      <h1 className="pen-text-page-title">{scopeName}</h1>
-      <p className="mt-1.5 max-w-prose pen-text-page-desc">
+      <p className="sts-text-section-label mb-1.5">Assignment</p>
+      <h1 className="sts-text-page-title">{scopeName}</h1>
+      <p className="mt-1.5 max-w-prose sts-text-page-desc">
         {subDepartmentId
           ? "How new tickets for this sub-department are routed to agents. Inherit the parent department's method, or override it here."
           : "How new tickets for this department are routed to agents."}{" "}
@@ -403,7 +403,7 @@ export function AssignmentSettingsPage({
       {error && (
         <div
           role="alert"
-          className="mt-5 flex items-start gap-2 rounded-lg border border-pen-red/30 bg-pen-red-tint px-3 py-2.5 font-sans text-[12.5px] text-pen-red"
+          className="mt-5 flex items-start gap-2 rounded-lg border border-sts-red/30 bg-sts-red-tint px-3 py-2.5 font-sans text-[12.5px] text-sts-red"
         >
           <AlertTriangle className="mt-px size-4 shrink-0" />
           <span>{error}</span>
@@ -415,8 +415,8 @@ export function AssignmentSettingsPage({
         {subDepartmentId && (
           <div className="flex flex-col gap-3">
             <div>
-              <h2 className="pen-text-section-label">Per support form</h2>
-              <p className="mt-1 pen-text-meta">
+              <h2 className="sts-text-section-label">Per support form</h2>
+              <p className="mt-1 sts-text-meta">
                 Set how tickets from each support form are assigned. “Inherit” uses this
                 sub-department&apos;s method ({methodLabel(formInheritedMethod)}).
               </p>
@@ -425,9 +425,9 @@ export function AssignmentSettingsPage({
             {forms === null ? (
               <SkeletonRows count={2} height="h-44" />
             ) : forms.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-pen-card-border bg-pen-card px-4 py-10 text-center">
-                <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No support forms yet</p>
-                <p className="mx-auto mt-1 max-w-xs pen-text-meta">
+              <div className="rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-10 text-center">
+                <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No support forms yet</p>
+                <p className="mx-auto mt-1 max-w-xs sts-text-meta">
                   Forms that route to this sub-department will appear here.
                 </p>
               </div>
@@ -435,18 +435,18 @@ export function AssignmentSettingsPage({
               forms.map((form) => (
                 <section
                   key={form.id}
-                  className="rounded-2xl border border-pen-card-border bg-pen-card p-5 shadow-[var(--pen-card-shadow)]"
+                  className="rounded-2xl border border-sts-card-border bg-sts-card p-5 shadow-[var(--sts-card-shadow)]"
                 >
                   <div className="mb-4 flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-pen-blue-tint text-pen-blue">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
                       <FileText className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate font-sans text-[14px] font-semibold tracking-[-0.01em] text-pen-foreground">
+                      <p className="truncate font-sans text-[14px] font-semibold tracking-[-0.01em] text-sts-foreground">
                         {form.name}
                       </p>
                       {form.assignmentMethod === null && (
-                        <p className="pen-text-meta">Inheriting {methodLabel(formInheritedMethod)}</p>
+                        <p className="sts-text-meta">Inheriting {methodLabel(formInheritedMethod)}</p>
                       )}
                     </div>
                   </div>
@@ -460,7 +460,7 @@ export function AssignmentSettingsPage({
                       disabled={savingFormId === form.id}
                       onClick={() => selectFormMethod(form, null)}
                       icon={Layers}
-                      chip="bg-pen-surface text-pen-subtle"
+                      chip="bg-sts-surface text-sts-subtle"
                       className="sm:col-span-2"
                       label="Inherit"
                       description={`Use this sub-department's method — currently ${methodLabel(formInheritedMethod)}.`}
@@ -479,15 +479,15 @@ export function AssignmentSettingsPage({
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center justify-end gap-3 border-t border-pen-card-border pt-3">
+                  <div className="mt-4 flex items-center justify-end gap-3 border-t border-sts-card-border pt-3">
                     {isDirty(form) && (
-                      <span className="pen-text-meta">Unsaved changes</span>
+                      <span className="sts-text-meta">Unsaved changes</span>
                     )}
                     <button
                       type="button"
                       onClick={() => saveFormMethod(form)}
                       disabled={!isDirty(form) || savingFormId === form.id}
-                      className="pen-pressable inline-flex items-center gap-1.5 rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-pen-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="sts-pressable inline-flex items-center gap-1.5 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {savingFormId === form.id && <Loader2 className="size-3.5 animate-spin" />}
                       Save
@@ -527,7 +527,7 @@ export function AssignmentSettingsPage({
                   disabled={saving}
                   onClick={() => changeMethod(null)}
                   icon={Layers}
-                  chip="bg-pen-surface text-pen-subtle"
+                  chip="bg-sts-surface text-sts-subtle"
                   className="sm:col-span-2"
                   label="Inherit from parent department"
                   description={
@@ -563,7 +563,7 @@ export function AssignmentSettingsPage({
               <button
                 type="button"
                 onClick={addRule}
-                className="pen-pressable inline-flex items-center gap-1 rounded-md bg-pen-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-pen-blue/90"
+                className="sts-pressable inline-flex items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
               >
                 <Plus className="size-3.5" /> Add rule
               </button>
@@ -572,18 +572,18 @@ export function AssignmentSettingsPage({
             {rules === null ? (
               <SkeletonRows count={2} height="h-[92px]" />
             ) : rules.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-pen-card-border px-4 py-8 text-center">
-                <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No rules yet</p>
-                <p className="mx-auto mt-1 max-w-xs pen-text-meta">
+              <div className="rounded-lg border border-dashed border-sts-card-border px-4 py-8 text-center">
+                <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No rules yet</p>
+                <p className="mx-auto mt-1 max-w-xs sts-text-meta">
                   Tickets will fail to auto-assign until you add at least one rule.
                 </p>
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
                 {rules.map((rule, i) => (
-                  <div key={rule.id} className="rounded-xl border border-pen-card-border bg-pen-surface/40 p-3">
+                  <div key={rule.id} className="rounded-xl border border-sts-card-border bg-sts-surface/40 p-3">
                     <div className="flex items-center gap-2">
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-pen-card font-sans text-[11px] font-semibold text-pen-subtle ring-1 ring-pen-card-border">
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-card font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
                         {i + 1}
                       </span>
                       <input
@@ -592,12 +592,12 @@ export function AssignmentSettingsPage({
                         placeholder="Rule name"
                         className={cn(inputClass, "min-w-0 flex-1 font-medium")}
                       />
-                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                         <input
                           type="checkbox"
                           checked={rule.enabled}
                           onChange={(e) => updateRule(rule.id, { enabled: e.target.checked })}
-                          className="size-3.5 accent-pen-blue"
+                          className="size-3.5 accent-sts-blue"
                         />
                         Enabled
                       </label>
@@ -605,13 +605,13 @@ export function AssignmentSettingsPage({
                         type="button"
                         onClick={() => deleteRule(rule.id)}
                         aria-label="Delete rule"
-                        className="pen-pressable rounded-md p-1.5 text-pen-subtle transition-colors hover:bg-pen-red-tint hover:text-pen-red"
+                        className="sts-pressable rounded-md p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
                     </div>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <label className="font-sans text-[11.5px] text-pen-muted" htmlFor={`agent-${rule.id}`}>
+                      <label className="font-sans text-[11.5px] text-sts-muted" htmlFor={`agent-${rule.id}`}>
                         Agent (user id)
                       </label>
                       <input
@@ -622,7 +622,7 @@ export function AssignmentSettingsPage({
                         className={cn(inputClass, "w-64 font-mono text-[11.5px]")}
                       />
                     </div>
-                    <p className="mt-2 pen-text-meta">
+                    <p className="mt-2 sts-text-meta">
                       {rule.conditions.conditions.length === 0
                         ? "Applies to every ticket (no conditions)."
                         : `${rule.conditions.conditions.length} condition(s) — edit via the API for now.`}
@@ -656,18 +656,18 @@ function FormRulesTable({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="mt-4 border-t border-pen-card-border pt-4">
+    <div className="mt-4 border-t border-sts-card-border pt-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-sans text-[12.5px] font-semibold text-pen-foreground">Rules</h3>
-          <p className="mt-0.5 pen-text-meta">
+          <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Rules</h3>
+          <p className="mt-0.5 sts-text-meta">
             Checked top to bottom — the first matching rule assigns its agent.
           </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="pen-pressable inline-flex shrink-0 items-center gap-1 rounded-md bg-pen-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-pen-blue/90"
+          className="sts-pressable inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
         >
           <Plus className="size-3.5" /> Add rule
         </button>
@@ -676,30 +676,30 @@ function FormRulesTable({
       {rules === undefined ? (
         <SkeletonRows count={2} height="h-10" />
       ) : rules.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-pen-card-border px-4 py-8 text-center">
-          <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No rules yet</p>
-          <p className="mx-auto mt-1 max-w-xs pen-text-meta">
+        <div className="rounded-lg border border-dashed border-sts-card-border px-4 py-8 text-center">
+          <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No rules yet</p>
+          <p className="mx-auto mt-1 max-w-xs sts-text-meta">
             Tickets from this form will fail to auto-assign until you add at least one rule.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-pen-card-border">
+        <div className="overflow-x-auto rounded-xl border border-sts-card-border">
           <table className="w-full border-collapse font-sans text-[12.5px]">
             <thead>
-              <tr className="border-b border-pen-card-border bg-pen-surface/50 text-left">
-                <th className="w-10 px-3 py-2 font-medium text-pen-subtle">#</th>
-                <th className="px-3 py-2 font-medium text-pen-subtle">Rule</th>
-                <th className="px-3 py-2 font-medium text-pen-subtle">Assign to</th>
-                <th className="px-3 py-2 font-medium text-pen-subtle">Conditions</th>
-                <th className="w-20 px-3 py-2 text-center font-medium text-pen-subtle">Enabled</th>
+              <tr className="border-b border-sts-card-border bg-sts-surface/50 text-left">
+                <th className="w-10 px-3 py-2 font-medium text-sts-subtle">#</th>
+                <th className="px-3 py-2 font-medium text-sts-subtle">Rule</th>
+                <th className="px-3 py-2 font-medium text-sts-subtle">Assign to</th>
+                <th className="px-3 py-2 font-medium text-sts-subtle">Conditions</th>
+                <th className="w-20 px-3 py-2 text-center font-medium text-sts-subtle">Enabled</th>
                 <th className="w-12 px-3 py-2" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {rules.map((rule, i) => (
-                <tr key={rule.id} className="border-b border-pen-card-border last:border-0">
+                <tr key={rule.id} className="border-b border-sts-card-border last:border-0">
                   <td className="px-3 py-2 align-middle">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-pen-surface font-sans text-[11px] font-semibold text-pen-subtle ring-1 ring-pen-card-border">
+                    <span className="flex size-6 items-center justify-center rounded-md bg-sts-surface font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
                       {i + 1}
                     </span>
                   </td>
@@ -720,7 +720,7 @@ function FormRulesTable({
                     />
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span className="pen-text-meta">
+                    <span className="sts-text-meta">
                       {rule.conditions.conditions.length === 0
                         ? "Any ticket"
                         : `${rule.conditions.conditions.length} condition(s)`}
@@ -731,7 +731,7 @@ function FormRulesTable({
                       type="checkbox"
                       checked={rule.enabled}
                       onChange={(e) => onUpdate(rule.id, { enabled: e.target.checked })}
-                      className="size-3.5 accent-pen-blue"
+                      className="size-3.5 accent-sts-blue"
                       aria-label={`Enable ${rule.name}`}
                     />
                   </td>
@@ -740,7 +740,7 @@ function FormRulesTable({
                       type="button"
                       onClick={() => onDelete(rule.id)}
                       aria-label="Delete rule"
-                      className="pen-pressable rounded-md p-1.5 text-pen-subtle transition-colors hover:bg-pen-red-tint hover:text-pen-red"
+                      className="sts-pressable rounded-md p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -814,10 +814,10 @@ function MethodOption({
       onClick={onClick}
       className={cn(
         "group relative flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all disabled:opacity-60",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-blue/40",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/40",
         selected
-          ? "border-pen-blue bg-pen-blue-tint ring-1 ring-pen-blue"
-          : "border-pen-card-border hover:border-pen-blue/40 hover:bg-pen-surface/60",
+          ? "border-sts-blue bg-sts-blue-tint ring-1 ring-sts-blue"
+          : "border-sts-card-border hover:border-sts-blue/40 hover:bg-sts-surface/60",
         className,
       )}
     >
@@ -825,13 +825,13 @@ function MethodOption({
         <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block font-sans text-[12.5px] font-semibold text-pen-foreground">{label}</span>
-        <span className="mt-0.5 block pen-text-meta">{description}</span>
+        <span className="block font-sans text-[12.5px] font-semibold text-sts-foreground">{label}</span>
+        <span className="mt-0.5 block sts-text-meta">{description}</span>
       </span>
       <span
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-full transition-colors",
-          selected ? "bg-pen-blue text-white" : "border border-pen-card-border",
+          selected ? "bg-sts-blue text-white" : "border border-sts-card-border",
         )}
       >
         {selected && <Check className="size-3" />}

@@ -134,23 +134,23 @@ export function TenantsClient({
             return (
               <li
                 key={t.id}
-                className="group flex flex-col rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card transition-all duration-200 hover:-translate-y-0.5 hover:border-pen-muted/40 hover:shadow-md"
+                className="group flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card transition-all duration-200 hover:-translate-y-0.5 hover:border-sts-muted/40 hover:shadow-md"
               >
                 <div className="flex items-start gap-3">
                   <TenantAvatar name={t.name} logoUrl={t.logoUrl} size={44} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-pen-foreground">
+                      <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
                         {t.name}
                       </span>
-                      <span className="shrink-0 rounded-full bg-pen-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-pen-blue">
+                      <span className="shrink-0 rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue">
                         {tenantTypeLabel(t.type)}
                       </span>
                       {canManage && (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             aria-label={`More actions for ${t.name}`}
-                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-pen-subtle transition-colors hover:bg-pen-surface hover:text-pen-foreground"
+                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                           >
                             <MoreHorizontal className="size-4" />
                           </DropdownMenuTrigger>
@@ -190,11 +190,11 @@ export function TenantsClient({
                       )}
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5">
-                      <span className="truncate font-mono text-[11px] text-pen-subtle">
+                      <span className="truncate font-mono text-[11px] text-sts-subtle">
                         /{t.slug}
                       </span>
                       {t.deleted ? (
-                        <span className="shrink-0 rounded-full bg-pen-red/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-pen-red">
+                        <span className="shrink-0 rounded-full bg-sts-red/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-red">
                           Deleted
                         </span>
                       ) : t.status === "suspended" ? (
@@ -206,13 +206,13 @@ export function TenantsClient({
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center gap-4 border-t border-pen-card-border/60 pt-3 font-sans text-[12px] text-pen-muted">
+                <div className="mt-3 flex items-center gap-4 border-t border-sts-card-border/60 pt-3 font-sans text-[12px] text-sts-muted">
                   <span className="flex items-center gap-1.5">
-                    <Layers className="size-3.5 text-pen-subtle" />
+                    <Layers className="size-3.5 text-sts-subtle" />
                     {t.departments} dept{t.departments === 1 ? "" : "s"}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Users className="size-3.5 text-pen-subtle" />
+                    <Users className="size-3.5 text-sts-subtle" />
                     {t.members} member{t.members === 1 ? "" : "s"}
                   </span>
                 </div>

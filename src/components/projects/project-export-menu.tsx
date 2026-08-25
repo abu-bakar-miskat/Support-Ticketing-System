@@ -31,7 +31,7 @@ export function ProjectExportMenu({ projectId }: { projectId: string }) {
       <PopoverTrigger
         title="Export tickets"
         aria-label="Export tickets"
-        className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-pen-card-border px-2.5 font-sans text-[11.5px] text-pen-muted transition-colors hover:border-pen-id hover:bg-pen-surface hover:text-pen-foreground"
+        className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-id hover:bg-sts-surface hover:text-sts-foreground"
       >
         <Download className="size-3.5" strokeWidth={2} />
         <span className="hidden sm:inline">Export</span>
@@ -40,9 +40,9 @@ export function ProjectExportMenu({ projectId }: { projectId: string }) {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-48 rounded-xl border border-pen-card-border bg-pen-bg p-1.5 shadow-xl"
+        className="w-48 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
       >
-        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-pen-subtle">
+        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-sts-subtle">
           Export this project&apos;s tickets
         </p>
         {EXPORT_OPTIONS.map((opt) => (
@@ -50,9 +50,9 @@ export function ProjectExportMenu({ projectId }: { projectId: string }) {
             key={opt.format}
             type="button"
             onClick={() => handleExport(opt.format)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-pen-foreground transition-colors hover:bg-pen-surface"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:bg-sts-surface"
           >
-            <Download className="size-3.5 shrink-0 text-pen-subtle" />
+            <Download className="size-3.5 shrink-0 text-sts-subtle" />
             {opt.label}
           </button>
         ))}

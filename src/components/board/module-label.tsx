@@ -11,9 +11,9 @@ export function CardModuleSegment({
   if (!moduleName) return null;
   return (
     <>
-      {withSeparator && <span className="text-pen-card-border">·</span>}
+      {withSeparator && <span className="text-sts-card-border">·</span>}
       <span
-        className="max-w-[90px] truncate font-sans text-[11.5px] text-pen-subtle"
+        className="max-w-[90px] truncate font-sans text-[11.5px] text-sts-subtle"
         title={moduleName}
       >
         {moduleName}
@@ -33,7 +33,7 @@ export function ModuleCell({
   return (
     <span
       className={cn(
-        "max-w-[120px] truncate font-sans text-[11.5px] text-pen-muted",
+        "max-w-[120px] truncate font-sans text-[11.5px] text-sts-muted",
         className,
       )}
       title={moduleName ?? undefined}

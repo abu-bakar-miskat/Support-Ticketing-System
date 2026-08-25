@@ -229,7 +229,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       <div className="relative mt-0.5 shrink-0">
         <UserAvatar name={actorName} avatarUrl={actorAvatarUrl} size={30} />
         <span
-          className="absolute -bottom-1 -right-1 flex size-[14px] items-center justify-center rounded-full border-[1.5px] border-pen-card"
+          className="absolute -bottom-1 -right-1 flex size-[14px] items-center justify-center rounded-full border-[1.5px] border-sts-card"
           style={{ backgroundColor: meta.color }}
         >
           <Icon className="size-[7px] text-white" strokeWidth={2.5} />
@@ -238,9 +238,9 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-          <span className="shrink-0 font-sans text-[12.5px] font-semibold text-pen-foreground">{actorName}</span>
-          <span className="shrink-0 font-sans text-[12px] text-pen-muted">{desc}</span>
-          <span className="ml-auto shrink-0 font-sans text-[11px] text-pen-subtle">{item.time}</span>
+          <span className="shrink-0 font-sans text-[12.5px] font-semibold text-sts-foreground">{actorName}</span>
+          <span className="shrink-0 font-sans text-[12px] text-sts-muted">{desc}</span>
+          <span className="ml-auto shrink-0 font-sans text-[11px] text-sts-subtle">{item.time}</span>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -251,50 +251,50 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           ) : (
             <Link
               href={`/tickets/${item.ticket.id}`}
-              className="inline-flex items-center gap-1 rounded-md bg-pen-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-pen-id transition-colors hover:bg-pen-blue-tint"
+              className="inline-flex items-center gap-1 rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue-tint"
             >
               {item.ticket.humanId}
             </Link>
           )}
 
           {isDeleted ? (
-            <span className="min-w-0 max-w-[280px] truncate font-sans text-[12px] text-pen-muted/60 line-through">{item.ticket.title}</span>
+            <span className="min-w-0 max-w-[280px] truncate font-sans text-[12px] text-sts-muted/60 line-through">{item.ticket.title}</span>
           ) : (
             <Link
               href={`/tickets/${item.ticket.id}`}
-              className="min-w-0 max-w-[280px] truncate font-sans text-[12px] font-medium text-pen-foreground hover:text-pen-id hover:underline"
+              className="min-w-0 max-w-[280px] truncate font-sans text-[12px] font-medium text-sts-foreground hover:text-sts-id hover:underline"
             >
               {item.ticket.title}
             </Link>
           )}
 
-          <span className="text-pen-subtle/40">·</span>
+          <span className="text-sts-subtle/40">·</span>
           <span className="shrink-0 font-sans text-[10.5px] font-semibold" style={{ color: priorityColor }}>
             {item.ticket.priority}
           </span>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-pen-surface px-1.5 py-px font-sans text-[10.5px] text-pen-muted">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-sts-surface px-1.5 py-px font-sans text-[10.5px] text-sts-muted">
             <span className="size-[4px] rounded-full bg-current opacity-50" />
             {item.ticket.status}
           </span>
           {item.ticket.projectName && (
             <>
-              <span className="text-pen-subtle/40">·</span>
-              <span className="inline-flex shrink-0 items-center gap-1 font-sans text-[10.5px] text-pen-muted">
+              <span className="text-sts-subtle/40">·</span>
+              <span className="inline-flex shrink-0 items-center gap-1 font-sans text-[10.5px] text-sts-muted">
                 <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: item.ticket.projectColor ?? "#94a3b8" }} />
                 {item.ticket.projectName}
               </span>
             </>
           )}
-          <span className="inline-flex shrink-0 items-center font-sans text-[10.5px] text-pen-subtle">
+          <span className="inline-flex shrink-0 items-center font-sans text-[10.5px] text-sts-subtle">
             · {item.ticket.subDepartmentName}
           </span>
         </div>
 
         {item.action === "COMMENT_ADDED" && item.metadata.body ? (
-          <p className="mt-1 line-clamp-2 font-sans text-[11.5px] italic text-pen-subtle">
-            <span className="not-italic text-pen-subtle/40">"</span>
+          <p className="mt-1 line-clamp-2 font-sans text-[11.5px] italic text-sts-subtle">
+            <span className="not-italic text-sts-subtle/40">"</span>
             {String(item.metadata.body)}
-            <span className="not-italic text-pen-subtle/40">"</span>
+            <span className="not-italic text-sts-subtle/40">"</span>
           </p>
         ) : null}
       </div>
@@ -318,24 +318,24 @@ function StatsBar({
 
   return (
     <div className={cn(
-      "grid gap-px overflow-hidden rounded-xl border border-pen-card-border bg-pen-card-border",
+      "grid gap-px overflow-hidden rounded-xl border border-sts-card-border bg-sts-card-border",
       showMemberStats ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-2 sm:grid-cols-5",
     )}>
       {showMemberStats ? (
-        <div className="flex flex-col gap-0.5 bg-pen-card px-4 py-3">
-          <p className="font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">Members</p>
-          <p className="font-sans text-[22px] font-bold tabular-nums text-pen-foreground">{totalMembers}</p>
+        <div className="flex flex-col gap-0.5 bg-sts-card px-4 py-3">
+          <p className="font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">Members</p>
+          <p className="font-sans text-[22px] font-bold tabular-nums text-sts-foreground">{totalMembers}</p>
         </div>
       ) : null}
-      <div className="flex flex-col gap-0.5 bg-pen-card px-4 py-3">
-        <p className="font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">Tasks</p>
-        <p className="font-sans text-[22px] font-bold tabular-nums text-pen-foreground">{totalTickets}</p>
+      <div className="flex flex-col gap-0.5 bg-sts-card px-4 py-3">
+        <p className="font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">Tasks</p>
+        <p className="font-sans text-[22px] font-bold tabular-nums text-sts-foreground">{totalTickets}</p>
       </div>
       {topStats.map(({ action, count, meta }) => {
         const Icon = meta.icon;
         return (
-          <div key={action} className="flex flex-col gap-0.5 bg-pen-card px-4 py-3">
-            <p className="flex items-center gap-1 font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">
+          <div key={action} className="flex flex-col gap-0.5 bg-sts-card px-4 py-3">
+            <p className="flex items-center gap-1 font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
               <Icon className="size-3 shrink-0" style={{ color: meta.color }} />
               {meta.label}
             </p>
@@ -522,7 +522,7 @@ export function ActivityPage({
         className="mb-5"
         title="Activity"
         icon={Activity}
-        iconClassName="text-pen-blue"
+        iconClassName="text-sts-blue"
         description={
           ownActivityOnly
             ? "Your recorded activity on tickets in this department"
@@ -531,15 +531,15 @@ export function ActivityPage({
       />
 
       {/* Time range bar */}
-      <div className={cn("mb-4 rounded-xl border border-pen-card-border bg-pen-card px-4 py-3 transition-opacity", isPending && "opacity-60")}>
+      <div className={cn("mb-4 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3 transition-opacity", isPending && "opacity-60")}>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <CalendarDays className="size-3.5 shrink-0 text-pen-subtle" />
-            <span className="font-sans text-[11.5px] font-medium text-pen-muted">Range</span>
+            <CalendarDays className="size-3.5 shrink-0 text-sts-subtle" />
+            <span className="font-sans text-[11.5px] font-medium text-sts-muted">Range</span>
           </div>
 
           {/* Preset pills */}
-          <div className="flex gap-0.5 rounded-lg border border-pen-card-border bg-pen-surface p-0.5">
+          <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
             {RANGE_PRESETS.map((p) => (
               <button
                 key={p.id}
@@ -549,8 +549,8 @@ export function ActivityPage({
                 className={cn(
                   "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
                   currentPreset === p.id
-                    ? "bg-pen-blue text-white shadow-sm dark:text-gray-900"
-                    : "text-pen-muted hover:text-pen-foreground",
+                    ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
+                    : "text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 {p.label}
@@ -565,20 +565,20 @@ export function ActivityPage({
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
               />
-              <span className="font-sans text-[11.5px] text-pen-subtle">to</span>
+              <span className="font-sans text-[11.5px] text-sts-subtle">to</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id"
+                className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
               />
               <button
                 type="button"
                 onClick={applyCustomRange}
                 disabled={!customFrom || !customTo || isPending}
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-pen-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+                className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
               >
                 Apply
               </button>
@@ -586,12 +586,12 @@ export function ActivityPage({
           )}
 
           {/* Range label + loading indicator */}
-          <div className="ml-auto flex items-center gap-1.5 rounded-lg bg-pen-surface px-3 py-1.5">
+          <div className="ml-auto flex items-center gap-1.5 rounded-lg bg-sts-surface px-3 py-1.5">
             {isPending
-              ? <Loader2 className="size-3 animate-spin text-pen-subtle" />
-              : <Clock className="size-3 shrink-0 text-pen-subtle" />
+              ? <Loader2 className="size-3 animate-spin text-sts-subtle" />
+              : <Clock className="size-3 shrink-0 text-sts-subtle" />
             }
-            <span className="font-sans text-[11.5px] text-pen-muted">
+            <span className="font-sans text-[11.5px] text-sts-muted">
               {formatActivityRangeLabel(new Date(currentFrom), new Date(currentTo))}
             </span>
           </div>
@@ -612,15 +612,15 @@ export function ActivityPage({
 
       {/* Other filters */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <SlidersHorizontal className="size-3.5 shrink-0 text-pen-subtle" />
+        <SlidersHorizontal className="size-3.5 shrink-0 text-sts-subtle" />
 
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tickets, members…"
-            className="h-8 w-48 rounded-lg border border-pen-card-border bg-pen-card pl-8 pr-3 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+            className="h-8 w-48 rounded-lg border border-sts-card-border bg-sts-card pl-8 pr-3 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
           />
         </div>
 
@@ -668,13 +668,13 @@ export function ActivityPage({
             type="button"
             onClick={clearFilters}
             disabled={isPending}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-card px-3 font-sans text-[12px] text-pen-muted transition-colors hover:text-pen-foreground disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
           >
             <X className="size-3" /> Clear
           </button>
         )}
 
-        <span className="ml-auto font-sans text-[11.5px] text-pen-subtle">
+        <span className="ml-auto font-sans text-[11.5px] text-sts-subtle">
           {isPending ? "Loading…" : `${totalEvents} event${totalEvents !== 1 ? "s" : ""}`}
         </span>
       </div>
@@ -683,21 +683,21 @@ export function ActivityPage({
       <div className={cn("relative transition-opacity duration-150", isPending && "pointer-events-none opacity-40")}>
         {isPending && (
           <div className="absolute inset-0 z-10 flex items-start justify-center pt-16">
-            <div className="flex items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card px-4 py-2.5 shadow-md">
-              <Loader2 className="size-4 animate-spin text-pen-id" />
-              <span className="font-sans text-[12.5px] font-medium text-pen-foreground">Loading activity…</span>
+            <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-2.5 shadow-md">
+              <Loader2 className="size-4 animate-spin text-sts-id" />
+              <span className="font-sans text-[12.5px] font-medium text-sts-foreground">Loading activity…</span>
             </div>
           </div>
         )}
 
         {filtered.length === 0 && !isPending ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <div className="flex size-12 items-center justify-center rounded-xl border border-pen-card-border bg-pen-card">
-              <Activity className="size-5 text-pen-subtle" strokeWidth={1.2} />
+            <div className="flex size-12 items-center justify-center rounded-xl border border-sts-card-border bg-sts-card">
+              <Activity className="size-5 text-sts-subtle" strokeWidth={1.2} />
             </div>
             <div>
-              <p className="font-sans text-[13px] font-semibold text-pen-foreground">No activity found</p>
-              <p className="mt-0.5 font-sans text-[12px] text-pen-muted">
+              <p className="font-sans text-[13px] font-semibold text-sts-foreground">No activity found</p>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
                 {hasActiveFilter ? "Try clearing your filters." : "No activity recorded in this time range."}
               </p>
             </div>
@@ -705,7 +705,7 @@ export function ActivityPage({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-card px-3 py-1.5 font-sans text-[12px] text-pen-muted transition-colors hover:text-pen-foreground"
+                className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <X className="size-3" /> Clear filters
               </button>
@@ -716,15 +716,15 @@ export function ActivityPage({
             {groups.map(({ key, items: groupItems }) => (
               <div key={key} className="flex flex-col">
                 <div className="mb-2 flex items-center gap-2.5">
-                  <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.8px] text-pen-subtle">
+                  <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.8px] text-sts-subtle">
                     {GROUP_LABELS[key]}
                   </span>
-                  <span className="font-sans text-[11px] text-pen-subtle/60">({groupItems.length})</span>
-                  <div className="h-px flex-1 bg-pen-card-border/50" />
+                  <span className="font-sans text-[11px] text-sts-subtle/60">({groupItems.length})</span>
+                  <div className="h-px flex-1 bg-sts-card-border/50" />
                 </div>
-                <div className="divide-y divide-pen-card-border/60 overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+                <div className="divide-y divide-sts-card-border/60 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
                   {groupItems.map((item) => (
-                    <div key={item.id} className="px-4 transition-colors hover:bg-pen-surface/40">
+                    <div key={item.id} className="px-4 transition-colors hover:bg-sts-surface/40">
                       <ActivityRow item={item} />
                     </div>
                   ))}
@@ -738,7 +738,7 @@ export function ActivityPage({
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore || isPending}
-                  className="flex items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-pen-muted transition-colors hover:border-pen-id/30 hover:text-pen-foreground disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground disabled:opacity-50"
                 >
                   {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : <Clock className="size-3.5" />}
                   {loadingMore ? "Loading…" : "Load more activity"}

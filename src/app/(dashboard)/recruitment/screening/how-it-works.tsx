@@ -50,16 +50,16 @@ export function HowItWorks() {
         How it works
       </Button>
       <Dialog.Portal>
-        <Dialog.Backdrop className="pen-overlay-backdrop fixed inset-0 z-50" />
-        <Dialog.Popup className="border-pen-card-border bg-pen-bg fixed top-1/2 left-1/2 z-50 max-h-[85vh] w-[min(560px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border shadow-2xl">
-          <div className="border-pen-card-border flex items-center justify-between border-b px-5 py-4">
+        <Dialog.Backdrop className="sts-overlay-backdrop fixed inset-0 z-50" />
+        <Dialog.Popup className="border-sts-card-border bg-sts-bg fixed top-1/2 left-1/2 z-50 max-h-[85vh] w-[min(560px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border shadow-2xl">
+          <div className="border-sts-card-border flex items-center justify-between border-b px-5 py-4">
             <Dialog.Title className="text-[14px] font-semibold">
               How video screening works
             </Dialog.Title>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-pen-muted hover:bg-pen-surface hover:text-pen-foreground rounded-md p-1"
+              className="text-sts-muted hover:bg-sts-surface hover:text-sts-foreground rounded-md p-1"
             >
               <X className="size-4" />
             </button>
@@ -68,7 +68,7 @@ export function HowItWorks() {
             <ol className="space-y-4">
               {STEPS.map((step, i) => (
                 <li key={step.title} className="flex gap-3">
-                  <span className="bg-pen-surface border-pen-card-border mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+                  <span className="bg-sts-surface border-sts-card-border mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
                     {i + 1}
                   </span>
                   <div>
@@ -80,7 +80,7 @@ export function HowItWorks() {
                 </li>
               ))}
             </ol>
-            <div className="border-pen-card-border bg-pen-surface rounded-xl border px-4 py-3">
+            <div className="border-sts-card-border bg-sts-surface rounded-xl border px-4 py-3">
               <p className="text-[12.5px] font-semibold">Good to know</p>
               <ul className="text-muted-foreground mt-1 list-disc space-y-1 pl-4 text-[12.5px] leading-relaxed">
                 {NOTES.map((note) => (

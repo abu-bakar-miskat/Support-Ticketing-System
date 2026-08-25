@@ -45,10 +45,10 @@ export function VideoNodeView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper
-      className={`my-2 w-full ${selected ? "ring-2 ring-pen-id rounded-lg" : ""}`}
+      className={`my-2 w-full ${selected ? "ring-2 ring-sts-id rounded-lg" : ""}`}
       as="div"
     >
-      <div className="overflow-hidden rounded-lg border border-pen-card-border bg-pen-card group">
+      <div className="overflow-hidden rounded-lg border border-sts-card-border bg-sts-card group">
         <video
           controls
           preload="metadata"
@@ -59,15 +59,15 @@ export function VideoNodeView(props: NodeViewProps) {
         </video>
         <div className="flex items-center gap-2 p-2">
           <div className="flex flex-col min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-pen-foreground">{fileName}</p>
-            <p className="text-xs text-pen-muted">{sizeInMb} MB</p>
+            <p className="truncate text-xs font-medium text-sts-foreground">{fileName}</p>
+            <p className="text-xs text-sts-muted">{sizeInMb} MB</p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0 transition-opacity">
             <button
               type="button"
               onClick={handleDownload}
               disabled={isDownloading}
-              className="p-2 text-pen-blue hover:bg-pen-surface rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 text-sts-blue hover:bg-sts-surface rounded-lg transition-colors disabled:opacity-50"
               title={`Download ${fileName}`}
             >
               {isDownloading ? (
@@ -80,7 +80,7 @@ export function VideoNodeView(props: NodeViewProps) {
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="p-2 text-pen-muted hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Delete video"
             >
               {isDeleting ? (

@@ -74,7 +74,7 @@ export function SprintSelect({ ticketId, projectId, sprintId, sprintName, disabl
 
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="pen-text-label">Sprint</p>
+      <p className="sts-text-label">Sprint</p>
       <div className="space-y-1">
         <Select
           value={liveId ?? NO_SPRINT}
@@ -104,7 +104,7 @@ export function SprintSelect({ ticketId, projectId, sprintId, sprintName, disabl
             ))}
           </SelectContent>
         </Select>
-        {error ? <p className="font-sans text-[11.5px] text-pen-red">{error}</p> : null}
+        {error ? <p className="font-sans text-[11.5px] text-sts-red">{error}</p> : null}
       </div>
     </div>
   )

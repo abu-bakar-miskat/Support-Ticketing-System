@@ -46,8 +46,8 @@ export function InstallAppButton({
         disabled={installing}
         title={collapsed ? "Install app" : undefined}
         className={cn(
-          "flex w-full items-center rounded-lg border border-pen-blue/25 bg-pen-blue-tint font-sans text-[12px] font-semibold text-pen-id transition-colors",
-          "hover:border-pen-blue/40 hover:bg-pen-blue/15 disabled:opacity-60",
+          "flex w-full items-center rounded-lg border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+          "hover:border-sts-blue/40 hover:bg-sts-blue/15 disabled:opacity-60",
           collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
           className,
         )}
@@ -66,8 +66,8 @@ export function InstallAppButton({
         type="button"
         title={collapsed ? "Install app" : undefined}
         className={cn(
-          "flex w-full items-center rounded-lg border border-pen-blue/25 bg-pen-blue-tint font-sans text-[12px] font-semibold text-pen-id transition-colors",
-          "hover:border-pen-blue/40 hover:bg-pen-blue/15",
+          "flex w-full items-center rounded-lg border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+          "hover:border-sts-blue/40 hover:bg-sts-blue/15",
           collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
           className,
         )}
@@ -79,18 +79,18 @@ export function InstallAppButton({
         align="start"
         side="right"
         sideOffset={8}
-        className="w-[min(100vw-2rem,280px)] rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-[min(100vw-2rem,280px)] rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
-        <div className="flex items-start justify-between gap-2 border-b border-pen-card-border px-3.5 py-3">
+        <div className="flex items-start justify-between gap-2 border-b border-sts-card-border px-3.5 py-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-pen-blue/10">
-              <MonitorSmartphone className="size-3.5 text-pen-blue" />
+            <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue/10">
+              <MonitorSmartphone className="size-3.5 text-sts-blue" />
             </span>
             <div>
-              <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+              <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                 Install PEN app
               </p>
-              <p className="font-sans text-[11.5px] text-pen-subtle">
+              <p className="font-sans text-[11.5px] text-sts-subtle">
                 Add to your home screen
               </p>
             </div>
@@ -98,7 +98,7 @@ export function InstallAppButton({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded p-0.5 text-pen-subtle hover:text-pen-foreground"
+            className="rounded p-0.5 text-sts-subtle hover:text-sts-foreground"
             aria-label="Close"
           >
             <X className="size-3.5" />
@@ -108,26 +108,26 @@ export function InstallAppButton({
         <div className="space-y-2.5 px-3.5 py-3">
           {isIos ? (
             <>
-              <p className="font-sans text-[12px] leading-snug text-pen-muted">
+              <p className="font-sans text-[12px] leading-snug text-sts-muted">
                 On iPhone or iPad, use Safari&apos;s share menu:
               </p>
-              <ol className="space-y-2 font-sans text-[12px] text-pen-foreground">
+              <ol className="space-y-2 font-sans text-[12px] text-sts-foreground">
                 <li className="flex gap-2">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-surface text-[11.5px] font-semibold">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-surface text-[11.5px] font-semibold">
                     1
                   </span>
                   <span className="flex items-center gap-1.5 pt-0.5">
-                    Tap <Share className="size-3.5 text-pen-blue" /> Share
+                    Tap <Share className="size-3.5 text-sts-blue" /> Share
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-surface text-[11.5px] font-semibold">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-surface text-[11.5px] font-semibold">
                     2
                   </span>
                   <span className="pt-0.5">Choose &quot;Add to Home Screen&quot;</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-surface text-[11.5px] font-semibold">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-surface text-[11.5px] font-semibold">
                     3
                   </span>
                   <span className="pt-0.5">Tap Add</span>
@@ -135,7 +135,7 @@ export function InstallAppButton({
               </ol>
             </>
           ) : (
-            <p className="font-sans text-[12px] leading-snug text-pen-muted">
+            <p className="font-sans text-[12px] leading-snug text-sts-muted">
               Look for the install icon in your browser&apos;s address bar
               (usually a monitor with a download arrow). Chrome and Edge on
               desktop support one-click install.

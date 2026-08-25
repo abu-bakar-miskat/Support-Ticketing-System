@@ -22,7 +22,7 @@ export function PriorityDot({ priority, status, size = "sm", className }: Priori
         "block shrink-0 rounded-full",
         size === "sm" ? "size-[7px]" : "size-[9px]",
         style.dot,
-        pulse && "pen-critical-breathe",
+        pulse && "sts-critical-breathe",
         className,
       )}
       aria-hidden
@@ -49,7 +49,7 @@ export function PriorityPill({ priority, status, size = "sm", className }: Prior
         style.pillBg,
         style.pillText,
         size === "sm" ? "px-1.5 py-0.5 text-[9.5px]" : "px-2 py-0.5 text-[11.5px]",
-        pulse && "pen-critical-breathe",
+        pulse && "sts-critical-breathe",
         className,
       )}
     >

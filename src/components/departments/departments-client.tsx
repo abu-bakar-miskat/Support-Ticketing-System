@@ -46,20 +46,20 @@ function StatCard({
       "flex flex-col gap-2 rounded-2xl border p-5 transition-colors",
       alert && value > 0
         ? "border-amber-400/50 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/5"
-        : "border-pen-card-border bg-pen-card hover:border-pen-blue/30",
+        : "border-sts-card-border bg-sts-card hover:border-sts-blue/30",
     )}>
       <div className="flex items-center gap-2">
         <span className={cn(
           "flex size-8 items-center justify-center rounded-xl",
-          alert && value > 0 ? "bg-amber-100 dark:bg-amber-900/30" : "bg-pen-blue/10",
+          alert && value > 0 ? "bg-amber-100 dark:bg-amber-900/30" : "bg-sts-blue/10",
         )}>
-          <Icon className={cn("size-4", alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-pen-blue")} />
+          <Icon className={cn("size-4", alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-blue")} />
         </span>
-        <span className="pen-text-section-label">{label}</span>
+        <span className="sts-text-section-label">{label}</span>
       </div>
       <p className={cn(
         "font-mono text-[32px] font-semibold leading-none",
-        alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-pen-foreground",
+        alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-foreground",
       )}>
         {value}
       </p>
@@ -111,12 +111,12 @@ export function DepartmentsClient({
     <div className="h-full overflow-y-auto">
       {/* ── Org overview header ─────────────────────────────────────────────── */}
       {orgStats && (
-        <div className="border-b border-pen-card-border bg-pen-card/50 px-6 py-6 sm:px-10">
+        <div className="border-b border-sts-card-border bg-sts-card/50 px-6 py-6 sm:px-10">
           <PageHeader
             title={tenantName || "Organisation Overview"}
             description="Manage departments, teams and access across this tenant."
             icon={DepartmentIcon}
-            iconClassName="text-pen-blue"
+            iconClassName="text-sts-blue"
             actions={
               <div className="flex items-center gap-2">
                 {tenantId && (
@@ -127,7 +127,7 @@ export function DepartmentsClient({
                 )}
                 <Link
                   href="/settings"
-                  className="flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-blue/40 hover:text-pen-foreground"
+                  className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
                 >
                   <Settings className="size-3.5" />
                   Settings
@@ -149,7 +149,7 @@ export function DepartmentsClient({
           </div>
 
           {/* Tabs */}
-          <div className="mt-5 flex items-center gap-1 border-b border-pen-card-border">
+          <div className="mt-5 flex items-center gap-1 border-b border-sts-card-border">
             {([
               { key: "departments" as const, label: "Departments" },
               { key: "users" as const, label: `Users${members ? ` (${members.length})` : ""}` },
@@ -162,8 +162,8 @@ export function DepartmentsClient({
                 className={cn(
                   "relative -mb-px px-3 py-2.5 font-sans text-[13px] font-medium transition-colors",
                   tab === t.key
-                    ? "text-pen-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-pen-blue"
-                    : "text-pen-muted hover:text-pen-foreground",
+                    ? "text-sts-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-sts-blue"
+                    : "text-sts-muted hover:text-sts-foreground",
                 )}
               >
                 {t.label}

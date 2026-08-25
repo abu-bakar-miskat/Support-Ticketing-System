@@ -62,24 +62,24 @@ export function TicketAccessDenied({
         </span>
 
         <div className="flex flex-col gap-1.5">
-          <h1 className="pen-text-page-title">
+          <h1 className="sts-text-page-title">
             {title}
           </h1>
-          <p className="font-sans text-[13px] leading-relaxed text-pen-muted">
+          <p className="font-sans text-[13px] leading-relaxed text-sts-muted">
             {body}
           </p>
         </div>
 
-        <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5">
-          <ShieldOff className="size-3.5 shrink-0 text-pen-subtle" />
-          <span className="font-sans text-[11.5px] text-pen-subtle">
-            Ticket <span className="font-semibold text-pen-foreground">{ticketRef}</span> — access denied
+        <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5">
+          <ShieldOff className="size-3.5 shrink-0 text-sts-subtle" />
+          <span className="font-sans text-[11.5px] text-sts-subtle">
+            Ticket <span className="font-semibold text-sts-foreground">{ticketRef}</span> — access denied
           </span>
         </div>
 
         <Link
           href="/"
-          className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl bg-pen-blue px-5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+          className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl bg-sts-blue px-5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
         >
           Go to dashboard
         </Link>

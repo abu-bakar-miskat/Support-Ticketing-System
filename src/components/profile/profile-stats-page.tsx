@@ -156,20 +156,20 @@ type ActionConfig = {
 const ACTION_CONFIG: Record<string, ActionConfig> = {
   STATUS_CHANGED: {
     Icon: ArrowRightLeft,
-    color: "text-pen-blue",
-    bg: "bg-pen-blue/10",
+    color: "text-sts-blue",
+    bg: "bg-sts-blue/10",
     verb: "Changed status",
   },
   ASSIGNED: {
     Icon: UserCheck,
-    color: "text-pen-green",
-    bg: "bg-pen-green/10",
+    color: "text-sts-green",
+    bg: "bg-sts-green/10",
     verb: "Assigned",
   },
   COMMENT_ADDED: {
     Icon: MessageSquare,
-    color: "text-pen-purple",
-    bg: "bg-pen-purple/10",
+    color: "text-sts-purple",
+    bg: "bg-sts-purple/10",
     verb: "Commented",
   },
   ATTACHMENT_ADDED: {
@@ -180,14 +180,14 @@ const ACTION_CONFIG: Record<string, ActionConfig> = {
   },
   MENTION: {
     Icon: AtSign,
-    color: "text-pen-red",
-    bg: "bg-pen-red/10",
+    color: "text-sts-red",
+    bg: "bg-sts-red/10",
     verb: "Mentioned",
   },
   TICKET_DELETED: {
     Icon: Trash2,
-    color: "text-pen-red",
-    bg: "bg-pen-red/10",
+    color: "text-sts-red",
+    bg: "bg-sts-red/10",
     verb: "Deleted ticket",
   },
 };
@@ -224,30 +224,30 @@ function TicketSlideOver({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 pen-overlay-backdrop"
+        className="fixed inset-0 z-40 sts-overlay-backdrop"
         onClick={onClose}
       />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[400px] flex-col border-l border-pen-card-border bg-pen-card shadow-2xl animate-in slide-in-from-right duration-250">
-        <div className="flex items-center justify-between border-b border-pen-card-border px-4 py-3">
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[400px] flex-col border-l border-sts-card-border bg-sts-card shadow-2xl animate-in slide-in-from-right duration-250">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-4 py-3">
           <div>
-            <h2 className="font-sans text-[14px] font-semibold text-pen-foreground">
+            <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
               {STAT_LABELS[statKey]}
             </h2>
-            <p className="font-sans text-[11.5px] text-pen-subtle">
+            <p className="font-sans text-[11.5px] text-sts-subtle">
               {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {tickets.length === 0 ? (
-            <p className="py-12 text-center font-sans text-[13px] text-pen-subtle">
+            <p className="py-12 text-center font-sans text-[13px] text-sts-subtle">
               No tickets
             </p>
           ) : (
@@ -258,7 +258,7 @@ function TicketSlideOver({
                   key={t.id}
                   href={`/tickets/${t.id}`}
                   onClick={onClose}
-                  className="group flex items-start gap-2.5 border-b border-pen-card-border px-4 py-3 transition-colors hover:bg-pen-surface"
+                  className="group flex items-start gap-2.5 border-b border-sts-card-border px-4 py-3 transition-colors hover:bg-sts-surface"
                 >
                   <span
                     className="mt-2 size-2 shrink-0 rounded-full"
@@ -268,7 +268,7 @@ function TicketSlideOver({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono text-[11.5px] font-semibold text-pen-id">
+                      <span className="font-mono text-[11.5px] font-semibold text-sts-id">
                         {t.humanId}
                       </span>
                       {t.department && t.isOutsideContribution && (
@@ -277,20 +277,20 @@ function TicketSlideOver({
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 font-sans text-[13px] text-pen-foreground group-hover:text-pen-blue leading-snug">
+                    <p className="mt-0.5 font-sans text-[13px] text-sts-foreground group-hover:text-sts-blue leading-snug">
                       {t.title}
                     </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+                    <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
                       {t.status}
                       {t.project && ` · ${t.project.name}`}
                       {ov && (
-                        <span className="ml-1 font-semibold text-pen-red">
+                        <span className="ml-1 font-semibold text-sts-red">
                           · Overdue
                         </span>
                       )}
                     </p>
                   </div>
-                  <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-pen-subtle" />
+                  <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-sts-subtle" />
                 </Link>
               );
             })
@@ -325,23 +325,23 @@ function MetricButton({
       className={cn(
         "flex flex-1 flex-col items-center gap-0.5 rounded-lg border px-3 py-3 text-center transition-colors",
         active
-          ? "border-pen-blue bg-pen-blue-tint"
-          : "border-pen-card-border bg-pen-card hover:border-pen-blue/30",
+          ? "border-sts-blue bg-sts-blue-tint"
+          : "border-sts-card-border bg-sts-card hover:border-sts-blue/30",
       )}
     >
       <span
         className={cn(
           "font-sans text-[22px] font-bold leading-none tabular-nums",
-          accent ?? "text-pen-foreground",
+          accent ?? "text-sts-foreground",
         )}
       >
         {value}
       </span>
-      <span className="font-sans text-[11.5px] font-semibold text-pen-foreground">
+      <span className="font-sans text-[11.5px] font-semibold text-sts-foreground">
         {label}
       </span>
       {hint && (
-        <span className="font-sans text-[11.5px] text-pen-subtle">{hint}</span>
+        <span className="font-sans text-[11.5px] text-sts-subtle">{hint}</span>
       )}
     </button>
   );
@@ -379,9 +379,9 @@ function ProgressRow({
           {isOutside ? (
             <Globe className="size-3 shrink-0 text-amber-500" />
           ) : (
-            <DepartmentIcon className="size-3 shrink-0 text-pen-blue" />
+            <DepartmentIcon className="size-3 shrink-0 text-sts-blue" />
           )}
-          <span className="truncate font-sans text-[13px] text-pen-foreground">
+          <span className="truncate font-sans text-[13px] text-sts-foreground">
             {label}
           </span>
           {isOutside && (
@@ -390,24 +390,24 @@ function ProgressRow({
             </span>
           )}
         </div>
-        <span className="shrink-0 font-sans text-[12px] text-pen-muted">
+        <span className="shrink-0 font-sans text-[12px] text-sts-muted">
           {done}/{total} done
           {overdue ? (
-            <span className="ml-1.5 text-pen-red">{overdue} overdue</span>
+            <span className="ml-1.5 text-sts-red">{overdue} overdue</span>
           ) : null}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-pen-surface">
+      <div className="h-1.5 overflow-hidden rounded-full bg-sts-surface">
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isOutside ? "bg-amber-500" : "bg-pen-green",
+            isOutside ? "bg-amber-500" : "bg-sts-green",
           )}
           style={{ width: `${pct}%` }}
         />
       </div>
       {((created ?? 0) > 0 || (loggedSecs ?? 0) > 0) && (
-        <div className="flex items-center gap-2.5 font-sans text-[11px] text-pen-subtle">
+        <div className="flex items-center gap-2.5 font-sans text-[11px] text-sts-subtle">
           {(created ?? 0) > 0 && <span>{created} created</span>}
           {(loggedSecs ?? 0) > 0 && <span>{shortDuration(loggedSecs!)} logged</span>}
         </div>
@@ -423,24 +423,24 @@ function ActivityPanel({ activities }: { activities: ActivityItem[] }) {
     .slice(0, 15);
 
   return (
-    <div className="flex w-full flex-col border-t border-pen-card-border lg:h-full lg:w-[300px] lg:shrink-0 lg:border-l lg:border-t-0">
-      <div className="shrink-0 border-b border-pen-card-border px-4 py-3">
-        <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+    <div className="flex w-full flex-col border-t border-sts-card-border lg:h-full lg:w-[300px] lg:shrink-0 lg:border-l lg:border-t-0">
+      <div className="shrink-0 border-b border-sts-card-border px-4 py-3">
+        <p className="font-sans text-[13px] font-semibold text-sts-foreground">
           Recent activity
         </p>
-        <p className="font-sans text-[11.5px] text-pen-subtle">Last 7 days</p>
+        <p className="font-sans text-[11.5px] text-sts-subtle">Last 7 days</p>
       </div>
       <div className="max-h-[min(420px,50vh)] overflow-y-auto lg:max-h-none lg:flex-1">
         {recent.length === 0 ? (
-          <p className="py-10 text-center font-sans text-[12px] text-pen-subtle">
+          <p className="py-10 text-center font-sans text-[12px] text-sts-subtle">
             No recent activity
           </p>
         ) : (
           recent.map((a) => {
             const cfg = ACTION_CONFIG[a.action] ?? {
               Icon: Activity,
-              color: "text-pen-subtle",
-              bg: "bg-pen-surface",
+              color: "text-sts-subtle",
+              bg: "bg-sts-surface",
               verb: a.action,
             };
 
@@ -464,18 +464,18 @@ function ActivityPanel({ activities }: { activities: ActivityItem[] }) {
                   <cfg.Icon className={cn("size-3.5", cfg.color)} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-sans text-[12px] font-semibold text-pen-foreground">
+                  <p className="font-sans text-[12px] font-semibold text-sts-foreground">
                     {headline}
                   </p>
                   {a.ticketHumanId && (
-                    <p className="mt-0.5 truncate font-sans text-[11.5px] text-pen-muted">
-                      <span className="font-mono text-pen-id">
+                    <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-muted">
+                      <span className="font-mono text-sts-id">
                         {a.ticketHumanId}
                       </span>
                       {a.ticketTitle && ` · ${a.ticketTitle}`}
                     </p>
                   )}
-                  <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+                  <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
                     {timeAgo(new Date(a.createdAt))}
                   </p>
                 </div>
@@ -486,14 +486,14 @@ function ActivityPanel({ activities }: { activities: ActivityItem[] }) {
               <Link
                 key={a.id}
                 href={`/tickets/${a.ticketId}`}
-                className="block border-b border-pen-card-border px-4 py-3 transition-colors hover:bg-pen-surface"
+                className="block border-b border-sts-card-border px-4 py-3 transition-colors hover:bg-sts-surface"
               >
                 {inner}
               </Link>
             ) : (
               <div
                 key={a.id}
-                className="border-b border-pen-card-border px-4 py-3"
+                className="border-b border-sts-card-border px-4 py-3"
               >
                 {inner}
               </div>
@@ -664,7 +664,7 @@ export function ProfileStatsPage({
 
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header */}
-        <div className="pen-page-header shrink-0 border-b border-pen-card-border bg-pen-card">
+        <div className="sts-page-header shrink-0 border-b border-sts-card-border bg-sts-card">
           <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <AvatarVisual
@@ -674,20 +674,20 @@ export function ProfileStatsPage({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h1 className="pen-text-page-title">
+                  <h1 className="sts-text-page-title">
                     {isOwnProfile ? "My profile" : profile.name}
                   </h1>
                   {!isOwnProfile && (
-                    <span className="rounded bg-pen-surface px-1.5 py-px font-sans text-[11.5px] capitalize text-pen-muted">
+                    <span className="rounded bg-sts-surface px-1.5 py-px font-sans text-[11.5px] capitalize text-sts-muted">
                       {profile.role}
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 pen-text-page-desc">
+                <p className="mt-0.5 sts-text-page-desc">
                   {profileSubtitle(stats, isOwnProfile, viewingOther)}
                 </p>
                 {(profile.subDepartmentName || profile.homeDepartmentNames.length > 0) && (
-                  <p className="mt-1 pen-text-page-desc text-pen-subtle">
+                  <p className="mt-1 sts-text-page-desc text-sts-subtle">
                     {profile.homeDepartmentNames.length > 0 &&
                       profile.homeDepartmentNames.join(", ")}
                     {profile.subDepartmentName &&
@@ -710,7 +710,7 @@ export function ProfileStatsPage({
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <div className="pen-page-pad flex flex-col gap-4 lg:flex-1 lg:overflow-y-auto">
+          <div className="sts-page-pad flex flex-col gap-4 lg:flex-1 lg:overflow-y-auto">
             {/* Ticket counts — tap to see list */}
             <div className="flex flex-wrap gap-2">
               <MetricButton
@@ -723,7 +723,7 @@ export function ProfileStatsPage({
                 label="Done"
                 value={stats.completed}
                 hint={`${stats.completionRate}%`}
-                accent="text-pen-green"
+                accent="text-sts-green"
                 onClick={() => setSlide("completed")}
                 active={activeSlide === "completed"}
               />
@@ -736,14 +736,14 @@ export function ProfileStatsPage({
               <MetricButton
                 label="Overdue"
                 value={stats.overdue}
-                accent={stats.overdue > 0 ? "text-pen-red" : undefined}
+                accent={stats.overdue > 0 ? "text-sts-red" : undefined}
                 onClick={() => setSlide("overdue")}
                 active={activeSlide === "overdue"}
               />
               <MetricButton
                 label="Blocked"
                 value={stats.blocked}
-                accent={stats.blocked > 0 ? "text-pen-red" : undefined}
+                accent={stats.blocked > 0 ? "text-sts-red" : undefined}
                 onClick={() => setSlide("blocked")}
                 active={activeSlide === "blocked"}
               />
@@ -766,17 +766,17 @@ export function ProfileStatsPage({
             {/* Time logged */}
             {timeLogged.totalSecs > 0 && (
               <div className="grid grid-cols-1 gap-3">
-                <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
+                <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5">
                   <div className="mb-1.5 flex items-center gap-2">
-                    <Clock className="size-3.5 text-pen-blue" />
-                    <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-pen-subtle">
+                    <Clock className="size-3.5 text-sts-blue" />
+                    <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-sts-subtle">
                       TIME LOGGED
                     </p>
                   </div>
-                  <p className="font-mono text-[26px] font-semibold tabular-nums text-pen-foreground">
+                  <p className="font-mono text-[26px] font-semibold tabular-nums text-sts-foreground">
                     {timeLogged.totalLabel}
                   </p>
-                  <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+                  <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
                     Logged in this period
                   </p>
                 </div>
@@ -793,8 +793,8 @@ export function ProfileStatsPage({
 
             {/* Work by department */}
             {byDepartment.length > 0 && (
-              <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-4">
-                <p className="mb-3 font-sans text-[13px] font-semibold text-pen-foreground">
+              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+                <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
                   Work by department
                 </p>
                 <div className="flex flex-col gap-3">
@@ -812,9 +812,9 @@ export function ProfileStatsPage({
                   {outsideDepts.length > 0 && (
                     <>
                       {homeDepts.length > 0 && (
-                        <div className="border-t border-pen-card-border pt-1" />
+                        <div className="border-t border-sts-card-border pt-1" />
                       )}
-                      <p className="font-sans text-[11.5px] text-pen-subtle">
+                      <p className="font-sans text-[11.5px] text-sts-subtle">
                         Cross-department work
                       </p>
                       {outsideDepts.map((d) => (
@@ -837,8 +837,8 @@ export function ProfileStatsPage({
 
             {/* Top projects — only when useful */}
             {byProject.length > 0 && (
-              <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-4">
-                <p className="mb-3 font-sans text-[13px] font-semibold text-pen-foreground">
+              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+                <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
                   Projects
                 </p>
                 <div className="flex flex-col gap-3">

@@ -151,9 +151,9 @@ export function RejectButton({
 
       <Dialog.Root open={open} onOpenChange={setOpen}>
         <Dialog.Portal>
-          <Dialog.Backdrop className="pen-overlay-backdrop fixed inset-0 z-50" />
-          <Dialog.Popup className="border-pen-card-border bg-pen-bg fixed top-1/2 left-1/2 z-50 max-h-[85vh] w-[min(560px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border shadow-2xl">
-            <div className="border-pen-card-border flex items-center justify-between border-b px-5 py-4">
+          <Dialog.Backdrop className="sts-overlay-backdrop fixed inset-0 z-50" />
+          <Dialog.Popup className="border-sts-card-border bg-sts-bg fixed top-1/2 left-1/2 z-50 max-h-[85vh] w-[min(560px,95vw)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border shadow-2xl">
+            <div className="border-sts-card-border flex items-center justify-between border-b px-5 py-4">
               <Dialog.Title className="text-[14px] font-semibold">
                 {stage === "confirm" ? "Reject candidate" : "Rejection email"}
               </Dialog.Title>
@@ -176,7 +176,7 @@ export function RejectButton({
                 </p>
                 {reasonOptions.length > 0 && (
                   <div>
-                    <div className="pen-text-section-label mb-1.5">Reject reason (optional)</div>
+                    <div className="sts-text-section-label mb-1.5">Reject reason (optional)</div>
                     <Select value={reasonId || null} onValueChange={(v) => setReasonId(typeof v === "string" ? v : "")}>
                       <SelectTrigger className="h-8 w-full text-sm">
                         <SelectValue placeholder="Pick a reason…" />

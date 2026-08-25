@@ -62,10 +62,10 @@ const ROLE_OPTIONS_MANAGER: { value: Role; label: string }[] = [
 ];
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-pen-blue/10 text-pen-blue",
-  manager: "bg-pen-purple/10 text-pen-purple",
-  sub_manager: "bg-pen-green/10 text-pen-green",
-  agent: "bg-pen-surface text-pen-subtle",
+  admin: "bg-sts-blue/10 text-sts-blue",
+  manager: "bg-sts-purple/10 text-sts-purple",
+  sub_manager: "bg-sts-green/10 text-sts-green",
+  agent: "bg-sts-surface text-sts-subtle",
 };
 
 function initials(name: string) {
@@ -74,7 +74,7 @@ function initials(name: string) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -175,17 +175,17 @@ function AddMemberModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pen-overlay-backdrop">
-      <div className="relative w-full max-w-[480px] mx-4 rounded-[10px] border border-pen-card-border bg-pen-card shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop">
+      <div className="relative w-full max-w-[480px] mx-4 rounded-[10px] border border-sts-card-border bg-sts-card shadow-lg">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
-          <span className="font-sans text-[14px] font-semibold text-pen-foreground">
+        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+          <span className="font-sans text-[14px] font-semibold text-sts-foreground">
             Add member
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -194,34 +194,34 @@ function AddMemberModal({
         <div className="flex flex-col gap-4 p-5">
           {/* Search */}
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
             <input
               ref={searchRef}
               autoFocus
               value={search}
               onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
               placeholder="Search by name or email…"
-              className="h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg pl-8 pr-2.5 font-sans text-[12.5px] text-pen-foreground placeholder:text-pen-subtle outline-none focus:border-pen-blue/60"
+              className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg pl-8 pr-2.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
             />
             {searching && (
-              <Loader2 className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-pen-subtle" />
+              <Loader2 className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-sts-subtle" />
             )}
           </div>
 
           {/* Selected user highlight */}
           {selected && (
-            <div className="flex items-center gap-2.5 rounded-[8px] border border-pen-blue/40 bg-pen-blue/5 px-3 py-2">
+            <div className="flex items-center gap-2.5 rounded-[8px] border border-sts-blue/40 bg-sts-blue/5 px-3 py-2">
               <UserAvatar name={selected.name} avatarUrl={selected.avatarUrl} size={26} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {selected.name}
                 </p>
-                <p className="truncate font-sans text-[11.5px] text-pen-subtle">{selected.email}</p>
+                <p className="truncate font-sans text-[11.5px] text-sts-subtle">{selected.email}</p>
               </div>
               <span
                 className={cn(
                   "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
-                  ROLE_COLORS[selected.role] ?? "bg-pen-surface text-pen-subtle",
+                  ROLE_COLORS[selected.role] ?? "bg-sts-surface text-sts-subtle",
                 )}
               >
                 {selected.role}
@@ -229,7 +229,7 @@ function AddMemberModal({
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-pen-subtle hover:text-pen-foreground"
+                className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
               >
                 <X className="size-3" />
               </button>
@@ -238,25 +238,25 @@ function AddMemberModal({
 
           {/* Candidate results */}
           {!selected && candidates.length > 0 && (
-            <div className="max-h-[200px] overflow-y-auto rounded-[8px] border border-pen-card-border bg-pen-bg">
+            <div className="max-h-[200px] overflow-y-auto rounded-[8px] border border-sts-card-border bg-sts-bg">
               {candidates.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => { setSelected(c); setCandidates([]); setSearch(""); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-pen-surface"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-sts-surface"
                 >
                   <UserAvatar name={c.name} avatarUrl={c.avatarUrl} size={26} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                    <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                       {c.name}
                     </p>
-                    <p className="truncate font-sans text-[11.5px] text-pen-subtle">{c.email}</p>
+                    <p className="truncate font-sans text-[11.5px] text-sts-subtle">{c.email}</p>
                   </div>
                   <span
                     className={cn(
                       "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
-                      ROLE_COLORS[c.role] ?? "bg-pen-surface text-pen-subtle",
+                      ROLE_COLORS[c.role] ?? "bg-sts-surface text-sts-subtle",
                     )}
                   >
                     {c.role}
@@ -276,8 +276,8 @@ function AddMemberModal({
                   className={cn(
                     "flex-1 h-9 rounded-[6px] border font-sans text-[12.5px] font-medium transition-colors",
                     accessType === "full"
-                      ? "border-pen-blue bg-pen-blue text-white"
-                      : "border-pen-card-border bg-pen-surface text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                      ? "border-sts-blue bg-sts-blue text-white"
+                      : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
                   )}
                 >
                   Full member
@@ -288,8 +288,8 @@ function AddMemberModal({
                   className={cn(
                     "flex-1 h-9 rounded-[6px] border font-sans text-[12.5px] font-medium transition-colors",
                     accessType === "guest"
-                      ? "border-pen-blue bg-pen-blue text-white"
-                      : "border-pen-card-border bg-pen-surface text-pen-muted hover:border-pen-blue/40 hover:text-pen-foreground",
+                      ? "border-sts-blue bg-sts-blue text-white"
+                      : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
                   )}
                 >
                   Guest access
@@ -300,19 +300,19 @@ function AddMemberModal({
               {accessType === "full" && (
                 <div className="flex gap-3">
                   <div className="flex-1 flex flex-col gap-1">
-                    <label className="font-sans text-[11.5px] text-pen-subtle">Team</label>
+                    <label className="font-sans text-[11.5px] text-sts-subtle">Team</label>
                     <SearchableSelect
                       value={subDepartmentId}
                       onChange={setSubDepartmentId}
                       options={availableSubDepartments.map((t) => ({ value: t.id, label: t.name }))}
                       placeholder="— Select team —"
-                      className="bg-pen-bg"
+                      className="bg-sts-bg"
                       aria-label="Team"
                     />
                   </div>
 
                   <div className="w-[130px] flex flex-col gap-1">
-                    <label className="font-sans text-[11.5px] text-pen-subtle">Role</label>
+                    <label className="font-sans text-[11.5px] text-sts-subtle">Role</label>
                     <SearchableSelect
                       value={role}
                       onChange={setRole}
@@ -329,7 +329,7 @@ function AddMemberModal({
                             ]
                       }
                       searchable={false}
-                      className="bg-pen-bg"
+                      className="bg-sts-bg"
                       aria-label="Role"
                     />
                   </div>
@@ -338,20 +338,20 @@ function AddMemberModal({
 
               {accessType === "guest" && (
                 <div className="flex flex-col gap-2">
-                  <p className="font-sans text-[12px] text-pen-muted">
+                  <p className="font-sans text-[12px] text-sts-muted">
                     The user will get read access to this department without joining a team.
                   </p>
                   <div>
-                    <span className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-pen-subtle">
+                    <span className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                       Access duration
                     </span>
-                    <div className="flex h-8 overflow-hidden rounded-lg border border-pen-card-border">
+                    <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border">
                       <button
                         type="button"
                         onClick={() => setGuestPermanent(true)}
                         className={cn(
                           "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                          guestPermanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                          guestPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                         )}
                       >
                         Permanent
@@ -360,8 +360,8 @@ function AddMemberModal({
                         type="button"
                         onClick={() => setGuestPermanent(false)}
                         className={cn(
-                          "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[12px] font-medium transition-colors",
-                          !guestPermanent ? "bg-pen-blue text-white dark:text-gray-900" : "bg-pen-surface text-pen-muted hover:text-pen-foreground",
+                          "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
+                          !guestPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
                         )}
                       >
                         Set expiry
@@ -372,7 +372,7 @@ function AddMemberModal({
                         type="date"
                         value={guestExpiresAt}
                         onChange={(e) => setGuestExpiresAt(e.target.value)}
-                        className="mt-2 h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[12.5px] text-pen-foreground outline-none focus:border-pen-blue/60"
+                        className="mt-2 h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/60"
                       />
                     )}
                   </div>
@@ -391,7 +391,7 @@ function AddMemberModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-[7px] border border-pen-card-border bg-pen-surface px-4 font-sans text-[12.5px] font-medium text-pen-muted hover:text-pen-foreground"
+              className="h-9 rounded-[7px] border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -399,7 +399,7 @@ function AddMemberModal({
               type="button"
               disabled={!selected || submitting}
               onClick={handleSubmit}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-pen-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50"
             >
               {submitting && <Loader2 className="size-3.5 animate-spin" />}
               Add member
@@ -629,10 +629,10 @@ export function SettingsMembersPage({
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             Members
           </h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Manage roles, teams, status, and availability for everyone in the workspace.
           </p>
         </div>
@@ -643,7 +643,7 @@ export function SettingsMembersPage({
               onClick={() => setInviteOpen(true)}
               disabled={availableSubDepartments.length === 0}
               title={availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-pen-card-border bg-pen-surface px-3.5 font-sans text-[12.5px] font-medium text-pen-foreground hover:bg-pen-bg disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3.5" />
               Invite by email
@@ -651,7 +651,7 @@ export function SettingsMembersPage({
             <button
               type="button"
               onClick={() => setAddMemberOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 rounded-[7px] bg-pen-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
+              className="inline-flex items-center gap-1.5 h-9 rounded-[7px] bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
             >
               <Plus className="size-3.5" />
               Add member
@@ -664,7 +664,7 @@ export function SettingsMembersPage({
         <p className="font-sans text-[12px] text-red-500">{error}</p>
       )}
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -693,7 +693,7 @@ export function SettingsMembersPage({
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableCell colSpan={(isAdmin || isManager) ? 6 : 4} className="py-0">
                   <div className="flex h-[54px] items-center">
-                    <span className="font-sans text-[11.5px] text-pen-muted">
+                    <span className="font-sans text-[11.5px] text-sts-muted">
                       No members yet
                     </span>
                   </div>
@@ -705,7 +705,7 @@ export function SettingsMembersPage({
               return (
                 <TableRow
                   key={member.id}
-                  className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
+                  className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"
                 >
                   {/* Member */}
                   <TableCell className="py-0">
@@ -713,7 +713,7 @@ export function SettingsMembersPage({
                       <MemberAvatar name={member.name} color={member.color} avatarUrl={member.avatarUrl} role={role} subDepartment={member.subDepartments?.[0]} userId={member.id} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                          <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                             {member.name}
                           </p>
                           {member.isCrossAccess && (
@@ -728,7 +728,7 @@ export function SettingsMembersPage({
                             </span>
                           )}
                         </div>
-                        <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                        <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                           {member.location ? `${member.email} · ${member.location}` : member.email}
                         </p>
                       </div>
@@ -745,7 +745,7 @@ export function SettingsMembersPage({
                             disabled={saving === member.id}
                             className={cn(
                               "inline-flex h-[26px] items-center gap-1.5 rounded-full pl-2.5 pr-2 font-sans text-[11.5px] font-medium outline-none transition-opacity disabled:opacity-60",
-                              ROLE_COLORS[role] ?? "bg-pen-surface text-pen-subtle",
+                              ROLE_COLORS[role] ?? "bg-sts-surface text-sts-subtle",
                             )}
                           >
                             <span className="capitalize">{role}</span>
@@ -768,7 +768,7 @@ export function SettingsMembersPage({
                                 <span
                                   className={cn(
                                     "inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-medium",
-                                    ROLE_COLORS[o.value] ?? "bg-pen-surface text-pen-subtle",
+                                    ROLE_COLORS[o.value] ?? "bg-sts-surface text-sts-subtle",
                                   )}
                                 >
                                   {o.label}
@@ -781,7 +781,7 @@ export function SettingsMembersPage({
                         <span
                           className={cn(
                             "inline-flex items-center rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium capitalize",
-                            ROLE_COLORS[role] ?? "bg-pen-surface text-pen-subtle",
+                            ROLE_COLORS[role] ?? "bg-sts-surface text-sts-subtle",
                           )}
                         >
                           {role}
@@ -794,11 +794,11 @@ export function SettingsMembersPage({
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center">
                       {member.department ? (
-                        <span className="inline-flex items-center rounded-full bg-pen-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-pen-id">
+                        <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
                           {member.department}
                         </span>
                       ) : (
-                        <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       )}
                     </div>
                   </TableCell>
@@ -811,7 +811,7 @@ export function SettingsMembersPage({
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}
-                            className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface pl-2.5 pr-2 font-sans text-[11.5px] text-pen-muted outline-none transition-opacity disabled:opacity-60 hover:border-pen-blue/50 hover:text-pen-foreground"
+                            className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
                           >
                             <span className="max-w-[120px] truncate">
                               {availableSubDepartments.find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No team"}
@@ -830,7 +830,7 @@ export function SettingsMembersPage({
                                 !currentSubDepartmentId(member) && "font-semibold",
                               )}
                             >
-                              <span className="inline-flex rounded-full bg-pen-surface px-2 py-0.5 text-[11.5px] font-medium text-pen-subtle">
+                              <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 text-[11.5px] font-medium text-sts-subtle">
                                 No team
                               </span>
                             </DropdownMenuItem>
@@ -843,7 +843,7 @@ export function SettingsMembersPage({
                                   currentSubDepartmentId(member) === t.id && "font-semibold",
                                 )}
                               >
-                                <span className="inline-flex rounded-full bg-pen-blue/10 px-2 py-0.5 text-[11.5px] font-semibold text-pen-blue">
+                                <span className="inline-flex rounded-full bg-sts-blue/10 px-2 py-0.5 text-[11.5px] font-semibold text-sts-blue">
                                   {t.name}
                                 </span>
                               </DropdownMenuItem>
@@ -851,12 +851,12 @@ export function SettingsMembersPage({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : member.subDepartments.length === 0 ? (
-                        <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                        <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       ) : (
                         member.subDepartments.map((t) => (
                           <span
                             key={t}
-                            className="inline-flex items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted"
+                            className="inline-flex items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted"
                           >
                             {t}
                           </span>
@@ -884,7 +884,7 @@ export function SettingsMembersPage({
                             {member.isActive ? "Active" : "Inactive"}
                           </button>
                         ) : (
-                          <span className="font-sans text-[11.5px] text-pen-subtle">—</span>
+                          <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                         )}
                       </div>
                     </TableCell>
@@ -899,7 +899,7 @@ export function SettingsMembersPage({
                             type="button"
                             title="Configure availability"
                             onClick={() => setConfigMember(member)}
-                            className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                           >
                             <Settings2 className="size-3.5" />
                           </button>
@@ -908,7 +908,7 @@ export function SettingsMembersPage({
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               type="button"
-                              className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                              className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                             >
                               <MoreHorizontal className="size-3.5" />
                             </DropdownMenuTrigger>

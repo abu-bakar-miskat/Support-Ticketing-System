@@ -122,7 +122,7 @@ export default async function ScreeningReviewPage({
         </div>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="pen-text-page-title">{session.candidateName}</h1>
+            <h1 className="sts-text-page-title">{session.candidateName}</h1>
             <p className="text-muted-foreground text-sm">
               {session.roleTitle} · {session.email}
               {session.submittedAt &&
@@ -131,7 +131,7 @@ export default async function ScreeningReviewPage({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="pen-text-stat-label">AI pre-score</div>
+              <div className="sts-text-stat-label">AI pre-score</div>
               <div className={cn("text-2xl font-bold tabular-nums", scoreClass(session.overallScore))}>
                 {session.overallScore !== null ? `${session.overallScore.toFixed(1)} / 5` : "—"}
               </div>
@@ -183,11 +183,11 @@ export default async function ScreeningReviewPage({
             return (
               <section
                 key={answer.id}
-                className="pen-glass-panel border-border overflow-hidden rounded-2xl border"
+                className="sts-glass-panel border-border overflow-hidden rounded-2xl border"
               >
                 <div className="border-border flex items-start justify-between gap-4 border-b px-5 py-4">
                   <div>
-                    <div className="pen-text-section-label">
+                    <div className="sts-text-section-label">
                       Question {answer.position}
                       {answer.takesUsed > 1 && " · used retake"}
                       {answer.durationSec !== null && ` · ${answer.durationSec}s`}
@@ -245,13 +245,13 @@ export default async function ScreeningReviewPage({
                     )}
                     {answer.reasoning && (
                       <div>
-                        <div className="pen-text-section-label mb-1">Reasoning</div>
+                        <div className="sts-text-section-label mb-1">Reasoning</div>
                         <p>{answer.reasoning}</p>
                       </div>
                     )}
                     {answer.evidence && (
                       <div>
-                        <div className="pen-text-section-label mb-1">Evidence (verbatim)</div>
+                        <div className="sts-text-section-label mb-1">Evidence (verbatim)</div>
                         <blockquote className="border-primary border-l-2 pl-3 italic">
                           “{answer.evidence}”
                         </blockquote>
@@ -259,7 +259,7 @@ export default async function ScreeningReviewPage({
                     )}
                     {answer.transcript && (
                       <details>
-                        <summary className="pen-text-section-label cursor-pointer">Full transcript</summary>
+                        <summary className="sts-text-section-label cursor-pointer">Full transcript</summary>
                         <p className="text-muted-foreground mt-2 leading-relaxed whitespace-pre-wrap">
                           {answer.transcript}
                         </p>
@@ -267,7 +267,7 @@ export default async function ScreeningReviewPage({
                     )}
                     {rubric && (rubric.five || rubric.three || rubric.one || rubric.penalise) && (
                       <details>
-                        <summary className="pen-text-section-label cursor-pointer">Rubric</summary>
+                        <summary className="sts-text-section-label cursor-pointer">Rubric</summary>
                         <dl className="text-muted-foreground mt-2 space-y-2">
                           {rubric.five && <div><dt className="inline font-semibold">5:</dt> <dd className="inline">{rubric.five}</dd></div>}
                           {rubric.three && <div><dt className="inline font-semibold">3:</dt> <dd className="inline">{rubric.three}</dd></div>}

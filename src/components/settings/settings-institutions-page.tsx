@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<InstitutionStatus, string> = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -38,12 +38,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function InfoBanner() {
   return (
-    <div className="flex items-center gap-[9px] rounded-lg bg-pen-blue-tint px-3.5 py-2.5">
+    <div className="flex items-center gap-[9px] rounded-lg bg-sts-blue-tint px-3.5 py-2.5">
       <span
-        className="size-[7px] shrink-0 rounded-full bg-pen-blue"
+        className="size-[7px] shrink-0 rounded-full bg-sts-blue"
         aria-hidden
       />
-      <p className="font-sans text-[11.5px] font-semibold text-pen-foreground dark:text-pen-id">
+      <p className="font-sans text-[11.5px] font-semibold text-sts-foreground dark:text-sts-id">
         Tenants in the PEN Group network. Each isolates its own students,
         tickets, and data.
       </p>
@@ -58,12 +58,12 @@ function StatusIndicator({ status }: { status: InstitutionStatus }) {
         className={cn(
           "size-[7px] rounded-full",
           status === "live"
-            ? "bg-pen-green"
+            ? "bg-sts-green"
             : "bg-[#c2410c] dark:bg-[#e0a96a]",
         )}
         aria-hidden
       />
-      <span className="font-sans text-[11.5px] text-pen-muted">
+      <span className="font-sans text-[11.5px] text-sts-muted">
         {STATUS_LABEL[status]}
       </span>
     </span>
@@ -79,14 +79,14 @@ export function SettingsInstitutionsPage({
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             Institutions
           </h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Tenants in the PEN Group network.
           </p>
         </div>
-        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[150px]">
+        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]">
           <Plus className="size-[13px]" strokeWidth={2.5} />
           Add institution
         </Button>
@@ -94,7 +94,7 @@ export function SettingsInstitutionsPage({
 
       <InfoBanner />
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -116,7 +116,7 @@ export function SettingsInstitutionsPage({
             {institutions.map((institution) => (
               <TableRow
                 key={institution.id}
-                className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]"
+                className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"
               >
                 <TableCell className="py-0">
                   <div className="flex h-[52px] items-center gap-2.5">
@@ -125,21 +125,21 @@ export function SettingsInstitutionsPage({
                       style={{ backgroundColor: institution.color }}
                       aria-hidden
                     />
-                    <span className="font-sans text-[13px] font-semibold text-pen-foreground">
+                    <span className="font-sans text-[13px] font-semibold text-sts-foreground">
                       {institution.name}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="py-0">
                   <div className="flex h-[52px] items-center">
-                    <span className="font-mono text-[11.5px] text-pen-muted">
+                    <span className="font-mono text-[11.5px] text-sts-muted">
                       {institution.domain}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="py-0">
                   <div className="flex h-[52px] items-center">
-                    <span className="font-mono text-xs font-semibold text-pen-foreground">
+                    <span className="font-mono text-xs font-semibold text-sts-foreground">
                       {institution.students}
                     </span>
                   </div>

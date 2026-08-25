@@ -103,8 +103,8 @@ export function DateRangeDropdown({
         className={cn(
           "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 font-sans text-[12px] transition-colors",
           hasValue
-            ? "border-pen-blue bg-pen-blue-tint font-semibold text-pen-id"
-            : "border-pen-card-border bg-transparent text-pen-muted hover:border-pen-id hover:text-pen-foreground",
+            ? "border-sts-blue bg-sts-blue-tint font-semibold text-sts-id"
+            : "border-sts-card-border bg-transparent text-sts-muted hover:border-sts-id hover:text-sts-foreground",
           triggerClassName,
         )}
       >
@@ -131,10 +131,10 @@ export function DateRangeDropdown({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-72 overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+        className="w-72 overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
       >
-        <div className="border-b border-pen-card-border bg-pen-surface/60 px-3 py-3 dark:bg-white/[0.03]">
-          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-pen-subtle">
+        <div className="border-b border-sts-card-border bg-sts-surface/60 px-3 py-3 dark:bg-white/[0.03]">
+          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-sts-subtle">
             Quick select
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -146,8 +146,8 @@ export function DateRangeDropdown({
                 className={cn(
                   "rounded-md border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                   activePreset === p.id
-                    ? "border-pen-blue bg-pen-blue text-white dark:text-gray-900"
-                    : "border-pen-card-border bg-pen-bg text-pen-muted hover:border-pen-id hover:text-pen-foreground dark:bg-white/5",
+                    ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
+                    : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-id hover:text-sts-foreground dark:bg-white/5",
                 )}
               >
                 {p.label}
@@ -157,20 +157,20 @@ export function DateRangeDropdown({
         </div>
 
         <div className="px-3 py-3">
-          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-pen-subtle">
+          <p className="mb-2.5 font-sans text-[11.5px] font-semibold uppercase tracking-[1.1px] text-sts-subtle">
             Custom range
           </p>
           <div className="grid grid-cols-2 gap-2">
             {(["From", "To"] as const).map((label) => (
               <div key={label} className="flex flex-col gap-1">
-                <span className="font-sans text-[11.5px] text-pen-subtle">{label}</span>
+                <span className="font-sans text-[11.5px] text-sts-subtle">{label}</span>
                 <input
                   type="date"
                   value={label === "From" ? customFrom : customTo}
                   onChange={(e) =>
                     label === "From" ? setCustomFrom(e.target.value) : setCustomTo(e.target.value)
                   }
-                  className="h-8 w-full rounded-lg border border-pen-card-border bg-pen-surface px-2 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-id dark:bg-white/5"
+                  className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-2 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id dark:bg-white/5"
                 />
               </div>
             ))}
@@ -178,7 +178,7 @@ export function DateRangeDropdown({
           <button
             type="button"
             onClick={applyCustom}
-            className="mt-3 w-full rounded-lg bg-pen-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+            className="mt-3 w-full rounded-lg bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             Apply range
           </button>

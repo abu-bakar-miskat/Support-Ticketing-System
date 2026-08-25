@@ -112,7 +112,7 @@ function SubManagersList({
   onRemove: (userId: string) => void;
 }) {
   if (leads.length === 0) {
-    return <span className="font-sans text-[11.5px] text-pen-subtle">No sub-managers assigned</span>;
+    return <span className="font-sans text-[11.5px] text-sts-subtle">No sub-managers assigned</span>;
   }
   return (
     <div className="flex flex-col gap-2">
@@ -120,14 +120,14 @@ function SubManagersList({
         <div key={lead.userId || `${lead.name}-${i}`} className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <SubDepartmentAvatar name={lead.name} avatarUrl={lead.avatarUrl} />
-            <span className="truncate font-sans text-[12.5px] text-pen-foreground">{lead.name}</span>
+            <span className="truncate font-sans text-[12.5px] text-sts-foreground">{lead.name}</span>
           </div>
           {canManage && lead.isExplicit && (
             <button
               type="button"
               onClick={() => onRemove(lead.userId)}
               title="Remove sub-manager"
-              className="shrink-0 rounded-md p-1 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              className="shrink-0 rounded-md p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             >
               <X className="size-3.5" />
             </button>
@@ -140,10 +140,10 @@ function SubManagersList({
 
 function MemberStack({ members, extra }: { members?: { name: string; avatarUrl: string | null }[]; extra: number }) {
   if (!members || members.length === 0) {
-    return <span className="font-sans text-[11.5px] text-pen-subtle">No members</span>;
+    return <span className="font-sans text-[11.5px] text-sts-subtle">No members</span>;
   }
   return (
-    <AvatarGroup className="*:data-[slot=avatar]:ring-pen-card *:data-[slot=avatar-group-count]:ring-pen-card">
+    <AvatarGroup className="*:data-[slot=avatar]:ring-sts-card *:data-[slot=avatar-group-count]:ring-sts-card">
       {members.map((m, i) => (
         <Avatar key={`${m.name}-${i}`} size="sm">
           {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt={m.name} /> : null}
@@ -156,7 +156,7 @@ function MemberStack({ members, extra }: { members?: { name: string; avatarUrl: 
         </Avatar>
       ))}
       {extra > 0 && (
-        <AvatarGroupCount className="bg-pen-surface font-sans text-[9px] text-pen-muted">
+        <AvatarGroupCount className="bg-sts-surface font-sans text-[9px] text-sts-muted">
           +{extra}
         </AvatarGroupCount>
       )}
@@ -166,7 +166,7 @@ function MemberStack({ members, extra }: { members?: { name: string; avatarUrl: 
 
 function ProjectPill({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-pen-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-pen-muted">
+    <span className="inline-flex items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
       {label}
     </span>
   );
@@ -232,21 +232,21 @@ function SubDepartmentModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
       <div
-        className="pen-glass-panel relative w-full max-w-md rounded-2xl border border-pen-card-border
+        className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border
        p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="pen-text-modal-title">
+          <h2 className="sts-text-modal-title">
             {isEdit ? "Edit sub department" : "New sub department"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -254,7 +254,7 @@ function SubDepartmentModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Sub department name
             </label>
             <input
@@ -263,15 +263,15 @@ function SubDepartmentModal({
               required
               autoFocus
               placeholder="e.g. Frontend"
-              className="h-9 rounded-lg border border-pen-card-border bg-pen-surface px-3 font-sans text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+              className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
             />
           </div>
 
           <div className="flex gap-3">
             <div className="flex flex-1 flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Prefix{" "}
-                <span className="text-pen-subtle">(2–5 letters)</span>
+                <span className="text-sts-subtle">(2–5 letters)</span>
               </label>
               <input
                 value={prefix}
@@ -280,12 +280,12 @@ function SubDepartmentModal({
                 minLength={2}
                 maxLength={5}
                 placeholder="FE"
-                className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface px-3 font-mono text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-mono text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Colour
               </label>
               <div className="flex h-9 items-center gap-1.5">
@@ -315,7 +315,7 @@ function SubDepartmentModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-pen-foreground">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
               Department
             </label>
             <SearchableSelect
@@ -323,7 +323,7 @@ function SubDepartmentModal({
               onChange={setDepartmentId}
               options={departments.map((d) => ({ value: d.id, label: d.name }))}
               placeholder="Select department…"
-              className="bg-pen-surface"
+              className="bg-sts-surface"
               aria-label="Department"
             />
           </div>
@@ -336,14 +336,14 @@ function SubDepartmentModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12px] text-pen-foreground hover:bg-pen-surface"
+              className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="h-8 rounded-lg bg-pen-id px-4 font-sans text-[12px] font-medium text-white hover:bg-pen-id/90 disabled:opacity-60"
+              className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : isEdit ? "Save changes" : "Create sub department"}
             </button>
@@ -465,10 +465,10 @@ function SubDepartmentMembersModal({
   }
 
   const ROLE_COLORS: Record<string, string> = {
-    admin: "bg-pen-blue/10 text-pen-blue",
-    manager: "bg-pen-purple/10 text-pen-purple",
-    sub_manager: "bg-pen-green/10 text-pen-green",
-    agent: "bg-pen-surface text-pen-subtle",
+    admin: "bg-sts-blue/10 text-sts-blue",
+    manager: "bg-sts-purple/10 text-sts-purple",
+    sub_manager: "bg-sts-green/10 text-sts-green",
+    agent: "bg-sts-surface text-sts-subtle",
   };
 
   return (
@@ -484,31 +484,31 @@ function SubDepartmentMembersModal({
     />
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
-      <div className="pen-glass-panel relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-pen-card-border shadow-2xl">
+      <div className="sts-glass-panel relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl">
         {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b border-pen-card-border px-6 py-4">
+        <div className="flex shrink-0 items-center gap-3 border-b border-sts-card-border px-6 py-4">
           <div
             className="size-3 shrink-0 rounded-[3px]"
             style={{ backgroundColor: subDepartment.color }}
           />
           <div className="min-w-0 flex-1">
-            <h2 className="pen-text-modal-title">
+            <h2 className="sts-text-modal-title">
               {subDepartment.name}
             </h2>
-            <p className="font-sans text-[11.5px] text-pen-subtle">
+            <p className="font-sans text-[11.5px] text-sts-subtle">
               {subDepartment.prefix} · {subDepartment.department}
             </p>
           </div>
-          <span className="font-sans text-[11.5px] text-pen-subtle">
+          <span className="font-sans text-[11.5px] text-sts-subtle">
             {members.length} member{members.length !== 1 ? "s" : ""}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -518,25 +518,25 @@ function SubDepartmentMembersModal({
         <div className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-32 items-center justify-center">
-              <span className="size-5 animate-spin rounded-full border-2 border-pen-id border-t-transparent" />
+              <span className="size-5 animate-spin rounded-full border-2 border-sts-id border-t-transparent" />
             </div>
           ) : members.length === 0 ? (
             <div className="flex h-32 items-center justify-center">
-              <p className="font-sans text-[12.5px] text-pen-subtle">
+              <p className="font-sans text-[12.5px] text-sts-subtle">
                 No members yet
               </p>
             </div>
           ) : (
             <div>
               {/* Column headers */}
-              <div className="grid grid-cols-[1fr_120px_140px_32px] gap-3 border-b border-pen-card-border px-6 py-2">
-                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-pen-subtle uppercase">
+              <div className="grid grid-cols-[1fr_120px_140px_32px] gap-3 border-b border-sts-card-border px-6 py-2">
+                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
                   Member
                 </span>
-                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-pen-subtle uppercase">
+                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
                   Role
                 </span>
-                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-pen-subtle uppercase">
+                <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
                   Nickname
                 </span>
                 <span />
@@ -547,15 +547,15 @@ function SubDepartmentMembersModal({
                   // ── Edit row ──────────────────────────────────────────
                   <div
                     key={m.userId}
-                    className="border-b border-[#f0f4f8] bg-pen-bg/60 px-6 py-3 dark:border-[#3a3a37]"
+                    className="border-b border-[#f0f4f8] bg-sts-bg/60 px-6 py-3 dark:border-[#3a3a37]"
                   >
                     <div className="mb-3 flex items-center gap-3">
                       <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, subDepartment: subDepartment.name }} />
                       <div className="min-w-0">
-                        <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+                        <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                           {m.name}
                         </p>
-                        <p className="font-sans text-[11.5px] text-pen-subtle">
+                        <p className="font-sans text-[11.5px] text-sts-subtle">
                           {m.email}
                         </p>
                       </div>
@@ -563,7 +563,7 @@ function SubDepartmentMembersModal({
 
                     <div className="flex flex-wrap items-end gap-3">
                       <div className="flex flex-col gap-1">
-                        <label className="font-sans text-[11.5px] text-pen-subtle">
+                        <label className="font-sans text-[11.5px] text-sts-subtle">
                           Role
                         </label>
                         <SearchableSelect
@@ -572,15 +572,15 @@ function SubDepartmentMembersModal({
                           options={roleOptions}
                           searchable={false}
                           size="sm"
-                          className="bg-pen-surface"
+                          className="bg-sts-surface"
                           aria-label="Role"
                         />
                       </div>
 
                       <div className="flex min-w-[140px] flex-1 flex-col gap-1">
-                        <label className="font-sans text-[11.5px] text-pen-subtle">
+                        <label className="font-sans text-[11.5px] text-sts-subtle">
                           Nickname{" "}
-                          <span className="text-pen-muted">
+                          <span className="text-sts-muted">
                             (also updates profile name)
                           </span>
                         </label>
@@ -588,12 +588,12 @@ function SubDepartmentMembersModal({
                           value={editNickname}
                           onChange={(e) => setEditNickname(e.target.value)}
                           placeholder={m.name}
-                          className="h-8 rounded-lg border border-pen-card-border bg-pen-surface px-2.5 font-sans text-[12px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id"
+                          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                         />
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="font-sans text-[11.5px] text-pen-subtle">
+                        <label className="font-sans text-[11.5px] text-sts-subtle">
                           Active
                         </label>
                         <div className="flex h-8 items-center">
@@ -604,7 +604,7 @@ function SubDepartmentMembersModal({
                             onClick={() => setEditActive((v) => !v)}
                             className={cn(
                               "relative h-5 w-9 rounded-full transition-colors",
-                              editActive ? "bg-pen-id" : "bg-pen-card-border",
+                              editActive ? "bg-sts-id" : "bg-sts-card-border",
                             )}
                           >
                             <span
@@ -631,7 +631,7 @@ function SubDepartmentMembersModal({
                         type="button"
                         onClick={() => handleSave(m.userId)}
                         disabled={saving}
-                        className="flex items-center gap-1.5 rounded-lg bg-pen-id px-4 py-1.5 font-sans text-[12px] font-medium text-white disabled:opacity-60"
+                        className="flex items-center gap-1.5 rounded-lg bg-sts-id px-4 py-1.5 font-sans text-[12px] font-medium text-white disabled:opacity-60"
                       >
                         {saving ? (
                           <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -643,7 +643,7 @@ function SubDepartmentMembersModal({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="rounded-lg border border-pen-card-border px-4 py-1.5 font-sans text-[12px] text-pen-foreground hover:bg-pen-surface"
+                        className="rounded-lg border border-sts-card-border px-4 py-1.5 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
                       >
                         Cancel
                       </button>
@@ -653,26 +653,26 @@ function SubDepartmentMembersModal({
                   // ── View row ──────────────────────────────────────────
                   <div
                     key={m.userId}
-                    className="grid grid-cols-[1fr_120px_140px_32px] items-center gap-3 border-b border-[#f0f4f8] px-6 py-3 hover:bg-pen-bg/40 dark:border-[#3a3a37]"
+                    className="grid grid-cols-[1fr_120px_140px_32px] items-center gap-3 border-b border-[#f0f4f8] px-6 py-3 hover:bg-sts-bg/40 dark:border-[#3a3a37]"
                   >
                     {/* Member */}
                     <div className="flex min-w-0 items-center gap-2.5">
                       <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={32} meta={{ role: m.role, subDepartment: subDepartment.name }} />
                       <div className="min-w-0">
-                        <p className="truncate font-sans text-[13px] font-semibold text-pen-foreground">
+                        <p className="truncate font-sans text-[13px] font-semibold text-sts-foreground">
                           {m.nickname ?? m.name}
                           {m.nickname && m.nickname !== m.name && (
-                            <span className="ml-1 font-normal text-pen-subtle">
+                            <span className="ml-1 font-normal text-sts-subtle">
                               ({m.name})
                             </span>
                           )}
                         </p>
-                        <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                        <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                           {m.email}
                         </p>
                       </div>
                       {!m.isActive && (
-                        <span className="shrink-0 rounded-full bg-pen-surface px-1.5 py-0.5 font-sans text-[11.5px] text-pen-muted">
+                        <span className="shrink-0 rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted">
                           inactive
                         </span>
                       )}
@@ -684,7 +684,7 @@ function SubDepartmentMembersModal({
                         className={cn(
                           "inline-flex items-center rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium capitalize",
                           ROLE_COLORS[m.role] ??
-                            "bg-pen-surface text-pen-subtle",
+                            "bg-sts-surface text-sts-subtle",
                         )}
                       >
                         {m.role}
@@ -692,9 +692,9 @@ function SubDepartmentMembersModal({
                     </div>
 
                     {/* Nickname */}
-                    <p className="truncate font-sans text-[12px] text-pen-subtle">
+                    <p className="truncate font-sans text-[12px] text-sts-subtle">
                       {m.nickname ?? (
-                        <span className="italic text-pen-muted">—</span>
+                        <span className="italic text-sts-muted">—</span>
                       )}
                     </p>
 
@@ -703,7 +703,7 @@ function SubDepartmentMembersModal({
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           type="button"
-                          className="inline-flex size-7 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <MoreHorizontal className="size-3.5" />
                         </DropdownMenuTrigger>
@@ -828,21 +828,21 @@ function AssignMemberModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 pen-overlay-backdrop"
+        className="absolute inset-0 sts-overlay-backdrop"
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-md rounded-2xl border border-pen-card-border 
-      bg-pen-card p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl border border-sts-card-border 
+      bg-sts-card p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="pen-text-modal-title">
+            <h2 className="sts-text-modal-title">
               {isSubManagerMode ? "Add sub-manager" : "Add members"}
             </h2>
-            <p className="mt-0.5 font-sans text-[11.5px] text-pen-subtle">
+            <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
               Sub department:{" "}
-              <span className="font-semibold text-pen-foreground">
+              <span className="font-semibold text-sts-foreground">
                 {subDepartment.name}
               </span>
             </p>
@@ -850,7 +850,7 @@ function AssignMemberModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-pen-subtle hover:text-pen-foreground"
+            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -866,16 +866,16 @@ function AssignMemberModal({
                 return (
                   <span
                     key={id}
-                    className="flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface pl-1.5 pr-2 py-0.5"
+                    className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-1.5 pr-2 py-0.5"
                   >
                     <UserAvatar name={p.name} size={16} avatarUrl={p.avatarUrl ?? null} />
-                    <span className="font-sans text-[11.5px] text-pen-foreground">
+                    <span className="font-sans text-[11.5px] text-sts-foreground">
                       {p.name}
                     </span>
                     <button
                       type="button"
                       onClick={() => toggle(id)}
-                      className="text-pen-subtle hover:text-pen-foreground"
+                      className="text-sts-subtle hover:text-sts-foreground"
                     >
                       <X className="size-2.5" />
                     </button>
@@ -888,24 +888,24 @@ function AssignMemberModal({
           {/* Search */}
           <div className="flex flex-col gap-1.5">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-pen-subtle" />
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
               <input
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or email…"
-                className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-surface pl-8 pr-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle focus:border-pen-id focus:ring-1 focus:ring-pen-id"
+                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
             </div>
 
-            <div className="max-h-52 overflow-y-auto rounded-lg border border-pen-card-border 
-            bg-pen-surface shadow-sm">
+            <div className="max-h-52 overflow-y-auto rounded-lg border border-sts-card-border 
+            bg-sts-surface shadow-sm">
               {loading ? (
                 <div className="flex h-20 items-center justify-center">
-                  <span className="size-4 animate-spin rounded-full border-2 border-pen-id border-t-transparent" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-sts-id border-t-transparent" />
                 </div>
               ) : filtered.length === 0 ? (
-                <p className="px-3 py-4 text-center font-sans text-[11.5px] text-pen-subtle">
+                <p className="px-3 py-4 text-center font-sans text-[11.5px] text-sts-subtle">
                   {isSubManagerMode
                     ? "No eligible members found"
                     : profiles.every((p) => p.subDepartment !== null || existingIds.has(p.id))
@@ -921,16 +921,16 @@ function AssignMemberModal({
                       type="button"
                       onClick={() => toggle(p.id)}
                       className={cn(
-                        "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-pen-blue-tint",
-                        isSelected && "bg-pen-blue-tint/60",
+                        "flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-sts-blue-tint",
+                        isSelected && "bg-sts-blue-tint/60",
                       )}
                     >
                       <UserAvatar name={p.name} size={28} avatarUrl={p.avatarUrl ?? null} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                        <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {p.name}
                         </p>
-                        <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                        <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                           {p.email}
                         </p>
                       </div>
@@ -938,8 +938,8 @@ function AssignMemberModal({
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
                           isSelected
-                            ? "border-pen-id bg-pen-id"
-                            : "border-pen-card-border bg-transparent",
+                            ? "border-sts-id bg-sts-id"
+                            : "border-sts-card-border bg-transparent",
                         )}
                       >
                         {isSelected && (
@@ -961,21 +961,21 @@ function AssignMemberModal({
           )}
 
           <div className="mt-1 flex items-center justify-between">
-            <span className="font-sans text-[11.5px] text-pen-subtle">
+            <span className="font-sans text-[11.5px] text-sts-subtle">
               {selectedIds.size > 0 ? `${selectedIds.size} selected` : ""}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="h-8 rounded-lg border border-pen-card-border px-4 font-sans text-[12px] text-pen-foreground hover:bg-pen-surface"
+                className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving || selectedIds.size === 0}
-                className="h-8 rounded-lg bg-pen-id px-4 font-sans text-[12px] font-medium text-white hover:bg-pen-id/90 disabled:opacity-60"
+                className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
               >
                 {saving
                   ? "Adding…"
@@ -1122,15 +1122,15 @@ function JoinRequestsSection({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2 className="pen-text-modal-title">
+        <h2 className="sts-text-modal-title">
           Join Requests
         </h2>
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-pen-id px-1.5 font-sans text-[11.5px] font-semibold text-white">
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sts-id px-1.5 font-sans text-[11.5px] font-semibold text-white">
           {requests.length}
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+      <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
         {requests.map((req, i) => (
           <div
             key={req.id}
@@ -1143,28 +1143,28 @@ function JoinRequestsSection({
             <button
               type="button"
               onClick={() => openExpand(req)}
-              className="flex w-full items-center gap-3 px-[18px] py-3 text-left hover:bg-pen-bg/40"
+              className="flex w-full items-center gap-3 px-[18px] py-3 text-left hover:bg-sts-bg/40"
             >
               <UserAvatar name={req.userName} size={32} avatarUrl={req.userAvatarUrl ?? null} />
               <div className="min-w-0 flex-1">
-                <p className="font-sans text-[13px] font-semibold text-pen-foreground">
+                <p className="font-sans text-[13px] font-semibold text-sts-foreground">
                   {req.userName}
                 </p>
-                <p className="font-sans text-[11.5px] text-pen-subtle">
+                <p className="font-sans text-[11.5px] text-sts-subtle">
                   {req.userEmail} · wants to join{" "}
-                  <span className="font-semibold text-pen-foreground">
+                  <span className="font-semibold text-sts-foreground">
                     {req.departmentName}
                   </span>
                 </p>
               </div>
-              <span className="flex shrink-0 items-center gap-1.5 font-sans text-[11.5px] text-pen-subtle">
+              <span className="flex shrink-0 items-center gap-1.5 font-sans text-[11.5px] text-sts-subtle">
                 <Clock className="size-3" />
                 {timeAgoShort(req.requestedAt)}
               </span>
               {expanded === req.id ? (
-                <ChevronUp className="size-4 shrink-0 text-pen-subtle" />
+                <ChevronUp className="size-4 shrink-0 text-sts-subtle" />
               ) : (
-                <ChevronDown className="size-4 shrink-0 text-pen-subtle" />
+                <ChevronDown className="size-4 shrink-0 text-sts-subtle" />
               )}
             </button>
 
@@ -1174,7 +1174,7 @@ function JoinRequestsSection({
                 <div className="px-5 py-5">
                   {/* Role pills */}
                   <div className="mb-4">
-                    <p className="mb-2 pen-text-section-label">
+                    <p className="mb-2 sts-text-section-label">
                       Assign role
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -1193,17 +1193,17 @@ function JoinRequestsSection({
                             className={cn(
                               "flex flex-col items-start rounded-xl border px-3.5 py-2.5 text-left transition-all",
                               active
-                                ? "border-pen-id bg-pen-blue-tint"
-                                : "border-pen-card-border bg-pen-surface hover:border-pen-id/40",
+                                ? "border-sts-id bg-sts-blue-tint"
+                                : "border-sts-card-border bg-sts-surface hover:border-sts-id/40",
                             )}
                           >
                             <span className={cn(
                               "font-sans text-[12.5px] font-semibold",
-                              active ? "text-pen-id" : "text-pen-foreground",
+                              active ? "text-sts-id" : "text-sts-foreground",
                             )}>
                               {r.label}
                             </span>
-                            <span className="font-sans text-[11.5px] text-pen-subtle">
+                            <span className="font-sans text-[11.5px] text-sts-subtle">
                               {r.hint}
                             </span>
                           </button>
@@ -1217,7 +1217,7 @@ function JoinRequestsSection({
                     {/* Sub department — only for sub_manager/staff */}
                     {needsSubDepartment && (
                       <div className="flex flex-col gap-1.5">
-                        <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
+                        <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
                           Sub department
                         </label>
                         <SearchableSelect
@@ -1229,7 +1229,7 @@ function JoinRequestsSection({
                               : req.subDepartments.map((t) => ({ value: t.id, label: t.name }))
                           }
                           disabled={req.subDepartments.length === 0}
-                          className="min-w-[160px] bg-pen-bg"
+                          className="min-w-[160px] bg-sts-bg"
                           aria-label="Sub department"
                         />
                       </div>
@@ -1238,14 +1238,14 @@ function JoinRequestsSection({
                     {/* Nickname — not applicable for cross-access guests (no team membership) */}
                     {!isCrossAccess && (
                       <div className="flex min-w-[180px] flex-1 flex-col gap-1.5">
-                        <label className="font-sans text-[11.5px] font-medium text-pen-subtle">
-                          Display name <span className="text-pen-subtle/60">(optional)</span>
+                        <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
+                          Display name <span className="text-sts-subtle/60">(optional)</span>
                         </label>
                         <input
                           value={nickname}
                           onChange={(e) => setNickname(e.target.value)}
                           placeholder={req.userName}
-                          className="h-9 rounded-lg border border-pen-card-border bg-pen-bg px-3 font-sans text-[12.5px] text-pen-foreground outline-none placeholder:text-pen-subtle/50 focus:border-pen-id focus:ring-1 focus:ring-pen-id/20"
+                          className="h-9 rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle/50 focus:border-sts-id focus:ring-1 focus:ring-sts-id/20"
                         />
                       </div>
                     )}
@@ -1255,14 +1255,14 @@ function JoinRequestsSection({
                   {isCrossAccess && (
                     <div className="mt-3 flex flex-col gap-3">
                       <div>
-                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-subtle">Access duration</label>
-                        <div className="flex h-9 overflow-hidden rounded-lg border border-pen-card-border">
+                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-subtle">Access duration</label>
+                        <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
                           <button
                             type="button"
                             onClick={() => setCrossPermanent(true)}
                             className={cn(
                               "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                              crossPermanent ? "bg-pen-id text-white dark:text-gray-900" : "bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                              crossPermanent ? "bg-sts-id text-white dark:text-gray-900" : "bg-sts-bg text-sts-muted hover:text-sts-foreground",
                             )}
                           >
                             Permanent
@@ -1271,8 +1271,8 @@ function JoinRequestsSection({
                             type="button"
                             onClick={() => setCrossPermanent(false)}
                             className={cn(
-                              "flex flex-1 items-center justify-center border-l border-pen-card-border font-sans text-[12px] font-medium transition-colors",
-                              !crossPermanent ? "bg-pen-id text-white dark:text-gray-900" : "bg-pen-bg text-pen-muted hover:text-pen-foreground",
+                              "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
+                              !crossPermanent ? "bg-sts-id text-white dark:text-gray-900" : "bg-sts-bg text-sts-muted hover:text-sts-foreground",
                             )}
                           >
                             Set expiry
@@ -1283,7 +1283,7 @@ function JoinRequestsSection({
                             type="date"
                             value={crossExpiresAt}
                             onChange={(e) => setCrossExpiresAt(e.target.value)}
-                            className="mt-2 h-9 w-full rounded-lg border border-pen-card-border bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+                            className="mt-2 h-9 w-full rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
                           />
                         )}
                       </div>
@@ -1296,20 +1296,20 @@ function JoinRequestsSection({
                         onToggleProject={toggleCrossProject}
                       />
                       <div>
-                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-pen-subtle">Reason (optional)</label>
+                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-subtle">Reason (optional)</label>
                         <input
                           value={crossReason}
                           onChange={(e) => setCrossReason(e.target.value)}
                           placeholder="e.g. Cross-sub-department ticket assignment"
-                          className="h-9 w-full rounded-lg border border-pen-card-border bg-pen-bg px-3 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-id"
+                          className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
                         />
                       </div>
                     </div>
                   )}
 
                   {approveError && (
-                    <p className="mt-2.5 flex items-center gap-1.5 font-sans text-[11.5px] text-pen-red">
-                      <span className="inline-block size-1.5 rounded-full bg-pen-red" />
+                    <p className="mt-2.5 flex items-center gap-1.5 font-sans text-[11.5px] text-sts-red">
+                      <span className="inline-block size-1.5 rounded-full bg-sts-red" />
                       {approveError}
                     </p>
                   )}
@@ -1321,7 +1321,7 @@ function JoinRequestsSection({
                     type="button"
                     onClick={() => handleAction(req, "approve")}
                     disabled={submitting === req.id}
-                    className="flex h-9 items-center gap-2 rounded-lg bg-pen-green px-5 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-pen-green/90 disabled:opacity-60 dark:text-gray-900"
+                    className="flex h-9 items-center gap-2 rounded-lg bg-sts-green px-5 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-green/90 disabled:opacity-60 dark:text-gray-900"
                   >
                     {submitting === req.id
                       ? <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1332,7 +1332,7 @@ function JoinRequestsSection({
                     type="button"
                     onClick={() => handleAction(req, "reject")}
                     disabled={submitting === req.id}
-                    className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border px-5 font-sans text-[12.5px] font-semibold text-pen-foreground transition-colors hover:bg-pen-surface disabled:opacity-60"
+                    className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border px-5 font-sans text-[12.5px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-60"
                   >
                     <X className="size-3.5" />
                     Reject
@@ -1340,7 +1340,7 @@ function JoinRequestsSection({
                   <button
                     type="button"
                     onClick={() => { setExpanded(null); }}
-                    className="ml-auto font-sans text-[11.5px] text-pen-muted hover:text-pen-foreground"
+                    className="ml-auto font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
                   >
                     Cancel
                   </button>
@@ -1382,7 +1382,7 @@ function SubDepartmentCard({
     subDepartment.leads.length + (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-pen-card-border bg-pen-card">
+    <div className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
       <div className="flex items-start gap-3 p-4">
         <span
           className="flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-[11px] font-semibold text-white"
@@ -1392,15 +1392,15 @@ function SubDepartmentCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-sans text-[14px] font-semibold text-pen-foreground">
+            <span className="truncate font-sans text-[14px] font-semibold text-sts-foreground">
               {subDepartment.name}
             </span>
-            <span className="rounded bg-pen-surface px-1.5 py-0.5 font-mono text-[9.5px] text-pen-subtle">
+            <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-subtle">
               {subDepartment.prefix}
             </span>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1 font-sans text-[11.5px] text-pen-muted">
+            <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
               <Users className="size-3 shrink-0" />
               {totalMembers} member{totalMembers === 1 ? "" : "s"}
             </span>
@@ -1413,7 +1413,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onInvite}
               title="Invite by email"
-              className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <UserPlus className="size-3.5" />
             </button>
@@ -1421,7 +1421,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onEdit}
               title="Edit sub department"
-              className="rounded-md p-1.5 text-pen-subtle hover:bg-pen-surface hover:text-pen-foreground"
+              className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <Pencil className="size-3.5" />
             </button>
@@ -1429,7 +1429,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onDelete}
               title="Delete sub department"
-              className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -1440,20 +1440,20 @@ function SubDepartmentCard({
       <button
         type="button"
         onClick={() => setManagersExpanded((v) => !v)}
-        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+        className="flex items-center justify-between border-t border-sts-card-border px-4 py-2.5 text-left transition-colors hover:bg-sts-surface/40"
       >
-        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
-          <Shield className="size-3.5 text-pen-muted" />
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
+          <Shield className="size-3.5 text-sts-muted" />
           Sub-managers
         </span>
         {managersExpanded ? (
-          <ChevronUp className="size-3.5 text-pen-muted" />
+          <ChevronUp className="size-3.5 text-sts-muted" />
         ) : (
-          <ChevronDown className="size-3.5 text-pen-muted" />
+          <ChevronDown className="size-3.5 text-sts-muted" />
         )}
       </button>
       {managersExpanded && (
-        <div className="flex flex-col gap-3 border-t border-pen-card-border/60 px-4 py-3">
+        <div className="flex flex-col gap-3 border-t border-sts-card-border/60 px-4 py-3">
           <SubManagersList
             leads={subDepartment.leads}
             canManage={canManage}
@@ -1463,7 +1463,7 @@ function SubDepartmentCard({
             <button
               type="button"
               onClick={onAssignSubManager}
-              className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              className="flex shrink-0 items-center gap-1 self-start font-sans text-[11.5px] font-medium text-sts-blue hover:underline"
             >
               <Plus className="size-3" />
               Add sub-manager
@@ -1475,26 +1475,26 @@ function SubDepartmentCard({
       <button
         type="button"
         onClick={() => setMembersExpanded((v) => !v)}
-        className="flex items-center justify-between border-t border-pen-card-border px-4 py-2.5 text-left transition-colors hover:bg-pen-surface/40"
+        className="flex items-center justify-between border-t border-sts-card-border px-4 py-2.5 text-left transition-colors hover:bg-sts-surface/40"
       >
-        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-pen-foreground">
-          <Users className="size-3.5 text-pen-muted" />
+        <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
+          <Users className="size-3.5 text-sts-muted" />
           Members {subDepartment.members?.length ? `(${totalMembers})` : ""}
         </span>
         {membersExpanded ? (
-          <ChevronUp className="size-3.5 text-pen-muted" />
+          <ChevronUp className="size-3.5 text-sts-muted" />
         ) : (
-          <ChevronDown className="size-3.5 text-pen-muted" />
+          <ChevronDown className="size-3.5 text-sts-muted" />
         )}
       </button>
       {membersExpanded && (
-        <div className="flex items-center justify-between gap-3 border-t border-pen-card-border/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-t border-sts-card-border/60 px-4 py-3">
           <MemberStack members={subDepartment.members} extra={subDepartment.extraMembers} />
           {canManage && (
             <button
               type="button"
               onClick={onAssign}
-              className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-pen-blue hover:underline"
+              className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-sts-blue hover:underline"
             >
               <Plus className="size-3" />
               Assign member
@@ -1506,17 +1506,17 @@ function SubDepartmentCard({
       <button
         type="button"
         onClick={onViewMembers}
-        className="border-t border-pen-card-border px-4 py-2.5 text-center font-sans text-[11.5px] font-semibold text-pen-blue transition-colors hover:bg-pen-surface/50"
+        className="border-t border-sts-card-border px-4 py-2.5 text-center font-sans text-[11.5px] font-semibold text-sts-blue transition-colors hover:bg-sts-surface/50"
       >
         View all members
       </button>
 
       {/* ── Enter sub-department CTA ── */}
-      <div className="mt-auto border-t border-pen-card-border px-5 py-3">
+      <div className="mt-auto border-t border-sts-card-border px-5 py-3">
         <Link
           href={`/sub-departments/${encodeURIComponent(subDepartment.name)}`}
           title="Enter sub department"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-pen-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90"
         >
           Enter
           <ArrowRight className="size-4" />
@@ -1614,10 +1614,10 @@ export function SettingsSubDepartmentsPage({
       <div className="flex flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="pen-text-admin-title">
+            <h1 className="sts-text-admin-title">
               Sub departments & roles
             </h1>
-            <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+            <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
               Sub departments can have multiple sub-managers. Roles control what everyone can see
               and do.
             </p>
@@ -1626,7 +1626,7 @@ export function SettingsSubDepartmentsPage({
             <Button
               onClick={() => setModal({ type: "create" })}
               disabled={isPending}
-              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-pen-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-auto"
+              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-sts-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-auto"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
               New sub department
@@ -1635,8 +1635,8 @@ export function SettingsSubDepartmentsPage({
         </div>
 
         {subDepartments.length === 0 ? (
-          <div className="rounded-2xl border border-pen-card-border bg-pen-card px-4 py-6 text-center">
-            <p className="font-sans text-[12.5px] text-pen-muted">No sub departments yet.</p>
+          <div className="rounded-2xl border border-sts-card-border bg-sts-card px-4 py-6 text-center">
+            <p className="font-sans text-[12.5px] text-sts-muted">No sub departments yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -133,15 +133,15 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="pen-glass-panel flex max-h-[calc(90vh/var(--pen-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
-        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pen-card-border px-[22px]">
-          <h2 className="pen-text-modal-title">Create tenant</h2>
+    <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
+        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
+          <h2 className="sts-text-modal-title">Create tenant</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -149,7 +149,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Tenant name</label>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Tenant name</label>
             <Input
               autoFocus
               value={name}
@@ -160,7 +160,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Starting template</label>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Starting template</label>
             <Select value={templateId || "__none__"} onValueChange={(v) => setTemplateId(v === "__none__" ? "" : v ?? "")}>
               <SelectTrigger className="h-9 w-full">
                 <span className="truncate font-sans text-[12.5px]">
@@ -171,7 +171,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                       : "No template"}
                 </span>
               </SelectTrigger>
-              <SelectContent className="max-h-56 border border-pen-card-border bg-pen-bg shadow-xl">
+              <SelectContent className="max-h-56 border border-sts-card-border bg-sts-bg shadow-xl">
                 <SelectItem value="__none__" className="font-sans text-[12.5px]">
                   No template
                 </SelectItem>
@@ -182,25 +182,25 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                 ))}
               </SelectContent>
             </Select>
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               Grants the tenant this template&apos;s features immediately. Optional — more can be requested later.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-pen-foreground">Add tenant admin</label>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Add tenant admin</label>
             <div className="relative">
               {pickedUser ? (
-                <div className="flex h-9 items-center gap-2 rounded-lg border border-pen-card-border bg-pen-card px-2.5">
+                <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5">
                   <UserAvatar name={pickedUser.name} avatarUrl={pickedUser.avatarUrl} size={20} />
-                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                     {pickedUser.name || pickedUser.email}
                   </span>
                   <button
                     type="button"
                     aria-label="Clear selected user"
                     onClick={clearPickedUser}
-                    className="pen-pressable rounded-full p-0.5 text-pen-subtle hover:text-pen-foreground"
+                    className="sts-pressable rounded-full p-0.5 text-sts-subtle hover:text-sts-foreground"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -218,11 +218,11 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                 />
               )}
               {!pickedUser && searchOpen && adminEmail.trim().length >= 2 && (
-                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-pen-card-border bg-pen-bg shadow-xl">
+                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-sts-card-border bg-sts-bg shadow-xl">
                   {searching ? (
-                    <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">Searching…</p>
+                    <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">Searching…</p>
                   ) : searchResults.length === 0 ? (
-                    <p className="px-2.5 py-2 font-sans text-[11.5px] text-pen-subtle">
+                    <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">
                       No existing users match — an invite will be sent to this email.
                     </p>
                   ) : (
@@ -233,14 +233,14 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickUser(u)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-pen-surface"
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sts-surface"
                         >
                           <UserAvatar name={u.name} avatarUrl={u.avatarUrl} size={22} />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                            <div className="truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                               {u.name || u.email}
                             </div>
-                            <div className="truncate font-sans text-[11px] text-pen-subtle">{u.email}</div>
+                            <div className="truncate font-sans text-[11px] text-sts-subtle">{u.email}</div>
                           </div>
                         </button>
                       ))}
@@ -249,7 +249,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                 </div>
               )}
             </div>
-            <p className="font-sans text-[11px] text-pen-subtle">
+            <p className="font-sans text-[11px] text-sts-subtle">
               Existing users are added instantly; a new email gets an invitation link.
             </p>
           </div>
@@ -261,7 +261,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
           )}
         </form>
 
-        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-pen-card-border px-[22px]">
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-sts-card-border px-[22px]">
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>

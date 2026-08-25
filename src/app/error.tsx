@@ -21,15 +21,15 @@ export default function RootError({
   reset: () => void
 }) {
   useEffect(() => {
-    if (CHUNK_ERROR.test(error.message) && !sessionStorage.getItem("pen-chunk-reloaded")) {
-      sessionStorage.setItem("pen-chunk-reloaded", "1")
+    if (CHUNK_ERROR.test(error.message) && !sessionStorage.getItem("sts-chunk-reloaded")) {
+      sessionStorage.setItem("sts-chunk-reloaded", "1")
       window.location.reload()
     }
   }, [error])
 
   // Clear the guard once a page load succeeds again.
   useEffect(() => {
-    const t = setTimeout(() => sessionStorage.removeItem("pen-chunk-reloaded"), 10_000)
+    const t = setTimeout(() => sessionStorage.removeItem("sts-chunk-reloaded"), 10_000)
     return () => clearTimeout(t)
   }, [])
 

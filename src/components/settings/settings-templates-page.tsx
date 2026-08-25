@@ -27,7 +27,7 @@ export type TemplateRow = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+    <span className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
       {children}
     </span>
   );
@@ -99,22 +99,22 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">Ticket Templates</h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">Create reusable templates for tickets.</p>
+          <h1 className="sts-text-admin-title">Ticket Templates</h1>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Create reusable templates for tickets.</p>
         </div>
         <Button
           onClick={() => {
             setEditingTemplate(null);
             setShowModal(true);
           }}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[140px]"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
         >
           <Plus className="size-[13px]" strokeWidth={2.5} />
           New template
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -132,22 +132,22 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableCell colSpan={3} className="py-0">
                   <div className="flex h-[46px] items-center">
-                    <span className="font-sans text-[11.5px] text-pen-muted">No templates yet</span>
+                    <span className="font-sans text-[11.5px] text-sts-muted">No templates yet</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : null}
 
             {templates.map((template) => (
-              <TableRow key={template.id} className="border-[#f0f4f8] hover:bg-pen-bg/40 dark:border-[#3a3a37]">
+              <TableRow key={template.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">
-                    <span className="font-sans text-sm font-medium text-pen-foreground">{template.name}</span>
+                    <span className="font-sans text-sm font-medium text-sts-foreground">{template.name}</span>
                   </div>
                 </TableCell>
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">
-                    <span className="font-sans text-[12.5px] text-pen-muted">{template.createdBy.name}</span>
+                    <span className="font-sans text-[12.5px] text-sts-muted">{template.createdBy.name}</span>
                   </div>
                 </TableCell>
                 <TableCell className="py-0 text-right">
@@ -155,7 +155,7 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                     <button
                       type="button"
                       onClick={() => startEdit(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-pen-blue bg-pen-blue/10 text-pen-blue font-sans text-[11px] font-medium transition-all hover:bg-pen-blue hover:text-white"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
                       title="Edit template"
                     >
                       <Edit2 className="size-3.5" />
@@ -164,7 +164,7 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                     <button
                       type="button"
                       onClick={() => setDeletingTemplate(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-pen-red bg-pen-red/10 text-pen-red font-sans text-[11px] font-medium transition-all hover:bg-pen-red hover:text-white"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
                       title="Delete template"
                     >
                       <Trash2 className="size-3.5" />

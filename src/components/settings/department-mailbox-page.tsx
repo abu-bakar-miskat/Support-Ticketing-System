@@ -39,7 +39,7 @@ async function jsonOrThrow(res: Response) {
 const STATUS_STYLES: Record<MailboxMessage["status"], string> = {
   trusted: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   quarantined: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  system: "bg-pen-surface text-pen-subtle",
+  system: "bg-sts-surface text-sts-subtle",
 };
 
 function formatDate(iso: string) {
@@ -97,13 +97,13 @@ export function DepartmentMailboxPage({
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
         href="/settings/departments"
-        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground"
+        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back to departments
       </Link>
 
-      <h1 className="pen-text-modal-title mb-1">Mailbox — {departmentName}</h1>
-      <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+      <h1 className="sts-text-modal-title mb-1">Mailbox — {departmentName}</h1>
+      <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
         Every email this department&apos;s mailbox has received — filed tickets, mail awaiting review, and
         auto-generated mail that was suppressed.
       </p>
@@ -114,8 +114,8 @@ export function DepartmentMailboxPage({
             <span
               key={c.id}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-card px-2.5 py-1 font-mono text-[11.5px]",
-                c.status === "ACTIVE" ? "text-pen-foreground" : "text-red-600 dark:text-red-400",
+                "inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-2.5 py-1 font-mono text-[11.5px]",
+                c.status === "ACTIVE" ? "text-sts-foreground" : "text-red-600 dark:text-red-400",
               )}
             >
               <Mail className="size-3" /> {c.address}
@@ -126,7 +126,7 @@ export function DepartmentMailboxPage({
       )}
 
       {connections && connections.length === 0 && (
-        <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+        <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
           No mailbox connected to this department yet.
         </p>
       )}
@@ -137,7 +137,7 @@ export function DepartmentMailboxPage({
         </div>
       )}
 
-      <div className="mb-5 flex items-center gap-1 border-b border-pen-card-border">
+      <div className="mb-5 flex items-center gap-1 border-b border-sts-card-border">
         {([
           { key: "mail" as const, label: `Mail${messages ? ` (${messages.length})` : ""}` },
           { key: "suppressed" as const, label: `Suppressed${suppressed ? ` (${suppressed.length})` : ""}` },
@@ -149,8 +149,8 @@ export function DepartmentMailboxPage({
             className={cn(
               "relative -mb-px px-3 py-2.5 font-sans text-[13px] font-medium transition-colors",
               tab === t.key
-                ? "text-pen-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-pen-blue"
-                : "text-pen-muted hover:text-pen-foreground",
+                ? "text-sts-blue after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:rounded-full after:bg-sts-blue"
+                : "text-sts-muted hover:text-sts-foreground",
             )}
           >
             {t.label}
@@ -160,13 +160,13 @@ export function DepartmentMailboxPage({
 
       {tab === "mail" && (
         messages === null ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">No mail yet.</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">No mail yet.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {messages.map((m) => (
-              <div key={m.id} className="rounded-lg border border-pen-card-border bg-pen-card">
+              <div key={m.id} className="rounded-lg border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => setExpandedId((id) => (id === m.id ? null : m.id))}
@@ -176,12 +176,12 @@ export function DepartmentMailboxPage({
                     {m.status}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
-                      {m.fromName} <span className="font-normal text-pen-subtle">&lt;{m.fromEmail}&gt;</span>
+                    <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
+                      {m.fromName} <span className="font-normal text-sts-subtle">&lt;{m.fromEmail}&gt;</span>
                     </p>
-                    <p className="truncate font-sans text-[11.5px] text-pen-subtle">{m.ticket.humanId} · {m.ticket.title}</p>
+                    <p className="truncate font-sans text-[11.5px] text-sts-subtle">{m.ticket.humanId} · {m.ticket.title}</p>
                   </div>
-                  <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">{formatDate(m.createdAt)}</span>
+                  <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">{formatDate(m.createdAt)}</span>
                   {m.status === "quarantined" && (
                     <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -206,14 +206,14 @@ export function DepartmentMailboxPage({
                   )}
                 </button>
                 {expandedId === m.id && (
-                  <div className="border-t border-pen-card-border px-4 py-3">
+                  <div className="border-t border-sts-card-border px-4 py-3">
                     {m.acceptedAt && (
-                      <p className="mb-2 font-sans text-[11.5px] text-pen-subtle">
+                      <p className="mb-2 font-sans text-[11.5px] text-sts-subtle">
                         Accepted{m.acceptedByName ? ` by ${m.acceptedByName}` : ""} on {formatDate(m.acceptedAt)}
                       </p>
                     )}
                     <div
-                      className="prose prose-sm max-w-none font-sans text-[12.5px] text-pen-foreground"
+                      className="prose prose-sm max-w-none font-sans text-[12.5px] text-sts-foreground"
                       dangerouslySetInnerHTML={{ __html: m.bodyHtml }}
                     />
                   </div>
@@ -226,25 +226,25 @@ export function DepartmentMailboxPage({
 
       {tab === "suppressed" && (
         suppressed === null ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : suppressed.length === 0 ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">No suppressed mail.</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">No suppressed mail.</p>
         ) : (
           <div className="flex flex-col gap-2">
             {suppressed.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-pen-card-border bg-pen-card px-4 py-3">
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-card px-4 py-3">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                   <Ban className="size-2.5" /> {s.reason}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                  <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                     {s.subject ?? "(no subject)"}
                   </p>
-                  <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                  <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                     {s.fromEmail ?? "unknown sender"} → {s.toAddress ?? "unknown address"}
                   </p>
                 </div>
-                <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">{formatDate(s.createdAt)}</span>
+                <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">{formatDate(s.createdAt)}</span>
               </div>
             ))}
           </div>

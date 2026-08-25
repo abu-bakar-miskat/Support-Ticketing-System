@@ -2,20 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PenLogo } from "@/components/auth/pen-logo";
+import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export default function NotFound() {
   const router = useRouter();
 
   return (
-    <main className="pen-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
+    <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
 
       {/* Theme toggle */}
       <ThemeToggle className="absolute right-6 top-6 z-20" />
 
       {/* Card */}
-      <div className="pen-glass-panel pen-modal-enter relative z-10 flex w-full max-w-[420px] flex-col items-center gap-8 rounded-2xl border px-10 py-10 ring-1 ring-white/40 dark:ring-white/10">
+      <div className="sts-glass-panel sts-modal-enter relative z-10 flex w-full max-w-[420px] flex-col items-center gap-8 rounded-2xl border px-10 py-10 ring-1 ring-white/40 dark:ring-white/10">
         {/* Logo */}
         <div className="flex justify-center">
           <PenLogo />
@@ -41,10 +41,10 @@ export default function NotFound() {
 
         {/* Message */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="pen-text-page-title">
+          <h1 className="sts-text-page-title">
             Page not found
           </h1>
-          <p className="font-sans text-[13px] leading-relaxed text-pen-muted">
+          <p className="font-sans text-[13px] leading-relaxed text-sts-muted">
             The page you&apos;re looking for doesn&apos;t exist or has been moved.
             <br />
             Check the URL or head back to the dashboard.
@@ -62,14 +62,14 @@ export default function NotFound() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex h-10 w-full items-center justify-center rounded-lg border border-pen-card-border bg-pen-bg font-sans text-[13.5px] font-medium text-pen-muted transition-colors hover:border-pen-muted hover:text-pen-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pen-card-border"
+            className="flex h-10 w-full items-center justify-center rounded-lg border border-sts-card-border bg-sts-bg font-sans text-[13.5px] font-medium text-sts-muted transition-colors hover:border-sts-muted hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-card-border"
           >
             ← Go back
           </button>
         </div>
 
         {/* Footer note */}
-        <p className="font-sans text-[11.5px] text-pen-subtle">
+        <p className="font-sans text-[11.5px] text-sts-subtle">
           If this keeps happening, contact your workspace admin.
         </p>
       </div>

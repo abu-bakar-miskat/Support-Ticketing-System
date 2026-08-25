@@ -75,17 +75,17 @@ export function TransferTicketDialog({
   return (
     <Dialog.Root open={open} onOpenChange={(o) => { if (!submitting) onOpenChange(o); }}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <Dialog.Popup className="pen-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-          <Dialog.Title className="pen-text-modal-title">
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <Dialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <Dialog.Title className="sts-text-modal-title">
             Transfer {ticketHumanId}
           </Dialog.Title>
-          <Dialog.Description className="mt-2 font-sans text-[13px] text-pen-subtle">
+          <Dialog.Description className="mt-2 font-sans text-[13px] text-sts-subtle">
             Move this ticket to another department or sub-department. You&apos;ll keep read access to track its progress.
           </Dialog.Description>
 
           <div className="mt-4">
-            <label className="mb-1.5 block font-sans text-[11.5px] font-semibold text-pen-subtle">
+            <label className="mb-1.5 block font-sans text-[11.5px] font-semibold text-sts-subtle">
               Destination
             </label>
             <SearchableSelect

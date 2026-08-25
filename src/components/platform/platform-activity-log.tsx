@@ -62,44 +62,44 @@ function EventRow({ event }: { event: AuditEvent }) {
         <TableCell className="w-6">
           {hasDetails ? (
             expanded ? (
-              <ChevronDown className="size-3.5 text-pen-subtle" />
+              <ChevronDown className="size-3.5 text-sts-subtle" />
             ) : (
-              <ChevronRight className="size-3.5 text-pen-subtle" />
+              <ChevronRight className="size-3.5 text-sts-subtle" />
             )
           ) : null}
         </TableCell>
-        <TableCell className="font-sans text-[12.5px] font-medium text-pen-foreground">{event.action}</TableCell>
-        <TableCell className="font-sans text-[12.5px] text-pen-muted">
+        <TableCell className="font-sans text-[12.5px] font-medium text-sts-foreground">{event.action}</TableCell>
+        <TableCell className="font-sans text-[12.5px] text-sts-muted">
           {event.targetType}
-          <span className="text-pen-subtle"> · {event.targetId}</span>
+          <span className="text-sts-subtle"> · {event.targetId}</span>
         </TableCell>
-        <TableCell className="font-sans text-[12.5px] text-pen-muted">
+        <TableCell className="font-sans text-[12.5px] text-sts-muted">
           {event.actor?.name ?? event.actor?.email ?? event.actorId}
         </TableCell>
-        <TableCell className="font-sans text-[12.5px] text-pen-subtle">
+        <TableCell className="font-sans text-[12.5px] text-sts-subtle">
           {new Date(event.createdAt).toLocaleString()}
         </TableCell>
       </TableRow>
       {expanded && hasDetails && (
         <TableRow>
-          <TableCell colSpan={5} className="bg-pen-bg/40 py-3">
+          <TableCell colSpan={5} className="bg-sts-bg/40 py-3">
             <div className="grid gap-3 sm:grid-cols-2">
               {event.before != null && (
                 <div>
-                  <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                     Before
                   </p>
-                  <pre className="mt-1 overflow-x-auto rounded-md bg-pen-card p-2 font-mono text-[11px] text-pen-muted">
+                  <pre className="mt-1 overflow-x-auto rounded-md bg-sts-card p-2 font-mono text-[11px] text-sts-muted">
                     {JSON.stringify(event.before, null, 2)}
                   </pre>
                 </div>
               )}
               {event.after != null && (
                 <div>
-                  <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                  <p className="font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                     After
                   </p>
-                  <pre className="mt-1 overflow-x-auto rounded-md bg-pen-card p-2 font-mono text-[11px] text-pen-muted">
+                  <pre className="mt-1 overflow-x-auto rounded-md bg-sts-card p-2 font-mono text-[11px] text-sts-muted">
                     {JSON.stringify(event.after, null, 2)}
                   </pre>
                 </div>
@@ -231,7 +231,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
           </div>
         )}
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-pen-card-border bg-pen-card">
+        <div className="mt-6 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -245,7 +245,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             <TableBody>
               {events.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center font-sans text-[12.5px] text-pen-muted">
+                  <TableCell colSpan={5} className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
                     {loading ? "Loading…" : "No activity yet"}
                   </TableCell>
                 </TableRow>

@@ -187,21 +187,21 @@ export function IntakeForm({
 
   if (submitted && awaitingVerification) {
     return (
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-pen-card-border bg-pen-card px-8 py-14 text-center shadow-sm">
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-sts-card-border bg-sts-card px-8 py-14 text-center shadow-sm">
         <div className="flex size-14 items-center justify-center rounded-full bg-green-50">
           <CheckCircle2 className="size-7 text-green-500" />
         </div>
         <div>
-          <h2 className="font-poppins text-[19px] font-semibold text-pen-foreground">
+          <h2 className="font-poppins text-[19px] font-semibold text-sts-foreground">
             Almost there — check your inbox
           </h2>
-          <p className="mt-2 font-poppins text-[13px] leading-relaxed text-pen-muted">
+          <p className="mt-2 font-poppins text-[13px] leading-relaxed text-sts-muted">
             We emailed a confirmation link to{" "}
-            <span className="font-medium text-pen-foreground">{submitterEmail}</span>.
+            <span className="font-medium text-sts-foreground">{submitterEmail}</span>.
             <br />
             Click it to submit your request — your ticket is created once you confirm.
           </p>
-          <p className="mt-3 font-poppins text-[11px] text-pen-subtle">
+          <p className="mt-3 font-poppins text-[11px] text-sts-subtle">
             The link expires in 24 hours. Don't see it? Check your spam folder.
           </p>
         </div>
@@ -211,20 +211,20 @@ export function IntakeForm({
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center gap-5 rounded-2xl border border-pen-card-border bg-pen-card px-8 py-14 text-center shadow-sm">
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-sts-card-border bg-sts-card px-8 py-14 text-center shadow-sm">
         <div className="flex size-14 items-center justify-center rounded-full bg-green-50">
           <CheckCircle2 className="size-7 text-green-500" />
         </div>
         <div>
-          <h2 className="font-poppins text-[19px] font-semibold text-pen-foreground">
+          <h2 className="font-poppins text-[19px] font-semibold text-sts-foreground">
             Submission received
           </h2>
-          <p className="mt-2 font-poppins text-[13px] leading-relaxed text-pen-muted">
+          <p className="mt-2 font-poppins text-[13px] leading-relaxed text-sts-muted">
             {confirmationText ? (
               confirmationText
             ) : (
               <>
-                Thank you, <span className="font-medium text-pen-foreground">{submitterName}</span>.
+                Thank you, <span className="font-medium text-sts-foreground">{submitterName}</span>.
                 <br />
                 We'll be in touch at {submitterEmail}.
               </>
@@ -232,13 +232,13 @@ export function IntakeForm({
           </p>
           {ticketNumber && (
             <div className="mt-1 flex flex-col items-center gap-1">
-              <span className="font-poppins text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <span className="font-poppins text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                 Ticket number
               </span>
-              <span className="rounded-md border border-pen-card-border bg-pen-surface px-2.5 py-1 font-mono text-[12px] text-pen-foreground">
+              <span className="rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-mono text-[12px] text-sts-foreground">
                 {ticketNumber}
               </span>
-              <span className="font-poppins text-[11px] text-pen-subtle">
+              <span className="font-poppins text-[11px] text-sts-subtle">
                 Please quote this in any follow-up.
               </span>
             </div>
@@ -291,14 +291,14 @@ export function IntakeForm({
         <FormField label={defaultFields.issueType.label} required error={errors["__issue"]}>
           <Select value={issueId} onValueChange={(v) => { if (v) { setIssueId(v); setErrors((prev) => { const next = { ...prev }; delete next["__issue"]; return next; }); } }}>
             <SelectTrigger className={cn(
-              "!h-11 w-full rounded-xl border bg-pen-surface py-0 px-3.5 font-poppins text-[13px] text-pen-foreground transition-colors data-placeholder:text-pen-subtle",
-              "focus:border-pen-id focus:ring-2 focus:ring-pen-id/10",
-              errors["__issue"] ? "border-pen-red" : "border-pen-card-border",
+              "!h-11 w-full rounded-xl border bg-sts-surface py-0 px-3.5 font-poppins text-[13px] text-sts-foreground transition-colors data-placeholder:text-sts-subtle",
+              "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
+              errors["__issue"] ? "border-sts-red" : "border-sts-card-border",
             )}>
               <SelectValue>
                 {(value: string) => value
                   ? (issues.find((i) => i.id === value)?.name ?? value)
-                  : <span className="text-pen-subtle">{defaultFields.issueType.placeholder}</span>}
+                  : <span className="text-sts-subtle">{defaultFields.issueType.placeholder}</span>}
               </SelectValue>
             </SelectTrigger>
             <SelectContent alignItemWithTrigger={false}>
@@ -313,7 +313,7 @@ export function IntakeForm({
       )}
 
       {/* Divider */}
-      {fields.length > 0 && <div className="h-px bg-pen-card-border" />}
+      {fields.length > 0 && <div className="h-px bg-sts-card-border" />}
 
       {/* Dynamic fields */}
       {fields.map((field) => (
@@ -339,9 +339,9 @@ export function IntakeForm({
 
       {/* Submit error */}
       {submitError && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-pen-red/30 bg-pen-red-tint px-4 py-3">
-          <AlertCircle className="mt-0.5 size-4 shrink-0 text-pen-red" />
-          <p className="font-poppins text-[12.5px] text-pen-red">{submitError}</p>
+        <div className="flex items-start gap-2.5 rounded-xl border border-sts-red/30 bg-sts-red-tint px-4 py-3">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-sts-red" />
+          <p className="font-poppins text-[12.5px] text-sts-red">{submitError}</p>
         </div>
       )}
 
@@ -351,7 +351,7 @@ export function IntakeForm({
         style={accentColor ? { backgroundColor: accentColor } : undefined}
         className={cn(
           "flex h-12 items-center justify-center gap-2 rounded-xl font-poppins text-[14px] font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
-          !accentColor && "bg-pen-blue",
+          !accentColor && "bg-sts-blue",
         )}
       >
         {submitting && <Loader2 className="size-4 animate-spin" />}
@@ -378,16 +378,16 @@ function FormField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="font-sans text-[13px] font-semibold text-pen-foreground">
+      <label className="font-sans text-[13px] font-semibold text-sts-foreground">
         {label}
-        {required && <span className="ml-0.5 text-pen-red">*</span>}
+        {required && <span className="ml-0.5 text-sts-red">*</span>}
       </label>
       {children}
       {helperText && !error && (
-        <p className="font-poppins text-[11.5px] text-pen-subtle">{helperText}</p>
+        <p className="font-poppins text-[11.5px] text-sts-subtle">{helperText}</p>
       )}
       {error && (
-        <p className="flex items-center gap-1 font-poppins text-[11.5px] text-pen-red">
+        <p className="flex items-center gap-1 font-poppins text-[11.5px] text-sts-red">
           <AlertCircle className="size-3 shrink-0" />
           {error}
         </p>
@@ -461,7 +461,7 @@ function DynamicField({
         content={value}
         onChange={onChange}
         placeholder={field.placeholder ?? "Write your response…"}
-        className={cn(hasError && "border-pen-red")}
+        className={cn(hasError && "border-sts-red")}
         showAttachButton={false}
       />
     )
@@ -473,9 +473,9 @@ function DynamicField({
 
     const triggerCn = (error: boolean) =>
       cn(
-        "!h-11 w-full rounded-xl border bg-pen-surface py-0 px-3.5 font-poppins text-[13px] text-pen-foreground transition-colors data-placeholder:text-pen-subtle",
-        "focus:border-pen-id focus:ring-2 focus:ring-pen-id/10",
-        error ? "border-pen-red" : "border-pen-card-border",
+        "!h-11 w-full rounded-xl border bg-sts-surface py-0 px-3.5 font-poppins text-[13px] text-sts-foreground transition-colors data-placeholder:text-sts-subtle",
+        "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
+        error ? "border-sts-red" : "border-sts-card-border",
       )
 
     return (
@@ -521,7 +521,7 @@ function DynamicField({
     // ── Uploaded — image preview ─────────────────────────────────────────────
     if (upload?.url && isImageFile(upload.file)) {
       return (
-        <div className="overflow-hidden rounded-xl border border-pen-card-border bg-pen-surface">
+        <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-surface">
           <div className="relative">
             <img
               src={upload.url}
@@ -537,15 +537,15 @@ function DynamicField({
               <X className="size-3.5" />
             </button>
           </div>
-          <div className="flex items-center gap-2 border-t border-pen-card-border px-3 py-2">
-            <Paperclip className="size-3 shrink-0 text-pen-subtle" />
-            <span className="min-w-0 flex-1 truncate font-poppins text-[11.5px] text-pen-muted">
+          <div className="flex items-center gap-2 border-t border-sts-card-border px-3 py-2">
+            <Paperclip className="size-3 shrink-0 text-sts-subtle" />
+            <span className="min-w-0 flex-1 truncate font-poppins text-[11.5px] text-sts-muted">
               {upload.file.name}
             </span>
             <button
               type="button"
               onClick={onFileRemove}
-              className="shrink-0 font-poppins text-[11px] text-pen-subtle transition-colors hover:text-pen-red"
+              className="shrink-0 font-poppins text-[11px] text-sts-subtle transition-colors hover:text-sts-red"
             >
               Re-upload
             </button>
@@ -557,18 +557,18 @@ function DynamicField({
     // ── Uploaded — non-image file ────────────────────────────────────────────
     if (upload?.url) {
       return (
-        <div className="flex items-center gap-2.5 rounded-xl border border-pen-card-border bg-pen-surface px-3.5 py-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-pen-blue-tint">
-            <Paperclip className="size-3.5 text-pen-id" />
+        <div className="flex items-center gap-2.5 rounded-xl border border-sts-card-border bg-sts-surface px-3.5 py-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint">
+            <Paperclip className="size-3.5 text-sts-id" />
           </div>
-          <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] font-medium text-pen-foreground">
+          <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] font-medium text-sts-foreground">
             {upload.file.name}
           </span>
           <button
             type="button"
             onClick={onFileRemove}
             title="Remove file"
-            className="shrink-0 text-pen-subtle transition-colors hover:text-pen-red"
+            className="shrink-0 text-sts-subtle transition-colors hover:text-sts-red"
           >
             <X className="size-4" />
           </button>
@@ -580,8 +580,8 @@ function DynamicField({
     return (
       <label
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors hover:bg-pen-surface",
-          hasError ? "border-pen-red" : "border-pen-card-border",
+          "flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors hover:bg-sts-surface",
+          hasError ? "border-sts-red" : "border-sts-card-border",
           upload?.uploading && "pointer-events-none opacity-60",
         )}
       >
@@ -597,26 +597,26 @@ function DynamicField({
         />
         {upload?.uploading ? (
           <>
-            <Loader2 className="size-6 animate-spin text-pen-muted" />
-            <span className="font-poppins text-[12.5px] text-pen-muted">Uploading…</span>
+            <Loader2 className="size-6 animate-spin text-sts-muted" />
+            <span className="font-poppins text-[12.5px] text-sts-muted">Uploading…</span>
           </>
         ) : (
           <>
-            <div className="flex size-11 items-center justify-center rounded-full border border-pen-card-border bg-pen-card shadow-sm">
-              <Upload className="size-4 text-pen-muted" />
+            <div className="flex size-11 items-center justify-center rounded-full border border-sts-card-border bg-sts-card shadow-sm">
+              <Upload className="size-4 text-sts-muted" />
             </div>
             <div>
-              <p className="font-poppins text-[13px] font-medium text-pen-foreground">
+              <p className="font-poppins text-[13px] font-medium text-sts-foreground">
                 Click to upload a file
               </p>
-              <p className="mt-0.5 font-poppins text-[11.5px] text-pen-subtle">
+              <p className="mt-0.5 font-poppins text-[11.5px] text-sts-subtle">
                 Images, PDF, Word, Excel · Max 20 MB
               </p>
             </div>
           </>
         )}
         {upload?.error && (
-          <p className="font-sans text-[11.5px] text-pen-red">{upload.error}</p>
+          <p className="font-sans text-[11.5px] text-sts-red">{upload.error}</p>
         )}
       </label>
     )
@@ -627,8 +627,8 @@ function DynamicField({
 
 function inputCn(hasError: boolean) {
   return cn(
-    "h-11 w-full rounded-xl border bg-pen-surface px-3.5 font-poppins text-[13px] text-pen-foreground outline-none placeholder:text-pen-subtle transition-colors",
-    "focus:border-pen-id focus:ring-2 focus:ring-pen-id/10",
-    hasError ? "border-pen-red" : "border-pen-card-border",
+    "h-11 w-full rounded-xl border bg-sts-surface px-3.5 font-poppins text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle transition-colors",
+    "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
+    hasError ? "border-sts-red" : "border-sts-card-border",
   )
 }

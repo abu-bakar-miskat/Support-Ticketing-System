@@ -132,7 +132,7 @@ export default async function SettingsIntakeSubmissionDetailRoute({
       <div className="flex flex-col gap-5">
         <Link
           href={`/settings/intake-forms/${formId}/submissions`}
-          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-pen-muted hover:text-pen-foreground transition-colors"
+          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
         >
           <ArrowLeft className="size-3.5" />
           {intake.formConfig.name} submissions
@@ -141,7 +141,7 @@ export default async function SettingsIntakeSubmissionDetailRoute({
           <div className="flex min-w-0 items-center gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="pen-text-admin-title">
+                <h1 className="sts-text-admin-title">
                   {intake.submitterName}
                 </h1>
                 <span
@@ -155,7 +155,7 @@ export default async function SettingsIntakeSubmissionDetailRoute({
                   {priorityStyle.label}
                 </span>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[12px] text-pen-muted">
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[12px] text-sts-muted">
                 <span className="inline-flex items-center gap-1">
                   <Mail className="size-3.5" />
                   {intake.submitterEmail}
@@ -171,7 +171,7 @@ export default async function SettingsIntakeSubmissionDetailRoute({
             {ticket ? (
               <Link
                 href={`/tickets/${ticket.id}`}
-                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-pen-card-border bg-pen-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-pen-foreground hover:border-pen-id hover:text-pen-id transition-colors"
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
               >
                 <ExternalLink className="size-3.5" />
                 Ticket #{ticket.ticketNumber}
@@ -200,27 +200,27 @@ export default async function SettingsIntakeSubmissionDetailRoute({
         </div>
 
         {ticket ? (
-          <div className="flex flex-1 flex-col rounded-xl border border-pen-card-border bg-pen-card">
+          <div className="flex flex-1 flex-col rounded-xl border border-sts-card-border bg-sts-card">
             {/* Card header */}
-            <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-4">
+            <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-pen-blue-tint text-pen-id">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
                   <TicketIcon className="size-3.5" />
                 </span>
                 <div>
-                  <p className="pen-text-label">
+                  <p className="sts-text-label">
                     Linked ticket
                   </p>
                   <Link
                     href={`/tickets/${ticket.id}`}
-                    className="font-sans text-[12.5px] font-semibold text-pen-id hover:underline"
+                    className="font-sans text-[12.5px] font-semibold text-sts-id hover:underline"
                   >
                     #{ticket.ticketNumber}
                   </Link>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface px-2.5 py-1 font-sans text-[11px] font-semibold text-pen-foreground">
-                <span className="size-1.5 rounded-full bg-pen-id" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-semibold text-sts-foreground">
+                <span className="size-1.5 rounded-full bg-sts-id" />
                 {ticket.status}
               </span>
             </div>
@@ -228,17 +228,17 @@ export default async function SettingsIntakeSubmissionDetailRoute({
             <div className="flex flex-col gap-5 px-5 py-5">
               {/* Title */}
               <div>
-                <p className="mb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                <p className="mb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                   Title
                 </p>
-                <p className="font-sans text-[13px] font-medium text-pen-foreground">
+                <p className="font-sans text-[13px] font-medium text-sts-foreground">
                   {ticket.title}
                 </p>
               </div>
 
               {/* Working on it */}
               <div>
-                <p className="mb-1.5 flex items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+                <p className="mb-1.5 flex items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                   <Users className="size-3.5" />
                   Working on it
                 </p>
@@ -251,43 +251,43 @@ export default async function SettingsIntakeSubmissionDetailRoute({
                           avatarUrl={w.avatarUrl}
                           size={22}
                         />
-                        <span className="font-sans text-[12.5px] text-pen-foreground">
+                        <span className="font-sans text-[12.5px] text-sts-foreground">
                           {w.name}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="font-sans text-[12.5px] italic text-pen-muted">
+                  <p className="font-sans text-[12.5px] italic text-sts-muted">
                     Unassigned
                   </p>
                 )}
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-3 border-t border-pen-card-border pt-5">
+              <div className="grid grid-cols-2 gap-3 border-t border-sts-card-border pt-5">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-pen-surface text-pen-muted">
+                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
                     <CalendarDays className="size-3.5" />
                   </span>
                   <div>
-                    <p className="font-sans text-[11px] text-pen-subtle">
+                    <p className="font-sans text-[11px] text-sts-subtle">
                       Start date
                     </p>
-                    <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                       {fmtDate(ticket.startDate)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-pen-surface text-pen-muted">
+                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
                     <CalendarClock className="size-3.5" />
                   </span>
                   <div>
-                    <p className="font-sans text-[11px] text-pen-subtle">
+                    <p className="font-sans text-[11px] text-sts-subtle">
                       Due date
                     </p>
-                    <p className="font-sans text-[12.5px] font-medium text-pen-foreground">
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                       {fmtDate(ticket.dueDate)}
                     </p>
                   </div>

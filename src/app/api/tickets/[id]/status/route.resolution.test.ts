@@ -32,7 +32,7 @@ vi.mock("@/lib/ticket-cascade", () => ({ cascadeCompleteToSubtickets: vi.fn().mo
 vi.mock("@/lib/email-config", () => ({
   RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({
-    fromName: "PEN Platform",
+    fromName: "Support Ticketing System",
     fromEmail: "support@pengroup.com",
     notifyResolution: true,
   }),
@@ -167,7 +167,7 @@ describe("PATCH /api/tickets/[id]/status — resolution fold-in (issue 010)", ()
     vi.mocked(
       (await import("@/lib/email-config")).getEmailConfig,
     ).mockResolvedValue({
-      fromName: "PEN Platform",
+      fromName: "Support Ticketing System",
       fromEmail: "support@pengroup.com",
       notifyResolution: true,
     } as never)

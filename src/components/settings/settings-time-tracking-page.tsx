@@ -231,10 +231,10 @@ function mergeKnown<T extends string | boolean>(
 }
 
 const controlFieldClass =
-  "h-8 rounded-md border-pen-card-border bg-pen-bg px-[11px] font-sans text-xs text-pen-foreground shadow-none";
+  "h-8 rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-xs text-sts-foreground shadow-none";
 
 const switchClassName =
-  "h-[22px] w-[38px] shrink-0 data-checked:bg-pen-blue data-unchecked:bg-pen-surface dark:data-unchecked:bg-pen-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
+  "h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-surface dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
 
 function SettingsRowControl({
   row,
@@ -331,16 +331,16 @@ function SettingsCard({
   return (
     <section
       className={cn(
-        "w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card",
+        "w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card",
         "px-[22px] pt-4 pb-2",
       )}
     >
       <div className="flex flex-col gap-0.5 pb-1.5">
-        <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+        <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           {title}
         </h2>
         {description ? (
-          <p className="font-sans text-[11.5px] text-pen-muted">
+          <p className="font-sans text-[11.5px] text-sts-muted">
             {description}
           </p>
         ) : null}
@@ -350,17 +350,17 @@ function SettingsCard({
         {rows.map((row) => (
           <div
             key={row.control.id}
-            className="flex flex-col gap-3 border-t border-pen-surface py-3 sm:flex-row sm:items-center sm:gap-4"
+            className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4"
           >
             <div className="flex min-w-0 flex-1 flex-col gap-px">
               <label
                 htmlFor={row.control.id}
-                className="font-sans text-[12.5px] font-semibold text-pen-foreground"
+                className="font-sans text-[12.5px] font-semibold text-sts-foreground"
               >
                 {row.label}
               </label>
               {row.description ? (
-                <p className="font-sans text-[11.5px] text-pen-subtle">
+                <p className="font-sans text-[11.5px] text-sts-subtle">
                   {row.description}
                 </p>
               ) : null}
@@ -421,10 +421,10 @@ function SettingsTimeTrackingView({
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <header className="flex max-w-[920px] flex-col gap-1">
-        <h1 className="pen-text-admin-title">
+        <h1 className="sts-text-admin-title">
           {title}
         </h1>
-        <p className="font-sans text-[13px] text-pen-muted">{description}</p>
+        <p className="font-sans text-[13px] text-sts-muted">{description}</p>
       </header>
 
       {sections.map((section) => (

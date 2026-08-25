@@ -11,39 +11,39 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Brief highlight when jumping to the comment a reply references. */
-@keyframes pen-comment-flash {
-  0% { background-color: color-mix(in srgb, var(--pen-blue) 18%, transparent); }
+@keyframes sts-comment-flash {
+  0% { background-color: color-mix(in srgb, var(--sts-blue) 18%, transparent); }
   100% { background-color: transparent; }
 }
-.pen-comment-flash {
-  animation: pen-comment-flash 1.6s ease-out;
+.sts-comment-flash {
+  animation: sts-comment-flash 1.6s ease-out;
 }
 
 /*
  * Neutral light palette forced onto the public support-form pages, regardless
- * of the visitor's theme. Redeclaring the base --pen-* tokens on this wrapper
+ * of the visitor's theme. Redeclaring the base --sts-* tokens on this wrapper
  * overrides the theme values set on <html> for the whole subtree (custom
  * properties resolve against the nearest scope). Public submitters should
  * always see a clean, neutral light interface.
  */
-.pen-light-scope {
+.sts-light-scope {
   color-scheme: light;
-  --pen-bg: #f7f8fa;
-  --pen-card: #ffffff;
-  --pen-card-solid: #ffffff;
-  --pen-card-border: #e5e7eb;
-  --pen-foreground: #1f2937;
-  --pen-muted: #6b7280;
-  --pen-subtle: #9ca3af;
-  --pen-surface: #f4f5f7;
-  --pen-blue: #0a76b9;
-  --pen-blue-tint: #e8f2fb;
-  --pen-id: #0a76b9;
-  --pen-red: #dc2626;
-  --pen-red-tint: #fef2f2;
-  --pen-green: #16a34a;
-  --pen-green-tint: #f0fdf4;
-  --pen-bg-gradient: var(--pen-bg);
+  --sts-bg: #f7f8fa;
+  --sts-card: #ffffff;
+  --sts-card-solid: #ffffff;
+  --sts-card-border: #e5e7eb;
+  --sts-foreground: #1f2937;
+  --sts-muted: #6b7280;
+  --sts-subtle: #9ca3af;
+  --sts-surface: #f4f5f7;
+  --sts-blue: #0a76b9;
+  --sts-blue-tint: #e8f2fb;
+  --sts-id: #0a76b9;
+  --sts-red: #dc2626;
+  --sts-red-tint: #fef2f2;
+  --sts-green: #16a34a;
+  --sts-green-tint: #f0fdf4;
+  --sts-bg-gradient: var(--sts-bg);
 }
 
 @theme inline {
@@ -56,41 +56,41 @@
   --font-heading: var(--font-sans);
   --font-display: var(--font-display);
 
-  --color-pen-bg: var(--pen-bg);
-  --color-pen-bg-tint: var(--pen-bg-tint);
-  --color-pen-card: var(--pen-card);
-  --color-pen-card-border: var(--pen-card-border);
-  --color-pen-foreground: var(--pen-foreground);
-  --color-pen-muted: color-mix(
+  --color-sts-bg: var(--sts-bg);
+  --color-sts-bg-tint: var(--sts-bg-tint);
+  --color-sts-card: var(--sts-card);
+  --color-sts-card-border: var(--sts-card-border);
+  --color-sts-foreground: var(--sts-foreground);
+  --color-sts-muted: color-mix(
     in srgb,
-    var(--pen-muted) 78%,
-    var(--pen-foreground) 22%
+    var(--sts-muted) 78%,
+    var(--sts-foreground) 22%
   );
-  --color-pen-subtle: color-mix(
+  --color-sts-subtle: color-mix(
     in srgb,
-    var(--pen-subtle) 72%,
-    var(--pen-foreground) 28%
+    var(--sts-subtle) 72%,
+    var(--sts-foreground) 28%
   );
-  --color-pen-button: var(--pen-button);
-  --color-pen-button-fg: var(--pen-button-fg);
-  --color-pen-secondary-bg: var(--pen-secondary-bg);
-  --color-pen-secondary-fg: var(--pen-secondary-fg);
-  --color-pen-accent: var(--pen-accent);
-  --color-pen-brand: #06476f;
-  --shadow-pen-card: var(--pen-card-shadow);
+  --color-sts-button: var(--sts-button);
+  --color-sts-button-fg: var(--sts-button-fg);
+  --color-sts-secondary-bg: var(--sts-secondary-bg);
+  --color-sts-secondary-fg: var(--sts-secondary-fg);
+  --color-sts-accent: var(--sts-accent);
+  --color-sts-brand: #06476f;
+  --shadow-sts-card: var(--sts-card-shadow);
   /* Semantic action tokens */
-  --color-pen-blue: var(--pen-blue);
-  --color-pen-blue-tint: var(--pen-blue-tint);
-  --color-pen-surface: var(--pen-surface);
-  --color-pen-settings-subnav: var(--pen-settings-subnav);
-  --color-pen-settings-subnav-active: var(--pen-settings-subnav-active);
-  --color-pen-id: var(--pen-id);
-  --color-pen-red: var(--pen-red);
-  --color-pen-red-tint: var(--pen-red-tint);
-  --color-pen-green: var(--pen-green);
-  --color-pen-green-tint: var(--pen-green-tint);
-  --color-pen-purple: var(--pen-purple);
-  --color-pen-purple-tint: var(--pen-purple-tint);
+  --color-sts-blue: var(--sts-blue);
+  --color-sts-blue-tint: var(--sts-blue-tint);
+  --color-sts-surface: var(--sts-surface);
+  --color-sts-settings-subnav: var(--sts-settings-subnav);
+  --color-sts-settings-subnav-active: var(--sts-settings-subnav-active);
+  --color-sts-id: var(--sts-id);
+  --color-sts-red: var(--sts-red);
+  --color-sts-red-tint: var(--sts-red-tint);
+  --color-sts-green: var(--sts-green);
+  --color-sts-green-tint: var(--sts-green-tint);
+  --color-sts-purple: var(--sts-purple);
+  --color-sts-purple-tint: var(--sts-purple-tint);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -139,38 +139,38 @@
     --font-serif: "Lora Variable", ui-serif, Georgia, serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
     --font-display: "Fraunces Variable", "Lora Variable", ui-serif, Georgia, serif;
-    --pen-bg: #f5f2ec;
-    --pen-card-solid: #fdfbf7;
-    --pen-bg-tint: rgba(238, 234, 226, 0.4);
-    --pen-glass-blur: 20px;
-    --pen-glass-saturate: 1.4;
-    --pen-glass-shadow:
+    --sts-bg: #f5f2ec;
+    --sts-card-solid: #fdfbf7;
+    --sts-bg-tint: rgba(238, 234, 226, 0.4);
+    --sts-glass-blur: 20px;
+    --sts-glass-saturate: 1.4;
+    --sts-glass-shadow:
       0 8px 32px rgba(6, 71, 111, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.68);
-    --pen-glass-highlight: rgba(255, 255, 255, 0.52);
-    --pen-card: rgba(253, 251, 246, 0.9);
-    --pen-card-border: #dfe0d8;
-    --pen-foreground: #06476f;
-    --pen-muted: #4d6981;
-    --pen-subtle: #64748b;
-    --pen-button: #06476f;
-    --pen-button-fg: #ffffff;
-    --pen-secondary-bg: rgba(251, 249, 244, 0.82);
-    --pen-secondary-fg: #06476f;
-    --pen-accent: #06476f;
-    --pen-card-shadow: 0 16px 40px -4px rgba(6, 71, 111, 0.07);
-    --pen-blue: #0a76b9;
-    --pen-blue-tint: rgba(230, 244, 252, 0.72);
-    --pen-surface: rgba(251, 249, 244, 0.78);
-    --pen-settings-subnav: rgba(251, 249, 244, 0.68);
-    --pen-settings-subnav-active: rgba(253, 251, 246, 0.94);
-    --pen-id: #06476f;
-    --pen-red: #dc2626;
-    --pen-red-tint: #fdf0f0;
-    --pen-green: #16a34a;
-    --pen-green-tint: #edf9f1;
-    --pen-purple: #7c3aed;
-    --pen-purple-tint: #f0ebff;
-    --pen-bg-gradient:
+    --sts-glass-highlight: rgba(255, 255, 255, 0.52);
+    --sts-card: rgba(253, 251, 246, 0.9);
+    --sts-card-border: #dfe0d8;
+    --sts-foreground: #06476f;
+    --sts-muted: #4d6981;
+    --sts-subtle: #64748b;
+    --sts-button: #06476f;
+    --sts-button-fg: #ffffff;
+    --sts-secondary-bg: rgba(251, 249, 244, 0.82);
+    --sts-secondary-fg: #06476f;
+    --sts-accent: #06476f;
+    --sts-card-shadow: 0 16px 40px -4px rgba(6, 71, 111, 0.07);
+    --sts-blue: #0a76b9;
+    --sts-blue-tint: rgba(230, 244, 252, 0.72);
+    --sts-surface: rgba(251, 249, 244, 0.78);
+    --sts-settings-subnav: rgba(251, 249, 244, 0.68);
+    --sts-settings-subnav-active: rgba(253, 251, 246, 0.94);
+    --sts-id: #06476f;
+    --sts-red: #dc2626;
+    --sts-red-tint: #fdf0f0;
+    --sts-green: #16a34a;
+    --sts-green-tint: #edf9f1;
+    --sts-purple: #7c3aed;
+    --sts-purple-tint: #f0ebff;
+    --sts-bg-gradient:
       radial-gradient(
         ellipse 90% 55% at 50% -15%,
         rgba(10, 118, 185, 0.14),
@@ -191,7 +191,7 @@
         rgba(124, 58, 237, 0.06),
         transparent 40%
       ),
-      var(--pen-bg);
+      var(--sts-bg);
     --background: oklch(0.978 0.005 75);
     --foreground: oklch(0.18 0.04 230);
     --card: rgba(253, 251, 246, 0.9);
@@ -215,11 +215,11 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --pen-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-    --pen-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-    --pen-duration-fast: 150ms;
-    --pen-duration-normal: 250ms;
-    --pen-duration-slow: 420ms;
+    --sts-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --sts-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --sts-duration-fast: 150ms;
+    --sts-duration-normal: 250ms;
+    --sts-duration-slow: 420ms;
     --radius: 0.625rem;
     --sidebar: oklch(0.966 0.006 75);
     --sidebar-foreground: oklch(0.18 0.04 230);
@@ -233,40 +233,40 @@
 
   html.dark,
   html[data-theme="dark"] {
-    --pen-card-solid: #202630;
-    --pen-bg: oklch(0.2077 0.0398 265.7549);
-    --pen-bg-tint: rgba(58, 58, 54, 0.4);
-    --pen-glass-blur: 24px;
-    --pen-glass-saturate: 1.35;
-    --pen-glass-shadow:
+    --sts-card-solid: #202630;
+    --sts-bg: oklch(0.2077 0.0398 265.7549);
+    --sts-bg-tint: rgba(58, 58, 54, 0.4);
+    --sts-glass-blur: 24px;
+    --sts-glass-saturate: 1.35;
+    --sts-glass-shadow:
       0 8px 40px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    --pen-glass-highlight: rgba(255, 255, 255, 0.1);
-    --pen-card: rgba(32, 38, 48, 0.92);
-    --pen-card-border: #313139;
-    --pen-foreground: #f0eee6;
-    --pen-muted: #b7b4a9;
-    --pen-subtle: #a8a5a0;
-    --pen-button: #f0eee6;
-    --pen-button-fg: #30302d;
-    --pen-secondary-bg: rgba(36, 42, 52, 0.88);
-    --pen-secondary-fg: #f0eee6;
-    --pen-accent: oklch(0.7729 0.1535 163.2231);
-    --pen-card-shadow: 0 16px 40px -4px rgba(6, 71, 111, 0.4);
+    --sts-glass-highlight: rgba(255, 255, 255, 0.1);
+    --sts-card: rgba(32, 38, 48, 0.92);
+    --sts-card-border: #313139;
+    --sts-foreground: #f0eee6;
+    --sts-muted: #b7b4a9;
+    --sts-subtle: #a8a5a0;
+    --sts-button: #f0eee6;
+    --sts-button-fg: #30302d;
+    --sts-secondary-bg: rgba(36, 42, 52, 0.88);
+    --sts-secondary-fg: #f0eee6;
+    --sts-accent: oklch(0.7729 0.1535 163.2231);
+    --sts-card-shadow: 0 16px 40px -4px rgba(6, 71, 111, 0.4);
     /* Action / semantic tokens — dark overrides */
-    --pen-blue: oklch(0.7729 0.1535 163.2231);
-    --pen-blue-tint: rgba(44, 58, 68, 0.55);
-    --pen-surface: rgb(40, 48, 58);
-    --pen-settings-subnav: rgba(36, 42, 52, 0.78);
-    --pen-settings-subnav-active: rgba(48, 56, 68, 0.95);
+    --sts-blue: oklch(0.7729 0.1535 163.2231);
+    --sts-blue-tint: rgba(44, 58, 68, 0.55);
+    --sts-surface: rgb(40, 48, 58);
+    --sts-settings-subnav: rgba(36, 42, 52, 0.78);
+    --sts-settings-subnav-active: rgba(48, 56, 68, 0.95);
 
-    --pen-id: oklch(0.7729 0.1535 163.2231);
-    --pen-red: #ec8a82;
-    --pen-red-tint: #3a2b29;
-    --pen-green: #5cc88a;
-    --pen-green-tint: #1a3028;
-    --pen-purple: #b69cf0;
-    --pen-purple-tint: #352f44;
-    --pen-bg-gradient:
+    --sts-id: oklch(0.7729 0.1535 163.2231);
+    --sts-red: #ec8a82;
+    --sts-red-tint: #3a2b29;
+    --sts-green: #5cc88a;
+    --sts-green-tint: #1a3028;
+    --sts-purple: #b69cf0;
+    --sts-purple-tint: #352f44;
+    --sts-bg-gradient:
       radial-gradient(
         ellipse 85% 50% at 50% -12%,
         rgba(45, 180, 155, 0.24),
@@ -287,7 +287,7 @@
         rgba(92, 200, 138, 0.1),
         transparent 40%
       ),
-      var(--pen-bg);
+      var(--sts-bg);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: rgba(32, 38, 48, 0.92);
@@ -323,39 +323,39 @@
 
   /* ── AMOLED — true blacks, electric cyan for punch ── */
   :root[data-theme="amoled"] {
-    --pen-bg: #000000;
-    --pen-card-solid: #000000;
-    --pen-bg-tint: rgba(8, 8, 8, 0.4);
-    --pen-glass-blur: 20px;
-    --pen-glass-saturate: 1.6;
-    --pen-glass-shadow:
+    --sts-bg: #000000;
+    --sts-card-solid: #000000;
+    --sts-bg-tint: rgba(8, 8, 8, 0.4);
+    --sts-glass-blur: 20px;
+    --sts-glass-saturate: 1.6;
+    --sts-glass-shadow:
       0 8px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(0, 212, 255, 0.08);
-    --pen-glass-highlight: rgba(0, 212, 255, 0.07);
-    --pen-card: rgba(8, 8, 8, 0.96);
-    --pen-card-border: #1a1a1a;
-    --pen-foreground: #f0f0f0;
-    --pen-muted: #a0a0a0;
-    --pen-subtle: #909090;
-    --pen-button: #00b8d9;
-    --pen-button-fg: #000000;
-    --pen-secondary-bg: rgba(14, 14, 14, 0.9);
-    --pen-secondary-fg: #f0f0f0;
-    --pen-accent: #00d4ff;
-    --pen-card-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.9);
-    --pen-blue: #00d4ff;
-    --pen-blue-tint: rgba(0, 60, 80, 0.45);
-    --pen-surface: rgb(12, 12, 12);
-    --pen-settings-subnav: rgba(6, 6, 6, 0.85);
-    --pen-settings-subnav-active: rgba(16, 16, 16, 0.98);
-    --pen-id: #00d4ff;
-    --pen-red: #ff6b6b;
-    --pen-red-tint: #280a0a;
-    --pen-green: #00e676;
-    --pen-green-tint: #002a14;
-    --pen-purple: #e040fb;
-    --pen-purple-tint: #20003a;
+    --sts-glass-highlight: rgba(0, 212, 255, 0.07);
+    --sts-card: rgba(8, 8, 8, 0.96);
+    --sts-card-border: #1a1a1a;
+    --sts-foreground: #f0f0f0;
+    --sts-muted: #a0a0a0;
+    --sts-subtle: #909090;
+    --sts-button: #00b8d9;
+    --sts-button-fg: #000000;
+    --sts-secondary-bg: rgba(14, 14, 14, 0.9);
+    --sts-secondary-fg: #f0f0f0;
+    --sts-accent: #00d4ff;
+    --sts-card-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.9);
+    --sts-blue: #00d4ff;
+    --sts-blue-tint: rgba(0, 60, 80, 0.45);
+    --sts-surface: rgb(12, 12, 12);
+    --sts-settings-subnav: rgba(6, 6, 6, 0.85);
+    --sts-settings-subnav-active: rgba(16, 16, 16, 0.98);
+    --sts-id: #00d4ff;
+    --sts-red: #ff6b6b;
+    --sts-red-tint: #280a0a;
+    --sts-green: #00e676;
+    --sts-green-tint: #002a14;
+    --sts-purple: #e040fb;
+    --sts-purple-tint: #20003a;
     /* Super-AMOLED: true pure black, no background glows to lift the black. */
-    --pen-bg-gradient: #000000;
+    --sts-bg-gradient: #000000;
     --background: oklch(0 0 0);
     --foreground: oklch(0.96 0 0);
     --card: rgba(12, 12, 12, 0.96);
@@ -386,38 +386,38 @@
 
   /* ── Tangerine — cool grey-blue base, warm orange accent (tweakcn) ── */
   :root[data-theme="tangerine"] {
-    --pen-bg: #e8eaf0;
-    --pen-card-solid: #ffffff;
-    --pen-bg-tint: rgba(220, 224, 236, 0.4);
-    --pen-glass-blur: 20px;
-    --pen-glass-saturate: 1.3;
-    --pen-glass-shadow:
+    --sts-bg: #e8eaf0;
+    --sts-card-solid: #ffffff;
+    --sts-bg-tint: rgba(220, 224, 236, 0.4);
+    --sts-glass-blur: 20px;
+    --sts-glass-saturate: 1.3;
+    --sts-glass-shadow:
       0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.82);
-    --pen-glass-highlight: rgba(255, 255, 255, 0.7);
-    --pen-card: rgba(255, 255, 255, 0.92);
-    --pen-card-border: #d4d8e6;
-    --pen-foreground: #4a4a4a;
-    --pen-muted: #666666;
-    --pen-subtle: #777777;
-    --pen-button: #df6830;
-    --pen-button-fg: #ffffff;
-    --pen-secondary-bg: rgba(242, 244, 250, 0.82);
-    --pen-secondary-fg: #4a4a4a;
-    --pen-accent: #df6830;
-    --pen-card-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.06);
-    --pen-blue: #df6830;
-    --pen-blue-tint: rgba(255, 226, 206, 0.72);
-    --pen-surface: rgba(242, 244, 250, 0.78);
-    --pen-settings-subnav: rgba(238, 240, 248, 0.68);
-    --pen-settings-subnav-active: rgba(255, 255, 255, 0.94);
-    --pen-id: #df6830;
-    --pen-red: #d84040;
-    --pen-red-tint: #fff0ee;
-    --pen-green: #2e9e5c;
-    --pen-green-tint: #edf7f2;
-    --pen-purple: #6858c0;
-    --pen-purple-tint: #eeecf8;
-    --pen-bg-gradient:
+    --sts-glass-highlight: rgba(255, 255, 255, 0.7);
+    --sts-card: rgba(255, 255, 255, 0.92);
+    --sts-card-border: #d4d8e6;
+    --sts-foreground: #4a4a4a;
+    --sts-muted: #666666;
+    --sts-subtle: #777777;
+    --sts-button: #df6830;
+    --sts-button-fg: #ffffff;
+    --sts-secondary-bg: rgba(242, 244, 250, 0.82);
+    --sts-secondary-fg: #4a4a4a;
+    --sts-accent: #df6830;
+    --sts-card-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.06);
+    --sts-blue: #df6830;
+    --sts-blue-tint: rgba(255, 226, 206, 0.72);
+    --sts-surface: rgba(242, 244, 250, 0.78);
+    --sts-settings-subnav: rgba(238, 240, 248, 0.68);
+    --sts-settings-subnav-active: rgba(255, 255, 255, 0.94);
+    --sts-id: #df6830;
+    --sts-red: #d84040;
+    --sts-red-tint: #fff0ee;
+    --sts-green: #2e9e5c;
+    --sts-green-tint: #edf7f2;
+    --sts-purple: #6858c0;
+    --sts-purple-tint: #eeecf8;
+    --sts-bg-gradient:
       radial-gradient(
         ellipse 90% 55% at 50% -15%,
         rgba(223, 104, 48, 0.16),
@@ -438,7 +438,7 @@
         rgba(104, 88, 192, 0.06),
         transparent 40%
       ),
-      var(--pen-bg);
+      var(--sts-bg);
     --background: oklch(0.9383 0.0042 236.4993);
     --foreground: oklch(0.3211 0 0);
     --card: oklch(1.0000 0 0);
@@ -482,7 +482,7 @@
   }
   body {
     @apply text-foreground;
-    background: var(--pen-bg-gradient);
+    background: var(--sts-bg-gradient);
   }
   html {
     @apply font-sans;
@@ -516,35 +516,35 @@
     animation-duration: 0s;
   }
   ::view-transition-old(root) {
-    animation: pen-vt-fade-out 600ms cubic-bezier(0.4, 0, 1, 1) both;
+    animation: sts-vt-fade-out 600ms cubic-bezier(0.4, 0, 1, 1) both;
   }
   ::view-transition-new(root) {
-    animation: pen-vt-reveal 1400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+    animation: sts-vt-reveal 1400ms cubic-bezier(0.4, 0, 0.2, 1) both;
   }
 }
 
-@keyframes pen-vt-fade-out {
+@keyframes sts-vt-fade-out {
   to {
     opacity: 0;
   }
 }
 
-@keyframes pen-vt-reveal {
+@keyframes sts-vt-reveal {
   from {
     clip-path: circle(
-      0% at var(--pen-theme-origin-x, 50%) var(--pen-theme-origin-y, 0%)
+      0% at var(--sts-theme-origin-x, 50%) var(--sts-theme-origin-y, 0%)
     );
     opacity: 0.6;
   }
   to {
     clip-path: circle(
-      150% at var(--pen-theme-origin-x, 50%) var(--pen-theme-origin-y, 0%)
+      150% at var(--sts-theme-origin-x, 50%) var(--sts-theme-origin-y, 0%)
     );
     opacity: 1;
   }
 }
 
-@keyframes pen-fade-in-up {
+@keyframes sts-fade-in-up {
   from {
     opacity: 0;
     transform: translateY(12px);
@@ -555,7 +555,7 @@
   }
 }
 
-@keyframes pen-fade-in {
+@keyframes sts-fade-in {
   from {
     opacity: 0;
   }
@@ -564,7 +564,7 @@
   }
 }
 
-@keyframes pen-scale-in {
+@keyframes sts-scale-in {
   from {
     opacity: 0;
     transform: scale(0.97) translateY(10px);
@@ -575,7 +575,7 @@
   }
 }
 
-@keyframes pen-slide-in-left {
+@keyframes sts-slide-in-left {
   from {
     transform: translateX(-100%);
   }
@@ -584,7 +584,7 @@
   }
 }
 
-@keyframes pen-bar-grow {
+@keyframes sts-bar-grow {
   from {
     transform: scaleY(0);
   }
@@ -593,41 +593,41 @@
   }
 }
 
-@keyframes pen-critical-breathe {
+@keyframes sts-critical-breathe {
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pen-red) 55%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--sts-red) 55%, transparent);
     transform: scale(1);
   }
   50% {
     opacity: 0.88;
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--pen-red) 0%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--sts-red) 0%, transparent);
     transform: scale(1.12);
   }
 }
 
 @layer base {
   html {
-    --pen-font-scale: 1;
+    --sts-font-scale: 1;
   }
 
-  html[data-pen-font-size="large"] {
-    --pen-font-scale: 1.08;
+  html[data-sts-font-size="large"] {
+    --sts-font-scale: 1.08;
   }
 
   /* Apply zoom to body (not html) so viewport units (vw/dvh) still reference
      the physical viewport. The body is sized to viewport/zoom so that after
      scaling it fills the screen exactly — no horizontal or vertical overflow. */
-  html[data-pen-font-size]:not([data-pen-font-size="default"]) body {
-    zoom: var(--pen-font-scale);
-    width: calc(100vw / var(--pen-font-scale));
-    height: calc(100dvh / var(--pen-font-scale));
+  html[data-sts-font-size]:not([data-sts-font-size="default"]) body {
+    zoom: var(--sts-font-scale);
+    width: calc(100vw / var(--sts-font-scale));
+    height: calc(100dvh / var(--sts-font-scale));
     overflow: hidden;
   }
 
   @supports not (zoom: 1) {
-    html[data-pen-font-size="large"] body {
+    html[data-sts-font-size="large"] body {
       font-size: 17px;
       zoom: unset;
       width: 100%;
@@ -637,111 +637,111 @@
 }
 
 @layer utilities {
-  .pen-page-pad {
+  .sts-page-pad {
     padding: 1rem;
   }
 
   @media (min-width: 640px) {
-    .pen-page-pad {
+    .sts-page-pad {
       padding: 1.25rem;
     }
   }
 
   @media (min-width: 768px) {
-    .pen-page-pad {
+    .sts-page-pad {
       padding: 1.5rem;
     }
   }
 
   @media (min-width: 1280px) {
-    .pen-page-pad {
+    .sts-page-pad {
       padding: 1.75rem 2rem;
     }
   }
 
   /* Bordered page header shell (tabs, filters, title row) */
-  .pen-page-header {
+  .sts-page-header {
     padding: 1rem 1rem 0;
   }
 
   @media (min-width: 640px) {
-    .pen-page-header {
+    .sts-page-header {
       padding: 1.25rem 1.5rem 0;
     }
   }
 
   @media (min-width: 1280px) {
-    .pen-page-header {
+    .sts-page-header {
       padding: 1.25rem 2rem 0;
     }
   }
 
   /* ── Typography scale ───────────────────────────────────────────────────── */
-  .pen-text-display {
-    @apply text-[34px] font-semibold leading-tight text-pen-foreground sm:text-[42px];
+  .sts-text-display {
+    @apply text-[34px] font-semibold leading-tight text-sts-foreground sm:text-[42px];
     font-family: var(--font-display);
     font-optical-sizing: auto;
     letter-spacing: -0.02em;
   }
 
-  .pen-text-page-title {
-    @apply font-sans text-[18px] font-semibold text-pen-foreground sm:text-[20px];
+  .sts-text-page-title {
+    @apply font-sans text-[18px] font-semibold text-sts-foreground sm:text-[20px];
   }
 
-  .pen-text-admin-title {
-    @apply font-sans text-[22px] font-semibold text-pen-foreground;
+  .sts-text-admin-title {
+    @apply font-sans text-[22px] font-semibold text-sts-foreground;
   }
 
-  .pen-text-title-lg {
-    @apply font-sans text-[21px] font-semibold leading-tight text-pen-foreground;
+  .sts-text-title-lg {
+    @apply font-sans text-[21px] font-semibold leading-tight text-sts-foreground;
   }
 
-  .pen-text-modal-title {
-    @apply font-sans text-[15px] font-semibold text-pen-foreground;
+  .sts-text-modal-title {
+    @apply font-sans text-[15px] font-semibold text-sts-foreground;
   }
 
-  .pen-text-card-title {
-    @apply font-sans text-[13.5px] font-semibold text-pen-foreground;
+  .sts-text-card-title {
+    @apply font-sans text-[13.5px] font-semibold text-sts-foreground;
   }
 
-  .pen-text-section-label {
-    @apply font-sans text-[11.5px] font-semibold uppercase tracking-[1px] text-pen-subtle;
+  .sts-text-section-label {
+    @apply font-sans text-[11.5px] font-semibold uppercase tracking-[1px] text-sts-subtle;
   }
 
-  .pen-text-table-head {
-    @apply font-sans text-[11.5px] font-semibold uppercase tracking-[1.2px] text-pen-subtle;
+  .sts-text-table-head {
+    @apply font-sans text-[11.5px] font-semibold uppercase tracking-[1.2px] text-sts-subtle;
   }
 
-  .pen-text-label {
-    @apply font-sans text-[9.5px] font-semibold uppercase tracking-[1px] text-pen-subtle;
+  .sts-text-label {
+    @apply font-sans text-[9.5px] font-semibold uppercase tracking-[1px] text-sts-subtle;
   }
 
-  .pen-text-body {
-    @apply font-sans text-[12.5px] text-pen-foreground;
+  .sts-text-body {
+    @apply font-sans text-[12.5px] text-sts-foreground;
   }
 
-  .pen-text-body-sm {
-    @apply font-sans text-[12px] text-pen-foreground;
+  .sts-text-body-sm {
+    @apply font-sans text-[12px] text-sts-foreground;
   }
 
-  .pen-text-meta {
-    @apply font-sans text-[11.5px] text-pen-muted;
+  .sts-text-meta {
+    @apply font-sans text-[11.5px] text-sts-muted;
   }
 
-  .pen-text-page-desc {
-    @apply font-sans text-[12px] text-pen-muted sm:text-[12.5px];
+  .sts-text-page-desc {
+    @apply font-sans text-[12px] text-sts-muted sm:text-[12.5px];
   }
 
-  .pen-text-stat-label {
-    @apply font-sans text-[9.5px] font-semibold uppercase tracking-[1px] text-pen-subtle;
+  .sts-text-stat-label {
+    @apply font-sans text-[9.5px] font-semibold uppercase tracking-[1px] text-sts-subtle;
   }
 
-  .pen-text-stat-value {
-    @apply font-mono text-[27px] font-medium leading-none text-pen-foreground;
+  .sts-text-stat-value {
+    @apply font-mono text-[27px] font-medium leading-none text-sts-foreground;
   }
 
   /* Horizontal scroll region inside a page header */
-  .pen-header-scroll {
+  .sts-header-scroll {
     margin-left: -1rem;
     margin-right: -1rem;
     overflow-x: auto;
@@ -750,43 +750,43 @@
     scrollbar-width: none;
   }
 
-  .pen-header-scroll::-webkit-scrollbar {
+  .sts-header-scroll::-webkit-scrollbar {
     display: none;
   }
 
   /* Theme-aware thin scrollbar. Colors derive from theme tokens, so it adapts
      to light/dark and every custom palette automatically. Overrides the global
      scrollbar-hiding rule. */
-  .pen-scroll {
+  .sts-scroll {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--border) 85%, transparent)
       transparent;
   }
 
-  .pen-scroll::-webkit-scrollbar {
+  .sts-scroll::-webkit-scrollbar {
     display: block;
     width: 10px;
     height: 10px;
   }
 
-  .pen-scroll::-webkit-scrollbar-track,
-  .pen-scroll::-webkit-scrollbar-corner {
+  .sts-scroll::-webkit-scrollbar-track,
+  .sts-scroll::-webkit-scrollbar-corner {
     background: transparent;
   }
 
-  .pen-scroll::-webkit-scrollbar-thumb {
+  .sts-scroll::-webkit-scrollbar-thumb {
     background-color: color-mix(in oklab, var(--border) 85%, transparent);
     background-clip: content-box;
     border: 2px solid transparent;
     border-radius: 9999px;
   }
 
-  .pen-scroll::-webkit-scrollbar-thumb:hover {
+  .sts-scroll::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground);
   }
 
   @media (min-width: 640px) {
-    .pen-header-scroll {
+    .sts-header-scroll {
       margin-left: -1.5rem;
       margin-right: -1.5rem;
       padding-left: 1.5rem;
@@ -795,7 +795,7 @@
   }
 
   @media (min-width: 1280px) {
-    .pen-header-scroll {
+    .sts-header-scroll {
       margin-left: -2rem;
       margin-right: -2rem;
       padding-left: 2rem;
@@ -803,161 +803,161 @@
     }
   }
 
-  .pen-sidebar-collapsed .pen-nav-link:hover {
+  .sts-sidebar-collapsed .sts-nav-link:hover {
     transform: none;
   }
 
-  .pen-ambient-bg {
-    background: var(--pen-bg-gradient);
+  .sts-ambient-bg {
+    background: var(--sts-bg-gradient);
   }
 
-  .pen-page-enter {
-    animation: pen-fade-in-up var(--pen-duration-slow) var(--pen-ease-out) both;
+  .sts-page-enter {
+    animation: sts-fade-in-up var(--sts-duration-slow) var(--sts-ease-out) both;
   }
 
-  .pen-overlay-enter {
-    animation: pen-fade-in 220ms ease both;
+  .sts-overlay-enter {
+    animation: sts-fade-in 220ms ease both;
   }
 
   /* Dimmed, heavily blurred scrim behind modals, drawers, and dialogs */
-  .pen-overlay-backdrop {
+  .sts-overlay-backdrop {
     background-color: rgb(0 0 0 / 0.48);
     -webkit-backdrop-filter: blur(40px) saturate(1.2);
     backdrop-filter: blur(40px) saturate(1.2);
   }
 
-  .pen-modal-enter {
-    animation: pen-scale-in 320ms var(--pen-ease-out) both;
+  .sts-modal-enter {
+    animation: sts-scale-in 320ms var(--sts-ease-out) both;
   }
 
-  .pen-drawer-enter {
-    animation: pen-slide-in-left 320ms var(--pen-ease-out) both;
+  .sts-drawer-enter {
+    animation: sts-slide-in-left 320ms var(--sts-ease-out) both;
   }
 
-  .pen-stagger > * {
-    animation: pen-fade-in-up var(--pen-duration-slow) var(--pen-ease-out) both;
+  .sts-stagger > * {
+    animation: sts-fade-in-up var(--sts-duration-slow) var(--sts-ease-out) both;
   }
 
-  .pen-stagger > *:nth-child(1) {
+  .sts-stagger > *:nth-child(1) {
     animation-delay: 0ms;
   }
-  .pen-stagger > *:nth-child(2) {
+  .sts-stagger > *:nth-child(2) {
     animation-delay: 55ms;
   }
-  .pen-stagger > *:nth-child(3) {
+  .sts-stagger > *:nth-child(3) {
     animation-delay: 110ms;
   }
-  .pen-stagger > *:nth-child(4) {
+  .sts-stagger > *:nth-child(4) {
     animation-delay: 165ms;
   }
-  .pen-stagger > *:nth-child(5) {
+  .sts-stagger > *:nth-child(5) {
     animation-delay: 220ms;
   }
-  .pen-stagger > *:nth-child(6) {
+  .sts-stagger > *:nth-child(6) {
     animation-delay: 275ms;
   }
 
-  .pen-card-interactive {
+  .sts-card-interactive {
     transition:
-      transform var(--pen-duration-normal) var(--pen-ease-out),
-      box-shadow var(--pen-duration-normal) var(--pen-ease-out),
-      border-color var(--pen-duration-fast) ease,
-      background-color var(--pen-duration-fast) ease;
+      transform var(--sts-duration-normal) var(--sts-ease-out),
+      box-shadow var(--sts-duration-normal) var(--sts-ease-out),
+      border-color var(--sts-duration-fast) ease,
+      background-color var(--sts-duration-fast) ease;
   }
 
-  .pen-card-interactive:hover {
+  .sts-card-interactive:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 12px 40px color-mix(in srgb, var(--pen-blue) 16%, transparent),
-      inset 0 1px 0 var(--pen-glass-highlight);
+      0 12px 40px color-mix(in srgb, var(--sts-blue) 16%, transparent),
+      inset 0 1px 0 var(--sts-glass-highlight);
   }
 
-  html.dark .pen-card-interactive:hover {
+  html.dark .sts-card-interactive:hover {
     box-shadow:
       0 12px 44px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
-  .pen-card-interactive:active {
+  .sts-card-interactive:active {
     transform: translateY(0);
-    transition-duration: var(--pen-duration-fast);
+    transition-duration: var(--sts-duration-fast);
   }
 
-  .pen-row-interactive {
+  .sts-row-interactive {
     transition:
-      background-color var(--pen-duration-fast) ease,
-      transform var(--pen-duration-normal) var(--pen-ease-out),
-      color var(--pen-duration-fast) ease;
+      background-color var(--sts-duration-fast) ease,
+      transform var(--sts-duration-normal) var(--sts-ease-out),
+      color var(--sts-duration-fast) ease;
   }
 
-  .pen-row-interactive:hover {
+  .sts-row-interactive:hover {
     transform: translateX(4px);
-    background-color: color-mix(in srgb, var(--pen-blue-tint) 65%, transparent);
+    background-color: color-mix(in srgb, var(--sts-blue-tint) 65%, transparent);
   }
 
-  .pen-nav-link {
+  .sts-nav-link {
     transition:
-      background-color var(--pen-duration-fast) ease,
-      color var(--pen-duration-fast) ease,
-      transform var(--pen-duration-normal) var(--pen-ease-out);
+      background-color var(--sts-duration-fast) ease,
+      color var(--sts-duration-fast) ease,
+      transform var(--sts-duration-normal) var(--sts-ease-out);
   }
 
-  .pen-nav-link:hover {
+  .sts-nav-link:hover {
     transform: translateX(2px);
   }
 
-  .pen-nav-link:active {
+  .sts-nav-link:active {
     transform: scale(0.98);
   }
 
-  .pen-bar-animate {
+  .sts-bar-animate {
     transform-origin: bottom;
-    animation: pen-bar-grow 600ms var(--pen-ease-out) both;
+    animation: sts-bar-grow 600ms var(--sts-ease-out) both;
   }
 
-  .pen-pressable {
-    transition: transform var(--pen-duration-fast) var(--pen-ease-out);
+  .sts-pressable {
+    transition: transform var(--sts-duration-fast) var(--sts-ease-out);
   }
 
-  .pen-pressable:active {
+  .sts-pressable:active {
     transform: scale(0.97);
   }
 
-  .pen-glass {
-    background: var(--pen-card);
-    backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    -webkit-backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    box-shadow: var(--pen-glass-shadow);
+  .sts-glass {
+    background: var(--sts-card);
+    backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    -webkit-backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    box-shadow: var(--sts-glass-shadow);
   }
 
-  .pen-glass-panel {
-    background: var(--pen-card);
-    border-color: var(--pen-card-border);
-    backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    -webkit-backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    box-shadow: var(--pen-glass-shadow);
+  .sts-glass-panel {
+    background: var(--sts-card);
+    border-color: var(--sts-card-border);
+    backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    -webkit-backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    box-shadow: var(--sts-glass-shadow);
   }
 
-  .pen-critical-breathe {
-    animation: pen-critical-breathe 2.2s ease-in-out infinite;
+  .sts-critical-breathe {
+    animation: sts-critical-breathe 2.2s ease-in-out infinite;
   }
 
-  .pen-shimmer {
+  .sts-shimmer {
     background: linear-gradient(
       90deg,
-      var(--pen-surface) 25%,
-      var(--pen-card-border) 50%,
-      var(--pen-surface) 75%
+      var(--sts-surface) 25%,
+      var(--sts-card-border) 50%,
+      var(--sts-surface) 75%
     );
     background-size: 400% 100%;
-    animation: pen-shimmer 0.9s ease-in-out infinite;
+    animation: sts-shimmer 0.9s ease-in-out infinite;
   }
 
-  @keyframes pen-shimmer {
+  @keyframes sts-shimmer {
     0% {
       background-position: 100% 0;
     }
@@ -968,100 +968,100 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pen-page-enter,
-  .pen-overlay-enter,
-  .pen-modal-enter,
-  .pen-drawer-enter,
-  .pen-stagger > *,
-  .pen-bar-animate,
-  .pen-critical-breathe,
-  .pen-shimmer {
+  .sts-page-enter,
+  .sts-overlay-enter,
+  .sts-modal-enter,
+  .sts-drawer-enter,
+  .sts-stagger > *,
+  .sts-bar-animate,
+  .sts-critical-breathe,
+  .sts-shimmer {
     animation: none !important;
   }
 
-  .pen-card-interactive:hover,
-  .pen-row-interactive:hover,
-  .pen-nav-link:hover {
+  .sts-card-interactive:hover,
+  .sts-row-interactive:hover,
+  .sts-nav-link:hover {
     transform: none;
   }
 }
 
 @layer components {
   :is(
-    .bg-pen-card,
-    .bg-pen-surface,
-    .bg-pen-secondary-bg,
-    .bg-pen-settings-subnav,
-    .bg-pen-settings-subnav-active,
+    .bg-sts-card,
+    .bg-sts-surface,
+    .bg-sts-secondary-bg,
+    .bg-sts-settings-subnav,
+    .bg-sts-settings-subnav-active,
     .bg-popover,
     .bg-card,
-    .pen-glass-panel
+    .sts-glass-panel
   ) {
-    backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    -webkit-backdrop-filter: blur(var(--pen-glass-blur))
-      saturate(var(--pen-glass-saturate));
-    box-shadow: var(--pen-glass-shadow);
+    backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    -webkit-backdrop-filter: blur(var(--sts-glass-blur))
+      saturate(var(--sts-glass-saturate));
+    box-shadow: var(--sts-glass-shadow);
   }
 
-  :is(.bg-pen-card, .bg-pen-surface, .bg-pen-secondary-bg, .bg-card) {
+  :is(.bg-sts-card, .bg-sts-surface, .bg-sts-secondary-bg, .bg-card) {
     border-color: color-mix(
       in srgb,
-      var(--pen-card-border) 85%,
-      var(--pen-glass-highlight)
+      var(--sts-card-border) 85%,
+      var(--sts-glass-highlight)
     );
   }
 
-  :is(.pen-glass-panel, .bg-pen-card) {
+  :is(.sts-glass-panel, .bg-sts-card) {
     transition:
-      box-shadow var(--pen-duration-normal) var(--pen-ease-out),
-      border-color var(--pen-duration-fast) ease,
-      backdrop-filter var(--pen-duration-normal) ease;
+      box-shadow var(--sts-duration-normal) var(--sts-ease-out),
+      border-color var(--sts-duration-fast) ease,
+      backdrop-filter var(--sts-duration-normal) ease;
   }
 
   [data-slot="button"] {
     transition:
-      transform var(--pen-duration-fast) var(--pen-ease-out),
-      background-color var(--pen-duration-normal) ease,
-      border-color var(--pen-duration-normal) ease,
-      color var(--pen-duration-normal) ease,
-      box-shadow var(--pen-duration-normal) ease,
-      opacity var(--pen-duration-fast) ease;
+      transform var(--sts-duration-fast) var(--sts-ease-out),
+      background-color var(--sts-duration-normal) ease,
+      border-color var(--sts-duration-normal) ease,
+      color var(--sts-duration-normal) ease,
+      box-shadow var(--sts-duration-normal) ease,
+      opacity var(--sts-duration-fast) ease;
   }
 
   /* Ticket sidebar — solid dropdown panels (no glass bleed-through) */
-  .pen-field-dropdown {
-    border: 1px solid var(--pen-card-border);
-    background: var(--pen-card-solid);
-    color: var(--pen-foreground);
+  .sts-field-dropdown {
+    border: 1px solid var(--sts-card-border);
+    background: var(--sts-card-solid);
+    color: var(--sts-foreground);
     box-shadow: 0 10px 28px rgba(6, 71, 111, 0.12);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
-  .dark .pen-field-dropdown {
+  .dark .sts-field-dropdown {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   }
 
-  .pen-field-dropdown-item:hover,
-  .pen-field-dropdown-item:focus,
-  .pen-field-dropdown-item[data-highlighted] {
-    background: var(--pen-surface);
-    color: var(--pen-foreground);
+  .sts-field-dropdown-item:hover,
+  .sts-field-dropdown-item:focus,
+  .sts-field-dropdown-item[data-highlighted] {
+    background: var(--sts-surface);
+    color: var(--sts-foreground);
   }
 
   /* Sidebar date field — visible icon + click-anywhere to open picker */
-  .pen-date-input-native {
+  .sts-date-input-native {
     color-scheme: light;
     cursor: pointer;
   }
 
-  .dark .pen-date-input-native {
+  .dark .sts-date-input-native {
     color-scheme: dark;
   }
 
   /* Stretch invisible native indicator so the whole field opens the calendar */
-  .pen-date-input-native::-webkit-calendar-picker-indicator {
+  .sts-date-input-native::-webkit-calendar-picker-indicator {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1072,8 +1072,8 @@
     cursor: pointer;
   }
 
-  .pen-date-field-icon {
-    color: color-mix(in srgb, var(--pen-muted) 78%, var(--pen-foreground) 22%);
+  .sts-date-field-icon {
+    color: color-mix(in srgb, var(--sts-muted) 78%, var(--sts-foreground) 22%);
   }
 
   /* Kill ProseMirror's own focus outline — we style the container instead */
@@ -1146,7 +1146,7 @@
     margin-top: 0.5em;
     margin-bottom: 0.2em;
     line-height: 1.3;
-    color: color-mix(in srgb, var(--pen-muted) 70%, var(--pen-foreground) 30%);
+    color: color-mix(in srgb, var(--sts-muted) 70%, var(--sts-foreground) 30%);
   }
   .rich-text h1:first-child,
   .rich-text h2:first-child,
@@ -1185,19 +1185,19 @@
     margin-bottom: 0;
   }
   .rich-text blockquote {
-    border-left: 3px solid var(--pen-blue);
+    border-left: 3px solid var(--sts-blue);
     padding-left: 0.9em;
     margin: 0.6em 0;
-    color: color-mix(in srgb, var(--pen-muted) 78%, var(--pen-foreground) 22%);
+    color: color-mix(in srgb, var(--sts-muted) 78%, var(--sts-foreground) 22%);
     font-style: italic;
   }
   .rich-text hr {
     border: none;
-    border-top: 1px solid var(--pen-card-border);
+    border-top: 1px solid var(--sts-card-border);
     margin: 0.8em 0;
   }
   .rich-text a {
-    color: var(--pen-id);
+    color: var(--sts-id);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -1207,12 +1207,12 @@
   .rich-text code {
     font-family: monospace;
     font-size: 0.85em;
-    background: var(--pen-surface);
+    background: var(--sts-surface);
     padding: 0.15em 0.4em;
     border-radius: 4px;
   }
   .rich-text pre {
-    background: var(--pen-surface);
+    background: var(--sts-surface);
     border-radius: 6px;
     padding: 0.75em 1em;
     overflow-x: auto;
@@ -1225,7 +1225,7 @@
     border-radius: 0;
   }
   .rich-text p.is-editor-empty:first-child::before {
-    color: color-mix(in srgb, var(--pen-subtle) 72%, var(--pen-foreground) 28%);
+    color: color-mix(in srgb, var(--sts-subtle) 72%, var(--sts-foreground) 28%);
     content: attr(data-placeholder);
     float: left;
     height: 0;
@@ -1249,11 +1249,11 @@
     margin: 0.85em 0;
     overflow-x: auto;
     border-radius: 10px;
-    border: 1.5px solid color-mix(in srgb, var(--pen-id) 38%, var(--pen-card-border));
-    background: color-mix(in srgb, var(--pen-blue-tint) 14%, var(--pen-surface));
+    border: 1.5px solid color-mix(in srgb, var(--sts-id) 38%, var(--sts-card-border));
+    background: color-mix(in srgb, var(--sts-blue-tint) 14%, var(--sts-surface));
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--pen-id) 10%, transparent),
-      0 2px 8px color-mix(in srgb, var(--pen-id) 6%, transparent);
+      0 0 0 1px color-mix(in srgb, var(--sts-id) 10%, transparent),
+      0 2px 8px color-mix(in srgb, var(--sts-id) 6%, transparent);
   }
   .rich-text table {
     width: 100%;
@@ -1261,36 +1261,36 @@
     margin: 0;
     font-size: 0.92em;
     table-layout: fixed;
-    background: var(--pen-surface);
+    background: var(--sts-surface);
   }
   .rich-text th,
   .rich-text td {
-    border: 1px solid color-mix(in srgb, var(--pen-id) 28%, var(--pen-card-border));
+    border: 1px solid color-mix(in srgb, var(--sts-id) 28%, var(--sts-card-border));
     padding: 0.5em 0.7em;
     vertical-align: top;
     min-width: 3rem;
     word-break: break-word;
   }
   .rich-text th {
-    background: color-mix(in srgb, var(--pen-id) 22%, var(--pen-card));
-    color: var(--pen-foreground);
+    background: color-mix(in srgb, var(--sts-id) 22%, var(--sts-card));
+    color: var(--sts-foreground);
     font-weight: 600;
     text-align: left;
-    border-bottom: 2px solid color-mix(in srgb, var(--pen-id) 50%, var(--pen-card-border));
+    border-bottom: 2px solid color-mix(in srgb, var(--sts-id) 50%, var(--sts-card-border));
   }
   .rich-text tbody tr:nth-child(even) td {
-    background: color-mix(in srgb, var(--pen-blue-tint) 30%, var(--pen-surface));
+    background: color-mix(in srgb, var(--sts-blue-tint) 30%, var(--sts-surface));
   }
   .rich-text tbody tr:hover td {
-    background: color-mix(in srgb, var(--pen-blue-tint) 45%, var(--pen-surface));
+    background: color-mix(in srgb, var(--sts-blue-tint) 45%, var(--sts-surface));
   }
   .rich-text .selectedCell {
-    background: color-mix(in srgb, var(--pen-id) 18%, var(--pen-surface)) !important;
-    outline: 2px solid var(--pen-id);
+    background: color-mix(in srgb, var(--sts-id) 18%, var(--sts-surface)) !important;
+    outline: 2px solid var(--sts-id);
     outline-offset: -2px;
   }
   .rich-text .column-resize-handle {
-    background-color: var(--pen-id);
+    background-color: var(--sts-id);
     bottom: -2px;
     pointer-events: none;
     position: absolute;
@@ -1300,10 +1300,10 @@
   }
   /* Editor-only: extra ring when cursor is inside a table */
   .rich-text.ProseMirror .tableWrapper:has(.selectedCell) {
-    border-color: color-mix(in srgb, var(--pen-id) 55%, var(--pen-card-border));
+    border-color: color-mix(in srgb, var(--sts-id) 55%, var(--sts-card-border));
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--pen-id) 18%, transparent),
-      0 2px 10px color-mix(in srgb, var(--pen-id) 10%, transparent);
+      0 0 0 2px color-mix(in srgb, var(--sts-id) 18%, transparent),
+      0 2px 10px color-mix(in srgb, var(--sts-id) 10%, transparent);
   }
 
   [data-uploading] .rich-text img.rich-img {
@@ -1343,54 +1343,54 @@
 
 .board-card {
   border-radius: 0.5rem;
-  border: 1px solid var(--pen-card-border);
-  background-color: var(--pen-card);
+  border: 1px solid var(--sts-card-border);
+  background-color: var(--sts-card);
   transition: box-shadow 0.2s ease;
 }
 
 .board-card:hover {
   border-color: transparent;
   background:
-    linear-gradient(var(--pen-card-solid), var(--pen-card-solid)) padding-box,
+    linear-gradient(var(--sts-card-solid), var(--sts-card-solid)) padding-box,
     conic-gradient(
         from var(--card-border-angle),
-        var(--pen-blue) 0%,
-        var(--pen-purple) 30%,
+        var(--sts-blue) 0%,
+        var(--sts-purple) 30%,
         #06b6d4 55%,
-        var(--pen-purple) 75%,
-        var(--pen-blue) 100%
+        var(--sts-purple) 75%,
+        var(--sts-blue) 100%
       )
       border-box;
   animation: card-border-spin 2.5s linear infinite;
   box-shadow:
-    0 0 10px color-mix(in srgb, var(--pen-blue) 20%, transparent),
+    0 0 10px color-mix(in srgb, var(--sts-blue) 20%, transparent),
     0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .dark .board-card:hover {
   box-shadow:
-    0 0 12px color-mix(in srgb, var(--pen-blue) 35%, transparent),
+    0 0 12px color-mix(in srgb, var(--sts-blue) 35%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Toast notification animated outline ─────────────────────────────────────── */
 
-@keyframes pen-toast-pulse {
+@keyframes sts-toast-pulse {
   0%,
   100% {
-    box-shadow: var(--pen-card-shadow);
+    box-shadow: var(--sts-card-shadow);
   }
   45% {
     box-shadow:
-      var(--pen-card-shadow),
-      0 0 0 3px var(--pen-accent),
-      0 0 18px 6px color-mix(in srgb, var(--pen-accent) 40%, transparent);
+      var(--sts-card-shadow),
+      0 0 0 3px var(--sts-accent),
+      0 0 18px 6px color-mix(in srgb, var(--sts-accent) 40%, transparent);
   }
 }
 
-.pen-toast-enter {
+.sts-toast-enter {
   /* Base shadow without !important so the animation can override it */
-  box-shadow: var(--pen-card-shadow);
+  box-shadow: var(--sts-card-shadow);
   /* 4 pulses × 700 ms each = 2.8 s of visible ring, then settles */
-  animation: pen-toast-pulse 700ms ease-in-out 4;
+  animation: sts-toast-pulse 700ms ease-in-out 4;
 }

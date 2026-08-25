@@ -70,15 +70,15 @@ export function SprintStatusDialog({
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <AlertDialog.Popup className="pen-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-          <AlertDialog.Title className="pen-text-modal-title">
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <AlertDialog.Popup className="sts-glass-panel fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <AlertDialog.Title className="sts-text-modal-title">
             {copy.title}
           </AlertDialog.Title>
-          <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-pen-subtle">
+          <AlertDialog.Description className="mt-1.5 font-sans text-[13px] text-sts-subtle">
             {copy.description}
           </AlertDialog.Description>
-          <p className="mt-3 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-2 font-sans text-[12.5px] text-pen-foreground">
+          <p className="mt-3 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[12.5px] text-sts-foreground">
             {sprintName}
           </p>
           <div className="mt-6 flex justify-end gap-2">
@@ -95,7 +95,7 @@ export function SprintStatusDialog({
               size="sm"
               disabled={mutation.isPending}
               onClick={handleConfirm}
-              className="gap-1.5 bg-pen-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-pen-blue/90"
+              className="gap-1.5 bg-sts-blue font-sans text-[12px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
             >
               {mutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
               {copy.confirmLabel}

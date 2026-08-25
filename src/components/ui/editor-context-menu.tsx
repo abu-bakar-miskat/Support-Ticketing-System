@@ -92,10 +92,10 @@ function MenuIconButton({
       className={cn(
         "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
         item.active
-          ? "bg-pen-blue-tint text-pen-id"
+          ? "bg-sts-blue-tint text-sts-id"
           : item.destructive
             ? "text-destructive hover:bg-destructive/10"
-            : "text-pen-muted hover:bg-pen-surface hover:text-pen-foreground",
+            : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
         item.disabled && "cursor-not-allowed opacity-40",
       )}
     >
@@ -105,7 +105,7 @@ function MenuIconButton({
 }
 
 function MenuDivider() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-pen-card-border" />;
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-sts-card-border" />;
 }
 
 export function EditorContextMenu({
@@ -346,7 +346,7 @@ export function EditorContextMenu({
   const menuNode = (
     <div
       ref={ref}
-      className="fixed flex max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-lg border border-pen-card-border bg-pen-card p-1 shadow-lg"
+      className="fixed flex max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-lg border border-sts-card-border bg-sts-card p-1 shadow-lg"
       style={{ left: position.left, top: position.top, zIndex: CONTEXT_MENU_Z }}
       role="menu"
       onContextMenu={(e) => e.preventDefault()}

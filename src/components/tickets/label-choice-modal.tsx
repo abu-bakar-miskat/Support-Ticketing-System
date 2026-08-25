@@ -46,18 +46,18 @@ export function LabelChoiceModal({
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 pen-overlay-backdrop" />
-        <AlertDialog.Popup className="pen-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pen-card-border p-6 shadow-2xl">
-          <AlertDialog.Title className="pen-text-modal-title">
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <AlertDialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <AlertDialog.Title className="sts-text-modal-title">
             Pick a label for &ldquo;{statusLabel}&rdquo;
           </AlertDialog.Title>
-          <AlertDialog.Description className="mt-1 font-sans text-[13px] text-pen-subtle">
+          <AlertDialog.Description className="mt-1 font-sans text-[13px] text-sts-subtle">
             This status has linked labels. Choose one, or continue without a label.
           </AlertDialog.Description>
 
           <div className="mt-5 flex flex-wrap gap-2">
             {loading ? (
-              <div className="flex w-full items-center gap-2 px-1 py-2 font-sans text-[13px] text-pen-subtle">
+              <div className="flex w-full items-center gap-2 px-1 py-2 font-sans text-[13px] text-sts-subtle">
                 <LoadingSpinner className="size-4 shrink-0" />
                 Loading labels…
               </div>
@@ -72,7 +72,7 @@ export function LabelChoiceModal({
                   onClick={() => onChoose(name)}
                   className={cn(
                     "flex items-center gap-1.5 rounded-xl border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
-                    !active && "border-pen-card-border text-pen-muted hover:brightness-105",
+                    !active && "border-sts-card-border text-sts-muted hover:brightness-105",
                   )}
                   style={
                     active
@@ -100,8 +100,8 @@ export function LabelChoiceModal({
               onClick={() => onChoose(NO_LINKED_LABEL_CHOICE)}
               className={cn(
                 "flex items-center gap-1.5 rounded-xl border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
-                !noLabelActive && "border-pen-card-border text-pen-muted hover:brightness-105",
-                noLabelActive && "border-pen-card-border bg-pen-surface text-pen-foreground",
+                !noLabelActive && "border-sts-card-border text-sts-muted hover:brightness-105",
+                noLabelActive && "border-sts-card-border bg-sts-surface text-sts-foreground",
               )}
             >
               <Ban className="size-3.5 shrink-0 opacity-70" strokeWidth={2.25} />
@@ -116,7 +116,7 @@ export function LabelChoiceModal({
               type="button"
               disabled={saving}
               onClick={onCancel}
-              className="rounded-lg border border-pen-card-border px-4 py-1.5 font-sans text-[13px] text-pen-muted transition-colors hover:bg-pen-card-border disabled:opacity-50"
+              className="rounded-lg border border-sts-card-border px-4 py-1.5 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-card-border disabled:opacity-50"
             >
               Cancel
             </button>
@@ -124,7 +124,7 @@ export function LabelChoiceModal({
               type="button"
               disabled={saving || !hasLinkedLabelSelection(chosen)}
               onClick={onConfirm}
-              className="rounded-lg bg-pen-blue px-4 py-1.5 font-sans text-[13px] font-medium text-white transition-colors hover:bg-pen-blue/90 disabled:opacity-50 dark:text-gray-900"
+              className="rounded-lg bg-sts-blue px-4 py-1.5 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? "Saving…" : "Confirm"}
             </button>

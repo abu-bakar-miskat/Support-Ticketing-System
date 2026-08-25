@@ -77,19 +77,19 @@ function ReportStatCard({
   icon: Icon,
 }: StatCard & { icon?: React.ElementType }) {
   return (
-    <div className="rounded-xl border border-pen-card-border bg-pen-card px-4 py-3.5">
+    <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5">
       <div className="flex items-start justify-between gap-2">
-        <p className="pen-text-stat-label">{label}</p>
+        <p className="sts-text-stat-label">{label}</p>
         {Icon && (
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-pen-surface">
-            <Icon className="size-3.5 text-pen-blue" strokeWidth={2} />
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-surface">
+            <Icon className="size-3.5 text-sts-blue" strokeWidth={2} />
           </span>
         )}
       </div>
-      <p className="mt-1.5 font-mono text-[22px] font-semibold leading-none tabular-nums text-pen-foreground">
+      <p className="mt-1.5 font-mono text-[22px] font-semibold leading-none tabular-nums text-sts-foreground">
         {value}
       </p>
-      <p className={cn("mt-1.5 font-sans text-[11.5px] text-pen-muted", detailClassName)}>
+      <p className={cn("mt-1.5 font-sans text-[11.5px] text-sts-muted", detailClassName)}>
         {detail}
       </p>
     </div>
@@ -99,7 +99,7 @@ function ReportStatCard({
 function ProjectShareBar({ projects }: { projects: ProjectTimeRow[] }) {
   if (projects.length === 0) return null;
   return (
-    <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-pen-surface">
+    <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-sts-surface">
       {projects.map((p) => (
         <div
           key={p.name}
@@ -122,7 +122,7 @@ function TopContributors({
   const top = members.slice(0, 5);
   if (top.length === 0) {
     return (
-      <p className="font-sans text-[12px] text-pen-subtle">No time logged {periodLabel}.</p>
+      <p className="font-sans text-[12px] text-sts-subtle">No time logged {periodLabel}.</p>
     );
   }
   const maxProgress = Math.max(1, ...top.map((m) => m.weekProgress));
@@ -135,25 +135,25 @@ function TopContributors({
             className={cn(
               "flex size-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold",
               i === 0
-                ? "bg-pen-blue-tint text-pen-id"
-                : "bg-pen-surface text-pen-subtle",
+                ? "bg-sts-blue-tint text-sts-id"
+                : "bg-sts-surface text-sts-subtle",
             )}
           >
             {i + 1}
           </span>
           <MemberAvatar name={member.name} avatarUrl={member.avatarUrl} />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-sans text-[12px] font-semibold text-pen-foreground">
+            <p className="truncate font-sans text-[12px] font-semibold text-sts-foreground">
               {member.name}
             </p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-pen-surface">
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-sts-surface">
               <div
-                className="h-full rounded-full bg-pen-blue"
+                className="h-full rounded-full bg-sts-blue"
                 style={{ width: `${(member.weekProgress / maxProgress) * 100}%` }}
               />
             </div>
           </div>
-          <span className="shrink-0 font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">
+          <span className="shrink-0 font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
             {member.weekHours}
           </span>
         </div>
@@ -170,9 +170,9 @@ function MemberAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | 
 
 function OverviewCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex h-full flex-col rounded-xl border border-pen-card-border bg-pen-card">
-      <div className="border-b border-pen-card-border px-4 py-2.5">
-        <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+    <div className="flex h-full flex-col rounded-xl border border-sts-card-border bg-sts-card">
+      <div className="border-b border-sts-card-border px-4 py-2.5">
+        <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
           {title}
         </p>
       </div>
@@ -184,21 +184,21 @@ function OverviewCard({ title, children }: { title: string; children: React.Reac
 function CountBars({ rows, color }: { rows: NamedCount[]; color: string }) {
   const max = Math.max(1, ...rows.map((r) => r.count));
   if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-pen-subtle">No data yet.</p>;
+    return <p className="font-sans text-[12px] text-sts-subtle">No data yet.</p>;
   return (
     <div className="flex flex-col gap-2">
       {rows.map((r) => (
         <div key={r.name} className="flex items-center gap-2.5">
-          <span className="w-20 shrink-0 truncate font-sans text-[12px] text-pen-foreground sm:w-24">
+          <span className="w-20 shrink-0 truncate font-sans text-[12px] text-sts-foreground sm:w-24">
             {r.name}
           </span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-pen-surface">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sts-surface">
             <div
               className="h-full rounded-full"
               style={{ width: `${Math.max(4, (r.count / max) * 100)}%`, backgroundColor: color }}
             />
           </div>
-          <span className="w-7 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">
+          <span className="w-7 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
             {r.count}
           </span>
         </div>
@@ -210,21 +210,21 @@ function CountBars({ rows, color }: { rows: NamedCount[]; color: string }) {
 function ModuleSpeedBars({ rows }: { rows: ModuleSpeed[] }) {
   const max = Math.max(1, ...rows.map((r) => r.days));
   if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-pen-subtle">No bug tickets resolved yet.</p>;
+    return <p className="font-sans text-[12px] text-sts-subtle">No bug tickets resolved yet.</p>;
   return (
     <div className="flex flex-col gap-2">
       {rows.map((r) => (
         <div key={r.module} className="flex items-center gap-2.5">
-          <span className="w-24 shrink-0 truncate font-sans text-[12px] text-pen-foreground" title={r.module}>
+          <span className="w-24 shrink-0 truncate font-sans text-[12px] text-sts-foreground" title={r.module}>
             {r.module}
           </span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-pen-surface">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sts-surface">
             <div
               className="h-full rounded-full"
               style={{ width: `${Math.max(4, (r.days / max) * 100)}%`, backgroundColor: "#e08848" }}
             />
           </div>
-          <span className="w-9 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">
+          <span className="w-9 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
             {r.days}d
           </span>
         </div>
@@ -244,7 +244,7 @@ function DonutChart({
 }) {
   const total = rows.reduce((s, r) => s + r.count, 0);
   if (total === 0)
-    return <p className="font-sans text-[12px] text-pen-subtle">No data yet.</p>;
+    return <p className="font-sans text-[12px] text-sts-subtle">No data yet.</p>;
   const radius = (size - thickness) / 2;
   const circ = 2 * Math.PI * radius;
   const cx = size / 2;
@@ -273,19 +273,19 @@ function DonutChart({
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono text-[20px] font-semibold leading-none tabular-nums text-pen-foreground">
+          <span className="font-mono text-[20px] font-semibold leading-none tabular-nums text-sts-foreground">
             {total}
           </span>
-          <span className="mt-0.5 font-sans text-[10px] text-pen-subtle">total</span>
+          <span className="mt-0.5 font-sans text-[10px] text-sts-subtle">total</span>
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-1.5">
         {rows.map((d) => (
           <div key={d.label} className="flex items-center gap-2.5 font-sans text-[12px]">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
-            <span className="min-w-0 max-w-[120px] flex-1 truncate text-pen-foreground">{d.label}</span>
-            <span className="w-7 text-right font-mono font-semibold tabular-nums text-pen-foreground">{d.count}</span>
-            <span className="w-9 text-right tabular-nums text-pen-subtle">
+            <span className="min-w-0 max-w-[120px] flex-1 truncate text-sts-foreground">{d.label}</span>
+            <span className="w-7 text-right font-mono font-semibold tabular-nums text-sts-foreground">{d.count}</span>
+            <span className="w-9 text-right tabular-nums text-sts-subtle">
               {Math.round((d.count / total) * 100)}%
             </span>
           </div>
@@ -298,16 +298,16 @@ function DonutChart({
 function ProjectTicketsList({ rows }: { rows: ProjectTickets[] }) {
   const max = Math.max(1, ...rows.map((r) => r.total));
   if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-pen-subtle">No projects yet.</p>;
+    return <p className="font-sans text-[12px] text-sts-subtle">No projects yet.</p>;
   return (
     <div className="flex flex-col gap-2.5">
       {rows.map((r) => (
         <div key={r.project} className="flex items-center gap-2.5">
-          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-pen-foreground">
+          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-sts-foreground">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
             <span className="truncate" title={r.project}>{r.project}</span>
           </span>
-          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-pen-surface">
+          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-sts-surface">
             <div
               className="h-full"
               style={{ width: `${((r.total - r.open) / max) * 100}%`, backgroundColor: "#16a34a" }}
@@ -319,8 +319,8 @@ function ProjectTicketsList({ rows }: { rows: ProjectTickets[] }) {
               title={`${r.open} open`}
             />
           </div>
-          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-pen-subtle">
-            <span className="font-semibold text-pen-foreground">{r.open}</span> open / {r.total}
+          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle">
+            <span className="font-semibold text-sts-foreground">{r.open}</span> open / {r.total}
           </span>
         </div>
       ))}
@@ -331,16 +331,16 @@ function ProjectTicketsList({ rows }: { rows: ProjectTickets[] }) {
 function ModuleTicketsList({ rows }: { rows: ModuleTickets[] }) {
   const max = Math.max(1, ...rows.map((r) => r.total));
   if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-pen-subtle">No module tickets yet.</p>;
+    return <p className="font-sans text-[12px] text-sts-subtle">No module tickets yet.</p>;
   return (
     <div className="flex flex-col gap-2.5">
       {rows.map((r) => (
         <div key={r.module} className="flex items-center gap-2.5">
-          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-pen-foreground">
+          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-sts-foreground">
             <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: "#0a76b9" }} />
             <span className="truncate" title={r.module}>{r.module}</span>
           </span>
-          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-pen-surface">
+          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-sts-surface">
             <div
               className="h-full"
               style={{ width: `${((r.total - r.open) / max) * 100}%`, backgroundColor: "#16a34a" }}
@@ -352,8 +352,8 @@ function ModuleTicketsList({ rows }: { rows: ModuleTickets[] }) {
               title={`${r.open} open`}
             />
           </div>
-          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-pen-subtle">
-            <span className="font-semibold text-pen-foreground">{r.open}</span> open / {r.total}
+          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle">
+            <span className="font-semibold text-sts-foreground">{r.open}</span> open / {r.total}
           </span>
         </div>
       ))}
@@ -374,17 +374,17 @@ function CrossDeptPanel({ rows }: { rows: CrossDeptContribution[] }) {
       {rows.map((r) => (
         <div
           key={r.personId}
-          className="flex flex-col gap-2 border-b border-pen-card-border/40 pb-3 last:border-b-0 last:pb-0"
+          className="flex flex-col gap-2 border-b border-sts-card-border/40 pb-3 last:border-b-0 last:pb-0"
         >
           <div className="flex items-center gap-2.5">
             <UserAvatar name={r.name} avatarUrl={r.avatarUrl} size={28} />
-            <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-pen-foreground">
+            <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-sts-foreground">
               {r.name}
             </span>
-            <span className="flex shrink-0 items-center gap-3 font-mono text-[11.5px] tabular-nums text-pen-muted">
+            <span className="flex shrink-0 items-center gap-3 font-mono text-[11.5px] tabular-nums text-sts-muted">
               {r.created > 0 && (
                 <span title="Tickets created for other departments">
-                  <span className="font-semibold text-pen-foreground">{r.created}</span> created
+                  <span className="font-semibold text-sts-foreground">{r.created}</span> created
                 </span>
               )}
               {r.completed > 0 && (
@@ -394,7 +394,7 @@ function CrossDeptPanel({ rows }: { rows: CrossDeptContribution[] }) {
               )}
               {r.loggedSecs > 0 && (
                 <span title="Time logged for other departments">
-                  <span className="font-semibold text-pen-foreground">{crossDeptHours(r.loggedSecs)}</span> logged
+                  <span className="font-semibold text-sts-foreground">{crossDeptHours(r.loggedSecs)}</span> logged
                 </span>
               )}
             </span>
@@ -482,11 +482,11 @@ export function SubDepartmentTimePage() {
   const selectedPersonName = personFilter === "all" ? "Everyone" : selectedPerson?.name ?? "Person";
 
   return (
-    <div className="pen-page-pad flex h-full flex-col gap-4 overflow-y-auto">
+    <div className="sts-page-pad flex h-full flex-col gap-4 overflow-y-auto">
       <PageHeader
         title="Reports"
         icon={ChartColumn}
-        iconClassName="text-pen-blue"
+        iconClassName="text-sts-blue"
         description="Time and delivery across your team and projects — an overview of where the hours go."
         clampDescription
         actions={
@@ -496,7 +496,7 @@ export function SubDepartmentTimePage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               type="button"
-              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-pen-card-border bg-pen-card px-3 font-sans text-[11.5px] font-semibold text-pen-foreground outline-none hover:bg-pen-bg data-popup-open:bg-pen-bg"
+              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 {selectedPerson && (
@@ -504,7 +504,7 @@ export function SubDepartmentTimePage() {
                 )}
                 <span className="truncate">{selectedPersonName}</span>
               </span>
-              <ChevronDown className="size-3 shrink-0 text-pen-subtle" />
+              <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -512,7 +512,7 @@ export function SubDepartmentTimePage() {
             >
               <DropdownMenuItem onClick={() => setPersonFilter("all")} className="gap-2">
                 <span className="flex-1">Everyone</span>
-                {personFilter === "all" && <Check className="size-3 text-pen-blue" />}
+                {personFilter === "all" && <Check className="size-3 text-sts-blue" />}
               </DropdownMenuItem>
               {memberOptions.map((m) => (
                 <DropdownMenuItem
@@ -522,7 +522,7 @@ export function SubDepartmentTimePage() {
                 >
                   <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={18} />
                   <span className="flex-1 truncate">{m.name}</span>
-                  {personFilter === m.id && <Check className="size-3 text-pen-blue" />}
+                  {personFilter === m.id && <Check className="size-3 text-sts-blue" />}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -533,10 +533,10 @@ export function SubDepartmentTimePage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               type="button"
-              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-pen-card-border bg-pen-card px-3 font-sans text-[11.5px] font-semibold text-pen-foreground outline-none hover:bg-pen-bg data-popup-open:bg-pen-bg"
+              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
             >
               <span className="truncate">{selectedProjectName}</span>
-              <ChevronDown className="size-3 shrink-0 text-pen-subtle" />
+              <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -544,7 +544,7 @@ export function SubDepartmentTimePage() {
             >
               <DropdownMenuItem onClick={() => setProjectFilter("all")} className="gap-2">
                 <span className="flex-1">All projects</span>
-                {projectFilter === "all" && <Check className="size-3 text-pen-blue" />}
+                {projectFilter === "all" && <Check className="size-3 text-sts-blue" />}
               </DropdownMenuItem>
               {projectOptions.map((p) => (
                 <DropdownMenuItem
@@ -553,7 +553,7 @@ export function SubDepartmentTimePage() {
                   className="gap-2"
                 >
                   <span className="flex-1 truncate">{p.name}</span>
-                  {projectFilter === p.id && <Check className="size-3 text-pen-blue" />}
+                  {projectFilter === p.id && <Check className="size-3 text-sts-blue" />}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -562,14 +562,14 @@ export function SubDepartmentTimePage() {
           {/* Date range filter */}
           <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
             <PopoverTrigger
-              className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-md border border-pen-card-border bg-pen-card px-3 font-sans text-[11.5px] font-semibold text-pen-foreground outline-none hover:bg-pen-bg"
+              className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg"
             >
               <span className="truncate">{selectedLabel}</span>
-              <ChevronDown className="size-3 shrink-0 text-pen-subtle" />
+              <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="w-64 rounded-xl border border-pen-card-border bg-pen-bg p-0 shadow-xl"
+              className="w-64 rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
             >
               <div className="p-1.5">
                 {RANGE_PRESETS.map((p) => (
@@ -581,15 +581,15 @@ export function SubDepartmentTimePage() {
                       setRange(presetRange(p.id));
                       setRangeOpen(false);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-sans text-[12.5px] text-pen-foreground transition-colors hover:bg-pen-surface"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:bg-sts-surface"
                   >
                     <span className="flex-1">{p.label}</span>
-                    {presetId === p.id && <Check className="size-3.5 text-pen-blue" />}
+                    {presetId === p.id && <Check className="size-3.5 text-sts-blue" />}
                   </button>
                 ))}
               </div>
-              <div className="border-t border-pen-card-border p-3">
-                <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-pen-subtle">
+              <div className="border-t border-sts-card-border p-3">
+                <p className="mb-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
                   Custom range
                 </p>
                 <Calendar
@@ -610,7 +610,7 @@ export function SubDepartmentTimePage() {
                     });
                     setRangeOpen(false);
                   }}
-                  className="mt-2 h-8 w-full rounded-md bg-pen-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                  className="mt-2 h-8 w-full rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
                 >
                   Apply custom range
                 </button>
@@ -638,15 +638,15 @@ export function SubDepartmentTimePage() {
 
       {/* Error state */}
       {isError && (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-pen-card-border bg-pen-card py-8">
-          <p className="font-sans text-[12.5px] text-pen-muted">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card py-8">
+          <p className="font-sans text-[12.5px] text-sts-muted">
             Failed to load report data.
           </p>
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="h-7 border-pen-card-border bg-pen-bg px-3 font-sans text-[11.5px]"
+            className="h-7 border-sts-card-border bg-sts-bg px-3 font-sans text-[11.5px]"
           >
             Retry
           </Button>
@@ -732,10 +732,10 @@ export function SubDepartmentTimePage() {
 
           {/* Cross-department contributions — what our people did for other departments */}
           {(overview.crossDept?.length ?? 0) > 0 && (
-            <div className="rounded-xl border border-pen-card-border bg-pen-card">
-              <div className="flex items-center gap-2 border-b border-pen-card-border px-4 py-2.5">
+            <div className="rounded-xl border border-sts-card-border bg-sts-card">
+              <div className="flex items-center gap-2 border-b border-sts-card-border px-4 py-2.5">
                 <Globe className="size-3.5 text-amber-500" />
-                <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+                <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
                   CROSS-DEPARTMENT CONTRIBUTIONS · {selectedLabel.toUpperCase()}
                 </p>
               </div>
@@ -749,9 +749,9 @@ export function SubDepartmentTimePage() {
 
       {/* Time by project */}
       {!isLoading && overview && (data?.projects.length ?? 0) > 0 && (
-        <div className="rounded-xl border border-pen-card-border bg-pen-card">
-          <div className="border-b border-pen-card-border px-4 py-2.5 sm:px-[18px]">
-            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle">
+        <div className="rounded-xl border border-sts-card-border bg-sts-card">
+          <div className="border-b border-sts-card-border px-4 py-2.5 sm:px-[18px]">
+            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
               TIME BY PROJECT · {selectedLabel.toUpperCase()}
             </p>
           </div>
@@ -761,7 +761,7 @@ export function SubDepartmentTimePage() {
               {data!.projects.slice(0, 6).map((p) => (
                 <span
                   key={p.name}
-                  className="flex items-center gap-1.5 font-sans text-[11px] text-pen-muted"
+                  className="flex items-center gap-1.5 font-sans text-[11px] text-sts-muted"
                 >
                   <span
                     className="size-2 shrink-0 rounded-full"
@@ -773,39 +773,39 @@ export function SubDepartmentTimePage() {
             </div>
           </div>
           {/* Column headers */}
-          <div className="flex items-center gap-4 border-y border-pen-card-border/60 px-4 py-1.5 sm:px-[18px]">
+          <div className="flex items-center gap-4 border-y border-sts-card-border/60 px-4 py-1.5 sm:px-[18px]">
             <span className="size-2.5 shrink-0" />
-            <span className="min-w-0 flex-1 font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
+            <span className="min-w-0 flex-1 font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
               Project
             </span>
-            <span className="hidden w-16 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70 sm:block">
+            <span className="hidden w-16 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70 sm:block">
               People
             </span>
             <span className="hidden w-32 shrink-0 md:block" />
-            <span className="w-[72px] shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
+            <span className="w-[72px] shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
               Time
             </span>
-            <span className="w-9 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-pen-subtle/70">
+            <span className="w-9 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
               %
             </span>
           </div>
-          <div className="divide-y divide-pen-card-border/60">
+          <div className="divide-y divide-sts-card-border/60">
             {data!.projects.map((p) => (
               <div
                 key={p.name}
-                className="flex items-center gap-4 px-4 py-2.5 transition-colors hover:bg-pen-bg/40 sm:px-[18px]"
+                className="flex items-center gap-4 px-4 py-2.5 transition-colors hover:bg-sts-bg/40 sm:px-[18px]"
               >
                 <span
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: p.color }}
                 />
-                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                   {p.name}
                 </span>
-                <span className="hidden w-16 shrink-0 text-right font-sans text-[11.5px] text-pen-subtle sm:block">
+                <span className="hidden w-16 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle sm:block">
                   {p.contributors} {p.contributors === 1 ? "person" : "people"}
                 </span>
-                <div className="hidden h-2 w-32 shrink-0 overflow-hidden rounded-full bg-pen-surface md:block">
+                <div className="hidden h-2 w-32 shrink-0 overflow-hidden rounded-full bg-sts-surface md:block">
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -814,10 +814,10 @@ export function SubDepartmentTimePage() {
                     }}
                   />
                 </div>
-                <span className="w-[72px] shrink-0 whitespace-nowrap text-right font-mono text-[12px] font-semibold tabular-nums text-pen-foreground">
+                <span className="w-[72px] shrink-0 whitespace-nowrap text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
                   {p.hours}
                 </span>
-                <span className="w-9 shrink-0 text-right font-sans text-[11.5px] tabular-nums text-pen-subtle">
+                <span className="w-9 shrink-0 text-right font-sans text-[11.5px] tabular-nums text-sts-subtle">
                   {p.share}%
                 </span>
               </div>

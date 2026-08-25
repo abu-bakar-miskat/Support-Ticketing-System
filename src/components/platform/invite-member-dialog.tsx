@@ -94,7 +94,7 @@ export function InviteMemberDialog({
           setOpen(true)
         }}
         className={cn(
-          "flex items-center gap-1.5 rounded-lg border border-pen-card-border bg-pen-surface px-3 py-1.5 font-sans text-[12px] text-pen-muted transition-colors hover:border-pen-blue/40 hover:text-pen-foreground",
+          "flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground",
           triggerClassName,
         )}
       >
@@ -108,15 +108,15 @@ export function InviteMemberDialog({
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-pen-card-border bg-pen-bg shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-pen-card-border px-5 py-3.5">
-              <h2 className="font-sans text-[14px] font-semibold text-pen-foreground">Invite member</h2>
+            <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-3.5">
+              <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">Invite member</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1 text-pen-muted hover:text-pen-foreground"
+                className="rounded-md p-1 text-sts-muted hover:text-sts-foreground"
                 aria-label="Close"
               >
                 <X className="size-4" />
@@ -130,13 +130,13 @@ export function InviteMemberDialog({
                 </div>
               )}
               {added && (
-                <div className="rounded-lg border border-pen-green/30 bg-pen-green/10 px-3 py-2 font-sans text-[12px] text-pen-green">
+                <div className="rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12px] text-sts-green">
                   {added}
                 </div>
               )}
 
               <div>
-                <label className="block font-sans text-[12px] font-medium text-pen-foreground">Email</label>
+                <label className="block font-sans text-[12px] font-medium text-sts-foreground">Email</label>
                 <Input
                   type="email"
                   value={email}
@@ -148,7 +148,7 @@ export function InviteMemberDialog({
               </div>
 
               <div>
-                <label className="block font-sans text-[12px] font-medium text-pen-foreground">Role</label>
+                <label className="block font-sans text-[12px] font-medium text-sts-foreground">Role</label>
                 <Select value={role} onValueChange={(v) => setRole(v ?? "agent")}>
                   <SelectTrigger className="mt-1 h-9 w-full">
                     <span className="font-sans text-[12.5px]">{roleLabel(role)}</span>
@@ -165,12 +165,12 @@ export function InviteMemberDialog({
 
               {needsDepartments && (
                 <div>
-                  <label className="block font-sans text-[12px] font-medium text-pen-foreground">
+                  <label className="block font-sans text-[12px] font-medium text-sts-foreground">
                     {role === "manager" ? "Manages department(s)" : "Member of department(s)"}
-                    <span className="ml-1 font-normal text-pen-subtle">— pick one or more</span>
+                    <span className="ml-1 font-normal text-sts-subtle">— pick one or more</span>
                   </label>
                   {departments.length === 0 ? (
-                    <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">No departments yet.</p>
+                    <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">No departments yet.</p>
                   ) : (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {departments.map((d) => {
@@ -181,10 +181,10 @@ export function InviteMemberDialog({
                             type="button"
                             onClick={() => toggleDept(d.id)}
                             className={cn(
-                              "pen-pressable rounded-full border px-2.5 py-1 font-sans text-[12px] transition-colors",
+                              "sts-pressable rounded-full border px-2.5 py-1 font-sans text-[12px] transition-colors",
                               on
-                                ? "border-pen-blue bg-pen-blue-tint font-medium text-pen-blue"
-                                : "border-pen-card-border text-pen-muted hover:text-pen-foreground",
+                                ? "border-sts-blue bg-sts-blue-tint font-medium text-sts-blue"
+                                : "border-sts-card-border text-sts-muted hover:text-sts-foreground",
                             )}
                           >
                             {d.name}
@@ -197,9 +197,9 @@ export function InviteMemberDialog({
               )}
 
               {inviteLink ? (
-                <div className="rounded-lg border border-pen-card-border bg-pen-surface p-2.5">
-                  <p className="font-sans text-[11px] text-pen-muted">Invitation link (share with the invitee):</p>
-                  <code className="mt-1 block truncate font-mono text-[11.5px] text-pen-foreground">
+                <div className="rounded-lg border border-sts-card-border bg-sts-surface p-2.5">
+                  <p className="font-sans text-[11px] text-sts-muted">Invitation link (share with the invitee):</p>
+                  <code className="mt-1 block truncate font-mono text-[11.5px] text-sts-foreground">
                     {typeof window !== "undefined" ? window.location.origin : ""}
                     {inviteLink}
                   </code>

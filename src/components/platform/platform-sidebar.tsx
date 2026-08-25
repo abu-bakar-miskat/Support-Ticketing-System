@@ -30,7 +30,7 @@ export function PlatformSidebar() {
   return (
     <aside
       className={cn(
-        "pen-glass-panel flex h-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
+        "sts-glass-panel flex h-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
         isCollapsed ? "w-[68px] px-2" : "w-[220px] px-3",
       )}
     >
@@ -40,7 +40,7 @@ export function PlatformSidebar() {
           <button
             type="button"
             onClick={toggle}
-            className="flex size-8 items-center justify-center rounded-lg hover:bg-pen-blue-tint"
+            className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-blue-tint"
             aria-label="Expand sidebar"
             title="Expand sidebar"
           >
@@ -68,7 +68,7 @@ export function PlatformSidebar() {
             <button
               type="button"
               onClick={toggle}
-              className="ml-auto rounded p-1 text-pen-subtle hover:bg-pen-blue-tint hover:text-pen-foreground"
+              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
             >
@@ -81,7 +81,7 @@ export function PlatformSidebar() {
       <div className="h-2" />
 
       {!isCollapsed && (
-        <p className="px-[9px] font-sans text-[11.5px] font-semibold tracking-[1px] text-pen-subtle uppercase">
+        <p className="px-[9px] font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle uppercase">
           Platform
         </p>
       )}
@@ -100,8 +100,8 @@ export function PlatformSidebar() {
                 "flex h-8 items-center gap-[9px] rounded-[6px] font-sans text-[13px] transition-colors",
                 isCollapsed ? "justify-center px-0" : "px-[9px]",
                 active
-                  ? "bg-pen-blue-tint font-semibold text-pen-foreground"
-                  : "font-normal text-pen-muted hover:bg-pen-blue-tint/50 hover:text-pen-foreground",
+                  ? "bg-sts-blue-tint font-semibold text-sts-foreground"
+                  : "font-normal text-sts-muted hover:bg-sts-blue-tint/50 hover:text-sts-foreground",
               )}
             >
               <Icon className="size-4 shrink-0" />

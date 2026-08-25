@@ -20,14 +20,14 @@ export function ImageNodeView(props: any) {
 
   return (
     <NodeViewWrapper
-      className={`my-2 inline-block ${selected ? "ring-2 ring-pen-id rounded-lg" : ""}`}
+      className={`my-2 inline-block ${selected ? "ring-2 ring-sts-id rounded-lg" : ""}`}
       as="div"
     >
       <div className="group relative inline-block">
         <img
           src={src}
           alt={alt}
-          className="rounded-lg border border-pen-card-border max-w-full h-auto"
+          className="rounded-lg border border-sts-card-border max-w-full h-auto"
         />
 
         {/* Delete button on hover */}

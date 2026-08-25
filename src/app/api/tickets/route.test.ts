@@ -66,7 +66,7 @@ const createdTicketBase = {
   status: "Backlog",
   subDepartmentId: "team-abc",
   subDepartment: { id: "team-abc", name: "Dev", prefix: "DEV" },
-  project: { id: "proj-1", name: "PEN Platform" },
+  project: { id: "proj-1", name: "Support Ticketing System" },
 }
 
 beforeEach(() => {

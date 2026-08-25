@@ -40,7 +40,7 @@ function Phase2Banner() {
 
 function RuleIndex({ index }: { index: number }) {
   return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-pen-surface font-sans text-[11.5px] font-medium text-pen-muted">
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sts-surface font-sans text-[11.5px] font-medium text-sts-muted">
       {index}
     </span>
   );
@@ -48,7 +48,7 @@ function RuleIndex({ index }: { index: number }) {
 
 function ConditionPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-pen-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-pen-foreground">
+    <span className="inline-flex shrink-0 items-center rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-foreground">
       {children}
     </span>
   );
@@ -64,32 +64,32 @@ function RoutingRuleRow({ rule }: { rule: RoutingRule }) {
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-2.5">
         <RuleIndex index={rule.index} />
-        <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">
+        <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">
           If
         </span>
         <ConditionPill>{rule.conditionType}</ConditionPill>
-        <span className="font-sans text-[11.5px] text-pen-foreground">
+        <span className="font-sans text-[11.5px] text-sts-foreground">
           {rule.conditionValue}
         </span>
       </div>
 
       <div className="flex items-center gap-2.5 pl-7 sm:pl-0">
         <ArrowRight
-          className="size-3.5 shrink-0 text-pen-subtle"
+          className="size-3.5 shrink-0 text-sts-subtle"
           aria-hidden
         />
         <span
           className={cn("size-2 shrink-0 rounded-[2px]", rule.subDepartmentDotClassName)}
           aria-hidden
         />
-        <span className="min-w-0 truncate font-sans text-[11.5px] font-semibold text-pen-foreground">
+        <span className="min-w-0 truncate font-sans text-[11.5px] font-semibold text-sts-foreground">
           {rule.subDepartment}
         </span>
         <span className="min-w-0 flex-1 sm:flex-[1_0_0]" aria-hidden />
         <DropdownMenu>
           <DropdownMenuTrigger
             type="button"
-            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-pen-subtle outline-none hover:bg-pen-surface hover:text-pen-foreground"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
             aria-label={`Actions for rule ${rule.index}`}
           >
             <MoreHorizontal className="size-3.5" />
@@ -119,14 +119,14 @@ export function SettingsRoutingRulesPage({ rules }: { rules: RoutingRule[] }) {
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="pen-text-admin-title">
+          <h1 className="sts-text-admin-title">
             Routing rules
           </h1>
-          <p className="mt-[3px] font-sans text-[13px] text-pen-muted">
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Auto-assign incoming email tickets.
           </p>
         </div>
-        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-pen-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-pen-blue/90 sm:w-[150px]">
+        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]">
           <Plus className="size-[13px]" strokeWidth={2.5} />
           Add rule
         </Button>
@@ -134,12 +134,12 @@ export function SettingsRoutingRulesPage({ rules }: { rules: RoutingRule[] }) {
 
       <Phase2Banner />
 
-      <div className="overflow-hidden rounded-[10px] border border-pen-card-border bg-pen-card px-[22px] pb-2 pt-4">
+      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
         <div className="pb-1.5">
-          <h2 className="font-sans text-sm font-semibold text-pen-foreground">
+          <h2 className="font-sans text-sm font-semibold text-sts-foreground">
             Routing rules
           </h2>
-          <p className="mt-0.5 font-sans text-[11.5px] text-pen-muted">
+          <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
             Applied top to bottom when an email ticket arrives. First match wins.
           </p>
         </div>
@@ -150,7 +150,7 @@ export function SettingsRoutingRulesPage({ rules }: { rules: RoutingRule[] }) {
 
         <button
           type="button"
-          className="flex h-[42px] w-full items-center gap-2 border-t border-[#f0f4f8] font-sans text-xs font-semibold text-pen-id transition-colors hover:text-pen-blue dark:border-[#3a3a37]"
+          className="flex h-[42px] w-full items-center gap-2 border-t border-[#f0f4f8] font-sans text-xs font-semibold text-sts-id transition-colors hover:text-sts-blue dark:border-[#3a3a37]"
         >
           <Plus className="size-3.5" strokeWidth={2.5} />
           Add rule

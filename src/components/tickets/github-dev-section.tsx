@@ -46,18 +46,18 @@ const STATE_ICON: Record<DevPullRequest["state"], LucideIcon> = {
 };
 
 const STATE_ICON_STYLES: Record<DevPullRequest["state"], string> = {
-  draft: "bg-pen-surface text-pen-subtle",
-  open: "bg-pen-green/10 text-pen-green",
+  draft: "bg-sts-surface text-sts-subtle",
+  open: "bg-sts-green/10 text-sts-green",
   merged: "bg-[#f3e8ff] text-[#7c3aed] dark:bg-[#3a2a54] dark:text-[#c4b5fd]",
-  closed: "bg-pen-red/10 text-pen-red",
+  closed: "bg-sts-red/10 text-sts-red",
 };
 
 const CHECK_STYLES: Record<
   NonNullable<DevPullRequest["checkState"]>,
   string
 > = {
-  passing: "text-pen-green",
-  failing: "text-pen-red",
+  passing: "text-sts-green",
+  failing: "text-sts-red",
   pending: "text-amber-600 dark:text-amber-400",
 };
 
@@ -77,25 +77,25 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
   if (data.pullRequests.length === 0 && data.commits.length === 0) return null;
 
   const commitRail = (
-    <div className="relative ml-4 flex flex-col before:absolute before:bottom-4 before:left-2 before:top-4 before:w-px before:bg-pen-card-border">
+    <div className="relative ml-4 flex flex-col before:absolute before:bottom-4 before:left-2 before:top-4 before:w-px before:bg-sts-card-border">
       {data.commits.map((commit) => (
         <a
           key={commit.sha}
           href={commit.url}
           target="_blank"
           rel="noreferrer"
-          className="group relative flex items-center gap-2 rounded-md py-1.5 pl-6 pr-2 transition-colors hover:bg-pen-blue-tint/30"
+          className="group relative flex items-center gap-2 rounded-md py-1.5 pl-6 pr-2 transition-colors hover:bg-sts-blue-tint/30"
         >
-          <span className="absolute left-2 top-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-pen-bg text-pen-subtle transition-colors group-hover:text-pen-blue">
+          <span className="absolute left-2 top-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-sts-bg text-sts-subtle transition-colors group-hover:text-sts-blue">
             <GitCommitHorizontal className="h-3.5 w-3.5" />
           </span>
-          <span className="shrink-0 font-mono text-[11px] text-pen-subtle">
+          <span className="shrink-0 font-mono text-[11px] text-sts-subtle">
             {commit.sha.slice(0, 7)}
           </span>
-          <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-pen-foreground">
+          <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
             {commit.message.split("\n")[0]}
           </span>
-          <span className="ml-auto shrink-0 font-sans text-[11.5px] text-pen-muted">
+          <span className="ml-auto shrink-0 font-sans text-[11.5px] text-sts-muted">
             {commit.authorLogin}
           </span>
         </a>
@@ -105,7 +105,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
 
   return (
     <div>
-      <p className="pen-text-label mb-2">Development</p>
+      <p className="sts-text-label mb-2">Development</p>
       <div className="flex flex-col gap-1.5">
         {data.pullRequests.map((pr) => {
           const merged = pr.state === "merged";
@@ -117,7 +117,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
               href={pr.url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-start gap-2.5 rounded-lg border border-pen-card-border bg-pen-bg px-3 py-2.5 transition-colors hover:border-pen-blue/50 hover:bg-pen-blue-tint/30"
+              className="flex items-start gap-2.5 rounded-lg border border-sts-card-border bg-sts-bg px-3 py-2.5 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
             >
               <span
                 className={`mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${STATE_ICON_STYLES[pr.state]}`}
@@ -126,10 +126,10 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-pen-foreground">
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-medium text-sts-foreground">
                     {pr.title}
                   </span>
-                  <span className="shrink-0 font-sans text-[11.5px] text-pen-subtle">
+                  <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">
                     #{pr.number}
                   </span>
                   {pr.checkState && (
@@ -140,29 +140,29 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-[11px] text-pen-muted">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-[11px] text-sts-muted">
                   <span className="inline-flex min-w-0 items-center gap-1">
-                    <span className="max-w-40 truncate rounded bg-pen-surface px-1 py-px font-mono text-[10.5px] text-pen-subtle">
+                    <span className="max-w-40 truncate rounded bg-sts-surface px-1 py-px font-mono text-[10.5px] text-sts-subtle">
                       {pr.branch}
                     </span>
                     {pr.baseBranch && (
                       <>
-                        <span aria-hidden className="text-pen-subtle">
+                        <span aria-hidden className="text-sts-subtle">
                           →
                         </span>
-                        <span className="max-w-40 truncate rounded bg-pen-surface px-1 py-px font-mono text-[10.5px] text-pen-subtle">
+                        <span className="max-w-40 truncate rounded bg-sts-surface px-1 py-px font-mono text-[10.5px] text-sts-subtle">
                           {pr.baseBranch}
                         </span>
                       </>
                     )}
                   </span>
-                  <span aria-hidden className="text-pen-card-border">
+                  <span aria-hidden className="text-sts-card-border">
                     ·
                   </span>
                   <span className="shrink-0">{pr.authorLogin}</span>
                   {eventIso && (
                     <>
-                      <span aria-hidden className="text-pen-card-border">
+                      <span aria-hidden className="text-sts-card-border">
                         ·
                       </span>
                       <span
@@ -186,7 +186,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
                 type="button"
                 onClick={() => setCommitsOpen((open) => !open)}
                 aria-expanded={commitsOpen}
-                className="flex items-center gap-1 self-start rounded-md py-1 pl-1.5 pr-2 font-sans text-[11.5px] text-pen-muted transition-colors hover:text-pen-foreground"
+                className="flex items-center gap-1 self-start rounded-md py-1 pl-1.5 pr-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <ChevronRight
                   className={`h-3.5 w-3.5 transition-transform ${commitsOpen ? "rotate-90" : ""}`}

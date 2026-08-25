@@ -24,11 +24,11 @@ const STATUS_LABEL: Record<RenewalStatus, string> = {
 };
 
 const STATUS_CLASS: Record<RenewalStatus, string> = {
-  ACTIVE: "bg-pen-green/10 text-pen-green",
+  ACTIVE: "bg-sts-green/10 text-sts-green",
   PENDING_RENEWAL: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  RENEWED: "bg-pen-blue/10 text-pen-blue",
-  EXPIRED: "bg-pen-red/10 text-pen-red",
-  CANCELLED: "bg-pen-surface text-pen-subtle",
+  RENEWED: "bg-sts-blue/10 text-sts-blue",
+  EXPIRED: "bg-sts-red/10 text-sts-red",
+  CANCELLED: "bg-sts-surface text-sts-subtle",
 };
 
 export type AgreementDocumentRow = {
@@ -47,8 +47,8 @@ export type AgreementRow = {
   documents: AgreementDocumentRow[];
 };
 
-const sectionCard = "rounded-xl border border-pen-card-border bg-pen-card p-4 shadow-pen-card";
-const labelClass = "block font-sans text-[12.5px] font-medium text-pen-foreground";
+const sectionCard = "rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card";
+const labelClass = "block font-sans text-[12.5px] font-medium text-sts-foreground";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString();
@@ -158,8 +158,8 @@ export function TenantAgreements({
 
   return (
     <section className={cn(sectionCard, "xl:col-span-3")}>
-      <h2 className="font-sans text-[12.5px] font-semibold text-pen-foreground">Commercial agreements</h2>
-      <p className="mt-1 font-sans text-[11.5px] text-pen-subtle">
+      <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Commercial agreements</h2>
+      <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">
         Administrative record of agreement terms — dates, renewal status, and supporting documents. Not a
         billing system.
       </p>
@@ -212,9 +212,9 @@ export function TenantAgreements({
 
       <ul className="mt-4 flex flex-col gap-3">
         {agreements.map((a) => (
-          <li key={a.id} className="rounded-lg border border-pen-card-border p-3">
+          <li key={a.id} className="rounded-lg border border-sts-card-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-sans text-[12.5px] text-pen-foreground">
+              <div className="font-sans text-[12.5px] text-sts-foreground">
                 {fmtDate(a.startDate)} → {fmtDate(a.endDate)}
               </div>
               <Select
@@ -243,11 +243,11 @@ export function TenantAgreements({
                   href={d.storageUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="group flex items-center gap-1.5 rounded-full border border-pen-card-border bg-pen-surface px-2.5 py-1 font-sans text-[11px] text-pen-muted hover:text-pen-foreground"
+                  className="group flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
                 >
                   <FileText className="size-3" />
                   <span className="max-w-[160px] truncate">{d.fileName}</span>
-                  <span className="text-pen-subtle">({fmtSize(d.fileSize)})</span>
+                  <span className="text-sts-subtle">({fmtSize(d.fileSize)})</span>
                   <button
                     type="button"
                     aria-label={`Remove ${d.fileName}`}
@@ -255,7 +255,7 @@ export function TenantAgreements({
                       e.preventDefault();
                       removeDocument(a.id, d.id);
                     }}
-                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-pen-red"
+                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sts-red"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -279,7 +279,7 @@ export function TenantAgreements({
           </li>
         ))}
         {agreements.length === 0 && (
-          <li className="font-sans text-[12px] text-pen-subtle">No agreements recorded yet.</li>
+          <li className="font-sans text-[12px] text-sts-subtle">No agreements recorded yet.</li>
         )}
       </ul>
     </section>

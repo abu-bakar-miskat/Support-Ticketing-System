@@ -23,7 +23,7 @@ export function TenantAvatar({
     return (
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-pen-card-border bg-white",
+          "flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-sts-card-border bg-white",
           className,
         )}
         style={{ width: size, height: size, padding: Math.max(2, Math.round(size * 0.12)) }}
@@ -37,7 +37,7 @@ export function TenantAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg bg-pen-blue font-sans font-semibold text-white",
+        "flex shrink-0 items-center justify-center rounded-lg bg-sts-blue font-sans font-semibold text-white",
         className,
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}

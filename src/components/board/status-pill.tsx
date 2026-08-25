@@ -39,7 +39,7 @@ export function StatusPill({
       <span
         className={cn(
           "inline-flex shrink-0 items-center gap-[5px] rounded-full border font-sans font-medium whitespace-nowrap",
-          "text-pen-foreground ring-1 ring-inset ring-black/4 dark:ring-white/10",
+          "text-sts-foreground ring-1 ring-inset ring-black/4 dark:ring-white/10",
           sizeClass,
           className,
         )}

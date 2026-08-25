@@ -41,14 +41,14 @@ export function SettingsBrandingPage({
     setStatus("Saved. Reload to see the shell update.")
   }
 
-  const labelClass = "block font-sans text-[13px] font-medium text-pen-foreground"
+  const labelClass = "block font-sans text-[13px] font-medium text-sts-foreground"
 
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-[3px]">
-        <h1 className="pen-text-admin-title">Branding</h1>
-        <p className="font-sans text-[13px] text-pen-muted">
-          Customize how <span className="font-medium text-pen-foreground">{tenantName}</span> appears
+        <h1 className="sts-text-admin-title">Branding</h1>
+        <p className="font-sans text-[13px] text-sts-muted">
+          Customize how <span className="font-medium text-sts-foreground">{tenantName}</span> appears
           in the app shell. These settings apply only to this tenant.
         </p>
       </header>
@@ -59,21 +59,21 @@ export function SettingsBrandingPage({
         </div>
       )}
       {status && (
-        <div className="w-full max-w-[920px] rounded-lg border border-pen-green/30 bg-pen-green/10 px-3 py-2 font-sans text-[12.5px] text-pen-green">
+        <div className="w-full max-w-[920px] rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12.5px] text-sts-green">
           {status}
         </div>
       )}
 
       <section
         className={cn(
-          "w-full max-w-[920px] rounded-[10px] border border-pen-card-border bg-pen-card",
+          "w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card",
           "px-[22px] py-5",
         )}
       >
         <form onSubmit={save} className="flex flex-col gap-5">
           <div className="flex flex-col gap-[5px]">
             <label className={labelClass}>Display name</label>
-            <p className="font-sans text-[12px] text-pen-muted">
+            <p className="font-sans text-[12px] text-sts-muted">
               Shown in the sidebar (falls back to the tenant name).
             </p>
             <Input
@@ -86,7 +86,7 @@ export function SettingsBrandingPage({
 
           <div className="flex flex-col gap-[5px]">
             <label className={labelClass}>Logo URL</label>
-            <p className="font-sans text-[12px] text-pen-muted">
+            <p className="font-sans text-[12px] text-sts-muted">
               Absolute (https://…) or root-relative (/…) image URL.
             </p>
             <Input

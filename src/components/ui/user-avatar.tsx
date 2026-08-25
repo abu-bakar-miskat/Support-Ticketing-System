@@ -70,7 +70,7 @@ function UnavailableBadge({
     <span
       title={label}
       aria-label={label}
-      className="absolute -right-0.5 -bottom-0.5 flex items-center justify-center rounded-full border border-pen-card bg-amber-500 text-white shadow-sm dark:border-[#2a2a28]"
+      className="absolute -right-0.5 -bottom-0.5 flex items-center justify-center rounded-full border border-sts-card bg-amber-500 text-white shadow-sm dark:border-[#2a2a28]"
       style={{ width: badge, height: badge }}
     >
       <CalendarOff style={{ width: icon, height: icon }} strokeWidth={2.5} />
@@ -187,7 +187,7 @@ export function UserAvatar({
             onMouseEnter={cancelHide}
             onMouseLeave={hideCard}
             style={{ position: "fixed", top: cardPos.top, left: cardPos.left, zIndex: 9999 }}
-            className="w-52 rounded-xl border border-pen-card-border bg-pen-card px-3.5 py-3 shadow-pen-card backdrop-blur-[var(--pen-glass-blur)] animate-in fade-in-0 zoom-in-95 duration-150"
+            className="w-52 rounded-xl border border-sts-card-border bg-sts-card px-3.5 py-3 shadow-sts-card backdrop-blur-[var(--sts-glass-blur)] animate-in fade-in-0 zoom-in-95 duration-150"
           >
             <div className="flex items-center gap-2.5">
               <span className="relative inline-flex shrink-0">
@@ -195,7 +195,7 @@ export function UserAvatar({
                 {isAway && <UnavailableBadge size={cardSize} label={awayLabel} />}
               </span>
               <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="truncate font-sans text-[12.5px] font-semibold text-pen-foreground">
+                <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {name}
                 </p>
                 {isAway && (
@@ -204,17 +204,17 @@ export function UserAvatar({
                   </p>
                 )}
                 {meta.role && (
-                  <p className="truncate font-sans text-[11.5px] capitalize text-pen-muted">
+                  <p className="truncate font-sans text-[11.5px] capitalize text-sts-muted">
                     {meta.role === "sub_manager" ? "Sub-manager" : meta.role}
                   </p>
                 )}
                 {meta.subDepartment && (
-                  <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                  <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                     {meta.subDepartment}
                   </p>
                 )}
                 {meta.email && !meta.role && !meta.subDepartment && (
-                  <p className="truncate font-sans text-[11.5px] text-pen-subtle">
+                  <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                     {meta.email}
                   </p>
                 )}

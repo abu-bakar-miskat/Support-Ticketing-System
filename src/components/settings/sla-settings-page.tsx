@@ -226,17 +226,17 @@ export function SlaSettingsPage({
       <Link
         href="/settings/departments"
         className={cn(
-          "mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-pen-muted hover:text-pen-foreground",
+          "mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground",
           subDepartmentId && "hidden",
         )}
       >
         <ArrowLeft className="size-3.5" /> Back to departments
       </Link>
 
-      <h1 className="pen-text-modal-title mb-1">
+      <h1 className="sts-text-modal-title mb-1">
         SLA policies — {subDepartmentName ?? departmentName}
       </h1>
-      <p className="mb-6 font-sans text-[12.5px] text-pen-muted">
+      <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
         {subDepartmentId
           ? "These policies and business hours run in addition to the parent department's, for this sub-department's tickets only. "
           : ""}
@@ -253,9 +253,9 @@ export function SlaSettingsPage({
       {/* ── Policies, grouped by support form ── */}
       <div className="mb-8">
         <div className="mb-3">
-          <h2 className="font-sans text-[13.5px] font-semibold text-pen-foreground">Policies</h2>
+          <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
           {policies !== null && (
-            <p className="mt-0.5 font-sans text-[11px] text-pen-subtle">
+            <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
               {policies.length} {policies.length === 1 ? "policy" : "policies"} ·{" "}
               {policies.filter((p) => p.enabled).length} active · grouped by support form
             </p>
@@ -263,14 +263,14 @@ export function SlaSettingsPage({
         </div>
 
         {policies === null ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : forms.length === 0 && noFormPolicies.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-pen-card-border py-10 text-center">
-            <div className="flex size-10 items-center justify-center rounded-full bg-pen-blue/10">
-              <FileText className="size-5 text-pen-blue" />
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
+              <FileText className="size-5 text-sts-blue" />
             </div>
-            <p className="font-sans text-[12.5px] font-medium text-pen-foreground">No support forms yet</p>
-            <p className="font-sans text-[11.5px] text-pen-muted">
+            <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No support forms yet</p>
+            <p className="font-sans text-[11.5px] text-sts-muted">
               Create a support form for this department first, then add SLA policies to it.
             </p>
           </div>
@@ -305,13 +305,13 @@ export function SlaSettingsPage({
       </div>
 
       {/* ── Working-hours settings ── */}
-      <div className="rounded-2xl border border-pen-card-border bg-pen-card p-5">
-        <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-pen-foreground">Working hours (SLA-04)</h2>
+      <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
+        <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-sts-foreground">Working hours (SLA-04)</h2>
         {!slaConfig || !businessHours ? (
-          <p className="font-sans text-[12.5px] text-pen-muted">Loading…</p>
+          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : (
           <div className="flex flex-col gap-4">
-            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-pen-foreground">
+            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
               <Switch
                 checked={slaConfig.pauseOutsideHours}
                 onCheckedChange={(v) => setSlaConfig({ ...slaConfig, pauseOutsideHours: v })}
@@ -319,7 +319,7 @@ export function SlaSettingsPage({
               Pause SLA timers outside working hours
             </label>
 
-            <label className="flex items-center gap-2 font-sans text-[12.5px] text-pen-foreground">
+            <label className="flex items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
               At-risk threshold (%)
               <input
                 type="number"
@@ -327,37 +327,37 @@ export function SlaSettingsPage({
                 max={100}
                 value={slaConfig.atRiskPct}
                 onChange={(e) => setSlaConfig({ ...slaConfig, atRiskPct: Number(e.target.value) })}
-                className="w-20 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
               />
             </label>
 
             <div>
-              <p className="mb-1.5 font-sans text-[11.5px] font-medium text-pen-muted">
+              <p className="mb-1.5 font-sans text-[11.5px] font-medium text-sts-muted">
                 Fallback business calendar (used when an assignee has no personal schedule)
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                   Timezone
                   <input
                     value={businessHours.timezone}
                     onChange={(e) => setBusinessHours({ ...businessHours, timezone: e.target.value })}
-                    className="w-40 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    className="w-40 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
                   />
                 </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                   Start
                   <input
                     value={businessHours.workStartTime}
                     onChange={(e) => setBusinessHours({ ...businessHours, workStartTime: e.target.value })}
-                    className="w-20 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
                   />
                 </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-pen-muted">
+                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
                   End
                   <input
                     value={businessHours.workEndTime}
                     onChange={(e) => setBusinessHours({ ...businessHours, workEndTime: e.target.value })}
-                    className="w-20 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none"
+                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
                   />
                 </label>
               </div>
@@ -370,8 +370,8 @@ export function SlaSettingsPage({
                     className={cn(
                       "rounded-md px-2 py-1 font-sans text-[11px] font-medium",
                       businessHours.workingDays.includes(day)
-                        ? "bg-pen-blue text-white"
-                        : "bg-pen-surface text-pen-muted",
+                        ? "bg-sts-blue text-white"
+                        : "bg-sts-surface text-sts-muted",
                     )}
                   >
                     {label}
@@ -384,7 +384,7 @@ export function SlaSettingsPage({
               type="button"
               onClick={saveSettings}
               disabled={saving}
-              className="w-fit rounded-md bg-pen-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90 disabled:opacity-60"
+              className="w-fit rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save working-hours settings"}
             </button>
@@ -427,19 +427,19 @@ function PolicyGroup({
   emptyHint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-pen-card-border bg-pen-card p-5">
+    <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <FileText className="size-3.5 shrink-0 text-pen-subtle" />
-          <h3 className="truncate font-sans text-[13px] font-semibold text-pen-foreground">{title}</h3>
-          <span className="shrink-0 font-sans text-[11px] text-pen-subtle">
+          <FileText className="size-3.5 shrink-0 text-sts-subtle" />
+          <h3 className="truncate font-sans text-[13px] font-semibold text-sts-foreground">{title}</h3>
+          <span className="shrink-0 font-sans text-[11px] text-sts-subtle">
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
         <button
           type="button"
           onClick={onNewPolicy}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-pen-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-pen-blue/90"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
         >
           <Plus className="size-3.5" /> New policy
         </button>
@@ -447,7 +447,7 @@ function PolicyGroup({
 
       {policies.length === 0 ? (
         emptyHint ? (
-          <p className="rounded-lg border border-dashed border-pen-card-border px-3 py-4 text-center font-sans text-[11.5px] text-pen-muted">
+          <p className="rounded-lg border border-dashed border-sts-card-border px-3 py-4 text-center font-sans text-[11.5px] text-sts-muted">
             {emptyHint}
           </p>
         ) : null
@@ -455,7 +455,7 @@ function PolicyGroup({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse">
             <thead>
-              <tr className="border-b border-pen-card-border text-left font-sans text-[10.5px] font-medium uppercase tracking-wide text-pen-subtle">
+              <tr className="border-b border-sts-card-border text-left font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
                 <th className="px-2 py-2 font-medium">Issue</th>
                 <th className="px-2 py-2 font-medium">Priority</th>
                 <th className="px-2 py-2 font-medium">Assign to</th>
@@ -543,15 +543,15 @@ function PolicyRow({
 
   const cell = "px-2 py-2 align-middle";
   const numCls =
-    "w-20 rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12px] text-pen-foreground outline-none focus:border-pen-blue/60 focus:ring-2 focus:ring-pen-blue/15";
+    "w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15";
 
   return (
-    <tr className={cn("border-b border-pen-card-border/60", !policy.enabled && "opacity-60")}>
+    <tr className={cn("border-b border-sts-card-border/60", !policy.enabled && "opacity-60")}>
       <td className={cell}>
         <input
           value={draft.name}
           onChange={(e) => set("name", e.target.value)}
-          className="w-full min-w-[140px] rounded-md border border-pen-card-border bg-pen-surface px-2 py-1 font-sans text-[12.5px] font-medium text-pen-foreground outline-none focus:border-pen-blue/60 focus:ring-2 focus:ring-pen-blue/15"
+          className="w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15"
         />
       </td>
       <td className={cell}>
@@ -575,7 +575,7 @@ function PolicyRow({
       <td className={cell}>
         <div className="w-[180px]">
           {people.length === 0 ? (
-            <span className="font-sans text-[11.5px] text-pen-subtle">No members</span>
+            <span className="font-sans text-[11.5px] text-sts-subtle">No members</span>
           ) : (
             <IssueAssigneeSelect
               value={draft.assigneeIds}
@@ -595,7 +595,7 @@ function PolicyRow({
             onChange={(e) => set("firstResponseMins", Number(e.target.value))}
             className={numCls}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-pen-subtle">{formatMins(draft.firstResponseMins)}</span>
+          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
         </div>
       </td>
       <td className={cell}>
@@ -607,7 +607,7 @@ function PolicyRow({
             onChange={(e) => set("resolutionMins", Number(e.target.value))}
             className={numCls}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-pen-subtle">{formatMins(draft.resolutionMins)}</span>
+          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
         </div>
       </td>
       <td className={cell}>
@@ -616,7 +616,7 @@ function PolicyRow({
             type="button"
             onClick={save}
             disabled={!canSave}
-            className="inline-flex items-center gap-1 rounded-md bg-pen-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-pen-blue/90 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
             title="Save changes"
           >
             <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
@@ -624,7 +624,7 @@ function PolicyRow({
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
-            className="rounded-md p-1.5 text-pen-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             title="Delete policy"
           >
             <Trash2 className="size-3.5" />
@@ -705,22 +705,22 @@ function NewPolicyModal({
   const canSubmit = name.trim().length > 0 && firstResponseMins > 0 && resolutionMins > 0 && !creating;
 
   const fieldCls =
-    "h-9 w-full rounded-[6px] border border-pen-card-border bg-pen-bg px-2.5 font-sans text-[13px] text-pen-foreground outline-none focus:border-pen-blue focus:ring-1 focus:ring-pen-blue/30";
+    "h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30";
 
   return (
-    <div className="pen-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
+    <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
       <div
-        className="pen-glass-panel pen-modal-enter flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        className="sts-glass-panel sts-modal-enter flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-pen-card-border px-[22px]">
-          <h2 className="pen-text-modal-title">New SLA policy</h2>
+        <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
+          <h2 className="sts-text-modal-title">New SLA policy</h2>
           <button
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex size-7 items-center justify-center rounded-md text-pen-muted hover:bg-pen-surface hover:text-pen-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -728,12 +728,12 @@ function NewPolicyModal({
 
         {/* Body */}
         <div className="flex flex-col gap-4 overflow-y-auto px-[22px] py-5">
-          <p className="font-sans text-[11.5px] text-pen-muted">
-            For <span className="font-medium text-pen-foreground">{scopeName}</span>
+          <p className="font-sans text-[11.5px] text-sts-muted">
+            For <span className="font-medium text-sts-foreground">{scopeName}</span>
             {formName ? (
               <>
                 {" · "}
-                <span className="inline-flex items-center gap-1 font-medium text-pen-foreground">
+                <span className="inline-flex items-center gap-1 font-medium text-sts-foreground">
                   <FileText className="size-3" /> {formName}
                 </span>
               </>
@@ -742,7 +742,7 @@ function NewPolicyModal({
           </p>
 
           <div className="space-y-1.5">
-            <label className="pen-text-label">Issue</label>
+            <label className="sts-text-label">Issue</label>
             <input
               autoFocus
               placeholder="e.g. Cannot login"
@@ -755,7 +755,7 @@ function NewPolicyModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="pen-text-label flex items-center gap-1.5">
+              <label className="sts-text-label flex items-center gap-1.5">
                 <Flag className="size-3" /> Priority
               </label>
               <SearchableSelect
@@ -774,11 +774,11 @@ function NewPolicyModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="pen-text-label flex items-center gap-1.5">
+              <label className="sts-text-label flex items-center gap-1.5">
                 <User className="size-3" /> Assign to
               </label>
               {people.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-pen-subtle">No members to assign.</p>
+                <p className="font-sans text-[11.5px] text-sts-subtle">No members to assign.</p>
               ) : (
                 <IssueAssigneeSelect
                   value={assigneeIds}
@@ -792,7 +792,7 @@ function NewPolicyModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="pen-text-label flex items-center gap-1.5">
+              <label className="sts-text-label flex items-center gap-1.5">
                 <Timer className="size-3" /> First response (mins)
               </label>
               <input
@@ -802,10 +802,10 @@ function NewPolicyModal({
                 onChange={(e) => setFirstResponseMins(Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-pen-subtle">{formatMins(firstResponseMins)}</p>
+              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(firstResponseMins)}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="pen-text-label flex items-center gap-1.5">
+              <label className="sts-text-label flex items-center gap-1.5">
                 <Clock className="size-3" /> Resolution (mins)
               </label>
               <input
@@ -815,18 +815,18 @@ function NewPolicyModal({
                 onChange={(e) => setResolutionMins(Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-pen-subtle">{formatMins(resolutionMins)}</p>
+              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(resolutionMins)}</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-pen-card-border bg-pen-bg px-[22px]">
+        <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-sts-card-border bg-sts-bg px-[22px]">
           <button
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-pen-card-border font-sans text-[12px] font-semibold text-pen-foreground transition-colors hover:bg-pen-card-border disabled:opacity-50"
+            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
           >
             Cancel
           </button>
@@ -834,7 +834,7 @@ function NewPolicyModal({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-pen-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creating ? "Creating…" : "Create policy"}
           </button>

@@ -56,7 +56,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 import { usePermissions } from "@/hooks/use-permissions";
 import { ProjectModal } from "@/components/projects/project-modal";
-import { InstallAppButton } from "@/components/pwa/install-app-button";
+// import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 import type { LucideIcon } from "lucide-react";
 
@@ -946,7 +946,7 @@ export function Sidebar({
         {/* Spacer */}
         <div className="flex-1" />
 
-        <InstallAppButton collapsed={isCollapsed} />
+        {/* <InstallAppButton collapsed={isCollapsed} /> */}
 
         {/* User */}
         <UserProfileMenu variant="sidebar" collapsed={isCollapsed} />

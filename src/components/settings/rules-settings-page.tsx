@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // ── Types (mirror lib/rules-engine.ts) ───────────────────────────────────────
 type ConditionOperator =
@@ -138,6 +139,8 @@ export function RulesSettingsPage({
   const [newRuleForm, setNewRuleForm] = useState<FormLite | null>(null);
   const [showNewRule, setShowNewRule] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Rule pending deletion — drives the confirmation modal.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; formId: string | null; name: string } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Test panel
@@ -253,8 +256,8 @@ export function RulesSettingsPage({
       try {
         await jsonOrThrow(await fetch(`/api/departments/${departmentId}/rules/${id}`, { method: "DELETE" }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to delete rule");
         setRulesByForm((p) => ({ ...p, [formId]: prev ?? [] }));
+        throw e instanceof Error ? e : new Error("Failed to delete rule");
       }
     } else {
       const prev = rules;
@@ -262,8 +265,8 @@ export function RulesSettingsPage({
       try {
         await jsonOrThrow(await fetch(`/api/departments/${departmentId}/rules/${id}`, { method: "DELETE" }));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to delete rule");
         setRules(prev ?? null);
+        throw e instanceof Error ? e : new Error("Failed to delete rule");
       }
     }
   }
@@ -373,7 +376,13 @@ export function RulesSettingsPage({
                 }}
                 onChange={(r) => patchLocalForm(form.id, r.id, () => r)}
                 onSave={(r) => saveRule(r, form.id)}
-                onDelete={(id) => deleteRule(id, form.id)}
+                onDelete={(id) =>
+                  setPendingDelete({
+                    id,
+                    formId: form.id,
+                    name: rulesByForm[form.id]?.find((r) => r.id === id)?.name ?? "this rule",
+                  })
+                }
                 onMove={(index, dir) => move(index, dir, form.id)}
               />
             ))
@@ -439,7 +448,7 @@ export function RulesSettingsPage({
                   saving={savingId === rule.id}
                   onChange={(r) => patchLocalDept(rule.id, () => r)}
                   onSave={() => saveRule(rule, null)}
-                  onDelete={() => deleteRule(rule.id, null)}
+                  onDelete={() => setPendingDelete({ id: rule.id, formId: null, name: rule.name })}
                   onMove={(dir) => move(index, dir, null)}
                 />
               ))}
@@ -544,6 +553,20 @@ export function RulesSettingsPage({
           onCreate={(input) => createRule(input, newRuleForm)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => {
+          if (!o) setPendingDelete(null);
+        }}
+        title="Delete rule?"
+        description={`"${pendingDelete?.name ?? "This rule"}" will be permanently removed. This can't be undone.`}
+        confirmLabel="Delete rule"
+        successMessage="Rule deleted"
+        onConfirm={async () => {
+          if (pendingDelete) await deleteRule(pendingDelete.id, pendingDelete.formId);
+        }}
+      />
     </div>
   );
 }

@@ -667,7 +667,7 @@ export function SettingsMembersPage({
         <p className="font-sans text-[12px] text-red-500">{error}</p>
       )}
 
-      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+      <div className="overflow-x-auto rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">

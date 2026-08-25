@@ -74,7 +74,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         href: "/settings/tags",
         managerOnly: true,
         deptSpecific: true,
-        templateFeatureKey: "tagsLabels",
       },
       {
         label: "Ticket Templates",
@@ -150,7 +149,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         label: "Templates",
         href: "/settings/templates-catalogue",
         adminOnly: true,
-        tenantScoped: true,
       },
     ],
   },

@@ -62,7 +62,10 @@ export type ActivityAction =
   | "MODULE_CHANGED"
   | "SUBTICKET_ADDED"
   | "TIMER_RESET"
-  | "QA_TIME_LOGGED";
+  | "QA_TIME_LOGGED"
+  | "PR_MERGED"
+  | "FIELD_CHANGED"
+  | "ASSIGNMENT_FAILED";
 
 export type RangePreset = "today" | "yesterday" | "last7" | "last30" | "custom";
 
@@ -111,7 +114,16 @@ const ACTION_META: Record<ActivityAction, { icon: React.ElementType; color: stri
   SUBTICKET_ADDED:        { icon: ListTree,      color: "#059669", bg: "#05966915", label: "Sub-ticket added"       },
   TIMER_RESET:            { icon: Timer,         color: "#dc2626", bg: "#dc262615", label: "Timer reset"            },
   QA_TIME_LOGGED:         { icon: Timer,         color: "#0d9488", bg: "#0d948815", label: "QA time logged"         },
+  PR_MERGED:              { icon: Zap,           color: "#7c3aed", bg: "#7c3aed15", label: "PR merged"              },
+  FIELD_CHANGED:          { icon: Text,          color: "#64748b", bg: "#64748b15", label: "Field changed"          },
+  ASSIGNMENT_FAILED:      { icon: Zap,           color: "#dc2626", bg: "#dc262615", label: "Assignment failed"      },
 };
+
+// Fallback so an activity row with an action not present in ACTION_META (e.g. a
+// newly added DB enum value the client hasn't shipped yet) renders as a generic
+// entry instead of throwing `Cannot read properties of undefined (reading 'icon')`
+// — which previously crashed the entire feed to a blank screen.
+const FALLBACK_ACTION_META = { icon: Activity, color: "#64748b", bg: "#64748b15", label: "Activity" };
 
 const PRIORITY_COLOR: Record<string, string> = {
   Urgent: "#ff4500", Critical: "#dc2626", High: "#f97316", Medium: "#ec4899", Low: "#94a3b8",
@@ -208,6 +220,9 @@ function describeAction(action: ActivityAction, meta: Record<string, unknown>): 
         ? `logged ${Math.floor(mins / 60)}h ${mins % 60}m of QA time`
         : `logged ${mins}m of QA time`;
     }
+    case "PR_MERGED":              return meta.base ? `merged a PR to ${String(meta.base)}` : "merged a pull request";
+    case "FIELD_CHANGED":          return "updated a field";
+    case "ASSIGNMENT_FAILED":      return "could not be auto-assigned";
     default:                       return "updated the ticket";
   }
 }
@@ -215,7 +230,7 @@ function describeAction(action: ActivityAction, meta: Record<string, unknown>): 
 // ── Activity row ──────────────────────────────────────────────────────────────
 
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const meta = ACTION_META[item.action];
+  const meta = ACTION_META[item.action] ?? FALLBACK_ACTION_META;
   const Icon = meta.icon;
   const desc = describeAction(item.action, item.metadata);
   const priorityColor = PRIORITY_COLOR[item.ticket.priority] ?? "#94a3b8";

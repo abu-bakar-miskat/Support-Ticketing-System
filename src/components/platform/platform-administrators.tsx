@@ -1,13 +1,30 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ShieldCheck, X } from "lucide-react";
+import { ShieldCheck, X, Building2, Crown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-type AdminRow = { id: string; name: string; email: string; avatarUrl: string | null };
+type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
+type AdminRow = {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  role?: string;
+  tenants?: string[];
+  departments?: DeptInfo[];
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  sub_manager: "Lead",
+  agent: "Agent",
+};
 
 export function PlatformAdministrators({
   admins: initialAdmins,
@@ -19,6 +36,8 @@ export function PlatformAdministrators({
   const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The admin awaiting removal confirmation (null = dialog closed).
+  const [confirmRemove, setConfirmRemove] = useState<AdminRow | null>(null);
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AdminRow[]>([]);
@@ -66,19 +85,18 @@ export function PlatformAdministrators({
     );
   }
 
+  // Throws on failure so the ConfirmDialog surfaces a toast and keeps the modal
+  // open; on success it closes the dialog and toasts.
   async function removeAdmin(user: AdminRow) {
     setError(null);
-    setBusyId(user.id);
     const res = await fetch("/api/admin/super-admins", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id }),
     });
-    setBusyId(null);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to remove super-admin access");
-      return;
+      throw new Error(body.error ?? "Failed to remove super-admin access");
     }
     setAdmins((prev) => prev.filter((a) => a.id !== user.id));
   }
@@ -156,27 +174,79 @@ export function PlatformAdministrators({
           <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
             Current administrators ({admins.length})
           </h2>
-          <div className="mt-3 flex flex-col gap-1 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
+          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
             {admins.map((admin) => {
               const isSelf = admin.id === currentUserId;
+              const roleLabel = admin.role ? ROLE_LABELS[admin.role] ?? admin.role : null;
+              // undefined = just added via search (not yet hydrated); [] = server
+              // confirmed no memberships.
+              const departments = admin.departments;
+              const tenants = admin.tenants ?? [];
               return (
-                <div key={admin.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2">
-                  <div className="flex min-w-0 items-center gap-2.5">
+                <div
+                  key={admin.id}
+                  className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-sts-surface/50"
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-2.5">
                     <UserAvatar name={admin.name} avatarUrl={admin.avatarUrl} size={28} />
-                    <div className="min-w-0">
-                      <div className="truncate font-sans text-[13px] font-medium text-sts-foreground">
-                        {admin.name || admin.email}
-                        {isSelf && <span className="ml-1.5 font-sans text-[11px] text-sts-subtle">(you)</span>}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                        <span className="truncate font-sans text-[13px] font-medium text-sts-foreground">
+                          {admin.name || admin.email}
+                        </span>
+                        {isSelf && <span className="font-sans text-[11px] text-sts-subtle">(you)</span>}
+                        {roleLabel && (
+                          <span className="rounded-full bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
+                            {roleLabel}
+                          </span>
+                        )}
                       </div>
                       <div className="truncate font-sans text-[11.5px] text-sts-subtle">{admin.email}</div>
+
+                      {tenants.length > 0 && (
+                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">
+                          {tenants.join(", ")}
+                        </div>
+                      )}
+
+                      {departments && departments.length > 0 ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {departments.map((dept) => (
+                            <span
+                              key={dept.id}
+                              className="inline-flex items-center gap-1 rounded-md border border-sts-card-border bg-sts-surface px-1.5 py-0.5 font-sans text-[11px] text-sts-foreground"
+                              title={
+                                dept.subDepartments.length
+                                  ? `Sub departments: ${dept.subDepartments.join(", ")}`
+                                  : undefined
+                              }
+                            >
+                              {dept.isManager ? (
+                                <Crown className="size-3 text-sts-blue" />
+                              ) : (
+                                <Building2 className="size-3 text-sts-subtle" />
+                              )}
+                              <span className="font-medium">{dept.name}</span>
+                              {dept.subDepartments.length > 0 && (
+                                <span className="text-sts-subtle">· {dept.subDepartments.join(", ")}</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      ) : departments ? (
+                        <div className="mt-1.5 font-sans text-[11px] text-sts-subtle italic">
+                          No department membership
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     disabled={isSelf || busyId === admin.id}
                     title={isSelf ? "You can't remove your own super-admin access" : undefined}
-                    onClick={() => removeAdmin(admin)}
+                    onClick={() => setConfirmRemove(admin)}
                   >
                     <X className="size-3.5" />
                     Remove
@@ -187,6 +257,20 @@ export function PlatformAdministrators({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        onOpenChange={(open) => { if (!open) setConfirmRemove(null); }}
+        title="Remove administrator"
+        description={
+          confirmRemove
+            ? `Remove super-admin access from ${confirmRemove.name || confirmRemove.email}? They'll lose the ability to manage tenants, templates, and feature flags across the platform.`
+            : ""
+        }
+        confirmLabel="Remove"
+        successMessage={confirmRemove ? `${confirmRemove.name || confirmRemove.email} is no longer an administrator` : undefined}
+        onConfirm={async () => { if (confirmRemove) await removeAdmin(confirmRemove); }}
+      />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getProfileDeptScope } from "@/lib/dept-scope";
 import { timeAgo } from "@/lib/format";
 import { avatarColorFor } from "@/lib/avatar";
 import { buildActivityLogWhere } from "@/lib/activity-access";
+import { resolveActivityScope, type ActivityScopeKind } from "@/lib/activity-scope";
 
 export async function GET(req: NextRequest) {
   const { profile, error } = await requireAuth();
@@ -17,23 +17,31 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from") ?? undefined;
   const to = searchParams.get("to") ?? undefined;
   const actorId = searchParams.get("actorId") ?? undefined;
+  // "all" = every accessible department; anything else = the active department.
+  // Must mirror the server page that rendered the first page of results so
+  // Load-more paginates over an identical WHERE clause.
+  const scopeKind: ActivityScopeKind = searchParams.get("scope") === "all" ? "all" : "active";
   const take = 50;
 
-  const deptScope = await getProfileDeptScope(profile);
-  const subDepartmentIds = deptScope?.subDepartmentIds ?? [];
+  const { subDepartmentIds, tenantId } = await resolveActivityScope(profile, scopeKind);
 
   function parseDate(s: string, endOfDay = false): Date {
     if (s.includes("T")) return new Date(s);
     return new Date(s + (endOfDay ? "T23:59:59.999" : "T00:00:00.000"));
   }
 
-  const where = buildActivityLogWhere(profile, subDepartmentIds, {
-    ...(from ? { from: parseDate(from, false) } : {}),
-    ...(to ? { to: parseDate(to, true) } : {}),
-    projectId,
-    action,
-    actorId,
-  });
+  const where = buildActivityLogWhere(
+    profile,
+    subDepartmentIds,
+    {
+      ...(from ? { from: parseDate(from, false) } : {}),
+      ...(to ? { to: parseDate(to, true) } : {}),
+      projectId,
+      action,
+      actorId,
+    },
+    tenantId,
+  );
 
   const rows = await prisma.activityLog.findMany({
     where,

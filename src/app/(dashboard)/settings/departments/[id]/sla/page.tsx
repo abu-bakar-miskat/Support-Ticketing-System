@@ -18,7 +18,11 @@ export default async function DepartmentSlaSettingsRoute({
 
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
   });
   if (!department) notFound();
 
@@ -29,6 +33,7 @@ export default async function DepartmentSlaSettingsRoute({
     <SlaSettingsPage
       departmentId={department.id}
       departmentName={department.name}
+      subDepartments={department.subDepartments}
     />
   );
 }

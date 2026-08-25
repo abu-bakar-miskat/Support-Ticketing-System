@@ -8,7 +8,7 @@ import { ActivityPageSkeleton } from "@/components/skeletons/page-skeletons";
 
 export const metadata = { title: "Activity — Support Ticketing System" };
 
-async function ActivityData({
+async function AllDepartmentsActivityData({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string>>;
@@ -17,10 +17,11 @@ async function ActivityData({
   if (!profile) redirect("/login");
 
   const sp = await searchParams;
-  const scope = await resolveActivityScope(profile, "active");
+  // "all" scope = every department the caller can reach (tenant-wide for admins).
+  const scope = await resolveActivityScope(profile, "all");
   const data = await buildActivityPageData(profile, sp, scope);
 
-  return <ActivityPage {...data} />;
+  return <ActivityPage {...data} basePath="/departments/activity" scope="all" />;
 }
 
 export default async function Page({
@@ -33,7 +34,7 @@ export default async function Page({
 
   return (
     <Suspense fallback={<ActivityPageSkeleton />}>
-      <ActivityData searchParams={searchParams} />
+      <AllDepartmentsActivityData searchParams={searchParams} />
     </Suspense>
   );
 }

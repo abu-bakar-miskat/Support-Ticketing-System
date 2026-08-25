@@ -37,10 +37,27 @@ beforeEach(() => {
 })
 
 describe("GET /api/admin/audit-events", () => {
-  it("requires tenantId", async () => {
+  it("forbids a non-admin when no tenantId is given", async () => {
     mockResolveUserScope.mockResolvedValue(baseUserScope)
     const res = await GET(makeRequest(""))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(403)
+    expect(mockFindMany).not.toHaveBeenCalled()
+  })
+
+  it("lets a platform admin query ALL tenants when no tenantId is given", async () => {
+    mockResolveUserScope.mockResolvedValue({ ...baseUserScope, isPlatformAdmin: true })
+    mockFindMany.mockResolvedValue([])
+    await GET(makeRequest(""))
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }))
+  })
+
+  it("scopes a tenant-admin to their tenants when no tenantId is given", async () => {
+    mockResolveUserScope.mockResolvedValue({ ...baseUserScope, tenantAdminIds: ["t1", "t2"] })
+    mockFindMany.mockResolvedValue([])
+    await GET(makeRequest(""))
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tenantId: { in: ["t1", "t2"] } } }),
+    )
   })
 
   it("allows a platform admin to view any tenant", async () => {

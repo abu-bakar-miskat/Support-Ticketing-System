@@ -41,6 +41,7 @@ type AuditEvent = {
   id: string;
   actorId: string;
   actor: { id: string; name: string | null; email: string } | null;
+  tenant: { id: string; name: string } | null;
   action: string;
   targetType: string;
   targetId: string;
@@ -49,7 +50,9 @@ type AuditEvent = {
   createdAt: string;
 };
 
-function EventRow({ event }: { event: AuditEvent }) {
+const ALL_TENANTS = "__all__";
+
+function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const hasDetails = event.before != null || event.after != null;
 
@@ -68,6 +71,11 @@ function EventRow({ event }: { event: AuditEvent }) {
             )
           ) : null}
         </TableCell>
+        {showTenant && (
+          <TableCell className="font-sans text-[12.5px] font-medium text-sts-foreground">
+            {event.tenant?.name ?? "—"}
+          </TableCell>
+        )}
         <TableCell className="font-sans text-[12.5px] font-medium text-sts-foreground">{event.action}</TableCell>
         <TableCell className="font-sans text-[12.5px] text-sts-muted">
           {event.targetType}
@@ -82,7 +90,7 @@ function EventRow({ event }: { event: AuditEvent }) {
       </TableRow>
       {expanded && hasDetails && (
         <TableRow>
-          <TableCell colSpan={5} className="bg-sts-bg/40 py-3">
+          <TableCell colSpan={showTenant ? 6 : 5} className="bg-sts-bg/40 py-3">
             <div className="grid gap-3 sm:grid-cols-2">
               {event.before != null && (
                 <div>
@@ -113,7 +121,9 @@ function EventRow({ event }: { event: AuditEvent }) {
 }
 
 export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
-  const [tenantId, setTenantId] = useState<string>(tenants[0]?.id ?? "");
+  // Default to "All tenants" ("") so the log is never blank just because the
+  // first-alphabetical tenant happens to have no audit events.
+  const [tenantId, setTenantId] = useState<string>("");
   const [targetType, setTargetType] = useState<string>("");
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -123,7 +133,8 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   async function fetchPage(after: string | null) {
-    const params = new URLSearchParams({ tenantId, take: "50" });
+    const params = new URLSearchParams({ take: "50" });
+    if (tenantId) params.set("tenantId", tenantId);
     if (targetType) params.set("targetType", targetType);
     if (after) params.set("cursor", after);
     const res = await fetch(`/api/admin/audit-events?${params}`);
@@ -132,7 +143,6 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
   }
 
   useEffect(() => {
-    if (!tenantId) return;
     let cancelled = false;
 
     async function load() {
@@ -172,6 +182,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
   }
 
   const selectedTenant = tenants.find((t) => t.id === tenantId);
+  const showTenant = tenantId === "";
 
   return (
     <div className="min-h-screen overflow-y-auto">
@@ -183,13 +194,19 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
         />
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <Select value={tenantId} onValueChange={(v) => v && setTenantId(v)}>
+          <Select
+            value={tenantId || ALL_TENANTS}
+            onValueChange={(v) => setTenantId(v === ALL_TENANTS ? "" : v ?? "")}
+          >
             <SelectTrigger className="h-9 w-[220px]">
               <span className="truncate font-sans text-[12.5px]">
-                {selectedTenant?.name ?? "Select a tenant"}
+                {selectedTenant?.name ?? "All tenants"}
               </span>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={ALL_TENANTS} className="font-sans text-[12.5px]">
+                All tenants
+              </SelectItem>
               {tenants.map((t) => (
                 <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
                   {t.name}
@@ -218,7 +235,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             variant="outline"
             size="sm"
             onClick={() => setRefreshKey((k) => k + 1)}
-            disabled={loading || !tenantId}
+            disabled={loading}
           >
             <RotateCw className={cn("size-3.5", loading && "animate-spin")} />
             Refresh
@@ -236,6 +253,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-6" />
+                {showTenant && <TableHead>Tenant</TableHead>}
                 <TableHead>Action</TableHead>
                 <TableHead>Target</TableHead>
                 <TableHead>Actor</TableHead>
@@ -245,12 +263,12 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             <TableBody>
               {events.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
+                  <TableCell colSpan={showTenant ? 6 : 5} className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
                     {loading ? "Loading…" : "No activity yet"}
                   </TableCell>
                 </TableRow>
               ) : (
-                events.map((e) => <EventRow key={e.id} event={e} />)
+                events.map((e) => <EventRow key={e.id} event={e} showTenant={showTenant} />)
               )}
             </TableBody>
           </Table>

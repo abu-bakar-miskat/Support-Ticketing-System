@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Building2, Settings2, X } from "lucide-react";
+import { Activity, Bell, Building2, Settings2, X } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
@@ -40,6 +40,7 @@ export function DepartmentsSidebar({
 
   const navItems: NavItem[] = [
     { label: "Departments", href: "/departments", icon: DepartmentIcon },
+    { label: "Activity", href: "/departments/activity", icon: Activity },
     {
       label: "Notifications",
       href: "/inbox",

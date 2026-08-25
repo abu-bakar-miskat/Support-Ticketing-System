@@ -29,6 +29,7 @@ const POLICY_SELECT = {
   enabled: true,
   order: true,
   formConfigId: true,
+  subDepartmentId: true,
   priority: true,
   assigneeId: true,
   assignees: { select: { userId: true } },
@@ -84,6 +85,17 @@ export async function GET(
   const { id } = await params
   if (!(await departmentIdInScope(profile, id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  // `?scope=all` returns every policy in the department (department-wide plus all
+  // sub-departments), for the department page's cross-sub-department overview.
+  if (req.nextUrl.searchParams.get("scope") === "all") {
+    const policies = await prisma.slaPolicy.findMany({
+      where: { departmentId: id },
+      orderBy: { order: "asc" },
+      select: POLICY_SELECT,
+    })
+    return NextResponse.json(policies.map(shapePolicy))
   }
 
   const scope = await resolveSubDepartmentScope(id, req.nextUrl.searchParams.get("subDepartmentId"))

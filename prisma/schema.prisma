@@ -1240,14 +1240,20 @@ model Rule {
   updatedAt      DateTime @updatedAt
 
   subDepartmentId String? @map("teamId")
+  // Optional support-form scope. When set, the rule runs only on tickets created
+  // from this intake form (in addition to department/sub-department rules). null
+  // = not form-specific. See lib/rule-executor.ts.
+  formConfigId String?
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
+  formConfig    IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
 
   @@index([departmentId])
   @@index([tenantId])
   @@index([subDepartmentId])
+  @@index([formConfigId])
 }
 
 // Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a
@@ -1711,6 +1717,7 @@ model IntakeFormConfig {
   issues     IntakeIssue[]
   pendingIntakes PendingIntake[]
   assignmentRules AssignmentRule[]
+  rules      Rule[]
 }
 
 model IntakeFormField {

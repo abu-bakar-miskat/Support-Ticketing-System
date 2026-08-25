@@ -107,6 +107,7 @@ export async function createTicketFromPayload(
         departmentId: form.departmentId,
         subDepartmentId: prep.intakeSubDepartmentId,
         assigneeId: prep.assigneeId ?? null,
+        formConfigId,
       },
       formValues,
     )

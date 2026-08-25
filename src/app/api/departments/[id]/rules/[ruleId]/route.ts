@@ -13,6 +13,7 @@ const RULE_SELECT = {
   order: true,
   enabled: true,
   stopProcessing: true,
+  formConfigId: true,
 } as const
 
 type Params = { params: Promise<{ id: string; ruleId: string }> }

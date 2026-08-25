@@ -13,6 +13,7 @@ const RULE_SELECT = {
   order: true,
   enabled: true,
   stopProcessing: true,
+  formConfigId: true,
 } as const
 
 /**
@@ -37,6 +38,27 @@ async function resolveSubDepartmentScope(
   return { subDepartmentId }
 }
 
+/**
+ * Validate that `formConfigId` (if provided) belongs to department `id`.
+ * Returns the form's owning sub-department (rules are pinned to it) or a
+ * NextResponse error, or `{ formConfigId: null }` when none was provided.
+ */
+async function resolveFormScope(
+  departmentId: string,
+  raw: string | null | undefined,
+): Promise<{ formConfigId: string | null; subDepartmentId?: string } | { error: NextResponse }> {
+  const formConfigId = raw && raw.trim() ? raw.trim() : null
+  if (!formConfigId) return { formConfigId: null }
+  const form = await prisma.intakeFormConfig.findFirst({
+    where: { id: formConfigId, departmentId },
+    select: { intakeSubDepartmentId: true },
+  })
+  if (!form) {
+    return { error: NextResponse.json({ error: "Form not found in department" }, { status: 404 }) }
+  }
+  return { formConfigId, subDepartmentId: form.intakeSubDepartmentId }
+}
+
 /** GET /api/departments/:id/rules — this department's automation rules, in order (RE-03). */
 export async function GET(
   req: NextRequest,
@@ -50,13 +72,26 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // Form-scoped surface (support form wise): `?formConfigId=` returns only that
+  // form's rules.
+  const formScope = await resolveFormScope(id, req.nextUrl.searchParams.get("formConfigId"))
+  if ("error" in formScope) return formScope.error
+  if (formScope.formConfigId) {
+    const rules = await prisma.rule.findMany({
+      where: { departmentId: id, formConfigId: formScope.formConfigId },
+      orderBy: { order: "asc" },
+      select: RULE_SELECT,
+    })
+    return NextResponse.json(rules)
+  }
+
   const scope = await resolveSubDepartmentScope(id, req.nextUrl.searchParams.get("subDepartmentId"))
   if ("error" in scope) return scope.error
 
-  // Without a subDepartmentId, return only department-wide rules (null) so the
-  // department settings surface and the sub-department surface stay distinct.
+  // Without a form or subDepartmentId, return only department-wide rules (both
+  // null) so the department, sub-department, and per-form surfaces stay distinct.
   const rules = await prisma.rule.findMany({
-    where: { departmentId: id, subDepartmentId: scope.subDepartmentId },
+    where: { departmentId: id, subDepartmentId: scope.subDepartmentId, formConfigId: null },
     orderBy: { order: "asc" },
     select: RULE_SELECT,
   })
@@ -93,11 +128,22 @@ export async function POST(
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
   if (!dept) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
-  const scope = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
-  if ("error" in scope) return scope.error
+  // A form-scoped rule pins its sub-department to the form's; otherwise scope by
+  // the given sub-department (or department-wide).
+  const formScope = await resolveFormScope(id, body.formConfigId as string | undefined)
+  if ("error" in formScope) return formScope.error
+
+  let subDepartmentId: string | null
+  if (formScope.formConfigId) {
+    subDepartmentId = formScope.subDepartmentId ?? null
+  } else {
+    const scope = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
+    if ("error" in scope) return scope.error
+    subDepartmentId = scope.subDepartmentId
+  }
 
   const last = await prisma.rule.findFirst({
-    where: { departmentId: id, subDepartmentId: scope.subDepartmentId },
+    where: { departmentId: id, formConfigId: formScope.formConfigId, subDepartmentId: formScope.formConfigId ? undefined : subDepartmentId },
     orderBy: { order: "desc" },
     select: { order: true },
   })
@@ -107,7 +153,8 @@ export async function POST(
     data: {
       tenantId: dept.tenantId,
       departmentId: id,
-      subDepartmentId: scope.subDepartmentId,
+      subDepartmentId,
+      formConfigId: formScope.formConfigId,
       name,
       conditions,
       actions,

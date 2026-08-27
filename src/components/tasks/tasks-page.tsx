@@ -124,6 +124,7 @@ export function TasksPage({
           projects={metaReady.availableProjects}
           subDepartmentMembers={metaReady.availableMembers}
           defaultSubDepartmentId={metaReady.defaultSubDepartmentId ?? undefined}
+          boardSubDepartments={metaReady.availableSubDepartments}
           statuses={metaReady.subDepartmentStatuses.map((s) => ({ id: s.id, label: s.label, color: s.color }))}
           onCreated={() => setCreating(false)}
           onClose={() => setCreating(false)}

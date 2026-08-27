@@ -257,6 +257,8 @@ export function DashboardLayout({
             projects={taskMeta?.availableProjects ?? []}
             subDepartmentMembers={taskMeta?.availableMembers ?? []}
             defaultSubDepartmentId={taskMeta?.defaultSubDepartmentId ?? undefined}
+            subDepartments={taskMeta?.availableSubDepartments ?? []}
+            departmentName={taskMeta?.departmentName ?? undefined}
             statuses={(taskMeta?.subDepartmentStatuses ?? []).map((s) => ({
               id: s.id,
               label: s.label,

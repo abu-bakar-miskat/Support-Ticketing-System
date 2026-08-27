@@ -13,12 +13,19 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
-  // Super-admins and tenant admins default to the tenants console — but only
-  // while at the platform level. Once they've entered a department (active
-  // dept set), Home behaves like the normal tenant dashboard with its usual
-  // layout.
-  if ((profile.isSuperAdmin || profile.role === "admin") && !activeDeptId) {
+  // Super-admins default to the platform tenants console while at the platform
+  // level. Once they've entered a department (active dept set), Home behaves
+  // like the normal tenant dashboard with its usual layout. Tenant admins are
+  // scoped to their own tenant and never reach the platform area — they fall
+  // through to the normal tenant dashboard below.
+  if (profile.isSuperAdmin && !activeDeptId) {
     redirect("/platform");
+  }
+
+  // Tenant admins land on the departments (org management) view. Guarded to real
+  // tenant admins — super-admins also derive role "admin" but are handled above.
+  if (profile.role === "admin" && !profile.isSuperAdmin) {
+    redirect("/departments");
   }
 
   if (profile.role === "manager") {

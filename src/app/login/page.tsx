@@ -4,7 +4,29 @@ import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
+import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+
+/**
+ * Super-admins land on the platform console on login (mirrors /auth/callback).
+ * Clears any stale active-dept cookie so they don't drop into a dept dashboard.
+ * Only applies to the default landing ("/"); a real deep link still wins.
+ * Returns true if a redirect was issued (the caller should stop).
+ */
+async function redirectSuperAdminToPlatform(
+  userId: string,
+  next: string,
+): Promise<void> {
+  if (next !== "/") return;
+  const profile = await prisma.profile.findUnique({
+    where: { id: userId },
+    select: { isSuperAdmin: true },
+  });
+  if (!profile?.isSuperAdmin) return;
+  const cookieStore = await cookies();
+  cookieStore.set("pen_active_dept", "", { path: "/", maxAge: 0 });
+  redirect("/platform");
+}
 
 async function getOrigin() {
   const headersList = await headers();
@@ -52,13 +74,20 @@ async function signInWithPassword(formData: FormData) {
   const nextQuery = next !== "/" ? `&next=${encodeURIComponent(next)}` : "";
 
   if (!email || !password) {
-    redirect(`/login?error=${encodeURIComponent("Email and password are required")}${nextQuery}`);
+    redirect(
+      `/login?error=${encodeURIComponent("Email and password are required")}${nextQuery}`,
+    );
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
+  if (error)
+    redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
+  if (data.user) await redirectSuperAdminToPlatform(data.user.id, next);
   redirect(next);
 }
 
@@ -75,7 +104,10 @@ export default async function LoginPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect(next);
+  if (user) {
+    await redirectSuperAdminToPlatform(user.id, next);
+    redirect(next);
+  }
 
   return (
     <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
@@ -91,7 +123,7 @@ export default async function LoginPage({
 
         <div className="h-8" />
 
-        <h1 className="sts-text-admin-title leading-normal">
+        <h1 className="sts-text-admin-title text-md leading-snug">
           Welcome to Support Ticketing System
         </h1>
 

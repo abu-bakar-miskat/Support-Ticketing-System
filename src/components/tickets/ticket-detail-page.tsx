@@ -73,9 +73,10 @@ import {
 } from "@/lib/api/tickets";
 import { extractAttachmentIdsFromHtml } from "@/lib/tiptap/attachment-utils";
 import { CommentItem } from "@/components/tickets/comment-item";
-import { UnifiedReplyComposer } from "@/components/tickets/unified-reply-composer";
+import { CommentInput } from "@/components/tickets/comment-input";
 import {
   CustomerMessageItem,
+  CustomerReplyComposer,
   type MessageData,
   type MessageNote,
 } from "@/components/tickets/customer-reply";
@@ -794,8 +795,8 @@ export function TicketDetailPage({
     setDraftBannerVisible(isDraft);
   }, [isDraft]);
   const [activeTab, setActiveTab] = useState<
-    "conversation" | "activity"
-  >("conversation");
+    "conversation" | "internal" | "activity"
+  >(projectKind === "support" ? "conversation" : "internal");
   const [activityLimit, setActivityLimit] = useState(10);
   const [copied, setCopied] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
@@ -1006,40 +1007,15 @@ export function TicketDetailPage({
     );
   }, [liveComments]);
 
-  // CM-01: comments and customer messages merged into one chronological feed.
-  const unifiedFeed = useMemo(() => {
-    type FeedItem =
-      | { kind: "comment"; key: string; createdAt: string; comment: CommentData; parentRef: (typeof flatComments)[number]["parentRef"] }
-      | { kind: "message"; key: string; createdAt: string; message: MessageData };
-    const items: FeedItem[] = [
-      ...flatComments.map(({ comment, parentRef }) => ({
-        kind: "comment" as const,
-        key: `c-${comment.id}`,
-        createdAt: comment.createdAt,
-        comment,
-        parentRef,
-      })),
-      ...sortedMessages.map((message) => ({
-        kind: "message" as const,
-        key: `m-${message.id}`,
-        createdAt: message.createdAt,
-        message,
-      })),
-    ];
-    return items.sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    );
-  }, [flatComments, sortedMessages]);
-
   // Jump to the newest item (bottom, by the sticky composer) whenever the
-  // conversation tab opens or a comment/message arrives.
+  // conversation or internal-comment tab opens or a comment/message arrives.
   useEffect(() => {
-    if (activeTab !== "conversation") return;
+    if (activeTab !== "conversation" && activeTab !== "internal") return;
     const id = requestAnimationFrame(() =>
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [activeTab, unifiedFeed.length]);
+  }, [activeTab, sortedMessages.length, flatComments.length]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -3255,7 +3231,13 @@ export function TicketDetailPage({
                   {
                     key: "conversation" as const,
                     label: "Conversation",
-                    count: unifiedFeed.length,
+                    count: sortedMessages.length,
+                    show: isSupport,
+                  },
+                  {
+                    key: "internal" as const,
+                    label: "Comment",
+                    count: flatComments.length,
                     show: true,
                   },
                   {
@@ -3316,51 +3298,99 @@ export function TicketDetailPage({
               <TicketTabContentHydrating activeTab={activeTab} />
             ) : activeTab === "conversation" ? (
               <div className="flex flex-col">
-                {/* CM-01: customer messages and staff comments/notes merged into
-                    one chronological feed, visually distinguished by kind. */}
-                {unifiedFeed.length === 0 ? (
+                {/* Customer email chain only — internal comments live in their
+                    own tab so this stays a clean record of the conversation. */}
+                {sortedMessages.length === 0 ? (
                   <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
                     <Mail className="size-5 text-sts-subtle/50" />
                     <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
                       Nothing here yet
                     </p>
                     <p className="font-sans text-[11.5px] text-sts-subtle">
-                      Post a note or send the first reply below.
+                      Send the first reply below.
                     </p>
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-sts-card-border">
-                    {unifiedFeed.map((item) =>
-                      item.kind === "message" ? (
-                        <div key={item.key} className="py-8">
-                          <CustomerMessageItem
-                            message={item.message}
-                            ticketId={dbId}
-                            subDepartmentMembers={mentionableUsers}
-                            onNoteAdded={handleNoteAdded}
-                            onNoteChanged={handleNoteChanged}
-                            onNoteRemoved={handleNoteRemoved}
-                          />
-                        </div>
-                      ) : (
-                        <div key={item.key} className="py-4">
-                          <CommentItem
-                            comment={item.comment}
-                            ticketId={dbId}
-                            subDepartmentMembers={mentionableUsers}
-                            parentRef={item.parentRef}
-                            onReplySubmitted={(reply) => handleReplyAdded(item.comment.id, reply)}
-                          />
-                        </div>
-                      ),
-                    )}
+                    {sortedMessages.map((message) => (
+                      <div key={`m-${message.id}`} className="py-8">
+                        <CustomerMessageItem
+                          message={message}
+                          ticketId={dbId}
+                          subDepartmentMembers={mentionableUsers}
+                          onNoteAdded={handleNoteAdded}
+                          onNoteChanged={handleNoteChanged}
+                          onNoteRemoved={handleNoteRemoved}
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* CM-02: one composer, author chooses Internal Note or Reply
-                    before posting — pinned to the bottom, chat-style. */}
+                {/* Reply composer — pinned to the bottom, chat-style. Internal
+                    comments are posted from the Internal Comment tab instead. */}
                 <div className="sticky bottom-0 z-10 -mx-1 border-t border-sts-card-border bg-sts-bg px-1 pb-2 pt-3">
-                  <UnifiedReplyComposer
+                  {customerReply.enabled && customerReply.customerEmail ? (
+                    <CustomerReplyComposer
+                      ticketId={dbId}
+                      customerName={customerReply.customerName}
+                      customerEmail={customerReply.customerEmail}
+                      onSent={(m) => setLiveMessages((prev) => [...prev, m])}
+                      onSentConfirmed={(tempId, real) =>
+                        setLiveMessages((prev) =>
+                          prev.some((m) => m.id === real.id)
+                            ? prev.filter((m) => m.id !== tempId)
+                            : prev.map((m) => (m.id === tempId ? real : m)),
+                        )
+                      }
+                      onSentFailed={(tempId) =>
+                        setLiveMessages((prev) => prev.filter((m) => m.id !== tempId))
+                      }
+                    />
+                  ) : (
+                    <p className="py-2 text-center font-sans text-[11.5px] text-sts-subtle">
+                      Replies are disabled for this ticket. Post an internal
+                      comment from the Internal Comment tab.
+                    </p>
+                  )}
+                </div>
+
+                {/* Bottom anchor — scrolled into view to reveal the newest item */}
+                <div ref={chatBottomRef} />
+              </div>
+            ) : activeTab === "internal" ? (
+              <div className="flex flex-col">
+                {/* Staff-only internal comments, separated from the customer
+                    email chain. */}
+                {flatComments.length === 0 ? (
+                  <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
+                    <MessageSquare className="size-5 text-sts-subtle/50" />
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                      No internal comments yet
+                    </p>
+                    <p className="font-sans text-[11.5px] text-sts-subtle">
+                      Add an internal comment below — only staff can see these.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-sts-card-border">
+                    {flatComments.map(({ comment, parentRef }) => (
+                      <div key={`c-${comment.id}`} className="py-4">
+                        <CommentItem
+                          comment={comment}
+                          ticketId={dbId}
+                          subDepartmentMembers={mentionableUsers}
+                          parentRef={parentRef}
+                          onReplySubmitted={(reply) => handleReplyAdded(comment.id, reply)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Internal comment composer — pinned to the bottom. */}
+                <div className="sticky bottom-0 z-10 -mx-1 border-t border-sts-card-border bg-sts-bg px-1 pb-2 pt-3">
+                  <CommentInput
                     ticketId={dbId}
                     subDepartmentMembers={mentionableUsers}
                     onCommentAdded={(comment) => {
@@ -3373,20 +3403,6 @@ export function TicketDetailPage({
                         return next;
                       });
                     }}
-                    replyEnabled={customerReply.enabled}
-                    customerName={customerReply.customerName}
-                    customerEmail={customerReply.customerEmail}
-                    onSent={(m) => setLiveMessages((prev) => [...prev, m])}
-                    onSentConfirmed={(tempId, real) =>
-                      setLiveMessages((prev) =>
-                        prev.some((m) => m.id === real.id)
-                          ? prev.filter((m) => m.id !== tempId)
-                          : prev.map((m) => (m.id === tempId ? real : m)),
-                      )
-                    }
-                    onSentFailed={(tempId) =>
-                      setLiveMessages((prev) => prev.filter((m) => m.id !== tempId))
-                    }
                   />
                 </div>
 

@@ -30,6 +30,8 @@ export default async function Page({
 }) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
+  // Activity is hidden from the agent role (nav link is hidden too).
+  if (profile.role === "agent") redirect("/");
 
   return (
     <Suspense fallback={<ActivityPageSkeleton />}>

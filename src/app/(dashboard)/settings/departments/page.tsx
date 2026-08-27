@@ -104,6 +104,7 @@ export default async function SettingsDepartmentsRoute() {
       name: d.name,
       isHub: d.isHub,
       type: d.type,
+      setupCompletedAt: d.setupCompletedAt ? d.setupCompletedAt.toISOString() : null,
       _count: { ...d._count, members: totalMembers },
       managers: d.managers.map((m) => ({
         id: m.id,

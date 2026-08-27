@@ -47,7 +47,7 @@ export function UnifiedReplyComposer({
       <div className="inline-flex w-fit rounded-md border border-sts-card-border p-0.5">
         {(
           [
-            { key: "note" as const, label: "Internal Note" },
+            { key: "note" as const, label: "Internal Comment" },
             { key: "reply" as const, label: "Reply" },
           ]
         ).map((opt) => (

@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, AlertTriangle,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -33,6 +33,7 @@ import {
   updateAdminDepartment,
   deleteAdminDepartment,
   createAdminSubDepartment,
+  completeAdminDepartmentSetup,
 } from "@/lib/api/admin";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -72,6 +73,9 @@ export type DepartmentRow = {
   name: string;
   isHub: boolean;
   type?: string;
+  /** DS-08: null until an admin/manager completes the initial setup review.
+   * While null, the department rejects ticket creation on every path. */
+  setupCompletedAt?: string | null;
   _count: { subDepartments: number; projects?: number; members?: number };
   managers: DeptManager[];
   accessGrants: AccessGrant[];
@@ -720,6 +724,7 @@ function DepartmentCard({
   onRename,
   onDelete,
   onEnterWorkspace,
+  onCompleteSetup,
 }: {
   dept: DepartmentRow;
   allUsers: UserOption[];
@@ -727,6 +732,7 @@ function DepartmentCard({
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => void;
   onEnterWorkspace?: (id: string) => void;
+  onCompleteSetup: (id: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(dept.name);
@@ -742,6 +748,23 @@ function DepartmentCard({
   const [membersExpanded, setMembersExpanded] = useState(false);
   const [managersExpanded, setManagersExpanded] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
+  const [completingSetup, setCompletingSetup] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+
+  const needsSetup = dept.setupCompletedAt == null;
+
+  async function completeSetup() {
+    setCompletingSetup(true);
+    setSetupError(null);
+    try {
+      await onCompleteSetup(dept.id);
+      // Parent refreshes the route on success — the banner disappears when the
+      // row reloads with a non-null setupCompletedAt.
+    } catch (e) {
+      setSetupError(e instanceof Error ? e.message : "Failed to complete setup");
+      setCompletingSetup(false);
+    }
+  }
 
   async function saveEdit() {
     if (!editName.trim()) return;
@@ -900,7 +923,49 @@ function DepartmentCard({
           onClose={() => setShowGrantModal(false)}
         />
       )}
-      <div className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
+      <div className={cn(
+        "flex flex-col rounded-2xl border bg-sts-card",
+        needsSetup ? "border-amber-400/60 dark:border-amber-500/40" : "border-sts-card-border",
+      )}>
+
+        {/* ── Setup-required banner (DS-08) ── */}
+        {needsSetup && (
+          <div className="flex flex-col gap-2 rounded-t-2xl border-b border-amber-400/50 bg-amber-50/70 px-5 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0 flex-1">
+                <p className="font-sans text-[12px] font-semibold text-amber-800 dark:text-amber-300">
+                  Setup not complete
+                </p>
+                <p className="mt-0.5 font-sans text-[11.5px] leading-snug text-amber-700/90 dark:text-amber-400/80">
+                  This department can&apos;t accept tickets — from support forms, mailboxes, or manual
+                  creation — until its initial setup review is marked complete.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={completingSetup}
+                onClick={completeSetup}
+                className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-amber-500 px-3 font-sans text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:text-amber-950"
+              >
+                {completingSetup ? (
+                  <>
+                    <span className="size-3 animate-spin rounded-full border-2 border-white/40 border-t-white dark:border-amber-950/40 dark:border-t-amber-950" />
+                    Completing…
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5" strokeWidth={2.5} />
+                    Complete setup
+                  </>
+                )}
+              </button>
+            </div>
+            {setupError && (
+              <p className="pl-[26px] font-sans text-[11.5px] text-red-600 dark:text-red-400">{setupError}</p>
+            )}
+          </div>
+        )}
 
         {/* ── Card header ── */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -1307,6 +1372,14 @@ export function SettingsDepartmentsPage({
     startTransition(() => router.refresh());
   }
 
+  // DS-08: mark setup review complete, then refresh so the row reloads with a
+  // non-null setupCompletedAt (which clears the card's banner). Errors are
+  // surfaced by the card itself, so let them propagate.
+  async function handleCompleteSetup(id: string) {
+    await completeAdminDepartmentSetup(id);
+    startTransition(() => router.refresh());
+  }
+
   return (
     <>
       <ConfirmDialog
@@ -1373,6 +1446,7 @@ export function SettingsDepartmentsPage({
             onRename={handleRename}
             onDelete={setConfirmDeleteId}
             onEnterWorkspace={onEnterWorkspace}
+            onCompleteSetup={handleCompleteSetup}
           />
         </div>
       ) : (
@@ -1386,6 +1460,7 @@ export function SettingsDepartmentsPage({
               onRename={handleRename}
               onDelete={setConfirmDeleteId}
               onEnterWorkspace={onEnterWorkspace}
+              onCompleteSetup={handleCompleteSetup}
             />
           ))}
         </div>

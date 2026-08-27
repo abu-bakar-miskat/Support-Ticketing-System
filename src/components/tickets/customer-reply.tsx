@@ -499,7 +499,7 @@ function MessageNotes({
             <div className="flex items-center gap-1.5">
               <StickyNote className="size-3 shrink-0 text-amber-600 dark:text-amber-400" />
               <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                Internal note
+                Internal comment
               </span>
               <span className="font-sans text-[11px] font-medium text-sts-foreground">
                 {n.authorName}
@@ -516,7 +516,7 @@ function MessageNotes({
                       setEditingId(n.id);
                       setEditValue(n.body);
                     }}
-                    title="Edit note"
+                    title="Edit comment"
                     className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-card hover:text-sts-foreground"
                   >
                     <Pencil className="size-3" />
@@ -524,7 +524,7 @@ function MessageNotes({
                   <button
                     type="button"
                     onClick={() => removeNote(n.id)}
-                    title="Delete note"
+                    title="Delete comment"
                     className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red"
                   >
                     <Trash2 className="size-3" />
@@ -578,7 +578,7 @@ function MessageNotes({
             subDepartmentMembers={subDepartmentMembers}
             rows={2}
             autoFocus
-            placeholder="Add an internal note — use @ to mention a teammate…"
+            placeholder="Add an internal comment — use @ to mention a teammate…"
             onSubmit={() => void addNote()}
             onCancel={() => {
               setComposing(false);
@@ -594,7 +594,7 @@ function MessageNotes({
               className="flex h-6 items-center gap-1 rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? <LoadingSpinner className="size-3" /> : null}
-              Add note
+              Add comment
             </button>
             <button
               type="button"
@@ -615,7 +615,7 @@ function MessageNotes({
           className="flex w-fit items-center gap-1 rounded-md px-1 py-0.5 font-sans text-[11px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
         >
           <Plus className="size-3" />
-          Add internal note
+          Add internal comment
         </button>
       )}
     </div>

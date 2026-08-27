@@ -179,6 +179,7 @@ export default async function DepartmentsPage() {
       name: d.name,
       isHub: d.isHub,
       type: d.type,
+      setupCompletedAt: d.setupCompletedAt ? d.setupCompletedAt.toISOString() : null,
       _count: {
         subDepartments: d._count.subDepartments,
         projects: d._count.projects,

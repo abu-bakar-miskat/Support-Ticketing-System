@@ -181,29 +181,61 @@ export async function getTasksMetaData(
         })),
   );
 
-  const membersPromise = (async () => {
+  // The department that scopes members and the sub-department picker. Resolved
+  // once and shared so both stay consistent (assignees are department-level).
+  const resolvedDeptIdPromise = (async (): Promise<string | null> => {
     const deptId = activeDeptId ?? deptScope?.activeDeptId ?? null;
-
-    if (!deptId && profile.subDepartmentId) {
+    if (deptId) return deptId;
+    if (profile.subDepartmentId) {
       const subDepartment = await prisma.subDepartment.findUnique({
         where: { id: profile.subDepartmentId },
         select: { departmentId: true },
       });
-      return fetchProjectDepartmentPeople(subDepartment?.departmentId ?? null);
+      return subDepartment?.departmentId ?? null;
     }
-
-    if (!deptId) return [];
-
-    return fetchProjectDepartmentPeople(deptId);
+    return null;
   })();
 
-  const [availableProjects, availableModules, availableMembers, subDepartmentStatuses] =
-    await Promise.all([
-      projectsPromise,
-      modulesPromise,
-      membersPromise,
-      getSubDepartmentStatuses(statusSubDepartmentId),
-    ]);
+  const membersPromise = resolvedDeptIdPromise.then((deptId) =>
+    deptId ? fetchProjectDepartmentPeople(deptId) : [],
+  );
+
+  // Sub-departments in the current department, for the create-task "Board" picker.
+  const subDepartmentsPromise = resolvedDeptIdPromise.then((deptId) =>
+    deptId
+      ? prisma.subDepartment.findMany({
+          where: { departmentId: deptId },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [],
+  );
+
+  // Name of the current department scope, shown as read-only context in the
+  // create-task modal's Department field.
+  const departmentNamePromise = resolvedDeptIdPromise.then((deptId) =>
+    deptId
+      ? prisma.department
+          .findUnique({ where: { id: deptId }, select: { name: true } })
+          .then((d) => d?.name ?? null)
+      : null,
+  );
+
+  const [
+    availableProjects,
+    availableModules,
+    availableMembers,
+    subDepartmentStatuses,
+    availableSubDepartments,
+    departmentName,
+  ] = await Promise.all([
+    projectsPromise,
+    modulesPromise,
+    membersPromise,
+    getSubDepartmentStatuses(statusSubDepartmentId),
+    subDepartmentsPromise,
+    departmentNamePromise,
+  ]);
 
   return {
     subDepartmentStatuses,
@@ -211,5 +243,7 @@ export async function getTasksMetaData(
     availableModules,
     availableMembers,
     defaultSubDepartmentId: statusSubDepartmentId ?? profile.subDepartmentId ?? null,
+    availableSubDepartments,
+    departmentName,
   };
 }

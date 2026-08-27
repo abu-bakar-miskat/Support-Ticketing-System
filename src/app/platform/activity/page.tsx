@@ -16,5 +16,17 @@ export default async function PlatformActivityPage() {
     select: { id: true, name: true, slug: true },
   })
 
-  return <PlatformActivityLog tenants={tenants} />
+  // Actor filter options: every profile that has authored an audited action.
+  // actorId has no Prisma relation on AuditEvent, so resolve names separately.
+  const actorRows = await prisma.auditEvent.findMany({
+    distinct: ["actorId"],
+    select: { actorId: true },
+  })
+  const actorProfiles = await prisma.profile.findMany({
+    where: { id: { in: actorRows.map((a) => a.actorId) } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, email: true },
+  })
+
+  return <PlatformActivityLog tenants={tenants} actors={actorProfiles} />
 }

@@ -45,13 +45,27 @@ export async function GET(request: NextRequest) {
   }
 
   const targetType = sp.get("targetType")
+  const actorId = sp.get("actorId")
   const take = Math.min(Number(sp.get("take")) || 50, MAX_TAKE)
   const cursor = sp.get("cursor")
+
+  // Optional inclusive date range. `from`/`to` are ISO date strings (YYYY-MM-DD
+  // or full ISO). Invalid values are ignored rather than 400-ing so a stray
+  // query param never blanks the log.
+  const from = sp.get("from")
+  const to = sp.get("to")
+  const fromDate = from ? new Date(from) : null
+  const toDate = to ? new Date(to) : null
+  const createdAtFilter: { gte?: Date; lte?: Date } = {}
+  if (fromDate && !Number.isNaN(fromDate.getTime())) createdAtFilter.gte = fromDate
+  if (toDate && !Number.isNaN(toDate.getTime())) createdAtFilter.lte = toDate
 
   const events = await prisma.auditEvent.findMany({
     where: {
       ...(tenantFilter ? { tenantId: tenantFilter } : {}),
       ...(targetType ? { targetType } : {}),
+      ...(actorId ? { actorId } : {}),
+      ...(createdAtFilter.gte || createdAtFilter.lte ? { createdAt: createdAtFilter } : {}),
     },
     orderBy: { createdAt: "desc" },
     take,

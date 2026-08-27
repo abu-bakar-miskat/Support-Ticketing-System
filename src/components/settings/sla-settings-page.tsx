@@ -41,6 +41,16 @@ type RawPerson = {
   subDepartment?: { name?: string | null; department?: { name?: string | null } | null } | null;
 };
 
+function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={cn("animate-pulse rounded-lg bg-sts-surface", height)} />
+      ))}
+    </div>
+  );
+}
+
 function toMember(p: RawPerson): Person {
   return {
     id: p.id,
@@ -337,7 +347,7 @@ export function SlaSettingsPage({
         </div>
 
         {policies === null ? (
-          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+          <SkeletonRows count={3} height="h-44" />
         ) : forms.length === 0 && noFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
             <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -388,7 +398,7 @@ export function SlaSettingsPage({
       <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
         <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-sts-foreground">Working hours (SLA-04)</h2>
         {!slaConfig || !businessHours ? (
-          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+          <SkeletonRows count={4} height="h-10" />
         ) : (
           <div className="flex flex-col gap-4">
             <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">

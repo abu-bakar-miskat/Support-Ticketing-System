@@ -18,6 +18,8 @@ import {
   SlidersHorizontal,
   Loader2,
   Building2,
+  CalendarDays,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -49,6 +51,40 @@ const TARGET_TYPES = [
 const ALL_OPTION = "__all__";
 
 type TenantOption = { id: string; name: string; slug: string };
+type ActorOption = { id: string; name: string | null; email: string };
+
+// ── Date range presets ──────────────────────────────────────────────────────
+// Mirrors the department activity feed. "all" applies no bound; the others feed
+// server-side `from`/`to` filters so counts/pagination reflect the full range.
+
+type RangePreset = "all" | "today" | "7d" | "30d" | "custom";
+const RANGE_PRESETS: { id: RangePreset; label: string }[] = [
+  { id: "all", label: "All time" },
+  { id: "today", label: "Today" },
+  { id: "7d", label: "7 days" },
+  { id: "30d", label: "30 days" },
+  { id: "custom", label: "Custom" },
+];
+
+/** Resolve a preset (or custom dates) to inclusive ISO `from`/`to` bounds. */
+function resolveRange(
+  preset: RangePreset,
+  customFrom: string,
+  customTo: string,
+): { from: string; to: string } {
+  if (preset === "all") return { from: "", to: "" };
+  if (preset === "custom") {
+    return {
+      from: customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : "",
+      to: customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : "",
+    };
+  }
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (preset === "7d") start.setDate(start.getDate() - 6);
+  if (preset === "30d") start.setDate(start.getDate() - 29);
+  return { from: start.toISOString(), to: now.toISOString() };
+}
 
 type AuditEvent = {
   id: string;
@@ -213,11 +249,21 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
 
 // ── Page ────────────────────────────────────────────────────────────────────────
 
-export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
+export function PlatformActivityLog({
+  tenants,
+  actors,
+}: {
+  tenants: TenantOption[];
+  actors: ActorOption[];
+}) {
   // Default to "All tenants" ("") so the log is never blank just because the
   // first-alphabetical tenant happens to have no audit events.
   const [tenantId, setTenantId] = useState<string>("");
   const [targetType, setTargetType] = useState<string>("");
+  const [actorId, setActorId] = useState<string>("");
+  const [preset, setPreset] = useState<RangePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [search, setSearch] = useState("");
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -228,11 +274,19 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
 
   const showTenant = tenantId === "";
   const selectedTenant = tenants.find((t) => t.id === tenantId);
+  const selectedActor = actors.find((a) => a.id === actorId);
+
+  // "custom" only takes effect once both ends are set; otherwise it applies no
+  // bound (same as "all"), so the feed never blanks while a date is half-typed.
+  const { from, to } = resolveRange(preset, customFrom, customTo);
 
   async function fetchPage(after: string | null) {
     const params = new URLSearchParams({ take: "50" });
     if (tenantId) params.set("tenantId", tenantId);
     if (targetType) params.set("targetType", targetType);
+    if (actorId) params.set("actorId", actorId);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     if (after) params.set("cursor", after);
     const res = await fetch(`/api/admin/audit-events?${params}`);
     if (!res.ok) throw new Error("Failed to load activity");
@@ -262,7 +316,7 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, targetType, refreshKey]);
+  }, [tenantId, targetType, actorId, from, to, refreshKey]);
 
   async function loadMore() {
     if (!cursor) return;
@@ -302,12 +356,16 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
     return order.map((k) => ({ key: k, items: map.get(k) ?? [] })).filter((g) => g.items.length > 0);
   }, [filtered]);
 
-  const hasActiveFilter = !!(tenantId || targetType || search);
+  const hasActiveFilter = !!(tenantId || targetType || actorId || preset !== "all" || search);
 
   function clearFilters() {
     setSearch("");
     setTenantId("");
     setTargetType("");
+    setActorId("");
+    setPreset("all");
+    setCustomFrom("");
+    setCustomTo("");
   }
 
   return (
@@ -360,6 +418,25 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             </SelectContent>
           </Select>
 
+          <Select value={actorId || ALL_OPTION} onValueChange={(v) => setActorId(v === ALL_OPTION ? "" : v ?? "")}>
+            <SelectTrigger className="h-8 w-[180px]">
+              <span className="flex min-w-0 items-center gap-1.5 truncate font-sans text-[12px]">
+                <Users className="size-3 shrink-0 text-sts-subtle" />
+                <span className="truncate">{selectedActor ? (selectedActor.name ?? selectedActor.email) : "All actors"}</span>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_OPTION} className="font-sans text-[12px]">
+                All actors
+              </SelectItem>
+              {actors.map((a) => (
+                <SelectItem key={a.id} value={a.id} className="font-sans text-[12px]">
+                  {a.name ?? a.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
             <input
@@ -379,6 +456,51 @@ export function PlatformActivityLog({ tenants }: { tenants: TenantOption[] }) {
             <RotateCw className={cn("size-3.5", loading && "animate-spin")} />
             Refresh
           </button>
+        </div>
+
+        {/* Date range */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-3 border-t border-sts-card-border/50 pt-2.5">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="size-3.5 shrink-0 text-sts-subtle" />
+            <span className="font-sans text-[11.5px] font-medium text-sts-muted">Range</span>
+          </div>
+
+          <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+            {RANGE_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={loading}
+                onClick={() => setPreset(p.id)}
+                className={cn(
+                  "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
+                  preset === p.id
+                    ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
+                    : "text-sts-muted hover:text-sts-foreground",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {preset === "custom" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+              />
+              <span className="font-sans text-[11.5px] text-sts-subtle">to</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+              />
+            </div>
+          )}
         </div>
       </div>
 

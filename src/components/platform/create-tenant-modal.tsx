@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,7 +38,6 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchSeq = useRef(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +86,6 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
     e?.preventDefault();
     if (!name.trim() || submitting) return;
     setSubmitting(true);
-    setError(null);
 
     const createRes = await fetch("/api/admin/tenants", {
       method: "POST",
@@ -96,7 +95,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
     const created = await createRes.json().catch(() => ({}));
     if (!createRes.ok) {
       setSubmitting(false);
-      setError(created.error ?? "Failed to create tenant");
+      toast.error(created.error ?? "Failed to create tenant");
       return;
     }
 
@@ -109,7 +108,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
       if (!templateRes.ok) {
         const body = await templateRes.json().catch(() => ({}));
         setSubmitting(false);
-        setError(`Tenant created, but assigning the template failed: ${body.error ?? "unknown error"}`);
+        toast.error(`Tenant created, but assigning the template failed: ${body.error ?? "unknown error"}`);
         return;
       }
     }
@@ -124,11 +123,12 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
       if (!memberRes.ok) {
         const body = await memberRes.json().catch(() => ({}));
         setSubmitting(false);
-        setError(`Tenant created, but adding the admin failed: ${body.error ?? "unknown error"}`);
+        toast.error(`Tenant created, but adding the admin failed: ${body.error ?? "unknown error"}`);
         return;
       }
     }
 
+    toast.success(`${name.trim()} has been created.`);
     window.location.reload();
   }
 
@@ -254,11 +254,6 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
 
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
-              {error}
-            </div>
-          )}
         </form>
 
         <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-sts-card-border px-[22px]">

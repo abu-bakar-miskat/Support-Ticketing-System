@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest } from "@/lib/api-response"
 import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
+import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
 
 function slugify(name: string): string {
   return name
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       slug,
       name,
       type,
-      departments: { create: { name: "General" } },
+      departments: { create: { name: "Support" } },
       // Seed the creating admin as a member so the tenant isn't born empty —
       // otherwise nobody can be added to its departments (no bootstrap member
       // to grant membership from).
@@ -71,6 +72,22 @@ export async function POST(request: Request) {
     },
     select: { id: true, slug: true, name: true, type: true, status: true, createdAt: true },
   })
+
+  // Apply platform-wide new-tenant feature defaults: seed a disabled FeatureFlag
+  // row for any feature the platform admin has defaulted off. Flags are fail-open,
+  // so features left at their default (on) need no row.
+  const disabledKeys = await newTenantDisabledFeatureKeys()
+  if (disabledKeys.length > 0) {
+    await prisma.featureFlag.createMany({
+      data: disabledKeys.map((key) => ({
+        tenantId: tenant.id,
+        key,
+        enabled: false,
+        updatedById: profile!.id,
+      })),
+      skipDuplicates: true,
+    })
+  }
 
   return NextResponse.json(tenant, { status: 201 })
 }

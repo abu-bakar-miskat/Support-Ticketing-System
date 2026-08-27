@@ -91,6 +91,16 @@ const inputCls =
 
 const actionLabel = (t: RuleActionType) => ACTION_TYPES.find((x) => x.value === t)?.label ?? t;
 
+function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={cn("animate-pulse rounded-lg bg-sts-surface", height)} />
+      ))}
+    </div>
+  );
+}
+
 function conditionsSummary(c: ConditionGroup): string {
   if (c.conditions.length === 0) return "Any ticket";
   return `${c.combinator === "AND" ? "All" : "Any"} of ${c.conditions.length} condition${c.conditions.length === 1 ? "" : "s"}`;
@@ -394,7 +404,7 @@ export function RulesSettingsPage({
       {formWise ? (
         <div className="mb-8 flex flex-col gap-5">
           {forms === null ? (
-            <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+            <SkeletonRows count={2} height="h-44" />
           ) : forms.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-12 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -458,7 +468,7 @@ export function RulesSettingsPage({
           </div>
 
           {rules === null ? (
-            <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+            <SkeletonRows count={3} height="h-[92px]" />
           ) : rules.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-sts-card-border py-10 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -669,7 +679,7 @@ function FormRulesTable({
       </div>
 
       {rules === undefined ? (
-        <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+        <SkeletonRows count={2} height="h-10" />
       ) : rules.length === 0 ? (
         <div className="rounded-xl border border-dashed border-sts-card-border px-4 py-8 text-center">
           <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No rules for this form yet</p>

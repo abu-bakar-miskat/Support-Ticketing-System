@@ -39,6 +39,10 @@ export type TasksMetaResponse = {
     role: string;
   }[];
   defaultSubDepartmentId: string | null;
+  /** Sub-departments in the current department, for the "Board" picker when creating a task. */
+  availableSubDepartments: { id: string; name: string }[];
+  /** Name of the current department scope, shown as read-only context in the create-task modal. */
+  departmentName: string | null;
 };
 
 export type AllTasksFilters = {

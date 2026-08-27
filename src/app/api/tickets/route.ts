@@ -202,6 +202,18 @@ export async function POST(request: Request) {
     resolvedSubDepartmentId = profile.subDepartmentId
   }
 
+  // A teamless platform super-admin has no home team to fall back on. Rather
+  // than silently routing the ticket to an arbitrary team (previously the
+  // alphabetically-first team's "Miscellaneous" project — impossible to
+  // discover afterwards), require an explicit team/project pick so the super
+  // admin always knows where the ticket lands.
+  if (!resolvedSubDepartmentId && profile.isSuperAdmin) {
+    return NextResponse.json(
+      { error: "Select a team or project for this ticket" },
+      { status: 422 },
+    )
+  }
+
   if (!resolvedSubDepartmentId) {
     return NextResponse.json(
       {
@@ -225,6 +237,7 @@ export async function POST(request: Request) {
   }
 
   const subDepartmentAllowed =
+    profile.isSuperAdmin ||
     (await subDepartmentInScope(profile, resolvedSubDepartmentId)) ||
     (projectId != null && (await projectInScope(profile, projectId)))
 

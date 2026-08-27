@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
 import {
@@ -14,6 +15,7 @@ import {
   Clock,
   Loader2,
   Settings2,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -460,6 +462,12 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </span>
           </div>
         </div>
+        <Link
+          href="/department/activity"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg"
+        >
+          <Activity className="size-3.5 shrink-0" /> Activity
+        </Link>
       </div>
 
       {/* Managers */}

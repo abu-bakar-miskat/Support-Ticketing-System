@@ -247,6 +247,20 @@ export async function deleteAdminDepartment(id: string) {
   if (!res.ok) throw new Error("Failed to delete department")
 }
 
+/** DS-08: mark the department's initial setup review complete, unblocking ticket
+ * creation on every path. Idempotent server-side — safe to call more than once. */
+export async function completeAdminDepartmentSetup(deptId: string) {
+  const res = await fetch(`/api/admin/departments/${deptId}/setup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? "Failed to complete setup")
+  }
+  return res.json()
+}
+
 export async function assignDepartmentManager(deptId: string, userId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/managers`, {
     method: "POST",

@@ -386,6 +386,8 @@ export function ActivityPage({
   countByAction,
   canFilterByMember = true,
   ownActivityOnly = false,
+  basePath = "/activity",
+  scope = "",
 }: {
   initialItems: ActivityItem[];
   initialHasMore: boolean;
@@ -406,6 +408,10 @@ export function ActivityPage({
   countByAction: Record<string, number>;
   canFilterByMember?: boolean;
   ownActivityOnly?: boolean;
+  /** Route this feed navigates to on filter changes. Defaults to /activity. */
+  basePath?: string;
+  /** Activity scope for Load-more (passed through to /api/activity). "" = active dept. */
+  scope?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -452,7 +458,7 @@ export function ActivityPage({
       if (f) p.set("from", f);
       if (t) p.set("to",   t);
     }
-    startTransition(() => router.replace(`/activity?${p.toString()}`));
+    startTransition(() => router.replace(`${basePath}?${p.toString()}`));
   }
 
   function onPresetChange(p: RangePreset) {
@@ -490,6 +496,7 @@ export function ActivityPage({
       if (currentActorId) p.set("actorId",   currentActorId);
       if (currentProjectId) p.set("projectId", currentProjectId);
       if (currentAction)  p.set("action",    currentAction);
+      if (scope)          p.set("scope",     scope);
       p.set("cursor", cursor);
       const res = await fetch(`/api/activity?${p.toString()}`);
       if (!res.ok) return;

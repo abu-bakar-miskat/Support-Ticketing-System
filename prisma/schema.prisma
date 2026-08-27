@@ -1453,6 +1453,21 @@ model AuditEvent {
   @@index([createdAt])
 }
 
+// Platform-wide (global) configuration. Unlike FeatureFlag and almost all other
+// config in this schema — which is tenant- or department-scoped — these are
+// singleton defaults for the entire platform (e.g. platform display name,
+// support contact, feature defaults applied to newly-created tenants). Stored
+// as a JSON key/value bag so adding a new setting never needs a migration;
+// see lib/platform-settings.ts for the typed accessors and defaults. `key` is
+// the PK. `updatedById` is a bare Uuid (no FK) matching AuditEvent.actorId —
+// the actor may later be deleted.
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?  @db.Uuid
+}
+
 enum AgreementRenewalStatus {
   ACTIVE
   PENDING_RENEWAL

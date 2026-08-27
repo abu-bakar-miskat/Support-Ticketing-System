@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 const MEMBER_ROLES = ["admin", "manager", "sub_manager", "agent"] as const
@@ -29,6 +31,7 @@ export function InviteMemberDialog({
   departments: { id: string; name: string }[]
   triggerClassName?: string
 }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<string>("agent")
@@ -36,7 +39,6 @@ export function InviteMemberDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
-  const [added, setAdded] = useState<string | null>(null)
 
   const needsDepartments = role !== "admin"
 
@@ -46,7 +48,6 @@ export function InviteMemberDialog({
     setSelectedDepts([])
     setError(null)
     setInviteLink(null)
-    setAdded(null)
   }
 
   function toggleDept(id: string) {
@@ -64,7 +65,6 @@ export function InviteMemberDialog({
     setBusy(true)
     setError(null)
     setInviteLink(null)
-    setAdded(null)
     const res = await fetch(`/api/admin/tenants/${tenantId}/members`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,9 +77,10 @@ export function InviteMemberDialog({
       return
     }
     if (body.added) {
-      setAdded(`${body.member?.name || value} added as ${roleLabel(role)}.`)
-      // Reflect the new member/stat counts.
-      setTimeout(() => window.location.reload(), 700)
+      toast.success(`${body.member?.name || value} added as ${roleLabel(role)}.`)
+      setOpen(false)
+      // Reflect the new member/stat counts without a full reload (keeps the toast alive).
+      router.refresh()
     } else if (body.invited) {
       setInviteLink(body.acceptPath)
     }
@@ -127,11 +128,6 @@ export function InviteMemberDialog({
               {error && (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12px] text-destructive">
                   {error}
-                </div>
-              )}
-              {added && (
-                <div className="rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12px] text-sts-green">
-                  {added}
                 </div>
               )}
 

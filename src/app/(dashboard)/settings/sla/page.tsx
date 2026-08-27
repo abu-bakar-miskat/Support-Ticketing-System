@@ -36,10 +36,20 @@ export default async function SettingsSlaRoute() {
 
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
   });
   if (!department) redirect("/settings/departments");
   if (!canManageDeptCalendar(profile, department.id)) redirect("/settings");
 
-  return <SlaSettingsPage departmentId={department.id} departmentName={department.name} />;
+  return (
+    <SlaSettingsPage
+      departmentId={department.id}
+      departmentName={department.name}
+      subDepartments={department.subDepartments}
+    />
+  );
 }

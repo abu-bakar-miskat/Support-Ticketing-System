@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 export default async function TemplatesCataloguePage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  if (profile.role !== "admin") redirect("/settings")
+  if (!profile.isSuperAdmin) redirect("/settings")
 
   const catalogue = await listCatalogueForTenant(profile.activeTenantId ?? "__no_tenant__")
 

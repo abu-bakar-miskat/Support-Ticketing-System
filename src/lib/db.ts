@@ -271,6 +271,18 @@ function isMaxConnectionsError(err: unknown): boolean {
   )
 }
 
+function isTransactionAbortedError(err: unknown): boolean {
+  // P2028 "Transaction not found / obtained before disconnecting": the
+  // connection pinned to an in-flight interactive transaction was torn down
+  // underneath it — by a concurrent recreatePool()'s oldPool.end(), or by the
+  // HMR-triggered $disconnect() in getPrisma() when the client is rebuilt after
+  // a schema/version change. The transaction rolls back atomically, so nothing
+  // committed and replaying the whole closure on a fresh client is safe.
+  if (!err || typeof err !== "object") return false
+  const e = err as Record<string, unknown>
+  return (e.code ?? e.errorCode) === "P2028"
+}
+
 function isConnectionError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false
   const e = err as Record<string, unknown>
@@ -438,6 +450,15 @@ export const prisma = new Proxy({} as PrismaInstance, {
             await recreatePool()
             const fresh = getPrisma() as unknown as PrismaInstance
             return await (fresh[prop as keyof PrismaInstance] as (...a: unknown[]) => unknown).bind(fresh)(...args)
+          }
+          // Only the interactive (callback) form is safely replayable: its closure
+          // re-runs cleanly, whereas the batch form's args are PrismaPromises already
+          // bound to the dead client. Replay once on a fresh client; a second P2028
+          // propagates.
+          if (prop === "$transaction" && isTransactionAbortedError(err) && typeof args[0] === "function") {
+            console.warn("[db] P2028 transaction aborted mid-flight — replaying on a fresh client")
+            const fresh = getPrisma() as unknown as PrismaInstance
+            return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...args)
           }
           throw err
         }

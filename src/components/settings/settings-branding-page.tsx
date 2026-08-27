@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
+import { EmailIdentityCard } from "./settings-email-identity"
+import type { DeptOption } from "./settings-email-templates-page"
 
 export function SettingsBrandingPage({
   tenantName,
   initialBranding,
+  departments = [],
 }: {
   tenantName: string
   initialBranding: TenantBranding
+  departments?: DeptOption[]
 }) {
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
@@ -102,6 +106,8 @@ export function SettingsBrandingPage({
           </Button>
         </form>
       </section>
+
+      <EmailIdentityCard departments={departments} />
     </div>
   )
 }

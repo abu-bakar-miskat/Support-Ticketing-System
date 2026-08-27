@@ -7,8 +7,7 @@ export const dynamic = "force-dynamic"
 export default async function PlatformProfileRoute() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  const isTenantAdmin = (profile.tenantMemberships ?? []).some((m) => m.role === "admin")
-  if (!profile.isSuperAdmin && !isTenantAdmin) redirect("/")
+  if (!profile.isSuperAdmin) redirect("/")
 
   return (
     <PlatformProfilePage

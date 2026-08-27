@@ -148,7 +148,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "Templates",
         href: "/settings/templates-catalogue",
-        adminOnly: true,
+        superAdminOnly: true,
       },
     ],
   },

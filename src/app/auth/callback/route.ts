@@ -74,11 +74,21 @@ async function finishLoginRedirect(args: {
   userId: string
   email: string
   tenantId: string | null
+  isSuperAdmin: boolean
   clearNextCookie: (res: NextResponse) => NextResponse
 }) {
-  const { origin, next, userId, email, tenantId, clearNextCookie } = args
+  const { origin, next, userId, email, tenantId, isSuperAdmin, clearNextCookie } = args
   const withTenant = (res: NextResponse) => setTenantCookie(res, tenantId)
   const inviteToken = inviteTokenFromNext(next)
+
+  // Super-admins land on the platform console first. Clear any stale active-dept
+  // cookie from a prior session so they don't drop into a department dashboard.
+  // A specific deep link (next !== "/") still wins over the platform default.
+  if (isSuperAdmin && !inviteToken && next === "/") {
+    const res = withTenant(clearNextCookie(NextResponse.redirect(`${origin}/platform`)))
+    res.cookies.set("pen_active_dept", "", { path: "/", maxAge: 0 })
+    return res
+  }
 
   if (inviteToken) {
     const result = await acceptDepartmentInvite(inviteToken, { id: userId, email })
@@ -164,6 +174,7 @@ export async function GET(request: Request) {
           userId: profile.id,
           email: profile.email,
           tenantId,
+          isSuperAdmin: profile.isSuperAdmin,
           clearNextCookie,
         })
       }
@@ -203,6 +214,7 @@ export async function GET(request: Request) {
           userId: profile.id,
           email: profile.email,
           tenantId,
+          isSuperAdmin: profile.isSuperAdmin,
           clearNextCookie,
         })
       }

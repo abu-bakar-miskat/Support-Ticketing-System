@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TenantAvatar } from "@/components/platform/tenant-avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { TenantBranding } from "@/lib/tenant-branding";
@@ -188,6 +189,7 @@ export function TenantManageClient({
 
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("agent");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
@@ -294,8 +296,7 @@ export function TenantManageClient({
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to remove member");
-      return;
+      throw new Error(body.error ?? "Failed to remove member");
     }
     setMembers((prev) => prev.filter((m) => m.id !== userId));
   }
@@ -852,7 +853,7 @@ export function TenantManageClient({
                     variant="ghost"
                     size="icon-sm"
                     aria-label={`Remove ${m.name || m.email}`}
-                    onClick={() => removeMember(m.id)}
+                    onClick={() => setMemberToRemove(m)}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -872,6 +873,22 @@ export function TenantManageClient({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={memberToRemove !== null}
+        onOpenChange={(o) => { if (!o) setMemberToRemove(null); }}
+        title="Remove member"
+        description={
+          memberToRemove
+            ? `Remove ${memberToRemove.name || memberToRemove.email} from ${tenant.name}? They'll lose access to this tenant.`
+            : ""
+        }
+        confirmLabel="Remove"
+        successMessage="Member removed."
+        onConfirm={async () => {
+          if (memberToRemove) await removeMember(memberToRemove.id);
+        }}
+      />
     </div>
   );
 }

@@ -99,6 +99,14 @@ interface NewTicketModalProps {
   defaultBoardSubDepartmentId?: string;
   /** Project board tabs — when multiple, user picks which board the task belongs to */
   boardSubDepartments?: { id: string; name: string }[];
+  /**
+   * Sub-departments in the current department scope. When provided (global
+   * create-task modal), the modal shows a read-only Department field plus a
+   * Sub-department dropdown that directly drives the ticket's sub-department.
+   */
+  subDepartments?: { id: string; name: string }[];
+  /** Current department name, shown as read-only context beside the sub-department picker */
+  departmentName?: string;
   /** When true, team/board cannot be changed */
   lockSubDepartmentId?: boolean;
   /**
@@ -141,6 +149,8 @@ export function NewTicketModal({
   defaultSubDepartmentId,
   defaultBoardSubDepartmentId,
   boardSubDepartments,
+  subDepartments,
+  departmentName,
   lockSubDepartmentId = false,
   lockProject,
   statuses,
@@ -184,6 +194,11 @@ export function NewTicketModal({
   const [selectedBoardSubDepartmentId, setSelectedBoardSubDepartmentId] = useState(
     () => initialBoardSubDepartmentId,
   );
+  // Explicit sub-department picker (global create-task modal). Primary source of
+  // the ticket's sub-department — takes precedence over any project-derived one.
+  const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState<string | null>(
+    () => defaultSubDepartmentId ?? subDepartments?.[0]?.id ?? null,
+  );
   const listedProjects = projects.filter(
     (p) => !isMiscProjectName(p.name) && p.kind !== "support",
   );
@@ -193,13 +208,21 @@ export function NewTicketModal({
       : null;
   const projectLocked =
     (lockProject ?? Boolean(defaultProjectId)) && Boolean(defaultProject);
+  // Show the explicit Department/Sub-department picker only in the global
+  // create-task flow — never when locked or driven by a project board.
+  const showSubDepartmentPicker =
+    !lockSubDepartmentId &&
+    !(boardSubDepartments && boardSubDepartments.length > 0) &&
+    Boolean(subDepartments && subDepartments.length > 0);
   const activeSubDepartmentId = lockSubDepartmentId
     ? defaultSubDepartmentId ?? null
     : boardSubDepartments && boardSubDepartments.length > 0
       ? boardSubDepartments.length === 1
         ? boardSubDepartments[0].id
         : selectedBoardSubDepartmentId
-      : selectedProject?.subDepartmentId ?? defaultSubDepartmentId ?? null;
+      : showSubDepartmentPicker
+        ? selectedSubDepartmentId
+        : selectedProject?.subDepartmentId ?? defaultSubDepartmentId ?? null;
   const propStatuses = statuses?.length ? statuses : undefined;
 
   // Fetch the real team statuses; fall back to prop or defaults while loading
@@ -890,6 +913,27 @@ export function NewTicketModal({
                   />
                 )}
 
+                {showSubDepartmentPicker && (
+                  <>
+                    {departmentName ? (
+                      <FormField label="Department">
+                        <div className={READONLY_CLASS}>{departmentName}</div>
+                      </FormField>
+                    ) : null}
+                    <StyledSelect
+                      label="Sub-department"
+                      id="subDepartmentId-trigger"
+                      name="subDepartmentId"
+                      value={selectedSubDepartmentId ?? ""}
+                      onChange={(v) => setSelectedSubDepartmentId(v || null)}
+                      searchable
+                      searchPlaceholder="Search sub-departments…"
+                      emptyLabel="No sub-departments found"
+                      options={subDepartments!.map((s) => ({ value: s.id, label: s.name }))}
+                    />
+                  </>
+                )}
+
                 {showBoardField ? (
                   boardSubDepartments!.length > 1 ? (
                     <StyledSelect
@@ -961,34 +1005,21 @@ export function NewTicketModal({
                   setEndTime={setEndTime}
                 />
 
-                <EstimatedTimeField
-                  estInput={estInput}
-                  setEstInput={setEstInput}
-                  parseTimeInput={parseTimeInput}
-                />
+                {/* Estimated time + Story points always share one row */}
+                <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:col-span-2 sm:grid-cols-2">
+                  <EstimatedTimeField
+                    estInput={estInput}
+                    setEstInput={setEstInput}
+                    parseTimeInput={parseTimeInput}
+                  />
+                  <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
+                </div>
 
-                {hasSprints && hasModules ? (
-                  <>
-                    <SprintField projectSprints={projectSprints} selectedProjectId={selectedProjectId} />
-                    <ModuleField projectModules={projectModules} selectedProjectId={selectedProjectId} />
-                    <div className="sm:col-span-2">
-                      <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
-                    </div>
-                  </>
-                ) : hasSprints ? (
-                  <>
-                    <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
-                    <SprintField projectSprints={projectSprints} selectedProjectId={selectedProjectId} />
-                  </>
-                ) : hasModules ? (
-                  <>
-                    <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
-                    <ModuleField projectModules={projectModules} selectedProjectId={selectedProjectId} />
-                  </>
-                ) : (
-                  <div className="sm:col-span-2">
-                    <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
-                  </div>
+                {hasSprints && (
+                  <SprintField projectSprints={projectSprints} selectedProjectId={selectedProjectId} />
+                )}
+                {hasModules && (
+                  <ModuleField projectModules={projectModules} selectedProjectId={selectedProjectId} />
                 )}
               </FormGrid>
             </div>

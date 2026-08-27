@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IssueAssigneeSelect, type MemberOption } from "@/components/ui/issue-assignee-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 
@@ -22,9 +23,12 @@ type SlaPolicy = {
   enabled: boolean;
   order: number;
   formConfigId: string | null;
+  subDepartmentId: string | null;
   priority: Priority | null;
   assigneeIds: string[];
 };
+
+type SubDepartmentOption = { id: string; name: string };
 
 type FormOption = { id: string; name: string };
 type Person = MemberOption;
@@ -36,6 +40,16 @@ type RawPerson = {
   avatarUrl?: string | null;
   subDepartment?: { name?: string | null; department?: { name?: string | null } | null } | null;
 };
+
+function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={cn("animate-pulse rounded-lg bg-sts-surface", height)} />
+      ))}
+    </div>
+  );
+}
 
 function toMember(p: RawPerson): Person {
   return {
@@ -74,12 +88,15 @@ export function SlaSettingsPage({
   departmentName,
   subDepartmentId,
   subDepartmentName,
+  subDepartments,
 }: {
   departmentId: string;
   departmentName: string;
   /** When set, this surface manages ONLY the given sub-department's SLA. */
   subDepartmentId?: string;
   subDepartmentName?: string;
+  /** Sub-departments of this department — powers the department page's scope tabs. */
+  subDepartments?: SubDepartmentOption[];
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
@@ -93,29 +110,75 @@ export function SlaSettingsPage({
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Scope every request to the sub-department when one is provided; otherwise
-  // the endpoints operate on department-wide config (subDepartmentId = null).
-  const scopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
-  const scopeBody = subDepartmentId ? { subDepartmentId } : {};
+  // Department page only: a scope dropdown to view policies sub-department-wise.
+  // "all" merges every sub-department, "" is department-wide, else a sub-dept id.
+  const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
+  const [activeScope, setActiveScope] = useState<string>(showScopeSelect ? "all" : "");
+  const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name]));
 
-  const load = () => {
+  // Options for the scope dropdown, in display order.
+  const scopeOptions = [
+    { value: "all", label: "All sub-departments" },
+    { value: "", label: "Only Department" },
+    ...(subDepartments ?? []).map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  // Working hours + members stay at the surface's own scope (the sub-department on
+  // the scoped surface, else department-wide), independent of the selected scope.
+  const settingsScopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
+  const settingsScopeBody = subDepartmentId ? { subDepartmentId } : {};
+
+  // Policies + forms follow the selected scope on the department page.
+  const policiesScopeQs = subDepartmentId
+    ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}`
+    : activeScope === "all"
+      ? "?scope=all"
+      : activeScope
+        ? `?subDepartmentId=${encodeURIComponent(activeScope)}`
+        : "";
+
+  // On the merged "All" overview the target scope is ambiguous, so creating is
+  // disabled there; otherwise new policies land in the selected scope.
+  const creationDisabled = showScopeSelect && activeScope === "all";
+  const showPolicySubDept = showScopeSelect && activeScope === "all";
+  const createScopeBody = subDepartmentId
+    ? { subDepartmentId }
+    : activeScope && activeScope !== "all"
+      ? { subDepartmentId: activeScope }
+      : {};
+  const createScopeName =
+    subDepartmentName ??
+    (activeScope && activeScope !== "all" ? subDeptNameById.get(activeScope) : null) ??
+    departmentName;
+
+  const loadSettings = () => {
     Promise.all([
-      fetch(`/api/departments/${departmentId}/sla-policies${scopeQs}`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/sla-settings${scopeQs}`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/forms${scopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/sla-settings${settingsScopeQs}`).then(jsonOrThrow),
       fetch(`/api/departments/${departmentId}/people`).then(jsonOrThrow),
     ])
-      .then(([policiesRes, settingsRes, formsRes, peopleRes]) => {
-        setPolicies(policiesRes);
+      .then(([settingsRes, peopleRes]) => {
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
-        setForms(formsRes);
         setPeople(((peopleRes.people ?? []) as RawPerson[]).map(toMember));
       })
       .catch((e) => setError(e.message));
   };
 
-  useEffect(load, [departmentId, subDepartmentId]);
+  const loadPolicies = () => {
+    setPolicies(null);
+    Promise.all([
+      fetch(`/api/departments/${departmentId}/sla-policies${policiesScopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/forms${policiesScopeQs}`).then(jsonOrThrow),
+    ])
+      .then(([policiesRes, formsRes]) => {
+        setPolicies(policiesRes);
+        setForms(formsRes);
+      })
+      .catch((e) => setError(e.message));
+  };
+
+  useEffect(loadSettings, [departmentId, subDepartmentId]);
+  useEffect(loadPolicies, [departmentId, policiesScopeQs]);
 
   async function createPolicy(input: {
     name: string;
@@ -140,7 +203,7 @@ export function SlaSettingsPage({
             formConfigId: input.formConfigId,
             priority: input.priority,
             assigneeIds: input.assigneeIds,
-            ...scopeBody,
+            ...createScopeBody,
           }),
         }),
       );
@@ -186,7 +249,7 @@ export function SlaSettingsPage({
         await fetch(`/api/departments/${departmentId}/sla-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slaConfig, businessHours, ...scopeBody }),
+          body: JSON.stringify({ slaConfig, businessHours, ...settingsScopeBody }),
         }),
       );
     } catch (e) {
@@ -250,6 +313,26 @@ export function SlaSettingsPage({
         </div>
       )}
 
+      {/* ── Sub-department scope selector (department page only) ── */}
+      {showScopeSelect && (
+        <div className="mb-5 flex items-center gap-2">
+          <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
+          <Select items={scopeOptions} value={activeScope} onValueChange={(v) => setActiveScope(v ?? "")}>
+            <SelectTrigger className="w-60 border-sts-blue/30 bg-sts-blue/5 font-sans text-[12.5px] font-medium text-sts-blue hover:bg-sts-blue/10">
+              <FileText className="size-3.5 text-sts-blue" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((opt) => (
+                <SelectItem key={opt.value || "dept-wide"} value={opt.value} className="font-sans text-[12.5px]">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* ── Policies, grouped by support form ── */}
       <div className="mb-8">
         <div className="mb-3">
@@ -258,12 +341,13 @@ export function SlaSettingsPage({
             <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
               {policies.length} {policies.length === 1 ? "policy" : "policies"} ·{" "}
               {policies.filter((p) => p.enabled).length} active · grouped by support form
+              {showPolicySubDept ? " · across all sub-departments" : ""}
             </p>
           )}
         </div>
 
         {policies === null ? (
-          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+          <SkeletonRows count={3} height="h-44" />
         ) : forms.length === 0 && noFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
             <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -282,6 +366,9 @@ export function SlaSettingsPage({
                 title={form.name}
                 policies={policiesByForm.get(form.id) ?? []}
                 people={people}
+                canCreate={!creationDisabled}
+                showSubDept={showPolicySubDept}
+                subDeptNameById={subDeptNameById}
                 onNewPolicy={() => setNewPolicyFor(form.id)}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
@@ -294,6 +381,9 @@ export function SlaSettingsPage({
                 title="Not linked to a form"
                 policies={noFormPolicies}
                 people={people}
+                canCreate={!creationDisabled}
+                showSubDept={showPolicySubDept}
+                subDeptNameById={subDeptNameById}
                 onNewPolicy={() => setNewPolicyFor("")}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
@@ -308,7 +398,7 @@ export function SlaSettingsPage({
       <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
         <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-sts-foreground">Working hours (SLA-04)</h2>
         {!slaConfig || !businessHours ? (
-          <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+          <SkeletonRows count={4} height="h-10" />
         ) : (
           <div className="flex flex-col gap-4">
             <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
@@ -394,7 +484,7 @@ export function SlaSettingsPage({
 
       {newPolicyFor !== null && (
         <NewPolicyModal
-          scopeName={subDepartmentName ?? departmentName}
+          scopeName={createScopeName}
           creating={creating}
           forms={forms}
           people={people}
@@ -413,6 +503,9 @@ function PolicyGroup({
   title,
   policies,
   people,
+  canCreate,
+  showSubDept,
+  subDeptNameById,
   onNewPolicy,
   onSave,
   onDelete,
@@ -421,6 +514,11 @@ function PolicyGroup({
   title: string;
   policies: SlaPolicy[];
   people: Person[];
+  /** Whether the "New policy" button shows (hidden on the merged "All" overview). */
+  canCreate: boolean;
+  /** Show each policy's sub-department, for the cross-sub-department overview. */
+  showSubDept: boolean;
+  subDeptNameById: Map<string, string>;
   onNewPolicy: () => void;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -436,13 +534,15 @@ function PolicyGroup({
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onNewPolicy}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-        >
-          <Plus className="size-3.5" /> New policy
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={onNewPolicy}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+          >
+            <Plus className="size-3.5" /> New policy
+          </button>
+        )}
       </div>
 
       {policies.length === 0 ? (
@@ -470,6 +570,13 @@ function PolicyGroup({
                   key={policy.id}
                   policy={policy}
                   people={people}
+                  subDeptName={
+                    showSubDept
+                      ? policy.subDepartmentId
+                        ? subDeptNameById.get(policy.subDepartmentId) ?? null
+                        : "Only Department"
+                      : null
+                  }
                   onSave={onSave}
                   onDelete={onDelete}
                 />
@@ -486,11 +593,14 @@ function PolicyGroup({
 function PolicyRow({
   policy,
   people,
+  subDeptName,
   onSave,
   onDelete,
 }: {
   policy: SlaPolicy;
   people: Person[];
+  /** Sub-department label shown under the name in the "All" overview, else null. */
+  subDeptName: string | null;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
@@ -553,6 +663,11 @@ function PolicyRow({
           onChange={(e) => set("name", e.target.value)}
           className="w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15"
         />
+        {subDeptName && (
+          <span className="mt-1 inline-block rounded-full border border-sts-blue/20 bg-sts-blue/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
+            {subDeptName}
+          </span>
+        )}
       </td>
       <td className={cell}>
         <div className="w-[130px]">

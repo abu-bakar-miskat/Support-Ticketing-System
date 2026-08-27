@@ -99,6 +99,8 @@ type NavItem = {
   supportOnly?: boolean;
   /** Hidden unless the tenant's active templates include this feature key (Template Catalogue) */
   templateFeatureKey?: TemplateFeatureKey;
+  /** Hidden from the "agent" role (visible to sub_manager, manager, admin). */
+  hideForAgent?: boolean;
 };
 
 const navViews: NavItem[] = [
@@ -106,7 +108,7 @@ const navViews: NavItem[] = [
   { label: "Timeline", href: "/timeline", icon: CalendarDays, hideForSupport: true, templateFeatureKey: "timeline" },
   { label: "Modules", href: "/modules", icon: Boxes, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
   { label: "Support forms", href: "/settings/intake-forms", icon: LifeBuoy, supportOnly: true, templateFeatureKey: "supportForm" },
-  { label: "Reports", href: "/reports", icon: ChartColumn, templateFeatureKey: "reports" },
+  { label: "Reports", href: "/reports", icon: ChartColumn, templateFeatureKey: "reports", hideForAgent: true },
   { label: "Calendar", href: "/calendar", icon: CalendarRange, templateFeatureKey: "calendar" },
   { label: "My Profile", href: "/profile", icon: CircleUser },
   { label: "Settings", href: "/settings", icon: Settings2 },
@@ -389,6 +391,7 @@ export function Sidebar({
   const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
   const isAdmin = userRole === "admin";
   const isManager = userRole === "manager";
+  const isAgent = userRole === "agent";
   const activeDept = allDepts.find((d) => d.id === activeDeptId);
   // For staff/lead — department name comes from their team membership
   const staffDeptName =
@@ -418,7 +421,7 @@ export function Sidebar({
       ]
     : isCrossAccessDept
       ? [
-          ...(hasMultiDeptAccess
+          ...(hasMultiDeptAccess && !isAgent
             ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
             : []),
           { label: "Tasks", href: "/tasks", icon: ListTodo },
@@ -429,10 +432,10 @@ export function Sidebar({
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity" },
+          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity", hideForAgent: true },
         ]
       : [
-          ...(hasMultiDeptAccess
+          ...(hasMultiDeptAccess && !isAgent
             ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
             : []),
           {
@@ -456,7 +459,7 @@ export function Sidebar({
             badge: notifCount ?? undefined,
           },
           { label: "My Time", href: "/time", icon: Timer, templateFeatureKey: "myTime" },
-          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity" },
+          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity", hideForAgent: true },
           ...(isAdmin || isManager
             ? [
                 { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
@@ -761,6 +764,7 @@ export function Sidebar({
         {/* Personal nav items — not department-scoped */}
         {navMain
           .filter((item) => isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
+          .filter((item) => !(item.hideForAgent && isAgent))
           .map((item) => {
           const active =
             item.href === "/"
@@ -912,6 +916,7 @@ export function Sidebar({
           navViews
             .filter((item) => {
               if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys)) return false;
+              if (item.hideForAgent && isAgent) return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
               // Per-department-type interface: support departments hide dev-planning
               // views (Timeline, Modules) and surface Support forms; other types

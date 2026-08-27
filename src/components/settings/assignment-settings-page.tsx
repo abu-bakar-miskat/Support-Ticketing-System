@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MemberOption } from "@/components/ui/issue-assignee-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
 
@@ -134,6 +135,7 @@ export function AssignmentSettingsPage({
   subDepartmentId,
   subDepartmentName,
   members = [],
+  subDepartments,
   backHref = "/settings/departments",
   backLabel = "Back to departments",
 }: {
@@ -144,6 +146,8 @@ export function AssignmentSettingsPage({
   subDepartmentName?: string;
   /** Assignable agents for per-form rule-based rules (agentId picker). */
   members?: MemberOption[];
+  /** Sub-departments of this department — powers the department page's scope dropdown. */
+  subDepartments?: { id: string; name: string }[];
   backHref?: string;
   backLabel?: string;
 }) {
@@ -164,12 +168,32 @@ export function AssignmentSettingsPage({
   // loaded (skeleton). See the "support form wise" rules table below.
   const [rulesByForm, setRulesByForm] = useState<Record<string, AssignmentRule[] | undefined>>({});
 
-  const scopeQs = subDepartmentId
-    ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}`
-    : "";
-  const scopeName = subDepartmentName ?? departmentName;
+  // Department page only: a dropdown to view/manage a specific sub-department's
+  // assignment. "" = the department itself; a sub-department id = that sub-dept's
+  // per-form surface. (The dedicated sub-department route sets subDepartmentId.)
+  const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
+  const [activeScope, setActiveScope] = useState<string>("");
+  const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name] as const));
+  const scopeOptions = [
+    { value: "", label: "Only Department" },
+    ...(subDepartments ?? []).map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  // The effective sub-department in play: the prop (dedicated surface) or the
+  // dropdown selection (department page).
+  const activeSubId = subDepartmentId ?? (activeScope || undefined);
+  const activeSubName = subDepartmentName ?? (activeScope ? subDeptNameById.get(activeScope) : undefined);
+
+  const scopeQs = activeSubId ? `?subDepartmentId=${encodeURIComponent(activeSubId)}` : "";
+  const scopeName = activeSubName ?? departmentName;
 
   const load = () => {
+    // Reset to loading state so a scope switch doesn't flash the old scope's data.
+    setMethod(undefined);
+    setRules(null);
+    setForms(null);
+    setRulesByForm({});
+    setDraftMethods({});
     Promise.all([
       fetch(`/api/departments/${departmentId}/assignment-settings${scopeQs}`).then(jsonOrThrow),
       fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`).then(jsonOrThrow),
@@ -184,7 +208,7 @@ export function AssignmentSettingsPage({
         setFormInheritedMethod(formsRes.inheritedMethod ?? "ROUND_ROBIN");
 
         // Sub-department scope: rules are support-form wise — load each form's rules.
-        if (subDepartmentId && formList.length) {
+        if (activeSubId && formList.length) {
           Promise.all(
             formList.map((f) =>
               fetch(`/api/departments/${departmentId}/assignment-rules?formConfigId=${encodeURIComponent(f.id)}`)
@@ -199,7 +223,7 @@ export function AssignmentSettingsPage({
       .catch((e) => setError(e.message));
   };
 
-  useEffect(load, [departmentId, subDepartmentId]);
+  useEffect(load, [departmentId, activeSubId]);
 
   // The method currently shown for a form: its staged draft if one exists,
   // otherwise its persisted value.
@@ -220,7 +244,7 @@ export function AssignmentSettingsPage({
         await fetch(`/api/departments/${departmentId}/form-assignment-methods`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ formConfigId: form.id, assignmentMethod: next, subDepartmentId }),
+          body: JSON.stringify({ formConfigId: form.id, assignmentMethod: next, subDepartmentId: activeSubId }),
         }),
       );
       setForms((fs) => fs?.map((f) => (f.id === form.id ? { ...f, assignmentMethod: next } : f)) ?? null);
@@ -313,8 +337,8 @@ export function AssignmentSettingsPage({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
-            subDepartmentId
-              ? { assignmentMethod: next, subDepartmentId }
+            activeSubId
+              ? { assignmentMethod: next, subDepartmentId: activeSubId }
               : { assignmentMethod: next },
           ),
         }),
@@ -338,7 +362,7 @@ export function AssignmentSettingsPage({
             name: "New rule",
             conditions: { combinator: "AND", conditions: [] },
             agentId: "",
-            ...(subDepartmentId ? { subDepartmentId } : {}),
+            ...(activeSubId ? { subDepartmentId: activeSubId } : {}),
           }),
         }),
       );
@@ -394,11 +418,30 @@ export function AssignmentSettingsPage({
       <p className="sts-text-section-label mb-1.5">Assignment</p>
       <h1 className="sts-text-page-title">{scopeName}</h1>
       <p className="mt-1.5 max-w-prose sts-text-page-desc">
-        {subDepartmentId
+        {activeSubId
           ? "How new tickets for this sub-department are routed to agents. Inherit the parent department's method, or override it here."
           : "How new tickets for this department are routed to agents."}{" "}
         When no eligible agent is found, tickets stay unassigned and department admins are notified.
       </p>
+
+      {showScopeSelect && (
+        <div className="mt-5 flex items-center gap-2">
+          <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
+          <Select items={scopeOptions} value={activeScope} onValueChange={(v) => setActiveScope(v ?? "")}>
+            <SelectTrigger className="w-60 border-sts-blue/30 bg-sts-blue-tint font-sans text-[12.5px] font-medium text-sts-blue hover:bg-sts-blue/10">
+              <Layers className="size-3.5 text-sts-blue" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((opt) => (
+                <SelectItem key={opt.value || "dept"} value={opt.value} className="font-sans text-[12.5px]">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {error && (
         <div
@@ -412,7 +455,7 @@ export function AssignmentSettingsPage({
 
       <div className="mt-6 flex flex-col gap-6">
         {/* ── Per support form — one card per form ── */}
-        {subDepartmentId && (
+        {activeSubId && (
           <div className="flex flex-col gap-3">
             <div>
               <h2 className="sts-text-section-label">Per support form</h2>
@@ -512,7 +555,7 @@ export function AssignmentSettingsPage({
         )}
 
         {/* ── Method selector — department scope only; sub-departments configure per form ── */}
-        {!subDepartmentId && (
+        {!activeSubId && (
         <SectionCard
           title="Method"
           description="The default for every ticket in this department."
@@ -555,7 +598,7 @@ export function AssignmentSettingsPage({
         )}
 
         {/* ── Rule-based rules (department scope only; sub-departments configure per form) ── */}
-        {!subDepartmentId && method === "RULE_BASED" && (
+        {!activeSubId && method === "RULE_BASED" && (
           <SectionCard
             title="Rules"
             description="Checked top to bottom — the first matching rule assigns its agent."

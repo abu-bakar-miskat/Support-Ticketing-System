@@ -7,6 +7,7 @@ import { generateReplyToken } from "@/lib/customer-conversation"
 import { createTicketFromPayload, type PendingPayload, type ResponseEntry } from "@/lib/intake-finalize"
 import { BASE_URL, ensureAbsoluteUrl } from "@/lib/email-templates/_shared"
 import { withSystemScope } from "@/lib/request-scope"
+import { assertDepartmentOperational } from "@/lib/department-setup"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -30,6 +31,16 @@ async function handlePost(
 
   if (!form || !form.isActive) {
     return NextResponse.json({ error: "Form unavailable" }, { status: 400 })
+  }
+
+  // DS-08: the department must have completed setup review before it can accept
+  // tickets. Check up front so we surface the real reason (503) instead of
+  // letting prepareConversion throw it as an opaque 500 — and so the unverified
+  // path doesn't store a PendingIntake and email a link that would only fail on
+  // click.
+  const operational = await assertDepartmentOperational(form.departmentId)
+  if (!operational.ok) {
+    return NextResponse.json({ error: operational.error }, { status: 503 })
   }
 
   const body = await request.json()

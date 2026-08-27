@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Building2, Settings2, X } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  Building2,
+  Mail,
+  Palette,
+  Users,
+  X,
+} from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
@@ -40,13 +48,16 @@ export function DepartmentsSidebar({
 
   const navItems: NavItem[] = [
     { label: "Departments", href: "/departments", icon: DepartmentIcon },
+    { label: "Users", href: "/departments/users", icon: Users },
+    { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
+    { label: "Activity", href: "/departments/activity", icon: Activity },
     {
       label: "Notifications",
-      href: "/inbox",
+      href: "/departments/inbox",
       icon: Bell,
       badge: notifCount || undefined,
     },
-    { label: "Settings", href: "/settings", icon: Settings2 },
+    { label: "Branding", href: "/departments/branding", icon: Palette },
   ];
 
   return (
@@ -98,9 +109,7 @@ export function DepartmentsSidebar({
           </button>
         )}
       </div>
-
       <div className="h-2" />
-
       {isSuperAdmin && (
         <Link
           href="/platform"
@@ -110,7 +119,6 @@ export function DepartmentsSidebar({
           <span className="font-sans text-[11.5px] font-medium">Platform</span>
         </Link>
       )}
-
       <div className="flex items-center gap-2 rounded-lg border border-sts-blue/30 bg-sts-blue-tint px-2.5 py-2">
         <SidebarNavIcon
           icon={DepartmentIcon}
@@ -121,9 +129,7 @@ export function DepartmentsSidebar({
           All Departments
         </span>
       </div>
-
       <div className="h-2" />
-
       {navItems.map((item) => {
         const active =
           item.href === "/departments"
@@ -152,9 +158,7 @@ export function DepartmentsSidebar({
           </Link>
         );
       })}
-
       <div className="flex-1" />
-
       {/* <InstallAppButton /> */}
       <UserProfileMenu variant="sidebar" />
     </aside>

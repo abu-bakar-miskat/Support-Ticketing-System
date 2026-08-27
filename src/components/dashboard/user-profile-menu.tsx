@@ -92,7 +92,12 @@ export function UserProfileMenu({
   const userEmail = user?.email ?? "";
   const userAvatarUrl = user?.avatarUrl ?? undefined;
   const isTopBar = variant === "topbar";
-  const roleLabel = user?.isSuperAdmin ? "super admin" : "admin";
+  const role = user?.role;
+  const roleLabel = user?.isSuperAdmin
+    ? "super admin"
+    : role === "sub_manager"
+      ? "sub-manager"
+      : (role ?? "agent");
 
   async function signOut() {
     const supabase = createClient();
@@ -130,7 +135,7 @@ export function UserProfileMenu({
                 <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                   {userName}
                 </span>
-                <span className={roleBadgeClass("admin")}>
+                <span className={roleBadgeClass(user?.isSuperAdmin ? "admin" : role)}>
                   {roleLabel}
                 </span>
               </div>
@@ -165,7 +170,7 @@ export function UserProfileMenu({
                   <span className="truncate font-sans text-sm font-semibold text-sts-foreground">
                     {userName}
                   </span>
-                  <span className={roleBadgeClass("admin")}>
+                  <span className={roleBadgeClass(user?.isSuperAdmin ? "admin" : role)}>
                     {roleLabel}
                   </span>
                 </div>

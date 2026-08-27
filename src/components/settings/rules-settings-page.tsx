@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ── Types (mirror lib/rules-engine.ts) ───────────────────────────────────────
 type ConditionOperator =
@@ -90,6 +91,16 @@ const inputCls =
 
 const actionLabel = (t: RuleActionType) => ACTION_TYPES.find((x) => x.value === t)?.label ?? t;
 
+function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={cn("animate-pulse rounded-lg bg-sts-surface", height)} />
+      ))}
+    </div>
+  );
+}
+
 function conditionsSummary(c: ConditionGroup): string {
   if (c.conditions.length === 0) return "Any ticket";
   return `${c.combinator === "AND" ? "All" : "Any"} of ${c.conditions.length} condition${c.conditions.length === 1 ? "" : "s"}`;
@@ -112,6 +123,7 @@ export function RulesSettingsPage({
   departmentName,
   subDepartmentId,
   subDepartmentName,
+  subDepartments,
 }: {
   departmentId: string;
   departmentName: string;
@@ -119,11 +131,29 @@ export function RulesSettingsPage({
    *  organised support-form wise (one table per form). */
   subDepartmentId?: string;
   subDepartmentName?: string;
+  /** Sub-departments of this department — powers the department page's scope dropdown. */
+  subDepartments?: { id: string; name: string }[];
 }) {
+  // Department page only: a dropdown to view/manage a specific sub-department's
+  // rules. "" = the department-wide list; a sub-department id = that sub-dept's
+  // form-wise surface. (The dedicated sub-department route sets subDepartmentId.)
+  const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
+  const [activeScope, setActiveScope] = useState<string>("");
+  const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name] as const));
+  const scopeOptions = [
+    { value: "", label: "Only Department" },
+    ...(subDepartments ?? []).map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  // The effective sub-department in play: the prop (dedicated surface) or the
+  // dropdown selection (department page).
+  const activeSubId = subDepartmentId ?? (activeScope || undefined);
+  const activeSubName = subDepartmentName ?? (activeScope ? subDeptNameById.get(activeScope) : undefined);
+
   // Sub-department surfaces are support-form wise; the department surface keeps
   // the flat, department-wide rule list.
-  const formWise = !!subDepartmentId;
-  const scopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
+  const formWise = !!activeSubId;
+  const scopeQs = activeSubId ? `?subDepartmentId=${encodeURIComponent(activeSubId)}` : "";
 
   // Department-scope rule list (formWise === false).
   const [rules, setRules] = useState<Rule[] | null>(null);
@@ -149,6 +179,12 @@ export function RulesSettingsPage({
   const [testing, setTesting] = useState(false);
 
   const load = () => {
+    // Reset to loading state so a scope switch doesn't flash the old scope's rules.
+    setRules(null);
+    setForms(null);
+    setRulesByForm({});
+    setExpandedId(null);
+    setTestResult(null);
     if (formWise) {
       Promise.all([
         fetch(`/api/departments/${departmentId}/forms${scopeQs}`).then(jsonOrThrow),
@@ -179,7 +215,7 @@ export function RulesSettingsPage({
         .catch((e) => setError(e.message));
     }
   };
-  useEffect(load, [departmentId, subDepartmentId]);
+  useEffect(load, [departmentId, activeSubId]);
 
   // ── Local mutation helpers (work on either the flat list or a form bucket) ──
   function patchLocalDept(id: string, updater: (r: Rule) => Rule) {
@@ -203,7 +239,7 @@ export function RulesSettingsPage({
             actions: [],
             enabled: input.enabled,
             stopProcessing: input.stopProcessing,
-            ...(form ? { formConfigId: form.id } : subDepartmentId ? { subDepartmentId } : {}),
+            ...(form ? { formConfigId: form.id } : activeSubId ? { subDepartmentId: activeSubId } : {}),
           }),
         }),
       );
@@ -286,7 +322,7 @@ export function RulesSettingsPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ruleIds: next.map((r) => r.id),
-            ...(formId ? { formConfigId: formId } : subDepartmentId ? { subDepartmentId } : {}),
+            ...(formId ? { formConfigId: formId } : activeSubId ? { subDepartmentId: activeSubId } : {}),
           }),
         }),
       );
@@ -308,7 +344,7 @@ export function RulesSettingsPage({
         await fetch(`/api/departments/${departmentId}/rules/test`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values, rules: allRules, ...(subDepartmentId ? { subDepartmentId } : {}) }),
+          body: JSON.stringify({ values, rules: allRules, ...(activeSubId ? { subDepartmentId: activeSubId } : {}) }),
         }),
       );
       setTestResult(plan);
@@ -330,7 +366,7 @@ export function RulesSettingsPage({
         </Link>
       )}
 
-      <h1 className="sts-text-modal-title mb-1">Automation rules — {subDepartmentName ?? departmentName}</h1>
+      <h1 className="sts-text-modal-title mb-1">Automation rules — {activeSubName ?? departmentName}</h1>
       <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
         {formWise
           ? "Rules are organised per support form: each form's rules run (in order) on tickets submitted through that form, in addition to the parent department's rules. "
@@ -338,6 +374,25 @@ export function RulesSettingsPage({
         A matching rule fires its actions; enable &ldquo;stop after this&rdquo; to halt later rules. Test against
         sample field values before turning a rule on.
       </p>
+
+      {showScopeSelect && (
+        <div className="mb-5 flex items-center gap-2">
+          <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
+          <Select items={scopeOptions} value={activeScope} onValueChange={(v) => setActiveScope(v ?? "")}>
+            <SelectTrigger className="w-60 border-sts-blue/30 bg-sts-blue/5 font-sans text-[12.5px] font-medium text-sts-blue hover:bg-sts-blue/10">
+              <Zap className="size-3.5 text-sts-blue" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((opt) => (
+                <SelectItem key={opt.value || "dept"} value={opt.value} className="font-sans text-[12.5px]">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 font-sans text-[12.5px] text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-400">
@@ -349,7 +404,7 @@ export function RulesSettingsPage({
       {formWise ? (
         <div className="mb-8 flex flex-col gap-5">
           {forms === null ? (
-            <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+            <SkeletonRows count={2} height="h-44" />
           ) : forms.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-12 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -413,7 +468,7 @@ export function RulesSettingsPage({
           </div>
 
           {rules === null ? (
-            <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+            <SkeletonRows count={3} height="h-[92px]" />
           ) : rules.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-sts-card-border py-10 text-center">
               <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -544,7 +599,7 @@ export function RulesSettingsPage({
 
       {showNewRule && (
         <NewRuleModal
-          scopeName={newRuleForm?.name ?? subDepartmentName ?? departmentName}
+          scopeName={newRuleForm?.name ?? activeSubName ?? departmentName}
           creating={creating}
           onCancel={() => {
             setShowNewRule(false);
@@ -624,7 +679,7 @@ function FormRulesTable({
       </div>
 
       {rules === undefined ? (
-        <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
+        <SkeletonRows count={2} height="h-10" />
       ) : rules.length === 0 ? (
         <div className="rounded-xl border border-dashed border-sts-card-border px-4 py-8 text-center">
           <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No rules for this form yet</p>

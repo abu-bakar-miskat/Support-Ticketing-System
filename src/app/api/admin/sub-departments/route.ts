@@ -14,30 +14,6 @@ function isUniqueViolation(e: unknown): boolean {
   )
 }
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/[\s-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-}
-
-async function createBoardForSubDepartment(subDepartmentId: string, name: string, color: string, departmentId: string, tenantId: string) {
-  const baseSlug = slugify(name) || subDepartmentId
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`
-    try {
-      return await prisma.project.create({
-        data: { name, slug, color, subDepartmentId, departmentId, tenantId },
-      })
-    } catch (e) {
-      if (!isUniqueViolation(e)) throw e
-    }
-  }
-  throw new Error(`Could not generate a unique project slug for team ${subDepartmentId}`)
-}
-
 export async function GET() {
   const { profile, isAdmin, error } = await requireAdminOrManager()
   if (error) return error
@@ -99,10 +75,6 @@ export async function POST(request: Request) {
       data: { name, prefix, color, departmentId, tenantId },
       include: { department: { select: { id: true, name: true } } },
     })
-    // Every team gets its own board (project) automatically. No members are
-    // assigned here — access is governed by team/department scope, not
-    // explicit board membership.
-    await createBoardForSubDepartment(subDepartment.id, name, color, departmentId, tenantId)
     // Seed the default statuses (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED) so
     // a new sub-department mirrors the department's default board until it's
     // given its own. Idempotent + best-effort — never fails sub-department creation.

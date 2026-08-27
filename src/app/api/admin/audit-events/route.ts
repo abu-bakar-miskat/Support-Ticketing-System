@@ -6,9 +6,13 @@ import { resolveUserScope } from "@/lib/role-assignment"
 const MAX_TAKE = 200
 
 /**
- * Audit entries, viewable scoped to the caller's authority: a platform admin
- * may query any tenant; a Project Admin (tenant-admin, see slice 18's D-06
- * mapping) may only query their own tenant; everyone else is forbidden.
+ * Audit entries, viewable scoped to the caller's authority:
+ *  - A platform admin may query any single tenant, OR omit tenantId to see
+ *    every tenant at once ("All tenants" — the default platform view, so the
+ *    log is never blank just because the first-alphabetical tenant is quiet).
+ *  - A Project Admin (tenant-admin, see slice 18's D-06 mapping) may only query
+ *    tenants they administer; omitting tenantId returns those tenants' events.
+ *  - Everyone else is forbidden.
  * Read-only by design — there is no PATCH/DELETE on this resource, and the
  * DB-level trigger (see the immutability migration) blocks mutation even if
  * one were added by mistake.
@@ -19,25 +23,54 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams
   const tenantId = sp.get("tenantId")
-  if (!tenantId) {
-    return NextResponse.json({ error: "tenantId is required" }, { status: 400 })
-  }
 
   const userScope = await resolveUserScope(profile!.id)
-  const canView = userScope.isPlatformAdmin || userScope.tenantAdminIds.includes(tenantId)
-  if (!canView) {
+
+  // Resolve the set of tenants the caller may read, then intersect with any
+  // requested tenantId. An empty (undefined) tenantFilter means "all tenants"
+  // and is only ever produced for a platform admin.
+  let tenantFilter: { in: string[] } | string | undefined
+  if (tenantId) {
+    const canView = userScope.isPlatformAdmin || userScope.tenantAdminIds.includes(tenantId)
+    if (!canView) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    tenantFilter = tenantId
+  } else if (userScope.isPlatformAdmin) {
+    tenantFilter = undefined // all tenants
+  } else if (userScope.tenantAdminIds.length > 0) {
+    tenantFilter = { in: userScope.tenantAdminIds }
+  } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const targetType = sp.get("targetType")
+  const actorId = sp.get("actorId")
   const take = Math.min(Number(sp.get("take")) || 50, MAX_TAKE)
   const cursor = sp.get("cursor")
 
+  // Optional inclusive date range. `from`/`to` are ISO date strings (YYYY-MM-DD
+  // or full ISO). Invalid values are ignored rather than 400-ing so a stray
+  // query param never blanks the log.
+  const from = sp.get("from")
+  const to = sp.get("to")
+  const fromDate = from ? new Date(from) : null
+  const toDate = to ? new Date(to) : null
+  const createdAtFilter: { gte?: Date; lte?: Date } = {}
+  if (fromDate && !Number.isNaN(fromDate.getTime())) createdAtFilter.gte = fromDate
+  if (toDate && !Number.isNaN(toDate.getTime())) createdAtFilter.lte = toDate
+
   const events = await prisma.auditEvent.findMany({
-    where: { tenantId, ...(targetType ? { targetType } : {}) },
+    where: {
+      ...(tenantFilter ? { tenantId: tenantFilter } : {}),
+      ...(targetType ? { targetType } : {}),
+      ...(actorId ? { actorId } : {}),
+      ...(createdAtFilter.gte || createdAtFilter.lte ? { createdAt: createdAtFilter } : {}),
+    },
     orderBy: { createdAt: "desc" },
     take,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    include: { tenant: { select: { id: true, name: true } } },
   })
 
   // actorId has no Prisma relation (same convention as Agreement.createdById,

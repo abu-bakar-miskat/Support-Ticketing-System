@@ -10,14 +10,18 @@ export default async function PlatformAdministratorsPage() {
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
+  // Load every active profile once; the super-admin management list is derived
+  // from this same set (filtered by isSuperAdmin) and the "All users" directory
+  // uses it wholesale — no second round-trip.
   const rows = await prisma.profile.findMany({
-    where: { isSuperAdmin: true, deletedAt: null },
+    where: { deletedAt: null },
     select: {
       id: true,
       name: true,
       email: true,
       avatarUrl: true,
       role: true,
+      isSuperAdmin: true,
       subDepartment: {
         select: { name: true, department: { select: { id: true, name: true } } },
       },
@@ -41,8 +45,8 @@ export default async function PlatformAdministratorsPage() {
     orderBy: { name: "asc" },
   })
 
-  const admins = rows.map((r) => {
-    // Aggregate every department this admin touches (primary team, extra team
+  const users = rows.map((r) => {
+    // Aggregate every department this user touches (primary team, extra team
     // memberships, direct membership, or management) into one de-duplicated list.
     const deptMap = new Map<
       string,
@@ -82,6 +86,7 @@ export default async function PlatformAdministratorsPage() {
       email: r.email,
       avatarUrl: r.avatarUrl,
       role: r.role,
+      isSuperAdmin: r.isSuperAdmin,
       tenants: [...new Set(r.tenantMemberships.map((t) => t.tenant.name))],
       departments: [...deptMap.values()]
         .map((d) => ({
@@ -94,5 +99,7 @@ export default async function PlatformAdministratorsPage() {
     }
   })
 
-  return <PlatformAdministrators admins={admins} currentUserId={profile.id} />
+  const admins = users.filter((u) => u.isSuperAdmin)
+
+  return <PlatformAdministrators admins={admins} allUsers={users} currentUserId={profile.id} />
 }

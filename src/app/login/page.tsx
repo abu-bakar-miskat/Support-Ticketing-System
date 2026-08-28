@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { PenLogo } from "@/components/auth/sts-logo";
+import { SubmitButton } from "@/components/auth/submit-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -278,17 +279,17 @@ export default async function LoginPage({
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Verifying…"
                 className={cn(
-                  "flex h-12 w-full items-center justify-center rounded-lg",
+                  "flex h-12 w-full items-center justify-center gap-2 rounded-lg",
                   "bg-sts-button text-[14px] font-medium text-sts-button-fg",
                   "sts-pressable transition-colors hover:bg-sts-button/90",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
                 )}
               >
                 Verify &amp; sign in
-              </button>
+              </SubmitButton>
             </form>
 
             <div className="h-4" />
@@ -318,8 +319,8 @@ export default async function LoginPage({
           <>
             <form action={signInWithMicrosoft} className="w-full">
               {next !== "/" && <input type="hidden" name="next" value={next} />}
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Redirecting…"
                 className={cn(
                   "flex h-12 w-full items-center justify-center gap-3 rounded-lg",
                   "bg-sts-button text-[14px] font-medium text-sts-button-fg",
@@ -329,7 +330,7 @@ export default async function LoginPage({
               >
                 <MicrosoftLogo />
                 Sign in with Microsoft
-              </button>
+              </SubmitButton>
             </form>
 
             <div className="h-6" />
@@ -355,17 +356,17 @@ export default async function LoginPage({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
                 )}
               />
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Sending…"
                 className={cn(
-                  "flex h-11 w-full items-center justify-center rounded-lg border",
+                  "flex h-11 w-full items-center justify-center gap-2 rounded-lg border",
                   "text-[13.5px] font-medium",
                   "sts-pressable transition-colors hover:bg-sts-button/10",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
                 )}
               >
                 Email me a code
-              </button>
+              </SubmitButton>
             </form>
           </>
         )}

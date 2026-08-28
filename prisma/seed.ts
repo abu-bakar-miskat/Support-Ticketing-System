@@ -15,7 +15,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Standard ticket workflow applied to every team.
+// Standard ticket workflow applied to every subDepartment.
 // "Live" is the only terminal/complete status.
 const STANDARD_STATUSES = [
   { label: "Not Started", color: "#94a3b8", order: 0, isComplete: false },
@@ -89,43 +89,43 @@ async function main() {
     })
   }
 
-  // ── 4. Teams ─────────────────────────────────────────────────────────────────
-  const devTeam  = await prisma.subDepartment.upsert({ where: { prefix: "DEV"  }, update: {}, create: { name: "Backend",  prefix: "DEV",   departmentId: deptEng.id,    tenantId: tenant.id } })
-  const techTeam = await prisma.subDepartment.upsert({ where: { prefix: "TECH" }, update: {}, create: { name: "DevOps",   prefix: "TECH",  departmentId: deptEng.id,    tenantId: tenant.id } })
-  const phpTeam  = await prisma.subDepartment.upsert({ where: { prefix: "PHP"  }, update: {}, create: { name: "Platform", prefix: "PHP",   departmentId: deptEng.id,    tenantId: tenant.id } })
-  const uiuxTeam = await prisma.subDepartment.upsert({ where: { prefix: "UI/UX"}, update: {}, create: { name: "UI/UX",   prefix: "UI/UX", departmentId: deptDesign.id, tenantId: tenant.id } })
-  const itTeam   = await prisma.subDepartment.upsert({ where: { prefix: "IT"   }, update: {}, create: { name: "IT Ops",  prefix: "IT",    departmentId: deptEng.id,    tenantId: tenant.id } })
-  const allTeams = [devTeam, techTeam, phpTeam, uiuxTeam, itTeam]
+  // ── 4. SubDepartments ─────────────────────────────────────────────────────────────────
+  const devSubDepartment  = await prisma.subDepartment.upsert({ where: { prefix: "DEV"  }, update: {}, create: { name: "Backend",  prefix: "DEV",   departmentId: deptEng.id,    tenantId: tenant.id } })
+  const techSubDepartment = await prisma.subDepartment.upsert({ where: { prefix: "TECH" }, update: {}, create: { name: "DevOps",   prefix: "TECH",  departmentId: deptEng.id,    tenantId: tenant.id } })
+  const phpSubDepartment  = await prisma.subDepartment.upsert({ where: { prefix: "PHP"  }, update: {}, create: { name: "Platform", prefix: "PHP",   departmentId: deptEng.id,    tenantId: tenant.id } })
+  const uiuxSubDepartment = await prisma.subDepartment.upsert({ where: { prefix: "UI/UX"}, update: {}, create: { name: "UI/UX",   prefix: "UI/UX", departmentId: deptDesign.id, tenantId: tenant.id } })
+  const itSubDepartment   = await prisma.subDepartment.upsert({ where: { prefix: "IT"   }, update: {}, create: { name: "IT Ops",  prefix: "IT",    departmentId: deptEng.id,    tenantId: tenant.id } })
+  const allSubDepartments = [devSubDepartment, techSubDepartment, phpSubDepartment, uiuxSubDepartment, itSubDepartment]
 
-  // ── 5. Team statuses ─────────────────────────────────────────────────────────
-  for (const team of allTeams) {
+  // ── 5. SubDepartment statuses ─────────────────────────────────────────────────────────
+  for (const subDepartment of allSubDepartments) {
     for (const s of STANDARD_STATUSES) {
       await prisma.subDepartmentStatus.upsert({
-        where: { subDepartmentId_label: { subDepartmentId: team.id, label: s.label } },
+        where: { subDepartmentId_label: { subDepartmentId: subDepartment.id, label: s.label } },
         update: { color: s.color, order: s.order, isComplete: s.isComplete },
-        create: { subDepartmentId: team.id, ...s },
+        create: { subDepartmentId: subDepartment.id, ...s },
       })
     }
   }
 
-  // ── 6. Team memberships + primary team assignment ────────────────────────────
-  const memberDefs: Array<{ profile: typeof admin; team: typeof devTeam; role: "admin" | "manager" | "sub_manager" | "agent" }> = [
-    { profile: admin,   team: devTeam,  role: "admin"   },
-    { profile: manager, team: devTeam,  role: "manager" },
-    { profile: lead,    team: techTeam, role: "sub_manager"    },
-    { profile: dev1,    team: phpTeam,  role: "agent"   },
-    { profile: dev2,    team: uiuxTeam, role: "agent"   },
+  // ── 6. SubDepartment memberships + primary subDepartment assignment ────────────────────────────
+  const memberDefs: Array<{ profile: typeof admin; subDepartment: typeof devSubDepartment; role: "admin" | "manager" | "sub_manager" | "agent" }> = [
+    { profile: admin,   subDepartment: devSubDepartment,  role: "admin"   },
+    { profile: manager, subDepartment: devSubDepartment,  role: "manager" },
+    { profile: lead,    subDepartment: techSubDepartment, role: "sub_manager"    },
+    { profile: dev1,    subDepartment: phpSubDepartment,  role: "agent"   },
+    { profile: dev2,    subDepartment: uiuxSubDepartment, role: "agent"   },
   ]
-  for (const { profile, team, role } of memberDefs) {
+  for (const { profile, subDepartment, role } of memberDefs) {
     await prisma.subDepartmentMembership.upsert({
-      where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId: team.id } },
+      where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId: subDepartment.id } },
       update: {},
-      create: { userId: profile.id, subDepartmentId: team.id, role },
+      create: { userId: profile.id, subDepartmentId: subDepartment.id, role },
     })
-    await prisma.profile.update({ where: { id: profile.id }, data: { subDepartmentId: team.id } })
+    await prisma.profile.update({ where: { id: profile.id }, data: { subDepartmentId: subDepartment.id } })
   }
-  // Any remaining profiles land on devTeam
-  await prisma.profile.updateMany({ where: { subDepartmentId: null }, data: { subDepartmentId: devTeam.id } })
+  // Any remaining profiles land on devSubDepartment
+  await prisma.profile.updateMany({ where: { subDepartmentId: null }, data: { subDepartmentId: devSubDepartment.id } })
 
   // ── 7. Projects ──────────────────────────────────────────────────────────────
   type ProjectDef = {
@@ -133,11 +133,11 @@ async function main() {
     subDepartmentId: string; departmentId: string; projectStatus: string
   }
   const projectDefs: ProjectDef[] = [
-    { slug: "web",      name: "Web Platform",   color: "#0a76b9", description: "Tenant portals, ticketing system, internal tooling",    subDepartmentId: devTeam.id,  departmentId: deptEng.id,    projectStatus: "active"   },
-    { slug: "seo",      name: "SEO Platform",   color: "#7c3aed", description: "Crawler, rank tracker, and performance dashboard",       subDepartmentId: techTeam.id, departmentId: deptEng.id,    projectStatus: "active"   },
-    { slug: "internal", name: "Internal Tools", color: "#f59e0b", description: "DevOps automation, monitoring, and internal dashboards", subDepartmentId: itTeam.id,   departmentId: deptEng.id,    projectStatus: "active"   },
-    { slug: "mobile",   name: "Mobile App",     color: "#10b981", description: "iOS / Android client for the ticketing platform",        subDepartmentId: phpTeam.id,  departmentId: deptEng.id,    projectStatus: "pipeline" },
-    { slug: "design-system", name: "Design System", color: "#f43f5e", description: "Component library, tokens, and Figma integration",  subDepartmentId: uiuxTeam.id, departmentId: deptDesign.id, projectStatus: "active"   },
+    { slug: "web",      name: "Web Platform",   color: "#0a76b9", description: "Tenant portals, ticketing system, internal tooling",    subDepartmentId: devSubDepartment.id,  departmentId: deptEng.id,    projectStatus: "active"   },
+    { slug: "seo",      name: "SEO Platform",   color: "#7c3aed", description: "Crawler, rank tracker, and performance dashboard",       subDepartmentId: techSubDepartment.id, departmentId: deptEng.id,    projectStatus: "active"   },
+    { slug: "internal", name: "Internal Tools", color: "#f59e0b", description: "DevOps automation, monitoring, and internal dashboards", subDepartmentId: itSubDepartment.id,   departmentId: deptEng.id,    projectStatus: "active"   },
+    { slug: "mobile",   name: "Mobile App",     color: "#10b981", description: "iOS / Android client for the ticketing platform",        subDepartmentId: phpSubDepartment.id,  departmentId: deptEng.id,    projectStatus: "pipeline" },
+    { slug: "design-system", name: "Design System", color: "#f43f5e", description: "Component library, tokens, and Figma integration",  subDepartmentId: uiuxSubDepartment.id, departmentId: deptDesign.id, projectStatus: "active"   },
   ]
   const projects: Record<string, { id: string }> = {}
   for (const { slug, name, color, description, subDepartmentId, departmentId, projectStatus } of projectDefs) {
@@ -197,10 +197,10 @@ async function main() {
   if ((await prisma.routingRule.count()) === 0) {
     await prisma.routingRule.createMany({
       data: [
-        { position: 0, conditionType: "subject_contains", conditionValue: "urgent",          subDepartmentId: devTeam.id,  priority: "Critical", enabled: true },
-        { position: 1, conditionType: "subject_contains", conditionValue: "crash",            subDepartmentId: devTeam.id,  priority: "High",   enabled: true },
-        { position: 2, conditionType: "from_domain",      conditionValue: "penglobalbd.com",  subDepartmentId: itTeam.id,   priority: "High",   enabled: true },
-        { position: 3, conditionType: "body_contains",    conditionValue: "billing",          subDepartmentId: phpTeam.id,  priority: "Medium", enabled: true },
+        { position: 0, conditionType: "subject_contains", conditionValue: "urgent",          subDepartmentId: devSubDepartment.id,  priority: "Critical", enabled: true },
+        { position: 1, conditionType: "subject_contains", conditionValue: "crash",            subDepartmentId: devSubDepartment.id,  priority: "High",   enabled: true },
+        { position: 2, conditionType: "from_domain",      conditionValue: "penglobalbd.com",  subDepartmentId: itSubDepartment.id,   priority: "High",   enabled: true },
+        { position: 3, conditionType: "body_contains",    conditionValue: "billing",          subDepartmentId: phpSubDepartment.id,  priority: "Medium", enabled: true },
       ],
     })
   }
@@ -339,7 +339,7 @@ async function main() {
     title: "Authentication overhaul — Entra ID + session hardening",
     description: "<p>Full auth rewrite: Microsoft Entra ID SSO via Supabase, JWT refresh rotation, and session pinning to prevent token reuse after logout.</p>",
     type: "Feature", priority: "Critical", status: "In Progress",
-    project: "web", subDepartmentId: techTeam.id, assigneeId: manager.id,
+    project: "web", subDepartmentId: techSubDepartment.id, assigneeId: manager.id,
     storyPoints: 13, estimatedTime: 480,
     sprintId: sprintActive?.id, labels: ["auth", "security"],
   })
@@ -347,21 +347,21 @@ async function main() {
     title: "Entra ID OAuth flow via Supabase Auth provider",
     description: "<p>Register Entra ID app, configure Supabase OAuth, handle profile auto-provisioning on first login.</p>",
     type: "Task", priority: "Critical", status: "In Review",
-    project: "web", subDepartmentId: techTeam.id, assigneeId: manager.id,
+    project: "web", subDepartmentId: techSubDepartment.id, assigneeId: manager.id,
     storyPoints: 5, estimatedTime: 180,
     sprintId: sprintActive?.id, labels: ["auth"], parentId: authEpic.id,
   })
   await mkTicket({
     title: "JWT refresh token rotation on every use",
     type: "Task", priority: "High", status: "In Progress",
-    project: "web", subDepartmentId: techTeam.id, assigneeId: lead.id,
+    project: "web", subDepartmentId: techSubDepartment.id, assigneeId: lead.id,
     storyPoints: 3, estimatedTime: 120,
     sprintId: sprintActive?.id, labels: ["auth"], parentId: authEpic.id,
   })
   await mkTicket({
     title: "Session pinning — invalidate old tokens on new device login",
     type: "Task", priority: "High", status: "Not Started",
-    project: "web", subDepartmentId: techTeam.id, assigneeId: null,
+    project: "web", subDepartmentId: techSubDepartment.id, assigneeId: null,
     storyPoints: 3, estimatedTime: 90,
     labels: ["auth", "security"], parentId: authEpic.id,
   })
@@ -371,7 +371,7 @@ async function main() {
     title: "Cross-tenant data leak in /api/projects",
     description: "<p>The auth middleware skips tenant context on the <code>/api/projects</code> route, causing cross-tenant rows to be returned. Needs a regression test added to the isolation suite.</p>",
     type: "Bug", priority: "Critical", status: "In Review",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     dueInDays: 0, storyPoints: 5, estimatedTime: 240,
     sprintId: sprintActive?.id, labels: ["security", "db"],
     startDate: days(-5),
@@ -380,7 +380,7 @@ async function main() {
     title: "Regression test: tenant isolation on /api/projects",
     description: "<p>Write an integration test that signs in as two separate tenants and asserts no cross-tenant rows are returned.</p>",
     type: "Task", priority: "High", status: "In Progress",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: lead.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: lead.id,
     storyPoints: 2, sprintId: sprintActive?.id,
     labels: ["testing", "security"], parentId: tenantLeak.id,
   })
@@ -390,7 +390,7 @@ async function main() {
     title: "Inbound email → ticket webhook parser",
     description: "<p>Parse inbound support emails into tickets. Handle file attachments, thread detection via <code>In-Reply-To</code>, spam scoring, and routing rules.</p>",
     type: "Feature", priority: "High", status: "In Progress",
-    project: "web", subDepartmentId: phpTeam.id, assigneeId: dev1.id,
+    project: "web", subDepartmentId: phpSubDepartment.id, assigneeId: dev1.id,
     dueInDays: 3, storyPoints: 8, estimatedTime: 360,
     sprintId: sprintActive?.id, labels: ["email"],
     startDate: days(-4),
@@ -399,7 +399,7 @@ async function main() {
     title: "Resend webhook signature verification",
     description: "<p>Verify the <code>svix-signature</code> header before processing any inbound Resend webhook event.</p>",
     type: "Feature", priority: "High", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: null,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: null,
     storyPoints: 3, estimatedTime: 120,
     labels: ["email"], parentId: emailTicket.id,
   })
@@ -409,7 +409,7 @@ async function main() {
     title: "Board view — drag-and-drop ticket columns",
     description: "<p>Implement drag-and-drop between status columns using react-dnd. Optimistically update status and reconcile on success/failure.</p>",
     type: "Feature", priority: "High", status: "In Review",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 8, estimatedTime: 300,
     sprintId: sprintActive?.id, labels: ["ui", "board"],
     startDate: days(-6),
@@ -417,7 +417,7 @@ async function main() {
   await mkTicket({
     title: "Board: dragged card snaps to wrong column at boundary",
     type: "Bug", priority: "High", status: "In Progress",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 2, dueInDays: 2,
     labels: ["ui", "dnd"], parentId: boardDnd.id,
   })
@@ -427,7 +427,7 @@ async function main() {
     title: "Real-time notifications — assignment + mention + status change",
     description: "<p>Supabase Realtime subscription for notifications. Badge counter in nav, popover list with mark-all-read.</p>",
     type: "Feature", priority: "High", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 8, estimatedTime: 300,
     sprintId: sprintActive?.id, labels: ["notifications"],
   })
@@ -438,33 +438,33 @@ async function main() {
     title: "Next.js 15 scaffold + CI pipeline",
     description: "<p>Initial project setup: Next.js 15 App Router, Prisma 7 with PgBouncer adapter, Supabase Auth, Tailwind v4, GitHub Actions CI, Vercel preview deployments.</p>",
     type: "Chore", priority: "Medium", status: "Live",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 5, sprintId: sprintDone?.id,
   })
   await mkTicket({
     title: "Configure Supabase project, database, and RLS policies",
     type: "Task", priority: "High", status: "Live",
-    project: "web", subDepartmentId: techTeam.id, assigneeId: manager.id,
+    project: "web", subDepartmentId: techSubDepartment.id, assigneeId: manager.id,
     storyPoints: 3, sprintId: sprintDone?.id, parentId: scaffold.id,
   })
   await mkTicket({
     title: "Ticket list page with status filter and search",
     description: "<p>Server-rendered ticket list with client-side status/priority filters and debounced full-text search.</p>",
     type: "Feature", priority: "High", status: "Live",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 5, sprintId: sprintDone?.id, labels: ["ui"],
   })
   await mkTicket({
     title: "Ticket detail page — rich editor + comment thread",
     description: "<p>Tiptap-based rich text editor for descriptions. Comment thread with @mentions, file attachments, and edit/delete.</p>",
     type: "Feature", priority: "High", status: "Live",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 8, sprintId: sprintDone?.id, labels: ["ui", "editor"],
   })
   await mkTicket({
-    title: "Prisma schema — core models: Department, Team, Project, Ticket",
+    title: "Prisma schema — core models: Department, SubDepartment, Project, Ticket",
     type: "Chore", priority: "High", status: "Live",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 5, sprintId: sprintDone?.id, labels: ["db"],
   })
 
@@ -474,56 +474,56 @@ async function main() {
     title: "Add Sentry to all API route handlers",
     description: "<p>Wrap every <code>route.ts</code> handler with Sentry error capture. Track userId on each scope.</p>",
     type: "Chore", priority: "Medium", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 3, estimatedTime: 90, labels: ["observability"],
   })
   await mkTicket({
     title: "Rate-limit public /api/status endpoint",
     type: "Task", priority: "Medium", status: "Not Started",
-    project: "web", subDepartmentId: itTeam.id, assigneeId: null,
+    project: "web", subDepartmentId: itSubDepartment.id, assigneeId: null,
     storyPoints: 2, estimatedTime: 60, labels: ["security"],
   })
   await mkTicket({
     title: "Comment editor loses focus when @mention popup opens",
     type: "Bug", priority: "Medium", status: "Not Started",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 2, dueInDays: 5, labels: ["ui", "editor"],
   })
   await mkTicket({
     title: "CSV export for ticket list with active filters applied",
     type: "Feature", priority: "Low", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: null,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: null,
     storyPoints: 3, labels: ["export"],
   })
   await mkTicket({
     title: "Ticket detail: copy-to-clipboard button for ticket ID",
     type: "Task", priority: "Low", status: "Not Started",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 1, labels: ["ui"],
   })
   await mkTicket({
     title: "Webhook delivery retry with exponential backoff",
     type: "Feature", priority: "Medium", status: "Blocked",
-    project: "web", subDepartmentId: phpTeam.id, assigneeId: dev1.id,
+    project: "web", subDepartmentId: phpSubDepartment.id, assigneeId: dev1.id,
     storyPoints: 5, labels: ["webhooks", "reliability"],
     dueInDays: 10,
   })
   await mkTicket({
     title: "Bulk ticket status update from list view",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: null,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: null,
     storyPoints: 5, sprintId: sprintPlanned?.id, labels: ["ui"],
   })
   await mkTicket({
     title: "Global search — tickets, projects, sprints, members",
     type: "Feature", priority: "High", status: "Not Started",
-    project: "web", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "web", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 8, sprintId: sprintPlanned?.id, estimatedTime: 360, labels: ["search"],
   })
   await mkTicket({
     title: "Keyboard shortcut layer (⌘K palette + per-page bindings)",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "web", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "web", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 5, sprintId: sprintPlanned?.id, labels: ["ui", "a11y"],
   })
 
@@ -533,7 +533,7 @@ async function main() {
     title: "Property crawler — schedule, run, and store results",
     description: "<p>Queue-based crawl scheduler. Configurable concurrency, user-agent rotation, robots.txt respect, and result persistence in PostgreSQL.</p>",
     type: "Feature", priority: "High", status: "In Progress",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: lead.id,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: lead.id,
     dueInDays: 14, storyPoints: 13, estimatedTime: 480,
     sprintId: sprintPlanned2?.id, labels: ["crawler"],
     startDate: days(-2),
@@ -541,14 +541,14 @@ async function main() {
   await mkTicket({
     title: "Crawler: handle JavaScript-rendered pages via Puppeteer",
     type: "Task", priority: "High", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: lead.id,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: lead.id,
     storyPoints: 8, sprintId: sprintPlanned2?.id,
     labels: ["crawler"], parentId: crawlerEpic.id,
   })
   await mkTicket({
     title: "Crawler: respect robots.txt disallow rules",
     type: "Task", priority: "Medium", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: null,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: null,
     storyPoints: 3, sprintId: sprintPlanned2?.id,
     labels: ["crawler"], parentId: crawlerEpic.id,
   })
@@ -556,26 +556,26 @@ async function main() {
     title: "Crawl budget dashboard widget with sparkline trend",
     description: "<p>Widget showing crawl budget usage per property. Include daily sparkline, budget %, and link to full crawl log.</p>",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: lead.id,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: lead.id,
     storyPoints: 5, estimatedTime: 180,
     sprintId: sprintPlanned2?.id, labels: ["data", "charts"],
   })
   await mkTicket({
     title: "Rank tracker — keyword position history line chart",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: null,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: null,
     storyPoints: 8, labels: ["data", "charts"],
   })
   await mkTicket({
     title: "Sitemap diff report — daily delta with regression alerts",
     type: "Feature", priority: "Low", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: null,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: null,
     storyPoints: 5, labels: ["data"],
   })
   await mkTicket({
     title: "SEO: crawler rate-limiter crashes on malformed robots.txt",
     type: "Bug", priority: "High", status: "Not Started",
-    project: "seo", subDepartmentId: techTeam.id, assigneeId: lead.id,
+    project: "seo", subDepartmentId: techSubDepartment.id, assigneeId: lead.id,
     storyPoints: 2, dueInDays: 3, labels: ["crawler", "crash"],
   })
 
@@ -585,27 +585,27 @@ async function main() {
     title: "Slack alerts for deploy failures (#deploys channel)",
     description: "<p>Post a structured message to <code>#deploys</code> on any failed GitHub Actions run. Include diff link, failed step, and one-click rollback instructions.</p>",
     type: "Task", priority: "Medium", status: "Not Started",
-    project: "internal", subDepartmentId: itTeam.id, assigneeId: dev1.id,
+    project: "internal", subDepartmentId: itSubDepartment.id, assigneeId: dev1.id,
     storyPoints: 2, estimatedTime: 90, dueInDays: 14, labels: ["devops"],
   })
   await mkTicket({
     title: "Automated daily database backup verification",
     description: "<p>Restore latest backup to a shadow database and run a row-count comparison against production to confirm integrity.</p>",
     type: "Task", priority: "High", status: "In Progress",
-    project: "internal", subDepartmentId: itTeam.id, assigneeId: manager.id,
+    project: "internal", subDepartmentId: itSubDepartment.id, assigneeId: manager.id,
     storyPoints: 3, estimatedTime: 180, labels: ["devops", "db"],
     startDate: days(-3),
   })
   await mkTicket({
     title: "Clean up stale e2e test fixtures and snapshots",
     type: "Chore", priority: "Low", status: "Not Started",
-    project: "internal", subDepartmentId: phpTeam.id, assigneeId: null,
+    project: "internal", subDepartmentId: phpSubDepartment.id, assigneeId: null,
     storyPoints: 1,
   })
   await mkTicket({
     title: "Dependency audit — upgrade packages with known CVEs",
     type: "Chore", priority: "High", status: "In Progress",
-    project: "internal", subDepartmentId: devTeam.id, assigneeId: admin.id,
+    project: "internal", subDepartmentId: devSubDepartment.id, assigneeId: admin.id,
     storyPoints: 2, dueInDays: 5, labels: ["security"],
     startDate: days(-1),
   })
@@ -616,25 +616,25 @@ async function main() {
     title: "Push notification integration — FCM + APNs",
     description: "<p>Register device tokens on login. Receive assignment and mention notifications in the background via FCM (Android) and APNs (iOS).</p>",
     type: "Feature", priority: "High", status: "Not Started",
-    project: "mobile", subDepartmentId: phpTeam.id, assigneeId: dev1.id,
+    project: "mobile", subDepartmentId: phpSubDepartment.id, assigneeId: dev1.id,
     storyPoints: 8, labels: ["notifications"],
   })
   await mkTicket({
     title: "Offline mode — cache ticket list for 24 h with background sync",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "mobile", subDepartmentId: phpTeam.id, assigneeId: null,
+    project: "mobile", subDepartmentId: phpSubDepartment.id, assigneeId: null,
     storyPoints: 5, labels: ["offline"],
   })
   await mkTicket({
     title: "Mobile: ticket detail crashes when assignee is null",
     type: "Bug", priority: "Critical", status: "Not Started",
-    project: "mobile", subDepartmentId: phpTeam.id, assigneeId: dev1.id,
+    project: "mobile", subDepartmentId: phpSubDepartment.id, assigneeId: dev1.id,
     storyPoints: 1, dueInDays: 1, labels: ["crash"],
   })
   await mkTicket({
     title: "Mobile: swipe-left to change ticket status from list view",
     type: "Feature", priority: "Low", status: "Not Started",
-    project: "mobile", subDepartmentId: phpTeam.id, assigneeId: null,
+    project: "mobile", subDepartmentId: phpSubDepartment.id, assigneeId: null,
     storyPoints: 3, labels: ["ui"],
   })
 
@@ -643,32 +643,32 @@ async function main() {
   await mkTicket({
     title: "Design token audit — align Figma tokens with Tailwind CSS vars",
     type: "Task", priority: "High", status: "In Progress",
-    project: "design-system", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "design-system", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 5, estimatedTime: 240, labels: ["tokens"],
     startDate: days(-2),
   })
   await mkTicket({
     title: "Component: DatePicker — accessible, keyboard-navigable calendar",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "design-system", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "design-system", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 8, labels: ["component", "a11y"],
   })
   await mkTicket({
     title: "Storybook setup — document all existing UI components",
     type: "Chore", priority: "Medium", status: "Not Started",
-    project: "design-system", subDepartmentId: uiuxTeam.id, assigneeId: null,
+    project: "design-system", subDepartmentId: uiuxSubDepartment.id, assigneeId: null,
     storyPoints: 5, labels: ["docs"],
   })
   await mkTicket({
     title: "Component: DataTable — sortable, filterable, paginated",
     type: "Feature", priority: "Medium", status: "Not Started",
-    project: "design-system", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "design-system", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 13, labels: ["component"],
   })
   await mkTicket({
     title: "Design system: Button component missing focus ring in high-contrast mode",
     type: "Bug", priority: "High", status: "Not Started",
-    project: "design-system", subDepartmentId: uiuxTeam.id, assigneeId: dev2.id,
+    project: "design-system", subDepartmentId: uiuxSubDepartment.id, assigneeId: dev2.id,
     storyPoints: 1, dueInDays: 7, labels: ["a11y", "component"],
   })
 
@@ -827,7 +827,7 @@ async function main() {
     prisma.timeEntry.count(),
   ])
   console.log(`✓ Departments : 2  (Engineering, Design)`)
-  console.log(`✓ Teams       : ${allTeams.length}  (${allTeams.map((t) => t.prefix).join(", ")})`)
+  console.log(`✓ SubDepartments       : ${allSubDepartments.length}  (${allSubDepartments.map((t) => t.prefix).join(", ")})`)
   console.log(`✓ Projects    : ${projectDefs.length}  (${projectDefs.map((p) => p.slug).join(", ")})`)
   console.log(`✓ Sprints     : 4  (1 completed, 1 active, 2 planned)`)
   console.log(`✓ Tickets     : ${ticketsFinal}`)

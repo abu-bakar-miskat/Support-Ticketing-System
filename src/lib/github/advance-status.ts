@@ -6,7 +6,7 @@ import { pickStatusMove, resolveTargetLabel, type GitHubStatusEvent } from "./st
 
 /**
  * Webhook-driven status change. Resolves the target label from the GitHub
- * event via the team's githubStatusMap override (or smart defaults) using
+ * event via the subDepartment's githubStatusMap override (or smart defaults) using
  * resolveTargetLabel, then applies it. Bypasses the sequential-transition
  * rule the user-facing status route enforces (that rule is for the human
  * workflow UI), but is forward-only and never auto-completes intake

@@ -75,14 +75,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  // Validate the status exists for this team, and look up the status being left
+  // Validate the status exists for this subDepartment, and look up the status being left
   // (in the same query) so its linked labels can be dropped from the ticket.
   const [validStatus, priorStatus] = await Promise.all([
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: status } }),
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: ticket.status } }),
   ])
   if (!validStatus) {
-    return NextResponse.json({ error: `"${status}" is not a valid status for this team` }, { status: 400 })
+    return NextResponse.json({ error: `"${status}" is not a valid status for this subDepartment` }, { status: 400 })
   }
 
   const fromStatus = ticket.status

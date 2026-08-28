@@ -11,7 +11,7 @@ export default async function OnboardingLayout({
   const profile = await getProfile()
   if (!profile) redirect("/login")
 
-  // Already has a team membership or is admin/manager → send to dashboard
+  // Already has a subDepartment membership or is admin/manager → send to dashboard
   if (
     profile.role === "admin" ||
     profile.role === "manager" ||

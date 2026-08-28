@@ -21,8 +21,8 @@ export type RequestScope = {
   /** Tenants the caller may observe. Ignored when system/platform. */
   tenantIds: string[];
   /**
-   * Sub-department (team) allowlist for SD-06. When present, ticket reads are
-   * additionally restricted to these team ids — a sub-department-scoped caller
+   * Sub-department (subDepartment) allowlist for SD-06. When present, ticket reads are
+   * additionally restricted to these subDepartment ids — a sub-department-scoped caller
    * never observes tickets outside their granted sub-departments on any read
    * path. Absent/undefined = whole-department access (no sub-department filter).
    */

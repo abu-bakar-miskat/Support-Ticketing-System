@@ -18,7 +18,7 @@ export function resolveReopenStatus(statuses: SubDepartmentStatusRow[]): string 
  * attributes the reopen to a customer reply.
  *
  * Returns true when a reopen was performed, false otherwise (ticket was not
- * completed, or every team status is a completion status — edge case).
+ * completed, or every subDepartment status is a completion status — edge case).
  */
 export async function maybeReopenTicket(
   ticketId: string,

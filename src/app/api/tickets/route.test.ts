@@ -150,7 +150,7 @@ describe("POST /api/tickets", () => {
     expect(res.status).toBe(400)
   })
 
-  it("returns 422 when the user has no team", async () => {
+  it("returns 422 when the user has no subDepartment", async () => {
     mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: null } as never)
     const res = await POST(makeRequest(validBody))
     expect(res.status).toBe(422)

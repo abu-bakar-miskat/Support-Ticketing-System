@@ -43,7 +43,7 @@ export function parseEnabledBoardSubDepartmentIds(value: unknown): string[] | nu
   return value.filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
-/** Default boards come from the project's department teams, not member assignments. */
+/** Default boards come from the project's department subDepartments, not member assignments. */
 export function resolveEnabledBoardSubDepartmentIds(opts: {
   stored: string[] | null;
   departmentSubDepartmentIds: string[];

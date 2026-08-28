@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       data: { assigneeId: assigneeIds[0] },
     })
   } else {
-    // Round robin — filter out members not "active in rotation" (profile isActive=false or team doNotAssign), fall back to
+    // Round robin — filter out members not "active in rotation" (profile isActive=false or subDepartment doNotAssign), fall back to
     // all if that leaves nobody. Deliberately NOT using isMemberAvailableNow here: this is a
     // manual bulk action over an explicitly chosen set of members, so filtering by real-time
     // working hours/holiday would shrink the candidate pool (sometimes to just 1 person) and

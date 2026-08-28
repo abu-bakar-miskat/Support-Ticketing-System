@@ -92,9 +92,9 @@ export function TransferTicketDialog({
               value={target}
               onChange={setTarget}
               options={options}
-              placeholder={loadingDest ? "Loading…" : "Select a destination team…"}
+              placeholder={loadingDest ? "Loading…" : "Select a destination subDepartment…"}
               searchPlaceholder="Search departments…"
-              emptyLabel={loadingDest ? "Loading…" : "No other teams available"}
+              emptyLabel={loadingDest ? "Loading…" : "No other subDepartments available"}
               disabled={loadingDest || submitting}
             />
           </div>

@@ -11,7 +11,7 @@ async function assertDeptScope(deptId: string, caller: AuthProfile): Promise<Nex
   return null
 }
 
-// DELETE — remove a user from all teams in a specific department only.
+// DELETE — remove a user from all subDepartments in a specific department only.
 // Other department memberships, cross-access grants, and manager roles are untouched.
 export async function DELETE(
   req: NextRequest,
@@ -27,7 +27,7 @@ export async function DELETE(
   const { userId } = await req.json()
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 })
 
-  // Find all teams in this department
+  // Find all subDepartments in this department
   const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     select: { id: true },
@@ -36,12 +36,12 @@ export async function DELETE(
 
   if (subDepartmentIds.length === 0) return new NextResponse(null, { status: 204 })
 
-  // Use an interactive transaction so we can find the remaining team after deletion
+  // Use an interactive transaction so we can find the remaining subDepartment after deletion
   await prisma.$transaction(async (tx) => {
-    // 1. Remove only memberships for this department's teams
+    // 1. Remove only memberships for this department's subDepartments
     await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId: { in: subDepartmentIds } } })
 
-    // 2. If profile.teamId was in this dept, point it to the next remaining active team
+    // 2. If profile.teamId was in this dept, point it to the next remaining active subDepartment
     //    (from any other department) rather than nulling it out entirely.
     const remaining = await tx.subDepartmentMembership.findFirst({
       where: { userId, isActive: true },

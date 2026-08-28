@@ -44,7 +44,7 @@ export default function RootError({
       <p className="text-muted-foreground max-w-sm text-sm">
         {isStale
           ? "A new version was deployed while this tab was open. Refresh to load it."
-          : "An unexpected error occurred. Refreshing usually fixes it — if it keeps happening, let the team know."}
+          : "An unexpected error occurred. Refreshing usually fixes it — if it keeps happening, let the sub department know."}
       </p>
       <div className="flex gap-2">
         <Button onClick={() => window.location.reload()}>

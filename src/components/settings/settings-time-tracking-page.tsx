@@ -164,11 +164,11 @@ export const TIME_TRACKING_APPROVALS_SECTIONS: SettingsSection[] = [
         },
       },
       {
-        label: "Team time visible to",
-        description: "Who can see the Team Time report",
+        label: "SubDepartment time visible to",
+        description: "Who can see the SubDepartment Time report",
         control: {
           kind: "select",
-          id: "teamTimeVisibleTo",
+          id: "subDepartmentTimeVisibleTo",
           options: VISIBILITY_OPTIONS,
           defaultValue: "Leads + Admins",
           widthClass: "w-[150px]",
@@ -510,7 +510,7 @@ export function SettingsTimeTrackingApprovalsPage({
   return (
     <SettingsTimeTrackingView
       title="Approvals"
-      description="Set who approves timesheets and who can view team time reports."
+      description="Set who approves timesheets and who can view subDepartment time reports."
       sections={sections}
       configKey="approvalsConfig"
       initialValues={initialConfig}

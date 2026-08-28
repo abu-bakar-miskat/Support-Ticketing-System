@@ -3,7 +3,7 @@ import "server-only"
 import { prisma } from "@/lib/db"
 import { effectiveLinkedLabelNames } from "@/lib/status-label-choice"
 
-/** Resolve workflow linked labels against the ticket team's department registry. */
+/** Resolve workflow linked labels against the ticket subDepartment's department registry. */
 export async function linkedLabelsForDepartment(
   allowedLabels: string[],
   departmentId: string | null,

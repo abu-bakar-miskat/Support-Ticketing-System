@@ -21,7 +21,7 @@ type TicketLike = {
   viewerIsProjectMember?: boolean;
 };
 
-/** Profile role or team membership role is lead on the ticket's team. */
+/** Profile role or subDepartment membership role is lead on the ticket's subDepartment. */
 export function isLeadOnTicketSubDepartment(
   profile: ProfileLike,
   subDepartmentId: string | null | undefined,
@@ -41,7 +41,7 @@ export function isLeadOnTicketSubDepartment(
 
 /**
  * Admin/manager can edit any ticket; staff only if assignee, co-assignee, or
- * creator; team leads can edit any ticket on their team; a cross-access guest
+ * creator; subDepartment leads can edit any ticket on their subDepartment; a cross-access guest
  * with a full-access grant to the ticket's department can also edit; a
  * project-scoped cross-access guest can edit any ticket in their assigned
  * projects — full access covers everything except deleting (see canDeleteTicket).

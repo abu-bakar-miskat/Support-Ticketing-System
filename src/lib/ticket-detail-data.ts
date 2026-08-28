@@ -69,7 +69,7 @@ const ticketCoreInclude = {
 } as const;
 
 // ── Cached lookups ────────────────────────────────────────────────────────────
-// These are semi-static (team/department config and membership) but cost many
+// These are semi-static (subDepartment/department config and membership) but cost many
 // ~200ms round-trips to the remote database per ticket open. Short revalidate
 // windows keep them fresh enough while making repeat opens fast.
 
@@ -97,7 +97,7 @@ const getCachedProjectMembers = (projectId: string) =>
     { revalidate: 300 },
   )();
 
-/** @all audience for a ticket: project members if attached, else team/dept. */
+/** @all audience for a ticket: project members if attached, else subDepartment/dept. */
 const getCachedTicketMentionable = (
   projectId: string | null,
   departmentId: string | null,
@@ -190,7 +190,7 @@ export async function assertAssigneeEligibleForTicket(
     }));
 
   if (!onTicketSubDepartment) {
-    return { ok: false, error: "Assignee must belong to the ticket's team" };
+    return { ok: false, error: "Assignee must belong to the ticket's subDepartment" };
   }
 
   return { ok: true };
@@ -442,8 +442,8 @@ export async function getTicketDetailPayload(
     isDueOverdue(ticket.dueDate, new Date(now)) && !isBlockedStatus(ticket.status);
 
   // A sub-ticket counts as complete when its status is one flagged
-  // `isComplete` on its own team. Sub-tickets may live on a different team
-  // than the parent, so resolve the complete-status labels per team.
+  // `isComplete` on its own subDepartment. Sub-tickets may live on a different subDepartment
+  // than the parent, so resolve the complete-status labels per subDepartment.
   const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
   const completeStatusRows = subSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({

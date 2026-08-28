@@ -195,7 +195,7 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
       createdAt: n.createdAt.toISOString(),
       unread: n.readAt === null,
       section: isToday(n.createdAt, now) ? ("today" as const) : ("earlier" as const),
-      subDepartmentName: jr?.subDepartment?.name ?? "a team",
+      subDepartmentName: jr?.subDepartment?.name ?? "a sub department",
       subDepartmentId: jr?.subDepartmentId ?? "",
       departmentId: jr?.subDepartment?.departmentId ?? null,
       requestId: jr?.id ?? n.joinRequestId,

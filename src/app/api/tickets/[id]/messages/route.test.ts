@@ -46,7 +46,7 @@ const mockCreate = vi.mocked(prisma.ticketMessage.create)
 const mockSend = vi.mocked(sendCustomerReplyEmail)
 const mockFindAttachments = vi.mocked(prisma.attachment.findMany)
 const mockUpdateAttachments = vi.mocked(prisma.attachment.updateMany)
-const mockTeamStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
+const mockSubDepartmentStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
 
 const intakeTicket = {
   id: "ticket-1",
@@ -84,7 +84,7 @@ beforeEach(() => {
   mockSend.mockResolvedValue("provider-msg-id")
   mockFindAttachments.mockResolvedValue([] as never)
   mockUpdateAttachments.mockResolvedValue({ count: 0 } as never)
-  mockTeamStatusFindFirst.mockResolvedValue(null as never)
+  mockSubDepartmentStatusFindFirst.mockResolvedValue(null as never)
   vi.mocked(prisma.ticket.update).mockResolvedValue({} as never)
   mockCreate.mockImplementation(
     (async ({ data }: never) =>

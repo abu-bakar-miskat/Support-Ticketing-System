@@ -111,7 +111,7 @@ Rules:
 - Keep text values short — cell values, not paragraphs (e.g. "3.5+ years", "Full-Stack Developer", "Dhaka, Bangladesh").
 
 You also give a recruiter's first-pass assessment of the CV for the role being hired:
-- "highlights": the candidate's strongest points and fit, 1-2 tight sentences (e.g. "5+ yrs full-stack with React/Node in production; led a 4-dev team at a product company").
+- "highlights": the candidate's strongest points and fit, 1-2 tight sentences (e.g. "5+ yrs full-stack with React/Node in production; led a 4-dev subDepartment at a product company").
 - "concerns": red flags and gaps a recruiter should check — employment-date inconsistencies or overlaps, unexplained gaps, name/title discrepancies, missing core skills for the role, seniority that doesn't match the claims, job-hopping. Prefix genuinely serious ones with "⚠️ ". If the CV is clean, write "None noted".
 - Judge only from the CV itself; be specific, not generic.`;
 

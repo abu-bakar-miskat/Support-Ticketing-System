@@ -22,7 +22,7 @@ function initials(name: string) {
     .join("");
 }
 
-/** color-mix keeps the whole page tinted by the team's own colour. */
+/** color-mix keeps the whole page tinted by the subDepartment's own colour. */
 const tint = (color: string, pct: number) =>
   `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
@@ -63,7 +63,7 @@ export function SubDepartmentAbout({
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <style dangerouslySetInnerHTML={{ __html: REVEAL_CSS }} />
 
-      {/* ── Identity hero: the team's colour + its ticket-key plate ── */}
+      {/* ── Identity hero: the subDepartment's colour + its ticket-key plate ── */}
       <header
         className="sd-rise relative overflow-hidden rounded-2xl border bg-sts-card"
         style={{
@@ -96,7 +96,7 @@ export function SubDepartmentAbout({
             </p>
           </div>
 
-          {/* Signature: this team's tickets are keyed by its prefix. */}
+          {/* Signature: this subDepartment's tickets are keyed by its prefix. */}
           <div
             className="flex shrink-0 flex-col items-start gap-1 rounded-xl border px-4 py-3 sm:items-end"
             style={{ borderColor: tint(accent, 28), backgroundColor: tint(accent, 7) }}
@@ -135,7 +135,7 @@ export function SubDepartmentAbout({
       <div className="sd-rise grid grid-cols-1 gap-4 lg:grid-cols-2" style={{ animationDelay: "120ms" }}>
         <SectionCard
           title="Leadership"
-          subtitle="Sub-managers can triage, assign, and configure this team."
+          subtitle="Sub-managers can triage, assign, and configure this sub department."
         >
           {subDepartment.subManagers.length === 0 ? (
             <Empty
@@ -153,7 +153,7 @@ export function SubDepartmentAbout({
 
         <SectionCard
           title="Shared mailbox"
-          subtitle="Email sent here opens tickets for this team."
+          subtitle="Email sent here opens tickets for this sub department."
           action={
             <Link
               href={mailboxHref}
@@ -198,7 +198,7 @@ export function SubDepartmentAbout({
       {/* ── Roster ── */}
       <section className="sd-rise" style={{ animationDelay: "180ms" }}>
         <SectionCard
-          title="Team roster"
+          title="SubDepartment roster"
           subtitle={`Everyone who can pick up ${subDepartment.name} tickets.`}
         >
           {roster.length === 0 ? (

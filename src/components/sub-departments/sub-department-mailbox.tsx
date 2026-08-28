@@ -244,7 +244,7 @@ export function SubDepartmentMailboxManager({
           {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
           <p className="font-sans text-[11px] text-sts-subtle">
             Forward or deliver mail to this address and each new email opens a{" "}
-            <span className="font-mono text-sts-muted">{prefix}-###</span> ticket for the team.
+            <span className="font-mono text-sts-muted">{prefix}-###</span> ticket for the sub department.
           </p>
         </div>
       )}

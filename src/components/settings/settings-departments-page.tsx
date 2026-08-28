@@ -41,6 +41,15 @@ import {
 
 export type UserOption = { id: string; name: string; email: string; role: string; avatarUrl?: string | null };
 
+/** A catalogue template offered as a department "template" option in the New Department modal. */
+export type TemplateOption = {
+  slug: string;
+  name: string;
+  description: string | null;
+  featureCount: number;
+  status: "active" | "requested" | "available";
+};
+
 type DeptManager = {
   id: string;
   userId: string;
@@ -420,17 +429,33 @@ function autoPrefix(name: string): string {
   return words.map((w) => w[0]).join("").toUpperCase().slice(0, 4);
 }
 
+// Fall back to the built-in department types when the catalogue is empty, so a
+// department can always be created (and the interface-driving support/hub types
+// stay reachable). Mapped into the same shape the picker renders.
+function builtInTemplateOptions(): TemplateOption[] {
+  return DEPARTMENT_TYPES.map((t) => ({
+    slug: t,
+    name: departmentTypeLabel(t),
+    description: departmentTypeDescription(t),
+    featureCount: 0,
+    status: "active" as const,
+  }));
+}
+
 function NewDepartmentModal({
   allUsers,
+  templateOptions,
   onClose,
   onCreated,
 }: {
   allUsers: UserOption[];
+  templateOptions: TemplateOption[];
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const options = templateOptions.length > 0 ? templateOptions : builtInTemplateOptions();
   const [name, setName] = useState("");
-  const [type, setType] = useState<string>(DEFAULT_DEPARTMENT_TYPE);
+  const [type, setType] = useState<string>(options[0]?.slug ?? DEFAULT_DEPARTMENT_TYPE);
   const [selectedManagers, setSelectedManagers] = useState<UserOption[]>([]);
   const [subDepartments, setSubDepartments] = useState<PendingSubDepartment[]>([]);
   const [subDepartmentInput, setSubDepartmentInput] = useState("");
@@ -589,13 +614,13 @@ function NewDepartmentModal({
               Template
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {DEPARTMENT_TYPES.map((t) => {
-                const on = type === t;
+              {options.map((opt) => {
+                const on = type === opt.slug;
                 return (
                   <button
-                    key={t}
+                    key={opt.slug}
                     type="button"
-                    onClick={() => setType(t)}
+                    onClick={() => setType(opt.slug)}
                     className={cn(
                       "rounded-lg border px-2.5 py-2 text-left transition-colors",
                       on
@@ -603,12 +628,21 @@ function NewDepartmentModal({
                         : "border-sts-card-border hover:border-sts-blue/40",
                     )}
                   >
-                    <div className={cn("font-sans text-[12.5px] font-semibold", on ? "text-sts-blue" : "text-sts-foreground")}>
-                      {departmentTypeLabel(t)}
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("font-sans text-[12.5px] font-semibold", on ? "text-sts-blue" : "text-sts-foreground")}>
+                        {opt.name}
+                      </span>
+                      {opt.featureCount > 0 && (
+                        <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
+                          {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
+                        </span>
+                      )}
                     </div>
-                    <div className="mt-0.5 font-sans text-[10.5px] leading-tight text-sts-subtle">
-                      {departmentTypeDescription(t)}
-                    </div>
+                    {opt.description && (
+                      <div className="mt-0.5 font-sans text-[10.5px] leading-tight text-sts-subtle">
+                        {opt.description}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -893,7 +927,7 @@ function DepartmentCard({
   const accessIds = accessGrants.map((g) => g.userId);
   const nativeMemberIds = dept.memberIds;
 
-  // Merge all members for display: native team members + direct-added members + managers, deduped
+  // Merge all members for display: native subDepartment members + direct-added members + managers, deduped
   const allMemberEntries = [
     ...nativeMembers.map((m) => ({ ...m, source: "native" as const })),
     ...directMembers
@@ -916,7 +950,7 @@ function DepartmentCard({
         open={!!confirmRemoveMember}
         onOpenChange={(open) => { if (!open) setConfirmRemoveMember(null); }}
         title="Remove member"
-        description={confirmRemoveMember ? `Remove ${confirmRemoveMember.name} from the department? This removes them from all of this department's teams.` : ""}
+        description={confirmRemoveMember ? `Remove ${confirmRemoveMember.name} from the department? This removes them from all of this department's subDepartments.` : ""}
         confirmLabel="Remove"
         successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed` : undefined}
         onConfirm={async () => { if (confirmRemoveMember) await removeNativeMember(confirmRemoveMember.userId); }}
@@ -1013,7 +1047,7 @@ function DepartmentCard({
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                 <Users className="size-3 shrink-0" />
-                {dept._count.subDepartments} team{dept._count.subDepartments !== 1 ? "s" : ""}
+                {dept._count.subDepartments} subDepartment{dept._count.subDepartments !== 1 ? "s" : ""}
               </span>
               {dept._count.projects !== undefined && (
                 <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
@@ -1358,6 +1392,7 @@ export function SettingsDepartmentsPage({
   allUsers,
   isAdmin = false,
   inWorkspace = false,
+  templateOptions = [],
   onEnterWorkspace,
 }: {
   departments: DepartmentRow[];
@@ -1365,6 +1400,8 @@ export function SettingsDepartmentsPage({
   isAdmin?: boolean;
   /** True when admin is inside a dept workspace — hides the create-dept form */
   inWorkspace?: boolean;
+  /** Catalogue templates offered as department "template" options; empty falls back to built-in types. */
+  templateOptions?: TemplateOption[];
   onEnterWorkspace?: (deptId: string) => void;
 }) {
   const router = useRouter();
@@ -1410,6 +1447,7 @@ export function SettingsDepartmentsPage({
       {showNewModal && (
         <NewDepartmentModal
           allUsers={allUsers}
+          templateOptions={templateOptions}
           onClose={() => setShowNewModal(false)}
           onCreated={() => {
             setShowNewModal(false);

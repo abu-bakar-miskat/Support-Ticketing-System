@@ -16,7 +16,7 @@ function isReportType(v: string | null): v is ReportType {
 /**
  * RPT-01/02/04/06/07: live report data for a dashboard. Every branch is
  * bound by `resolveReportScope` — a regular staff/manager only ever sees
- * their own department/sub-department teams; cross-department aggregation
+ * their own department/sub-department subDepartments; cross-department aggregation
  * is only reachable with Project Admin (tenant-admin) scope.
  */
 export async function GET(request: NextRequest) {

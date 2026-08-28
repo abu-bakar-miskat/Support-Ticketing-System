@@ -46,16 +46,16 @@ describe("resolveReportScope", () => {
 
   it("does not grant cross-department scope for tenant-admin of a DIFFERENT tenant", async () => {
     mockResolveUserScope.mockResolvedValue({ ...baseUserScope, tenantAdminIds: ["t2"] })
-    mockGetProfileDeptScope.mockResolvedValue({ activeDeptId: "d1", subDepartmentIds: ["team1"], allowedDeptIds: ["d1"] })
+    mockGetProfileDeptScope.mockResolvedValue({ activeDeptId: "d1", subDepartmentIds: ["subDepartment1"], allowedDeptIds: ["d1"] })
     const result = await resolveReportScope({ id: "u1", role: "manager", activeTenantId: "t1" })
-    expect(result).toEqual({ kind: "department", subDepartmentIds: ["team1"] })
+    expect(result).toEqual({ kind: "department", subDepartmentIds: ["subDepartment1"] })
   })
 
   it("falls back to department scope for a regular staff/manager", async () => {
     mockResolveUserScope.mockResolvedValue(baseUserScope)
-    mockGetProfileDeptScope.mockResolvedValue({ activeDeptId: "d1", subDepartmentIds: ["team1", "team2"], allowedDeptIds: ["d1"] })
+    mockGetProfileDeptScope.mockResolvedValue({ activeDeptId: "d1", subDepartmentIds: ["subDepartment1", "subDepartment2"], allowedDeptIds: ["d1"] })
     const result = await resolveReportScope({ id: "u1", role: "agent", activeTenantId: "t1" })
-    expect(result).toEqual({ kind: "department", subDepartmentIds: ["team1", "team2"] })
+    expect(result).toEqual({ kind: "department", subDepartmentIds: ["subDepartment1", "subDepartment2"] })
   })
 
   it("gives none when there is no dept scope at all", async () => {

@@ -469,7 +469,7 @@ export function InboxPage({
         title="Notifications"
         icon={Bell}
         iconClassName="text-sts-blue"
-        description="Mentions, assignments, comments, and team updates"
+        description="Mentions, assignments, comments, and sub department updates"
         badge={
           unreadCount > 0 ? (
             <span className="rounded-full bg-sts-blue px-2 py-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">

@@ -34,7 +34,7 @@ export default async function ScreenPage({
         <ScreeningShell>
           <ScreeningNotice
             heading="Already submitted — thank you"
-            body="Your answers are in and someone on the team will watch them. We'll be in touch about the next step by email."
+            body="Your answers are in and someone on the sub department will watch them. We'll be in touch about the next step by email."
           />
         </ScreeningShell>
       )

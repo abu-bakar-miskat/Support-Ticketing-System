@@ -40,7 +40,7 @@ beforeEach(() => {
 });
 
 describe("getProfileDeptScope — staff native department visits", () => {
-  it("does not treat Web Development as cross-access when user has a team there", async () => {
+  it("does not treat Web Development as cross-access when user has a subDepartment there", async () => {
     const scope = await getProfileDeptScope({
       id: "user-1",
       role: "agent",

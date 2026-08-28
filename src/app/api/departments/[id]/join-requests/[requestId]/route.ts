@@ -100,7 +100,7 @@ export async function PATCH(
         }
       }
     } else if (effectiveRole === "admin") {
-      // Promote to global admin — no team assignment needed
+      // Promote to global admin — no subDepartment assignment needed
       await prisma.$transaction([
         prisma.profile.update({
           where: { id: joinRequest.userId },
@@ -121,7 +121,7 @@ export async function PATCH(
         }),
       ])
     } else if (effectiveRole === "manager") {
-      // Assign as department manager — no team assignment needed
+      // Assign as department manager — no subDepartment assignment needed
       await prisma.$transaction([
         (prisma.departmentManager as any).upsert({
           where: { departmentId_userId: { departmentId, userId: joinRequest.userId } },
@@ -148,7 +148,7 @@ export async function PATCH(
         }),
       ])
     } else {
-      // lead or staff — team assignment required
+      // lead or staff — subDepartment assignment required
       if (!subDepartmentId) {
         return NextResponse.json({ error: "teamId is required for lead/staff roles" }, { status: 400 })
       }
@@ -156,7 +156,7 @@ export async function PATCH(
       const subDepartment = await prisma.subDepartment.findFirst({
         where: { id: subDepartmentId, departmentId },
       })
-      if (!subDepartment) return NextResponse.json({ error: "Team not found in this department" }, { status: 404 })
+      if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found in this department" }, { status: 404 })
 
       const memberRole: Role = effectiveRole === "sub_manager" ? "sub_manager" : "agent"
 

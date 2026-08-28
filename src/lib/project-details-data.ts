@@ -169,8 +169,8 @@ export async function getProjectDetailsData(
 
   const ticketSubDepartmentMap = new Map(cardSubDepartmentIds.map((t) => [t.id, t.subDepartmentId]));
 
-  // Boards: department teams by default (set on project create). Managers can
-  // remove empty boards and re-add from remaining department teams via +.
+  // Boards: department subDepartments by default (set on project create). Managers can
+  // remove empty boards and re-add from remaining department subDepartments via +.
   const boardSubDepartmentIdSet = new Set(cardSubDepartmentIds.map((t) => t.subDepartmentId));
   if (project.subDepartmentId) boardSubDepartmentIdSet.add(project.subDepartmentId);
 

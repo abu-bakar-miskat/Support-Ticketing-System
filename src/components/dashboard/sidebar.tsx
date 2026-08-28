@@ -395,7 +395,7 @@ export function Sidebar({
   const isManager = userRole === "manager";
   const isAgent = userRole === "agent";
   const activeDept = allDepts.find((d) => d.id === activeDeptId);
-  // For staff/lead — department name comes from their team membership
+  // For staff/lead — department name comes from their subDepartment membership
   const staffDeptName =
     !isAdmin && !isManager
       ? (activeSubDepartment?.departmentName ?? subDepartments[0]?.departmentName ?? null)
@@ -426,7 +426,7 @@ export function Sidebar({
           ...(hasMultiDeptAccess && !isAgent
             ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
             : []),
-          { label: "Tasks", href: "/tasks", icon: ListTodo },
+          { label: "Tasks", href: "/tasks", icon: ListTodo, templateFeatureKey: "tasks" },
           { label: "Projects", href: "/projects", icon: FolderKanban, templateFeatureKey: "projects" },
           {
             label: "Notifications",
@@ -449,6 +449,7 @@ export function Sidebar({
             label: "Tasks",
             href: "/tasks",
             icon: ListTodo,
+            templateFeatureKey: "tasks",
             badge: isManagerOfActiveDept
               ? undefined
               : myTasksCount || undefined,
@@ -466,7 +467,7 @@ export function Sidebar({
             ? [
                 { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
                 { label: "Shared Mailboxes", href: "/mailboxes", icon: Mail, templateFeatureKey: "members" as const },
-                { label: "Sub Departments", href: "/sub-departments", icon: ChartPie, templateFeatureKey: "teamReports" as const },
+                { label: "Sub Departments", href: "/sub-departments", icon: ChartPie, templateFeatureKey: "subDepartmentReports" as const },
                 // Recruitment is hidden from the UI (code/routes/APIs retained).
                 // { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]

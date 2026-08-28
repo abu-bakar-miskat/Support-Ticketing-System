@@ -3,7 +3,7 @@ import { z } from "zod"
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod"
 
 // Haiku: rejection drafts are short and formulaic — cheapest model, same
-// cost reasoning as CV extraction (team AI usage runs on a personal key).
+// cost reasoning as CV extraction (subDepartment AI usage runs on a personal key).
 const DRAFT_MODEL = "claude-haiku-4-5"
 
 const RejectionEmailSchema = z.object({
@@ -15,7 +15,7 @@ const RejectionEmailSchema = z.object({
 
 export type RejectionEmailDraft = z.infer<typeof RejectionEmailSchema>
 
-const SYSTEM_PROMPT = `You draft candidate rejection emails for PEN Group's hiring team. The candidate completed an async video screening for the role, and the team has decided not to move forward with them.
+const SYSTEM_PROMPT = `You draft candidate rejection emails for PEN Group's hiring subDepartment. The candidate completed an async video screening for the role, and the subDepartment has decided not to move forward with them.
 
 Write a kind, professional, concise email (120–180 words):
 - Address the candidate by their first name.
@@ -57,7 +57,7 @@ export async function draftRejectionEmail(input: {
         content: [
           `Candidate: ${input.candidateName}`,
           `Role: ${input.roleTitle}`,
-          `Sender (hiring team member): ${input.senderName ?? "The hiring team"}`,
+          `Sender (hiring subDepartment member): ${input.senderName ?? "The hiring subDepartment"}`,
           "",
           "Screening assessments:",
           assessments || "(no per-answer assessments available — keep the feedback general but warm)",

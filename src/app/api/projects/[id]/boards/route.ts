@@ -98,7 +98,7 @@ export async function PATCH(
   if (action === "add") {
     if (!addableSubDepartmentIds.includes(subDepartmentId)) {
       return NextResponse.json(
-        { error: "Team is not available for this project" },
+        { error: "SubDepartment is not available for this project" },
         { status: 400 },
       );
     }

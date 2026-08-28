@@ -31,7 +31,7 @@ export function InviteByEmailModal({
     e.preventDefault();
     setError(null);
     if (!email.trim() || !subDepartmentId) {
-      setError("Email and team are required");
+      setError("Email and sub department are required");
       return;
     }
     setSaving(true);
@@ -82,16 +82,16 @@ export function InviteByEmailModal({
           </div>
           <div>
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-              Team
+              SubDepartment
             </label>
             <SearchableSelect
-              aria-label="Team"
+              aria-label="SubDepartment"
               value={subDepartmentId}
               onChange={setSubDepartmentId}
               options={subDepartments.map((t) => ({ value: t.id, label: t.name }))}
-              placeholder={subDepartments.length === 0 ? "No teams available" : "Select a team…"}
-              searchPlaceholder="Search teams…"
-              emptyLabel="No teams available"
+              placeholder={subDepartments.length === 0 ? "No sub departments available" : "Select a sub department…"}
+              searchPlaceholder="Search sub departments…"
+              emptyLabel="No sub departments available"
               className="bg-sts-surface"
             />
           </div>

@@ -128,7 +128,7 @@ export async function isMemberAvailableNow(userId: string, subDepartmentId: stri
 // exactly one place) ───────────────────────────────────────────────────────
 
 /**
- * Active team members, schedule-availability-aware, ordered consistently
+ * Active subDepartment members, schedule-availability-aware, ordered consistently
  * (joinedAt asc), excluding `excludeUserId` (typically the department
  * manager, who doesn't work tickets). Returns [] when no member is inside
  * working hours (ASG-04 / WH-03).

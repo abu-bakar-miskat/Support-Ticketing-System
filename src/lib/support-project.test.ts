@@ -28,7 +28,7 @@ describe("support project native access", () => {
     memberships: [{ subDepartment: { department: { id: "dept-home" } } }],
   };
 
-  it("collects native department ids from teams, direct membership, and management", () => {
+  it("collects native department ids from subDepartments, direct membership, and management", () => {
     expect(getNativeDepartmentIds(staffInDept)).toEqual(["dept-1"]);
     expect(getNativeDepartmentIds(managerOfDept)).toEqual(["dept-1"]);
     expect(getNativeDepartmentIds(crossAccessGuest)).toEqual(["dept-home"]);

@@ -54,7 +54,7 @@ describe("resolveReopenStatus", () => {
     expect(resolveReopenStatus([])).toBeNull()
   })
 
-  it("handles a typical team workflow correctly", () => {
+  it("handles a typical subDepartment workflow correctly", () => {
     const statuses = [
       { label: "Not Started", isComplete: false, order: 0 },
       { label: "In Progress", isComplete: false, order: 1 },
@@ -120,7 +120,7 @@ describe("maybeReopenTicket", () => {
     expect(mockCreateLog).not.toHaveBeenCalled()
   })
 
-  it("stays put (returns false) when all team statuses are completion statuses", async () => {
+  it("stays put (returns false) when all subDepartment statuses are completion statuses", async () => {
     mockFindTicket.mockResolvedValue({ status: "Closed", labels: [] } as never)
     mockFindStatuses.mockResolvedValue([
       { label: "Resolved", isComplete: true, order: 0 },

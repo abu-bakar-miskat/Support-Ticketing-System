@@ -28,7 +28,7 @@ export default async function VerifyIntakePage({
         : "Something went wrong"
 
   const message = success
-    ? "Your request is confirmed — someone from the PEN team will be in touch."
+    ? "Your request is confirmed — someone from the PEN sub department will be in touch."
     : result.status === "expired"
       ? "Confirmation links are valid for 24 hours. Please submit your request again to get a fresh link."
       : result.status === "notfound"

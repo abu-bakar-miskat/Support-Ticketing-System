@@ -905,9 +905,9 @@ type Props = {
   projectName?: string;
   /** Project slug for back-navigation breadcrumb links */
   projectSlug?: string;
-  /** Team context for inline ticket creation — tickets are stamped with this team */
+  /** SubDepartment context for inline ticket creation — tickets are stamped with this subDepartment */
   subDepartmentId?: string;
-  /** Members of this team to show in the assignee dropdown */
+  /** Members of this subDepartment to show in the assignee dropdown */
   subDepartmentMembersForCreate?: SubDepartmentMemberForCreate[];
   /** Hides the list-view Module column when the project has no module system */
   moduleSystemEnabled?: boolean;
@@ -1001,7 +1001,7 @@ export function ProjectBoardPage({
       projectId,
       projectSlug: projectSlug ?? projectId,
       projectName: projectName ?? name,
-      tab: `team:${subDepartmentId}`,
+      tab: `subDepartment:${subDepartmentId}`,
       subDepartmentName: name,
       subDepartmentId,
     });
@@ -1337,7 +1337,7 @@ export function ProjectBoardPage({
                     <td colSpan={moduleSystemEnabled ? 10 : 9} className="py-24">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <p className="font-sans text-[14px] font-medium text-sts-foreground">
-                          No tickets in this team yet
+                          No tickets in this sub department yet
                         </p>
                         <p className="max-w-sm font-sans text-[13px] text-sts-muted">
                           Create a task to start tracking work for {name}.

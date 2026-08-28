@@ -197,7 +197,7 @@ export type SubCardData = {
   humanId: string
   title: string
   status: string
-  /** True when the sub-ticket's status is flagged complete on its team. */
+  /** True when the sub-ticket's status is flagged complete on its subDepartment. */
   done: boolean
   priority: UiPriority
   assigneeId: string | null

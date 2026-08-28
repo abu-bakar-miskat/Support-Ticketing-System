@@ -40,9 +40,9 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
       server.registerTool(
         "list_teams",
         {
-          title: "List teams",
+          title: "List subDepartments",
           description:
-            "Teams in the PEN ticketing system: id, name, prefix (used in ticket refs like WEB-123 and as create_ticket's teamPrefix), department, and the team's status labels in workflow order.",
+            "SubDepartments in the PEN ticketing system: id, name, prefix (used in ticket refs like WEB-123 and as create_ticket's subDepartmentPrefix), department, and the subDepartment's status labels in workflow order.",
           inputSchema: {},
         },
         async () => toMcp(await listSubDepartments(ctx)),
@@ -51,7 +51,7 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
         "list_projects",
         {
           title: "List projects",
-          description: "Projects with their id (usable as create_ticket's projectId), team, and department.",
+          description: "Projects with their id (usable as create_ticket's projectId), subDepartment, and department.",
           inputSchema: {},
         },
         async () => toMcp(await listProjects(ctx)),
@@ -61,11 +61,11 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
         {
           title: "Search tickets",
           description:
-            "Find tickets by title text, status label, and/or team prefix. Returns refs like WEB-123 usable with get_ticket. Use before creating to avoid duplicates.",
+            "Find tickets by title text, status label, and/or subDepartment prefix. Returns refs like WEB-123 usable with get_ticket. Use before creating to avoid duplicates.",
           inputSchema: {
             query: z.string().optional().describe("Case-insensitive title substring"),
             status: z.string().optional().describe("Exact status label, e.g. In Progress"),
-            subDepartmentPrefix: z.string().optional().describe("Team prefix, e.g. WEB"),
+            subDepartmentPrefix: z.string().optional().describe("SubDepartment prefix, e.g. WEB"),
             limit: z.number().int().min(1).max(50).optional().describe("Max results, default 20"),
           },
         },
@@ -85,13 +85,13 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
         {
           title: "Create ticket",
           description:
-            "Create a ticket. Requires a read_write API key. teamPrefix must be one of list_teams' prefixes. Without projectId the ticket goes to the team's Miscellaneous project. The ticket is attributed to the API key's owner.",
+            "Create a ticket. Requires a read_write API key. subDepartmentPrefix must be one of list_teams' prefixes. Without projectId the ticket goes to the subDepartment's Miscellaneous project. The ticket is attributed to the API key's owner.",
           inputSchema: {
             title: z.string().min(1).describe("Short imperative summary"),
             description: z.string().optional().describe("Longer context, plain text"),
             type: z.enum(TICKET_TYPES).describe("Bug, Feature, Task, or Chore"),
             priority: z.enum(TICKET_PRIORITIES).describe("Low, Medium, High, Critical, or Urgent"),
-            subDepartmentPrefix: z.string().describe("Team prefix from list_teams, e.g. WEB"),
+            subDepartmentPrefix: z.string().describe("SubDepartment prefix from list_teams, e.g. WEB"),
             projectId: z.string().optional().describe("Project id from list_projects"),
             assigneeEmail: z.string().optional().describe("Assignee's work email; omit to leave unassigned"),
           },
@@ -103,14 +103,14 @@ function buildHandler(key: string, ctx: ApiKeyContext) {
         {
           title: "Update ticket",
           description:
-            "Update any fields of an existing ticket by ref (e.g. WEB-123). Requires a read_write key. Only provided fields change; pass null to clear assignee/sprint/module. status accepts any label from the team's workflow (see list_teams) — changes notify people exactly like the web app, including completion notifications.",
+            "Update any fields of an existing ticket by ref (e.g. WEB-123). Requires a read_write key. Only provided fields change; pass null to clear assignee/sprint/module. status accepts any label from the subDepartment's workflow (see list_teams) — changes notify people exactly like the web app, including completion notifications.",
           inputSchema: {
             ref: z.string().describe("Ticket reference like WEB-123"),
             title: z.string().min(1).optional(),
             description: z.string().nullable().optional().describe("null clears the description"),
             type: z.enum(TICKET_TYPES).optional(),
             priority: z.enum(TICKET_PRIORITIES).optional(),
-            status: z.string().optional().describe("Exact status label from the team's workflow"),
+            status: z.string().optional().describe("Exact status label from the subDepartment's workflow"),
             assigneeEmail: z.string().nullable().optional().describe("Work email; null unassigns"),
             projectId: z.string().optional().describe("Project id from list_projects"),
             sprintId: z.string().nullable().optional(),

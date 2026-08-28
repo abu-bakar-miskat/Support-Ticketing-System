@@ -19,7 +19,7 @@ export default async function CalendarPage() {
           <h1 className="sts-text-page-title">Select a department</h1>
           <p className="mt-2 font-sans text-[13px] text-sts-muted">
             The calendar is department-specific. Choose a department from the sidebar to see its
-            holidays and team availability.
+            holidays and sub department availability.
           </p>
         </div>
       </div>

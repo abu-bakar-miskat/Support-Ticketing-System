@@ -76,7 +76,7 @@ describe("parseMentionHandles", () => {
 })
 
 describe("resolveMentionedProfiles", () => {
-  it("expands @all to team/department members when the ticket has no project", async () => {
+  it("expands @all to subDepartment/department members when the ticket has no project", async () => {
     mockTicketFindUnique.mockResolvedValue({
       subDepartmentId: "team-1",
       projectId: null,

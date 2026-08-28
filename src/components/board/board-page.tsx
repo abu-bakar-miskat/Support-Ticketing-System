@@ -752,7 +752,7 @@ export function BoardPage({
     return map;
   }, [boardSubDepartmentIds, liveSubDepartmentStatusQueries, subDepartmentBoardGroups]);
 
-  // Merged group for department overview — unique statuses across all teams in order
+  // Merged group for department overview — unique statuses across all subDepartments in order
   const allSubDepartmentsMergedGroup = useMemo(() => {
     if (subDepartmentBoardGroups.length <= 1) return null;
     const seen = new Set<string>();
@@ -767,7 +767,7 @@ export function BoardPage({
     }
     return {
       subDepartmentId: "all",
-      subDepartmentName: "All teams",
+      subDepartmentName: "All sub departments",
       cards: [],
       statuses: mergedStatuses,
     };
@@ -816,7 +816,7 @@ export function BoardPage({
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
   }, [localCards, activeSubDepartmentId]);
 
-  // Drop stale project filters that don't apply to the active team
+  // Drop stale project filters that don't apply to the active subDepartment
   useEffect(() => {
     if (!filtersReady) return;
     if (

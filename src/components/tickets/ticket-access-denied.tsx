@@ -6,7 +6,7 @@ import { DepartmentIcon } from "@/components/icons/department-icon";
 
 type Reason =
   | "no_dept_access"      // user's role doesn't cover the ticket's department
-  | "no_team_access"      // lead/staff not on the team, not assignee/creator
+  | "no_team_access"      // lead/staff not on the subDepartment, not assignee/creator
   | "cross_access_needed" // user is from a different dept but no grant exists;
   | "not_project_member"; // user has limited cross-access but isn't on the project
 
@@ -29,10 +29,10 @@ export function TicketAccessDenied({
         : "This ticket belongs to a department you don't have access to. Ask a manager of that department to grant you cross-department access.",
     },
     no_team_access: {
-      title: "Team access required",
+      title: "SubDepartment access required",
       body: subDepartmentName
-        ? `This ticket is managed by the "${subDepartmentName}" team. You are not a member of that team, not assigned to this ticket, and don't have cross-department access to view it.`
-        : "You are not a member of the team that owns this ticket, not assigned to it, and don't have cross-department access to view it.",
+        ? `This ticket is managed by the "${subDepartmentName}" subDepartment. You are not a member of that subDepartment, not assigned to this ticket, and don't have cross-department access to view it.`
+        : "You are not a member of the sub department that owns this ticket, not assigned to it, and don't have cross-department access to view it.",
     },
     cross_access_needed: {
       title: "You're outside this department",

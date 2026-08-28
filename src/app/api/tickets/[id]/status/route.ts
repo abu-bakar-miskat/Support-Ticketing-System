@@ -74,7 +74,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  // Resolve the next status dynamically from the team's configured order
+  // Resolve the next status dynamically from the subDepartment's configured order
   const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: ticket.subDepartmentId },
     orderBy: { order: "asc" },

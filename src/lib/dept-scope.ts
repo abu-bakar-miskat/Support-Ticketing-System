@@ -21,7 +21,7 @@ export type DeptScope = {
   isHub?: boolean;
   /**
    * True when the caller only reaches this department via a DepartmentAccess/DepartmentMember
-   * grant (not native team membership or management) — visibility must be restricted to their
+   * grant (not native subDepartment membership or management) — visibility must be restricted to their
    * own ProjectMember assignments within this department.
    */
   isCrossAccessOnly?: boolean;
@@ -77,7 +77,7 @@ async function buildScope(deptId: string): Promise<DeptScope> {
  * Build scope for a hub (cross-dept oversight) department.
  * Members see only projects they're personally assigned to across all depts.
  * Managers see projects assigned to any hub dept member.
- * teamIds expands to include teams owning those cross-dept projects so the
+ * teamIds expands to include subDepartments owning those cross-dept projects so the
  * board and ticket queries pick up the right data automatically.
  */
 async function buildHubScope(
@@ -162,7 +162,7 @@ async function buildDeptCrossAccessScope(
     if (pm.project.subDepartmentId) subDepartmentIdSet.add(pm.project.subDepartmentId);
   }
 
-  // Legacy projects may have no teamId — include teams that already host their tickets.
+  // Legacy projects may have no teamId — include subDepartments that already host their tickets.
   if (projectIds.length > 0) {
     const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId: { in: projectIds }, deletedAt: null },
@@ -172,7 +172,7 @@ async function buildDeptCrossAccessScope(
     for (const row of ticketSubDepartments) subDepartmentIdSet.add(row.subDepartmentId);
   }
 
-  // Still no teams — fall back to any team in the project's department.
+  // Still no subDepartments — fall back to any subDepartment in the project's department.
   if (subDepartmentIdSet.size === 0 && assignedProjects.length > 0) {
     const deptSubDepartments = await prisma.subDepartment.findMany({
       where: { departmentId: deptId },
@@ -213,13 +213,13 @@ async function buildScopeForDept(
 }
 
 /**
- * Pick which team's workflow statuses to show for the current department context.
+ * Pick which subDepartment's workflow statuses to show for the current department context.
  *
- * 1. If the user belongs to a team in the active department → use that team
- *    (cookie team preferred when it is in the dept).
- * 2. If the user is only in teams from other departments → use the active
- *    department's default team (first team in the dept, name-sorted).
- * 3. No department context → fall back to the user's active team.
+ * 1. If the user belongs to a subDepartment in the active department → use that subDepartment
+ *    (cookie subDepartment preferred when it is in the dept).
+ * 2. If the user is only in subDepartments from other departments → use the active
+ *    department's default subDepartment (first subDepartment in the dept, name-sorted).
+ * 3. No department context → fall back to the user's active subDepartment.
  */
 export function resolveStatusSubDepartmentId(opts: {
   deptScope: DeptScope | null;
@@ -257,7 +257,7 @@ export function resolveStatusSubDepartmentId(opts: {
   return deptSubDepartmentIds[0] ?? null;
 }
 
-/** Prisma filter: all projects belonging to a department (direct or via team). */
+/** Prisma filter: all projects belonging to a department (direct or via subDepartment). */
 export function deptProjectsForDeptWhere(deptId: string) {
   return {
     OR: [{ departmentId: deptId }, { subDepartment: { departmentId: deptId } }],
@@ -267,13 +267,13 @@ export function deptProjectsForDeptWhere(deptId: string) {
 /**
  * Prisma where: tickets that BELONG to a department. A ticket belongs to the
  * department that owns its *project* (either the project's own department, or —
- * when the project has none — the project's team's department). Tickets with no
- * project fall back to their own team's department.
+ * when the project has none — the project's subDepartment's department). Tickets with no
+ * project fall back to their own subDepartment's department.
  *
  * This differs from `{ subDepartmentId: { in: deptScope.subDepartmentIds } }`: someone with
- * cross-dept access can create a ticket on their *own* team but inside another
+ * cross-dept access can create a ticket on their *own* subDepartment but inside another
  * department's project — that ticket belongs to the project's department, not
- * the team's. Use this for contribution/attribution, not raw board scoping.
+ * the subDepartment's. Use this for contribution/attribution, not raw board scoping.
  */
 export function ticketInDeptWhere(deptId: string) {
   return {
@@ -300,7 +300,7 @@ export const TICKET_DEPT_SELECT = {
 
 type DeptRef = { id: string; name: string };
 
-/** The department a ticket belongs to — project's department first, team as fallback. */
+/** The department a ticket belongs to — project's department first, subDepartment as fallback. */
 export function effectiveTicketDept(t: {
   project?: {
     department?: DeptRef | null;
@@ -502,7 +502,7 @@ export async function ticketsInScope(
   return memberCount === ticketIds.length;
 }
 
-/** Returns true when a team belongs to the active department scope. */
+/** Returns true when a subDepartment belongs to the active department scope. */
 export async function subDepartmentInScope(profile: ProfileLike, subDepartmentId: string) {
   const deptScope = await getProfileDeptScope(profile);
   if (!deptScope) return profile.role === "admin";
@@ -510,8 +510,8 @@ export async function subDepartmentInScope(profile: ProfileLike, subDepartmentId
 }
 
 /**
- * Can read team workflow data (statuses, members) — either in the active
- * department workspace, as a team member, or when assigned to tickets on that team.
+ * Can read subDepartment workflow data (statuses, members) — either in the active
+ * department workspace, as a subDepartment member, or when assigned to tickets on that subDepartment.
  */
 export async function canReadSubDepartmentData(
   profile: ProfileLike,
@@ -523,7 +523,7 @@ export async function canReadSubDepartmentData(
     profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
   if (membershipIds.includes(subDepartmentId)) return true;
 
-  // Managers are virtual members of every team in their managed departments
+  // Managers are virtual members of every subDepartment in their managed departments
   if (profile.role === "manager") {
     const managed: string[] = profile.managedDepartmentIds ?? [];
     if (managed.length > 0) {
@@ -566,14 +566,14 @@ export async function departmentIdInScope(
   return allowed.includes(departmentId);
 }
 
-/** Team membership filter for people pickers in the active department. */
+/** SubDepartment membership filter for people pickers in the active department. */
 export function buildPeopleMembershipWhere(
   profile: ProfileLike,
   deptScope: ActiveDeptScope | null,
 ) {
   if (profile.role === "admin") {
     if (deptScope) return { isActive: true, subDepartmentId: { in: deptScope.subDepartmentIds } };
-    // Global (no active dept) still bounded to the active tenant via the team.
+    // Global (no active dept) still bounded to the active tenant via the subDepartment.
     return profile.activeTenantId
       ? { isActive: true, subDepartment: { tenantId: profile.activeTenantId } }
       : { isActive: true };
@@ -594,7 +594,7 @@ export function buildPeopleMembershipWhere(
  * - Manager: validates cookie against their managed/granted depts;
  *            falls back to their first managed dept if cookie is
  *            missing or points to a dept they no longer manage.
- * - Staff/Lead: derives from their active team's department.
+ * - Staff/Lead: derives from their active subDepartment's department.
  */
 /**
  * Resolve the caller's active tenant, then their department scope within it.
@@ -638,7 +638,7 @@ async function resolveDeptScopeInner(
     const managed = profile.managedDepartmentIds ?? [];
     const granted = profile.grantedAccessDeptIds ?? [];
 
-    // Also allow depts the manager belongs to as a team member
+    // Also allow depts the manager belongs to as a subDepartment member
     const memberDeptIds: string[] = ((profile as any).memberships ?? [])
       .map((m: any) => m.subDepartment?.department?.id)
       .filter((id: unknown): id is string => typeof id === "string");
@@ -650,7 +650,7 @@ async function resolveDeptScopeInner(
     const nativeIds = new Set([...managed, ...memberDeptIds, ...fullAccessGranted]);
 
     if (allowed.length === 0) {
-      // Manager with no assigned departments — fall back to their team's dept
+      // Manager with no assigned departments — fall back to their subDepartment's dept
       return getSubDepartmentDeptScope(profile);
     }
 
@@ -664,7 +664,7 @@ async function resolveDeptScopeInner(
     return buildScopeForDept(fallbackDeptId, profile, !nativeIds.has(fallbackDeptId));
   }
 
-  // Lead / staff — native depts (teams, direct membership) vs cross-access grants
+  // Lead / staff — native depts (subDepartments, direct membership) vs cross-access grants
   const granted = profile.grantedAccessDeptIds ?? [];
   const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
   const directMember = profile.directMemberDeptIds ?? [];
@@ -700,7 +700,7 @@ async function resolveDeptScopeInner(
     }
   }
 
-  // Single native department — scope to their active team's department
+  // Single native department — scope to their active subDepartment's department
   return getSubDepartmentDeptScope(profile);
 }
 
@@ -767,7 +767,7 @@ async function getSubDepartmentDeptScope(profile: ProfileLike): Promise<DeptScop
     profile.subDepartmentIds ?? (profile.subDepartmentId ? [profile.subDepartmentId] : []);
   if (subDepartmentIds.length === 0) return null;
 
-  // Find the department of the first team
+  // Find the department of the first subDepartment
   const subDepartment = await prisma.subDepartment.findFirst({
     where: { id: { in: subDepartmentIds } },
     select: { departmentId: true },
@@ -814,7 +814,7 @@ export function canAdminDeptSettings(
 
 /**
  * Whether an admin/manager may edit a target member (role, schedule, holidays, etc.).
- * Admins: always. Managers: target must be on a team in their active dept scope,
+ * Admins: always. Managers: target must be on a subDepartment in their active dept scope,
  * or a direct DepartmentMember of that department.
  */
 export async function managerCanManageUser(

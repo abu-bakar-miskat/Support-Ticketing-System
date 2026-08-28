@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import type { TicketRef } from "./parse-refs"
 
 /**
- * Resolves parsed ticket refs to ticket IDs. Prefix must match a Team.prefix
+ * Resolves parsed ticket refs to ticket IDs. Prefix must match a SubDepartment.prefix
  * exactly; the ticket is looked up by (teamId, ticketNumber). Soft-deleted
  * tickets and unknown refs are silently dropped.
  */

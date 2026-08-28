@@ -119,7 +119,7 @@ describe("resolveTicketScope — ambient resolution", () => {
       getProfile: vi.fn().mockResolvedValue({ id: "user-live-1", tenantIds: ["tenant-A"], isSuperAdmin: false }),
     }));
     vi.doMock("@/lib/role-assignment", () => ({
-      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(["teamA"]),
+      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(["subDepartmentA"]),
     }));
     vi.doMock("@/lib/db", () => ({
       prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) } },
@@ -128,7 +128,7 @@ describe("resolveTicketScope — ambient resolution", () => {
     await expect(resolveTicketScope()).resolves.toEqual({
       kind: "tenant",
       tenantIds: ["tenant-A"],
-      subDepartmentTeamIds: ["teamA"],
+      subDepartmentTeamIds: ["subDepartmentA"],
       grantedTicketIds: ["t-granted"],
     });
 
@@ -226,7 +226,7 @@ describe("withTenantScope — model coverage", () => {
     expect(res).toBeNull();
   });
 
-  it("keeps a same-tenant non-ticket unique read (team)", async () => {
+  it("keeps a same-tenant non-ticket unique read (subDepartment)", async () => {
     const registered = registerScope();
     const row = { id: "t1", tenantId: "tenant-A" };
     const res = await runWithScope({ tenantIds: ["tenant-A"] }, () =>
@@ -251,12 +251,12 @@ describe("withSystemScope — anonymous/background route wrapper", () => {
 const tenantWithSub: TicketScope = {
   kind: "tenant",
   tenantIds: ["tenant-A"],
-  subDepartmentTeamIds: ["teamA"],
+  subDepartmentTeamIds: ["subDepartmentA"],
 };
 
 describe("subDepartmentAllowlist", () => {
   it("returns the allowlist only for the Ticket model under a tenant scope", () => {
-    expect(subDepartmentAllowlist("Ticket", tenantWithSub)).toEqual(["teamA"]);
+    expect(subDepartmentAllowlist("Ticket", tenantWithSub)).toEqual(["subDepartmentA"]);
     expect(subDepartmentAllowlist("Project", tenantWithSub)).toBeNull();
     expect(subDepartmentAllowlist("Department", tenantWithSub)).toBeNull();
   });
@@ -274,38 +274,38 @@ describe("mergeScopeWhere — SD-06 sub-department predicate", () => {
     expect(mergeScopeWhere(undefined, ["tenant-A"], null)).toEqual({ tenantId: { in: ["tenant-A"] } });
   });
   it("ANDs tenant + sub-department predicates when an allowlist is present", () => {
-    expect(mergeScopeWhere(undefined, ["tenant-A"], ["teamA"])).toEqual({
-      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
+    expect(mergeScopeWhere(undefined, ["tenant-A"], ["subDepartmentA"])).toEqual({
+      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["subDepartmentA"] } }],
     });
   });
   it("preserves a caller-supplied where alongside both predicates", () => {
-    expect(mergeScopeWhere({ status: "open" }, ["tenant-A"], ["teamA"])).toEqual({
-      AND: [{ status: "open" }, { tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
+    expect(mergeScopeWhere({ status: "open" }, ["tenant-A"], ["subDepartmentA"])).toEqual({
+      AND: [{ status: "open" }, { tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["subDepartmentA"] } }],
     });
   });
 });
 
 describe("rowSubDepartmentAllowed", () => {
   it("passes any row when the allowlist is null", () => {
-    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamB" }, null)).toBe(true);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "subDepartmentB" }, null)).toBe(true);
   });
-  it("keeps a row whose team is in the allowlist", () => {
-    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamA" }, ["teamA"])).toBe(true);
+  it("keeps a row whose subDepartment is in the allowlist", () => {
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "subDepartmentA" }, ["subDepartmentA"])).toBe(true);
   });
   it("drops a row from another sub-department (→ null → 404)", () => {
-    expect(rowSubDepartmentAllowed({ subDepartmentId: "teamB" }, ["teamA"])).toBe(false);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: "subDepartmentB" }, ["subDepartmentA"])).toBe(false);
   });
   it("drops a null or team-less row under a restriction", () => {
-    expect(rowSubDepartmentAllowed(null, ["teamA"])).toBe(false);
-    expect(rowSubDepartmentAllowed({ subDepartmentId: null }, ["teamA"])).toBe(false);
+    expect(rowSubDepartmentAllowed(null, ["subDepartmentA"])).toBe(false);
+    expect(rowSubDepartmentAllowed({ subDepartmentId: null }, ["subDepartmentA"])).toBe(false);
   });
 });
 
 describe("scopeFromRequestScope — carries sub-department restriction", () => {
   it("propagates subDepartmentTeamIds into a tenant scope", () => {
     expect(
-      scopeFromRequestScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }),
-    ).toEqual({ kind: "tenant", tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] });
+      scopeFromRequestScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] }),
+    ).toEqual({ kind: "tenant", tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] });
   });
   it("omits it when absent", () => {
     expect(scopeFromRequestScope({ tenantIds: ["tenant-A"] })).toEqual({
@@ -323,11 +323,11 @@ describe("extension — SD-06 enforcement end to end", () => {
       calls.push(args);
       return Promise.resolve([]);
     };
-    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findMany", args: {}, query: run } as never),
     );
     expect(calls[0].where).toEqual({
-      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["teamA"] } }],
+      AND: [{ tenantId: { in: ["tenant-A"] } }, { subDepartmentId: { in: ["subDepartmentA"] } }],
     });
   });
 
@@ -338,7 +338,7 @@ describe("extension — SD-06 enforcement end to end", () => {
       calls.push(args);
       return Promise.resolve([]);
     };
-    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] }, () =>
       registered.query.project.$allOperations({ operation: "findMany", args: {}, query: run } as never),
     );
     expect(calls[0].where).toEqual({ tenantId: { in: ["tenant-A"] } });
@@ -346,8 +346,8 @@ describe("extension — SD-06 enforcement end to end", () => {
 
   it("post-filters a ticket findUnique out of the caller's sub-department → null (negative)", async () => {
     const registered = registerScope();
-    const run = () => Promise.resolve({ id: "t1", tenantId: "tenant-A", subDepartmentId: "teamB" });
-    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    const run = () => Promise.resolve({ id: "t1", tenantId: "tenant-A", subDepartmentId: "subDepartmentB" });
+    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findUnique", args: {}, query: run } as never),
     );
     expect(res).toBeNull();
@@ -355,8 +355,8 @@ describe("extension — SD-06 enforcement end to end", () => {
 
   it("keeps a ticket findUnique inside the caller's sub-department", async () => {
     const registered = registerScope();
-    const row = { id: "t1", tenantId: "tenant-A", subDepartmentId: "teamA" };
-    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"] }, () =>
+    const row = { id: "t1", tenantId: "tenant-A", subDepartmentId: "subDepartmentA" };
+    const res = await runWithScope({ tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"] }, () =>
       registered.query.ticket.$allOperations({ operation: "findUnique", args: {}, query: () => Promise.resolve(row) } as never),
     );
     expect(res).toEqual(row);
@@ -367,7 +367,7 @@ describe("grantedTicketIdsFor — ASG-06 explicit grant allowlist", () => {
   const tenantWithGrant: TicketScope = {
     kind: "tenant",
     tenantIds: ["tenant-A"],
-    subDepartmentTeamIds: ["teamA"],
+    subDepartmentTeamIds: ["subDepartmentA"],
     grantedTicketIds: ["t-granted"],
   };
 
@@ -389,10 +389,10 @@ describe("grantedTicketIdsFor — ASG-06 explicit grant allowlist", () => {
 
 describe("mergeScopeWhere — ASG-06 grant override", () => {
   it("ORs the granted-id predicate alongside the sub-department predicate", () => {
-    expect(mergeScopeWhere(undefined, ["tenant-A"], ["teamA"], ["t-granted"])).toEqual({
+    expect(mergeScopeWhere(undefined, ["tenant-A"], ["subDepartmentA"], ["t-granted"])).toEqual({
       AND: [
         { tenantId: { in: ["tenant-A"] } },
-        { OR: [{ subDepartmentId: { in: ["teamA"] } }, { id: { in: ["t-granted"] } }] },
+        { OR: [{ subDepartmentId: { in: ["subDepartmentA"] } }, { id: { in: ["t-granted"] } }] },
       ],
     });
   });
@@ -425,22 +425,22 @@ describe("extension — ASG-06 grant overrides SD-06 sub-department restriction"
       return Promise.resolve([]);
     };
     await runWithScope(
-      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
       () => registered.query.ticket.$allOperations({ operation: "findMany", args: {}, query: run } as never),
     );
     expect(calls[0].where).toEqual({
       AND: [
         { tenantId: { in: ["tenant-A"] } },
-        { OR: [{ subDepartmentId: { in: ["teamA"] } }, { id: { in: ["t-granted"] } }] },
+        { OR: [{ subDepartmentId: { in: ["subDepartmentA"] } }, { id: { in: ["t-granted"] } }] },
       ],
     });
   });
 
   it("keeps a ticket findUnique outside the sub-department when the ticket is explicitly granted", async () => {
     const registered = registerScope();
-    const row = { id: "t-granted", tenantId: "tenant-A", subDepartmentId: "teamB" };
+    const row = { id: "t-granted", tenantId: "tenant-A", subDepartmentId: "subDepartmentB" };
     const res = await runWithScope(
-      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
       () =>
         registered.query.ticket.$allOperations({
           operation: "findUnique",
@@ -453,9 +453,9 @@ describe("extension — ASG-06 grant overrides SD-06 sub-department restriction"
 
   it("still drops an ungranted, out-of-sub-department ticket findUnique → null", async () => {
     const registered = registerScope();
-    const row = { id: "t-other", tenantId: "tenant-A", subDepartmentId: "teamB" };
+    const row = { id: "t-other", tenantId: "tenant-A", subDepartmentId: "subDepartmentB" };
     const res = await runWithScope(
-      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["teamA"], grantedTicketIds: ["t-granted"] },
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
       () =>
         registered.query.ticket.$allOperations({
           operation: "findUnique",

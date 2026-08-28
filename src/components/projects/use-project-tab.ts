@@ -11,7 +11,7 @@ export type ProjectTab =
   | "assets"
   | "tickets"
   | "sprints"
-  | `team:${string}`;
+  | `subDepartment:${string}`;
 
 function resolveProjectTab(
   rawTab: string | null,
@@ -52,7 +52,7 @@ export function useProjectTab({
     return new Set<ProjectTab>([initial]);
   });
 
-  // Pre-mount lightweight tabs in idle time (not team boards — those mount on first visit)
+  // Pre-mount lightweight tabs in idle time (not subDepartment boards — those mount on first visit)
   useEffect(() => {
     const idle = window.requestIdleCallback?.(
       () => {
@@ -84,7 +84,7 @@ export function useProjectTab({
   }, [defaultTab, validTabs]);
 
   useEffect(() => {
-    const group = subDepartmentBoardGroups.find((g) => `team:${g.subDepartmentId}` === tab);
+    const group = subDepartmentBoardGroups.find((g) => `subDepartment:${g.subDepartmentId}` === tab);
     projectTabSync?.setProjectTab(tab, group?.subDepartmentName ?? null);
   }, [tab, subDepartmentBoardGroups, projectTabSync]);
 
@@ -103,7 +103,7 @@ export function useProjectTab({
 
       const params = new URLSearchParams(window.location.search);
       params.set("tab", newTab);
-      const group = subDepartmentBoardGroups.find((g) => `team:${g.subDepartmentId}` === newTab);
+      const group = subDepartmentBoardGroups.find((g) => `subDepartment:${g.subDepartmentId}` === newTab);
       if (group) params.set("tabName", group.subDepartmentName);
       else params.delete("tabName");
 

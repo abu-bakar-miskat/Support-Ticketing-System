@@ -18,7 +18,7 @@ const SUBMIT_RATE_LIMIT = 20
 const SUBMIT_RATE_WINDOW_MS = 60_000
 
 // Public support-form submission — anonymous requester. Runs under system scope
-// so intake conversion (which reads team/dept and creates cross-tenant tickets)
+// so intake conversion (which reads subDepartment/dept and creates cross-tenant tickets)
 // doesn't fail closed on the tenant extension.
 export const POST = withSystemScope(handlePost)
 

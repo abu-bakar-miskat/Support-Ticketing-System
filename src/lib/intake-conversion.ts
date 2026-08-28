@@ -65,7 +65,7 @@ export type ConversionPrep = {
   newRotaPointer: number;
   // Set only when the ticket was assigned via a specific issue's round-robin
   // pool (2+ assignees). Tells runConversion to advance that issue's cursor
-  // instead of the team ROTA.
+  // instead of the subDepartment ROTA.
   rotaIssueId?: string | null;
   newIssueRotaPointer?: number | null;
   // ASG-02/03 (slice 11): true when the department's auto-assignment method
@@ -134,7 +134,7 @@ export async function prepareConversion({
   autoAssign?: boolean;
   /** The chosen issue (if any) whose assignee pool drives assignment. */
   issueId?: string | null;
-  /** Users assigned to that issue (department-scoped). Empty → team ROTA. */
+  /** Users assigned to that issue (department-scoped). Empty → subDepartment ROTA. */
   issueAssigneeIds?: string[];
   /** Round-robin cursor stored on the issue. */
   issueRotaPointer?: number;
@@ -163,7 +163,7 @@ export async function prepareConversion({
   }));
   const managerId = managers[0]?.id ?? null;
 
-  // Ticket starts in the team's first configured status.
+  // Ticket starts in the subDepartment's first configured status.
   const statuses = await getSubDepartmentStatuses(intakeSubDepartmentId);
   const status = statuses[0]?.label ?? "Not Started";
 
@@ -175,7 +175,7 @@ export async function prepareConversion({
   if (autoAssign) {
     if (issueAssigneeIds.length > 0) {
       // Per-issue assignment (department-scoped): a single assignee goes direct;
-      // multiple assignees round-robin via the issue's own cursor. The team ROTA
+      // multiple assignees round-robin via the issue's own cursor. The subDepartment ROTA
       // (and its pointer) is left untouched in this path.
       const idx = issueAssigneeIds.length === 1 ? 0 : issueRotaPointer % issueAssigneeIds.length;
       assigneeId = issueAssigneeIds[idx];
@@ -269,7 +269,7 @@ export async function runConversion(
     select: { tenantId: true },
   });
   if (!intakeSubDepartment) {
-    throw new Error(`Intake team ${prep.intakeSubDepartmentId} not found`);
+    throw new Error(`Intake subDepartment ${prep.intakeSubDepartmentId} not found`);
   }
 
   const ticket = await tx.ticket.create({
@@ -318,7 +318,7 @@ export async function runConversion(
   });
 
   // When assignment came from a specific policy's round-robin pool, advance that
-  // policy's cursor (the team pointer above is unchanged in that path).
+  // policy's cursor (the subDepartment pointer above is unchanged in that path).
   if (prep.rotaIssueId && prep.newIssueRotaPointer !== null && prep.newIssueRotaPointer !== undefined) {
     await tx.slaPolicy.update({
       where: { id: prep.rotaIssueId },

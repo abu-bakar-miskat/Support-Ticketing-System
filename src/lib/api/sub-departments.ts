@@ -18,13 +18,13 @@ export type SubDepartmentStatus = {
 
 export async function getSubDepartmentMembers(subDepartmentId: string): Promise<SubDepartmentMember[]> {
   const res = await fetch(`/api/sub-departments/${subDepartmentId}/members`)
-  if (!res.ok) throw new Error("Failed to fetch team members")
+  if (!res.ok) throw new Error("Failed to fetch subDepartment members")
   return res.json()
 }
 
 export async function getSubDepartmentStatuses(subDepartmentId: string): Promise<SubDepartmentStatus[]> {
   const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses`)
-  if (!res.ok) throw new Error("Failed to fetch team statuses")
+  if (!res.ok) throw new Error("Failed to fetch subDepartment statuses")
   return res.json()
 }
 

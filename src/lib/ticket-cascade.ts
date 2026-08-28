@@ -5,7 +5,7 @@ import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 /**
  * When a parent ticket is moved to a complete status, automatically complete
  * all its sub-tickets that are not already in a complete status.
- * Each sub-ticket is updated to the first isComplete status configured for its team.
+ * Each sub-ticket is updated to the first isComplete status configured for its subDepartment.
  */
 export async function cascadeCompleteToSubtickets(
   parentId: string,
@@ -25,7 +25,7 @@ export async function cascadeCompleteToSubtickets(
     orderBy: { order: "asc" },
   })
 
-  // First complete status per team (lowest order)
+  // First complete status per subDepartment (lowest order)
   const firstCompleteBySubDepartment = new Map<string, string>()
   for (const s of completeStatuses) {
     if (!firstCompleteBySubDepartment.has(s.subDepartmentId)) {

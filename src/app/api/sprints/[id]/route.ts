@@ -43,7 +43,7 @@ export async function GET(_req: Request, { params }: Params) {
     return NextResponse.json({ error: "Sprint not found" }, { status: 404 })
   }
 
-  // Stamp isDone on each ticket using TeamStatus.isComplete
+  // Stamp isDone on each ticket using SubDepartmentStatus.isComplete
   const subDepartmentIds = [...new Set(sprint.tickets.map((t) => t.subDepartmentId))]
   const completeStatuses = subDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({

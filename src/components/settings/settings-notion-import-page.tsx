@@ -279,7 +279,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
       {/* ── Step 2: Configure ──────────────────────────────────────────────── */}
       {step === 2 && (
         <div className="flex flex-col gap-4">
-          {/* Databases & team */}
+          {/* Databases & subDepartment */}
           <div className="flex flex-col gap-4 rounded-[10px] border border-sts-card-border bg-sts-card p-5">
             <SectionLabel>Databases</SectionLabel>
             <p className="font-sans text-[12.5px] text-sts-muted">
@@ -325,13 +325,13 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
 
               <div className="grid grid-cols-[160px_1fr] items-center gap-3">
                 <span className="font-sans text-[12.5px] text-sts-foreground">
-                  Assign to team <span className="text-sts-red">*</span>
+                  Assign to sub department <span className="text-sts-red">*</span>
                 </span>
                 <NativeSelect
                   value={subDepartmentId}
                   onChange={setSubDepartmentId}
                   options={subDepartments.map((t) => ({ value: t.id, label: t.name }))}
-                  placeholder="Select team…"
+                  placeholder="Select sub department…"
                 />
               </div>
             </div>

@@ -61,7 +61,7 @@ describe("GET /api/sub-departments/[id]/github-map", () => {
     })
   })
 
-  it("403s when the profile cannot read team data", async () => {
+  it("403s when the profile cannot read subDepartment data", async () => {
     mockRead.mockResolvedValue(false)
     const res = await GET(new Request("http://localhost"), params)
     expect(res.status).toBe(403)
@@ -80,13 +80,13 @@ describe("PUT /api/sub-departments/[id]/github-map", () => {
     })
   })
 
-  it("rejects a label the team does not have", async () => {
+  it("rejects a label the subDepartment does not have", async () => {
     const res = await PUT(putRequest({ onPrOpened: "Ghost" }), params)
     expect(res.status).toBe(400)
     expect(mockUpsert).not.toHaveBeenCalled()
   })
 
-  it("403s when the profile cannot manage the team", async () => {
+  it("403s when the profile cannot manage the subDepartment", async () => {
     mockManage.mockResolvedValue(false)
     const res = await PUT(putRequest({ onPrOpened: "" }), params)
     expect(res.status).toBe(403)

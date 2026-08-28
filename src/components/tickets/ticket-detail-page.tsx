@@ -1935,7 +1935,7 @@ export function TicketDetailPage({
   const backProjectSlug = searchParams.get("projectSlug");
   const backProjectName = searchParams.get("projectName");
   const backTab = searchParams.get("tab");
-  const backSubDepartmentName = searchParams.get("teamName");
+  const backSubDepartmentName = searchParams.get("subDepartmentName");
   const backSubDepartmentId = searchParams.get("teamId");
 
   type Crumb = { label: string; href: string };
@@ -1949,7 +1949,7 @@ export function TicketDetailPage({
       label: backProjectName ?? "Project",
       href: `/projects/${backProjectSlug}`,
     });
-    if (backTab === `team:${backSubDepartmentId}` && backSubDepartmentName) {
+    if (backTab === `subDepartment:${backSubDepartmentId}` && backSubDepartmentName) {
       crumbs.push({
         label: backSubDepartmentName,
         href: `/projects/${backProjectSlug}?tab=${encodeURIComponent(backTab)}`,

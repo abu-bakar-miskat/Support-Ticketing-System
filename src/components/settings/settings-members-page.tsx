@@ -152,7 +152,7 @@ function AddMemberModal({
     try {
       if (accessType === "full") {
         if (!subDepartmentId) {
-          setSubmitError("Please select a team.");
+          setSubmitError("Please select a sub department.");
           setSubmitting(false);
           return;
         }
@@ -300,14 +300,14 @@ function AddMemberModal({
               {accessType === "full" && (
                 <div className="flex gap-3">
                   <div className="flex-1 flex flex-col gap-1">
-                    <label className="font-sans text-[11.5px] text-sts-subtle">Team</label>
+                    <label className="font-sans text-[11.5px] text-sts-subtle">SubDepartment</label>
                     <SearchableSelect
                       value={subDepartmentId}
                       onChange={setSubDepartmentId}
                       options={availableSubDepartments.map((t) => ({ value: t.id, label: t.name }))}
-                      placeholder="— Select team —"
+                      placeholder="— Select sub department —"
                       className="bg-sts-bg"
-                      aria-label="Team"
+                      aria-label="SubDepartment"
                     />
                   </div>
 
@@ -339,7 +339,7 @@ function AddMemberModal({
               {accessType === "guest" && (
                 <div className="flex flex-col gap-2">
                   <p className="font-sans text-[12px] text-sts-muted">
-                    The user will get read access to this department without joining a team.
+                    The user will get read access to this department without joining a sub department.
                   </p>
                   <div>
                     <span className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
@@ -463,7 +463,7 @@ export function SettingsMembersPage({
       await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
       startTransition(() => router.refresh());
     } catch {
-      setError("Failed to update team");
+      setError("Failed to update subDepartment");
       setLocalSubDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
     } finally {
       setSaving(null);
@@ -556,14 +556,14 @@ export function SettingsMembersPage({
       <ConfirmDialog
         open={!!confirmRemoveSubDepartment}
         onOpenChange={(open) => { if (!open) setConfirmRemoveSubDepartment(null); }}
-        title="Remove from team"
+        title="Remove from subDepartment"
         description={
           confirmRemoveSubDepartment
-            ? `Remove ${confirmRemoveSubDepartment.name} from ${confirmRemoveSubDepartment.subDepartments[0] ?? "this team"}? They will remain in the workspace.`
+            ? `Remove ${confirmRemoveSubDepartment.name} from ${confirmRemoveSubDepartment.subDepartments[0] ?? "this sub department"}? They will remain in the workspace.`
             : ""
         }
         confirmLabel="Remove"
-        successMessage={confirmRemoveSubDepartment ? `${confirmRemoveSubDepartment.name} removed from team` : undefined}
+        successMessage={confirmRemoveSubDepartment ? `${confirmRemoveSubDepartment.name} removed from subDepartment` : undefined}
         onConfirm={async () => { if (confirmRemoveSubDepartment) await handleRemoveFromSubDepartment(confirmRemoveSubDepartment); }}
       />
       <ConfirmDialog
@@ -574,7 +574,7 @@ export function SettingsMembersPage({
           confirmRemoveDept
             ? confirmRemoveDept.isCrossAccess
               ? `Revoke ${confirmRemoveDept.name}'s cross-department access to ${departmentName ?? "this department"}? They will lose access to any projects assigned here.`
-              : `Remove ${confirmRemoveDept.name} from ${confirmRemoveDept.department ?? "this department"}? They will lose access to all teams in this department.`
+              : `Remove ${confirmRemoveDept.name} from ${confirmRemoveDept.department ?? "this department"}? They will lose access to all sub departments in this department.`
             : ""
         }
         confirmLabel={confirmRemoveDept?.isCrossAccess ? "Revoke" : "Remove"}
@@ -616,7 +616,7 @@ export function SettingsMembersPage({
           departmentId && (isAdmin || isManager)
             ? {
                 departmentId,
-                teams: availableSubDepartments,
+                subDepartments: availableSubDepartments,
                 agents: liveMembers
                   .filter((m) => m.id !== configMember.id)
                   .map((m) => ({ id: m.id, name: m.name })),
@@ -636,7 +636,7 @@ export function SettingsMembersPage({
             </span>
           </h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-            Manage roles, teams, status, and availability for everyone in the workspace.
+            Manage roles, subDepartments, status, and availability for everyone in the workspace.
           </p>
         </div>
         {departmentId && (isAdmin || isManager) && (
@@ -645,7 +645,7 @@ export function SettingsMembersPage({
               type="button"
               onClick={() => setInviteOpen(true)}
               disabled={availableSubDepartments.length === 0}
-              title={availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
+              title={availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
               className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3.5" />
@@ -681,7 +681,7 @@ export function SettingsMembersPage({
                 <SectionLabel>Department</SectionLabel>
               </TableHead>
               <TableHead className="h-8">
-                <SectionLabel>Teams</SectionLabel>
+                <SectionLabel>SubDepartments</SectionLabel>
               </TableHead>
               {(isAdmin || isManager) && (
                 <TableHead className="h-8 w-[100px]">
@@ -806,8 +806,8 @@ export function SettingsMembersPage({
                     </div>
                   </TableCell>
 
-                  {/* Teams — not editable for guests (their team belongs to another department)
-                      or managers (they oversee the whole department, not a single team) */}
+                  {/* SubDepartments — not editable for guests (their subDepartment belongs to another department)
+                      or managers (they oversee the whole department, not a single subDepartment) */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center gap-1 flex-wrap">
                       {(isAdmin || isManager) && availableSubDepartments.length > 0 && !member.isCrossAccess && role !== "manager" ? (
@@ -817,7 +817,7 @@ export function SettingsMembersPage({
                             className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
                           >
                             <span className="max-w-[120px] truncate">
-                              {availableSubDepartments.find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No team"}
+                              {availableSubDepartments.find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No subDepartment"}
                             </span>
                             {saving === member.id ? (
                               <Loader2 className="size-3 animate-spin opacity-70" />
@@ -834,7 +834,7 @@ export function SettingsMembersPage({
                               )}
                             >
                               <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 text-[11.5px] font-medium text-sts-subtle">
-                                No team
+                                No sub department
                               </span>
                             </DropdownMenuItem>
                             {availableSubDepartments.map((t) => (
@@ -933,7 +933,7 @@ export function SettingsMembersPage({
                                   onClick={() => setConfirmRemoveSubDepartment(member)}
                                 >
                                   <Trash2 className="size-3.5" />
-                                  Remove from team
+                                  Remove from subDepartment
                                 </DropdownMenuItem>
                               )}
                               {member.departmentId && (

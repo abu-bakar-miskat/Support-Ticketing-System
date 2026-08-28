@@ -85,14 +85,14 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe("listTeams", () => {
+describe("listSubDepartments", () => {
   it("filters by the key's department when scoped", async () => {
     mockSubDepartmentFindMany.mockResolvedValue([] as never)
     await listSubDepartments(deptCtx)
     expect(mockSubDepartmentFindMany.mock.calls[0][0]?.where).toEqual({ departmentId: "dept-1" })
   })
 
-  it("returns all teams for unscoped keys", async () => {
+  it("returns all subDepartments for unscoped keys", async () => {
     mockSubDepartmentFindMany.mockResolvedValue([] as never)
     await listSubDepartments(writeCtx)
     expect(mockSubDepartmentFindMany.mock.calls[0][0]?.where).toEqual({})
@@ -147,7 +147,7 @@ describe("createTicket", () => {
     expect(mockTicketCreate).not.toHaveBeenCalled()
   })
 
-  it("errors when the team prefix is unknown or out of the key's department", async () => {
+  it("errors when the subDepartment prefix is unknown or out of the key's department", async () => {
     mockSubDepartmentFindFirst.mockResolvedValue(null as never)
     const res = await createTicket(writeCtx, input)
     expect(res.ok).toBe(false)
@@ -162,7 +162,7 @@ describe("createTicket", () => {
     expect(mockTicketCreate).not.toHaveBeenCalled()
   })
 
-  it("creates with trigger-stamped numbering, first team status, and the key owner as creator", async () => {
+  it("creates with trigger-stamped numbering, first subDepartment status, and the key owner as creator", async () => {
     mockSubDepartmentFindFirst.mockResolvedValue(webSubDepartment as never)
     mockStatusFindFirst.mockResolvedValue({ label: "To Do" } as never)
     mockMisc.mockResolvedValue("proj-misc")
@@ -366,7 +366,7 @@ describe("updateTicket", () => {
     expect(vi.mocked(sendResolutionEmail)).toHaveBeenCalledWith(expect.objectContaining({ to: "jo@x.org" }))
   })
 
-  it("rejects a status label outside the team's workflow", async () => {
+  it("rejects a status label outside the subDepartment's workflow", async () => {
     mockTicketFindFirst.mockResolvedValue(baseTicketRow as never)
     mockStatusFindMany.mockResolvedValue([
       { label: "Backlog", isComplete: false },
@@ -375,7 +375,7 @@ describe("updateTicket", () => {
     const res = await updateTicket(writeCtx, { ref: "WEB-7", status: "Bogus" })
     expect(res).toEqual({
       ok: false,
-      message: 'Invalid status "Bogus" for this team — valid: Backlog, Live',
+      message: 'Invalid status "Bogus" for this subDepartment — valid: Backlog, Live',
     })
   })
 })

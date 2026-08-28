@@ -452,7 +452,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} team{data.subDepartmentCount !== 1 ? "s" : ""}
+              <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} subDepartment{data.subDepartmentCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
@@ -546,7 +546,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               type="button"
               onClick={() => setShowInviteModal(true)}
               disabled={data.availableSubDepartments.length === 0}
-              title={data.availableSubDepartments.length === 0 ? "Create a team before inviting" : undefined}
+              title={data.availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
               className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3" /> Invite by email
@@ -562,7 +562,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableHead className="h-8 w-[30%]"><SectionLabel>Name</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[22%]"><SectionLabel>Email</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[16%]"><SectionLabel>Role</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>Team</SectionLabel></TableHead>
+                <TableHead className="h-8"><SectionLabel>SubDepartment</SectionLabel></TableHead>
                 <TableHead className="h-8 w-10" />
               </TableRow>
             </TableHeader>
@@ -643,7 +643,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               <TableHeader>
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableHead className="h-8 w-[28%]"><SectionLabel>Email</SectionLabel></TableHead>
-                  <TableHead className="h-8 w-[16%]"><SectionLabel>Team</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[16%]"><SectionLabel>SubDepartment</SectionLabel></TableHead>
                   <TableHead className="h-8 w-[12%]"><SectionLabel>Role</SectionLabel></TableHead>
                   <TableHead className="h-8"><SectionLabel>Expires</SectionLabel></TableHead>
                   <TableHead className="h-8 w-10" />
@@ -828,7 +828,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         title="Remove from department"
         description={
           confirmRemoveMember
-            ? `Remove ${confirmRemoveMember.name} from ${data.name}? They will lose access to all teams in this department.`
+            ? `Remove ${confirmRemoveMember.name} from ${data.name}? They will lose access to all sub departments in this department.`
             : ""
         }
         confirmLabel="Remove"
@@ -900,7 +900,7 @@ function SubDepartmentDropdown({
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const current = subDepartments.find((t) => t.id === subDepartmentId)?.name ?? "No team";
+  const current = subDepartments.find((t) => t.id === subDepartmentId)?.name ?? "No subDepartment";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -920,7 +920,7 @@ function SubDepartmentDropdown({
           onClick={() => { onChange(""); setOpen(false); }}
           className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", !subDepartmentId && "font-semibold")}
         >
-          <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-subtle">No team</span>
+          <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-subtle">No sub department</span>
         </button>
         {subDepartments.map((t) => (
           <button

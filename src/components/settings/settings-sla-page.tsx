@@ -117,7 +117,7 @@ export function SettingsSlaPage({ rows }: { rows: SlaRow[] }) {
           </h2>
           <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
             Time limits per priority for student-facing tickets. Breaches escalate
-            to the team lead.
+            to the sub department lead.
           </p>
         </div>
 

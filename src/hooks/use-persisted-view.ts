@@ -6,9 +6,9 @@ const STORAGE_PREFIX = "pen_view_";
 
 /** Shared localStorage keys for persisted tab / layout preferences. */
 export const VIEW_KEYS = {
-  /** board | list — shared across Board, My Tasks, and project team boards */
+  /** board | list — shared across Board, My Tasks, and project subDepartment boards */
   boardLayout: "board-layout",
-  /** board | list — project profile team tabs (defaults to board) */
+  /** board | list — project profile subDepartment tabs (defaults to board) */
   projectSubDepartmentLayout: "project-team-layout",
   /** mine | all | unassigned | drafts — Tasks page scope */
   tasksScope: "tasks-scope",

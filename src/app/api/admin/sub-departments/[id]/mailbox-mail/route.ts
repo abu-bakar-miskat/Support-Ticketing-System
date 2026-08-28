@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> }
 
 // GET /api/admin/sub-departments/[id]/mailbox-mail
 // Every email this sub-department's mailbox connection(s) received: inbound
-// TicketMessages filed against the team's tickets, plus auto-generated mail
+// TicketMessages filed against the subDepartment's tickets, plus auto-generated mail
 // that never became a ticket (MailSuppressionLog, keyed by mailboxConnectionId).
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile: caller, error } = await requireAdminOrManager()

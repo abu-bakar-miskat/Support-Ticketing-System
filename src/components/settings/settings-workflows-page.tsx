@@ -381,19 +381,19 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="sts-text-admin-title">Workflows & statuses</h1>
-          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Configure the status columns for each team's board.</p>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Configure the status columns for each subDepartment's board.</p>
         </div>
       </div>
 
-      {/* Team selector */}
+      {/* SubDepartment selector */}
       <div className="flex items-center gap-3">
-        <label className="shrink-0 font-sans text-[12px] font-medium text-sts-muted">Team</label>
+        <label className="shrink-0 font-sans text-[12px] font-medium text-sts-muted">SubDepartment</label>
         <Select value={selectedSubDepartmentId} onValueChange={(v) => v && handleSubDepartmentChange(v)}>
           <SelectTrigger className="h-8 min-w-48 rounded-[7px] border-sts-card-border bg-sts-card font-sans text-[12.5px] text-sts-foreground">
             <SelectValue>
               {subDepartments.find((t) => t.id === selectedSubDepartmentId)
                 ? `${subDepartments.find((t) => t.id === selectedSubDepartmentId)!.prefix} — ${subDepartments.find((t) => t.id === selectedSubDepartmentId)!.name}`
-                : "Select team"}
+                : "Select sub department"}
             </SelectValue>
           </SelectTrigger>
           <SelectContent align="start">

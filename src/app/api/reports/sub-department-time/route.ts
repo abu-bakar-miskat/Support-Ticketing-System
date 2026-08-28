@@ -141,7 +141,7 @@ export async function GET(request: Request) {
         id: member.id,
         name: member.name,
         role: ROLE_LABEL[member.role] ?? member.role,
-        location: member.subDepartment?.name ?? "No team",
+        location: member.subDepartment?.name ?? "No subDepartment",
         avatarColor: avatarColorFor(member.name),
         avatarUrl: member.avatarUrl ?? null,
         weekHours: formatHm(weekSecs),

@@ -3,7 +3,7 @@ import { getRequestScope, type RequestScope } from "@/lib/request-scope";
 
 /**
  * Non-bypassable tenant scoping for every model that carries a `tenantId`
- * column — `Ticket`, `Project`, `Team`, `Department` (SRS D-02, C-01, API-04).
+ * column — `Ticket`, `Project`, `SubDepartment`, `Department` (SRS D-02, C-01, API-04).
  *
  * A Prisma client extension consults the ambient request scope (see
  * `lib/request-scope`) and rewrites every read so it can only observe rows in
@@ -61,7 +61,7 @@ export type TicketScope =
       tenantIds: string[];
       /**
        * SD-06 sub-department restriction (team-id allowlist). When set, ticket
-       * reads are additionally bound to these teams. Undefined = no restriction.
+       * reads are additionally bound to these subDepartments. Undefined = no restriction.
        */
       subDepartmentTeamIds?: string[];
       /**

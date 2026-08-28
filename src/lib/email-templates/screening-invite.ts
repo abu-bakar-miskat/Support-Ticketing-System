@@ -18,7 +18,7 @@ export const SCREENING_BRAND_COLORS: Pick<Branding, "brandColor" | "headerColor"
 export const SCREENING_FROM_EMAIL = "onboarding@mail.pengroup.com";
 
 /**
- * Async video screening invite. Copy supplied by the hiring team — calm and
+ * Async video screening invite. Copy supplied by the hiring subDepartment — calm and
  * plain, tells the candidate a person watches every recording and accent is
  * not scored, and flags the on-site Chattogram requirement up front.
  */
@@ -46,7 +46,7 @@ export function renderScreeningInvite({
   const first = escapeHtml(firstName);
   const role = escapeHtml(roleTitle);
   const url = ensureAbsoluteUrl(`${BASE_URL}/screen/${token}`);
-  const signoff = senderName?.trim() || "The PEN recruitment team";
+  const signoff = senderName?.trim() || "The PEN recruitment subDepartment";
 
   const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
   const countWord = questionCount <= 10 ? WORDS[questionCount] : String(questionCount);
@@ -74,7 +74,7 @@ export function renderScreeningInvite({
     ${p(`You'll need a camera and microphone — <strong>when your browser asks for permission, choose Allow</strong>. Nothing records until you press start, and you can check both before the first question. Find a quiet spot where you can be alone for ${minutes} minutes.`)}
     ${p(`A person watches every recording. We care about what you say, not how polished you sound — your accent is not being scored.`)}
     ${h("What happens next")}
-    ${p(`If this stage goes well, we'll send a short build task, then a final interview with the team.`)}
+    ${p(`If this stage goes well, we'll send a short build task, then a final interview with the subDepartment.`)}
     ${p(`Heads up: this role is fully on-site at our Chattogram office, Monday to Friday, 9am to 5pm UK time. One of the questions asks about this — be straight with us.`)}
     ${p(`The link works for ${expiryDays} days. Recordings are stored securely and deleted after 90 days. Any questions, just reply to this email.`)}
     ${signature ? `${p(`Best,`)}${signature.html}` : p(`Best,<br />${escapeHtml(signoff)}<br />Planet Education Networks`)}
@@ -103,7 +103,7 @@ export function renderScreeningInvite({
     "",
     "What happens next",
     "",
-    "If this stage goes well, we'll send a short build task, then a final interview with the team.",
+    "If this stage goes well, we'll send a short build task, then a final interview with the subDepartment.",
     "",
     "Heads up: this role is fully on-site at our Chattogram office, Monday to Friday, 9am to 5pm UK time. One of the questions asks about this — be straight with us.",
     "",

@@ -67,7 +67,7 @@ async function ManagerData() {
       select: { status: true, dueDate: true, project: { select: { id: true, name: true, color: true } } },
     }),
 
-    // Members of managed teams.
+    // Members of managed subDepartments.
     prisma.profile.findMany({
       where: { memberships: { some: { subDepartmentId: { in: subDepartmentIds }, isActive: true } } },
       select: { id: true, name: true, avatarUrl: true },
@@ -87,7 +87,7 @@ async function ManagerData() {
       },
     }),
 
-    // Pending join requests for managed teams / departments
+    // Pending join requests for managed subDepartments / departments
     prisma.joinRequest.findMany({
       where: {
         status: "pending",

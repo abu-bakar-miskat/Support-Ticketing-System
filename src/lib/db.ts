@@ -220,7 +220,7 @@ function getPrisma() {
   // ROLLOUT: anonymous/background paths that query tenant-scoped models are now
   // wrapped in system/tenant scope (see withSystemScope + runWithApiKeyScope), so
   // the extension is safe to enforce beyond `ticket`. Enabled incrementally.
-  const SCOPED_MODELS = ["ticket", "project", "team", "department"] as const
+  const SCOPED_MODELS = ["ticket", "project", "subDepartment", "department"] as const
   globalForPrisma.prismaExtended = withTenantScope(
     withConnectionRecovery(prisma),
     SCOPED_MODELS,

@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     : []
   const templateData = typeof body.templateData === "object" && body.templateData ? body.templateData : null
   const templateId = typeof body.templateId === "string" && body.templateId.trim() ? body.templateId.trim() : null
-  // Allow admin/manager to specify which team's board this ticket belongs to
+  // Allow admin/manager to specify which subDepartment's board this ticket belongs to
   const bodySubDepartmentId = (body.subDepartmentId as string | undefined) || null
 
   if (!title) {
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // Admin/manager/cross-dept-access users can create tickets on behalf of any team
+  // Admin/manager/cross-dept-access users can create tickets on behalf of any subDepartment
   const hasGrantedAccess =
     (profile.grantedAccessDeptIds ?? []).length > 0 ||
     (profile.directMemberDeptIds ?? []).length > 0
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
     )
   }
 
-  // Admin/manager/cross-dept users may also pick any valid team when not on a project board.
+  // Admin/manager/cross-dept users may also pick any valid subDepartment when not on a project board.
   if (!resolvedSubDepartmentId && canPickSubDepartment && bodySubDepartmentId) {
     const bodySubDepartment = await prisma.subDepartment.findUnique({
       where: { id: bodySubDepartmentId },
@@ -177,10 +177,10 @@ export async function POST(request: Request) {
     if (bodySubDepartment) resolvedSubDepartmentId = bodySubDepartmentId
   }
 
-  // Any user may create on the team board they're currently viewing when that
-  // team is within their department scope — even if it isn't their primary
+  // Any user may create on the subDepartment board they're currently viewing when that
+  // subDepartment is within their department scope — even if it isn't their primary
   // `profile.teamId` (e.g. reached via department/multi-team membership). The
-  // teamAllowed check below re-verifies scope, so this doesn't widen access.
+  // subDepartmentAllowed check below re-verifies scope, so this doesn't widen access.
   if (!resolvedSubDepartmentId && bodySubDepartmentId && (await subDepartmentInScope(profile, bodySubDepartmentId))) {
     resolvedSubDepartmentId = bodySubDepartmentId
   }
@@ -197,19 +197,19 @@ export async function POST(request: Request) {
     resolvedSubDepartmentId = deptScope.subDepartmentIds[0]
   }
 
-  // Cross-access guests must not fall back to their home team in another department.
+  // Cross-access guests must not fall back to their home subDepartment in another department.
   if (!resolvedSubDepartmentId && !deptScope?.isCrossAccessOnly) {
     resolvedSubDepartmentId = profile.subDepartmentId
   }
 
-  // A teamless platform super-admin has no home team to fall back on. Rather
-  // than silently routing the ticket to an arbitrary team (previously the
-  // alphabetically-first team's "Miscellaneous" project — impossible to
-  // discover afterwards), require an explicit team/project pick so the super
+  // A subDepartmentless platform super-admin has no home subDepartment to fall back on. Rather
+  // than silently routing the ticket to an arbitrary subDepartment (previously the
+  // alphabetically-first subDepartment's "Miscellaneous" project — impossible to
+  // discover afterwards), require an explicit subDepartment/project pick so the super
   // admin always knows where the ticket lands.
   if (!resolvedSubDepartmentId && profile.isSuperAdmin) {
     return NextResponse.json(
-      { error: "Select a team or project for this ticket" },
+      { error: "Select a subDepartment or project for this ticket" },
       { status: 422 },
     )
   }
@@ -218,8 +218,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: projectId
-          ? "No valid team found for this project — contact a department admin"
-          : "You must be assigned to a team before creating tickets",
+          ? "No valid subDepartment found for this project — contact a department admin"
+          : "You must be assigned to a subDepartment before creating tickets",
       },
       { status: 422 },
     )
@@ -231,7 +231,7 @@ export async function POST(request: Request) {
   })
   if (!subDepartmentRecord) {
     return NextResponse.json(
-      { error: "No valid team found for this project — contact a department admin" },
+      { error: "No valid subDepartment found for this project — contact a department admin" },
       { status: 422 },
     )
   }
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
     (projectId != null && (await projectInScope(profile, projectId)))
 
   if (!subDepartmentAllowed) {
-    return NextResponse.json({ error: "Team not in current department" }, { status: 403 })
+    return NextResponse.json({ error: "SubDepartment not in current department" }, { status: 403 })
   }
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
@@ -281,7 +281,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Assignee not found" }, { status: 400 })
   }
 
-  // Resolve the project — if none selected, find or create a "Miscellaneous" project for this team
+  // Resolve the project — if none selected, find or create a "Miscellaneous" project for this subDepartment
   let resolvedProjectId: string
   if (projectId) {
     if (!(await projectInScope(profile, projectId))) {
@@ -331,13 +331,13 @@ export async function POST(request: Request) {
     ? (await prisma.ticketTemplate.findUnique({ where: { id: templateId }, select: { id: true } }))?.id ?? null
     : null
 
-  // A ticket lives in its team's tenant — the outermost isolation boundary.
+  // A ticket lives in its subDepartment's tenant — the outermost isolation boundary.
   const ticketTenantId = await subDepartmentTenantId(resolvedSubDepartmentId)
   if (!ticketTenantId) {
-    return NextResponse.json({ error: "Team not found" }, { status: 404 })
+    return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   }
 
-  // Resolve the ticket's department (the project's, or its team's) — used below
+  // Resolve the ticket's department (the project's, or its subDepartment's) — used below
   // to start SLA timers for the new ticket.
   const columnProject = await prisma.project.findUnique({
     where: { id: resolvedProjectId },

@@ -105,7 +105,7 @@ export function DepartmentMailboxesPage({
 
   const list = connections ?? [];
   const loading = connections === null;
-  const noTeams = subDepartments.length === 0;
+  const noSubDepartments = subDepartments.length === 0;
   const subDeptName = (id: string) => subDepartments.find((s) => s.id === id)?.name ?? "—";
 
   function openConnect() {
@@ -126,7 +126,7 @@ export function DepartmentMailboxesPage({
       return;
     }
     if (!teamId) {
-      setFormError("Choose which team this mailbox files into.");
+      setFormError("Choose which subDepartment this mailbox files into.");
       return;
     }
     if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
@@ -214,7 +214,7 @@ export function DepartmentMailboxesPage({
             Connect the shared inboxes that open tickets for {departmentName}.
           </p>
         </div>
-        {canManage && !noTeams && (
+        {canManage && !noSubDepartments && (
           <button
             type="button"
             onClick={openConnect}
@@ -227,7 +227,7 @@ export function DepartmentMailboxesPage({
       </div>
 
       {/* ── Connect mailbox modal ── */}
-      {canManage && showConnect && !noTeams && (
+      {canManage && showConnect && !noSubDepartments && (
         <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={closeConnect}>
           <div
             className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
@@ -268,7 +268,7 @@ export function DepartmentMailboxesPage({
                   ))}
                 </select>
                 <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-                  Each new email to this address opens a ticket for the chosen team.
+                  Each new email to this address opens a ticket for the chosen subDepartment.
                 </p>
               </div>
               {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
@@ -296,12 +296,12 @@ export function DepartmentMailboxesPage({
       )}
 
       {/* ── Connection list ── */}
-      {noTeams ? (
+      {noSubDepartments ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-10 text-center">
           <Mail className="size-6 text-sts-subtle" />
-          <p className="font-sans text-[13px] font-medium text-sts-foreground">No teams yet</p>
+          <p className="font-sans text-[13px] font-medium text-sts-foreground">No sub departments yet</p>
           <p className="max-w-sm font-sans text-[12px] text-sts-muted">
-            Add a sub-department to {departmentName} before connecting a shared mailbox — every mailbox files into a team.
+            Add a sub-department to {departmentName} before connecting a shared mailbox — every mailbox files into a sub department.
           </p>
         </div>
       ) : loading ? (
@@ -455,7 +455,7 @@ export function DepartmentMailboxesPage({
           How shared mailboxes work
         </p>
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
-          <li>• Mail delivered to a connected address opens a new ticket for the team it files into.</li>
+          <li>• Mail delivered to a connected address opens a new ticket for the sub department it files into.</li>
           <li>• Replies thread onto the same ticket automatically.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>

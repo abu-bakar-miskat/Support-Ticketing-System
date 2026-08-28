@@ -20,7 +20,7 @@ export default async function SettingsSubDepartmentsRoute() {
   const isManager = profile.role === "manager";
   const isLead = profile.role === "sub_manager";
 
-  // Leads see the same view as managers (their own team's department).
+  // Leads see the same view as managers (their own subDepartment's department).
   // Plain staff are redirected.
   if (!isAdmin && !isManager && !isLead) redirect("/settings");
 
@@ -31,7 +31,7 @@ export default async function SettingsSubDepartmentsRoute() {
 
   if (checkIsCrossAccessDept(profile, activeDeptId)) redirect("/projects");
 
-  // Leads: scope to the department of their primary team
+  // Leads: scope to the department of their primary subDepartment
   const leadDeptId = isLead
     ? await prisma.subDepartment
         .findFirst({
@@ -49,8 +49,8 @@ export default async function SettingsSubDepartmentsRoute() {
         ? [leadDeptId]
         : null;
 
-  // Fetch department managers so we can display them as team leads when
-  // no explicit TeamMembership with role="sub_manager" exists.
+  // Fetch department managers so we can display them as subDepartment leads when
+  // no explicit SubDepartmentMembership with role="sub_manager" exists.
   const deptManagerMap = new Map<string, { id: string; name: string; avatarUrl: string | null }>();
   if (deptScopeList?.length) {
     const deptManagers = await prisma.departmentManager.findMany({

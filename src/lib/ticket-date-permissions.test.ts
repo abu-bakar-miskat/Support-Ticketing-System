@@ -5,8 +5,8 @@ import {
   isLeadOnTicketSubDepartment,
 } from "@/lib/ticket-date-permissions";
 
-describe("isLeadOnTicketTeam", () => {
-  it("returns true when membership role is lead on the ticket team", () => {
+describe("isLeadOnTicketSubDepartment", () => {
+  it("returns true when membership role is lead on the ticket subDepartment", () => {
     const profile = {
       id: "user-1",
       role: "agent",
@@ -16,7 +16,7 @@ describe("isLeadOnTicketTeam", () => {
     expect(isLeadOnTicketSubDepartment(profile, "team-b")).toBe(false);
   });
 
-  it("returns true when profile role is lead and user belongs to the team", () => {
+  it("returns true when profile role is lead and user belongs to the subDepartment", () => {
     const profile = {
       id: "user-1",
       role: "sub_manager",
@@ -36,7 +36,7 @@ describe("canEditTicket", () => {
     subDepartmentId: "team-a",
   };
 
-  it("allows team leads to edit tickets on their team without being assignee or creator", () => {
+  it("allows subDepartment leads to edit tickets on their subDepartment without being assignee or creator", () => {
     const lead = {
       id: "lead-user",
       role: "agent",
@@ -45,7 +45,7 @@ describe("canEditTicket", () => {
     expect(canEditTicket(lead, otherTicket)).toBe(true);
   });
 
-  it("denies staff who are not assignee, creator, co-assignee, or team lead", () => {
+  it("denies staff who are not assignee, creator, co-assignee, or subDepartment lead", () => {
     const staff = {
       id: "staff-user",
       role: "agent",
@@ -92,7 +92,7 @@ describe("canEditTicketDescription", () => {
     ).toBe(false);
   });
 
-  it("denies team leads, admins, and unrelated staff", () => {
+  it("denies subDepartment leads, admins, and unrelated staff", () => {
     const lead = {
       id: "lead-user",
       role: "agent",

@@ -90,7 +90,7 @@ export async function GET(_req: Request, { params }: Params) {
     ]),
   ]
 
-  // Stamp isDone + merge workflow columns across every team on the project
+  // Stamp isDone + merge workflow columns across every subDepartment on the project
   const statusMap = await getSubDepartmentStatusesForSubDepartmentIds(statusSubDepartmentIds)
   const completeMap = new Map<string, Set<string>>()
   const seenLabels = new Set<string>()

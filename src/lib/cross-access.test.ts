@@ -63,7 +63,7 @@ describe("isLimitedCrossAccessToDept", () => {
 });
 
 describe("projectEffectiveDeptId", () => {
-  it("prefers project departmentId over team", () => {
+  it("prefers project departmentId over subDepartment", () => {
     expect(
       projectEffectiveDeptId({
         departmentId: "dept-a",
@@ -73,7 +73,7 @@ describe("projectEffectiveDeptId", () => {
     ).toBe("dept-a");
   });
 
-  it("falls back to team department", () => {
+  it("falls back to subDepartment department", () => {
     expect(
       projectEffectiveDeptId({
         departmentId: null,
@@ -133,7 +133,7 @@ describe("canCrossAccessGuestViewTicket", () => {
     expect(allowed).toBe(false);
   });
 
-  it("resolves department from project when team dept is missing", async () => {
+  it("resolves department from project when subDepartment dept is missing", async () => {
     mockProjectFindUnique.mockResolvedValue({
       departmentId: "dept-a",
       subDepartment: { departmentId: null },
@@ -163,7 +163,7 @@ describe("buildTicketEditContext", () => {
     vi.clearAllMocks();
   });
 
-  it("uses project department for cross-access edit checks when team dept differs", async () => {
+  it("uses project department for cross-access edit checks when subDepartment dept differs", async () => {
     mockProjectFindUnique.mockResolvedValue({
       departmentId: "dept-a",
       subDepartment: { departmentId: "dept-b" },

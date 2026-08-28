@@ -81,7 +81,7 @@ export function renderIntakeConfirmation({
 
   const body = `
     <p style="margin:0 0 16px 0;">Hi ${name},</p>
-    <p style="margin:0 0 ${referenceLine ? "16" : "24"}px 0;">Thanks for reaching out. We've got your <strong>${form}</strong> submission and someone from the PEN team will follow up soon.</p>
+    <p style="margin:0 0 ${referenceLine ? "16" : "24"}px 0;">Thanks for reaching out. We've got your <strong>${form}</strong> submission and someone from the PEN subDepartment will follow up soon.</p>
     ${referenceLine}
     ${summaryRows.length > 0 ? `<h2 style="margin:24px 0 8px 0;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Submission summary</h2>${summaryHtml}` : ""}
     <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
@@ -94,7 +94,7 @@ export function renderIntakeConfirmation({
   const text = [
     `Hi ${firstName(submitterName)},`,
     "",
-    `Thanks for reaching out. We've got your ${formName} submission and someone from the PEN team will follow up soon.`,
+    `Thanks for reaching out. We've got your ${formName} submission and someone from the PEN subDepartment will follow up soon.`,
     ...(humanId ? ["", `Your ticket number is ${humanId} — please quote it in any follow-up.`] : []),
     "",
     "Submission summary:",

@@ -46,7 +46,7 @@ export type ModuleRollup = ModuleData & {
   tickets: ModuleTicket[]
 }
 
-/** Workflow column from any team on the project (merged unique labels). */
+/** Workflow column from any subDepartment on the project (merged unique labels). */
 export type ModuleWorkflowStatus = {
   label: string
   color: string
@@ -54,7 +54,7 @@ export type ModuleWorkflowStatus = {
 
 export type ModuleRollupResponse = {
   project: { id: string; name: string; moduleSystemEnabled: boolean }
-  /** Merged team workflow statuses for this project — use exact labels, not canonical buckets. */
+  /** Merged subDepartment workflow statuses for this project — use exact labels, not canonical buckets. */
   statuses: ModuleWorkflowStatus[]
   modules: ModuleRollup[]
   moduleZero: { tickets: ModuleTicket[] }

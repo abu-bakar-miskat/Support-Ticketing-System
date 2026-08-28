@@ -528,7 +528,7 @@ export function ScreeningFlow(props: Props) {
             you left off.
           </p>
           <p>
-            A person on our team watches every recording. We’re interested in what you say —{" "}
+            A person on our sub department watches every recording. We’re interested in what you say —{" "}
             <strong style={{ color: COLORS.text }}>your accent is not being scored</strong>.
           </p>
           <p>Find a quiet spot, then check your camera and microphone below.</p>
@@ -766,7 +766,7 @@ export function ScreeningFlow(props: Props) {
       <div className="space-y-3 text-[15px] leading-relaxed" style={{ color: "rgba(235,236,243,0.75)" }}>
         <p>Your answers are in.</p>
         <p>
-          Someone on the team will watch your recordings — usually within a few working days —
+          Someone on the sub department will watch your recordings — usually within a few working days —
           and you’ll hear from us by email about the next step either way. You can close this tab.
         </p>
       </div>

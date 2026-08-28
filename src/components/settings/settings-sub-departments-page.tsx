@@ -752,7 +752,7 @@ function AssignMemberModal({
   onSuccess,
 }: {
   subDepartment: SubDepartmentRow;
-  /** When set to "sub_manager", also offers existing team members for promotion. */
+  /** When set to "sub_manager", also offers existing subDepartment members for promotion. */
   role?: string;
   onClose: () => void;
   onSuccess: () => void;
@@ -1235,7 +1235,7 @@ function JoinRequestsSection({
                       </div>
                     )}
 
-                    {/* Nickname — not applicable for cross-access guests (no team membership) */}
+                    {/* Nickname — not applicable for cross-access guests (no subDepartment membership) */}
                     {!isCrossAccess && (
                       <div className="flex min-w-[180px] flex-1 flex-col gap-1.5">
                         <label className="font-sans text-[11.5px] font-medium text-sts-subtle">

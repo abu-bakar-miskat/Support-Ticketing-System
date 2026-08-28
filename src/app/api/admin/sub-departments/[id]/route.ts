@@ -6,7 +6,7 @@ import type { AuthProfile } from "@/lib/auth"
 async function assertSubDepartmentScope(subDepartmentId: string, profile: AuthProfile): Promise<NextResponse | null> {
   if (profile.role === "admin") return null
   const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId }, select: { departmentId: true } })
-  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   // Write operations are restricted to directly-managed departments only
   const directlyManages: string[] = (profile as any).managedDepartmentIds ?? []
   if (!directlyManages.includes(subDepartment.departmentId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -63,7 +63,7 @@ export async function PATCH(
     return NextResponse.json(subDepartment)
   } catch (e: any) {
     if (e?.code === "P2002") {
-      return NextResponse.json({ error: "A team with that prefix already exists" }, { status: 409 })
+      return NextResponse.json({ error: "A subDepartment with that prefix already exists" }, { status: 409 })
     }
     throw e
   }
@@ -83,7 +83,7 @@ export async function DELETE(
   const ticketCount = await prisma.ticket.count({ where: { subDepartmentId: id } })
   if (ticketCount > 0) {
     return NextResponse.json(
-      { error: `Cannot delete: this team has ${ticketCount} ticket${ticketCount === 1 ? "" : "s"}` },
+      { error: `Cannot delete: this subDepartment has ${ticketCount} ticket${ticketCount === 1 ? "" : "s"}` },
       { status: 409 }
     )
   }
@@ -95,15 +95,15 @@ export async function DELETE(
   if (intakeFormCount > 0) {
     return NextResponse.json(
       {
-        error: `Cannot delete: ${intakeFormCount} intake form${intakeFormCount === 1 ? "" : "s"} still use this team`,
+        error: `Cannot delete: ${intakeFormCount} intake form${intakeFormCount === 1 ? "" : "s"} still use this subDepartment`,
       },
       { status: 409 }
     )
   }
 
-  // Team create auto-attaches a Project board (and teams may have statuses,
-  // counters, etc.) none of which cascade on Team delete — clear those FKs
-  // first so an empty team can actually be removed.
+  // SubDepartment create auto-attaches a Project board (and subDepartments may have statuses,
+  // counters, etc.) none of which cascade on SubDepartment delete — clear those FKs
+  // first so an empty subDepartment can actually be removed.
   await prisma.$transaction([
     prisma.profile.updateMany({ where: { subDepartmentId: id }, data: { subDepartmentId: null } }),
     prisma.routingRule.updateMany({ where: { subDepartmentId: id }, data: { subDepartmentId: null } }),

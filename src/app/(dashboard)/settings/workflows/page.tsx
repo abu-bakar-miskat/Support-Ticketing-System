@@ -21,7 +21,7 @@ export default async function SettingsWorkflowsRoute() {
 
   if (checkIsCrossAccessDept(profile, deptScope?.activeDeptId ?? null)) redirect("/projects");
 
-  // Build the team filter scoped to the user's access level
+  // Build the subDepartment filter scoped to the user's access level
   const allowedDeptIds = isManager
     ? [...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])]
     : [];

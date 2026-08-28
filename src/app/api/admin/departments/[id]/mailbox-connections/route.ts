@@ -74,14 +74,14 @@ export async function POST(
     return NextResponse.json({ error: `${resolvedAuthType} is not implemented yet` }, { status: 400 })
   }
 
-  const [department, team] = await Promise.all([
+  const [department, subDepartment] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { id: true, tenantId: true } }),
     prisma.subDepartment.findUnique({ where: { id: teamId }, select: { id: true, departmentId: true } }),
   ])
   if (!department) {
     return NextResponse.json({ error: "Department not found" }, { status: 404 })
   }
-  if (!team || team.departmentId !== departmentId) {
+  if (!subDepartment || subDepartment.departmentId !== departmentId) {
     return NextResponse.json({ error: "teamId must belong to the given department" }, { status: 404 })
   }
 

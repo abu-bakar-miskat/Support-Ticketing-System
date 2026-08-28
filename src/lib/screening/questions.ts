@@ -37,7 +37,7 @@ export const SCREENING_QUESTIONS: ScreeningQuestion[] = [
       one:
         "A list of projects with no depth, or a description so generic it could be anyone's work. No identifiable personal contribution, no specific difficulty.",
       penalise:
-        "Listing several projects instead of going deep on one; claiming the whole team's work as their own with no specifics; difficulties with no account of what they did about them.",
+        "Listing several projects instead of going deep on one; claiming the whole subDepartment's work as their own with no specifics; difficulties with no account of what they did about them.",
     },
   },
   {
@@ -62,7 +62,7 @@ export const SCREENING_QUESTIONS: ScreeningQuestion[] = [
     position: 3,
     prompt:
       "Tell us about a time an AI tool wrote you code that was wrong. How did you notice, and what did you do?",
-    hint: "We give the team AI tools — we're interested in how you work with them.",
+    hint: "We give the subDepartment AI tools — we're interested in how you work with them.",
     rubric: {
       five:
         "A specific incident: what the AI produced, the concrete way the wrongness surfaced (failing test, review, bug report, reading the code and spotting it), and what they did — fixed it themselves, understood why it was wrong, adjusted how they use the tool. Shows they verify AI output rather than trust it.",

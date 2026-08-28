@@ -93,7 +93,7 @@ export default async function DepartmentRoute() {
 
   const managerUserIds = new Set(managers.map((m) => m.userId));
 
-  // Team names (within this department) per user, and their team-membership id for the
+  // SubDepartment names (within this department) per user, and their team-membership id for the
   // team-change dropdown's "current" value.
   const subDepartmentNamesByUser = new Map<string, string[]>();
   const subDepartmentIdByUser = new Map<string, string>();

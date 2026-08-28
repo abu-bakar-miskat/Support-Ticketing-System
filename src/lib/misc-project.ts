@@ -8,8 +8,8 @@ export function miscProjectSlug(subDepartmentId: string) {
 }
 
 /**
- * Returns the single Miscellaneous project for a team.
- * Slug `miscellaneous-{teamId}` is the canonical key — one project per team.
+ * Returns the single Miscellaneous project for a subDepartment.
+ * Slug `miscellaneous-{teamId}` is the canonical key — one project per subDepartment.
  */
 export async function resolveMiscProjectForSubDepartment(
   subDepartmentId: string,
@@ -20,7 +20,7 @@ export async function resolveMiscProjectForSubDepartment(
     select: { departmentId: true, tenantId: true },
   });
   if (!subDepartment) {
-    throw new Error("Team not found");
+    throw new Error("SubDepartment not found");
   }
 
   const slug = miscProjectSlug(subDepartmentId);
@@ -43,7 +43,7 @@ export async function resolveMiscProjectForSubDepartment(
     select: { id: true },
   });
 
-  // Merge tickets from legacy duplicate Miscellaneous rows for this team.
+  // Merge tickets from legacy duplicate Miscellaneous rows for this subDepartment.
   const legacy = await db.project.findMany({
     where: { name: "Miscellaneous", subDepartmentId, id: { not: project.id } },
     select: { id: true },
@@ -65,7 +65,7 @@ type MiscProjectRow = {
   subDepartmentId: string | null;
 };
 
-/** Keep one Miscellaneous row per team when listing projects. */
+/** Keep one Miscellaneous row per subDepartment when listing projects. */
 export function dedupeMiscProjects<T extends MiscProjectRow>(projects: T[]): T[] {
   const miscBySubDepartment = new Map<string, T>();
   const rest: T[] = [];

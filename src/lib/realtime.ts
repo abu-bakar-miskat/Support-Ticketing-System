@@ -221,7 +221,7 @@ export function createTicketDetailSubscription(
   });
 }
 
-// ── Project boards (enabled team tabs) ────────────────────────────────────────
+// ── Project boards (enabled subDepartment tabs) ────────────────────────────────────────
 
 export function createProjectBoardsSubscription(
   supabase: SupabaseLike,
@@ -349,7 +349,7 @@ export type NotificationBroadcastPayload = {
   body?: string | null
   /** Ticket to open — present for ticket-related notifications */
   ticketDbId?: string | null
-  /** Join request — routes to team settings when present */
+  /** Join request — routes to subDepartment settings when present */
   joinRequestId?: string | null
 }
 

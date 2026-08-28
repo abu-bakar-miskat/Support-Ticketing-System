@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   let allowed = profile.subDepartmentIds.includes(subDepartmentId) || profile.role === "admin"
 
-  // Managers are virtual members of every team in their managed departments
+  // Managers are virtual members of every subDepartment in their managed departments
   if (!allowed && profile.role === "manager") {
     const managedIds: string[] = (profile as any).managedDepartmentIds ?? []
     if (managedIds.length > 0) {

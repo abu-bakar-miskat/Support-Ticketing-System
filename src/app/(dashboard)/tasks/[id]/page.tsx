@@ -183,7 +183,7 @@ export default async function TicketPage({
     // View access is granted by ANY legitimate relationship to the ticket —
     // never just the caller's currently-active department. This is what a
     // notification link relies on: a mentioned/assigned/co-assigned user, a
-    // team member, a dept manager, or a cross-access guest can all open it.
+    // subDepartment member, a dept manager, or a cross-access guest can all open it.
     const onSubDepartment = subDepartmentIds.includes(ticket.subDepartmentId);
     const isAssignee =
       ticket.assigneeId === profile.id ||
@@ -200,7 +200,7 @@ export default async function TicketPage({
     });
 
     // In a cross-access-only (guest) workspace, visibility is intentionally
-    // limited to the projects the user is assigned to. Native team membership
+    // limited to the projects the user is assigned to. Native subDepartment membership
     // or dept management in *other* departments must not unlock a ticket that
     // belongs to a project they aren't a member of here — only assignees,
     // creators, and project members may open it.
@@ -244,7 +244,7 @@ export default async function TicketPage({
     (await cookies()).get("pen_active_dept")?.value || null;
 
   // The department the task is "from": its project's department when it belongs
-  // to one (projects are assigned to a department), otherwise its team's
+  // to one (projects are assigned to a department), otherwise its subDepartment's
   // department.
   const taskOriginDeptId = ticket.project?.departmentId ?? ticketDeptId;
 
@@ -320,7 +320,7 @@ export default async function TicketPage({
     ]);
 
   // A sub-ticket counts as complete when its status is one flagged `isComplete`
-  // on its own team (sub-tickets may live on a different team than the parent).
+  // on its own subDepartment (sub-tickets may live on a different subDepartment than the parent).
   const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
   const completeStatusRows = subSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({

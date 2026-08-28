@@ -7,6 +7,7 @@ import { Paperclip, X, CheckCircle2, Loader2, Upload, AlertCircle } from "lucide
 import { cn } from "@/lib/utils"
 import { uploadIntakeFile } from "@/lib/api/upload-intake-file"
 import { resolveIntakeDefaultFields, type ResolvedDefaultFields } from "@/lib/intake-default-fields"
+import { isFieldVisible, toFormFieldDef, validateSubmission } from "@/lib/form-validation"
 
 type FieldValidation = {
   minLength?: number
@@ -20,13 +21,14 @@ type FieldValidation = {
 type Field = {
   id: string
   label: string
-  type: "text" | "richtext" | "select" | "file" | "email" | "number"
+  type: "text" | "richtext" | "select" | "file" | "email" | "number" | "checkbox" | "radio" | "date"
   isRequired: boolean
   options: string[]
   childOptions: Record<string, string[]>
   placeholder?: string | null
   helperText?: string | null
   validation?: FieldValidation | null
+  visibleWhen?: { fieldId: string; equals?: string; in?: string[] } | null
 }
 
 type FieldValue = string
@@ -114,30 +116,14 @@ export function IntakeForm({
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail))
       errs["__email"] = "Enter a valid email address."
     if (hasIssues && !issueId) errs["__issue"] = "Please select an issue type."
+    const submissionValues: Record<string, unknown> = {}
     for (const field of fields) {
-      const val    = values[field.id] ?? ""
-      const upload = uploads[field.id]
-      const isEmpty = field.type === "file" ? !upload?.url : !val.trim()
-
-      if (field.isRequired && isEmpty) {
-        errs[field.id] = `${field.label} is required.`
-        continue
-      }
-
-      if (!isEmpty && field.validation) {
-        const v = field.validation
-        if ((field.type === "text" || field.type === "richtext") && v.minLength !== undefined && val.length < v.minLength)
-          errs[field.id] = `Must be at least ${v.minLength} characters.`
-        else if ((field.type === "text" || field.type === "richtext") && v.maxLength !== undefined && val.length > v.maxLength)
-          errs[field.id] = `Must be at most ${v.maxLength} characters.`
-        else if (field.type === "number" && v.min !== undefined && Number(val) < v.min)
-          errs[field.id] = `Must be at least ${v.min}.`
-        else if (field.type === "number" && v.max !== undefined && Number(val) > v.max)
-          errs[field.id] = `Must be at most ${v.max}.`
-        else if (v.pattern && !new RegExp(v.pattern).test(val))
-          errs[field.id] = v.patternMessage ?? "Invalid format."
-      }
+      submissionValues[field.id] = field.type === "file"
+        ? (uploads[field.id]?.url ?? "")
+        : (values[field.id] ?? "")
     }
+    const result = validateSubmission(fields.map(toFormFieldDef), submissionValues)
+    Object.assign(errs, result.errors)
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -316,7 +302,7 @@ export function IntakeForm({
       {fields.length > 0 && <div className="h-px bg-sts-card-border" />}
 
       {/* Dynamic fields */}
-      {fields.map((field) => (
+      {fields.filter((field) => isFieldVisible(toFormFieldDef(field), values)).map((field) => (
         <FormField
           key={field.id}
           label={field.label}
@@ -513,6 +499,76 @@ function DynamicField({
             </SelectContent>
           </Select>
         )}
+      </div>
+    )
+  }
+
+  if (field.type === "date") {
+    return (
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCn(hasError)}
+      />
+    )
+  }
+
+  if (field.type === "radio") {
+    return (
+      <div className="flex flex-col gap-2">
+        {field.options.map((opt) => (
+          <label key={opt} className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+            <input
+              type="radio"
+              name={field.id}
+              checked={value === opt}
+              onChange={() => onChange(opt)}
+              className="size-4 accent-sts-blue"
+            />
+            {opt}
+          </label>
+        ))}
+      </div>
+    )
+  }
+
+  if (field.type === "checkbox") {
+    if (field.options.length === 0) {
+      return (
+        <label className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+          <input
+            type="checkbox"
+            checked={value === "true"}
+            onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+            className="size-4 rounded accent-sts-blue"
+          />
+          {field.placeholder || "Yes"}
+        </label>
+      )
+    }
+    const selected = new Set(value.split(",").map((s) => s.trim()).filter(Boolean))
+    return (
+      <div className="flex flex-col gap-2">
+        {field.options.map((opt) => {
+          const checked = selected.has(opt)
+          return (
+            <label key={opt} className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => {
+                  const next = new Set(selected)
+                  if (checked) next.delete(opt)
+                  else next.add(opt)
+                  onChange([...next].join(","))
+                }}
+                className="size-4 rounded accent-sts-blue"
+              />
+              {opt}
+            </label>
+          )
+        })}
       </div>
     )
   }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { ticketsInScope } from "@/lib/dept-scope"
-import { sendResolutionEmail } from "@/lib/email"
+import { sendResolutionEmail, sendStatusChangedEmail } from "@/lib/email"
 import { canEditTicket } from "@/lib/ticket-date-permissions"
 import { buildTicketEditContext } from "@/lib/cross-access"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
@@ -188,6 +188,17 @@ export async function PATCH(
         departmentId: ticket.subDepartment.departmentId,
         subDepartmentId: ticket.subDepartmentId,
       }).catch((err) => console.error("[resolution email] failed:", err))
+    } else if (!validStatus.isComplete && ticket.intake && fromStatus !== status) {
+      sendStatusChangedEmail({
+        to: ticket.intake.submitterEmail,
+        submitterName: ticket.intake.submitterName,
+        formName: ticket.intake.formConfig.name,
+        ticketTitle: ticket.title,
+        previousStatus: fromStatus,
+        newStatus: status,
+        departmentId: ticket.subDepartment.departmentId,
+        subDepartmentId: ticket.subDepartmentId,
+      }).catch((err) => console.error("[status-changed email] failed:", err))
     }
   })
 

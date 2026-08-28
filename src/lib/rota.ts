@@ -5,9 +5,9 @@
  * without coupling it to intake-specific concerns.
  *
  * Schedule-awareness: inactive members (isActive=false), those on a holiday today, or
- * outside their working hours are skipped. If ALL members are unavailable the
- * algorithm falls back to the full active member list (ignoring schedule) so
- * tickets are never left unassigned due to schedule constraints alone.
+ * outside their working hours are skipped. If nobody is inside working hours the
+ * pool is empty (ASG-04 / WH-03) — callers must leave the ticket unassigned and
+ * record ASSIGNMENT_FAILED rather than assigning an off-hours agent.
  */
 
 import { prisma } from "@/lib/db"
@@ -130,9 +130,8 @@ export async function isMemberAvailableNow(userId: string, subDepartmentId: stri
 /**
  * Active team members, schedule-availability-aware, ordered consistently
  * (joinedAt asc), excluding `excludeUserId` (typically the department
- * manager, who doesn't work tickets). Falls back to all active members when
- * none pass the "available right now" check, so a quiet moment (everyone
- * outside working hours) never collapses the candidate pool to empty.
+ * manager, who doesn't work tickets). Returns [] when no member is inside
+ * working hours (ASG-04 / WH-03).
  */
 export async function getEligibleMembers(
   subDepartmentId: string,
@@ -151,8 +150,7 @@ export async function getEligibleMembers(
   const availabilityFlags = await Promise.all(
     allMembers.map((m) => isMemberAvailableNow(m.userId, subDepartmentId)),
   )
-  const available = allMembers.filter((_, i) => availabilityFlags[i])
-  return available.length > 0 ? available : allMembers
+  return allMembers.filter((_, i) => availabilityFlags[i])
 }
 
 /** Open (non-deleted, non-completed-status) ticket count per user, for workload balancing. */

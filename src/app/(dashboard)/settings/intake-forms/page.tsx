@@ -20,8 +20,7 @@ export default async function SettingsIntakeFormsRoute() {
   if (!profile) redirect("/login")
 
   const isAdmin = profile.role === "admin"
-  const isManager = profile.role === "manager"
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin) redirect("/settings")
 
   const profileScope = await getProfileDeptScope(profile)
   const activeDeptId = profileScope?.activeDeptId ?? null
@@ -107,7 +106,7 @@ export default async function SettingsIntakeFormsRoute() {
     ? (departments.find((d) => d.id === activeDeptId) ?? null)
     : null
 
-  const ws = brandingFrom(await getEmailConfig())
+  const ws = brandingFrom(await getEmailConfig(activeDeptId))
   const workspaceBranding: FormBrandingDefaults = {
     logoUrl: ws.logoUrl,
     headerColor: ws.headerColor,

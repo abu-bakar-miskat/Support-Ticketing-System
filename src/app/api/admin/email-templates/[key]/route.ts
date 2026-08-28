@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { requireAdmin, managerDeptScope } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   EMAIL_TEMPLATE_KEYS,
@@ -21,7 +21,7 @@ async function checkSubScope(departmentId: string, subDepartmentId: string | nul
 
 /** Templates are department-scoped — managers may only edit departments in scope. */
 function checkDepartmentScope(
-  profile: NonNullable<Awaited<ReturnType<typeof requireAdminOrManager>>["profile"]>,
+  profile: NonNullable<Awaited<ReturnType<typeof requireAdmin>>["profile"]>,
   departmentId: string | null,
 ): NextResponse | null {
   if (!departmentId) {
@@ -41,7 +41,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager();
+  const { profile, error } = await requireAdmin();
   if (error) return error;
 
   const { key } = await params;
@@ -88,7 +88,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager();
+  const { profile, error } = await requireAdmin();
   if (error) return error;
 
   const { key } = await params;

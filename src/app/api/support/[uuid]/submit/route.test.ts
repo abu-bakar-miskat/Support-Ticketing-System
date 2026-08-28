@@ -8,6 +8,10 @@ vi.mock("@/lib/db", () => ({
     subDepartment: { findUnique: vi.fn() },
     ticket: { findUnique: vi.fn() },
     ticketMessage: { create: vi.fn() },
+    profile: { findFirst: vi.fn() },
+    verifiedEmail: { findUnique: vi.fn() },
+    pendingIntake: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+    slaPolicy: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/intake-conversion", () => ({
@@ -17,6 +21,8 @@ vi.mock("@/lib/intake-conversion", () => ({
 vi.mock("@/lib/email", () => ({
   sendIntakeConfirmationEmail: vi.fn(),
   sendAssignmentEmail: vi.fn(),
+  sendIntakeManagerAlertEmail: vi.fn(),
+  sendIntakeVerificationEmail: vi.fn(),
 }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email-config", () => ({
@@ -26,6 +32,16 @@ vi.mock("@/lib/email-config", () => ({
     fromEmail: "support@pengroup.com",
   }),
 }))
+vi.mock("@/lib/email-validation", () => ({
+  isValidEmailFormat: () => true,
+  domainAcceptsMail: vi.fn().mockResolvedValue(true),
+}))
+vi.mock("@/lib/department-setup", () => ({
+  assertDepartmentOperational: vi.fn().mockResolvedValue({ ok: true }),
+}))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/assignment-engine", () => ({ recordAssignmentFailure: vi.fn() }))
 
 import { POST } from "./route"
 import { prisma } from "@/lib/db"
@@ -38,6 +54,10 @@ const mockSendConfirmation = vi.mocked(sendIntakeConfirmationEmail)
 const mockFindForm = vi.mocked(prisma.intakeFormConfig.findUnique)
 const mockTransaction = vi.mocked(prisma.$transaction)
 const mockCreateMessage = vi.mocked(prisma.ticketMessage.create)
+const mockFindProfile = vi.mocked(prisma.profile.findFirst)
+const mockFindVerified = vi.mocked(prisma.verifiedEmail.findUnique)
+const mockFindSubDept = vi.mocked(prisma.subDepartment.findUnique)
+const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
 
 const form = {
   id: "form-1",
@@ -46,6 +66,8 @@ const form = {
   intakeSubDepartmentId: "team-1",
   departmentId: "dept-1",
   allowCustomerReplies: true,
+  autoAssign: true,
+  schemaVersion: 1,
   fields: [],
 }
 
@@ -62,6 +84,8 @@ const prep = {
   assigneeEmail: null,
   projectId: "proj-1",
   newRotaPointer: 0,
+  assignmentFailed: false,
+  managers: [],
 }
 
 function makeRequest(body: unknown) {
@@ -97,16 +121,16 @@ beforeEach(() => {
     bodyText: "Hi Jane, we got your request.",
   } as never)
   mockCreateMessage.mockResolvedValue({ id: "msg-1" } as never)
+  mockFindProfile.mockResolvedValue({ id: "acct-1" } as never)
+  mockFindVerified.mockResolvedValue(null)
+  mockFindSubDept.mockResolvedValue({ prefix: "IT", tenantId: "t1" } as never)
+  mockFindTicket.mockResolvedValue({ ticketNumber: 1, createdAt: new Date() } as never)
 })
 
 describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () => {
   it("sends the confirmation with the reply token when receiving is enabled", async () => {
     const res = await POST(makeRequest(validBody), { params })
     expect(res.status).toBe(201)
-
-    // Allow the fire-and-forget async IIFE to settle
-    await vi.runAllTimersAsync().catch(() => undefined)
-    await new Promise((r) => setImmediate(r))
 
     expect(mockSendConfirmation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -118,7 +142,6 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
 
   it("persists the confirmation as an outbound TicketMessage when providerMessageId is returned", async () => {
     await POST(makeRequest(validBody), { params })
-    await new Promise((r) => setImmediate(r))
 
     expect(mockCreateMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -137,7 +160,6 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
   it("omits the token when form disallows customer replies", async () => {
     mockFindForm.mockResolvedValue({ ...form, allowCustomerReplies: false } as never)
     await POST(makeRequest(validBody), { params })
-    await new Promise((r) => setImmediate(r))
 
     expect(mockSendConfirmation).toHaveBeenCalledWith(
       expect.objectContaining({ replyToken: null }),
@@ -150,7 +172,6 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
       bodyText: "",
     } as never)
     await POST(makeRequest(validBody), { params })
-    await new Promise((r) => setImmediate(r))
 
     expect(mockCreateMessage).not.toHaveBeenCalled()
   })

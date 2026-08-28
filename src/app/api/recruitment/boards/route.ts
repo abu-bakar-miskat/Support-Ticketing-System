@@ -3,10 +3,20 @@ import { requireAdminOrManager, recruitmentBoardWhere, resolveActiveDeptId } fro
 import { prisma } from "@/lib/db"
 import { badRequest } from "@/lib/api-response"
 import { DEFAULT_BOARD_FIELDS } from "@/lib/recruitment"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
+
+async function assertRecruitment(profile: { activeTenantId?: string | null }) {
+  if (!profile.activeTenantId) return null
+  const check = await assertFeatureEnabled(profile.activeTenantId, "recruitment")
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: 403 })
+  return null
+}
 
 export async function GET() {
   const { profile, error } = await requireAdminOrManager()
   if (error) return error
+  const disabled = await assertRecruitment(profile)
+  if (disabled) return disabled
 
   const activeDeptId = await resolveActiveDeptId(profile)
   const boards = await prisma.recruitmentBoard.findMany({
@@ -34,6 +44,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const { profile, error } = await requireAdminOrManager()
   if (error) return error
+  const disabled = await assertRecruitment(profile)
+  if (disabled) return disabled
 
   const body = await request.json().catch(() => ({}))
   const name = typeof body.name === "string" ? body.name.trim() : ""

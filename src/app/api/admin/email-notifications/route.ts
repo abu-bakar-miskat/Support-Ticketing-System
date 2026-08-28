@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { requireAdmin, managerDeptScope } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   EMAIL_NOTIFY_KEYS,
@@ -8,7 +8,7 @@ import {
 } from "@/lib/email-config";
 
 export async function GET(request: NextRequest) {
-  const { profile, error } = await requireAdminOrManager();
+  const { profile, error } = await requireAdmin();
   if (error) return error;
 
   const departmentId = request.nextUrl.searchParams.get("departmentId");

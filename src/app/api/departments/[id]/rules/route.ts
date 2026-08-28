@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
+import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { isConditionGroup, isRuleActions, DEFAULT_CONDITION_GROUP } from "@/lib/rule-validation"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 const RULE_SELECT = {
   id: true,
@@ -107,9 +108,13 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+  const deptForFlag = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
+  if (!deptForFlag) return NextResponse.json({ error: "Department not found" }, { status: 404 })
+  const featureCheck = await assertFeatureEnabled(deptForFlag.tenantId, "assignmentRules")
+  if (!featureCheck.ok) return NextResponse.json({ error: featureCheck.error }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
   const name = (body.name as string | undefined)?.trim()

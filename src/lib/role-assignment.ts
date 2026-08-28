@@ -24,8 +24,10 @@ export type UserScope = {
   tenantAdminIds: string[];
   /** Departments the user has a direct DEPARTMENT-scoped role in. */
   departmentIds: string[];
-  /** Departments where the user is admin/manager. */
+  /** Departments where the user is Admin (role=admin @ DEPARTMENT). */
   departmentAdminIds: string[];
+  /** Departments where the user is Manager or Admin (operational power). */
+  departmentManagerIds: string[];
   /** Sub-departments (teams) the user has a role in. */
   subDepartmentIds: string[];
 };
@@ -38,17 +40,23 @@ const uniq = (xs: string[]) => [...new Set(xs)];
  * authorization signal; `getProfile` computes `role` from here so every
  * downstream `profile.role` check reads a resolver-derived value.
  *
- * Precedence mirrors the legacy column semantics:
- *   platform / tenant-admin  → admin
+ * Precedence:
+ *   tenant-admin              → admin
  *   dept admin·manager / tenant-manager → manager
- *   any sub-department lead   → lead
- *   otherwise                 → staff
+ *   any sub-department lead   → sub_manager
+ *   otherwise                 → agent
+ *
+ * PLATFORM (Super Admin) is **not** an authorization role here — Super Admin
+ * is `isSuperAdmin` / `isPlatformAdmin` and must hold a tenant or department
+ * Admin assignment to pass department-admin checks (role-hierarchy.md).
  */
 export function deriveEffectiveRole(rows: ScopeRow[]): Role {
   const has = (pred: (r: ScopeRow) => boolean) => rows.some(pred);
-  if (has((r) => r.scopeType === "PLATFORM")) return "admin";
   if (has((r) => r.scopeType === "TENANT" && r.role === "admin")) return "admin";
-  if (has((r) => r.scopeType === "DEPARTMENT" && (r.role === "admin" || r.role === "manager"))) {
+  if (has((r) => r.scopeType === "DEPARTMENT" && r.role === "admin")) {
+    return "manager";
+  }
+  if (has((r) => r.scopeType === "DEPARTMENT" && r.role === "manager")) {
     return "manager";
   }
   if (has((r) => r.scopeType === "TENANT" && r.role === "manager")) return "manager";
@@ -64,6 +72,7 @@ export function shapeScope(rows: ScopeRow[]): UserScope {
     tenantAdminIds: [],
     departmentIds: [],
     departmentAdminIds: [],
+    departmentManagerIds: [],
     subDepartmentIds: [],
   };
   for (const r of rows) {
@@ -74,7 +83,8 @@ export function shapeScope(rows: ScopeRow[]): UserScope {
       if (r.role === "admin") scope.tenantAdminIds.push(r.scopeId);
     } else if (r.scopeType === "DEPARTMENT" && r.scopeId) {
       scope.departmentIds.push(r.scopeId);
-      if (r.role === "admin" || r.role === "manager") scope.departmentAdminIds.push(r.scopeId);
+      if (r.role === "admin") scope.departmentAdminIds.push(r.scopeId);
+      if (r.role === "admin" || r.role === "manager") scope.departmentManagerIds.push(r.scopeId);
     } else if (r.scopeType === "SUB_DEPARTMENT" && r.scopeId) {
       scope.subDepartmentIds.push(r.scopeId);
     }
@@ -83,6 +93,7 @@ export function shapeScope(rows: ScopeRow[]): UserScope {
   scope.tenantAdminIds = uniq(scope.tenantAdminIds);
   scope.departmentIds = uniq(scope.departmentIds);
   scope.departmentAdminIds = uniq(scope.departmentAdminIds);
+  scope.departmentManagerIds = uniq(scope.departmentManagerIds);
   scope.subDepartmentIds = uniq(scope.subDepartmentIds);
   return scope;
 }

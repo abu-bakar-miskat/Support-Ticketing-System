@@ -66,6 +66,7 @@ export function TenantStatusSummary() {
   const [sortBy, setSortBy] = useState<SortField>("tenantName");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [renewalFilter, setRenewalFilter] = useState<string>("");
+  const [tenantStatusFilter, setTenantStatusFilter] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +77,7 @@ export function TenantStatusSummary() {
       try {
         const params = new URLSearchParams({ sortBy, sortDir });
         if (renewalFilter) params.set("renewalStatus", renewalFilter);
+        if (tenantStatusFilter) params.set("tenantStatus", tenantStatusFilter);
         const res = await fetch(`/api/admin/tenants/agreement-summary?${params}`);
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -91,7 +93,7 @@ export function TenantStatusSummary() {
     return () => {
       cancelled = true;
     };
-  }, [sortBy, sortDir, renewalFilter]);
+  }, [sortBy, sortDir, renewalFilter, tenantStatusFilter]);
 
   function toggleSort(field: SortField) {
     if (sortBy === field) {
@@ -106,6 +108,22 @@ export function TenantStatusSummary() {
     <div className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Tenant status summary</h2>
+        <div className="flex flex-wrap items-center gap-2">
+        <Select value={tenantStatusFilter || "__all__"} onValueChange={(v) => setTenantStatusFilter(v === "__all__" ? "" : v ?? "")}>
+          <SelectTrigger className="h-8 min-w-[160px]">
+            <div className="flex items-center gap-1.5">
+              <ListFilter className="size-3.5 text-sts-subtle" />
+              <span className="font-sans text-[12px]">
+                {tenantStatusFilter === "active" ? "Active" : tenantStatusFilter === "suspended" ? "Suspended" : "All tenant statuses"}
+              </span>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__" className="font-sans text-[12.5px]">All tenant statuses</SelectItem>
+            <SelectItem value="active" className="font-sans text-[12.5px]">Active</SelectItem>
+            <SelectItem value="suspended" className="font-sans text-[12.5px]">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={renewalFilter || "__all__"} onValueChange={(v) => setRenewalFilter(v === "__all__" ? "" : v ?? "")}>
           <SelectTrigger className="h-8 min-w-[180px]">
             <div className="flex items-center gap-1.5">
@@ -126,6 +144,7 @@ export function TenantStatusSummary() {
             ))}
           </SelectContent>
         </Select>
+        </div>
       </div>
 
       {error && (

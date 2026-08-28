@@ -16,6 +16,7 @@ import type { AuthProfile } from "@/lib/auth";
 import type { ProfileMembership } from "@/lib/profile";
 import { parsePinnedProjectIds } from "@/lib/pinned-projects-prefs";
 import { getTenantActiveFeatureKeys } from "@/lib/template-catalogue";
+import { listFeatureFlags } from "@/lib/feature-flags";
 
 const projectSelect = {
   id: true,
@@ -242,6 +243,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     mentionCount,
     inboxCount,
     activeFeatureKeySet,
+    platformFlags,
   ] = await Promise.all([
     prisma.project.findMany({
       where: projectWhere,
@@ -298,6 +300,9 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     profile.activeTenantId
       ? getTenantActiveFeatureKeys(profile.activeTenantId)
       : Promise.resolve("ALL" as const),
+    profile.activeTenantId
+      ? listFeatureFlags(profile.activeTenantId)
+      : Promise.resolve({} as Record<string, boolean>),
   ] as const);
 
   const dedupedProjects = dedupeSupportProjects(dedupeMiscProjects(projects));
@@ -413,5 +418,6 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     isSuperAdmin: profile.isSuperAdmin,
     userId: profile.id,
     activeFeatureKeys: activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet),
+    platformFlags,
   };
 });

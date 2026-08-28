@@ -39,6 +39,7 @@ const EMPTY: LayoutData = {
   isSuperAdmin: false,
   userId: "",
   activeFeatureKeys: "ALL",
+  platformFlags: {},
 };
 
 export function DepartmentsLayout({
@@ -97,6 +98,7 @@ export function DepartmentsLayout({
         userRole: data.userRole ?? EMPTY.userRole,
         isSuperAdmin: data.isSuperAdmin ?? EMPTY.isSuperAdmin,
         activeFeatureKeys: data.activeFeatureKeys ?? EMPTY.activeFeatureKeys,
+        platformFlags: data.platformFlags ?? EMPTY.platformFlags,
         pinnedProjectIds: data.pinnedProjectIds ?? EMPTY.pinnedProjectIds,
         assignedProjectIds: data.assignedProjectIds ?? EMPTY.assignedProjectIds,
         sidebarCollapsed: collapsed,

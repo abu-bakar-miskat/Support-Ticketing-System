@@ -246,6 +246,7 @@ export async function runConversion(
   storedResponses: unknown[],
   formId: string,
   estimatedMinutes: number | null = null,
+  schema?: { schemaVersion: number; fieldSnapshot: Prisma.InputJsonValue },
 ): Promise<{ intakeId: string; ticketId: string; replyToken: string }> {
   const intake = await tx.intake.create({
     data: {
@@ -256,6 +257,9 @@ export async function runConversion(
       ...(estimatedMinutes !== null ? { estimatedHours: Math.round(estimatedMinutes / 60) } : {}),
       responses: storedResponses as Prisma.InputJsonValue,
       replyToken: generateReplyToken(),
+      ...(schema
+        ? { schemaVersion: schema.schemaVersion, fieldSnapshot: schema.fieldSnapshot }
+        : {}),
     },
     select: { id: true, replyToken: true },
   });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAdminOrManager } from "@/lib/auth"
+import { requireAdmin } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { listMailboxConnections, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
@@ -17,7 +17,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile: caller, error } = await requireAdminOrManager()
+  const { profile: caller, error } = await requireAdmin()
   if (error) return error
 
   const { id: departmentId } = await params
@@ -40,7 +40,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile: caller, error } = await requireAdminOrManager()
+  const { profile: caller, error } = await requireAdmin()
   if (error) return error
 
   const { id: departmentId } = await params

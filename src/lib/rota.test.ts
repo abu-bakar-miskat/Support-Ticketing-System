@@ -48,12 +48,12 @@ describe("getEligibleMembers", () => {
     expect(await getEligibleMembers(TEAM_ID, null)).toEqual([])
   })
 
-  it("falls back to all active members when none are available right now", async () => {
+  it("returns empty when no member is inside working hours (ASG-04 / WH-03)", async () => {
     mockMembershipFindMany.mockResolvedValue([{ userId: "a" }, { userId: "b" }] as never)
     // Everyone inactive at the profile level → isMemberAvailableNow() is false for all.
     mockProfileFind.mockResolvedValue({ timezone: null, isActive: false } as never)
     const result = await getEligibleMembers(TEAM_ID, null)
-    expect(result.map((m) => m.userId).sort()).toEqual(["a", "b"])
+    expect(result).toEqual([])
   })
 })
 

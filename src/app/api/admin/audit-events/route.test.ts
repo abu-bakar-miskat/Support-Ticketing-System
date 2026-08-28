@@ -23,6 +23,7 @@ const baseUserScope = {
   tenantAdminIds: [],
   departmentIds: [],
   departmentAdminIds: [],
+  departmentManagerIds: [],
   subDepartmentIds: [],
 }
 

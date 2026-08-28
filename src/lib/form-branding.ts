@@ -1,6 +1,7 @@
 /**
  * Per-form branding for the public support form page. All fields are optional
- * overrides; unset ones fall back to the workspace brand (see `resolveFormBranding`).
+ * overrides; unset ones fall back to the department brand, then the workspace
+ * brand (see `resolveFormBranding`).
  * Kept free of server-only imports so both the admin client editor and the
  * server (API + public page) can share the types and helpers.
  */
@@ -95,8 +96,8 @@ export function readFormBranding(stored: unknown): FormBranding {
 }
 
 /**
- * Layers a form's stored overrides on top of the workspace brand defaults to
- * produce the concrete values the public page renders with.
+ * Layers a form's stored overrides on top of the department (then workspace)
+ * brand defaults to produce the concrete values the public page renders with.
  */
 export function resolveFormBranding(
   stored: unknown,

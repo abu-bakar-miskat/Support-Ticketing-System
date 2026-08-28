@@ -140,6 +140,8 @@ export type MessageData = {
     fileSize: number;
   }[];
   notes?: MessageNote[];
+  deliveryStatus?: string | null;
+  deliveryError?: string | null;
 };
 
 type PendingAttachment = {
@@ -731,6 +733,14 @@ export function CustomerMessageItem({
             {quarantined && (
               <span className="rounded-full bg-red-100 px-1.5 py-px font-sans text-[9.5px] font-semibold text-red-600 dark:bg-red-500/15 dark:text-red-400">
                 ⚠ Unverified
+              </span>
+            )}
+            {message.deliveryStatus && message.deliveryStatus !== "delivered" && (
+              <span
+                className="rounded-full bg-red-100 px-1.5 py-px font-sans text-[9.5px] font-semibold text-red-600 dark:bg-red-500/15 dark:text-red-400"
+                title={message.deliveryError ?? undefined}
+              >
+                {message.deliveryStatus === "bounced" ? "Bounced" : message.deliveryStatus === "complained" ? "Complained" : "Delivery failed"}
               </span>
             )}
             <span className="font-sans text-[11.5px] text-sts-subtle/70">

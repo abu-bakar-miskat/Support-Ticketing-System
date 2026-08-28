@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, AlertTriangle,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, AlertTriangle, BookOpen,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -16,6 +16,7 @@ import {
   departmentTypeDescription,
 } from "@/lib/department-types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -750,6 +751,7 @@ function DepartmentCard({
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
   const [completingSetup, setCompletingSetup] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
 
   const needsSetup = dept.setupCompletedAt == null;
 
@@ -904,6 +906,12 @@ function DepartmentCard({
 
   return (
     <>
+      <DepartmentWalkthroughModal
+        departmentId={dept.id}
+        departmentName={dept.name}
+        open={walkthroughOpen}
+        onOpenChange={setWalkthroughOpen}
+      />
       <ConfirmDialog
         open={!!confirmRemoveMember}
         onOpenChange={(open) => { if (!open) setConfirmRemoveMember(null); }}
@@ -1020,6 +1028,14 @@ function DepartmentCard({
                 </span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setWalkthroughOpen(true)}
+              className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
+            >
+              <BookOpen className="size-3.5" />
+              View setup walkthrough
+            </button>
           </div>
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">

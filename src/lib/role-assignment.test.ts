@@ -17,6 +17,7 @@ function scope(overrides: Partial<UserScope> = {}): UserScope {
     tenantAdminIds: [],
     departmentIds: [],
     departmentAdminIds: [],
+    departmentManagerIds: [],
     subDepartmentIds: [],
     ...overrides,
   };
@@ -38,7 +39,7 @@ describe("shapeScope", () => {
     expect(s.tenantAdminIds).toEqual(["t1"]);
   });
 
-  it("flags department admins for admin and manager roles only", () => {
+  it("splits department admin vs manager ids", () => {
     const rows: ScopeRow[] = [
       { role: "manager", scopeType: "DEPARTMENT", scopeId: "d1" },
       { role: "agent", scopeType: "DEPARTMENT", scopeId: "d2" },
@@ -46,7 +47,8 @@ describe("shapeScope", () => {
     ];
     const s = shapeScope(rows);
     expect(s.departmentIds.sort()).toEqual(["d1", "d2", "d3"]);
-    expect(s.departmentAdminIds.sort()).toEqual(["d1", "d3"]);
+    expect(s.departmentAdminIds).toEqual(["d3"]);
+    expect(s.departmentManagerIds.sort()).toEqual(["d1", "d3"]);
   });
 
   it("collects sub-department ids", () => {
@@ -69,9 +71,9 @@ describe("shapeScope", () => {
 });
 
 describe("deriveEffectiveRole", () => {
-  it("platform assignment → admin", () => {
+  it("platform assignment is not a global admin role", () => {
     expect(deriveEffectiveRole([{ role: "admin", scopeType: "PLATFORM", scopeId: null }])).toBe(
-      "admin",
+      "agent",
     );
   });
 

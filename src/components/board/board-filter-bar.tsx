@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Users,
   Building2,
@@ -684,6 +685,10 @@ export function BoardFilterBar({
         active={labelFilter.length > 0}
       />
 
+      <Suspense fallback={<div className="h-7 w-[12rem] rounded-md border border-sts-card-border bg-sts-bg" />}>
+        <FormFieldUrlFilter />
+      </Suspense>
+
       {hasActiveFilters && (
         <button
           type="button"
@@ -694,6 +699,54 @@ export function BoardFilterBar({
           Clear
         </button>
       )}
+    </div>
+  );
+}
+
+/** FLT-02/05: custom form-field filters live in the URL (`ff=fieldId:value`). */
+function FormFieldUrlFilter() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const current = searchParams.get("ff") ?? "";
+  const colon = current.indexOf(":");
+  const [fieldId, setFieldId] = useState(colon > 0 ? current.slice(0, colon) : "");
+  const [value, setValue] = useState(colon > 0 ? current.slice(colon + 1) : "");
+
+  function commit(nextField: string, nextValue: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    const encoded = nextField.trim() && nextValue.trim() ? `${nextField.trim()}:${nextValue.trim()}` : "";
+    if (encoded) params.set("ff", encoded);
+    else params.delete("ff");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  return (
+    <div className="flex h-7 items-center gap-1 rounded-md border border-sts-card-border bg-sts-bg px-1.5">
+      <input
+        value={fieldId}
+        onChange={(e) => setFieldId(e.target.value)}
+        onBlur={() => commit(fieldId, value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit(fieldId, value);
+        }}
+        placeholder="Field id"
+        aria-label="Custom form field id"
+        className="w-[5.5rem] bg-transparent font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
+      />
+      <span className="text-[11px] text-sts-subtle">:</span>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => commit(fieldId, value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit(fieldId, value);
+        }}
+        placeholder="Value"
+        aria-label="Custom form field value"
+        className="w-[5.5rem] bg-transparent font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
+      />
     </div>
   );
 }

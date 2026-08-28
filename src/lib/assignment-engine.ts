@@ -10,7 +10,7 @@
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentFailedAlertEmail } from "@/lib/email";
-import { getEligibleMembers, getOpenTicketCounts } from "@/lib/rota";
+import { getEligibleMembers, getOpenTicketCounts, isMemberAvailableNow } from "@/lib/rota";
 import { pickRoundRobin, pickWorkload, pickRuleBased, type AssignmentRuleLike } from "@/lib/assignment";
 import type { FormValues } from "@/lib/rules-engine";
 import type { AssignmentMethod } from "@/generated/prisma/enums";
@@ -34,7 +34,7 @@ async function isEligibleTeamMember(userId: string, teamId: string): Promise<boo
   if (!profile?.isActive) return false;
   if (!membership?.isActive) return false;
   if (membership.doNotAssign) return false;
-  return true;
+  return isMemberAvailableNow(userId, teamId);
 }
 
 function logAssignmentOutcome(entry: {
@@ -154,7 +154,26 @@ export async function recordAssignmentFailure(
       select: { user: { select: { id: true, name: true, email: true } } },
     });
 
-    for (const { user } of managers) {
+    let managerUsers = managers.map((m) => m.user);
+    if (subDepartmentId) {
+      const subManagers = await prisma.subDepartmentMembership.findMany({
+        where: { subDepartmentId, isActive: true, role: "sub_manager" },
+        select: { user: { select: { id: true, name: true, email: true } } },
+      });
+      const { resolveEffectiveSubDepartmentManager } = await import("@/lib/role-assignment");
+      const effectiveIds = new Set(
+        resolveEffectiveSubDepartmentManager({
+          subDepartmentManagerUserIds: subManagers.map((m) => m.user.id),
+          departmentAdminUserIds: managerUsers.map((u) => u.id),
+        }),
+      );
+      const byId = new Map(
+        [...managerUsers, ...subManagers.map((m) => m.user)].map((u) => [u.id, u]),
+      );
+      managerUsers = [...effectiveIds].map((id) => byId.get(id)).filter((u): u is NonNullable<typeof u> => !!u);
+    }
+
+    for (const user of managerUsers) {
       createNotification({
         recipientId: user.id,
         type: "assignment_failed_alert",

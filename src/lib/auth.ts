@@ -1,6 +1,6 @@
 import { getProfile, type ProfileMembership } from "@/lib/profile";
 import { NextResponse } from "next/server";
-import { forbidden, unauthorized } from "@/lib/api-response";
+import { forbidden, unauthorized, notFound } from "@/lib/api-response";
 import { getProfileDeptScope, projectInScope, type DeptScope } from "@/lib/dept-scope";
 import { canEditTicket } from "@/lib/ticket-date-permissions";
 import { buildTicketEditContext, resolveTicketDeptId } from "@/lib/cross-access";
@@ -22,6 +22,8 @@ export async function requireAdmin(message = "Only admins can do this.") {
   if (!profile) {
     return { profile: null, error: unauthorized() };
   }
+  // Super Admin (isSuperAdmin) is not a tenant/department Admin. Tenant-scoped
+  // admin is role === "admin" from a TENANT admin assignment.
   if (profile.role !== "admin") {
     return { profile: null, error: forbidden(message) };
   }
@@ -295,7 +297,7 @@ export async function assertTicketAccess(
   // Tenant gate first — no project/full-access fallback below may re-admit a
   // ticket from another tenant.
   if (ticketOutsideActiveTenant(profile, ticket)) {
-    return forbidden("You don't have access to this ticket.");
+    return notFound("Ticket not found.");
   }
 
   // Drafts must not leak through project-membership fallbacks to managers/peers.
@@ -326,7 +328,7 @@ export async function assertTicketAccess(
       fullAccess.includes(deptId);
 
     if (!allowedViaProject && !allowedViaFullAccess) {
-      return forbidden("You don't have access to this ticket.");
+      return notFound("Ticket not found.");
     }
   }
   if (forWrite && ticket.deletedAt !== null) {

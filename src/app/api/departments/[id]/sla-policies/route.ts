@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
+import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { TicketPriority } from "@/generated/prisma/client"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -119,9 +120,13 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+  const deptRow = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
+  if (!deptRow) return NextResponse.json({ error: "Department not found" }, { status: 404 })
+  const featureCheck = await assertFeatureEnabled(deptRow.tenantId, "slaPolicies")
+  if (!featureCheck.ok) return NextResponse.json({ error: featureCheck.error }, { status: 403 })
 
   const body = await request.json().catch(() => ({}))
   const name = (body.name as string | undefined)?.trim()

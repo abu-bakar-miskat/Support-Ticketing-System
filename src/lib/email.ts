@@ -11,6 +11,7 @@ import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-co
 import { renderInvite } from "./email-templates/invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
+import { renderStatusChanged } from "./email-templates/status-changed";
 import { renderTicketCompleted } from "./email-templates/ticket-completed";
 import { renderSignatureHtml, renderSignatureText } from "./email-templates/signature";
 import { normalizeSignaturePrefs } from "./signature-prefs";
@@ -291,6 +292,39 @@ export async function sendResolutionEmail(args: {
   });
   logIfRejected(
     "resolution",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
+export async function sendStatusChangedEmail(args: {
+  to: string;
+  submitterName: string;
+  formName: string;
+  ticketTitle: string;
+  previousStatus: string;
+  newStatus: string;
+  departmentId?: string | null;
+  subDepartmentId?: string | null;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
+  if (!config.notifyStatusChanged) return;
+  const { to, departmentId, subDepartmentId, ...rest } = args;
+  const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
+  const { subject, html, text } = renderStatusChanged({
+    ...rest,
+    branding: brandingFrom(config),
+    override: overrides.statusChanged,
+  });
+  logIfRejected(
+    "status changed",
     await resend.emails.send({
       from: fromHeader(config),
       to,

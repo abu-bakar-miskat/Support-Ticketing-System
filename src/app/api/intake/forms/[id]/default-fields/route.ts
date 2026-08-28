@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
+import { requireAdmin, managerDeptScope } from "@/lib/auth"
 import type { Prisma } from "@/generated/prisma/client"
 import {
   resolveIntakeDefaultFields,
@@ -31,7 +31,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { id: formId } = await params
@@ -46,7 +46,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { id: formId } = await params

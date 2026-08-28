@@ -800,6 +800,19 @@ export function canManageDeptCalendar(
 }
 
 /**
+ * Admin-only department settings (branding, SLA, rules, intake forms, mailbox,
+ * notification templates). Super Admin is not sufficient unless they also
+ * hold a tenant-admin assignment (role === "admin").
+ */
+export function canAdminDeptSettings(
+  profile: ProfileLike,
+  _departmentId: string,
+): boolean {
+  if (profile.role !== "admin") return false;
+  return true;
+}
+
+/**
  * Whether an admin/manager may edit a target member (role, schedule, holidays, etc.).
  * Admins: always. Managers: target must be on a team in their active dept scope,
  * or a direct DepartmentMember of that department.

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
-import { getProfileDeptScope, canManageDeptCalendar } from "@/lib/dept-scope";
+import { getProfileDeptScope, canAdminDeptSettings } from "@/lib/dept-scope";
 import { RulesSettingsPage } from "@/components/settings/rules-settings-page";
 
 export const metadata = { title: "Automation rules — Support Ticketing System" };
@@ -11,8 +11,7 @@ export default async function SettingsRulesRoute() {
   if (!profile) redirect("/login");
 
   const isAdmin = profile.role === "admin";
-  const isManager = profile.role === "manager";
-  if (!isAdmin && !isManager) redirect("/settings");
+  if (!isAdmin) redirect("/settings");
 
   // Resolve which department these rules belong to: the active department when
   // one is entered, otherwise the first the admin/manager can manage.
@@ -43,7 +42,7 @@ export default async function SettingsRulesRoute() {
     },
   });
   if (!department) redirect("/settings/departments");
-  if (!canManageDeptCalendar(profile, department.id)) redirect("/settings");
+  if (!canAdminDeptSettings(profile, department.id)) redirect("/settings");
 
   return (
     <RulesSettingsPage

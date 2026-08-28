@@ -62,7 +62,9 @@ export async function DashboardShellLayout({ children }: { children: React.React
   if (!profile) redirect("/login");
 
   const memberships = profile.memberships ?? [];
-  if (profile.role !== "admin" && profile.role !== "manager" && memberships.length === 0) {
+  if (profile.isSuperAdmin) {
+    // Super Admin is not a tenant member; they use the platform console.
+  } else if (profile.role !== "admin" && profile.role !== "manager" && memberships.length === 0) {
     redirect("/onboarding");
   }
 

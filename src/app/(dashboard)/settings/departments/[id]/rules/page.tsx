@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
-import { canManageDeptCalendar } from "@/lib/dept-scope";
+import { canAdminDeptSettings } from "@/lib/dept-scope";
 import { RulesSettingsPage } from "@/components/settings/rules-settings-page";
 
 export const metadata = { title: "Automation rules — Support Ticketing System" };
@@ -26,7 +26,7 @@ export default async function DepartmentRulesSettingsRoute({
   });
   if (!department) notFound();
 
-  if (!canManageDeptCalendar(profile, departmentId)) redirect("/settings/departments");
+  if (!canAdminDeptSettings(profile, departmentId)) redirect("/settings/departments");
 
   return (
     <RulesSettingsPage

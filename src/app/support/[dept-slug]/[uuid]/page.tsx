@@ -58,13 +58,14 @@ export default async function PublicIntakeFormPage({
   const fields = form.fields.map((f) => ({
     id: f.id,
     label: f.label,
-    type: f.type as "text" | "richtext" | "select" | "file" | "email" | "number",
+    type: f.type as "text" | "richtext" | "select" | "file" | "email" | "number" | "checkbox" | "radio" | "date",
     isRequired: f.isRequired,
     options: f.options,
     childOptions: (f.childOptions ?? {}) as Record<string, string[]>,
     placeholder: f.placeholder,
     helperText: f.helperText,
     validation: f.validation as Record<string, unknown> | null,
+    visibleWhen: (f.visibleWhen as { fieldId: string; equals?: string; in?: string[] } | null) ?? null,
   }))
 
   // The form's selectable "issues" are now its enabled SLA policies — each

@@ -14,7 +14,7 @@ export type ChatFieldValidation = {
 export type ChatField = {
   id: string
   label: string
-  type: "text" | "richtext" | "select" | "file" | "email" | "number"
+  type: "text" | "richtext" | "select" | "file" | "email" | "number" | "checkbox" | "radio" | "date"
   isRequired: boolean
   options: string[]
   childOptions: Record<string, string[]>
@@ -76,6 +76,12 @@ export function validateAnswer(step: ChatStep, value: string): string | null {
 
   if (field.type === "email" && !EMAIL_RE.test(val.trim()))
     return "That doesn't look like a valid email address."
+  if (field.type === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(val) || Number.isNaN(Date.parse(val))))
+    return "Enter a date as YYYY-MM-DD."
+  if ((field.type === "select" || field.type === "radio") && field.options.length > 0 && !field.options.includes(val))
+    return "Please pick one of the options."
+  if (field.type === "checkbox" && field.options.length === 0 && field.isRequired && val !== "true" && val.toLowerCase() !== "yes")
+    return `${field.label} is required.`
 
   const v = field.validation
   if (!v) return null

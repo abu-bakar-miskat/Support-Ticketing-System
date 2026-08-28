@@ -27,6 +27,7 @@ export type DashboardContextValue = {
   userRole: string;
   isSuperAdmin: boolean;
   activeFeatureKeys: TemplateFeatureKey[] | "ALL";
+  platformFlags: Record<string, boolean>;
   pinnedProjectIds: string[];
   assignedProjectIds: string[];
   sidebarCollapsed: boolean;

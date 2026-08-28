@@ -126,10 +126,14 @@ function BoardCard({
   card: initialCard,
   membersForCreate,
   membersLoading,
+  statusOrder,
+  onMove,
 }: {
   card: BoardCardData;
   membersForCreate: UserListPerson[];
   membersLoading: boolean;
+  statusOrder: string[];
+  onMove: (dbId: string, toStatus: string) => void;
 }) {
   const {
     subTicketCards,
@@ -211,8 +215,21 @@ function BoardCard({
     <BoardCardContextMenu card={initialCard}>
     <div
       ref={dragRef as unknown as React.Ref<HTMLDivElement>}
+      tabIndex={0}
+      role="listitem"
+      aria-label={`${initialCard.humanId}. ${initialCard.status}. Use left and right arrow keys to move.`}
+      onKeyDown={(e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        const idx = statusOrder.indexOf(initialCard.status);
+        if (idx < 0) return;
+        const next = e.key === "ArrowLeft" ? idx - 1 : idx + 1;
+        if (next < 0 || next >= statusOrder.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onMove(initialCard.dbId, statusOrder[next]!);
+      }}
       className={cn(
-        "group/card board-card cursor-grab active:cursor-grabbing",
+        "group/card board-card cursor-grab active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sts-id",
         isDragging && "opacity-40",
         isRunning && "ring-2 ring-sts-green/45 border-sts-green/50",
       )}
@@ -507,6 +524,7 @@ function BoardColumn({
   onAdd,
   membersForCreate,
   membersLoading,
+  statusOrder,
 }: {
   status: SubDepartmentStatusConfig;
   cards: BoardCardData[];
@@ -514,6 +532,7 @@ function BoardColumn({
   onAdd?: (statusLabel: string) => void;
   membersForCreate: UserListPerson[];
   membersLoading: boolean;
+  statusOrder: string[];
 }) {
   const [{ isOver, canDrop }, dropRef] = useDrop<
     DragItem,
@@ -578,6 +597,8 @@ function BoardColumn({
             card={card}
             membersForCreate={membersForCreate}
             membersLoading={membersLoading}
+            statusOrder={statusOrder}
+            onMove={onDrop}
           />
         ))}
         {cards.length === 0 && (
@@ -1170,6 +1191,7 @@ export function BoardPage({
                 onAdd={activeSubDepartmentId === "all" ? undefined : setCreateForStatus}
                 membersForCreate={subDepartmentMembersForCreate}
                 membersLoading={membersLoading}
+                statusOrder={effectiveStatuses.map((s) => s.label)}
               />
             ))}
           </div>

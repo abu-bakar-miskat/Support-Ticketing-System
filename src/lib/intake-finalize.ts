@@ -3,10 +3,12 @@ import { TicketPriority } from "@/generated/prisma/client"
 import { sendIntakeConfirmationEmail, sendAssignmentEmail, sendIntakeManagerAlertEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
-import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
+import { RESEND_RECEIVING_ENABLED, getEmailConfig } from "@/lib/email-config"
 import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { recordAssignmentFailure } from "@/lib/assignment-engine"
+
+import { snapshotAsJson, snapshotFormFields } from "@/lib/intake-form-schema"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
@@ -31,7 +33,10 @@ export async function createTicketFromPayload(
   formConfigId: string,
   payload: PendingPayload,
 ): Promise<{ ticketId: string; humanId: string | null }> {
-  const form = await prisma.intakeFormConfig.findUnique({ where: { id: formConfigId } })
+  const form = await prisma.intakeFormConfig.findUnique({
+    where: { id: formConfigId },
+    include: { fields: { orderBy: { order: "asc" } } },
+  })
   if (!form) throw new Error(`Form ${formConfigId} not found`)
 
   const { submitterName, submitterEmail, title, priority, issueId, responses, idempotencyKey } = payload
@@ -83,7 +88,20 @@ export async function createTicketFromPayload(
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>
-    runConversion(tx, prep, submitterName, submitterEmail, idempotencyKey, storedResponses, formConfigId, resolvedEstimatedMinutes),
+    runConversion(
+      tx,
+      prep,
+      submitterName,
+      submitterEmail,
+      idempotencyKey,
+      storedResponses,
+      formConfigId,
+      resolvedEstimatedMinutes,
+      {
+        schemaVersion: form.schemaVersion,
+        fieldSnapshot: snapshotAsJson(snapshotFormFields(form.fields)),
+      },
+    ),
   )
 
   // ── Fire-and-forget side effects ────────────────────────────────────────────
@@ -153,7 +171,7 @@ export async function createTicketFromPayload(
 
   const emailSummary = responses.filter((r) => r.value && r.value.trim()).map((r) => ({ label: r.label, value: r.value }))
   const useToken = RESEND_RECEIVING_ENABLED && form.allowCustomerReplies
-  sendIntakeConfirmationEmail({
+  const sent = await sendIntakeConfirmationEmail({
     to: submitterEmail,
     submitterName,
     submitterEmail,
@@ -165,7 +183,27 @@ export async function createTicketFromPayload(
     replyToken: useToken ? replyToken : null,
     departmentId: form.departmentId,
     subDepartmentId: prep.intakeSubDepartmentId,
-  }).catch((err) => console.error("[intake] confirmation email failed:", err))
+  }).catch((err) => {
+    console.error("[intake] confirmation email failed:", err)
+    return { providerMessageId: null, bodyText: "" }
+  })
+
+  // Persist so inbound replies thread and MAIL-03 bounce events can attach to this ticket.
+  if (sent.providerMessageId) {
+    const config = await getEmailConfig(form.departmentId, prep.intakeSubDepartmentId)
+    await prisma.ticketMessage.create({
+      data: {
+        ticketId,
+        direction: "outbound",
+        status: "trusted",
+        authorProfileId: null,
+        fromName: config.fromName,
+        fromEmail: config.fromEmail,
+        bodyHtml: sent.bodyText,
+        providerMessageId: sent.providerMessageId,
+      },
+    }).catch((err) => console.error("[intake] confirmation message persist failed:", err))
+  }
 
   return { ticketId, humanId }
 }

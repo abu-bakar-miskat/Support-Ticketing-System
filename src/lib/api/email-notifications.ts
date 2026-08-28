@@ -50,11 +50,19 @@ export async function resetEmailNotificationOverride(
   if (!res.ok) throw new Error("Failed to reset notification setting");
 }
 
+export type EmailSenderInfo = {
+  id: string;
+  name: string;
+  email: string;
+  isDefault: boolean;
+};
+
 export type EmailIdentityInfo = {
   defaultFromName: string;
   defaultFromEmail: string;
   overrideFromName: string | null;
   overrideFromEmail: string | null;
+  senders?: EmailSenderInfo[];
 };
 
 export async function fetchEmailIdentity(
@@ -81,6 +89,29 @@ export async function setEmailIdentity(
     const data = await res.json().catch(() => ({}));
     throw new Error(data?.error ?? "Failed to update email identity");
   }
+}
+
+/** DS-02: replaces the department's full sender / reply-to list. */
+export async function setEmailSenders(
+  departmentId: string,
+  senders: { id?: string; name: string; email: string; isDefault?: boolean }[],
+  subDepartmentId?: string | null,
+): Promise<EmailSenderInfo[]> {
+  const res = await fetch("/api/admin/email-identity/senders", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      departmentId,
+      senders,
+      ...(subDepartmentId ? { subDepartmentId } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error ?? "Failed to update senders");
+  }
+  const data = await res.json();
+  return data.senders;
 }
 
 export type DomainStatusInfo = {

@@ -1,4 +1,5 @@
 import type { TemplateFeatureKey } from "@/lib/template-features";
+import { isPathEnabledByFlags } from "@/lib/feature-keys";
 
 export type SettingsNavItem = {
   label: string;
@@ -92,13 +93,13 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "SLA policies",
         href: "/settings/sla",
-        managerOnly: true,
+        adminOnly: true,
         deptSpecific: true,
       },
       {
         label: "Automation rules",
         href: "/settings/rules",
-        managerOnly: true,
+        adminOnly: true,
         deptSpecific: true,
       },
       {
@@ -115,14 +116,14 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "Support forms",
         href: "/settings/intake-forms",
-        managerOnly: true,
+        adminOnly: true,
         deptSpecific: true,
         templateFeatureKey: "supportForm",
       },
       {
         label: "API keys",
         href: "/settings/api-keys",
-        managerOnly: true,
+        adminOnly: true,
         deptSpecific: true,
         templateFeatureKey: "apiKeys",
       },
@@ -136,7 +137,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "Email settings",
         href: "/settings/email",
-        managerOnly: true,
+        adminOnly: true,
         deptSpecific: true,
         templateFeatureKey: "emailSettings",
       },
@@ -173,6 +174,7 @@ export function getFilteredNav(
   // only tenant-level settings show. Defaults to true so callers that don't
   // pass it keep the pre-existing behavior.
   hasActiveDept = true,
+  platformFlags?: Partial<Record<string, boolean>>,
 ): SettingsNavGroup[] {
   const isAdmin = role === "admin";
   const isManager = role === "manager";
@@ -200,6 +202,7 @@ export function getFilteredNav(
         if (!item.templateFeatureKey) return true;
         return activeFeatureKeys === "ALL" || activeFeatureKeys.includes(item.templateFeatureKey);
       })
+      .filter((item) => isPathEnabledByFlags(item.href, platformFlags))
       .map((item) => ({
         ...item,
         count: counts[item.href] ?? item.count,

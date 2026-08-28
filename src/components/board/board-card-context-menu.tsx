@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Tag, SquareArrowOutUpRight, Link2 } from "lucide-react";
+import { Trash2, Tag, SquareArrowOutUpRight, Link2, ArrowUpRight } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -95,6 +95,23 @@ export function BoardCardContextMenu({
           {canEdit && (
             <>
               <ContextMenuSeparator />
+
+              <ContextMenuItem
+                onClick={() =>
+                  run(
+                    fetch(`/api/tickets/${card.dbId}/escalate`, { method: "POST" }).then(async (r) => {
+                      if (!r.ok) {
+                        const body = await r.json().catch(() => ({}));
+                        throw new Error((body as { error?: string }).error ?? "Failed to escalate");
+                      }
+                    }),
+                    "Failed to escalate",
+                  )
+                }
+              >
+                <ArrowUpRight />
+                Escalate
+              </ContextMenuItem>
 
               {/* Labels */}
               <ContextMenuSub>

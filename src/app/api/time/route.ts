@@ -4,6 +4,14 @@ import { prisma } from "@/lib/db"
 import { ticketsInScope } from "@/lib/dept-scope"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { appendTicketEvent, broadcastTicketEvent } from "@/lib/ticket-events"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
+
+async function assertTimeTracking(profile: { activeTenantId?: string | null }) {
+  if (!profile.activeTenantId) return null
+  const check = await assertFeatureEnabled(profile.activeTenantId, "timeTracking")
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: 403 })
+  return null
+}
 
 function durationSecsBetween(start: Date, end: Date): number {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))
@@ -48,6 +56,8 @@ async function broadcastTicketTimer(
 export async function GET() {
   const { profile, error } = await requireAuth()
   if (error) return error
+  const disabled = await assertTimeTracking(profile)
+  if (disabled) return disabled
 
   const running = await prisma.timeEntry.findFirst({
     where: { profileId: profile.id, endedAt: null },
@@ -96,6 +106,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const { profile, error } = await requireAuth()
   if (error) return error
+  const disabled = await assertTimeTracking(profile)
+  if (disabled) return disabled
 
   const body = await request.json().catch(() => ({}))
   const { action, ticketId, entryId } = body as {

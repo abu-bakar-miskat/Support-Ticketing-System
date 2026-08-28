@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
+import { requireAdmin, managerDeptScope } from "@/lib/auth"
 import { IntakeFieldType } from "@/generated/prisma/client"
+import { parseVisibleWhen } from "@/lib/form-validation"
+import { bumpFormSchemaVersion, fieldUsesOptions } from "@/lib/intake-form-schema"
 
 const VALID_TYPES = new Set<string>(Object.values(IntakeFieldType))
 
@@ -28,7 +30,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { id: formId } = await params
@@ -46,7 +48,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { id: formId } = await params
@@ -80,19 +82,23 @@ export async function POST(
   })
   const nextOrder = (maxOrder._max.order ?? -1) + 1
 
+  const visibleWhen = parseVisibleWhen(body.visibleWhen)
+
   const field = await prisma.intakeFormField.create({
     data: {
       formConfigId: formId,
       label,
       type: type as IntakeFieldType,
       isRequired,
-      options: type === "select" ? options : [],
+      options: fieldUsesOptions(type) ? options : [],
       childOptions: type === "select" ? childOptions : {},
       placeholder,
       helperText,
       validation,
+      visibleWhen: visibleWhen ?? undefined,
       order: nextOrder,
     },
   })
+  await bumpFormSchemaVersion(formId)
   return NextResponse.json(field, { status: 201 })
 }

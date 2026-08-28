@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { requireAdmin, managerDeptScope } from "@/lib/auth";
 import { EMAIL_TEMPLATE_KEYS, type EmailTemplateKey, brandingFrom, getEmailConfig } from "@/lib/email-config";
 import { DEFAULT_TEMPLATES } from "@/lib/email-templates/defaults";
 import { applyPlaceholders, layout, normalizeTemplateBodyHtml } from "@/lib/email-templates/_shared";
@@ -9,7 +9,7 @@ function isTemplateKey(value: string): value is EmailTemplateKey {
 }
 
 export async function POST(request: Request) {
-  const { profile, error } = await requireAdminOrManager();
+  const { profile, error } = await requireAdmin();
   if (error) return error;
 
   const body = await request.json().catch(() => ({}));

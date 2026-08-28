@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
-import { canManageDeptCalendar } from "@/lib/dept-scope";
+import { canAdminDeptSettings } from "@/lib/dept-scope";
 import { SlaSettingsPage } from "@/components/settings/sla-settings-page";
 
 export const metadata = { title: "SLA policies — Support Ticketing System" };
@@ -26,7 +26,7 @@ export default async function DepartmentSlaSettingsRoute({
   });
   if (!department) notFound();
 
-  const canManage = canManageDeptCalendar(profile, departmentId);
+  const canManage = canAdminDeptSettings(profile, departmentId);
   if (!canManage) redirect("/settings/departments");
 
   return (

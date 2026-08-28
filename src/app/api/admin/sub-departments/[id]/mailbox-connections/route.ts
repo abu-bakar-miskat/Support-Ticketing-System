@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAdminOrManager } from "@/lib/auth"
+import { requireAdmin } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { listMailboxConnectionsForSubDepartment, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
@@ -30,7 +30,7 @@ async function loadSubDepartmentInScope(subDepartmentId: string, caller: { role:
 // sub-department. teamId/departmentId are always resolved from the URL, so
 // callers can't connect a mailbox to any sub-department outside their scope.
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { profile: caller, error } = await requireAdminOrManager()
+  const { profile: caller, error } = await requireAdmin()
   if (error) return error
 
   const { id } = await params
@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const { profile: caller, error } = await requireAdminOrManager()
+  const { profile: caller, error } = await requireAdmin()
   if (error) return error
 
   const { id } = await params

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { applyReopenedLabel, REOPENED_LABEL } from "@/lib/ticket-column-moves"
 
 type SubDepartmentStatusRow = { label: string; isComplete: boolean; order: number }
 
@@ -27,7 +28,7 @@ export async function maybeReopenTicket(
   const [ticket, subDepartmentStatuses] = await Promise.all([
     prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { status: true },
+      select: { status: true, labels: true },
     }),
     prisma.subDepartmentStatus.findMany({
       where: { subDepartmentId },
@@ -49,7 +50,11 @@ export async function maybeReopenTicket(
 
   await prisma.ticket.update({
     where: { id: ticketId },
-    data: { status: targetLabel, closedAt: null },
+    data: {
+      status: targetLabel,
+      closedAt: null,
+      labels: applyReopenedLabel(ticket.labels ?? []),
+    },
   })
 
   await syncResolutionTimerOnClosedAtChange(ticketId, null)
@@ -59,11 +64,12 @@ export async function maybeReopenTicket(
       ticketId,
       actorId,
       action: "STATUS_CHANGED",
-      metadata: {
-        from: ticket.status,
-        to: targetLabel,
-        triggeredBy: "customer_reply",
-      },
+        metadata: {
+          from: ticket.status,
+          to: targetLabel,
+          triggeredBy: "customer_reply",
+          label: REOPENED_LABEL,
+        },
     },
   })
 

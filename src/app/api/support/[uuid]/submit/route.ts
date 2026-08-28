@@ -8,10 +8,14 @@ import { createTicketFromPayload, type PendingPayload, type ResponseEntry } from
 import { BASE_URL, ensureAbsoluteUrl } from "@/lib/email-templates/_shared"
 import { withSystemScope } from "@/lib/request-scope"
 import { assertDepartmentOperational } from "@/lib/department-setup"
+import { toFormFieldDef, validateSubmission } from "@/lib/form-validation"
+import { clientIp, publicRateLimited } from "@/lib/public-rate-limit"
 
 const VALID_PRIORITIES = new Set<string>(Object.values(TicketPriority))
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000
+const SUBMIT_RATE_LIMIT = 20
+const SUBMIT_RATE_WINDOW_MS = 60_000
 
 // Public support-form submission — anonymous requester. Runs under system scope
 // so intake conversion (which reads team/dept and creates cross-tenant tickets)
@@ -22,6 +26,11 @@ async function handlePost(
   request: Request,
   { params }: { params: Promise<{ uuid: string }> },
 ) {
+  const ip = clientIp(request)
+  if (publicRateLimited(ip, SUBMIT_RATE_LIMIT, SUBMIT_RATE_WINDOW_MS)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+  }
+
   const { uuid } = await params
 
   const form = await prisma.intakeFormConfig.findUnique({
@@ -80,18 +89,18 @@ async function handlePost(
     return NextResponse.json({ error: "Invalid priority" }, { status: 400 })
   }
 
-  // ── Required field validation ───────────────────────────────────────────────
+  // FM-03: same engine as the public form (and FM-05: hidden fields are not required).
   const responseMap = new Map(responses.map((r) => [r.fieldId, r.value]))
-  const missingIds = form.fields
-    .filter((f) => f.isRequired)
-    .filter((f) => {
-      const val = responseMap.get(f.id)
-      return !val || !val.trim()
-    })
-    .map((f) => f.id)
-
-  if (missingIds.length > 0) {
-    return NextResponse.json({ error: "Required fields missing", missingIds }, { status: 400 })
+  const values = Object.fromEntries(form.fields.map((f) => [f.id, responseMap.get(f.id) ?? ""]))
+  const validation = validateSubmission(
+    form.fields.map((f) => toFormFieldDef(f)),
+    values,
+  )
+  if (!validation.ok) {
+    return NextResponse.json(
+      { error: "Required fields missing", missingIds: Object.keys(validation.errors), fieldErrors: validation.errors },
+      { status: 400 },
+    )
   }
 
   // ── Idempotency: a verified submission already became a ticket ───────────────

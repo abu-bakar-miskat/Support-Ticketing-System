@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageDeptCalendar } from "@/lib/dept-scope"
+import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine"
 import { isConditionGroup, isRuleActions } from "@/lib/rule-validation"
 
@@ -24,7 +24,7 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

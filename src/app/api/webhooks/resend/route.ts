@@ -43,6 +43,11 @@ async function handlePost(request: Request) {
   }
 
   if (event.type !== "email.received") {
+    const deliveryTypes = new Set(["email.bounced", "email.failed", "email.complained"])
+    if (deliveryTypes.has(event.type)) {
+      await recordDeliveryFailure(event.type, event.data as unknown as Record<string, unknown>)
+      return NextResponse.json({ ok: true, delivery: event.type })
+    }
     return NextResponse.json({ ok: true, skipped: event.type })
   }
 
@@ -69,4 +74,41 @@ async function handlePost(request: Request) {
   })
 
   return NextResponse.json({ ok: true })
+}
+
+async function recordDeliveryFailure(eventType: string, data: Record<string, unknown>) {
+  const emailId = typeof data.email_id === "string" ? data.email_id : null
+  if (!emailId) return
+
+  const message = await prisma.ticketMessage.findFirst({
+    where: { providerMessageId: emailId },
+    select: { id: true, ticketId: true, ticket: { select: { creatorId: true } } },
+  })
+  if (!message) return
+
+  const status =
+    eventType === "email.bounced" ? "bounced" : eventType === "email.complained" ? "complained" : "failed"
+  const bounce = data.bounce && typeof data.bounce === "object" ? (data.bounce as Record<string, unknown>) : null
+  const error =
+    (typeof data.error === "string" && data.error) ||
+    (typeof bounce?.message === "string" && bounce.message) ||
+    eventType
+
+  await prisma.ticketMessage.update({
+    where: { id: message.id },
+    data: {
+      deliveryStatus: status,
+      deliveryError: String(error).slice(0, 500),
+      deliveryStatusAt: new Date(),
+    },
+  })
+
+  await prisma.activityLog.create({
+    data: {
+      ticketId: message.ticketId,
+      actorId: message.ticket.creatorId,
+      action: "FIELD_CHANGED",
+      metadata: { field: "emailDelivery", status, error },
+    },
+  }).catch(() => undefined)
 }

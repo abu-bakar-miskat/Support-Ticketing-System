@@ -28,7 +28,30 @@ import { getRequestScope, type RequestScope } from "@/lib/request-scope";
  */
 
 /** Prisma model keys (camelCase delegate names) that carry a `tenantId`. */
-export const TENANT_SCOPED_MODELS = ["ticket", "project", "subDepartment", "department"] as const;
+export const TENANT_SCOPED_MODELS = [
+  "ticket",
+  "project",
+  "subDepartment",
+  "department",
+  "tenantMembership",
+  "tenantInvite",
+  "mailboxConnection",
+  "mailSuppressionLog",
+  "slaPolicy",
+  "rule",
+  "assignmentRule",
+  "bulkReassignJob",
+  "reportExportJob",
+  "reportSchedule",
+  "featureFlag",
+  "auditEvent",
+  "agreement",
+  "tenantTemplate",
+  "templateRequest",
+  "slaTimer",
+  "slaBreach",
+  "ruleExecutionLog",
+] as const;
 
 export type TicketScope =
   | { kind: "system" }

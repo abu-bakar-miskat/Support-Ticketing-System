@@ -3,11 +3,26 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { getBoardCards, getSubDepartmentBoardGroups } from "@/lib/board-data";
+import type { FormFieldFilter } from "@/lib/board-search";
 import { BoardPage } from "@/components/board/board-page";
 import { BoardPageSkeleton } from "@/components/skeletons/page-skeletons";
 import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
 
 export const metadata = { title: "Board — Support Ticketing System" };
+
+function parseFormFieldFilters(sp: Record<string, string | string[] | undefined>): FormFieldFilter[] | undefined {
+  const raw = sp.ff;
+  const parts = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(",") : [];
+  const filters: FormFieldFilter[] = [];
+  for (const part of parts) {
+    const idx = part.indexOf(":");
+    if (idx <= 0) continue;
+    const fieldId = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (fieldId && value) filters.push({ fieldId, value });
+  }
+  return filters.length > 0 ? filters : undefined;
+}
 
 /** FLT-01/03: parses the URL's search/sub-status params into a board query fragment. */
 function parseBoardSearchParams(sp: Record<string, string | string[] | undefined>) {
@@ -17,7 +32,11 @@ function parseBoardSearchParams(sp: Record<string, string | string[] | undefined
     (s): s is "WAITING_FOR_SUPPORT" | "WAITING_FOR_CUSTOMER" =>
       s === "WAITING_FOR_SUPPORT" || s === "WAITING_FOR_CUSTOMER",
   );
-  return { search: q, subStatusIn: subStatusIn.length > 0 ? subStatusIn : undefined };
+  return {
+    search: q,
+    subStatusIn: subStatusIn.length > 0 ? subStatusIn : undefined,
+    formFieldFilters: parseFormFieldFilters(sp),
+  };
 }
 
 async function BoardData({

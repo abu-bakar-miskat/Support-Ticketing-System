@@ -82,7 +82,7 @@ export default async function Page({
     },
   ]
 
-  const ws = brandingFrom(await getEmailConfig())
+  const ws = brandingFrom(await getEmailConfig(subDepartment.departmentId))
   const workspaceBranding: FormBrandingDefaults = {
     logoUrl: ws.logoUrl,
     headerColor: ws.headerColor,

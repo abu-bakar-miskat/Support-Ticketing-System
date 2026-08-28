@@ -93,6 +93,21 @@ export function validateField(field: FormFieldDef, value: unknown): string | nul
   const v = field.validation ?? {};
   const required = field.required === true || v.required === true;
 
+  if (field.type === "checkbox") {
+    const opts = field.options ?? [];
+    if (opts.length === 0) {
+      if (required && String(value) !== "true") return `${field.label} is required`;
+      return null;
+    }
+    const selected = String(value ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (required && selected.length === 0) return `${field.label} is required`;
+    if (selected.some((s) => !opts.includes(s))) return `${field.label} has an invalid selection`;
+    return null;
+  }
+
   if (isEmpty(value)) {
     return required ? `${field.label} is required` : null;
   }
@@ -126,6 +141,12 @@ export function validateField(field: FormFieldDef, value: unknown): string | nul
     }
   }
 
+  if (field.type === "date" && typeof value === "string") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value))) {
+      return `${field.label} must be a valid date`;
+    }
+  }
+
   // dropdown/radio: value must be one of the declared options when options exist.
   if ((field.type === "dropdown" || field.type === "radio") && field.options && field.options.length > 0) {
     if (!field.options.includes(String(value))) return `${field.label} has an invalid selection`;
@@ -147,4 +168,59 @@ export function validateSubmission(fields: FormFieldDef[], values: SubmissionVal
     if (err) errors[field.id] = err;
   }
   return { ok: Object.keys(errors).length === 0, errors };
+}
+
+/** Map a persisted IntakeFormField.type onto the engine's FieldType. */
+export function dbTypeToEngineType(type: string): FieldType {
+  if (type === "select") return "dropdown";
+  if (type === "richtext") return "textarea";
+  if (
+    type === "text" ||
+    type === "email" ||
+    type === "number" ||
+    type === "file" ||
+    type === "checkbox" ||
+    type === "radio" ||
+    type === "date"
+  ) {
+    return type;
+  }
+  return "text";
+}
+
+export function parseVisibleWhen(raw: unknown): VisibilityRule | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.fieldId !== "string" || !o.fieldId.trim()) return null;
+  const rule: VisibilityRule = { fieldId: o.fieldId.trim() };
+  if (typeof o.equals === "string") rule.equals = o.equals;
+  if (Array.isArray(o.in) && o.in.every((x) => typeof x === "string")) {
+    rule.in = o.in as string[];
+  }
+  if (rule.equals === undefined && (!rule.in || rule.in.length === 0)) return null;
+  return rule;
+}
+
+export function toFormFieldDef(field: {
+  id: string;
+  type: string;
+  label: string;
+  isRequired: boolean;
+  options?: string[];
+  validation?: unknown;
+  visibleWhen?: unknown;
+}): FormFieldDef {
+  const validation =
+    field.validation && typeof field.validation === "object" && !Array.isArray(field.validation)
+      ? (field.validation as FieldValidation)
+      : null;
+  return {
+    id: field.id,
+    type: dbTypeToEngineType(field.type),
+    label: field.label,
+    required: field.isRequired,
+    options: field.options,
+    validation,
+    visibleWhen: parseVisibleWhen(field.visibleWhen),
+  };
 }

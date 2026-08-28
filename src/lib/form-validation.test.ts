@@ -4,6 +4,7 @@ import {
   visibleFields,
   validateField,
   validateSubmission,
+  dbTypeToEngineType,
   type FormFieldDef,
 } from "./form-validation";
 
@@ -61,6 +62,22 @@ describe("validateField", () => {
     const f = field({ id: "s", type: "dropdown", options: ["x", "y"] });
     expect(validateField(f, "z")).toMatch(/invalid selection/);
     expect(validateField(f, "x")).toBeNull();
+  });
+  it("requires an unchecked boolean checkbox", () => {
+    const f = field({ id: "c", type: "checkbox", required: true });
+    expect(validateField(f, "false")).toMatch(/required/);
+    expect(validateField(f, "")).toMatch(/required/);
+    expect(validateField(f, "true")).toBeNull();
+  });
+  it("validates a date", () => {
+    const f = field({ id: "d", type: "date", required: true });
+    expect(validateField(f, "not-a-date")).toMatch(/valid date/);
+    expect(validateField(f, "2026-08-28")).toBeNull();
+  });
+  it("maps DB field types onto the engine", () => {
+    expect(dbTypeToEngineType("select")).toBe("dropdown");
+    expect(dbTypeToEngineType("richtext")).toBe("textarea");
+    expect(dbTypeToEngineType("checkbox")).toBe("checkbox");
   });
   it("ignores a malformed regex pattern rather than blocking", () => {
     const f = field({ id: "t", type: "text", validation: { pattern: "(" } });

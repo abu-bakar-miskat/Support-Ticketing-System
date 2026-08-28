@@ -198,9 +198,9 @@ describe("withTenantScope — model coverage", () => {
     expect(Object.keys(registered.query).sort()).toEqual([...TENANT_SCOPED_MODELS].sort());
   });
 
-  it("defaults to ticket/project/subDepartment/department", () => {
-    expect([...TENANT_SCOPED_MODELS].sort()).toEqual(
-      ["department", "project", "subDepartment", "ticket"],
+  it("defaults to the tenantId-bearing models", () => {
+    expect([...TENANT_SCOPED_MODELS]).toEqual(
+      expect.arrayContaining(["department", "project", "subDepartment", "ticket", "rule", "slaPolicy", "mailboxConnection"]),
     );
   });
 

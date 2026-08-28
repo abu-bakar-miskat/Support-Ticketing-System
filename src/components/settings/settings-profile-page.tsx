@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/api/profile";
 import { toast } from "sonner";
-import { Lock, Camera, Loader2, Check, Plus, Trash2, Pencil } from "lucide-react";
+import { Lock, Camera, Loader2, Check, Plus, Trash2, Pencil, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -690,6 +690,39 @@ export function SettingsProfilePage({
               </div>
             ) : null}
           </div>
+        </div>
+
+        <Separator className="bg-sts-card-border" />
+
+        <div className="flex flex-col gap-2">
+          <FieldLabel>Your data</FieldLabel>
+          <p className="font-sans text-[11.5px] text-sts-muted">
+            Download a copy of the personal data this workspace holds about you.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 w-fit rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/me/data-export");
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "personal-data-export.json";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Download started");
+              } catch {
+                toast.error("Could not export your data");
+              }
+            }}
+          >
+            <Download className="size-3.5" />
+            Download my data
+          </Button>
         </div>
 
         <Separator className="bg-sts-card-border" />

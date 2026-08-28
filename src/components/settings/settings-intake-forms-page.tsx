@@ -25,6 +25,9 @@ import {
   Gauge,
   ListChecks,
   UserCog,
+  CheckSquare,
+  Circle,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -558,7 +561,7 @@ type FieldValidation = {
 type FieldRow = {
   id: string;
   label: string;
-  type: "text" | "richtext" | "select" | "file" | "email" | "number";
+  type: "text" | "richtext" | "select" | "file" | "email" | "number" | "checkbox" | "radio" | "date";
   isRequired: boolean;
   options: string[];
   childOptions: Record<string, string[]>;
@@ -566,6 +569,7 @@ type FieldRow = {
   placeholder?: string | null;
   helperText?: string | null;
   validation?: FieldValidation | null;
+  visibleWhen?: { fieldId: string; equals?: string; in?: string[] } | null;
 };
 
 const FIELD_TYPES: { value: FieldRow["type"]; label: string; icon: React.ReactNode }[] = [
@@ -574,6 +578,9 @@ const FIELD_TYPES: { value: FieldRow["type"]; label: string; icon: React.ReactNo
   { value: "email", label: "Email", icon: <Mail className="size-3.5" /> },
   { value: "number", label: "Number", icon: <Hash className="size-3.5" /> },
   { value: "select", label: "Dropdown", icon: <ChevronDown className="size-3.5" /> },
+  { value: "radio", label: "Radio", icon: <Circle className="size-3.5" /> },
+  { value: "checkbox", label: "Checkbox", icon: <CheckSquare className="size-3.5" /> },
+  { value: "date", label: "Date", icon: <CalendarDays className="size-3.5" /> },
   { value: "file", label: "File upload", icon: <Paperclip className="size-3.5" /> },
 ];
 
@@ -611,6 +618,7 @@ type FieldEditorState = {
   placeholder: string;
   helperText: string;
   validation: FieldValidation;
+  visibleWhen: { fieldId: string; equals: string } | null;
 };
 
 function FieldEditor({
@@ -619,12 +627,14 @@ function FieldEditor({
   onCancel,
   saving,
   error,
+  siblingFields,
 }: {
   initial: FieldEditorState;
   onSave: (s: FieldEditorState) => void;
   onCancel: () => void;
   saving: boolean;
   error: string | null;
+  siblingFields: { id: string; label: string }[];
 }) {
   const [state, setState] = useState<FieldEditorState>(initial);
   const [newOption, setNewOption] = useState("");
@@ -706,8 +716,9 @@ function FieldEditor({
     setEditingChild(null);
   }
 
-  const hasPlaceholder = state.type === "text" || state.type === "email" || state.type === "number";
-  const hasValidation = state.type !== "select" && state.type !== "file";
+  const hasPlaceholder = state.type === "text" || state.type === "email" || state.type === "number" || state.type === "date";
+  const hasValidation = state.type !== "select" && state.type !== "file" && state.type !== "checkbox" && state.type !== "radio";
+  const hasOptions = state.type === "select" || state.type === "radio" || state.type === "checkbox";
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-sts-id/30 bg-sts-card px-4 py-3.5 shadow-sm">
@@ -752,7 +763,7 @@ function FieldEditor({
         </div>
       </div>
 
-      {state.type === "select" && (
+      {hasOptions && (
         <div className="flex flex-col gap-1.5">
           <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
             Options
@@ -788,6 +799,7 @@ function FieldEditor({
                     ) : (
                       <>
                         <span className="flex-1 font-sans text-[12px] text-sts-foreground">{opt}</span>
+                        {state.type === "select" && (
                         <button
                           type="button"
                           onClick={() => setExpandedOption(isOpen ? null : opt)}
@@ -799,6 +811,7 @@ function FieldEditor({
                           <ChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
                           {children.length > 0 ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}` : "Sub-options"}
                         </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setEditingOption({ idx, draft: opt })}
@@ -817,7 +830,7 @@ function FieldEditor({
                     )}
                   </div>
 
-                  {isOpen && (
+                  {state.type === "select" && isOpen && (
                     <div className="border-t border-sts-card-border px-2.5 py-2 flex flex-col gap-1.5">
                       {children.length > 0 && (
                         <div className="flex flex-col gap-1">
@@ -1022,6 +1035,47 @@ function FieldEditor({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Conditional visibility (FM-05) */}
+      {siblingFields.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-sts-card-border pt-3">
+          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+            Show only when
+          </label>
+          <p className="font-sans text-[10.5px] text-sts-subtle">
+            Leave off to always show this field. Hidden fields are not required.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={state.visibleWhen?.fieldId ?? ""}
+              onChange={(e) => {
+                const fieldId = e.target.value;
+                setState((s) => ({
+                  ...s,
+                  visibleWhen: fieldId ? { fieldId, equals: s.visibleWhen?.equals ?? "" } : null,
+                }));
+              }}
+              className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
+            >
+              <option value="">Always visible</option>
+              {siblingFields.map((f) => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+            <input
+              value={state.visibleWhen?.equals ?? ""}
+              disabled={!state.visibleWhen}
+              onChange={(e) => setState((s) => (
+                s.visibleWhen
+                  ? { ...s, visibleWhen: { ...s.visibleWhen, equals: e.target.value } }
+                  : s
+              ))}
+              placeholder="equals…"
+              className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id disabled:opacity-50"
+            />
+          </div>
         </div>
       )}
 
@@ -1354,11 +1408,12 @@ function FieldBuilderModal({
                   return (
                     <FieldEditor
                       key={field.id}
-                      initial={{ label: field.label, type: field.type, isRequired: field.isRequired, options: field.options, childOptions: field.childOptions ?? {}, placeholder: field.placeholder ?? "", helperText: field.helperText ?? "", validation: (field.validation as FieldValidation) ?? {} }}
+                      initial={{ label: field.label, type: field.type, isRequired: field.isRequired, options: field.options, childOptions: field.childOptions ?? {}, placeholder: field.placeholder ?? "", helperText: field.helperText ?? "", validation: (field.validation as FieldValidation) ?? {}, visibleWhen: field.visibleWhen?.fieldId ? { fieldId: field.visibleWhen.fieldId, equals: field.visibleWhen.equals ?? field.visibleWhen.in?.[0] ?? "" } : null }}
                       onSave={(state) => handleEdit(field.id, state)}
                       onCancel={() => { setEditingId(null); setEditorError(null); }}
                       saving={saving}
                       error={editorError}
+                      siblingFields={fields.filter((f) => f.id !== field.id).map((f) => ({ id: f.id, label: f.label }))}
                     />
                   );
                 }
@@ -1412,11 +1467,12 @@ function FieldBuilderModal({
 
               {addingField && (
                 <FieldEditor
-                  initial={{ label: "", type: "text", isRequired: false, options: [], childOptions: {}, placeholder: "", helperText: "", validation: {} }}
+                  initial={{ label: "", type: "text", isRequired: false, options: [], childOptions: {}, placeholder: "", helperText: "", validation: {}, visibleWhen: null }}
                   onSave={handleAdd}
                   onCancel={() => { setAddingField(false); setEditorError(null); }}
                   saving={saving}
                   error={editorError}
+                  siblingFields={fields.map((f) => ({ id: f.id, label: f.label }))}
                 />
               )}
             </div>
@@ -1566,7 +1622,7 @@ function FormDesignModal({
             <h2 className="sts-text-modal-title">Form design</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
               Branding for the public “{form.name}” page. Empty fields fall back
-              to the workspace brand.
+              to the department brand (Email settings → Branding).
             </p>
           </div>
           <button

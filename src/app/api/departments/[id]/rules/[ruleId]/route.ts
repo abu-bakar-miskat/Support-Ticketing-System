@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageDeptCalendar } from "@/lib/dept-scope"
+import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { isConditionGroup, isRuleActions } from "@/lib/rule-validation"
 
@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (error) return error
 
   const { id, ruleId } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -85,7 +85,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   if (error) return error
 
   const { id, ruleId } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

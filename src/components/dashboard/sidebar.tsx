@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TemplateFeatureKey } from "@/lib/template-features";
+import { isPathEnabledByFlags } from "@/lib/feature-keys";
 import { useAuthStore, useNotificationStore } from "@/store";
 import {
   DropdownMenu,
@@ -309,6 +310,7 @@ export function Sidebar({
     userRole,
     isSuperAdmin,
     activeFeatureKeys,
+    platformFlags,
     pinnedProjectIds: initialPins,
   } = useDashboardContext();
   const pathname = usePathname();
@@ -764,6 +766,7 @@ export function Sidebar({
         {/* Personal nav items — not department-scoped */}
         {navMain
           .filter((item) => isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
+          .filter((item) => isPathEnabledByFlags(item.href, platformFlags))
           .filter((item) => !(item.hideForAgent && isAgent))
           .map((item) => {
           const active =
@@ -916,6 +919,7 @@ export function Sidebar({
           navViews
             .filter((item) => {
               if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys)) return false;
+              if (!isPathEnabledByFlags(item.href, platformFlags)) return false;
               if (item.hideForAgent && isAgent) return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
               // Per-department-type interface: support departments hide dev-planning

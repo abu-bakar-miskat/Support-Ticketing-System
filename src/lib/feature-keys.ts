@@ -27,3 +27,22 @@ export type FeatureKey = (typeof PLATFORM_FEATURE_KEYS)[number];
 export function isFeatureKey(value: unknown): value is FeatureKey {
   return typeof value === "string" && (PLATFORM_FEATURE_KEYS as readonly string[]).includes(value);
 }
+
+/** Map a dashboard/settings path to the platform flag that hides it (SA-04 UI). */
+export function platformFlagForPath(href: string): FeatureKey | null {
+  if (href.includes("/settings/sla") || href.includes("/sla-policies")) return "slaPolicies";
+  if (href.includes("/settings/rules") || href.includes("/automation-rules")) return "assignmentRules";
+  if (href.includes("/settings/assignment")) return "assignmentRules";
+  if (href.includes("/settings/intake-forms") || href === "/settings/intake-forms") return "intakeForms";
+  if (href.includes("/mailboxes") || href.includes("/mailbox")) return "mailboxConnections";
+  if (href === "/reports" || href.startsWith("/reports")) return "customReports";
+  if (href.includes("/recruitment")) return "recruitment";
+  if (href === "/time" || href.startsWith("/time")) return "timeTracking";
+  return null;
+}
+
+export function isPathEnabledByFlags(href: string, flags: Partial<Record<FeatureKey, boolean>> | null | undefined): boolean {
+  const key = platformFlagForPath(href);
+  if (!key || !flags) return true;
+  return flags[key] !== false;
+}

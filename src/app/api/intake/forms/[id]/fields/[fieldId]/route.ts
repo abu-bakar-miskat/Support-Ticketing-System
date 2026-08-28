@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
-import { IntakeFieldType } from "@/generated/prisma/client"
+import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { IntakeFieldType, Prisma } from "@/generated/prisma/client"
+import { parseVisibleWhen } from "@/lib/form-validation"
+import { bumpFormSchemaVersion, fieldUsesOptions } from "@/lib/intake-form-schema"
 
 const VALID_TYPES = new Set<string>(Object.values(IntakeFieldType))
 
@@ -28,7 +30,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; fieldId: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { fieldId } = await params
@@ -56,6 +58,7 @@ export async function PATCH(
   const validation = "validation" in body
     ? (body.validation && typeof body.validation === "object" && !Array.isArray(body.validation) ? body.validation : null)
     : undefined
+  const visibleWhen = "visibleWhen" in body ? parseVisibleWhen(body.visibleWhen) : undefined
 
   if (label !== undefined && !label) {
     return NextResponse.json({ error: "label cannot be empty" }, { status: 400 })
@@ -71,14 +74,18 @@ export async function PATCH(
       ...(label !== undefined ? { label } : {}),
       ...(type !== undefined ? { type: resolvedType } : {}),
       ...(isRequired !== undefined ? { isRequired } : {}),
-      ...(options !== undefined ? { options: resolvedType === "select" ? options : [] } : {}),
+      ...(options !== undefined ? { options: fieldUsesOptions(resolvedType) ? options : [] } : {}),
       ...(childOptions !== undefined ? { childOptions: resolvedType === "select" ? childOptions : {} } : {}),
       ...(order !== undefined ? { order } : {}),
       ...(placeholder !== undefined ? { placeholder } : {}),
       ...(helperText !== undefined ? { helperText } : {}),
       ...(validation !== undefined ? { validation } : {}),
+      ...(visibleWhen !== undefined
+        ? { visibleWhen: visibleWhen === null ? Prisma.JsonNull : visibleWhen }
+        : {}),
     },
   })
+  await bumpFormSchemaVersion(access.field.formConfigId)
   return NextResponse.json(field)
 }
 
@@ -86,7 +93,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; fieldId: string }> },
 ) {
-  const { profile, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const { fieldId } = await params
@@ -94,5 +101,6 @@ export async function DELETE(
   if (isNextResponse(access)) return access
 
   await prisma.intakeFormField.delete({ where: { id: fieldId } })
+  await bumpFormSchemaVersion(access.field.formConfigId)
   return new NextResponse(null, { status: 204 })
 }

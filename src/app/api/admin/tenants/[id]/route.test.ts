@@ -103,6 +103,26 @@ describe("PATCH /api/admin/tenants/:id — SA-01", () => {
     expect(mockTenantUpdate).toHaveBeenCalledWith({ where: { id: "t1" }, data: { type: "agency" } })
     expect(res.status).toBe(200)
   })
+
+  it("updates name and slug", async () => {
+    mockTenantFindUnique.mockResolvedValueOnce({ id: "t1", deletedAt: null } as never)
+    mockTenantFindUnique.mockResolvedValueOnce({
+      id: "t1", slug: "new-co", name: "New Co", type: "company", status: "active", deletedAt: null,
+    } as never)
+
+    const res = await PATCH(req({ name: "New Co", slug: "new-co" }), params())
+
+    expect(mockTenantUpdate).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { name: "New Co", slug: "new-co" },
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("rejects a malformed slug", async () => {
+    const res = await PATCH(req({ slug: "Not Valid" }), params())
+    expect(res.status).toBe(400)
+  })
 })
 
 describe("DELETE /api/admin/tenants/:id — soft-delete (SA-01)", () => {

@@ -17,6 +17,7 @@ import type { RecentTicket } from "@/components/dashboard/command-palette";
 import { PageEnter } from "@/components/motion/page-enter";
 import { RoutePrefetcher } from "@/components/dashboard/route-prefetcher";
 import { TicketDrawerRoot } from "@/components/tickets/ticket-drawer";
+import { DepartmentWalkthroughHost } from "@/components/departments/department-walkthrough";
 import { NotificationsRealtime } from "@/components/realtime/notifications-realtime";
 import { TabTitleBadge } from "@/components/realtime/tab-title-badge";
 import { NotificationSidebar } from "@/components/dashboard/notification-sidebar";
@@ -57,6 +58,7 @@ export type LayoutData = {
   isSuperAdmin: boolean;
   userId: string;
   activeFeatureKeys: TemplateFeatureKey[] | "ALL";
+  platformFlags: Record<string, boolean>;
 };
 
 const EMPTY: LayoutData = {
@@ -82,6 +84,7 @@ const EMPTY: LayoutData = {
   isSuperAdmin: false,
   userId: "",
   activeFeatureKeys: "ALL",
+  platformFlags: {},
 };
 
 export function DashboardLayout({
@@ -175,6 +178,7 @@ export function DashboardLayout({
         userRole: data.userRole ?? EMPTY.userRole,
         isSuperAdmin: data.isSuperAdmin ?? EMPTY.isSuperAdmin,
         activeFeatureKeys: data.activeFeatureKeys ?? EMPTY.activeFeatureKeys,
+        platformFlags: data.platformFlags ?? EMPTY.platformFlags,
         pinnedProjectIds: data.pinnedProjectIds ?? EMPTY.pinnedProjectIds,
         assignedProjectIds: data.assignedProjectIds ?? EMPTY.assignedProjectIds,
         sidebarCollapsed: collapsed,
@@ -241,6 +245,7 @@ export function DashboardLayout({
         </div>
 
         <TicketDrawerRoot />
+        <DepartmentWalkthroughHost />
         <RoutePrefetcher />
         <NotificationSidebar
           open={notifOpen}

@@ -7,7 +7,13 @@ import { isValidTenantStatus, suspendTenant, reactivateTenant, softDeleteTenant 
 
 type Params = { params: Promise<{ id: string }> }
 
-/** Update tenant identity fields (type) and/or lifecycle status (SA-01: active/suspended). Super-admin only. */
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+function isUniqueViolation(e: unknown): boolean {
+  return typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2002"
+}
+
+/** Update tenant identity (name/slug/type) and/or lifecycle status. Super-admin only. */
 export async function PATCH(request: Request, { params }: Params) {
   const { profile, error } = await requireSuperAdmin()
   if (error) return error
@@ -15,8 +21,22 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params
   const body = await request.json().catch(() => ({}))
 
-  if (body.type === undefined && body.status === undefined) {
+  const name = typeof body.name === "string" ? body.name.trim() : undefined
+  const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase() : undefined
+
+  if (
+    body.type === undefined &&
+    body.status === undefined &&
+    name === undefined &&
+    slug === undefined
+  ) {
     return badRequest("No fields to update")
+  }
+  if (name !== undefined && !name) {
+    return badRequest("Name cannot be empty")
+  }
+  if (slug !== undefined && !SLUG_RE.test(slug)) {
+    return badRequest("Slug must be lowercase letters, numbers, and hyphens")
   }
   if (body.type !== undefined && !isValidTenantType(body.type)) {
     return badRequest("Invalid tenant type")
@@ -38,8 +58,22 @@ export async function PATCH(request: Request, { params }: Params) {
     if (!updated) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
   }
 
+  const identity: { type?: string; name?: string; slug?: string } = {}
   if (body.type !== undefined) {
-    await prisma.tenant.update({ where: { id }, data: { type: body.type } })
+    identity.type = body.type
+  }
+  if (name !== undefined) identity.name = name
+  if (slug !== undefined) identity.slug = slug
+
+  if (Object.keys(identity).length > 0) {
+    try {
+      await prisma.tenant.update({ where: { id }, data: identity })
+    } catch (e) {
+      if (isUniqueViolation(e)) {
+        return NextResponse.json({ error: "A tenant with that slug already exists" }, { status: 409 })
+      }
+      throw e
+    }
   }
 
   const result = await prisma.tenant.findUnique({

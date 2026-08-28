@@ -173,6 +173,9 @@ export function TenantManageClient({
   initialAgreements: AgreementRow[];
   initialCatalogue: CatalogueEntry[];
 }) {
+  const [tenantName, setTenantName] = useState(tenant.name);
+  const [tenantSlug, setTenantSlug] = useState(tenant.slug);
+  const [identitySaving, setIdentitySaving] = useState(false);
   const [displayName, setDisplayName] = useState(
     initialBranding.displayName ?? "",
   );
@@ -201,7 +204,7 @@ export function TenantManageClient({
   const [searchOpen, setSearchOpen] = useState(false);
   const searchSeq = useRef(0);
 
-  const previewName = displayName.trim() || tenant.name;
+  const previewName = displayName.trim() || tenantName;
   const needsDepartments = inviteRole !== "admin";
 
   useEffect(() => {
@@ -348,6 +351,28 @@ export function TenantManageClient({
     setStatus("Logo uploaded.");
   }
 
+  async function saveIdentity(e: React.FormEvent) {
+    e.preventDefault();
+    setIdentitySaving(true);
+    setError(null);
+    setStatus(null);
+    const res = await fetch(`/api/admin/tenants/${tenant.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: tenantName.trim(), slug: tenantSlug.trim().toLowerCase() }),
+    });
+    setIdentitySaving(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Failed to save tenant identity");
+      return;
+    }
+    const updated = await res.json() as { name: string; slug: string };
+    setTenantName(updated.name);
+    setTenantSlug(updated.slug);
+    setStatus("Tenant name and slug saved.");
+  }
+
   async function saveBranding(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -462,14 +487,14 @@ export function TenantManageClient({
         <header className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <TenantAvatar
-              name={tenant.name}
+              name={tenantName}
               logoUrl={logoUrl.trim() || null}
               size={44}
             />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="sts-text-page-title leading-none">
-                  {tenant.name}
+                  {tenantName}
                 </h1>
                 {deleted ? (
                   <span className="rounded-full bg-sts-red/10 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-red">
@@ -486,7 +511,7 @@ export function TenantManageClient({
                 )}
               </div>
               <div className="mt-1 font-sans text-[11.5px] text-sts-subtle">
-                /{tenant.slug} · {tenant.departments} dept
+                /{tenantSlug} · {tenant.departments} dept
                 {tenant.departments === 1 ? "" : "s"} · {tenant.members} member
                 {tenant.members === 1 ? "" : "s"}
               </div>
@@ -511,6 +536,35 @@ export function TenantManageClient({
         <div className="mt-6 grid gap-6 xl:grid-cols-3">
           {/* Left: settings column */}
           <div className="flex flex-col gap-6 xl:col-span-1">
+            <section className={cn(sectionCard, "space-y-4")}>
+              <form onSubmit={saveIdentity} className="space-y-4">
+                <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                  Tenant identity
+                </h2>
+                <div>
+                  <label className={labelClass}>Name</label>
+                  <Input
+                    value={tenantName}
+                    onChange={(e) => setTenantName(e.target.value)}
+                    className="mt-1 h-9"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Slug</label>
+                  <Input
+                    value={tenantSlug}
+                    onChange={(e) => setTenantSlug(e.target.value)}
+                    className="mt-1 h-9 font-mono"
+                    required
+                  />
+                </div>
+                <Button type="submit" size="lg" disabled={identitySaving || deleted}>
+                  {identitySaving ? "Saving…" : "Save identity"}
+                </Button>
+              </form>
+            </section>
+
             {/* Templates (dynamic, replaces the old static Tenant.type) */}
             <TenantTemplates tenantId={tenant.id} initialCatalogue={initialCatalogue} />
 
@@ -526,7 +580,7 @@ export function TenantManageClient({
                   <Input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={tenant.name}
+                    placeholder={tenantName}
                     className="mt-1 h-9"
                   />
                 </div>

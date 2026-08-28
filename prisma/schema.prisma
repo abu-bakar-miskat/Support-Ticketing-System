@@ -172,6 +172,9 @@ enum IntakeFieldType {
   number
   select
   file
+  checkbox
+  radio
+  date
 }
 
 enum GitHubPRState {
@@ -231,6 +234,7 @@ model Tenant {
   agreements Agreement[]
   tenantTemplates  TenantTemplate[]
   templateRequests TemplateRequest[]
+  ruleExecutionLogs RuleExecutionLog[]
 }
 
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
@@ -819,6 +823,7 @@ model Ticket {
   slaTimer      SlaTimer?
   slaBreaches   SlaBreach[]
   accessGrants  TicketAccessGrant[]
+  ruleExecutions RuleExecutionLog[]
 
   @@unique([subDepartmentId, ticketNumber])
   @@index([projectId])
@@ -919,6 +924,11 @@ model TicketMessage {
   acceptedAt      DateTime?
   throttled       Boolean          @default(false)
   createdAt       DateTime         @default(now())
+  // MAIL-03: last known delivery outcome from the provider webhook
+  // (bounced / failed / complained / delivered). Null until a delivery event arrives.
+  deliveryStatus    String?
+  deliveryError     String?
+  deliveryStatusAt  DateTime?
 
   ticket      Ticket       @relation(fields: [ticketId], references: [id])
   author      Profile?     @relation("MessageAuthor", fields: [authorProfileId], references: [id])
@@ -1249,11 +1259,34 @@ model Rule {
   department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
   formConfig    IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
+  executions    RuleExecutionLog[]
 
   @@index([departmentId])
   @@index([tenantId])
   @@index([subDepartmentId])
   @@index([formConfigId])
+}
+
+// Per-ticket automation-rule evaluation log (RE-05). One row per rule considered
+// on a run, including non-matches, so agents can see why a ticket was (or wasn't)
+// acted on. `ruleId` is optional so deleting a rule keeps the historical name.
+model RuleExecutionLog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  ticketId       String
+  ruleId         String?
+  ruleName       String
+  matched        Boolean
+  actionsApplied Json     @default("[]")
+  stopProcessing Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  rule   Rule?  @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+  @@index([tenantId])
 }
 
 // Per-department rule-based assignment (slice 11, ASG-01). `conditions` is a
@@ -1722,6 +1755,9 @@ model IntakeFormConfig {
   // intro + confirmation text). Falls back to workspace branding. See
   // lib/form-branding.
   branding             Json?
+  // DAT-04: bumped on every field create/update/delete/reorder so submissions
+  // can pin the schema they were collected against.
+  schemaVersion        Int       @default(1)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 
@@ -1747,6 +1783,8 @@ model IntakeFormField {
   placeholder  String?
   helperText   String?
   validation   Json?
+  // FM-05: show this field only when another field's value matches.
+  visibleWhen  Json?
 
   formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id], onDelete: Cascade)
 
@@ -1807,6 +1845,10 @@ model Intake {
   priority       TicketPriority
   estimatedHours Int?
   responses      Json
+  // DAT-04: the form schema this submission was collected against, so later
+  // field edits don't make historical answers unreadable.
+  schemaVersion  Int?
+  fieldSnapshot  Json?
   ticketId       String?        @unique
   replyToken     String?        @unique
   resolutionNote String?

@@ -100,6 +100,21 @@ export async function applyRulesToTicket(
     }));
 
     const plan = planRules(rules, formValues);
+
+    if (plan.evaluations.length > 0) {
+      await prisma.ruleExecutionLog.createMany({
+        data: plan.evaluations.map((ev) => ({
+          tenantId: ticket.tenantId,
+          ticketId: ticket.id,
+          ruleId: ev.ruleId,
+          ruleName: ev.name,
+          matched: ev.matched,
+          actionsApplied: ev.actions as object,
+          stopProcessing: ev.stoppedHere,
+        })),
+      });
+    }
+
     if (plan.firedActions.length === 0) return { assigned: false, firedCount: 0 };
 
     const data: Record<string, unknown> = {};

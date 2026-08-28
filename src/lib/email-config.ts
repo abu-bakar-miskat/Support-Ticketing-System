@@ -24,6 +24,7 @@ export type EmailConfig = {
   notifyCustomerReply: boolean;
   notifyTicketCompleted: boolean;
   notifyAssignmentFailed: boolean;
+  notifyStatusChanged: boolean;
 } & EmailBranding;
 
 /** Whether a Resend API key is present in the environment. */
@@ -62,6 +63,7 @@ export function emailConfigDefaults(): EmailConfig {
     notifyCustomerReply: true,
     notifyTicketCompleted: true,
     notifyAssignmentFailed: true,
+    notifyStatusChanged: true,
     brandColor: BRAND,
     headerColor: HEADER_BG,
     logoUrl: LOGO_URL,
@@ -122,6 +124,7 @@ export const EMAIL_NOTIFY_KEYS = [
   "notifyCustomerReply",
   "notifyTicketCompleted",
   "notifyAssignmentFailed",
+  "notifyStatusChanged",
 ] as const;
 
 export type EmailNotifyKey = (typeof EMAIL_NOTIFY_KEYS)[number];
@@ -404,8 +407,8 @@ export async function saveDepartmentNotifyOverride(
 
 /**
  * Reads workspace email settings, merged over typed defaults. Pass `departmentId`
- * to layer that department's notification-toggle, From identity, and branding
- * overrides on top — reply-to stays workspace-wide.
+ * to layer that department's notification-toggle, From identity, branding, and
+ * Reply-To (the default sender address) on top.
  */
 export async function getEmailConfig(
   departmentId?: string | null,
@@ -437,7 +440,11 @@ export async function getEmailConfig(
     config = { ...config, ...overrides };
     const identity = await getDepartmentEmailIdentity(departmentId);
     if (identity.fromName) config = { ...config, fromName: identity.fromName };
-    if (identity.fromEmail) config = { ...config, fromEmail: identity.fromEmail };
+    if (identity.fromEmail) {
+      // DS-02: the default sender is also the department Reply-To when no
+      // inbound reply-token address is used for this send.
+      config = { ...config, fromEmail: identity.fromEmail, replyTo: identity.fromEmail };
+    }
     const branding = await getDepartmentEmailBranding(departmentId);
     if (Object.keys(branding).length > 0) {
       config = { ...config, ...branding };
@@ -449,7 +456,9 @@ export async function getEmailConfig(
     config = { ...config, ...overrides };
     const identity = await getDepartmentEmailIdentity(departmentId ?? "", subDepartmentId);
     if (identity.fromName) config = { ...config, fromName: identity.fromName };
-    if (identity.fromEmail) config = { ...config, fromEmail: identity.fromEmail };
+    if (identity.fromEmail) {
+      config = { ...config, fromEmail: identity.fromEmail, replyTo: identity.fromEmail };
+    }
     const branding = await getDepartmentEmailBranding(departmentId ?? "", subDepartmentId);
     if (Object.keys(branding).length > 0) {
       config = { ...config, ...branding };
@@ -479,6 +488,7 @@ export const EMAIL_TEMPLATE_KEYS = [
   "invite",
   "mention",
   "resolution",
+  "statusChanged",
   "ticketCompleted",
 ] as const;
 

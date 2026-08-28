@@ -15,6 +15,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/rota", () => ({
   getEligibleMembers: vi.fn(),
   getOpenTicketCounts: vi.fn(),
+  isMemberAvailableNow: vi.fn(),
 }))
 
 vi.mock("@/lib/notify", () => ({
@@ -26,7 +27,7 @@ vi.mock("@/lib/email", () => ({
 }))
 
 import { prisma } from "@/lib/db"
-import { getEligibleMembers, getOpenTicketCounts } from "@/lib/rota"
+import { getEligibleMembers, getOpenTicketCounts, isMemberAvailableNow } from "@/lib/rota"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentFailedAlertEmail } from "@/lib/email"
 import { autoAssignTicket, recordAssignmentFailure } from "./assignment-engine"
@@ -40,12 +41,14 @@ const mockActivityCreate = vi.mocked(prisma.activityLog.create)
 const mockDeptManagers = vi.mocked(prisma.departmentManager.findMany)
 const mockGetEligible = vi.mocked(getEligibleMembers)
 const mockGetCounts = vi.mocked(getOpenTicketCounts)
+const mockAvailableNow = vi.mocked(isMemberAvailableNow)
 const mockCreateNotification = vi.mocked(createNotification)
 const mockSendEmail = vi.mocked(sendAssignmentFailedAlertEmail)
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockTeamFind.mockResolvedValue({ rotaPointer: 0 } as never)
+  mockAvailableNow.mockResolvedValue(true)
 })
 
 describe("autoAssignTicket — ASG-01", () => {
@@ -74,6 +77,19 @@ describe("autoAssignTicket — ASG-01", () => {
     ] as never)
     mockProfileFind.mockResolvedValue({ isActive: true } as never)
     mockMembershipFind.mockResolvedValue({ isActive: false, doNotAssign: false } as never)
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: null, method: "RULE_BASED", failed: true })
+  })
+
+  it("RULE_BASED: fails when the matched agent is outside working hours", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
+    mockRulesFindMany.mockResolvedValue([
+      { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
+    ] as never)
+    mockProfileFind.mockResolvedValue({ isActive: true } as never)
+    mockMembershipFind.mockResolvedValue({ isActive: true, doNotAssign: false } as never)
+    mockAvailableNow.mockResolvedValue(false)
 
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
     expect(result).toEqual({ assigneeId: null, method: "RULE_BASED", failed: true })
@@ -160,9 +176,16 @@ describe("autoAssignTicket — ASG-01", () => {
         where: expect.objectContaining({
           departmentId: "d1",
           enabled: true,
-          OR: [{ subDepartmentId: "t1" }, { subDepartmentId: null }],
+          OR: [
+            { formConfigId: null, subDepartmentId: "t1" },
+            { formConfigId: null, subDepartmentId: null },
+          ],
         }),
-        orderBy: [{ subDepartmentId: { sort: "desc", nulls: "last" } }, { order: "asc" }],
+        orderBy: [
+          { formConfigId: { sort: "desc", nulls: "last" } },
+          { subDepartmentId: { sort: "desc", nulls: "last" } },
+          { order: "asc" },
+        ],
       }),
     )
   })

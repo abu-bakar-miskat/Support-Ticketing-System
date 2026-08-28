@@ -35,9 +35,7 @@ export default async function SettingsApiKeysRoute() {
   if (!profile) redirect("/login")
 
   const isAdmin = profile.role === "admin"
-  const isManager = profile.role === "manager"
-
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin) redirect("/settings")
 
   // For managers: get their managed departments for the key creation form
   const managedDeptIds: string[] = (profile as any).managedDepartmentIds ?? []

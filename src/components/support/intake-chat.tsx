@@ -641,11 +641,32 @@ function ChatInputDock({
     )
   }
 
-  if (step.kind === "field" && step.field.type === "select") {
+  if (step.kind === "field" && (step.field.type === "select" || step.field.type === "radio")) {
     return (
       <ChipRow>
         {step.field.options.map((opt) => (
           <Chip key={opt} onClick={() => onAnswer(opt, opt)}>{opt}</Chip>
+        ))}
+        {isOptionalField && <SkipChip onClick={() => onAnswer("", "")} />}
+        <AttachButton uploading={!!upload?.uploading} onFiles={onFilesSelect} />
+      </ChipRow>
+    )
+  }
+
+  if (step.kind === "field" && step.field.type === "checkbox") {
+    const opts = step.field.options.length > 0 ? step.field.options : ["Yes", "No"]
+    return (
+      <ChipRow>
+        {opts.map((opt) => (
+          <Chip
+            key={opt}
+            onClick={() => onAnswer(
+              opt === "No" ? "false" : (opt === "Yes" ? "true" : opt),
+              opt,
+            )}
+          >
+            {opt}
+          </Chip>
         ))}
         {isOptionalField && <SkipChip onClick={() => onAnswer("", "")} />}
         <AttachButton uploading={!!upload?.uploading} onFiles={onFilesSelect} />
@@ -711,7 +732,9 @@ function ChatInputDock({
       ? "email"
       : step.kind === "field" && step.field.type === "number"
         ? "number"
-        : "text"
+        : step.kind === "field" && step.field.type === "date"
+          ? "date"
+          : "text"
   const placeholder =
     step.kind === "field"
       ? (step.field.placeholder ?? "Type your answer…")

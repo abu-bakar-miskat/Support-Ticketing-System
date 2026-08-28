@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
 import { timeAgo, isToday } from "@/lib/format";
 import { InboxPageSkeleton } from "@/components/skeletons/page-skeletons";
+import { resolveSubDepartmentTeamIds } from "@/lib/role-assignment";
+import { ticketPayloadInScope } from "@/lib/notification-scope";
 
 export const metadata = { title: "Inbox — Support Ticketing System" };
 
@@ -39,6 +41,7 @@ function initialsOf(name: string): string {
 type AuthedProfile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
 async function InboxData({ profile }: { profile: AuthedProfile }) {
+  const allowedSubDepartmentIds = await resolveSubDepartmentTeamIds(profile.id)
   const rows = await prisma.notification.findMany({
     where: {
       recipientId: profile.id,
@@ -54,6 +57,7 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
           status: true,
           priority: true,
           ticketNumber: true,
+          subDepartmentId: true,
           subDepartment: { select: { prefix: true } },
         },
       },
@@ -85,7 +89,9 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
 
   const now = new Date();
 
-  const ticketRows = rows.filter((n) => n.type !== "join_request" && n.ticket !== null);
+  const ticketRows = rows.filter(
+    (n) => n.type !== "join_request" && n.ticket !== null && ticketPayloadInScope(n.ticket, allowedSubDepartmentIds),
+  );
   const joinRequestRows = rows.filter((n) => n.type === "join_request");
 
   const items: InboxItem[] = ticketRows.map((n) => {

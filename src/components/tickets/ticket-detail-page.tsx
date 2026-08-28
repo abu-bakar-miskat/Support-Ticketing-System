@@ -56,6 +56,7 @@ import {
   RefreshCw,
   MessageSquare,
   Mail,
+  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
@@ -130,6 +131,7 @@ import {
 } from "@/components/ui/expandable-description-viewer";
 import { IntakeCard } from "@/components/tickets/intake-card";
 import type { IntakeData } from "@/components/tickets/intake-card";
+import { RuleExecutionLog } from "@/components/tickets/rule-execution-log";
 import { TicketAssistPanel } from "@/components/tickets/ticket-assist-panel";
 import { AiComposeButton } from "@/components/tickets/ai-compose-button";
 import { LabelPicker } from "@/components/tickets/label-picker";
@@ -2869,6 +2871,8 @@ export function TicketDetailPage({
             {/* Intake */}
             {intake && <IntakeCard intake={intake} />}
 
+            <RuleExecutionLog ticketId={dbId} />
+
             {/* AI assist */}
             <TicketAssistPanel dbId={dbId} isIntake={!!intake} />
 
@@ -3514,6 +3518,30 @@ export function TicketDetailPage({
                 onStatusChange={setLiveStatus}
                 disabled={!canChangeStatus}
               />
+              {canChangeStatus && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/tickets/${dbId}/escalate`, { method: "POST" });
+                      if (!res.ok) {
+                        const body = await res.json().catch(() => ({}));
+                        throw new Error((body as { error?: string }).error ?? "Failed to escalate");
+                      }
+                      const data = await res.json() as { status: string; labels?: string[] };
+                      setLiveStatus(data.status);
+                      if (data.labels) setLiveLabels(data.labels);
+                      toast.success("Ticket escalated");
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed to escalate");
+                    }
+                  }}
+                  className="mt-1 inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
+                >
+                  <ArrowUpRight className="size-3.5" />
+                  Escalate
+                </button>
+              )}
             </div>
 
             {/* Priority */}

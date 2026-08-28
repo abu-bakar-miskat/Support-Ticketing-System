@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams
   const renewalStatusFilter = sp.get("renewalStatus")
+  const tenantStatusFilter = sp.get("tenantStatus")
   const sortBy = sp.get("sortBy")
   const sortDir = sp.get("sortDir") === "desc" ? -1 : 1
 
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
 
   if (renewalStatusFilter) {
     rows = rows.filter((row) => row.renewalStatus === renewalStatusFilter)
+  }
+  if (tenantStatusFilter) {
+    rows = rows.filter((row) => row.tenantStatus === tenantStatusFilter)
   }
 
   if (sortBy && SORTABLE_FIELDS.has(sortBy)) {

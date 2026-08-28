@@ -7,6 +7,7 @@ import { computeCustomFieldReport } from "@/lib/reporting/custom-field-report";
 import { computeCrossDepartmentReport } from "@/lib/reporting/cross-department-report";
 import { REPORT_TYPES, type ReportType } from "@/lib/reporting/export-doc";
 import type { FormFieldFilter } from "@/lib/board-search";
+import { assertFeatureEnabled } from "@/lib/feature-flags";
 
 function isReportType(v: string | null): v is ReportType {
   return !!v && (REPORT_TYPES as readonly string[]).includes(v);
@@ -21,6 +22,14 @@ function isReportType(v: string | null): v is ReportType {
 export async function GET(request: NextRequest) {
   const { profile, error } = await requireAuth();
   if (error) return error;
+
+  const tenantId = profile!.activeTenantId;
+  if (tenantId) {
+    const featureCheck = await assertFeatureEnabled(tenantId, "customReports");
+    if (!featureCheck.ok) {
+      return NextResponse.json({ error: featureCheck.error }, { status: 403 });
+    }
+  }
 
   const sp = request.nextUrl.searchParams;
   const reportType = sp.get("reportType");

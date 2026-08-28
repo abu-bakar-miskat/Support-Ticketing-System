@@ -85,7 +85,7 @@ beforeEach(() => {
 
 describe("maybeReopenTicket", () => {
   it("reopens a ticket that is in a completion status", async () => {
-    mockFindTicket.mockResolvedValue({ status: "Done" } as never)
+    mockFindTicket.mockResolvedValue({ status: "Done", labels: [] } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
     const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
@@ -93,7 +93,7 @@ describe("maybeReopenTicket", () => {
     expect(result).toBe(true)
     expect(mockUpdateTicket).toHaveBeenCalledWith({
       where: { id: TICKET_ID },
-      data: { status: "Not Started", closedAt: null },
+      data: { status: "Not Started", closedAt: null, labels: ["Reopened"] },
     })
     expect(mockCreateLog).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -110,7 +110,7 @@ describe("maybeReopenTicket", () => {
   })
 
   it("does not reopen a ticket that is not in a completion status", async () => {
-    mockFindTicket.mockResolvedValue({ status: "In Progress" } as never)
+    mockFindTicket.mockResolvedValue({ status: "In Progress", labels: [] } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
     const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
@@ -121,7 +121,7 @@ describe("maybeReopenTicket", () => {
   })
 
   it("stays put (returns false) when all team statuses are completion statuses", async () => {
-    mockFindTicket.mockResolvedValue({ status: "Closed" } as never)
+    mockFindTicket.mockResolvedValue({ status: "Closed", labels: [] } as never)
     mockFindStatuses.mockResolvedValue([
       { label: "Resolved", isComplete: true, order: 0 },
       { label: "Closed", isComplete: true, order: 1 },
@@ -144,7 +144,7 @@ describe("maybeReopenTicket", () => {
   })
 
   it("clears closedAt when reopening", async () => {
-    mockFindTicket.mockResolvedValue({ status: "Done" } as never)
+    mockFindTicket.mockResolvedValue({ status: "Done", labels: [] } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
 
     await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)

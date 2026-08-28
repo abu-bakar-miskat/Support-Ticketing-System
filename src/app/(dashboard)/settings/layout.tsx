@@ -5,6 +5,7 @@ import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { getTenantActiveFeatureKeys } from "@/lib/template-catalogue";
+import { listFeatureFlags } from "@/lib/feature-flags";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -40,6 +41,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
     ? await getTenantActiveFeatureKeys(profile.activeTenantId)
     : "ALL";
   const activeFeatureKeys = activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet);
+  const platformFlags = profile.activeTenantId
+    ? await listFeatureFlags(profile.activeTenantId)
+    : {};
 
   return (
     <SettingsLayout
@@ -49,6 +53,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       isSuperAdmin={profile.isSuperAdmin}
       activeFeatureKeys={activeFeatureKeys}
       hasActiveDept={activeDeptId != null}
+      platformFlags={platformFlags}
     >
       {children}
     </SettingsLayout>

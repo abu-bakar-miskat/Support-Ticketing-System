@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
+import { EmailIdentityCard } from "./settings-email-identity";
 
 const DEFAULT_FROM_EMAIL = "onboarding@mail.pengroup.com";
 
@@ -48,6 +49,11 @@ const NOTIFICATION_META = [
     id: "notifyTicketCompleted",
     label: "Ticket completed emails",
     description: "Notify the ticket creator when their ticket is marked complete",
+  },
+  {
+    id: "notifyStatusChanged",
+    label: "Status-changed emails",
+    description: "Notify the submitter when their ticket's status changes",
   },
 ] as const;
 
@@ -335,9 +341,10 @@ export type EmailBrandingValues = {
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 /**
- * Per-department branding for outgoing emails. Each department can override the
- * workspace logo/colors/footer; unset departments fall back to the workspace
- * defaults. A live preview mirrors the email layout.
+ * Per-department branding for customer-facing email and public forms. Each
+ * department can override the workspace logo/colors/footer; a form may still
+ * set its own design on top. Unset departments fall back to the workspace
+ * defaults.
  */
 function EmailBrandingCard({
   departments,
@@ -756,6 +763,7 @@ export function SettingsEmailPage({
         </div>
       ) : tab === "branding" && canSeeGeneral ? (
         <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+          <EmailIdentityCard departments={departments} />
           {branding ? (
             <EmailBrandingCard
               departments={departments}

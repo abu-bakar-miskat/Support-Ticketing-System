@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminOrManager, managerDeptScope } from "@/lib/auth";
+import { requireAdmin, managerDeptScope } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { saveDepartmentEmailSenders } from "@/lib/email-config";
 
@@ -11,7 +11,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * semantics, so the client always sends its complete edited list.
  */
 export async function PUT(request: NextRequest) {
-  const { profile, error } = await requireAdminOrManager();
+  const { profile, error } = await requireAdmin();
   if (error) return error;
 
   const body = await request.json().catch(() => ({}));

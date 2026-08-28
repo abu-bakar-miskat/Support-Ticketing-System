@@ -23,7 +23,7 @@ export default async function SettingsEmailRoute() {
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
-  if (!isAdmin && !isManager) redirect("/settings");
+  if (!isAdmin) redirect("/settings");
 
   const profileScope = await getProfileDeptScope(profile);
   const activeDeptId = profileScope?.activeDeptId ?? null;

@@ -7,6 +7,7 @@ import { sanitizeInboundHtml } from "@/lib/inbound-email"
 import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
 import { normalizeStatus } from "@/components/board/board-types"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
+import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -49,6 +50,8 @@ export async function GET(
       authorName: m.author?.name ?? null,
       authorAvatarUrl: m.author?.avatarUrl ?? null,
       createdAt: m.createdAt.toISOString(),
+      deliveryStatus: m.deliveryStatus ?? null,
+      deliveryError: m.deliveryError ?? null,
       attachments: m.attachments.map((a) => ({
         id: a.id,
         storageUrl: a.storageUrl,
@@ -82,6 +85,7 @@ export async function POST(
       tenantId: true,
       creatorId: true,
       deletedAt: true,
+      labels: true,
       assignees: { select: { userId: true } },
       subDepartment: { select: { departmentId: true, prefix: true } },
       intake: {
@@ -269,6 +273,11 @@ export async function POST(
     })
   }
 
+  const nextLabels = clearReopenedLabelOnReply(ticket.labels ?? [], "outbound")
+  const labelsChanged =
+    nextLabels.length !== (ticket.labels ?? []).length ||
+    nextLabels.some((l, i) => l !== (ticket.labels ?? [])[i])
+
   // Auto-move to In Progress — awaited before responding so the DB change is
   // committed before the response is sent, ensuring postgres_changes picks it up.
   const inProgressStatus = await inProgressStatusPromise
@@ -279,7 +288,7 @@ export async function POST(
       await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
       await tx.ticket.update({
         where: { id: ticketId },
-        data: { status: inProgressStatus.label },
+        data: { status: inProgressStatus.label, ...(labelsChanged ? { labels: nextLabels } : {}) },
       })
     }).catch(() => undefined)
   } else {
@@ -288,7 +297,7 @@ export async function POST(
     // "Waiting for customer/assignee" badge on the task list and board views.
     await prisma.ticket.update({
       where: { id: ticketId },
-      data: { updatedAt: new Date() },
+      data: { updatedAt: new Date(), ...(labelsChanged ? { labels: nextLabels } : {}) },
     }).catch(() => undefined)
   }
 

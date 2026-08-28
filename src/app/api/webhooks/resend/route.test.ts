@@ -41,8 +41,10 @@ vi.mock("@/lib/email-config", () => ({
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    ticketMessage: { findFirst: vi.fn(), create: vi.fn() },
+    ticketMessage: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    ticket: { update: vi.fn(), findFirst: vi.fn() },
     intake: { findUnique: vi.fn() },
+    activityLog: { create: vi.fn() },
   },
 }))
 
@@ -79,6 +81,8 @@ const mockReceivingGet = (resendMod as any)._receivingGet as ReturnType<typeof v
 
 const mockFindFirstMsg = vi.mocked(prisma.ticketMessage.findFirst)
 const mockCreateMsg = vi.mocked(prisma.ticketMessage.create)
+const mockUpdateMsg = vi.mocked(prisma.ticketMessage.update)
+const mockActivityCreate = vi.mocked(prisma.activityLog.create)
 const mockFindIntake = vi.mocked(prisma.intake.findUnique)
 const mockNotify = vi.mocked(notifyCustomerReply)
 const mockNotifyQuarantine = vi.mocked(notifyQuarantinedReply)
@@ -171,6 +175,10 @@ beforeEach(() => {
     createdAt: new Date("2026-07-08T10:00:00Z"),
     throttled: false,
   } as never)
+  mockUpdateMsg.mockResolvedValue({} as never)
+  mockActivityCreate.mockResolvedValue({} as never)
+  vi.mocked(prisma.ticket.update).mockResolvedValue({} as never)
+  vi.mocked(prisma.ticket.findFirst).mockResolvedValue(null as never)
 
   // Patch INBOUND_DOMAIN for extractReplyToken to work
   vi.stubEnv("RESEND_INBOUND_DOMAIN", INBOUND_DOMAIN)
@@ -196,6 +204,34 @@ describe("POST /api/webhooks/resend", () => {
     const json = await res.json()
     expect(json.skipped).toBe("email.delivered")
     expect(mockCreateMsg).not.toHaveBeenCalled()
+  })
+
+  it("records a bounce against the matching outbound message (MAIL-03)", async () => {
+    mockVerify.mockReturnValue({
+      type: "email.bounced",
+      created_at: "",
+      data: { email_id: "provider-confirm-id", bounce: { message: "user unknown" } },
+    })
+    mockFindFirstMsg.mockResolvedValue({
+      id: "msg-out-1",
+      ticketId: "ticket-1",
+      ticket: { creatorId: "creator-1" },
+    } as never)
+
+    const res = await POST(makeRequest({}))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.delivery).toBe("email.bounced")
+    expect(mockUpdateMsg).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "msg-out-1" },
+        data: expect.objectContaining({
+          deliveryStatus: "bounced",
+          deliveryError: "user unknown",
+        }),
+      }),
+    )
+    expect(mockActivityCreate).toHaveBeenCalled()
   })
 
   it("returns 200 with duplicate:true on redelivered event", async () => {

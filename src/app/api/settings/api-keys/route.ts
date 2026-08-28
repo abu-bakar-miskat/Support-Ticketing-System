@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAdminOrManager } from "@/lib/auth"
+import { requireAdmin } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { generateApiKey } from "@/lib/api-key-auth"
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
@@ -7,15 +7,11 @@ import type { ApiKeyScope } from "@/generated/prisma/enums"
 
 // GET /api/settings/api-keys — list keys visible to the caller
 export async function GET() {
-  const { profile, isAdmin, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
-  const where = isAdmin
-    ? { department: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }
-    : { departmentId: { in: [...(profile as any).managedDepartmentIds ?? []] } }
-
   const keys = await prisma.apiKey.findMany({
-    where,
+    where: { department: { tenantId: profile.activeTenantId ?? "__no_tenant__" } },
     orderBy: [{ revokedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -36,7 +32,7 @@ export async function GET() {
 
 // POST /api/settings/api-keys — create a new key
 export async function POST(request: NextRequest) {
-  const { profile, isAdmin, error } = await requireAdminOrManager()
+  const { profile, error } = await requireAdmin()
   if (error) return error
 
   const featureCheck = await assertTemplateFeatureEnabled(profile.activeTenantId ?? "__no_tenant__", "apiKeys")
@@ -51,29 +47,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 })
   }
 
-  // Managers can only create keys for their own departments
-  if (!isAdmin && departmentId) {
-    const managed: string[] = (profile as any).managedDepartmentIds ?? []
-    if (!managed.includes(departmentId)) {
-      return NextResponse.json(
-        { error: "You can only create keys for departments you manage" },
-        { status: 403 },
-      )
-    }
-  }
-
-  // Managers must scope keys to a department; derive it if not provided
-  let resolvedDeptId: string | null = departmentId ?? null
-  if (!isAdmin && !resolvedDeptId) {
-    const managed: string[] = (profile as any).managedDepartmentIds ?? []
-    resolvedDeptId = managed[0] ?? null
-    if (!resolvedDeptId) {
-      return NextResponse.json(
-        { error: "You must belong to a department to create an API key" },
-        { status: 400 },
-      )
-    }
-  }
+  const resolvedDeptId: string | null = departmentId ?? null
 
   const { raw, hashed, suffix } = generateApiKey()
 

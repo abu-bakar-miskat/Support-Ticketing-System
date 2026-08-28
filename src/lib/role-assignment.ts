@@ -250,18 +250,39 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   });
 }
 
+function isUniqueViolation(err: unknown): boolean {
+  return err != null && typeof err === "object" && (err as { code?: string }).code === "P2002";
+}
+
 /**
  * Rebuild a user's RoleAssignment rows from the source tables. Idempotent.
  * Transitional bridge until slice 03 makes RoleAssignment the write source.
  */
 export async function syncUserRoleAssignments(userId: string): Promise<void> {
   const derived = await deriveAssignments(userId);
-  await prisma.$transaction([
-    prisma.roleAssignment.deleteMany({ where: { userId } }),
-    prisma.roleAssignment.createMany({
-      data: derived.map((r) => ({ userId, role: r.role, scopeType: r.scopeType, scopeId: r.scopeId })),
-    }),
-  ]);
+  const data = derived.map((r) => ({ userId, role: r.role, scopeType: r.scopeType, scopeId: r.scopeId }));
+
+  // Interactive (callback) form — batch `$transaction([...])` binds PrismaPromises
+  // to a single client so P2028 mid-flight cannot be replayed (see lib/db.ts).
+  const write = () =>
+    prisma.$transaction(async (tx) => {
+      await tx.roleAssignment.deleteMany({ where: { userId } });
+      if (data.length > 0) {
+        await tx.roleAssignment.createMany({ data });
+      }
+    });
+
+  try {
+    await write();
+  } catch (err) {
+    // Concurrent resolveUserScope calls (e.g. post-login burst) can race on the
+    // unique index; replay once — deleteMany+createMany is idempotent.
+    if (isUniqueViolation(err)) {
+      await write();
+      return;
+    }
+    throw err;
+  }
 }
 
 /** Resolve a user's effective scope, reading RoleAssignment (kept fresh). */

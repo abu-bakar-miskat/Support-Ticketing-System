@@ -17,7 +17,7 @@ describe("project-permissions", () => {
     expect(canDeleteProjects(profile)).toBe(false);
   });
 
-  it("treats team membership lead as project manager", () => {
+  it("treats subDepartment membership lead as project manager", () => {
     const profile = {
       role: "agent",
       memberships: [{ role: "sub_manager" }],

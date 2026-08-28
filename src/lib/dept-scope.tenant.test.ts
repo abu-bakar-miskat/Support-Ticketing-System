@@ -19,7 +19,7 @@ describe("buildPeopleMembershipWhere — tenant bound", () => {
     expect(where).toEqual({ isActive: true, subDepartment: { tenantId: "tenant-A" } })
   })
 
-  it("prefers the active dept's teams when a dept scope is present", () => {
+  it("prefers the active dept's subDepartments when a dept scope is present", () => {
     const where = buildPeopleMembershipWhere(
       { role: "admin", activeTenantId: "tenant-A" },
       { activeDeptId: "d1", subDepartmentIds: ["t1", "t2"], allowedDeptIds: ["d1"] },

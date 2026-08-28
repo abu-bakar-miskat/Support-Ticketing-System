@@ -38,7 +38,7 @@ async function handleGet() {
   if (!ticket) return NextResponse.json({ error: "record fetch failed" });
   steps["getTicketDetailRecord"] = "ok";
 
-  await time("getCachedTeamStatuses", () => getCachedSubDepartmentStatuses(ticket.subDepartmentId));
+  await time("getCachedSubDepartmentStatuses", () => getCachedSubDepartmentStatuses(ticket.subDepartmentId));
   await time("getCachedMentionableUsers", () =>
     getCachedMentionableUsers(ticket.subDepartment.departmentId, ticket.subDepartmentId),
   );

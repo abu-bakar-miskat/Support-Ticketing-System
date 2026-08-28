@@ -18,7 +18,7 @@ export async function POST(
   const department = await prisma.department.findUnique({ where: { id: departmentId } })
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
-  // Already in a team under this department
+  // Already in a subDepartment under this department
   const existing = await prisma.subDepartmentMembership.findFirst({
     where: { userId: profile.id, subDepartment: { departmentId }, isActive: true },
   })

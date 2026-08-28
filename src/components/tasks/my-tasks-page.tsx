@@ -92,12 +92,12 @@ const DRAG_TYPE = "MY_TASK_CARD";
 type DragItem = { dbId: string; fromStatus: string };
 
 /**
- * Resolve a ticket's stored status to the best matching team status label.
- * Exact match wins; falls back to whichever team status shares the same
+ * Resolve a ticket's stored status to the best matching subDepartment status label.
+ * Exact match wins; falls back to whichever subDepartment status shares the same
  * canonical form (e.g. "Not Started" → "To Do" if "To Do" normalises to "Not Started").
- * Pass isComplete=true when the ticket's team has marked its status as complete —
+ * Pass isComplete=true when the ticket's subDepartment has marked its status as complete —
  * this prevents completed tickets from falling through to "Not Started" when the
- * status label isn't present in the current teamStatuses list.
+ * status label isn't present in the current subDepartmentStatuses list.
  */
 function resolveToSubDepartmentStatus(cardStatus: string, subDepartmentStatuses: SubDepartmentStatusConfig[], isComplete?: boolean): string {
   if (subDepartmentStatuses.some((s) => s.label === cardStatus)) return cardStatus;
@@ -381,7 +381,7 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
   );
 }
 
-// Review/PR row — shown in the manager's team review section
+// Review/PR row — shown in the manager's subDepartment review section
 function ReviewTaskRow({ task, colorMap }: { task: BoardCardData; colorMap: Record<string, string> }) {
   const isPR = task.status.toLowerCase().includes("pull request") || task.status.toLowerCase() === "pr";
 
@@ -829,7 +829,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
   const [page, setPage] = useState(1);
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
-  // Managers see a team review/PR list — kept collapsed by default and below
+  // Managers see a subDepartment review/PR list — kept collapsed by default and below
   // their own tasks so the view leads with what's assigned to them.
   const [reviewOpen, setReviewOpen] = useState(false);
   const { data: meta } = useTasksMeta();
@@ -888,7 +888,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
     return map;
   }, [subDepartmentStatuses, subDepartmentStatusMap]);
 
-  // Team review/PR list grouped by assignee so a large queue stays scannable —
+  // SubDepartment review/PR list grouped by assignee so a large queue stays scannable —
   // the manager can see whose work is waiting, busiest person first.
   const reviewGroups = useMemo(() => {
     const map = new Map<
@@ -1399,7 +1399,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               </div>
             )}
 
-            {/* Manager-only: team review & PR — secondary, collapsed by default */}
+            {/* Manager-only: subDepartment review & PR — secondary, collapsed by default */}
             {isManager && reviewTasks.length > 0 && (
               <div className="border-t border-sts-card-border">
                 <button
@@ -1416,14 +1416,14 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                   />
                   <Eye className="size-3.5 shrink-0 text-sts-blue" strokeWidth={2} />
                   <span className="font-sans text-[11.5px] font-semibold uppercase tracking-[1.2px] text-sts-muted max-xl:normal-case max-xl:tracking-normal">
-                    Team review &amp; pull requests
+                    SubDepartment review &amp; pull requests
                   </span>
                   <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-sts-blue/10 px-1.5 font-sans text-[11.5px] font-bold text-sts-blue">
                     {reviewTasks.length}
                   </span>
                   {!reviewOpen && (
                     <span className="truncate font-sans text-[11px] text-sts-subtle max-sm:hidden">
-                      — waiting on your team, tap to view
+                      — waiting on your sub department, tap to view
                     </span>
                   )}
                 </button>

@@ -6,7 +6,7 @@ import {
 } from "./project-boards";
 
 describe("project-boards", () => {
-  it("collects member team ids from memberships and profile team", () => {
+  it("collects member subDepartment ids from memberships and profile subDepartment", () => {
     const ids = memberSubDepartmentIdsFromProject([
       {
         user: {
@@ -26,7 +26,7 @@ describe("project-boards", () => {
     expect(ids).toEqual(["team-b"]);
   });
 
-  it("defaults enabled boards to department teams", () => {
+  it("defaults enabled boards to department subDepartments", () => {
     expect(
       resolveEnabledBoardSubDepartmentIds({
         stored: null,
@@ -37,7 +37,7 @@ describe("project-boards", () => {
     ).toEqual(["team-a", "team-b"]);
   });
 
-  it("always keeps ticket and project teams visible", () => {
+  it("always keeps ticket and project subDepartments visible", () => {
     expect(
       resolveEnabledBoardSubDepartmentIds({
         stored: ["team-a"],

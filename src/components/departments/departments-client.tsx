@@ -110,7 +110,7 @@ export function DepartmentsClient({
         <div className="border-b border-sts-card-border bg-sts-card/50 px-6 py-6 sm:px-10">
           <PageHeader
             title={tenantName || "Organisation Overview"}
-            description="Manage departments, teams and access across this tenant."
+            description="Manage departments, sub departments and access across this tenant."
             icon={DepartmentIcon}
             iconClassName="text-sts-blue"
             actions={
@@ -136,7 +136,7 @@ export function DepartmentsClient({
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
-            <StatCard icon={Users}        label="Teams"             value={orgStats.subDepartmentCount} />
+            <StatCard icon={Users}        label="SubDepartments"             value={orgStats.subDepartmentCount} />
             <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    href="/departments/users" />
             <StatCard icon={Mail}         label="Mailboxes"         value={mailboxTotal}            href="/departments/mailboxes" />
             <StatCard icon={FolderKanban} label="Projects"          value={orgStats.projectCount}   href="/projects" />

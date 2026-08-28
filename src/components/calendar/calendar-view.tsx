@@ -290,9 +290,9 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Team availability */}
+      {/* SubDepartment availability */}
       <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card p-4">
-        <h3 className="mb-3 font-poppins text-[13px] font-semibold text-sts-foreground">Team availability</h3>
+        <h3 className="mb-3 font-poppins text-[13px] font-semibold text-sts-foreground">SubDepartment availability</h3>
         {isLoading && members.length === 0 ? (
           <p className="text-[12.5px] text-sts-muted">Loading…</p>
         ) : members.length === 0 ? (
@@ -378,7 +378,7 @@ function AddEventPopover({ deptId, onDone }: { deptId: string; onDone: () => voi
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={type === "birthday" ? "e.g. Sam's birthday" : "e.g. Team lunch"}
+          placeholder={type === "birthday" ? "e.g. Sam's birthday" : "e.g. SubDepartment lunch"}
           className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2 py-1.5 text-[12.5px] outline-none focus:border-sts-accent"
         />
         <div className="flex gap-2">

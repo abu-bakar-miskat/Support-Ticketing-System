@@ -220,10 +220,10 @@ function boardSubDepartmentSourceLabel(
   source: BoardSubDepartmentSource | "tickets",
   memberNames: string[],
 ): string {
-  if (source === "department") return "Department team";
+  if (source === "department") return "Department subDepartment";
   if (source === "member") {
     const names = formatMemberNames(memberNames);
-    return names ? `Assigned member · ${names}` : "Assigned member team";
+    return names ? `Assigned member · ${names}` : "Assigned member subDepartment";
   }
   return "Has tickets on this project";
 }
@@ -590,7 +590,7 @@ function SubDepartmentStatusBreakdown({
   return (
     <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
       <p className="mb-3 sts-text-section-label">
-        Team breakdown
+        SubDepartment breakdown
       </p>
 
       <div className="flex flex-col gap-3">
@@ -1522,7 +1522,7 @@ function OverviewTab({
   );
 }
 
-// ── Team boards ───────────────────────────────────────────────────────────────
+// ── SubDepartment boards ───────────────────────────────────────────────────────────────
 
 type SubDepartmentBoardGroup = SubDepartmentBoardGroupData;
 
@@ -1647,7 +1647,7 @@ function AddBoardButton({
         type="button"
         onClick={toggleOpen}
         disabled={adding}
-        title="Add board — department teams or teams of assigned members"
+        title="Add board — department sub departments or sub departments of assigned members"
         className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
       >
         {adding ? (
@@ -1911,7 +1911,7 @@ function HeaderMemberAvatars({
         </button>
       )}
 
-      {/* Any team member can add others; privileged roles can add without joining first */}
+      {/* Any subDepartment member can add others; privileged roles can add without joining first */}
       {(isSelfMember || isPrivileged) && (
         <button
           type="button"
@@ -2310,7 +2310,7 @@ function ProjectProfilePageInner({
       "tickets",
       // Support projects don't use sprints
       ...(isSupport ? [] : (["sprints"] as Tab[])),
-      ...subDepartmentBoardGroups.map((g) => `team:${g.subDepartmentId}` as Tab),
+      ...subDepartmentBoardGroups.map((g) => `subDepartment:${g.subDepartmentId}` as Tab),
     ],
     [isPrivileged, subDepartmentBoardGroups, isSupport],
   );
@@ -2331,7 +2331,7 @@ function ProjectProfilePageInner({
   }, [tab]);
 
   const activeSubDepartmentBoard = useMemo(() => {
-    if (!tab.startsWith("team:")) return null;
+    if (!tab.startsWith("subDepartment:")) return null;
     const subDepartmentId = tab.slice(5);
     return subDepartmentBoardGroups.find((g) => g.subDepartmentId === subDepartmentId) ?? null;
   }, [tab, subDepartmentBoardGroups]);
@@ -2418,7 +2418,7 @@ function ProjectProfilePageInner({
       };
     });
 
-    if (tab === `team:${subDepartmentId}`) setTab("overview");
+    if (tab === `subDepartment:${subDepartmentId}`) setTab("overview");
     setBoardMenu(null);
 
     setBoardAction(true);
@@ -2449,7 +2449,7 @@ function ProjectProfilePageInner({
           ? []
           : [{ id: "sprints" as Tab, label: "Sprints", icon: Zap }]),
         ...subDepartmentBoardGroups.map((g) => ({
-          id: `team:${g.subDepartmentId}` as Tab,
+          id: `subDepartment:${g.subDepartmentId}` as Tab,
           label: `${g.subDepartmentName} (${g.cards.length})`,
           icon: LayoutGrid,
         })),
@@ -2468,7 +2468,7 @@ function ProjectProfilePageInner({
   const renderTabButton = useCallback(
     (t: { id: Tab; label: string; icon: React.ElementType }) => {
       const Icon = t.icon;
-      const isSubDepartmentTab = t.id.startsWith("team:");
+      const isSubDepartmentTab = t.id.startsWith("subDepartment:");
       const subDepartmentId = isSubDepartmentTab ? t.id.slice(5) : null;
       const boardGroup = subDepartmentId ? subDepartmentBoardById.get(subDepartmentId) : undefined;
       const subDepartmentHint =
@@ -2665,7 +2665,7 @@ function ProjectProfilePageInner({
           </div>
           <div className="flex shrink-0 items-end gap-0.5 overflow-x-auto border-l border-sts-card-border/60 pl-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {UTILITY_TABS.map(renderTabButton)}
-            {tab.startsWith("team:") && (
+            {tab.startsWith("subDepartment:") && (
               <>
                 <span className="mb-2 hidden h-5 w-px shrink-0 bg-sts-card-border/80 sm:block" />
                 <div className="mb-2 flex shrink-0 items-center gap-1">
@@ -2732,7 +2732,7 @@ function ProjectProfilePageInner({
                 </div>
               </>
             )}
-            {tab.startsWith("team:") && (
+            {tab.startsWith("subDepartment:") && (
               <div className="mb-2 flex items-center gap-2">
                 <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
                   {(["board", "list"] as const).map((v) => (
@@ -2861,7 +2861,7 @@ function ProjectProfilePageInner({
           </ProjectTabPanel>
         )}
         {subDepartmentBoardGroups.map((g) => {
-          const subDepartmentTab = `team:${g.subDepartmentId}` as Tab;
+          const subDepartmentTab = `subDepartment:${g.subDepartmentId}` as Tab;
           return (
             <ProjectTabPanel
               key={g.subDepartmentId}

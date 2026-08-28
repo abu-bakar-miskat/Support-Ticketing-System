@@ -83,7 +83,7 @@ export async function PATCH(
 
   if (hasNonDescriptionEdit && !canEditTicket(profile, editCtx)) {
     return NextResponse.json(
-      { error: "You can only edit tickets you are assigned to, co-assigned to, created, or lead the team for" },
+      { error: "You can only edit tickets you are assigned to, co-assigned to, created, or lead the subDepartment for" },
       { status: 403 },
     )
   }

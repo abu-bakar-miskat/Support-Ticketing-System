@@ -78,9 +78,9 @@ async function handlePost(
     return NextResponse.json({ error: "Assist unavailable" }, { status: 503 })
   }
 
-  const identity = `You are the support intake assistant for "${form.name}" (${form.department.name} department). You collect ticket details through a fixed sequence of questions. If asked, you are an automated assistant — a human from the team reads and handles every submitted ticket.`
+  const identity = `You are the support intake assistant for "${form.name}" (${form.department.name} department). You collect ticket details through a fixed sequence of questions. If asked, you are an automated assistant — a human from the subDepartment reads and handles every submitted ticket.`
   const facts =
-    "Facts you may share: the visitor's problem description is captured during this conversation; attachments can be added at any time via the paperclip button or by pasting/dropping files; the team follows up by email after submission. Never invent ticket statuses, prices, deadlines, or promises. Reply in the visitor's language."
+    "Facts you may share: the visitor's problem description is captured during this conversation; attachments can be added at any time via the paperclip button or by pasting/dropping files; the subDepartment follows up by email after submission. Never invent ticket statuses, prices, deadlines, or promises. Reply in the visitor's language."
 
   try {
     // ── Answer-quality review: is this a real answer to the current question? ──

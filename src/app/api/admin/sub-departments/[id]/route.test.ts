@@ -61,7 +61,7 @@ beforeEach(() => {
 })
 
 describe("DELETE /api/admin/sub-departments/[id]", () => {
-  it("unlinks related rows then deletes the team (auto-created board FK)", async () => {
+  it("unlinks related rows then deletes the subDepartment (auto-created board FK)", async () => {
     const res = await DELETE(new Request("http://localhost"), {
       params: Promise.resolve({ id: "team-1" }),
     })
@@ -75,7 +75,7 @@ describe("DELETE /api/admin/sub-departments/[id]", () => {
     })
   })
 
-  it("returns 409 when the team still has tickets", async () => {
+  it("returns 409 when the subDepartment still has tickets", async () => {
     mockTicketCount.mockResolvedValue(3)
 
     const res = await DELETE(new Request("http://localhost"), {
@@ -88,7 +88,7 @@ describe("DELETE /api/admin/sub-departments/[id]", () => {
     expect(mockTransaction).not.toHaveBeenCalled()
   })
 
-  it("returns 409 when an intake form uses the team", async () => {
+  it("returns 409 when an intake form uses the subDepartment", async () => {
     mockIntakeFormCount.mockResolvedValue(1)
 
     const res = await DELETE(new Request("http://localhost"), {

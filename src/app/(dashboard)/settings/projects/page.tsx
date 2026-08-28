@@ -30,7 +30,7 @@ export default async function SettingsProjectsRoute() {
   const deptScopeList = activeDeptId ? [activeDeptId] : null;
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
 
-  // Resolve team IDs within the scoped dept
+  // Resolve subDepartment IDs within the scoped dept
   const scopedSubDepartmentIds = profileScope?.subDepartmentIds ?? null;
 
   const [projects, departments] = await Promise.all([

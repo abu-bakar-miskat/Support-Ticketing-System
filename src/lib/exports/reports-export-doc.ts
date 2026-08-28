@@ -45,7 +45,7 @@ export function buildReportsExportDoc(args: {
         columns: [
           { key: "name", header: "Name", width: 24 },
           { key: "role", header: "Role", width: 14 },
-          { key: "location", header: "Team", width: 18 },
+          { key: "location", header: "SubDepartment", width: 18 },
           { key: "weekHours", header: "Hours", width: 12 },
           { key: "weekProgress", header: "Progress %", width: 12 },
           { key: "closed", header: "Closed", width: 10 },
@@ -170,7 +170,7 @@ export function buildReportsExportDoc(args: {
   subtitleParts.push(`Generated ${new Date().toLocaleString()}`);
 
   return {
-    title: "Team & Reports Summary",
+    title: "SubDepartment & Reports Summary",
     subtitle: subtitleParts.join(" · "),
     sheets,
   };

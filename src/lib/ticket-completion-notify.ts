@@ -23,7 +23,7 @@ export async function notifyTicketCompletion({
   actorId: string
   actorName: string
 }) {
-  // Resolve the department for this team
+  // Resolve the department for this subDepartment
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: subDepartmentId },
     select: { departmentId: true },

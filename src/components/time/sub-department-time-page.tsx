@@ -487,7 +487,7 @@ export function SubDepartmentTimePage() {
         title="Reports"
         icon={ChartColumn}
         iconClassName="text-sts-blue"
-        description="Time and delivery across your team and projects — an overview of where the hours go."
+        description="Time and delivery across your sub department and projects — an overview of where the hours go."
         clampDescription
         actions={
         <div className="flex shrink-0 items-center gap-2">

@@ -23,7 +23,7 @@ describe("resolveTicketIds", () => {
     expect(mockSubDepartmentFindMany).not.toHaveBeenCalled()
   })
 
-  it("resolves refs through team prefix and ticket number", async () => {
+  it("resolves refs through subDepartment prefix and ticket number", async () => {
     mockSubDepartmentFindMany.mockResolvedValue([{ id: "team-1", prefix: "DEV" }] as never)
     mockTicketFindMany.mockResolvedValue([{ id: "ticket-1" }] as never)
 
@@ -39,7 +39,7 @@ describe("resolveTicketIds", () => {
     })
   })
 
-  it("drops refs whose prefix matches no team", async () => {
+  it("drops refs whose prefix matches no subDepartment", async () => {
     mockSubDepartmentFindMany.mockResolvedValue([] as never)
 
     const ids = await resolveTicketIds([{ prefix: "NOPE", number: 1 }])
@@ -48,7 +48,7 @@ describe("resolveTicketIds", () => {
     expect(mockTicketFindMany).not.toHaveBeenCalled()
   })
 
-  it("resolves refs across multiple teams", async () => {
+  it("resolves refs across multiple subDepartments", async () => {
     mockSubDepartmentFindMany.mockResolvedValue([
       { id: "team-1", prefix: "DEV" },
       { id: "team-2", prefix: "OPS" },

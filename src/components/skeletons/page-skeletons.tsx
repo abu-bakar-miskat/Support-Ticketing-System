@@ -979,7 +979,7 @@ export function InboxPageSkeleton() {
         title="Notifications"
         icon={Bell}
         iconClassName="text-sts-blue"
-        description="Mentions, assignments, comments, and team updates"
+        description="Mentions, assignments, comments, and sub department updates"
       />
       <div className="mb-4 flex w-fit gap-0.5 rounded-lg border border-sts-card-border bg-sts-card p-0.5">
         {["All", "Unread", "Mentions", "Assigned"].map((label) => (
@@ -1212,7 +1212,7 @@ export function SubDepartmentTimePageSkeleton() {
         title="Reports"
         icon={ChartColumn}
         iconClassName="text-sts-blue"
-        description="Time and delivery across your team and projects — an overview of where the hours go."
+        description="Time and delivery across your sub department and projects — an overview of where the hours go."
         clampDescription
         actions={
           <>

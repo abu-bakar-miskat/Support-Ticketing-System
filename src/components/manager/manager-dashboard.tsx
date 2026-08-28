@@ -176,7 +176,7 @@ export function ManagerDashboard({
 
       {noSubDepartments ? (
         <div className="rounded-2xl border border-sts-card-border bg-sts-card px-4 py-8 text-center">
-          <p className="font-sans text-[13px] text-sts-muted">No teams in your scope.</p>
+          <p className="font-sans text-[13px] text-sts-muted">No sub departments in your scope.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-7">

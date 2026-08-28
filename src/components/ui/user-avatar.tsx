@@ -84,7 +84,7 @@ function UnavailableBadge({
  *
  * Pass `userId` to auto-show an unavailability badge when the user is on holiday.
  * Pass `unavailable` / `unavailableLabel` to override the global lookup.
- * Pass `meta` to enable a hover card that shows name, team, and role.
+ * Pass `meta` to enable a hover card that shows name, subDepartment, and role.
  */
 export function UserAvatar({
   name,

@@ -46,7 +46,7 @@ export default async function PlatformAdministratorsPage() {
   })
 
   const users = rows.map((r) => {
-    // Aggregate every department this user touches (primary team, extra team
+    // Aggregate every department this user touches (primary subDepartment, extra subDepartment
     // memberships, direct membership, or management) into one de-duplicated list.
     const deptMap = new Map<
       string,

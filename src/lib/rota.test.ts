@@ -19,7 +19,7 @@ const mockMembershipFindUnique = vi.mocked(prisma.subDepartmentMembership.findUn
 const mockProfileFind = vi.mocked(prisma.profile.findUnique)
 const mockHolidayFind = vi.mocked(prisma.memberHoliday.findFirst)
 const mockScheduleFind = vi.mocked(prisma.memberSchedule.findUnique)
-const mockTeamStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
+const mockSubDepartmentStatuses = vi.mocked(prisma.subDepartmentStatus.findMany)
 const mockTicketCount = vi.mocked(prisma.ticket.count)
 
 const TEAM_ID = "team-1"
@@ -31,7 +31,7 @@ beforeEach(() => {
   mockMembershipFindUnique.mockResolvedValue({ doNotAssign: false } as never)
   mockHolidayFind.mockResolvedValue(null as never)
   mockScheduleFind.mockResolvedValue(null as never)
-  mockTeamStatuses.mockResolvedValue([{ label: "Done" }] as never)
+  mockSubDepartmentStatuses.mockResolvedValue([{ label: "Done" }] as never)
 })
 
 describe("getEligibleMembers", () => {

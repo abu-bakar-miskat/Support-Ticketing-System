@@ -132,7 +132,7 @@ function buildTranscript(
   ]
   if (ticket.description) lines.push(`Description: ${ticket.description.slice(0, descChars)}`)
   for (const m of messages) {
-    const who = m.direction === "inbound" ? `Customer (${m.fromName})` : `Team (${m.fromName})`
+    const who = m.direction === "inbound" ? `Customer (${m.fromName})` : `SubDepartment (${m.fromName})`
     lines.push(`${who}: ${stripHtml(m.bodyHtml).slice(0, itemChars)}`)
   }
   for (const c of comments) {
@@ -152,7 +152,7 @@ async function summarize(ticket: TicketCtx) {
       nextStep: z.string().describe("The single most useful next action, in one short sentence."),
     }),
     system:
-      "You summarize internal support/engineering tickets for the team working them. Be factual and terse. Never invent details not present in the transcript.",
+      "You summarize internal support/engineering tickets for the subDepartment working them. Be factual and terse. Never invent details not present in the transcript.",
     prompt: transcript.slice(0, 5000),
     maxOutputTokens: 400,
   })
@@ -175,7 +175,7 @@ async function draftReply(ticket: TicketCtx) {
       reply: z
         .string()
         .describe(
-          "A polished, friendly customer-facing reply the agent can edit before sending. Address the latest customer message. Do not promise deadlines, prices, or outcomes not supported by the transcript. Sign off generically (e.g. 'the team') — no fabricated names.",
+          "A polished, friendly customer-facing reply the agent can edit before sending. Address the latest customer message. Do not promise deadlines, prices, or outcomes not supported by the transcript. Sign off generically (e.g. 'the subDepartment') — no fabricated names.",
         ),
     }),
     system:

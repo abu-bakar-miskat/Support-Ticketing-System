@@ -574,9 +574,9 @@ export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCa
 }
 
 /**
- * Fetches tickets from the given teams whose status indicates "Review" or
+ * Fetches tickets from the given subDepartments whose status indicates "Review" or
  * "Pull Request" — used for the manager's My Tasks page so they can see
- * work from their teams that needs sign-off without leaving the page.
+ * work from their subDepartments that needs sign-off without leaving the page.
  */
 export async function getSubDepartmentReviewCards(
   subDepartmentIds: string[],
@@ -654,7 +654,7 @@ export async function getSubDepartmentBoardGroups(
     bySubDepartment.set(card.subDepartmentId, list)
   }
 
-  // Fetch all team metadata and statuses in two batched queries (no per-team round trips)
+  // Fetch all subDepartment metadata and statuses in two batched queries (no per-team round trips)
   const allSubDepartmentIds = [...new Set([...bySubDepartment.keys(), ...memberSubDepartmentIds])]
   const [subDepartmentMeta, statusMap] = await Promise.all([
     prisma.subDepartment.findMany({
@@ -665,7 +665,7 @@ export async function getSubDepartmentBoardGroups(
   ])
   const subDepartmentMetaMap = new Map(subDepartmentMeta.map((t) => [t.id, t]))
 
-  // Ensure the user's own teams always appear, even with 0 cards
+  // Ensure the user's own subDepartments always appear, even with 0 cards
   for (const id of memberSubDepartmentIds) {
     if (!bySubDepartment.has(id)) bySubDepartment.set(id, [])
   }
@@ -682,6 +682,6 @@ export async function getSubDepartmentBoardGroups(
     }
   })
 
-  // Sort by CUID (time-ordered) so the first-created team is always first
+  // Sort by CUID (time-ordered) so the first-created subDepartment is always first
   return groups.sort((a, b) => a.subDepartmentId.localeCompare(b.subDepartmentId))
 }

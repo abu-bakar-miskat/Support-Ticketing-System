@@ -61,9 +61,9 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
       ? [...new Set([...managedDeptIds, ...grantedDeptIds, ...membershipDeptIds])]
       : null;
 
-  // Primary dept for staff/lead (first team's department)
+  // Primary dept for staff/lead (first subDepartment's department)
   const primaryDeptId = membershipSubDepartments[0]?.departmentId ?? null;
-  // Staff/lead with access to more than one department — via multiple team memberships,
+  // Staff/lead with access to more than one department — via multiple subDepartment memberships,
   // a DepartmentAccess grant (cross-access), or a DepartmentMember grant (direct member)
   const crossDeptIds = !isDeptLevel
     ? [

@@ -64,7 +64,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetProfile.mockResolvedValue(mockProfile as never)
   mockActivityCreate.mockResolvedValue({} as never)
-  // Default: target assignee exists and is on the ticket's team
+  // Default: target assignee exists and is on the ticket's subDepartment
   mockProfileFindUnique.mockResolvedValue({
     id: "user-3",
     subDepartmentId: "team-abc",
@@ -174,7 +174,7 @@ describe("PATCH /api/tickets/[id]", () => {
     expect(res.status).toBe(401)
   })
 
-  it("returns 403 when caller is not on the ticket's team (IDOR guard)", async () => {
+  it("returns 403 when caller is not on the ticket's subDepartment (IDOR guard)", async () => {
     mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" } as never)
     mockFindUnique.mockResolvedValue(existingTicket as never)
     const res = await PATCH(makeRequest({ assigneeId: "user-3" }), { params: mockParams })
@@ -182,7 +182,7 @@ describe("PATCH /api/tickets/[id]", () => {
     expect(mockUpdate).not.toHaveBeenCalled()
   })
 
-  it("allows admins regardless of team", async () => {
+  it("allows admins regardless of subDepartment", async () => {
     mockGetProfile.mockResolvedValue({ ...mockProfile, role: "admin", subDepartmentId: "other-team" } as never)
     mockFindUnique.mockResolvedValue(existingTicket as never)
     mockUpdate.mockResolvedValue({

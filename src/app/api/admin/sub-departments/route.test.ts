@@ -45,8 +45,8 @@ beforeEach(() => {
 })
 
 describe("POST /api/admin/sub-departments", () => {
-  it("returns 201 with the created team on valid input", async () => {
-    const created = { id: "team1", name: "Frontend", prefix: "FE", departmentId: "dept1" }
+  it("returns 201 with the created subDepartment on valid input", async () => {
+    const created = { id: "subDepartment1", name: "Frontend", prefix: "FE", departmentId: "dept1" }
     mockCreate.mockResolvedValue(created as never)
 
     const res = await POST(makeRequest({ name: "Frontend", prefix: "fe", departmentId: "dept1" }))
@@ -60,7 +60,7 @@ describe("POST /api/admin/sub-departments", () => {
     expect(mockProjectCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         name: "Frontend",
-        subDepartmentId: "team1",
+        subDepartmentId: "subDepartment1",
         departmentId: "dept1",
       }),
     })

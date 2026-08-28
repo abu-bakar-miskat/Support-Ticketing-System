@@ -9,7 +9,7 @@ const TARGET_TYPES = ["SINGLE_AGENT", "GROUP", "DEPARTMENT_POOL"] as const
 type TargetType = (typeof TARGET_TYPES)[number]
 
 // ASG-05/C-05: bulk-reassign a source agent's tickets to a single agent, a
-// group (Team), or the department pool (auto-routed per the department's
+// group (SubDepartment), or the department pool (auto-routed per the department's
 // configured assignment method). Snapshots the target tickets synchronously,
 // then processes them off the request path via `after()` — see
 // lib/bulk-reassign.ts for the idempotent-on-retry processing + the cron
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
     }
   }
   if (targetType === "GROUP") {
-    const team = await prisma.subDepartment.findUnique({ where: { id: targetTeamId }, select: { id: true, departmentId: true } })
-    if (!team || team.departmentId !== departmentId) {
+    const subDepartment = await prisma.subDepartment.findUnique({ where: { id: targetTeamId }, select: { id: true, departmentId: true } })
+    if (!subDepartment || subDepartment.departmentId !== departmentId) {
       return NextResponse.json({ error: "targetTeamId must belong to the given department" }, { status: 404 })
     }
   }

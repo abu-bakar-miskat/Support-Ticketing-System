@@ -6,14 +6,14 @@ import type { AuthProfile } from "@/lib/auth"
 async function assertSubDepartmentScope(subDepartmentId: string, caller: AuthProfile): Promise<NextResponse | null> {
   if (caller.role === "admin") return null
   const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId }, select: { departmentId: true } })
-  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   // Write operations restricted to directly-managed departments — cross-access grants do not apply
   const directlyManages: string[] = (caller as any).managedDepartmentIds ?? []
   if (!directlyManages.includes(subDepartment.departmentId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   return null
 }
 
-// POST — assign a profile to a team (admin or manager scoped to their depts)
+// POST — assign a profile to a subDepartment (admin or manager scoped to their depts)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,7 +42,7 @@ export async function POST(
     prisma.profile.findUnique({ where: { id: userId } }),
   ])
 
-  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
   const trimmedName = nickname?.trim() || null
@@ -63,7 +63,7 @@ export async function POST(
   return NextResponse.json(membership, { status: 201 })
 }
 
-// GET — list current members of a team (admin or manager scoped to their depts)
+// GET — list current members of a subDepartment (admin or manager scoped to their depts)
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -121,7 +121,7 @@ export async function PATCH(
   return NextResponse.json(updated)
 }
 
-// DELETE — remove a member from a team (admin or manager scoped to their depts)
+// DELETE — remove a member from a subDepartment (admin or manager scoped to their depts)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

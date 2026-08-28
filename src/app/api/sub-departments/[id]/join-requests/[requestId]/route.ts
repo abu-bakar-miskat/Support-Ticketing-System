@@ -12,7 +12,7 @@ export async function PATCH(
 
   const { id: subDepartmentId, requestId } = await params
 
-  // Must be admin or manager of this team
+  // Must be admin or manager of this subDepartment
   if (profile.role !== "admin") {
     const membership = await (prisma.subDepartmentMembership as any).findUnique({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId } },
@@ -45,7 +45,7 @@ export async function PATCH(
   if (action === "approve" && crossAccess) {
     const departmentId = joinRequest.subDepartment?.departmentId
     if (!departmentId) {
-      return NextResponse.json({ error: "Team has no department" }, { status: 400 })
+      return NextResponse.json({ error: "SubDepartment has no department" }, { status: 400 })
     }
     await prisma.$transaction([
       (prisma.departmentAccess as any).upsert({
@@ -63,7 +63,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was approved. You've been granted cross-department access.`,
+          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the subDepartment"} was approved. You've been granted cross-department access.`,
         },
       }),
     ])
@@ -103,7 +103,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was approved`,
+          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the subDepartment"} was approved`,
         },
       }),
     ])
@@ -119,7 +119,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `rejected: Your request to join ${joinRequest.subDepartment?.name ?? "the team"} was not approved`,
+          message: `rejected: Your request to join ${joinRequest.subDepartment?.name ?? "the subDepartment"} was not approved`,
         },
       }),
     ])

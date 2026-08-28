@@ -86,10 +86,10 @@ export function SubDepartmentTodaySection({ members }: { members: MemberWorkload
 
   return (
     <RailCard
-      id="team"
+      id="subDepartment"
       icon={Users}
       accent="#0a76b9"
-      title="Team today"
+      title="SubDepartment today"
       aside={
         <span className="flex items-center gap-3 font-sans text-[10px] text-sts-subtle">
           <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#0a76b9]" />active</span>

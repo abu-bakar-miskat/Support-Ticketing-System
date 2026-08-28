@@ -3,7 +3,7 @@ import { requireAuth, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { transferTicket } from "@/lib/ticket-transfer"
 
-// ASG-06: move a ticket to another department/sub-department (Team). Any
+// ASG-06: move a ticket to another department/sub-department (SubDepartment). Any
 // agent with edit access to the ticket may transfer it — not just
 // admins/managers — mirroring the existing status-move endpoint's access rule.
 export async function POST(

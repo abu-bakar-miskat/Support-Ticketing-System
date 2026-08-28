@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     },
   })
 
-  // Resolve isComplete per ticket using TeamStatus
+  // Resolve isComplete per ticket using SubDepartmentStatus
   const allSubDepartmentIds = [...new Set(sprints.flatMap((s) => s.tickets.map((t) => t.subDepartmentId)))]
   const completeStatuses = allSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({

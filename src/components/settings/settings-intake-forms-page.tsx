@@ -285,7 +285,7 @@ function IntakeFormModal({
       return;
     }
     if (!intakeSubDepartmentId) {
-      setError("Support team is required.");
+      setError("Support subDepartment is required.");
       return;
     }
     if (!isEdit && !departmentId) {
@@ -399,7 +399,7 @@ function IntakeFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-              Support team
+              Support subDepartment
             </label>
             <Select
               value={intakeSubDepartmentId}
@@ -413,7 +413,7 @@ function IntakeFormModal({
                   }
                 >
                   {availableSubDepartments.find((t) => t.id === intakeSubDepartmentId)?.name ??
-                    "Select team"}
+                    "Select sub department"}
                 </span>
               </SelectTrigger>
               <SelectContent>

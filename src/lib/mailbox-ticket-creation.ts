@@ -23,7 +23,7 @@ import { assertDepartmentOperational } from "@/lib/department-setup";
 export type CreateTicketFromEmailResult = {
   id: string;
   ticketNumber: number;
-  teamPrefix: string;
+  subDepartmentPrefix: string;
   creatorId: string;
   assigneeId: string | null;
 };
@@ -41,7 +41,7 @@ export async function createTicketFromInboundEmail(params: {
   const setupCheck = await assertDepartmentOperational(departmentId);
   if (!setupCheck.ok) throw new Error(setupCheck.error);
 
-  const [team, statuses, projectId, creatorId, managerRow] = await Promise.all([
+  const [subDepartment, statuses, projectId, creatorId, managerRow] = await Promise.all([
     prisma.subDepartment.findUniqueOrThrow({ where: { id: teamId }, select: { tenantId: true, prefix: true } }),
     getSubDepartmentStatuses(teamId),
     resolveSupportProjectForDepartment(departmentId),
@@ -67,7 +67,7 @@ export async function createTicketFromInboundEmail(params: {
         status,
         ticketNumber: 0, // stamped by DB trigger
         creatorId,
-        tenantId: team.tenantId,
+        tenantId: subDepartment.tenantId,
         subDepartmentId: teamId,
         projectId,
         assigneeId: assignResult.assigneeId,
@@ -96,13 +96,13 @@ export async function createTicketFromInboundEmail(params: {
   }
 
   const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName };
-  await startSlaTimers(ticket.id, team.tenantId, departmentId, ruleFormValues, undefined, teamId);
+  await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId);
 
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
     {
       id: ticket.id,
-      tenantId: team.tenantId,
+      tenantId: subDepartment.tenantId,
       departmentId,
       subDepartmentId: teamId,
       assigneeId: assignResult.assigneeId,
@@ -110,7 +110,7 @@ export async function createTicketFromInboundEmail(params: {
     ruleFormValues,
   );
 
-  const humanId = `${team.prefix}-${ticket.ticketNumber}`;
+  const humanId = `${subDepartment.prefix}-${ticket.ticketNumber}`;
 
   if (assignResult.failed) {
     await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId, teamId);
@@ -144,7 +144,7 @@ export async function createTicketFromInboundEmail(params: {
   return {
     id: ticket.id,
     ticketNumber: ticket.ticketNumber,
-    teamPrefix: team.prefix,
+    subDepartmentPrefix: subDepartment.prefix,
     creatorId,
     assigneeId: assignResult.assigneeId,
   };

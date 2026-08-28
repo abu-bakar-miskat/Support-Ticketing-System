@@ -52,14 +52,14 @@ export async function resolveActivityScope(
 
   // kind === "all"
   // Admins get the whole tenant: an empty subDepartmentIds lets
-  // buildActivityLogWhere bind by tenantId instead of by team.
+  // buildActivityLogWhere bind by tenantId instead of by subDepartment.
   if (profile.role === "admin") {
     return { subDepartmentIds: [], deptIds: [], tenantId };
   }
 
   const deptIds = accessibleDeptIds(profile);
   if (deptIds.length === 0) {
-    // No department access at all — fall back to the caller's own teams so the
+    // No department access at all — fall back to the caller's own subDepartments so the
     // feed is never accidentally tenant-wide for a non-admin.
     return { subDepartmentIds: profile.subDepartmentIds ?? [], deptIds: [], tenantId };
   }

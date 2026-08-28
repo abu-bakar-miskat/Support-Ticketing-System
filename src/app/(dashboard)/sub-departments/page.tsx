@@ -29,8 +29,8 @@ export default async function SubDepartmentsPage() {
       ? [...new Set([...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])])]
       : null;
 
-  // Fetch department managers so we can display them as team leads when
-  // no explicit TeamMembership with role="sub_manager" exists.
+  // Fetch department managers so we can display them as subDepartment leads when
+  // no explicit SubDepartmentMembership with role="sub_manager" exists.
   const deptManagerMap = new Map<string, { id: string; name: string; avatarUrl: string | null }>();
   if (deptScopeList?.length) {
     const deptManagers = await prisma.departmentManager.findMany({

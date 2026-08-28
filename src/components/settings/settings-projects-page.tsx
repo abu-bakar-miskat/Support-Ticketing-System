@@ -109,7 +109,7 @@ export function SettingsProjectsPage({
               Projects
             </h1>
             <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-              Workstreams assigned to people across teams.
+              Workstreams assigned to people across sub departments.
             </p>
           </div>
           <Button

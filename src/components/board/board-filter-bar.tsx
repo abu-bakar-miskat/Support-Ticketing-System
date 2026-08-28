@@ -548,7 +548,7 @@ export function BoardFilterBar({
       ? [
           {
             value: "all",
-            label: "All teams",
+            label: "All sub departments",
             count: [...cardCountBySubDepartment.values()].reduce((a, b) => a + b, 0),
           },
           ...subDepartmentBoardGroups.map((g) => ({
@@ -587,13 +587,13 @@ export function BoardFilterBar({
         </div>
       )}
 
-      {/* Team */}
+      {/* SubDepartment */}
       {subDepartmentOptions.length > 1 && (
         <SearchableSelect
           value={view === "list" ? listSubDepartmentFilter : activeSubDepartmentId}
           onChange={view === "list" ? onListSubDepartmentFilterChange : onSubDepartmentChange}
           options={subDepartmentOptions}
-          aria-label="Filter by team"
+          aria-label="Filter by subDepartment"
           icon={Building2}
           size="sm"
           highlightWhenSet={view === "list" ? listSubDepartmentFilter !== "all" : activeSubDepartmentId !== "all"}

@@ -121,7 +121,7 @@ export function getNativeDepartmentIds(profile: AuthProfile): Set<string> {
 
 /**
  * True when the active department is one the user reaches via a DepartmentAccess
- * grant rather than team membership, direct membership, or management.
+ * grant rather than subDepartment membership, direct membership, or management.
  * Full-access grants still count as cross-access for UI indicators.
  */
 export function checkIsCrossAccessDept(
@@ -145,7 +145,7 @@ export function managerDeptScope(profile: AuthProfile): Set<string> | null {
 // ─── Ticket-level authorization ──────────────────────────────────────────────
 // No RLS in this app — every ticket-scoped route must enforce access here.
 // Policy: admins and managers see everything; otherwise the caller must be
-// the assignee, the creator, or on the ticket's team.
+// the assignee, the creator, or on the ticket's subDepartment.
 
 type TicketAccessFields = {
   subDepartmentId: string;
@@ -220,12 +220,12 @@ export function canAccessTicket(
   }
 
   // Assignees, creators, and co-assignees can open their tickets even when
-  // the ticket's team sits outside the active department workspace.
+  // the ticket's subDepartment sits outside the active department workspace.
   if (isDirectTicketParticipant(profile, ticket)) return true;
 
   // A native relationship to the ticket grants access regardless of which
   // department is *currently active*. The active-dept cookie only scopes lists;
-  // it must not deny a staff/lead who belongs to the ticket's team, or a manager
+  // it must not deny a staff/lead who belongs to the ticket's subDepartment, or a manager
   // of its department, from opening a ticket (e.g. via a notification) while
   // they happen to be viewing a different department.
   const nativeSubDepartmentIds: string[] =
@@ -263,13 +263,13 @@ export function canAccessTicket(
     if (allowedDepts.size > 0) {
       // Manager has managed/granted depts — enforce dept-based access
       if (deptId) return allowedDepts.has(deptId);
-      // Ticket's team has no dept — check direct team membership as fallback
+      // Ticket's subDepartment has no dept — check direct subDepartment membership as fallback
       const subDepartmentIds: string[] =
         (profile.subDepartmentIds as string[] | undefined) ??
         (profile.subDepartmentId ? [profile.subDepartmentId] : []);
       return subDepartmentIds.some((id) => id === ticket.subDepartmentId);
     }
-    // Manager with no managed depts (edge case) — check team membership
+    // Manager with no managed depts (edge case) — check subDepartment membership
     const subDepartmentIds: string[] =
       (profile.subDepartmentIds as string[] | undefined) ??
       (profile.subDepartmentId ? [profile.subDepartmentId] : []);
@@ -342,7 +342,7 @@ type TicketEditFields = TicketAccessFields;
 
 /**
  * Like assertTicketAccess, but staff may only mutate tickets they assigned,
- * co-assigned, or created; team leads may edit any ticket on their team.
+ * co-assigned, or created; subDepartment leads may edit any ticket on their subDepartment.
  * Admins and managers are unrestricted.
  */
 export async function assertTicketEditAccess(
@@ -354,7 +354,7 @@ export async function assertTicketEditAccess(
 
   if (!canEditTicket(profile, await buildTicketEditContext(profile, ticket))) {
     return forbidden(
-      "You can only edit tickets you are assigned to, co-assigned to, created, or lead the team for.",
+      "You can only edit tickets you are assigned to, co-assigned to, created, or lead the subDepartment for.",
     );
   }
   return null;

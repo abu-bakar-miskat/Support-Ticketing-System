@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
-import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
+import { listCatalogueForTenant } from "@/lib/template-catalogue";
+import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 
 export const metadata = { title: "Departments — Support Ticketing System" };
 
@@ -71,7 +72,7 @@ export default async function SettingsDepartmentsRoute() {
     }),
   ]);
 
-  // Fetch team memberships with user details for each department
+  // Fetch subDepartment memberships with user details for each department
   const deptIds = departments.map((d) => d.id);
   const memberships = deptIds.length > 0
     ? await prisma.subDepartmentMembership.findMany({
@@ -143,12 +144,24 @@ export default async function SettingsDepartmentsRoute() {
     avatarUrl: u.avatarUrl ?? null,
   }));
 
+  // Templates available to this tenant, so the New Department modal can offer
+  // them dynamically instead of the hardcoded department-type list.
+  const catalogue = await listCatalogueForTenant(tenantId);
+  const templateOptions: TemplateOption[] = catalogue.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    featureCount: t.features.length,
+    status: t.status,
+  }));
+
   return (
     <SettingsDepartmentsPage
       departments={rows}
       allUsers={allUsers}
       isAdmin={isAdmin}
       inWorkspace={!!activeDeptId}
+      templateOptions={templateOptions}
     />
   );
 }

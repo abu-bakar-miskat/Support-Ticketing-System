@@ -180,10 +180,10 @@ export async function runNotionImport(token: string, mapping: ImportMapping): Pr
     errors: [],
   }
 
-  // Everything imported lands in the destination team's tenant.
+  // Everything imported lands in the destination subDepartment's tenant.
   const importTenantId = await subDepartmentTenantId(mapping.subDepartmentId)
   if (!importTenantId) {
-    result.errors.push(`Destination team ${mapping.subDepartmentId} not found`)
+    result.errors.push(`Destination subDepartment ${mapping.subDepartmentId} not found`)
     return result
   }
 

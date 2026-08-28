@@ -8,8 +8,8 @@ export const ticketKeys = {
 }
 
 export const subDepartmentKeys = {
-  members: (subDepartmentId: string) => ["teams", subDepartmentId, "members"] as const,
-  statuses: (subDepartmentId: string) => ["teams", subDepartmentId, "statuses"] as const,
+  members: (subDepartmentId: string) => ["subDepartments", subDepartmentId, "members"] as const,
+  statuses: (subDepartmentId: string) => ["subDepartments", subDepartmentId, "statuses"] as const,
 }
 
 export const adminKeys = {

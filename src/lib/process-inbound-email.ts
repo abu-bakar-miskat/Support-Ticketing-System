@@ -300,7 +300,7 @@ export async function processInboundEmail(
       assigneeId: createdTicket.assigneeId,
       creatorId: createdTicket.creatorId,
       subDepartmentId: route.subDepartmentId,
-      subDepartment: { prefix: createdTicket.teamPrefix },
+      subDepartment: { prefix: createdTicket.subDepartmentPrefix },
     }
     isNewTicket = true
   }

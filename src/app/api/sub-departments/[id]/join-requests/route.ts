@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 
-// POST - any authenticated user requests to join a team
+// POST - any authenticated user requests to join a subDepartment
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -13,9 +13,9 @@ export async function POST(
   const { id: subDepartmentId } = await params
   const body = await req.json().catch(() => ({}))
 
-  // Check team exists
+  // Check subDepartment exists
   const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId } })
-  if (!subDepartment) return NextResponse.json({ error: "Team not found" }, { status: 404 })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
 
   // Check if already a member
   const existing = await prisma.subDepartmentMembership.findUnique({
@@ -37,7 +37,7 @@ export async function POST(
     },
   })
 
-  // Collect recipient IDs: team managers + all global admins (deduped, exclude requester)
+  // Collect recipient IDs: subDepartment managers + all global admins (deduped, exclude requester)
   const [subDepartmentManagers, adminProfiles] = await Promise.all([
     prisma.subDepartmentMembership.findMany({
       where: { subDepartmentId, role: { in: ["manager", "sub_manager"] }, isActive: true },
@@ -71,7 +71,7 @@ export async function POST(
   return NextResponse.json(joinRequest, { status: 201 })
 }
 
-// GET - manager/admin lists pending join requests for their team
+// GET - manager/admin lists pending join requests for their subDepartment
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -81,7 +81,7 @@ export async function GET(
 
   const { id: subDepartmentId } = await params
 
-  // Must be admin or manager of this team
+  // Must be admin or manager of this subDepartment
   if (profile.role !== "admin") {
     const membership = await prisma.subDepartmentMembership.findUnique({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId } },

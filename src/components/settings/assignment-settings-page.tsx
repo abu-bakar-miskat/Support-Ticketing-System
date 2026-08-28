@@ -59,7 +59,7 @@ const METHODS: MethodMeta[] = [
   {
     value: "ROUND_ROBIN",
     label: "Round-robin",
-    description: "Strict rotation through the team, in order.",
+    description: "Strict rotation through the sub department, in order.",
     icon: Repeat,
     chip: "bg-sts-blue-tint text-sts-blue",
   },
@@ -270,7 +270,7 @@ export function AssignmentSettingsPage({
     setError(null);
     const defaultAgent = members[0]?.id;
     if (!defaultAgent) {
-      setError("Add a team member to this sub-department before creating rules.");
+      setError("Add a sub department member to this sub-department before creating rules.");
       return;
     }
     try {

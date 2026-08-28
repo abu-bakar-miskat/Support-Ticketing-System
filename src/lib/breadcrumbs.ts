@@ -28,7 +28,7 @@ const ROUTE_META: Record<string, { label: string; parent?: string }> = {
   "/departments": { label: "Departments", parent: "/" },
   "/department": { label: "Department", parent: "/" },
   "/docs": { label: "User manual", parent: "/" },
-  "/reports": { label: "Team time", parent: "/" },
+  "/reports": { label: "SubDepartment time", parent: "/" },
   "/sub-departments": { label: "Sub Departments", parent: "/manager" },
 };
 
@@ -130,7 +130,7 @@ function projectCrumbs(
     base.push({ label: "All tasks", href: `/projects/${id}?tab=tickets` });
   } else if (tab === "overview") {
     base.push({ label: "Overview", href: `/projects/${id}?tab=overview` });
-  } else if (tab?.startsWith("team:") && tabName) {
+  } else if (tab?.startsWith("subDepartment:") && tabName) {
     base.push({
       label: tabName,
       href: `/projects/${id}?tab=${encodeURIComponent(tab)}&tabName=${encodeURIComponent(tabName)}`,

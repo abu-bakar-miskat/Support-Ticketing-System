@@ -7,11 +7,13 @@ import { LayoutGrid, Users2, Puzzle, Wrench } from "lucide-react";
  * is a free-text column, same pattern as PLATFORM_FEATURE_KEYS in
  * feature-keys.ts.
  *
- * Core personal/essential nav (Home, My Profile, Settings, Tasks, Notifications,
+ * Core personal/essential nav (Home, My Profile, Settings, Notifications,
  * the department switcher) is intentionally NOT gateable — hiding those would
  * leave a tenant unable to navigate the app at all.
  */
 export const TEMPLATE_FEATURE_KEYS = [
+  /** Tasks — sidebar "Tasks" (/tasks). */
+  "tasks",
   /** Public intake/support forms — /settings/intake-forms. */
   "supportForm",
   /** Department/tenant email settings — /settings/email. */
@@ -34,6 +36,12 @@ export const TEMPLATE_FEATURE_KEYS = [
   "ticketTemplates",
   /** Workflows & statuses — /settings/workflows. */
   "workflows",
+  /** SLA policies — /settings/sla. */
+  "slaPolicies",
+  /** Automation rules — /settings/rules. */
+  "automationRules",
+  /** Assignment methods — /settings/assignment. */
+  "assignmentMethods",
   /** Board view — sidebar "Board" (/board). */
   "board",
   /** Timeline view — sidebar "Timeline" (/timeline). */
@@ -48,8 +56,8 @@ export const TEMPLATE_FEATURE_KEYS = [
   "myTime",
   /** Activity feed — sidebar "Activity" (/activity). */
   "activity",
-  /** Team Reports — sidebar "Sub Departments" (/sub-departments). */
-  "teamReports",
+  /** SubDepartment Reports — sidebar "Sub Departments" (/sub-departments). */
+  "subDepartmentReports",
   /** Help Center — sidebar "Help Center" (/docs). */
   "helpCenter",
 ] as const;
@@ -62,6 +70,7 @@ export function isTemplateFeatureKey(value: unknown): value is TemplateFeatureKe
 
 /** Display labels for the checklist in the Template Catalogue create/edit UI. */
 export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
+  tasks: "Tasks",
   supportForm: "Support forms",
   emailSettings: "Email settings",
   apiKeys: "API keys",
@@ -73,6 +82,9 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   tagsLabels: "Tags & labels",
   ticketTemplates: "Ticket Templates",
   workflows: "Workflows & statuses",
+  slaPolicies: "SLA policies",
+  automationRules: "Automation rules",
+  assignmentMethods: "Assignment methods",
   board: "Board",
   timeline: "Timeline",
   modules: "Modules",
@@ -80,7 +92,7 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   calendar: "Calendar",
   myTime: "My Time",
   activity: "Activity",
-  teamReports: "Sub Departments",
+  subDepartmentReports: "Sub Departments",
   helpCenter: "Help Center",
 };
 
@@ -89,7 +101,7 @@ export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; 
   {
     label: "Sidebar",
     icon: LayoutGrid,
-    keys: ["board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "teamReports", "helpCenter"],
+    keys: ["tasks", "board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "subDepartmentReports", "helpCenter"],
   },
   {
     label: "Workspace settings",
@@ -99,7 +111,7 @@ export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; 
   {
     label: "Configuration settings",
     icon: Wrench,
-    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows"],
+    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows", "slaPolicies", "automationRules", "assignmentMethods"],
   },
   {
     label: "Integrations",

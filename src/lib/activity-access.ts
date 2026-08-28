@@ -24,7 +24,7 @@ export function buildActivityTicketWhere(
   tenantId?: string | null,
 ): Prisma.TicketWhereInput {
   return {
-    // Bound by team when scoped; otherwise (admin global) bound by tenant so
+    // Bound by subDepartment when scoped; otherwise (admin global) bound by tenant so
     // activity never spans tenants.
     ...(subDepartmentIds.length > 0 ? { subDepartmentId: { in: subDepartmentIds } } : tenantId ? { tenantId } : {}),
     ...(projectId ? { projectId } : {}),

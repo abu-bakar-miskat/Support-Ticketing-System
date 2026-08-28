@@ -2,7 +2,7 @@ export type SubDepartmentStatusRow = { label: string; order: number; isComplete:
 
 /**
  * Decides whether a webhook may move a ticket to targetLabel.
- * Forward-only within the team's configured status order; exact label match;
+ * Forward-only within the subDepartment's configured status order; exact label match;
  * never auto-completes intake-linked tickets (they require a resolution note).
  * Returns null when the move must be skipped.
  */
@@ -65,7 +65,7 @@ function overrideFor(
 }
 
 /**
- * Resolves which status label a GitHub event should target for a team.
+ * Resolves which status label a GitHub event should target for a subDepartment.
  * Override semantics: null = smart default, "" = disabled, other = exact
  * label (skipped if it no longer exists). Defaults: opened -> "In Progress";
  * ready for review / merge into a dev* branch -> first non-complete review

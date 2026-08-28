@@ -25,7 +25,7 @@ export type CreateBulkReassignJobParams = {
   targetType: BulkReassignTargetType;
   targetAgentId?: string | null;
   targetTeamId?: string | null;
-  /** Restrict the snapshot to these teams (caller's dept scope); all department teams when omitted. */
+  /** Restrict the snapshot to these subDepartments (caller's dept scope); all department subDepartments when omitted. */
   scopeTeamIds?: string[] | null;
 };
 
@@ -33,11 +33,11 @@ export type CreateBulkReassignJobParams = {
 export async function createBulkReassignJob(params: CreateBulkReassignJobParams) {
   const { tenantId, departmentId, createdById, sourceAssigneeId, targetType, targetAgentId, targetTeamId, scopeTeamIds } = params;
 
-  const teams = await prisma.subDepartment.findMany({
+  const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId, ...(scopeTeamIds ? { id: { in: scopeTeamIds } } : {}) },
     select: { id: true },
   });
-  const teamIds = teams.map((t) => t.id);
+  const teamIds = subDepartments.map((t) => t.id);
 
   const tickets = teamIds.length
     ? await prisma.ticket.findMany({
@@ -86,7 +86,7 @@ export async function runBulkReassignJob(jobId: string): Promise<void> {
       })
     : [];
 
-  // GROUP: round-robin the source agent's tickets across the target team's
+  // GROUP: round-robin the source agent's tickets across the target subDepartment's
   // eligible members — computed once so the distribution spreads evenly
   // across this job's tickets, not re-derived per ticket.
   let groupMemberIds: string[] = [];

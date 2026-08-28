@@ -9,14 +9,14 @@ type ProjectSubDepartmentRow = {
   subDepartment?: { departmentId: string | null } | null;
 };
 
-/** Effective department for a project row (direct field or via team). */
+/** Effective department for a project row (direct field or via subDepartment). */
 export function projectEffectiveDeptId(project: ProjectSubDepartmentRow): string | null {
   return project.departmentId ?? project.subDepartment?.departmentId ?? null;
 }
 
 /**
- * Resolve which team a new ticket should belong to for a project.
- * Legacy projects may have a null teamId, a deleted team reference, or a team
+ * Resolve which subDepartment a new ticket should belong to for a project.
+ * Legacy projects may have a null teamId, a deleted subDepartment reference, or a subDepartment
  * outside the project's department.
  */
 export async function resolveSubDepartmentIdForProject(
@@ -39,7 +39,7 @@ export async function resolveSubDepartmentIdForProject(
     return null;
   }
 
-  // Project team is valid when it exists and belongs to the project's department.
+  // Project subDepartment is valid when it exists and belongs to the project's department.
   if (project.subDepartmentId && deptId) {
     const subDepartment = await prisma.subDepartment.findUnique({
       where: { id: project.subDepartmentId },
@@ -51,7 +51,7 @@ export async function resolveSubDepartmentIdForProject(
     if (direct) return direct;
   }
 
-  // Prefer a real team in the project's department.
+  // Prefer a real subDepartment in the project's department.
   if (deptId) {
     const deptSubDepartment = await prisma.subDepartment.findFirst({
       where: { departmentId: deptId },
@@ -61,7 +61,7 @@ export async function resolveSubDepartmentIdForProject(
     if (deptSubDepartment) return deptSubDepartment.id;
   }
 
-  // Legacy projects — reuse a team that already hosts tickets for this project.
+  // Legacy projects — reuse a subDepartment that already hosts tickets for this project.
   if (projectId) {
     const ticketSubDepartments = await prisma.ticket.findMany({
       where: { projectId, deletedAt: null },
@@ -155,7 +155,7 @@ export function assignedProjectsInDeptWhere(userId: string, deptId: string) {
   };
 }
 
-/** Resolve a ticket's department from its team or project row. */
+/** Resolve a ticket's department from its subDepartment or project row. */
 export async function resolveTicketDeptId(ticket: {
   projectId?: string | null;
   subDepartment?: { departmentId?: string | null } | null;
@@ -174,7 +174,7 @@ export async function resolveTicketDeptId(ticket: {
 
 /**
  * Whether a cross-access guest may view/interact with a ticket (page-level check).
- * Uses the project's department when available so legacy team mismatches don't block access.
+ * Uses the project's department when available so legacy subDepartment mismatches don't block access.
  */
 export async function canCrossAccessGuestViewTicket(
   profile: ProfileLike,

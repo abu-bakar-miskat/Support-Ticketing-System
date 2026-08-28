@@ -91,7 +91,7 @@ export async function acceptDepartmentInvite(
       data: { acceptedAt: new Date() },
     });
 
-    // Close any pending join requests for this user targeting the same team or department
+    // Close any pending join requests for this user targeting the same subDepartment or department
     await tx.joinRequest.updateMany({
       where: {
         userId: profile.id,

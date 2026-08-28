@@ -33,9 +33,9 @@ export default async function SettingsMembersRoute() {
 
   let profiles: any[];
   let allMemberships: any[];
-  // Direct department members (added via department page, not via a team)
+  // Direct department members (added via department page, not via a subDepartment)
   let directDeptMembers: Array<{ userId: string; department: { id: string; name: string } }> = [];
-  // doNotAssign map: userId → list of { teamId, teamName, doNotAssign }
+  // doNotAssign map: userId → list of { teamId, subDepartmentName, doNotAssign }
   const doNotAssignMap = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
 
   if (isAdmin) {
@@ -51,7 +51,7 @@ export default async function SettingsMembersRoute() {
               subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
             },
           })
-          .catch((e: unknown) => { console.error("[members/page] admin-dept teamMembership query failed:", e); return [] as any[]; }),
+          .catch((e: unknown) => { console.error("[members/page] admin-dept subDepartmentMembership query failed:", e); return [] as any[]; }),
         (prisma.departmentMember as any)
           .findMany({
             where: { departmentId: activeDeptId },
@@ -83,7 +83,7 @@ export default async function SettingsMembersRoute() {
               subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
             },
           })
-          .catch((e: unknown) => { console.error("[members/page] admin-all teamMembership query failed:", e); return [] as any[]; }),
+          .catch((e: unknown) => { console.error("[members/page] admin-all subDepartmentMembership query failed:", e); return [] as any[]; }),
         (prisma.departmentMember as any)
           .findMany({
             where: { department: { tenantId } },
@@ -111,7 +111,7 @@ export default async function SettingsMembersRoute() {
             subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
           },
         })
-        .catch((e: unknown) => { console.error("[members/page] manager teamMembership query failed:", e); return [] as any[]; }),
+        .catch((e: unknown) => { console.error("[members/page] manager subDepartmentMembership query failed:", e); return [] as any[]; }),
       (prisma.departmentMember as any)
         .findMany({
           where: { departmentId: { in: deptIds } },
@@ -129,12 +129,12 @@ export default async function SettingsMembersRoute() {
       orderBy: { name: "asc" },
     });
   } else {
-    // Lead — scoped to their own team(s), handled in the isLead block below
+    // Lead — scoped to their own subDepartment(s), handled in the isLead block below
     [profiles, allMemberships, directDeptMembers] = [[], [], []];
   }
 
   if (isLead) {
-    // Lead sees all members of their own team(s)
+    // Lead sees all members of their own subDepartment(s)
     const leadSubDepartmentIds = profile.subDepartmentIds?.length
       ? profile.subDepartmentIds
       : profile.subDepartmentId ? [profile.subDepartmentId] : [];
@@ -142,14 +142,14 @@ export default async function SettingsMembersRoute() {
       ? await (prisma.subDepartmentMembership as any).findMany({
           where: { isActive: true, subDepartmentId: { in: leadSubDepartmentIds } },
           select: { userId: true, doNotAssign: true, subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } } },
-        }).catch((e: unknown) => { console.error("[members/page] lead teamMembership query failed:", e); return [] as any[]; })
+        }).catch((e: unknown) => { console.error("[members/page] lead subDepartmentMembership query failed:", e); return [] as any[]; })
       : [];
     const memberUserIds = [...new Set(allMemberships.map((m: any) => m.userId))];
     profiles = await prisma.profile.findMany({ where: { id: { in: memberUserIds }, deletedAt: null }, orderBy: { name: "asc" } });
   }
 
-  // Fetch available teams for the team assignment dropdown (admin/manager only).
-  // When a department is active, only that department's teams — required for invites + Add member.
+  // Fetch available subDepartments for the subDepartment assignment dropdown (admin/manager only).
+  // When a department is active, only that department's subDepartments — required for invites + Add member.
   const availableSubDepartments = (isAdmin || isManager)
     ? await prisma.subDepartment.findMany({
         where: activeDeptId
@@ -187,14 +187,14 @@ export default async function SettingsMembersRoute() {
       deptIdByUser.set(m.userId, m.subDepartment.department.id);
     }
     nativeUserIds.add(m.userId);
-    // Build doNotAssign map per user → list of team memberships
+    // Build doNotAssign map per user → list of subDepartment memberships
     if (m.subDepartment?.id) {
       const existing = doNotAssignMap.get(m.userId) ?? [];
       existing.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
       doNotAssignMap.set(m.userId, existing);
     }
   }
-  // Fill in dept info for direct members who have no team membership
+  // Fill in dept info for direct members who have no subDepartment membership
   for (const dm of directDeptMembers) {
     nativeUserIds.add(dm.userId);
     if (!deptByUser.has(dm.userId)) {
@@ -231,8 +231,8 @@ export default async function SettingsMembersRoute() {
       color: avatarColorFor(g.user.name),
       avatarUrl: g.user.avatarUrl ?? null,
       role: g.user.role as MemberRow["role"],
-      // Their real, native team — shown read-only; a manager here can't reassign a
-      // guest's team since it belongs to a different department than this page manages.
+      // Their real, native subDepartment — shown read-only; a manager here can't reassign a
+      // guest's subDepartment since it belongs to a different department than this page manages.
       subDepartments: g.user.subDepartment?.name ? [g.user.subDepartment.name] : [],
       subDepartmentId: null,
       department: g.user.subDepartment?.department?.name ?? null,

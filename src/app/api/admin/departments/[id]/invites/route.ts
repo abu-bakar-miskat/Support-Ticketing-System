@@ -109,7 +109,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!subDepartment || subDepartment.departmentId !== departmentId) {
-    return NextResponse.json({ error: "Team not found in this department" }, { status: 400 });
+    return NextResponse.json({ error: "SubDepartment not found in this department" }, { status: 400 });
   }
 
   const existingUser = await prisma.profile.findFirst({
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
   if (existingPending) {
     return NextResponse.json(
-      { error: "A pending invite already exists for this email and team" },
+      { error: "A pending invite already exists for this email and subDepartment" },
       { status: 409 },
     );
   }

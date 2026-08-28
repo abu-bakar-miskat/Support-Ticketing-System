@@ -127,7 +127,7 @@ export async function GET(request: Request) {
       where: { deletedAt: null, ...subDepartmentFilter },
       _count: { _all: true },
     }),
-    // Statuses flagged complete per team — the source of truth for "done".
+    // Statuses flagged complete per subDepartment — the source of truth for "done".
     prisma.subDepartmentStatus.findMany({
       where: {
         isComplete: true,
@@ -139,8 +139,8 @@ export async function GET(request: Request) {
     }),
   ])
 
-  // A ticket is "done" when its current status is flagged isComplete on its team.
-  // Teams with no configured statuses fall back to the default "Live" complete state.
+  // A ticket is "done" when its current status is flagged isComplete on its subDepartment.
+  // SubDepartments with no configured statuses fall back to the default "Live" complete state.
   const completeBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
     const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
@@ -343,7 +343,7 @@ export async function GET(request: Request) {
 
   // ── Cross-department contributions ──
   // What this department's people did for OTHER departments in the period:
-  // tickets created, tickets completed, and time logged on teams outside the scope.
+  // tickets created, tickets completed, and time logged on subDepartments outside the scope.
   // Only meaningful when a department is in scope — a global admin view has no
   // "other department" to compare against.
   let crossDept: CrossDeptContribution[] = []
@@ -360,8 +360,8 @@ export async function GET(request: Request) {
 
     if (crossMemberIds.length > 0) {
       // "Other department" = tickets NOT belonging to the active department, by
-      // the ticket's project department (not its team) — so work done on a
-      // member's own team but inside another department's project counts.
+      // the ticket's project department (not its subDepartment) — so work done on a
+      // member's own subDepartment but inside another department's project counts.
       const notInDept = { NOT: ticketInDeptWhere(deptScope.activeDeptId) }
       const deptSelect = {
         project: {

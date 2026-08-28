@@ -48,7 +48,7 @@ export async function fetchSubDepartmentTimeReport(
   const res = await fetch(
     `/api/reports/sub-department-time?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}`,
   )
-  if (!res.ok) throw new Error("Failed to fetch team time report")
+  if (!res.ok) throw new Error("Failed to fetch subDepartment time report")
   return res.json()
 }
 

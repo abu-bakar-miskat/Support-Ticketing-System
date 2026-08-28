@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 
 // ASG-06: destinations an agent can transfer a ticket to. Any authenticated
 // member may list the tenant's sub-departments (grouped by department) so they
-// can move a ticket across teams/departments. The transfer endpoint itself
+// can move a ticket across subDepartments/departments. The transfer endpoint itself
 // re-validates the target is within the tenant, so this is a safe read.
 export async function GET() {
   const { profile, error } = await requireAuth()

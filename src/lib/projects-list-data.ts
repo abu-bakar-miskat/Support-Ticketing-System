@@ -137,7 +137,7 @@ export async function fetchProjectsList(
   const memberWhere = { members: { some: { userId: profile.id } } };
 
   // "My projects" for managers also includes every project in departments they
-  // manage (by project department or by team department), since project
+  // manage (by project department or by subDepartment department), since project
   // creation does not add the creator as a member.
   const managedDeptIds = profile.managedDepartmentIds ?? [];
   const mineWhere =

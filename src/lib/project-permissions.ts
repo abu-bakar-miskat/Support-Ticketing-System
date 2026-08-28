@@ -8,7 +8,7 @@ export function hasSubDepartmentLeadRole(profile: ProjectPermissionProfile): boo
   return (profile.memberships ?? []).some((m) => m.role === "sub_manager");
 }
 
-/** Profile role or active team membership role is lead. */
+/** Profile role or active subDepartment membership role is lead. */
 export function isProjectLead(profile: ProjectPermissionProfile): boolean {
   return profile.role === "sub_manager" || hasSubDepartmentLeadRole(profile);
 }

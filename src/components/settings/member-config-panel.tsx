@@ -39,7 +39,7 @@ export type MemberConfigTarget = {
 
 type ReassignContext = {
   departmentId: string;
-  teams: { id: string; name: string }[];
+  subDepartments: { id: string; name: string }[];
   agents: { id: string; name: string }[];
 };
 
@@ -492,7 +492,7 @@ export function MemberConfigPanel({
                   </p>
                   <p className="mb-2.5 font-sans text-[11px] text-sts-subtle">
                     Move all of {member.name}&apos;s open tickets in this department to another
-                    agent, a team, or back into the department pool (auto-routed by the
+                    agent, a sub department, or back into the department pool (auto-routed by the
                     department&apos;s assignment method).
                   </p>
 
@@ -501,7 +501,7 @@ export function MemberConfigPanel({
                       {([
                         ["DEPARTMENT_POOL", "Dept pool"],
                         ["SINGLE_AGENT", "Agent"],
-                        ["GROUP", "Team"],
+                        ["GROUP", "SubDepartment"],
                       ] as [ReassignTargetType, string][]).map(([val, label]) => (
                         <button
                           key={val}
@@ -534,10 +534,10 @@ export function MemberConfigPanel({
                       <SearchableSelect
                         value={reassignTeamId}
                         onChange={setReassignTeamId}
-                        options={reassignContext.teams.map((t) => ({ value: t.id, label: t.name }))}
-                        placeholder="Select a team…"
-                        searchPlaceholder="Search teams…"
-                        emptyLabel="No teams"
+                        options={reassignContext.subDepartments.map((t) => ({ value: t.id, label: t.name }))}
+                        placeholder="Select a sub department…"
+                        searchPlaceholder="Search sub departments…"
+                        emptyLabel="No sub departments"
                         className="bg-sts-bg"
                       />
                     )}

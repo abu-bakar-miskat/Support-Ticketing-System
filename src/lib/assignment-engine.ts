@@ -19,11 +19,11 @@ export type AutoAssignResult = {
   assigneeId: string | null;
   method: AssignmentMethod;
   failed: boolean;
-  /** Set only for ROUND_ROBIN — the caller persists this onto Team.rotaPointer. */
+  /** Set only for ROUND_ROBIN — the caller persists this onto SubDepartment.rotaPointer. */
   nextRotaPointer?: number;
 };
 
-async function isEligibleTeamMember(userId: string, teamId: string): Promise<boolean> {
+async function isEligibleSubDepartmentMember(userId: string, teamId: string): Promise<boolean> {
   const [profile, membership] = await Promise.all([
     prisma.profile.findUnique({ where: { id: userId }, select: { isActive: true } }),
     prisma.subDepartmentMembership.findUnique({
@@ -64,14 +64,14 @@ export async function autoAssignTicket(params: {
   excludeUserId: string | null;
   /**
    * The intake form the ticket came from, if any. Its per-form method override
-   * (IntakeFormConfig.assignmentMethod) wins over the team/department method
-   * when set. null/absent → resolve from team, then department.
+   * (IntakeFormConfig.assignmentMethod) wins over the subDepartment/department method
+   * when set. null/absent → resolve from subDepartment, then department.
    */
   formConfigId?: string | null;
 }): Promise<AutoAssignResult> {
   const { departmentId, teamId, formValues, excludeUserId, formConfigId } = params;
 
-  const [department, team, form] = await Promise.all([
+  const [department, subDepartment, form] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
     prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true } }),
     formConfigId
@@ -82,7 +82,7 @@ export async function autoAssignTicket(params: {
   // → ROUND_ROBIN (preserves lib/rota.ts's historical default). Each level's
   // null means "inherit from the next".
   const method: AssignmentMethod =
-    form?.assignmentMethod ?? team?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
+    form?.assignmentMethod ?? subDepartment?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
 
   let result: AutoAssignResult;
 
@@ -110,13 +110,13 @@ export async function autoAssignTicket(params: {
       select: { id: true, conditions: true, agentId: true, enabled: true, order: true },
     });
     const candidateId = pickRuleBased(rules as AssignmentRuleLike[], formValues);
-    const eligible = candidateId ? await isEligibleTeamMember(candidateId, teamId) : false;
+    const eligible = candidateId ? await isEligibleSubDepartmentMember(candidateId, teamId) : false;
     result = eligible
       ? { assigneeId: candidateId, method, failed: false }
       : { assigneeId: null, method, failed: true };
   } else if (method === "ROUND_ROBIN") {
     const eligible = await getEligibleMembers(teamId, excludeUserId);
-    const picked = pickRoundRobin(eligible, team?.rotaPointer ?? 0);
+    const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
     result = picked
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
       : { assigneeId: null, method, failed: true };

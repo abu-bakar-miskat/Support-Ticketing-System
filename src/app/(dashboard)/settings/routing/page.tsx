@@ -32,7 +32,7 @@ export default async function SettingsRoutingRoute() {
   // Only admins can manage routing rules
   if (profile.role !== "admin") redirect("/settings");
 
-  // Scope to the active tenant via the rule's team. (Team-less catch-all rules
+  // Scope to the active tenant via the rule's subDepartment. (Team-less catch-all rules
   // have no tenant link and would need a RoutingRule.tenantId to isolate fully.)
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
   const dbRules = await prisma.routingRule.findMany({

@@ -87,7 +87,7 @@ export async function departmentTenantId(
   return dept?.tenantId ?? null;
 }
 
-/** The tenant that owns a team (denormalized; teams always carry tenantId). */
+/** The tenant that owns a subDepartment (denormalized; subDepartments always carry tenantId). */
 export async function subDepartmentTenantId(subDepartmentId: string): Promise<string | null> {
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: subDepartmentId },

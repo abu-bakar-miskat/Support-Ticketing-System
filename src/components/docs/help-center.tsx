@@ -221,7 +221,7 @@ const SECTIONS: HelpSection[] = [
     body: (
       <>
         <P>
-          This is your team&apos;s ticketing &amp; delivery platform: it runs support intake, ticket
+          This is your sub department&apos;s ticketing &amp; delivery platform: it runs support intake, ticket
           tracking, project/sprint/module planning, time logging, recruitment, and reporting — all
           scoped by <strong>department</strong>.
         </P>
@@ -230,7 +230,7 @@ const SECTIONS: HelpSection[] = [
           items={[
             <><strong>Getting started</strong>, <strong>Working with tickets</strong>, <strong>Planning &amp; delivery</strong> — everyday use for everyone.</>,
             <><strong>For managers &amp; admins</strong> — setup &amp; oversight (visible only to managers/admins).</>,
-            <><strong>How things work</strong> — the processes behind intake, ticket flow, and joining teams.</>,
+            <><strong>How things work</strong> — the processes behind intake, ticket flow, and joining sub departments.</>,
             <><strong>FAQ</strong> — quick answers.</>,
           ]}
         />
@@ -243,18 +243,18 @@ const SECTIONS: HelpSection[] = [
     title: "Onboarding & joining",
     icon: UserPlus,
     group: "start",
-    keywords: "onboarding first time join request department team invite accept access",
+    keywords: "onboarding first time join request department subDepartment invite accept access",
     summary: "How new users get into a department — invites and join requests.",
     body: (
       <>
-        <P>There are two ways to get access to a department/team:</P>
+        <P>There are two ways to get access to a department/subDepartment:</P>
         <Bullets
           items={[
-            <><strong>Invite</strong> — a manager/admin emails you an invite link; opening it and accepting adds you to the team with a set role.</>,
+            <><strong>Invite</strong> — a manager/admin emails you an invite link; opening it and accepting adds you to the sub department with a set role.</>,
             <><strong>Join request</strong> — from onboarding you can browse departments and request to join; a manager approves or rejects it (you&apos;re notified in your Inbox).</>,
           ]}
         />
-        <P>Until you belong to a team (or are added directly to a department), you&apos;ll land on the onboarding screen to find and request access.</P>
+        <P>Until you belong to a sub department (or are added directly to a department), you&apos;ll land on the onboarding screen to find and request access.</P>
       </>
     ),
   },
@@ -275,7 +275,7 @@ const SECTIONS: HelpSection[] = [
         <Subhead>Sidebar layout</Subhead>
         <Bullets
           items={[
-            <><strong>Workspace</strong> — Home, Tasks, Projects, Notifications, My Time, Activity, and (for managers) Members, Team Reports, Recruitment.</>,
+            <><strong>Workspace</strong> — Home, Tasks, Projects, Notifications, My Time, Activity, and (for managers) Members, SubDepartment Reports, Recruitment.</>,
             <><strong>Views</strong> — Board, Timeline, Modules, Reports, Calendar, My Profile, Settings, Help Center (department-scoped).</>,
             <><strong>Pinned projects</strong> — quick links you manage yourself.</>,
           ]}
@@ -296,7 +296,7 @@ const SECTIONS: HelpSection[] = [
         <P><strong>Staff</strong> land on a personal Home with a greeting, clock, quick stats, and their assigned work.</P>
         <P>
           <strong>Managers</strong> get a Manager dashboard highlighting things that need attention:
-          overdue tickets, unassigned tickets, the review queue, team workloads, member activity,
+          overdue tickets, unassigned tickets, the review queue, subDepartment workloads, member activity,
           pending join requests, and project health.
         </P>
       </>
@@ -405,7 +405,7 @@ const SECTIONS: HelpSection[] = [
           items={[
             <><strong>Type &amp; priority</strong> — Bug / Feature / Task / Chore, and Low → Urgent.</>,
             <><strong>Assignee, co-assignees &amp; QA assignee</strong> — the owner, optional helpers, and a separate reviewer.</>,
-            <><strong>Status</strong> — moves through the team&apos;s workflow columns.</>,
+            <><strong>Status</strong> — moves through the sub department&apos;s workflow columns.</>,
             <><strong>Labels</strong> — categorise; some statuses restrict which labels are allowed.</>,
             <><strong>Estimates &amp; time</strong> — planned effort vs. logged Development/QA time.</>,
             <><strong>Project, module &amp; sprint</strong> — where the ticket sits in planning.</>,
@@ -432,9 +432,9 @@ const SECTIONS: HelpSection[] = [
     icon: ListFilter,
     group: "tickets",
     managerOnly: true,
-    keywords: "all tasks list filter sort team department every ticket manager",
+    keywords: "all tasks list filter sort subDepartment department every ticket manager",
     summary: "A filterable list of every ticket in the department (manager/admin).",
-    body: <P>All Tasks is a filterable, sortable list of every ticket in the active department — filter by team, assignee, status, priority, label, or project. Available to managers/admins.</P>,
+    body: <P>All Tasks is a filterable, sortable list of every ticket in the active department — filter by subDepartment, assignee, status, priority, label, or project. Available to managers/admins.</P>,
   },
   {
     id: "board",
@@ -442,8 +442,8 @@ const SECTIONS: HelpSection[] = [
     icon: SquareKanban,
     group: "tickets",
     keywords: "board kanban columns drag drop status workflow filter",
-    summary: "Drag tickets across your team's workflow columns.",
-    body: <P>The board shows tickets as cards in columns mapped to your team&apos;s statuses. Drag a card to change its status. Use the filter bar to narrow by assignee, priority, label, and more.</P>,
+    summary: "Drag tickets across your sub department's workflow columns.",
+    body: <P>The board shows tickets as cards in columns mapped to your sub department&apos;s statuses. Drag a card to change its status. Use the filter bar to narrow by assignee, priority, label, and more.</P>,
   },
   {
     id: "time",
@@ -493,21 +493,21 @@ const SECTIONS: HelpSection[] = [
     summary: "The project detail page, its tabs, and where modules/sprints/stages live.",
     body: (
       <>
-        <P>Projects group related work and the people delivering it. Tickets belong to a project; projects belong to a department/team. Support submissions land in a department&apos;s support project automatically. Pin projects to the sidebar for quick access.</P>
+        <P>Projects group related work and the people delivering it. Tickets belong to a project; projects belong to a department/subDepartment. Support submissions land in a department&apos;s support project automatically. Pin projects to the sidebar for quick access.</P>
         <Subhead>Inside a project — the tabs</Subhead>
         <Bullets
           items={[
             <><strong>Overview</strong> — stats, activity, and contributors.</>,
             <><strong>All tasks</strong> — a table of every ticket in the project.</>,
             <><strong>Sprints</strong> — plan and run time-boxed iterations (see below).</>,
-            <><strong>Board</strong> — one board tab per team, showing tickets in the team&apos;s stages (columns).</>,
+            <><strong>Board</strong> — one board tab per sub department, showing tickets in the sub department&apos;s stages (columns).</>,
             <><strong>Assets</strong> — files and documents for the project.</>,
           ]}
         />
         <InfoBox type="info">
           Three things people look for &quot;inside a project&quot;: <strong>Sprints</strong> live on the project&apos;s Sprints tab;
           <strong> Modules</strong> are created from the Modules view and attached to the project; <strong>Stages</strong> (board columns)
-          are the team&apos;s workflow statuses set in Settings → Workflows. See the Modules, Sprints, and &quot;Custom stages&quot; sections.
+          are the sub department&apos;s workflow statuses set in Settings → Workflows. See the Modules, Sprints, and &quot;Custom stages&quot; sections.
         </InfoBox>
       </>
     ),
@@ -536,16 +536,16 @@ const SECTIONS: HelpSection[] = [
     title: "Custom stages (board columns)",
     icon: Workflow,
     group: "delivery",
-    keywords: "stages statuses columns workflow board custom create rename reorder complete team",
+    keywords: "stages statuses columns workflow board custom create rename reorder complete subDepartment",
     summary: "Where a project board's columns come from and how to customise them.",
     body: (
       <>
         <P>
-          A project board&apos;s columns are the <strong>stages</strong> (workflow statuses) of the <em>team</em> that owns the board —
-          so they&apos;re defined <strong>per team</strong>, and every project using that team shares them.
+          A project board&apos;s columns are the <strong>stages</strong> (workflow statuses) of the <em>subDepartment</em> that owns the board —
+          so they&apos;re defined <strong>per sub department</strong>, and every project using that sub department shares them.
         </P>
         <Subhead>Customise stages (Settings → Workflows) <RoleBadge role="manager" /></Subhead>
-        <Step number={1} title="Pick the team">In Settings → Workflows, choose the team whose stages you want to edit.</Step>
+        <Step number={1} title="Pick the subDepartment">In Settings → Workflows, choose the subDepartment whose stages you want to edit.</Step>
         <Step number={2} title="Add / edit a stage">Click <strong>Add status</strong>, set a <strong>label</strong> and <strong>color</strong>. Click a stage to rename or recolor it.</Step>
         <Step number={3} title="Reorder">Drag stages into the order they should appear as board columns.</Step>
         <Step number={4} title="Mark completion stages">Flag end stages as <strong>complete</strong> — these count tickets as done and feed the assignment rota&apos;s open-ticket counts.</Step>
@@ -579,7 +579,7 @@ const SECTIONS: HelpSection[] = [
     group: "delivery",
     keywords: "timeline gantt schedule dates overlaps",
     summary: "A time-based view of scheduled work.",
-    body: <P>Timeline lays tickets out by their dates so you can see what&apos;s scheduled when and spot overlaps across the team.</P>,
+    body: <P>Timeline lays tickets out by their dates so you can see what&apos;s scheduled when and spot overlaps across the sub department.</P>,
   },
   {
     id: "reports",
@@ -588,7 +588,7 @@ const SECTIONS: HelpSection[] = [
     group: "delivery",
     keywords: "reports charts metrics throughput time overview date range",
     summary: "Charts and metrics on throughput, time and progress.",
-    body: <P>Reports summarise delivery — throughput, time logged, and progress — filterable by date range, project, and person. Managers get deeper cross-team reporting (see Team reports).</P>,
+    body: <P>Reports summarise delivery — throughput, time logged, and progress — filterable by date range, project, and person. Managers get deeper cross-team reporting (see SubDepartment reports).</P>,
   },
 
   // ── For managers & admins ─────────────────────────────────────────────────────
@@ -607,7 +607,7 @@ const SECTIONS: HelpSection[] = [
           items={[
             "Overdue and unassigned tickets.",
             "The review queue (tickets awaiting QA/review).",
-            "Team workloads and member activity.",
+            "SubDepartment workloads and member activity.",
             "Pending join requests to approve/reject.",
             "Project health at a glance.",
           ]}
@@ -641,12 +641,12 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "teams-workflows",
-    title: "Teams, workflows & statuses",
+    title: "SubDepartments, workflows & statuses",
     icon: Workflow,
     group: "managers",
     managerOnly: true,
-    keywords: "teams prefix color workload threshold rota statuses workflow complete order labels github pr mapping join requests",
-    summary: "Teams, their statuses/workflow, and GitHub PR→status mapping.",
+    keywords: "subDepartments prefix color workload threshold rota statuses workflow complete order labels github pr mapping join requests",
+    summary: "SubDepartments, their statuses/workflow, and GitHub PR→status mapping.",
     body: (
       <>
         <Subhead>Sub departments (Settings → Sub departments &amp; roles)</Subhead>
@@ -660,7 +660,7 @@ const SECTIONS: HelpSection[] = [
         <Subhead>Workflows &amp; statuses (Settings → Workflows)</Subhead>
         <Bullets
           items={[
-            "Create/reorder statuses per team; set colors.",
+            "Create/reorder statuses per sub department; set colors.",
             "Mark statuses as “complete” (end states) — these drive open-ticket counts.",
             "Restrict which labels are allowed on each status.",
             "GitHub automation: map PR events (opened / ready for review / merged) to statuses.",
@@ -756,9 +756,9 @@ const SECTIONS: HelpSection[] = [
         <Bullets
           items={[
             <><strong>Issue-based</strong> — if the chosen issue has assignees, one goes direct; multiple round-robin among themselves.</>,
-            <><strong>Team ROTA</strong> (default) — rotates active team members, <em>excluding the department manager</em>.</>,
+            <><strong>SubDepartment ROTA</strong> (default) — rotates active subDepartment members, <em>excluding the department manager</em>.</>,
             <><strong>Availability-aware</strong> — skips anyone inactive, do-not-assign, on a holiday/off-day, or outside working hours.</>,
-            <><strong>Workload-aware</strong> — picks the next person under the team&apos;s open-ticket threshold; if all are over, the least-loaded gets it.</>,
+            <><strong>Workload-aware</strong> — picks the next person under the sub department&apos;s open-ticket threshold; if all are over, the least-loaded gets it.</>,
           ]}
         />
         <InfoBox type="tip">Off-days &amp; working hours affect the rota. Department-wide holidays are display-only and don&apos;t change assignment.</InfoBox>
@@ -767,7 +767,7 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "calendar",
-    title: "Team availability & Calendar",
+    title: "SubDepartment availability & Calendar",
     icon: CalendarRange,
     group: "managers",
     managerOnly: true,
@@ -790,15 +790,15 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "team-reports",
-    title: "Team reports (People)",
+    title: "SubDepartment reports (People)",
     icon: PieChart,
     group: "managers",
     managerOnly: true,
-    keywords: "team reports people manager per member open overdue in review shipped qa load time activity cross dept",
+    keywords: "subDepartment reports people manager per member open overdue in review shipped qa load time activity cross dept",
     summary: "Per-member and per-team performance for managers.",
     body: (
       <>
-        <P>Team Reports (Members → Team Reports) breaks performance down per person:</P>
+        <P>SubDepartment Reports (Members → SubDepartment Reports) breaks performance down per person:</P>
         <Bullets
           items={[
             "Open, overdue, in-review, and shipped tickets.",
@@ -871,7 +871,7 @@ const SECTIONS: HelpSection[] = [
           ]}
         />
         <Subhead>GitHub</Subhead>
-        <P>Link pull requests to tickets so PR state (opened / ready / merged) drives the ticket&apos;s status per your team&apos;s PR→status mapping.</P>
+        <P>Link pull requests to tickets so PR state (opened / ready / merged) drives the ticket&apos;s status per your sub department&apos;s PR→status mapping.</P>
       </>
     ),
   },
@@ -886,7 +886,7 @@ const SECTIONS: HelpSection[] = [
     body: (
       <>
         <Step number={1} title="Connect">Authorize your Notion account (Settings → Import).</Step>
-        <Step number={2} title="Configure">Pick a Notion database and map fields (name, description, status, assignee, dates, labels) and a target team.</Step>
+        <Step number={2} title="Configure">Pick a Notion database and map fields (name, description, status, assignee, dates, labels) and a target subDepartment.</Step>
         <Step number={3} title="Import">Run it; you&apos;ll see how many projects/tickets were created or skipped, plus any errors.</Step>
       </>
     ),
@@ -905,7 +905,7 @@ const SECTIONS: HelpSection[] = [
           items={[
             <><strong>SLA policies</strong> (Settings → SLA) — first-response &amp; resolution targets per priority. Admin-only; preview.</>,
             <><strong>Time-tracking approvals</strong> (Settings → Approvals) — require sign-off above an hours threshold. Admin-only.</>,
-            <><strong>Routing rules</strong> (Settings → Routing) — auto-route incoming requests by sender/subject/body to a team/priority. Admin-only; preview.</>,
+            <><strong>Routing rules</strong> (Settings → Routing) — auto-route incoming requests by sender/subject/body to a sub department/priority. Admin-only; preview.</>,
           ]}
         />
         <InfoBox type="info">SLA and Routing are configuration previews (Phase 2) — the screens show the intended setup.</InfoBox>
@@ -955,20 +955,20 @@ const SECTIONS: HelpSection[] = [
     group: "processes",
     keywords: "lifecycle status workflow columns complete done progress states",
     summary: "How a ticket moves from new to done.",
-    body: <P>A ticket starts in its team&apos;s first status and moves through the workflow columns as work progresses. Statuses marked &quot;complete&quot; count it as done — which also drives the open-ticket counts the assignment rota uses.</P>,
+    body: <P>A ticket starts in its subDepartment&apos;s first status and moves through the workflow columns as work progresses. Statuses marked &quot;complete&quot; count it as done — which also drives the open-ticket counts the assignment rota uses.</P>,
   },
   {
     id: "join-flow",
-    title: "Joining a team (requests)",
+    title: "Joining a sub department (requests)",
     icon: UserPlus,
     group: "processes",
-    keywords: "join request approve reject team department onboarding invite accept",
+    keywords: "join request approve reject subDepartment department onboarding invite accept",
     summary: "How join requests and invites are approved.",
     body: (
       <>
-        <Step number={1} title="Request or get invited">From onboarding you request to join a department/team, or a manager emails you an invite link.</Step>
+        <Step number={1} title="Request or get invited">From onboarding you request to join a department/subDepartment, or a manager emails you an invite link.</Step>
         <Step number={2} title="Manager reviews">Managers see pending join requests on their dashboard and Inbox, and approve or reject.</Step>
-        <Step number={3} title="Access granted">Once approved (or the invite is accepted), you appear as a team member with your assigned role.</Step>
+        <Step number={3} title="Access granted">Once approved (or the invite is accepted), you appear as a subDepartment member with your assigned role.</Step>
       </>
     ),
   },
@@ -990,7 +990,7 @@ const FAQS: FaqItem[] = [
     q: "How are support tickets assigned?",
     keywords: "assign rota round robin auto workload availability",
     managerOnly: true,
-    a: <P>If the intake form has auto-assign on, a smart round-robin rotates through the team&apos;s active members, skipping anyone unavailable (off-day, outside working hours, do-not-assign) and preferring people under the team&apos;s workload threshold. See <strong>Ticket assignment &amp; ROTA</strong>.</P>,
+    a: <P>If the intake form has auto-assign on, a smart round-robin rotates through the sub department&apos;s active members, skipping anyone unavailable (off-day, outside working hours, do-not-assign) and preferring people under the sub department&apos;s workload threshold. See <strong>Ticket assignment &amp; ROTA</strong>.</P>,
   },
   {
     id: "faq-verify",
@@ -1000,8 +1000,8 @@ const FAQS: FaqItem[] = [
   },
   {
     id: "faq-join",
-    q: "How do I join a department or team?",
-    keywords: "join request onboarding invite access department team",
+    q: "How do I join a department or subDepartment?",
+    keywords: "join request onboarding invite access department subDepartment",
     a: <P>From the onboarding screen, browse departments and send a join request for a manager to approve — or accept an emailed invite. See <strong>Onboarding &amp; joining</strong>.</P>,
   },
   {
@@ -1035,19 +1035,19 @@ const FAQS: FaqItem[] = [
     q: "How does GitHub move my tickets?",
     keywords: "github pr pull request status mapping automation",
     managerOnly: true,
-    a: <P>Link a PR to a ticket; the ticket&apos;s status then follows your team&apos;s PR→status mapping (opened / ready for review / merged), configured in Settings → Workflows.</P>,
+    a: <P>Link a PR to a ticket; the ticket&apos;s status then follows your sub department&apos;s PR→status mapping (opened / ready for review / merged), configured in Settings → Workflows.</P>,
   },
   {
     id: "faq-sprint",
     q: "How do I create a sprint, module, or stage?",
     keywords: "create sprint module stage column status project board how",
-    a: <P><strong>Sprints</strong>: project → Sprints tab → New sprint. <strong>Modules</strong>: Modules view → New module (pick the project). <strong>Stages</strong> (board columns): they&apos;re the team&apos;s workflow statuses in Settings → Workflows. See the Modules, Sprints, and Custom stages sections.</P>,
+    a: <P><strong>Sprints</strong>: project → Sprints tab → New sprint. <strong>Modules</strong>: Modules view → New module (pick the project). <strong>Stages</strong> (board columns): they&apos;re the sub department&apos;s workflow statuses in Settings → Workflows. See the Modules, Sprints, and Custom stages sections.</P>,
   },
   {
     id: "faq-columns",
     q: "Why can't I change the board columns?",
-    keywords: "board columns stages statuses edit team workflow permission",
-    a: <P>Board columns are the owning team&apos;s stages, edited in Settings → Workflows by managers/leads/admins. Staff see the columns but can&apos;t change the stage list.</P>,
+    keywords: "board columns stages statuses edit subDepartment workflow permission",
+    a: <P>Board columns are the owning subDepartment&apos;s stages, edited in Settings → Workflows by managers/leads/admins. Staff see the columns but can&apos;t change the stage list.</P>,
   },
   {
     id: "faq-notifications",

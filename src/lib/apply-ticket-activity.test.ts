@@ -12,7 +12,7 @@ function baseDetail(overrides: Partial<TicketDetailProps> = {}): TicketDetailPro
     dbId: "t1",
     ticketId: "WEB-1",
     projectId: "p1",
-    subDepartmentId: "team1",
+    subDepartmentId: "subDepartment1",
     projectName: "Web",
     projectColor: "#000",
     title: "Old title",

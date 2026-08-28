@@ -133,7 +133,7 @@ export function BulkAssignModal({
       value: "round-robin-all",
       icon: <RefreshCw className="size-3.5" />,
       label: "Round robin — all active members",
-      desc: "Distribute evenly across all team members",
+      desc: "Distribute evenly across all sub department members",
     },
     {
       value: "single",

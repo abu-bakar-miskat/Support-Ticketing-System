@@ -56,17 +56,17 @@ export async function POST(request: Request) {
     )
   }
 
-  // Verify the intake team belongs to the department
+  // Verify the intake subDepartment belongs to the department
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: intakeSubDepartmentId },
     select: { departmentId: true },
   })
   if (!subDepartment) {
-    return NextResponse.json({ error: "Intake team not found" }, { status: 404 })
+    return NextResponse.json({ error: "Intake subDepartment not found" }, { status: 404 })
   }
   if (subDepartment.departmentId !== departmentId) {
     return NextResponse.json(
-      { error: "Intake team must belong to the selected department" },
+      { error: "Intake subDepartment must belong to the selected department" },
       { status: 400 },
     )
   }

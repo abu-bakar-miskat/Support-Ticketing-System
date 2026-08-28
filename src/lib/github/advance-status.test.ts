@@ -128,7 +128,7 @@ describe("advanceTicketStatus", () => {
     expect(mockCascade).not.toHaveBeenCalled()
   })
 
-  it("respects a team override from githubStatusMap", async () => {
+  it("respects a subDepartment override from githubStatusMap", async () => {
     mockFindUnique.mockResolvedValue({
       ...baseTicket,
       subDepartment: { prefix: "DEV", githubStatusMap: { onPrOpened: "Done", onPrReadyForReview: null, onPrMerged: null } },

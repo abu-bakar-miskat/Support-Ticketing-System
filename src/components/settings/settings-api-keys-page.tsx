@@ -129,7 +129,7 @@ function ClaudeConnectGuide() {
             <li>
               <span className="font-semibold">4. Chat away.</span>{" "}
               <span className="text-sts-muted">
-                Try &quot;show me ticket WEB-12&quot; or &quot;create a bug for the WEB team&quot;.
+                Try &quot;show me ticket WEB-12&quot; or &quot;create a bug for the WEB subDepartment&quot;.
                 Actions taken by Claude are attributed to the key&apos;s owner and send the same
                 notifications as the web app. Full tool reference in the{" "}
                 <a href="/docs#claude-connector" className="text-sts-blue hover:underline">

@@ -26,7 +26,7 @@ export type UserScope = {
   departmentIds: string[];
   /** Departments where the user is admin/manager. */
   departmentAdminIds: string[];
-  /** Sub-departments (teams) the user has a role in. */
+  /** Sub-departments (subDepartments) the user has a role in. */
   subDepartmentIds: string[];
 };
 
@@ -90,7 +90,7 @@ export function shapeScope(rows: ScopeRow[]): UserScope {
 /**
  * Pure: decide whether a scope may access a department. `deptTenantId` is the
  * department's tenant; `subDeptDepartmentIds` is the set of department ids owning
- * the user's sub-departments (teams). Unit-tested.
+ * the user's sub-departments (subDepartments). Unit-tested.
  */
 export function decideDepartmentAccess(
   scope: UserScope,
@@ -106,14 +106,14 @@ export function decideDepartmentAccess(
 }
 
 /**
- * Pure: the set of sub-department (team) ids a caller may see *within one
+ * Pure: the set of sub-department (subDepartment) ids a caller may see *within one
  * department* (SRS SD-06). Returns `null` when the caller has whole-department
  * access — platform admin, an admin/manager of the department's tenant, or a
  * direct DEPARTMENT-scoped role — meaning "no sub-department restriction, all
- * teams". Otherwise returns exactly the caller's granted sub-departments that
+ * subDepartments". Otherwise returns exactly the caller's granted sub-departments that
  * belong to this department; an empty set means the caller sees nothing here.
  *
- * `departmentTeamIds` is the department's full set of team (sub-department) ids;
+ * `departmentTeamIds` is the department's full set of subDepartment (sub-department) ids;
  * `deptTenantId` is the department's tenant. Unit-tested.
  */
 export function subDepartmentScopeForDepartment(
@@ -125,7 +125,7 @@ export function subDepartmentScopeForDepartment(
   if (scope.isPlatformAdmin) return null;
   if (deptTenantId && scope.tenantAdminIds.includes(deptTenantId)) return null;
   if (scope.departmentIds.includes(departmentId)) return null;
-  // Sub-department-only caller: restrict to their granted teams inside this dept.
+  // Sub-department-only caller: restrict to their granted subDepartments inside this dept.
   const allowed = new Set(departmentSubDepartmentIds.filter((t) => scope.subDepartmentIds.includes(t)));
   return allowed;
 }
@@ -134,17 +134,17 @@ export function subDepartmentScopeForDepartment(
  * Pure: the caller's GLOBAL (cross-department) sub-department team-id
  * allowlist for the non-bypassable Prisma scope extension (SD-06, see
  * `lib/prisma-scope.ts`'s `TicketScope.subDepartmentTeamIds`). Unlike
- * {@link subDepartmentScopeForDepartment}, which answers "which teams within
+ * {@link subDepartmentScopeForDepartment}, which answers "which subDepartments within
  * *this* department", the scope extension applies one flat allowlist across
  * every ticket read regardless of department — so this expands DEPARTMENT-
- * and tenant-admin grants into their full team lists rather than leaving them
+ * and tenant-admin grants into their full subDepartment lists rather than leaving them
  * implicit.
  *
  * Returns `null` when the caller has no restriction anywhere (platform admin,
  * or admin of every tenant they belong to) — i.e. "whole-department access,
- * all teams". Otherwise returns the finite set of every team id the caller
- * may see: their direct team memberships, every team in a department they
- * hold DEPARTMENT-scoped access to, and every team in a tenant they admin.
+ * all subDepartments". Otherwise returns the finite set of every subDepartment id the caller
+ * may see: their direct subDepartment memberships, every subDepartment in a department they
+ * hold DEPARTMENT-scoped access to, and every subDepartment in a tenant they admin.
  * An empty (non-null) array correctly means "sees no tickets anywhere" for a
  * caller with no grants at all — callers must not collapse that to `null`.
  */
@@ -168,7 +168,7 @@ export function computeSubDepartmentTeamIds(
   return [...allowed];
 }
 
-/** DB layer for {@link computeSubDepartmentTeamIds}: fetches the team lists it needs. */
+/** DB layer for {@link computeSubDepartmentTeamIds}: fetches the subDepartment lists it needs. */
 export async function resolveSubDepartmentTeamIds(userId: string): Promise<string[] | null> {
   const scope = await resolveUserScope(userId);
   if (scope.isPlatformAdmin) return null;
@@ -176,7 +176,7 @@ export async function resolveSubDepartmentTeamIds(userId: string): Promise<strin
     return null;
   }
 
-  const [deptTeams, tenantTeams] = await Promise.all([
+  const [deptSubDepartments, tenantSubDepartments] = await Promise.all([
     scope.departmentIds.length > 0
       ? prisma.subDepartment.findMany({ where: { departmentId: { in: scope.departmentIds } }, select: { id: true, departmentId: true } })
       : Promise.resolve([]),
@@ -186,9 +186,9 @@ export async function resolveSubDepartmentTeamIds(userId: string): Promise<strin
   ]);
 
   const departmentTeamIds: Record<string, string[]> = {};
-  for (const t of deptTeams) (departmentTeamIds[t.departmentId] ??= []).push(t.id);
+  for (const t of deptSubDepartments) (departmentTeamIds[t.departmentId] ??= []).push(t.id);
   const tenantTeamIds: Record<string, string[]> = {};
-  for (const t of tenantTeams) (tenantTeamIds[t.tenantId] ??= []).push(t.id);
+  for (const t of tenantSubDepartments) (tenantTeamIds[t.tenantId] ??= []).push(t.id);
 
   return computeSubDepartmentTeamIds(scope, departmentTeamIds, tenantTeamIds);
 }

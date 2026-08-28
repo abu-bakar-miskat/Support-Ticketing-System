@@ -35,7 +35,7 @@ describe("createRecoveryHandler", () => {
       .mockResolvedValueOnce([{ id: "t1" }])
 
     const result = await handler({
-      model: "TeamMembership",
+      model: "SubDepartmentMembership",
       operation: "findMany",
       args: {},
       query,
@@ -110,7 +110,7 @@ describe("createRecoveryHandler", () => {
       .fn()
       .mockRejectedValue(new Error("Client has encountered a connection error and is not queryable"))
 
-    const result = await handler({ model: "TeamMembership", operation: "findMany", args: {}, query })
+    const result = await handler({ model: "SubDepartmentMembership", operation: "findMany", args: {}, query })
 
     expect(result).toEqual([])
     expect(recreate).toHaveBeenCalledTimes(1)

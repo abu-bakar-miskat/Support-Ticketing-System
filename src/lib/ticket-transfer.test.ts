@@ -20,7 +20,7 @@ import { prisma } from "@/lib/db"
 import { transferTicket } from "./ticket-transfer"
 
 const mockTicketFind = vi.mocked(prisma.ticket.findUnique)
-const mockTeamFind = vi.mocked(prisma.subDepartment.findUnique)
+const mockSubDepartmentFind = vi.mocked(prisma.subDepartment.findUnique)
 const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
 
 const baseTicket = {
@@ -31,7 +31,7 @@ const baseTicket = {
   subDepartment: { id: "team-source", name: "Billing", departmentId: "dept-A", tenantId: "tenant-1" },
 }
 
-const baseTargetTeam = {
+const baseTargetSubDepartment = {
   id: "team-target",
   name: "Onboarding",
   departmentId: "dept-B",
@@ -41,7 +41,7 @@ const baseTargetTeam = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockTicketFind.mockResolvedValue(baseTicket as never)
-  mockTeamFind.mockResolvedValue(baseTargetTeam as never)
+  mockSubDepartmentFind.mockResolvedValue(baseTargetSubDepartment as never)
   mockMembershipFind.mockResolvedValue(null as never)
   mockTx.subDepartmentTicketCounter.upsert.mockResolvedValue({ subDepartmentId: "team-target", lastNumber: 7 } as never)
 })
@@ -67,7 +67,7 @@ describe("transferTicket", () => {
     })
   })
 
-  it("keeps the assignee when they're an active member of the destination team", async () => {
+  it("keeps the assignee when they're an active member of the destination subDepartment", async () => {
     mockMembershipFind.mockResolvedValue({ isActive: true } as never)
 
     await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-target", actorId: "actor-1" })
@@ -77,7 +77,7 @@ describe("transferTicket", () => {
     )
   })
 
-  it("records a FORWARDED activity log entry with from/to team + department metadata", async () => {
+  it("records a FORWARDED activity log entry with from/to subDepartment + department metadata", async () => {
     await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-target", actorId: "actor-1" })
 
     expect(mockTx.activityLog.create).toHaveBeenCalledWith({
@@ -87,10 +87,10 @@ describe("transferTicket", () => {
         action: "FORWARDED",
         metadata: {
           fromTeamId: "team-source",
-          fromTeamName: "Billing",
+          fromSubDepartmentName: "Billing",
           fromDepartmentId: "dept-A",
           toTeamId: "team-target",
-          toTeamName: "Onboarding",
+          toSubDepartmentName: "Onboarding",
           toDepartmentId: "dept-B",
         },
       },
@@ -113,21 +113,21 @@ describe("transferTicket", () => {
     expect(result).toEqual({ ok: false, error: "Ticket not found" })
   })
 
-  it("rejects an unknown destination team", async () => {
-    mockTeamFind.mockResolvedValue(null as never)
+  it("rejects an unknown destination subDepartment", async () => {
+    mockSubDepartmentFind.mockResolvedValue(null as never)
     const result = await transferTicket({ ticketId: "ticket-1", targetTeamId: "nope", actorId: "actor-1" })
-    expect(result).toEqual({ ok: false, error: "Destination team not found" })
+    expect(result).toEqual({ ok: false, error: "Destination subDepartment not found" })
   })
 
-  it("rejects a destination team in a different tenant", async () => {
-    mockTeamFind.mockResolvedValue({ ...baseTargetTeam, tenantId: "tenant-2" } as never)
+  it("rejects a destination subDepartment in a different tenant", async () => {
+    mockSubDepartmentFind.mockResolvedValue({ ...baseTargetSubDepartment, tenantId: "tenant-2" } as never)
     const result = await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-target", actorId: "actor-1" })
-    expect(result).toEqual({ ok: false, error: "Destination team is outside this tenant" })
+    expect(result).toEqual({ ok: false, error: "Destination subDepartment is outside this tenant" })
   })
 
-  it("rejects transferring a ticket to the team it's already in", async () => {
-    mockTeamFind.mockResolvedValue({ ...baseTargetTeam, id: "team-source" } as never)
+  it("rejects transferring a ticket to the subDepartment it's already in", async () => {
+    mockSubDepartmentFind.mockResolvedValue({ ...baseTargetSubDepartment, id: "team-source" } as never)
     const result = await transferTicket({ ticketId: "ticket-1", targetTeamId: "team-source", actorId: "actor-1" })
-    expect(result).toEqual({ ok: false, error: "Ticket is already in that team" })
+    expect(result).toEqual({ ok: false, error: "Ticket is already in that subDepartment" })
   })
 })

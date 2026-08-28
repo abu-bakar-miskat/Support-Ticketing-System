@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json(subDepartment, { status: 201 })
   } catch (e) {
     if (isUniqueViolation(e)) {
-      return NextResponse.json({ error: "A team with that prefix already exists" }, { status: 409 })
+      return NextResponse.json({ error: "A subDepartment with that prefix already exists" }, { status: 409 })
     }
     throw e
   }

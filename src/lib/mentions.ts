@@ -49,7 +49,7 @@ export async function resolveMentionedProfiles(
     })
     if (ticket) {
       // @all targets the project's assigned members; if the ticket has no
-      // project, fall back to everyone mentionable in the team/department.
+      // project, fall back to everyone mentionable in the subDepartment/department.
       const mentionable = ticket.projectId
         ? await getMentionableProjectMembers(ticket.projectId)
         : await getMentionableUsersForTicketDept(

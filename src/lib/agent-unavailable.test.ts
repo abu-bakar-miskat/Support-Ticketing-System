@@ -88,7 +88,7 @@ describe("syncAgentUnavailableFlagForUser", () => {
     expect(mockTicketUpdate).not.toHaveBeenCalled()
   })
 
-  it("checks availability once per distinct team, not once per ticket", async () => {
+  it("checks availability once per distinct subDepartment, not once per ticket", async () => {
     mockTicketFindMany.mockResolvedValue([
       { id: "t1", subDepartmentId: "team-1", labels: [] },
       { id: "t2", subDepartmentId: "team-1", labels: [] },

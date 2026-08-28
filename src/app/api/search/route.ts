@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
           ),
         }
       : {}),
-    // Department/team scope
+    // Department/subDepartment scope
     ...(deptScope
       ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
       : profile.role === "admin"

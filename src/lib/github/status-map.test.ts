@@ -31,11 +31,11 @@ describe("pickStatusMove", () => {
     expect(pickStatusMove("In Review", "In Review", STATUSES, false)).toBeNull()
   })
 
-  it("rejects when the team has no status with the target label", () => {
+  it("rejects when the subDepartment has no status with the target label", () => {
     expect(pickStatusMove("Not Started", "QA", STATUSES, false)).toBeNull()
   })
 
-  it("rejects when the current status is not in the team's list", () => {
+  it("rejects when the current status is not in the subDepartment's list", () => {
     expect(pickStatusMove("Legacy", "Done", STATUSES, false)).toBeNull()
   })
 
@@ -79,7 +79,7 @@ describe("resolveTargetLabel — defaults (config null)", () => {
     ).toBe("in progress")
   })
 
-  it("prOpened skips when the team has no In Progress", () => {
+  it("prOpened skips when the subDepartment has no In Progress", () => {
     expect(resolveTargetLabel("prOpened", [{ label: "Doing", order: 0, isComplete: false }], null)).toBeNull()
   })
 

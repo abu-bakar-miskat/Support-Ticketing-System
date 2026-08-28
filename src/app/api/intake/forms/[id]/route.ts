@@ -57,10 +57,10 @@ export async function PATCH(
       where: { id: intakeSubDepartmentId },
       select: { departmentId: true },
     })
-    if (!subDepartment) return NextResponse.json({ error: "Intake team not found" }, { status: 404 })
+    if (!subDepartment) return NextResponse.json({ error: "Intake subDepartment not found" }, { status: 404 })
     if (subDepartment.departmentId !== result.form.departmentId) {
       return NextResponse.json(
-        { error: "Intake team must belong to the form's department" },
+        { error: "Intake subDepartment must belong to the form's department" },
         { status: 400 },
       )
     }

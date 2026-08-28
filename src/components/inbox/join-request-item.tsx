@@ -246,7 +246,7 @@ export function JoinRequestDetailPane({
                       {type === "full" ? "Full member" : "Cross-dept access"}
                     </span>
                     <span className="font-sans text-[11px] text-sts-subtle">
-                      {type === "full" ? "Joins as team member" : "Guest access, no team"}
+                      {type === "full" ? "Joins as sub department member" : "Guest access, no sub department"}
                     </span>
                   </button>
                 ))}
@@ -280,7 +280,7 @@ export function JoinRequestDetailPane({
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="Display name in this team"
+                placeholder="Display name in this sub department"
                 className="w-full rounded-md border border-sts-card-border bg-sts-bg px-2.5 py-1.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-muted outline-none focus:border-sts-id"
               />
             </div>

@@ -25,7 +25,7 @@ export const TICKET_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"]
 
 const REF_RE = /^([A-Za-z][A-Za-z0-9]*)-(\d+)$/
 
-/** Dept filter for teams: an API key scoped to a department sees only its teams. */
+/** Dept filter for subDepartments: an API key scoped to a department sees only its subDepartments. */
 function subDepartmentWhere(ctx: ApiKeyContext) {
   return ctx.departmentId ? { departmentId: ctx.departmentId } : {}
 }
@@ -249,7 +249,7 @@ export async function createTicket(
   if (!subDepartment) {
     return {
       ok: false,
-      message: `No team with prefix "${input.subDepartmentPrefix}" in this key's scope — call list_teams for valid prefixes`,
+      message: `No subDepartment with prefix "${input.subDepartmentPrefix}" in this key's scope — call list_teams for valid prefixes`,
     }
   }
 
@@ -559,7 +559,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     if (!target) {
       return {
         ok: false,
-        message: `Invalid status "${input.status}" for this team — valid: ${subDepartmentStatuses.map((s) => s.label).join(", ")}`,
+        message: `Invalid status "${input.status}" for this subDepartment — valid: ${subDepartmentStatuses.map((s) => s.label).join(", ")}`,
       }
     }
     statusChange = { to: target.label, isComplete: target.isComplete }

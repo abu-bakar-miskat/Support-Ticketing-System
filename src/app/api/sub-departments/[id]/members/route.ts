@@ -22,7 +22,7 @@ export async function GET(
   })
 
   if (!subDepartment) {
-    return NextResponse.json({ error: "Team not found" }, { status: 404 })
+    return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   }
 
   if (!(await canReadSubDepartmentData(profile, subDepartmentId))) {

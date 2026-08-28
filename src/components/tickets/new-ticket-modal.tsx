@@ -93,9 +93,9 @@ interface NewTicketModalProps {
   defaultProjectId?: string;
   /** Pre-select a status (used when opening from a board column + button) */
   defaultStatus?: string;
-  /** Lock the ticket to a specific team (used when opening from a team board tab) */
+  /** Lock the ticket to a specific subDepartment (used when opening from a subDepartment board tab) */
   defaultSubDepartmentId?: string;
-  /** Default board when creating from project All tasks (must be in boardTeams) */
+  /** Default board when creating from project All tasks (must be in boardSubDepartments) */
   defaultBoardSubDepartmentId?: string;
   /** Project board tabs — when multiple, user picks which board the task belongs to */
   boardSubDepartments?: { id: string; name: string }[];
@@ -107,7 +107,7 @@ interface NewTicketModalProps {
   subDepartments?: { id: string; name: string }[];
   /** Current department name, shown as read-only context beside the sub-department picker */
   departmentName?: string;
-  /** When true, team/board cannot be changed */
+  /** When true, subDepartment/board cannot be changed */
   lockSubDepartmentId?: boolean;
   /**
    * When true, project is read-only. Defaults to true whenever `defaultProjectId`
@@ -116,7 +116,7 @@ interface NewTicketModalProps {
   lockProject?: boolean;
   /** Team-specific statuses to show in the status dropdown */
   statuses?: StatusOption[];
-  /** Team members to show in the assignee dropdown (overrides global teamMembers) */
+  /** SubDepartment members to show in the assignee dropdown (overrides global subDepartmentMembers) */
   subDepartmentMembersForCreate?: UserListPerson[];
   /** When true, the assignee list is still loading — avoids a flash of "No members found" */
   membersLoading?: boolean;
@@ -173,7 +173,7 @@ export function NewTicketModal({
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, Record<string, boolean>>>({});
   const [deletingFiles, setDeletingFiles] = useState<Record<string, Record<string, boolean>>>({});
 
-  // Track selected project so we can fetch its team's statuses
+  // Track selected project so we can fetch its subDepartment's statuses
   // "" = Miscellaneous (no project)
   const defaultProject =
     projects.find((p) => p.id === defaultProjectId) ??
@@ -225,7 +225,7 @@ export function NewTicketModal({
         : selectedProject?.subDepartmentId ?? defaultSubDepartmentId ?? null;
   const propStatuses = statuses?.length ? statuses : undefined;
 
-  // Fetch the real team statuses; fall back to prop or defaults while loading
+  // Fetch the real subDepartment statuses; fall back to prop or defaults while loading
   const { data: fetchedStatuses } = useQuery({
     queryKey: subDepartmentKeys.statuses(activeSubDepartmentId ?? ""),
     queryFn: () => getSubDepartmentStatuses(activeSubDepartmentId!),

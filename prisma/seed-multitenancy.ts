@@ -1,5 +1,5 @@
 // Dev seed for multitenancy verification. Creates TWO independent tenants, each
-// with its own admin, department, team, project, and a few tickets, plus a
+// with its own admin, department, subDepartment, project, and a few tickets, plus a
 // cross-tenant super-admin. Safe to re-run (idempotent upserts).
 //
 //   npx tsx --env-file=.env prisma/seed-multitenancy.ts
@@ -32,8 +32,8 @@ async function seedTenant(opts: {
   adminId: string
   adminEmail: string
   deptName: string
-  teamPrefix: string
-  teamName: string
+  subDepartmentPrefix: string
+  subDepartmentName: string
   projectSlug: string
 }) {
   const tenant = await prisma.tenant.upsert({
@@ -57,16 +57,16 @@ async function seedTenant(opts: {
   const dept = (await prisma.department.findFirst({ where: { name: opts.deptName, tenantId: tenant.id } }))
     ?? (await prisma.department.create({ data: { name: opts.deptName, tenantId: tenant.id } }))
 
-  const team = await prisma.subDepartment.upsert({
-    where: { prefix: opts.teamPrefix },
+  const subDepartment = await prisma.subDepartment.upsert({
+    where: { prefix: opts.subDepartmentPrefix },
     update: {},
-    create: { name: opts.teamName, prefix: opts.teamPrefix, departmentId: dept.id, tenantId: tenant.id },
+    create: { name: opts.subDepartmentName, prefix: opts.subDepartmentPrefix, departmentId: dept.id, tenantId: tenant.id },
   })
   for (const s of STATUSES) {
     await prisma.subDepartmentStatus.upsert({
-      where: { subDepartmentId_label: { subDepartmentId: team.id, label: s.label } },
+      where: { subDepartmentId_label: { subDepartmentId: subDepartment.id, label: s.label } },
       update: {},
-      create: { subDepartmentId: team.id, ...s },
+      create: { subDepartmentId: subDepartment.id, ...s },
     })
   }
 
@@ -76,7 +76,7 @@ async function seedTenant(opts: {
     create: {
       slug: opts.projectSlug,
       name: `${opts.name} Platform`,
-      subDepartmentId: team.id,
+      subDepartmentId: subDepartment.id,
       departmentId: dept.id,
       tenantId: tenant.id,
       projectStatus: "active",
@@ -94,7 +94,7 @@ async function seedTenant(opts: {
           status: "Not Started",
           ticketNumber: 0,
           tenantId: tenant.id,
-          subDepartmentId: team.id,
+          subDepartmentId: subDepartment.id,
           projectId: project.id,
           creatorId: opts.adminId,
         },
@@ -112,8 +112,8 @@ async function main() {
     adminId: "00000000-0000-0000-0000-0000000000a1",
     adminEmail: "admin@pen.dev",
     deptName: "Engineering",
-    teamPrefix: "PEN",
-    teamName: "PEN Backend",
+    subDepartmentPrefix: "PEN",
+    subDepartmentName: "PEN Backend",
     projectSlug: "pen-web",
   })
 
@@ -123,8 +123,8 @@ async function main() {
     adminId: "00000000-0000-0000-0000-0000000000a2",
     adminEmail: "admin@acme.dev",
     deptName: "Product",
-    teamPrefix: "ACME",
-    teamName: "Acme Core",
+    subDepartmentPrefix: "ACME",
+    subDepartmentName: "Acme Core",
     projectSlug: "acme-web",
   })
 

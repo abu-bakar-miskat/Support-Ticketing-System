@@ -17,7 +17,7 @@ export const INVITE_PLACEHOLDER_KEYS = [
   "inviterName",
   "inviterFirstName",
   "departmentName",
-  "teamName",
+  "subDepartmentName",
   "role",
   "message",
   "messageBlock",
@@ -92,7 +92,7 @@ export function renderInvite({
 
   const infoRows = [
     { label: "Department", value: departmentName },
-    { label: "Team", value: subDepartmentName },
+    { label: "SubDepartment", value: subDepartmentName },
     { label: "Role", value: role.charAt(0).toUpperCase() + role.slice(1) },
   ];
   const infoHtml = summaryTable(infoRows);
@@ -111,7 +111,7 @@ export function renderInvite({
   const textParts = [
     `Hello,`,
     "",
-    `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} team.`,
+    `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment.`,
   ];
   if (messageText) {
     textParts.push("", messageText);
@@ -119,7 +119,7 @@ export function renderInvite({
   textParts.push(
     "",
     `Department: ${departmentName}`,
-    `Team: ${subDepartmentName}`,
+    `SubDepartment: ${subDepartmentName}`,
     `Role: ${role}`,
     "",
     `Accept invitation: ${url}`,

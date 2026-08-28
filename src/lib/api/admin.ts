@@ -126,7 +126,7 @@ export async function deleteAdminUser(id: string) {
 
 export async function getAdminSubDepartments(): Promise<AdminSubDepartment[]> {
   const res = await fetch("/api/admin/sub-departments")
-  if (!res.ok) throw new Error("Failed to fetch teams")
+  if (!res.ok) throw new Error("Failed to fetch subDepartments")
   return res.json()
 }
 
@@ -143,7 +143,7 @@ export async function createAdminSubDepartment(body: {
   })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
-    throw new Error(json.error ?? "Failed to create team")
+    throw new Error(json.error ?? "Failed to create subDepartment")
   }
   return res.json()
 }
@@ -159,7 +159,7 @@ export async function updateAdminSubDepartment(
   })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
-    throw new Error(json.error ?? "Failed to update team")
+    throw new Error(json.error ?? "Failed to update subDepartment")
   }
   return res.json()
 }
@@ -168,7 +168,7 @@ export async function deleteAdminSubDepartment(id: string) {
   const res = await fetch(`/api/admin/sub-departments/${id}`, { method: "DELETE" })
   if (!res.ok) {
     const json = await res.json().catch(() => ({}))
-    throw new Error(json.error ?? "Failed to delete team")
+    throw new Error(json.error ?? "Failed to delete subDepartment")
   }
 }
 
@@ -176,7 +176,7 @@ export async function getAdminSubDepartmentMembers(
   subDepartmentId: string,
 ): Promise<AdminUser[]> {
   const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`)
-  if (!res.ok) throw new Error("Failed to fetch team members")
+  if (!res.ok) throw new Error("Failed to fetch subDepartment members")
   return res.json()
 }
 
@@ -186,7 +186,7 @@ export async function addAdminSubDepartmentMember(subDepartmentId: string, userI
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, ...(role ? { role } : {}) }),
   })
-  if (!res.ok) throw new Error("Failed to add team member")
+  if (!res.ok) throw new Error("Failed to add subDepartment member")
 }
 
 export async function removeAdminSubDepartmentMember(subDepartmentId: string, userId: string) {
@@ -195,7 +195,7 @@ export async function removeAdminSubDepartmentMember(subDepartmentId: string, us
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId }),
   })
-  if (!res.ok) throw new Error("Failed to remove team member")
+  if (!res.ok) throw new Error("Failed to remove subDepartment member")
 }
 
 export async function updateAdminSubDepartmentMemberRole(subDepartmentId: string, userId: string, role: string) {
@@ -392,7 +392,7 @@ export async function revokeDepartmentInvite(deptId: string, inviteId: string) {
   if (!res.ok) throw new Error("Failed to revoke invite")
 }
 
-// Removes a native member: deletes their TeamMembership rows for this department's teams.
+// Removes a native member: deletes their SubDepartmentMembership rows for this department's subDepartments.
 export async function removeDepartmentMember(deptId: string, userId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/members`, {
     method: "DELETE",

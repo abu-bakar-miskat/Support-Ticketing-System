@@ -98,7 +98,7 @@ export function ReceivedMailPanel({
   const activeMailbox = mailboxes.find((m) => m.id === selectedMailbox) ?? null;
 
   // Filter by the chosen mailbox: messages route by the mailbox's sub-department
-  // (mail to an address opens tickets for the team it files into); suppressed
+  // (mail to an address opens tickets for the subDepartment it files into); suppressed
   // mail is keyed directly to the connection.
   const shownMessages = useMemo(() => {
     if (!messages) return null;

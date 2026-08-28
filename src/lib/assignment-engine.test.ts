@@ -32,7 +32,7 @@ import { sendAssignmentFailedAlertEmail } from "@/lib/email"
 import { autoAssignTicket, recordAssignmentFailure } from "./assignment-engine"
 
 const mockDeptFind = vi.mocked(prisma.department.findUnique)
-const mockTeamFind = vi.mocked(prisma.subDepartment.findUnique)
+const mockSubDepartmentFind = vi.mocked(prisma.subDepartment.findUnique)
 const mockRulesFindMany = vi.mocked(prisma.assignmentRule.findMany)
 const mockProfileFind = vi.mocked(prisma.profile.findUnique)
 const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
@@ -45,7 +45,7 @@ const mockSendEmail = vi.mocked(sendAssignmentFailedAlertEmail)
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockTeamFind.mockResolvedValue({ rotaPointer: 0 } as never)
+  mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0 } as never)
 })
 
 describe("autoAssignTicket — ASG-01", () => {
@@ -55,7 +55,7 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
   })
 
-  it("RULE_BASED: assigns when a rule matches and the target is an eligible team member", async () => {
+  it("RULE_BASED: assigns when a rule matches and the target is an eligible subDepartment member", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
     mockRulesFindMany.mockResolvedValue([
       { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
@@ -67,7 +67,7 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: "agent-1", method: "RULE_BASED", failed: false })
   })
 
-  it("RULE_BASED: fails when the matched agent is no longer an eligible team member", async () => {
+  it("RULE_BASED: fails when the matched agent is no longer an eligible subDepartment member", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
     mockRulesFindMany.mockResolvedValue([
       { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
@@ -88,7 +88,7 @@ describe("autoAssignTicket — ASG-01", () => {
 
   it("ROUND_ROBIN: assigns via the pointer and reports nextRotaPointer", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
-    mockTeamFind.mockResolvedValue({ rotaPointer: 1 } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 1 } as never)
     mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }])
 
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
@@ -130,14 +130,14 @@ describe("autoAssignTicket — ASG-01", () => {
   it("sub-department override wins over the parent department's method", async () => {
     // Parent says ROUND_ROBIN; sub-department overrides to MANUAL.
     mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
-    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "MANUAL" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "MANUAL" } as never)
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
     expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
   })
 
   it("inherits the parent department's method when the sub-department override is null", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED" } as never)
-    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
     mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
     mockGetCounts.mockResolvedValue([{ userId: "a", count: 3 }, { userId: "b", count: 0 }])
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
@@ -146,7 +146,7 @@ describe("autoAssignTicket — ASG-01", () => {
 
   it("RULE_BASED: queries rules scoped to the sub-department plus department-wide, sub-dept first", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
-    mockTeamFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
     mockRulesFindMany.mockResolvedValue([
       { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
     ] as never)

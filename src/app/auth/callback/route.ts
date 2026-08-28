@@ -2,117 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import type { EmailOtpType } from "@supabase/supabase-js"
 import { safeNextPath } from "@/lib/auth-redirect"
-import { acceptDepartmentInvite } from "@/lib/invites/accept-department-invite"
-import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope"
-import { prisma } from "@/lib/db"
-import { loginBlockReason } from "@/lib/tenant-lifecycle"
+import { completeLogin } from "@/lib/auth/complete-login"
 
 const AUTH_NEXT_COOKIE = "pen_auth_next"
-
-/**
- * SA-01/SA-03: reject sign-in with an explanatory message when the user is
- * individually restricted or their tenant is suspended/soft-deleted — and
- * sign the fresh Supabase session back out so it doesn't linger client-side.
- */
-async function rejectIfBlocked(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  origin: string,
-  clearNextCookie: (res: NextResponse) => NextResponse,
-): Promise<NextResponse | null> {
-  const reason = await loginBlockReason(userId)
-  if (!reason) return null
-  await supabase.auth.signOut()
-  return clearNextCookie(
-    NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(reason)}`),
-  )
-}
-
-/**
- * Resolve the tenant to make active on login: the user's first active
- * membership, or (for a super-admin with no membership) the oldest tenant so
- * they always land somewhere.
- */
-async function resolveLoginTenantId(
-  userId: string,
-  isSuperAdmin: boolean,
-): Promise<string | null> {
-  const membership = await prisma.tenantMembership.findFirst({
-    where: { userId, isActive: true },
-    orderBy: { createdAt: "asc" },
-    select: { tenantId: true },
-  })
-  if (membership) return membership.tenantId
-  if (!isSuperAdmin) return null
-  const first = await prisma.tenant.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  })
-  return first?.id ?? null
-}
-
-function setTenantCookie(res: NextResponse, tenantId: string | null): NextResponse {
-  if (tenantId) {
-    res.cookies.set(ACTIVE_TENANT_COOKIE, tenantId, {
-      httpOnly: true,
-      path: "/",
-      maxAge: TENANT_COOKIE_MAX_AGE,
-      sameSite: "lax",
-    })
-  }
-  return res
-}
-
-function inviteTokenFromNext(next: string): string | null {
-  const match = /^\/invite\/([^/?#]+)/.exec(next)
-  return match?.[1] ? decodeURIComponent(match[1]) : null
-}
-
-async function finishLoginRedirect(args: {
-  origin: string
-  next: string
-  userId: string
-  email: string
-  tenantId: string | null
-  isSuperAdmin: boolean
-  clearNextCookie: (res: NextResponse) => NextResponse
-}) {
-  const { origin, next, userId, email, tenantId, isSuperAdmin, clearNextCookie } = args
-  const withTenant = (res: NextResponse) => setTenantCookie(res, tenantId)
-  const inviteToken = inviteTokenFromNext(next)
-
-  // Super-admins land on the platform console first. Clear any stale active-dept
-  // cookie from a prior session so they don't drop into a department dashboard.
-  // A specific deep link (next !== "/") still wins over the platform default.
-  if (isSuperAdmin && !inviteToken && next === "/") {
-    const res = withTenant(clearNextCookie(NextResponse.redirect(`${origin}/platform`)))
-    res.cookies.set("pen_active_dept", "", { path: "/", maxAge: 0 })
-    return res
-  }
-
-  if (inviteToken) {
-    const result = await acceptDepartmentInvite(inviteToken, { id: userId, email })
-    if (result.ok) {
-      const res = withTenant(clearNextCookie(NextResponse.redirect(`${origin}/`)))
-      res.cookies.set("pen_active_dept", result.departmentId, {
-        httpOnly: true,
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-        sameSite: "lax",
-      })
-      return res
-    }
-    // Surface the accept error on the invite page instead of dumping into onboarding
-    const res = clearNextCookie(
-      NextResponse.redirect(
-        `${origin}/invite/${encodeURIComponent(inviteToken)}?error=${encodeURIComponent(result.code)}`,
-      ),
-    )
-    return res
-  }
-
-  return withTenant(clearNextCookie(NextResponse.redirect(`${origin}${next}`)))
-}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -141,6 +33,19 @@ export async function GET(request: Request) {
     return res
   }
 
+  const finish = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return clearNextCookie(NextResponse.redirect(`${origin}${next}`))
+    }
+    const { redirectPath, cookies } = await completeLogin({ supabase, user, next })
+    const res = NextResponse.redirect(`${origin}${redirectPath}`)
+    for (const c of cookies) res.cookies.set(c.name, c.value, c.options)
+    return res
+  }
+
   // PKCE flow — OAuth and magic link when PKCE is enabled (default with @supabase/ssr)
   if (code) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -151,35 +56,7 @@ export async function GET(request: Request) {
         )
       )
     }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { reconcileProfileOnLogin } = await import("@/lib/reconcile-profile-on-login")
-      await reconcileProfileOnLogin(user).catch((err) => {
-        console.error("[auth/callback] profile reconcile failed:", err)
-      })
-      // Prefer DB profile email (source of truth after reconcile) for invite matching
-      const profile = await prisma.profile.findUnique({
-        where: { id: user.id },
-        select: { id: true, email: true, isSuperAdmin: true },
-      })
-      if (profile) {
-        const blocked = await rejectIfBlocked(supabase, profile.id, origin, clearNextCookie)
-        if (blocked) return blocked
-        const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin)
-        return finishLoginRedirect({
-          origin,
-          next,
-          userId: profile.id,
-          email: profile.email,
-          tenantId,
-          isSuperAdmin: profile.isSuperAdmin,
-          clearNextCookie,
-        })
-      }
-    }
-    return clearNextCookie(NextResponse.redirect(`${origin}${next}`))
+    return finish()
   }
 
   // Token hash flow — magic link fallback when PKCE is not used
@@ -192,34 +69,7 @@ export async function GET(request: Request) {
         )
       )
     }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { reconcileProfileOnLogin } = await import("@/lib/reconcile-profile-on-login")
-      await reconcileProfileOnLogin(user).catch((err) => {
-        console.error("[auth/callback] profile reconcile failed:", err)
-      })
-      const profile = await prisma.profile.findUnique({
-        where: { id: user.id },
-        select: { id: true, email: true, isSuperAdmin: true },
-      })
-      if (profile) {
-        const blocked = await rejectIfBlocked(supabase, profile.id, origin, clearNextCookie)
-        if (blocked) return blocked
-        const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin)
-        return finishLoginRedirect({
-          origin,
-          next,
-          userId: profile.id,
-          email: profile.email,
-          tenantId,
-          isSuperAdmin: profile.isSuperAdmin,
-          clearNextCookie,
-        })
-      }
-    }
-    return clearNextCookie(NextResponse.redirect(`${origin}${next}`))
+    return finish()
   }
 
   return NextResponse.redirect(`${origin}/login`)

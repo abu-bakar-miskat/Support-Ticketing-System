@@ -49,7 +49,7 @@ export function patchSubDepartmentStatusInCaches(
   );
 }
 
-/** Replace a team's full status list everywhere it is cached. */
+/** Replace a subDepartment's full status list everywhere it is cached. */
 export function replaceSubDepartmentStatusesInCaches(
   queryClient: QueryClient,
   subDepartmentId: string,
@@ -66,7 +66,7 @@ export function replaceSubDepartmentStatusesInCaches(
   });
 }
 
-/** Refetch team workflow statuses after settings changes. */
+/** Refetch subDepartment workflow statuses after settings changes. */
 export function invalidateSubDepartmentStatusCaches(
   queryClient: QueryClient,
   subDepartmentId?: string,
@@ -74,7 +74,7 @@ export function invalidateSubDepartmentStatusCaches(
   if (subDepartmentId) {
     void queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) });
   } else {
-    void queryClient.invalidateQueries({ queryKey: ["teams"] });
+    void queryClient.invalidateQueries({ queryKey: ["subDepartments"] });
   }
   void queryClient.invalidateQueries({ queryKey: ["tasks", "meta"] });
   void queryClient.invalidateQueries({ queryKey: taskKeys.my() });

@@ -5,7 +5,7 @@ import { forbidden } from "@/lib/api-response"
 import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
 
 // GET /api/departments/[id]/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
-// Members of the department (team + direct), their schedules, their off-days in
+// Members of the department (subDepartment + direct), their schedules, their off-days in
 // the window, plus department-wide holidays overlapping the window.
 export async function GET(
   req: NextRequest,

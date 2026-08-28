@@ -3,7 +3,7 @@ import { renderInvite } from "./invite";
 import { safeNextPath } from "../auth-redirect";
 
 describe("renderInvite", () => {
-  it("includes department, team, role, message, and CTA", () => {
+  it("includes department, subDepartment, role, message, and CTA", () => {
     const { subject, html, text } = renderInvite({
       inviteeEmail: "jamie@pengroup.com",
       inviterName: "Alex Rivera",

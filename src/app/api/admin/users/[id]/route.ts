@@ -70,7 +70,7 @@ export async function PATCH(
   if ("subDepartmentId" in body) {
     const nextSubDepartmentId = body.subDepartmentId ?? null
     if (isManager && nextSubDepartmentId && !(await subDepartmentInScope(profile!, nextSubDepartmentId))) {
-      return NextResponse.json({ error: "Team is outside your department scope" }, { status: 403 })
+      return NextResponse.json({ error: "SubDepartment is outside your department scope" }, { status: 403 })
     }
     data.subDepartmentId = nextSubDepartmentId
   }
@@ -108,7 +108,7 @@ export async function PATCH(
     await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
   }
 
-  // Keep TeamMembership.role in sync with Profile.role — non-fatal if it fails
+  // Keep SubDepartmentMembership.role in sync with Profile.role — non-fatal if it fails
   if (data.role) {
     await prisma.subDepartmentMembership.updateMany({
       where: { userId: id },
@@ -116,8 +116,8 @@ export async function PATCH(
     }).catch(() => {})
   }
 
-  // Keep TeamMembership in sync with Profile.teamId. The department members list is
-  // built from active TeamMembership rows, so a teamId change must move the user's
+  // Keep SubDepartmentMembership in sync with Profile.teamId. The department members list is
+  // built from active SubDepartmentMembership rows, so a teamId change must move the user's
   // membership too — otherwise the change appears to save but never shows up.
   if ("subDepartmentId" in data) {
     const nextSubDepartmentId = data.subDepartmentId ?? null

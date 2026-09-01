@@ -453,10 +453,13 @@ export const prisma = new Proxy({} as PrismaInstance, {
           }
           // Only the interactive (callback) form is safely replayable: its closure
           // re-runs cleanly, whereas the batch form's args are PrismaPromises already
-          // bound to the dead client. Replay once on a fresh client; a second P2028
-          // propagates.
+          // bound to the dead client. The transaction rolled back atomically (nothing
+          // committed), so tear the pool down before replaying — otherwise getPrisma()
+          // hands back the SAME cached client/pool whose still-live teardown caused the
+          // P2028, and the replay throws P2028 again. A second P2028 propagates.
           if (prop === "$transaction" && isTransactionAbortedError(err) && typeof args[0] === "function") {
             console.warn("[db] P2028 transaction aborted mid-flight — replaying on a fresh client")
+            await recreatePool()
             const fresh = getPrisma() as unknown as PrismaInstance
             return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...args)
           }

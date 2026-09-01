@@ -36,16 +36,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { userId, role: rawRole } = body as { userId?: string; role?: string }
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
 
-  // role-hierarchy.md: a department Admin holds full admin-only settings power;
-  // only a tenant admin or an existing Admin of this department may grant it. A
-  // plain department Manager may add Managers/Agents but not Admins.
+  // role-hierarchy.md: a plain department Manager may add Managers/Agents but not
+  // manage Admins. Managing an Admin — granting it, or overwriting/downgrading an
+  // existing Admin row — requires tenant-admin or department-Admin authority.
   const role = rawRole === "admin" ? "admin" : "manager"
-  if (role === "admin") {
-    const isTenantAdmin = profile!.role === "admin"
-    const isDeptAdmin = (profile!.departmentAdminIds ?? []).includes(id)
-    if (!isTenantAdmin && !isDeptAdmin) {
-      return NextResponse.json({ error: "Only an admin of this department can grant admin." }, { status: 403 })
-    }
+  const callerIsDeptAdmin =
+    profile!.role === "admin" || (profile!.departmentAdminIds ?? []).includes(id)
+  const existing = await prisma.departmentManager.findUnique({
+    where: { departmentId_userId: { departmentId: id, userId } },
+    select: { role: true },
+  })
+  if ((role === "admin" || existing?.role === "admin") && !callerIsDeptAdmin) {
+    return NextResponse.json({ error: "Only an admin of this department can manage admins." }, { status: 403 })
   }
 
   const dept = await prisma.department.findUnique({ where: { id } })

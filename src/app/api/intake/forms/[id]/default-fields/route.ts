@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import type { Prisma } from "@/generated/prisma/client"
 import {
   resolveIntakeDefaultFields,
@@ -31,11 +31,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   return NextResponse.json(resolveIntakeDefaultFields(access.intakeDefaultFields))
@@ -46,11 +46,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const body = await request.json().catch(() => ({}))

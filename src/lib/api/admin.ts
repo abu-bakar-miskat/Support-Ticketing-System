@@ -261,13 +261,20 @@ export async function completeAdminDepartmentSetup(deptId: string) {
   return res.json()
 }
 
-export async function assignDepartmentManager(deptId: string, userId: string) {
+export async function assignDepartmentManager(
+  deptId: string,
+  userId: string,
+  role?: "admin" | "manager",
+) {
   const res = await fetch(`/api/admin/departments/${deptId}/managers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify(role ? { userId, role } : { userId }),
   })
-  if (!res.ok) throw new Error("Failed to assign manager")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? "Failed to assign manager")
+  }
   return res.json()
 }
 

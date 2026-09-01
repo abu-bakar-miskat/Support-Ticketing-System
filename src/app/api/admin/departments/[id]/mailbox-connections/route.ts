@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
-import { getProfileDeptScope } from "@/lib/dept-scope"
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 import { listMailboxConnections, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 
@@ -17,16 +16,12 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile: caller, error } = await requireAdmin()
+  const { profile: caller, error } = await requireAuth()
   if (error) return error
 
   const { id: departmentId } = await params
-  if (caller!.role === "manager") {
-    const deptScope = await getProfileDeptScope(caller!)
-    if (!deptScope?.allowedDeptIds.includes(departmentId)) {
-      return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
-    }
-  }
+  const scopeError = assertDepartmentAdmin(caller!, departmentId)
+  if (scopeError) return scopeError
 
   const connections = await listMailboxConnections(departmentId)
   return NextResponse.json(connections)
@@ -40,16 +35,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile: caller, error } = await requireAdmin()
+  const { profile: caller, error } = await requireAuth()
   if (error) return error
 
   const { id: departmentId } = await params
-  if (caller!.role === "manager") {
-    const deptScope = await getProfileDeptScope(caller!)
-    if (!deptScope?.allowedDeptIds.includes(departmentId)) {
-      return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
-    }
-  }
+  const scopeError = assertDepartmentAdmin(caller!, departmentId)
+  if (scopeError) return scopeError
 
   const body = await req.json().catch(() => ({}))
   const { teamId, scopeType, address, authType, plaintextCredentials } = body as {

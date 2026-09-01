@@ -14,6 +14,18 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!(profile!.managedDepartmentIds ?? []).includes(id)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // role-hierarchy.md: a plain department Manager may not remove an Admin — that
+  // requires tenant-admin or department-Admin authority.
+  const target = await prisma.departmentManager.findUnique({
+    where: { departmentId_userId: { departmentId: id, userId } },
+    select: { role: true },
+  })
+  const callerIsDeptAdmin =
+    profile!.role === "admin" || (profile!.departmentAdminIds ?? []).includes(id)
+  if (target?.role === "admin" && !callerIsDeptAdmin) {
+    return NextResponse.json({ error: "Only an admin of this department can remove an admin." }, { status: 403 })
+  }
+
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
 
   await prisma.departmentManager.deleteMany({ where: { departmentId: id, userId } })

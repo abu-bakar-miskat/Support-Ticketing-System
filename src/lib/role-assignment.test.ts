@@ -89,6 +89,12 @@ describe("deriveEffectiveRole", () => {
     ).toBe("manager");
   });
 
+  it("department admin collapses to manager globally (dept-admin power comes from departmentAdminIds)", () => {
+    expect(
+      deriveEffectiveRole([{ role: "admin", scopeType: "DEPARTMENT", scopeId: "d1" }]),
+    ).toBe("manager");
+  });
+
   it("tenant manager → manager", () => {
     expect(deriveEffectiveRole([{ role: "manager", scopeType: "TENANT", scopeId: "t1" }])).toBe(
       "manager",

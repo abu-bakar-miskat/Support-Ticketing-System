@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { IntakeFieldType, Prisma } from "@/generated/prisma/client"
 import { parseVisibleWhen } from "@/lib/form-validation"
 import { bumpFormSchemaVersion, fieldUsesOptions } from "@/lib/intake-form-schema"
@@ -30,11 +30,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; fieldId: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { fieldId } = await params
-  const access = await assertFieldAccess(fieldId, managerDeptScope(profile!))
+  const access = await assertFieldAccess(fieldId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const body = await request.json()
@@ -93,11 +93,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; fieldId: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { fieldId } = await params
-  const access = await assertFieldAccess(fieldId, managerDeptScope(profile!))
+  const access = await assertFieldAccess(fieldId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   await prisma.intakeFormField.delete({ where: { id: fieldId } })

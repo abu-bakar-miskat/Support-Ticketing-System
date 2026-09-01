@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { assertUsersEligibleForProjectDepartment } from "@/lib/project-department-people"
 import { TicketPriority } from "@/generated/prisma/client"
 
@@ -36,11 +36,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const issues = await prisma.intakeIssue.findMany({
@@ -60,11 +60,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const body = await request.json()

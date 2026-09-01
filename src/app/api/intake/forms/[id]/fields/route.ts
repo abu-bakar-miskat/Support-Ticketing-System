@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { IntakeFieldType } from "@/generated/prisma/client"
 import { parseVisibleWhen } from "@/lib/form-validation"
 import { bumpFormSchemaVersion, fieldUsesOptions } from "@/lib/intake-form-schema"
@@ -30,11 +30,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const fields = await prisma.intakeFormField.findMany({
@@ -48,11 +48,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
-  const access = await assertFormAccess(formId, managerDeptScope(profile!))
+  const access = await assertFormAccess(formId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const body = await request.json()

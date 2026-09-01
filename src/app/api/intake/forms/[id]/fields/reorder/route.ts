@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { bumpFormSchemaVersion } from "@/lib/intake-form-schema"
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id: formId } = await params
@@ -18,7 +18,7 @@ export async function PATCH(
   })
   if (!form) return NextResponse.json({ error: "Form not found" }, { status: 404 })
 
-  const deptScope = managerDeptScope(profile!)
+  const deptScope = departmentAdminScope(profile!)
   if (deptScope && !deptScope.has(form.departmentId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }

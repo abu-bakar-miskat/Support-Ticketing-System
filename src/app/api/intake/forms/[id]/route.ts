@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { Prisma } from "@/generated/prisma/client"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { sanitizeFormBranding } from "@/lib/form-branding"
 
 async function assertFormScope(
@@ -27,11 +27,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params
-  const result = await assertFormScope(id, managerDeptScope(profile!))
+  const result = await assertFormScope(id, departmentAdminScope(profile!))
   if (isNextResponse(result)) return result
 
   const body = await request.json()
@@ -98,11 +98,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params
-  const result = await assertFormScope(id, managerDeptScope(profile!))
+  const result = await assertFormScope(id, departmentAdminScope(profile!))
   if (isNextResponse(result)) return result
 
   // A form with submissions can't be deleted — its intakes reference it and are

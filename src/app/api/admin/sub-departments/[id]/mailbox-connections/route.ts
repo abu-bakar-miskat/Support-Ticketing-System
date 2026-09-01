@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { requireAdmin } from "@/lib/auth"
-import { getProfileDeptScope } from "@/lib/dept-scope"
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 import { listMailboxConnectionsForSubDepartment, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 
@@ -10,19 +9,20 @@ const IMPLEMENTED_AUTH_TYPES = new Set(["RESEND"])
 
 type Params = { params: Promise<{ id: string }> }
 
-async function loadSubDepartmentInScope(subDepartmentId: string, caller: { role: string }) {
+async function loadSubDepartmentInScope(
+  subDepartmentId: string,
+  caller: Parameters<typeof assertDepartmentAdmin>[0],
+) {
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: subDepartmentId },
     select: { id: true, departmentId: true, tenantId: true },
   })
   if (!subDepartment) return { subDepartment: null, error: NextResponse.json({ error: "Sub-department not found" }, { status: 404 }) }
 
-  if (caller.role === "manager") {
-    const deptScope = await getProfileDeptScope(caller as never)
-    if (!deptScope?.allowedDeptIds.includes(subDepartment.departmentId)) {
-      return { subDepartment: null, error: NextResponse.json({ error: "Sub-department is outside your scope" }, { status: 403 }) }
-    }
-  }
+  // Mailbox connections are department admin-only (role-hierarchy.md): a tenant
+  // admin or an Admin of the sub-department's parent department may manage them.
+  const scopeError = assertDepartmentAdmin(caller, subDepartment.departmentId)
+  if (scopeError) return { subDepartment: null, error: scopeError }
   return { subDepartment, error: null }
 }
 
@@ -30,7 +30,7 @@ async function loadSubDepartmentInScope(subDepartmentId: string, caller: { role:
 // sub-department. teamId/departmentId are always resolved from the URL, so
 // callers can't connect a mailbox to any sub-department outside their scope.
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { profile: caller, error } = await requireAdmin()
+  const { profile: caller, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params
@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const { profile: caller, error } = await requireAdmin()
+  const { profile: caller, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params

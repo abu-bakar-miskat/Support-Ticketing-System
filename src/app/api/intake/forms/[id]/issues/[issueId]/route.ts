@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { assertUsersEligibleForProjectDepartment } from "@/lib/project-department-people"
 import { parseAssigneeIds } from "../route"
 import { TicketPriority } from "@/generated/prisma/client"
@@ -32,11 +32,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; issueId: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { issueId } = await params
-  const access = await assertIssueAccess(issueId, managerDeptScope(profile!))
+  const access = await assertIssueAccess(issueId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   const body = await request.json()
@@ -97,11 +97,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; issueId: string }> },
 ) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { issueId } = await params
-  const access = await assertIssueAccess(issueId, managerDeptScope(profile!))
+  const access = await assertIssueAccess(issueId, departmentAdminScope(profile!))
   if (isNextResponse(access)) return access
 
   await prisma.intakeIssue.delete({ where: { id: issueId } })

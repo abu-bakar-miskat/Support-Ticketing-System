@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 
 export async function GET() {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
-  const deptScope = managerDeptScope(profile!)
+  const deptScope = departmentAdminScope(profile!)
   const forms = await prisma.intakeFormConfig.findMany({
     where: deptScope
       ? { departmentId: { in: [...deptScope] } }
@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { profile, error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const featureCheck = await assertTemplateFeatureEnabled(profile!.activeTenantId ?? "__no_tenant__", "supportForm")
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const deptScope = managerDeptScope(profile!)
+  const deptScope = departmentAdminScope(profile!)
   if (deptScope && !deptScope.has(departmentId)) {
     return NextResponse.json(
       { error: "Forbidden: department is outside your scope" },

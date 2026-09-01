@@ -27,6 +27,15 @@ export function isDeptScopedRoot(seg: string): boolean {
 }
 
 /**
+ * True when a whole path is department-scoped (gets /<tenant>/<dept>/…). The
+ * home dashboard ("/") belongs to the active department, so it's included.
+ */
+export function isDeptScopedPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return isDeptScopedRoot(firstSegment(pathname));
+}
+
+/**
  * Top-level route segments that live *inside* a tenant (get the slug prefix).
  * Everything else (platform, login, auth, api, support, onboarding, invite,
  * screen, …) is tenant-agnostic and never prefixed.

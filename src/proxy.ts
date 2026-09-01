@@ -3,9 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   TENANT_SLUG_COOKIE,
   DEPT_SLUG_COOKIE,
-  firstSegment,
   isBareTenantScoped,
-  isDeptScopedRoot,
+  isDeptScopedPath,
   withTenant,
 } from "@/lib/tenant-path";
 
@@ -96,7 +95,7 @@ export async function proxy(request: NextRequest) {
     if (tSlug) {
       const segs = pathname.split("/").filter(Boolean);
       if (segs[0] === tSlug) {
-        const afterTenant = segs.slice(1); // e.g. ["dept","board"] | ["board"] | ["departments"] | []
+        const afterTenant = segs.slice(1); // ["dept","board"] | ["board"] | ["departments"] | []
         const nextSeg = afterTenant[0] ?? "";
         if (dSlug && nextSeg === dSlug) {
           // Fully prefixed /<tenant>/<dept>/rest → serve internal /rest.
@@ -105,25 +104,27 @@ export async function proxy(request: NextRequest) {
           if (url.pathname === "") url.pathname = "/";
           return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
         }
-        if (dSlug && isDeptScopedRoot(nextSeg)) {
-          // /<tenant>/board but missing the dept slug → insert it (always show dept).
+        // Internal path implied by everything after the tenant slug ("/", "/board", …).
+        const internal = "/" + afterTenant.join("/");
+        const normalized = internal === "" ? "/" : internal;
+        if (dSlug && isDeptScopedPath(normalized)) {
+          // Department-scoped (incl. home "/") but missing the dept slug → insert it.
           const url = request.nextUrl.clone();
-          url.pathname = `/${tSlug}/${dSlug}/${afterTenant.join("/")}`;
+          url.pathname =
+            normalized === "/" ? `/${tSlug}/${dSlug}` : `/${tSlug}/${dSlug}${normalized}`;
           return carryCookies(supabaseResponse, NextResponse.redirect(url));
         }
-        // /<tenant>/departments (tenant-level root) or /<tenant> → serve internal.
+        // Tenant-level (departments/profile/docs) or no active dept → serve internal.
         const url = request.nextUrl.clone();
-        url.pathname = "/" + afterTenant.join("/");
-        if (url.pathname === "") url.pathname = "/";
+        url.pathname = normalized;
         return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
       }
       if (isBareTenantScoped(pathname)) {
         // Bare path → redirect to the fully-prefixed URL (tenant, plus dept for
-        // department-scoped roots when a department is active).
-        const root = firstSegment(pathname);
+        // department-scoped paths — including home — when a department is active).
         const url = request.nextUrl.clone();
         url.pathname =
-          dSlug && isDeptScopedRoot(root)
+          dSlug && isDeptScopedPath(pathname)
             ? `/${tSlug}/${dSlug}${pathname === "/" ? "" : pathname}`
             : withTenant(tSlug, pathname);
         return carryCookies(supabaseResponse, NextResponse.redirect(url));

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedRoot } from "@/lib/tenant-path";
+import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedPath } from "@/lib/tenant-path";
 
 /**
  * The active tenant/department slugs, read straight from the current URL (the
@@ -33,7 +33,7 @@ export function useTenantHref(): (internalPath: string) => string {
     // Only prefix tenant-scoped internal paths (leave /platform, /login, etc.).
     if (internalPath !== "/" && !TENANT_SCOPED_ROOTS.has(root)) return internalPath;
     const base =
-      deptSlug && isDeptScopedRoot(root) ? `/${tenantSlug}/${deptSlug}` : `/${tenantSlug}`;
+      deptSlug && isDeptScopedPath(internalPath) ? `/${tenantSlug}/${deptSlug}` : `/${tenantSlug}`;
     return internalPath === "/" ? base : `${base}${internalPath}`;
   };
 }

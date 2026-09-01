@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import type { ProfileMembership } from "@/lib/profile";
@@ -10,7 +11,23 @@ import type { MemberRow } from "@/components/settings/settings-members-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
 
-export const metadata = { title: "Departments — Support Ticketing System" };
+// Tab title reflects the active tenant so multiple tenant tabs are
+// distinguishable (e.g. "Pen Global BD · Departments").
+export async function generateMetadata(): Promise<Metadata> {
+  const profile = await getProfile();
+  const tenantId = profile?.activeTenantId ?? null;
+  let tenantName: string | null = null;
+  if (tenantId) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, branding: true },
+    });
+    tenantName = readTenantBranding(tenant?.branding).displayName ?? tenant?.name ?? null;
+  }
+  return {
+    title: tenantName ? `${tenantName} · Departments` : "Departments — Support Ticketing System",
+  };
+}
 
 export default async function DepartmentsPage() {
   const profile = await getProfile();

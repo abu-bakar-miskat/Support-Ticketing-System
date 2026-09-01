@@ -131,17 +131,19 @@ export function UserProfileMenu({
         {!isTopBar && !collapsed && (
           <>
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-left leading-tight">
-              <div className="flex items-center gap-1.5">
-                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
-                  {userName}
-                </span>
+              {/* Name gets its own full-width row so it never gets crushed by
+                  the role badge (which used to squeeze it to "Mi…"). */}
+              <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
+                {userName}
+              </span>
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span className={roleBadgeClass(user?.isSuperAdmin ? "admin" : role)}>
                   {roleLabel}
                 </span>
+                <span className="min-w-0 truncate font-sans text-[11.5px] text-sts-subtle">
+                  {userEmail}
+                </span>
               </div>
-              <span className="truncate font-sans text-[11.5px] text-sts-subtle">
-                {userEmail}
-              </span>
             </div>
             <ChevronsUpDown className="ml-auto size-4 shrink-0 text-sts-subtle" />
           </>

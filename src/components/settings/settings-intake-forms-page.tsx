@@ -174,6 +174,8 @@ export type IntakeFormRow = {
   assignmentMethod: AssignmentMethod | null;
   /** Resolved method actually used: form → sub-department → department → round-robin. */
   effectiveMethod: AssignmentMethod;
+  /** Owner level — where the form was created. */
+  scope: "DEPARTMENT" | "SUB_DEPARTMENT";
 };
 
 export type SubDepartmentOption = { id: string; name: string };
@@ -249,11 +251,15 @@ type ModalMode = { type: "create" } | { type: "edit"; form: IntakeFormRow };
 function IntakeFormModal({
   mode,
   departments,
+  lockedSubDepartmentId = null,
   onClose,
   onSuccess,
 }: {
   mode: ModalMode;
   departments: DeptOption[];
+  /** On a sub-department's own page: new forms are SUB_DEPARTMENT-owned and
+   *  locked to this sub-department. */
+  lockedSubDepartmentId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -263,7 +269,7 @@ function IntakeFormModal({
     isEdit ? mode.form.departmentId : (departments[0]?.id ?? ""),
   );
   const [intakeSubDepartmentId, setIntakeSubDepartmentId] = useState(
-    isEdit ? mode.form.intakeSubDepartmentId : "",
+    isEdit ? mode.form.intakeSubDepartmentId : (lockedSubDepartmentId ?? ""),
   );
   const [workloadThreshold, setWorkloadThreshold] = useState(
     isEdit ? mode.form.workloadThreshold : 5,
@@ -314,6 +320,7 @@ function IntakeFormModal({
                 workloadThreshold,
                 autoAssign,
                 displayMode,
+                scope: lockedSubDepartmentId ? "SUB_DEPARTMENT" : "DEPARTMENT",
               },
         ),
       });
@@ -1833,12 +1840,17 @@ export function SettingsIntakeFormsPage({
   departments,
   isAdmin,
   scopedDepartmentName = null,
+  activeSubDepartmentId = null,
+  activeSubDepartmentName = null,
   workspaceBranding,
 }: {
   forms: IntakeFormRow[];
   departments: DeptOption[];
   isAdmin: boolean;
   scopedDepartmentName?: string | null;
+  /** When set, this is a single sub-department's own Support Forms page. */
+  activeSubDepartmentId?: string | null;
+  activeSubDepartmentName?: string | null;
   workspaceBranding: FormBrandingDefaults;
 }) {
   const router = useRouter();
@@ -1996,9 +2008,24 @@ export function SettingsIntakeFormsPage({
                       </TableCell>
                     )}
 
-                    {/* Sub department the form is created from */}
+                    {/* Owner level + the sub-department the form is created from */}
                     <TableCell className="py-0">
-                      <div className="flex h-[56px] items-center">
+                      <div className="flex h-[56px] items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 items-center rounded-full px-[7px] py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide",
+                            form.scope === "SUB_DEPARTMENT"
+                              ? "bg-sts-blue/10 text-sts-blue"
+                              : "bg-sts-surface text-sts-subtle",
+                          )}
+                          title={
+                            form.scope === "SUB_DEPARTMENT"
+                              ? "Created for a sub-department"
+                              : "Department-wide form"
+                          }
+                        >
+                          {form.scope === "SUB_DEPARTMENT" ? "Sub-dept" : "Dept"}
+                        </span>
                         {form.intakeSubDepartmentName ? (
                           <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
                             <span className="truncate">{form.intakeSubDepartmentName}</span>
@@ -2137,6 +2164,7 @@ export function SettingsIntakeFormsPage({
         <IntakeFormModal
           mode={modal}
           departments={departments}
+          lockedSubDepartmentId={activeSubDepartmentId}
           onClose={() => setModal(null)}
           onSuccess={handleSuccess}
         />

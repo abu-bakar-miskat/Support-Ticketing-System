@@ -1764,6 +1764,11 @@ model IntakeFormConfig {
   name         String
   departmentId String
   intakeSubDepartmentId String @map("intakeTeamId")
+  // Where the form was created / its owner level: "DEPARTMENT" (a department-wide
+  // form) or "SUB_DEPARTMENT" (owned by intakeSubDepartmentId's sub-department).
+  // A sub-department only sees its own SUB_DEPARTMENT forms; the department sees
+  // all of them (labelled). Existing forms default to DEPARTMENT.
+  scope                String    @default("DEPARTMENT")
   isActive             Boolean   @default(true)
   allowCustomerReplies Boolean   @default(true)
   autoAssign           Boolean   @default(true)

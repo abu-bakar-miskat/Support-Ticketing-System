@@ -30,8 +30,10 @@ export default async function Page({
   if (!subDepartment) notFound()
 
   // Only the forms routed to this sub-department are managed here.
+  // A sub-department's page shows only its OWN forms (SUB_DEPARTMENT scope);
+  // department-wide forms that merely route here stay on the department page.
   const forms = await prisma.intakeFormConfig.findMany({
-    where: { intakeSubDepartmentId: subDepartment.id },
+    where: { intakeSubDepartmentId: subDepartment.id, scope: "SUB_DEPARTMENT" },
     orderBy: { createdAt: "desc" },
     include: {
       department: { select: { id: true, name: true, assignmentMethod: true } },
@@ -61,6 +63,7 @@ export default async function Page({
       f.intakeSubDepartment.assignmentMethod ??
       f.department.assignmentMethod ??
       "ROUND_ROBIN",
+    scope: f.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" as const : "DEPARTMENT" as const,
   }))
 
   // Constrain creation/editing to this sub-department: a single department
@@ -95,6 +98,8 @@ export default async function Page({
       departments={deptOptions}
       isAdmin={isAdmin}
       scopedDepartmentName={subDepartment.name}
+      activeSubDepartmentId={subDepartment.id}
+      activeSubDepartmentName={subDepartment.name}
       workspaceBranding={workspaceBranding}
     />
   )

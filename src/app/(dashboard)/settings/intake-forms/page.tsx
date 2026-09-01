@@ -25,6 +25,12 @@ export default async function SettingsIntakeFormsRoute() {
   const profileScope = await getProfileDeptScope(profile)
   const activeDeptId = profileScope?.activeDeptId ?? null
 
+  // When a sub-department is active (its own Support Forms page), scope the list
+  // to that sub-department's own SUB_DEPARTMENT forms. Otherwise (department
+  // page) show every form for the department(s), labelled by scope/owner.
+  const { cookies } = await import("next/headers")
+  const activeSubDepartmentId = (await cookies()).get("pen_active_team")?.value || null
+
   const managedDeptIds = [
     ...new Set([
       ...(profile.managedDepartmentIds ?? []),
@@ -41,7 +47,9 @@ export default async function SettingsIntakeFormsRoute() {
 
   const [forms, departments] = await Promise.all([
     prisma.intakeFormConfig.findMany({
-      where: { department: deptWhere },
+      where: activeSubDepartmentId
+        ? { department: deptWhere, intakeSubDepartmentId: activeSubDepartmentId, scope: "SUB_DEPARTMENT" }
+        : { department: deptWhere },
       orderBy: { createdAt: "desc" },
       include: {
         department: { select: { id: true, name: true, assignmentMethod: true } },
@@ -79,6 +87,7 @@ export default async function SettingsIntakeFormsRoute() {
       f.intakeSubDepartment.assignmentMethod ??
       f.department.assignmentMethod ??
       "ROUND_ROBIN",
+    scope: f.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" as const : "DEPARTMENT" as const,
   }))
 
   // Department members populate the per-issue "Assign to" picker (feature is
@@ -106,6 +115,11 @@ export default async function SettingsIntakeFormsRoute() {
     ? (departments.find((d) => d.id === activeDeptId) ?? null)
     : null
 
+  // Name of the active sub-department, when this is a sub-department's own page.
+  const activeSubDepartmentName = activeSubDepartmentId
+    ? (scopedDepartment?.subDepartments.find((t) => t.id === activeSubDepartmentId)?.name ?? null)
+    : null
+
   const ws = brandingFrom(await getEmailConfig(activeDeptId))
   const workspaceBranding: FormBrandingDefaults = {
     logoUrl: ws.logoUrl,
@@ -119,6 +133,8 @@ export default async function SettingsIntakeFormsRoute() {
       departments={deptOptions}
       isAdmin={isAdmin}
       scopedDepartmentName={scopedDepartment?.name ?? null}
+      activeSubDepartmentId={activeSubDepartmentId}
+      activeSubDepartmentName={activeSubDepartmentName}
       workspaceBranding={workspaceBranding}
     />
   )

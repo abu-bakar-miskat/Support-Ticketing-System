@@ -60,15 +60,33 @@ export async function resolveProfileActiveTenantId(
   return resolveActiveTenantId(profile);
 }
 
-async function buildScope(deptId: string): Promise<DeptScope> {
+async function buildScope(deptId: string, profile?: ProfileLike): Promise<DeptScope> {
   const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     orderBy: { name: "asc" },
     select: { id: true },
   });
+  const allIds = subDepartments.map((t) => t.id);
+
+  // SD-06: whole-department access (super/tenant admin, a manager/admin of this
+  // department, a direct department member, or a cross-access grant) sees every
+  // sub-department. A user who is ONLY a member of some sub-departments sees just
+  // those — never other sub-departments' data. No profile = cookie-only admin
+  // context (getActiveDeptScope) → unrestricted.
+  const wholeDept =
+    !profile ||
+    profile.isSuperAdmin === true ||
+    profile.role === "admin" ||
+    (profile.managedDepartmentIds ?? []).includes(deptId) ||
+    (profile.directMemberDeptIds ?? []).includes(deptId) ||
+    (profile.grantedAccessDeptIds ?? []).includes(deptId);
+
+  const memberSubs = new Set(profile?.subDepartmentIds ?? []);
+  const subDepartmentIds = wholeDept ? allIds : allIds.filter((id) => memberSubs.has(id));
+
   return {
     activeDeptId: deptId,
-    subDepartmentIds: subDepartments.map((t) => t.id),
+    subDepartmentIds,
     allowedDeptIds: [deptId],
   };
 }
@@ -209,7 +227,7 @@ async function buildScopeForDept(
   if (isCrossAccessOnly) {
     return buildDeptCrossAccessScope(deptId, profile);
   }
-  return buildScope(deptId);
+  return buildScope(deptId, profile);
 }
 
 /**
@@ -773,7 +791,7 @@ async function getSubDepartmentDeptScope(profile: ProfileLike): Promise<DeptScop
     select: { departmentId: true },
   });
   if (!subDepartment?.departmentId) return null;
-  return buildScope(subDepartment.departmentId);
+  return buildScope(subDepartment.departmentId, profile);
 }
 
 /**

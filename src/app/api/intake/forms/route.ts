@@ -40,6 +40,9 @@ export async function POST(request: Request) {
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const displayMode =
     body.displayMode === "FORM" || body.displayMode === "CHAT" ? body.displayMode : undefined
+  // Owner level: a form created from a sub-department is SUB_DEPARTMENT-owned;
+  // from the department it's DEPARTMENT-wide. Defaults to DEPARTMENT.
+  const scope = body.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" : "DEPARTMENT"
 
   if (!name || !departmentId || !intakeSubDepartmentId) {
     return NextResponse.json(
@@ -83,6 +86,7 @@ export async function POST(request: Request) {
       name,
       departmentId,
       intakeSubDepartmentId,
+      scope,
       ...(autoAssign !== undefined ? { autoAssign } : {}),
       ...(displayMode !== undefined ? { displayMode } : {}),
     },

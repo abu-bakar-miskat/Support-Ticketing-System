@@ -5,9 +5,10 @@ import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
 import { DepartmentsClient } from "@/components/departments/departments-client";
 import { MyDepartmentsClient, type MyDepartmentItem } from "@/components/departments/my-departments-client";
-import type { DepartmentRow } from "@/components/settings/settings-departments-page";
+import type { DepartmentRow, TemplateOption } from "@/components/settings/settings-departments-page";
 import type { MemberRow } from "@/components/settings/settings-members-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
+import { listCatalogueForTenant } from "@/lib/template-catalogue";
 
 export const metadata = { title: "Departments — Support Ticketing System" };
 
@@ -247,6 +248,17 @@ export default async function DepartmentsPage() {
       };
     });
 
+    // Templates available to this tenant so the New Department modal can offer
+    // them instead of the built-in department-type list (matches /settings/departments).
+    const catalogue = await listCatalogueForTenant(tenantId);
+    const templateOptions: TemplateOption[] = catalogue.map((t) => ({
+      slug: t.slug,
+      name: t.name,
+      description: t.description,
+      featureCount: t.features.length,
+      status: t.status,
+    }));
+
     return (
       <DepartmentsClient
         departments={departments}
@@ -257,6 +269,7 @@ export default async function DepartmentsPage() {
         members={tenantMembers}
         currentUserId={profile.id}
         mailboxUsage={mailboxUsage}
+        templateOptions={templateOptions}
       />
     );
   }

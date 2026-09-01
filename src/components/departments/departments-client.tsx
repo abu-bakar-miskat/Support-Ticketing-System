@@ -10,7 +10,7 @@ import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
-import { SettingsDepartmentsPage, type DepartmentRow } from "@/components/settings/settings-departments-page";
+import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 import { type MemberRow } from "@/components/settings/settings-members-page";
 import { type DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
 
@@ -71,6 +71,7 @@ export function DepartmentsClient({
   tenantName,
   tenantId,
   mailboxUsage,
+  templateOptions,
 }: {
   departments: DepartmentRow[];
   allUsers: UserOption[];
@@ -80,6 +81,7 @@ export function DepartmentsClient({
   members?: MemberRow[];
   currentUserId?: string;
   mailboxUsage?: DepartmentMailboxUsage[];
+  templateOptions?: TemplateOption[];
 }) {
   const router = useRouter();
   const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
@@ -142,6 +144,7 @@ export function DepartmentsClient({
         allUsers={allUsers}
         isAdmin
         onEnterWorkspace={enterWorkspace}
+        templateOptions={templateOptions}
       />
     </div>
   );

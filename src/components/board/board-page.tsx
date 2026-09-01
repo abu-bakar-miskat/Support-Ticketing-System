@@ -688,6 +688,10 @@ export function BoardPage({
   } = usePersistedBoardFilters();
 
   const [activeSubDepartmentId, setActiveSubDepartmentId] = useState(() => {
+    // Default to the whole-department view ("all" — merged board across every
+    // sub-department) so all of the department's tickets show up front. Only pin
+    // to a single sub-department when it's the only one (no merged view exists).
+    if (subDepartmentBoardGroups.length > 1) return "all";
     if (
       defaultSubDepartmentId &&
       subDepartmentBoardGroups.some((g) => g.subDepartmentId === defaultSubDepartmentId)

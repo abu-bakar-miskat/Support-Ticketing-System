@@ -45,6 +45,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "members",
       },
       {
+        label: "Sub-departments",
+        href: "/settings/sub-departments",
+        managerOnly: true,
+        deptSpecific: true,
+      },
+      {
         label: "Departments",
         href: "/settings/departments",
         managerOnly: true,

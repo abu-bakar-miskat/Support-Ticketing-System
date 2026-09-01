@@ -10,17 +10,17 @@ import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
 
 import {
-  House,
-  ListTodo,
-  Timer,
-  SquareKanban,
+  LayoutDashboard,
+  ListChecks,
+  Clock,
+  Columns3,
+  GanttChart,
   CalendarDays,
-  CalendarRange,
-  FolderKanban,
-  ChartColumn,
-  ChartPie,
-  Settings2,
-  CircleUser,
+  Layers,
+  BarChart3,
+  Network,
+  Settings,
+  UserRound,
   Search,
   X,
   Bell,
@@ -32,10 +32,11 @@ import {
   PinOff,
   PanelLeftClose,
   ChevronRight,
-  LifeBuoy,
-  Users,
-  Mail,
-  Boxes,
+  BookOpen,
+  ClipboardList,
+  UsersRound,
+  Inbox,
+  Blocks,
   Activity,
   KeyRound,
   Building2,
@@ -105,15 +106,15 @@ type NavItem = {
 };
 
 const navViews: NavItem[] = [
-  { label: "Board", href: "/board", icon: SquareKanban, templateFeatureKey: "board" },
-  { label: "Timeline", href: "/timeline", icon: CalendarDays, hideForSupport: true, templateFeatureKey: "timeline" },
-  { label: "Modules", href: "/modules", icon: Boxes, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
-  { label: "Support forms", href: "/settings/intake-forms", icon: LifeBuoy, supportOnly: true, templateFeatureKey: "supportForm" },
-  { label: "Reports", href: "/reports", icon: ChartColumn, templateFeatureKey: "reports", hideForAgent: true },
-  { label: "Calendar", href: "/calendar", icon: CalendarRange, templateFeatureKey: "calendar" },
-  { label: "My Profile", href: "/profile", icon: CircleUser },
-  { label: "Settings", href: "/settings", icon: Settings2 },
-  { label: "Help Center", href: "/docs", icon: LifeBuoy, templateFeatureKey: "helpCenter" },
+  { label: "Board", href: "/board", icon: Columns3, templateFeatureKey: "board" },
+  { label: "Timeline", href: "/timeline", icon: GanttChart, hideForSupport: true, templateFeatureKey: "timeline" },
+  { label: "Modules", href: "/modules", icon: Blocks, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
+  { label: "Support forms", href: "/settings/intake-forms", icon: ClipboardList, supportOnly: true, templateFeatureKey: "supportForm" },
+  { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports", hideForAgent: true },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays, templateFeatureKey: "calendar" },
+  { label: "My Profile", href: "/profile", icon: UserRound },
+  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Help Center", href: "/docs", icon: BookOpen, templateFeatureKey: "helpCenter" },
 ];
 
 function isFeatureVisible(
@@ -419,15 +420,15 @@ export function Sidebar({
           icon: Bell,
           badge: notifCount ?? undefined,
         },
-        { label: "Settings", href: "/settings", icon: Settings2 },
+        { label: "Settings", href: "/settings", icon: Settings },
       ]
     : isCrossAccessDept
       ? [
           ...(hasMultiDeptAccess && !isAgent
             ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
             : []),
-          { label: "Tasks", href: "/tasks", icon: ListTodo, templateFeatureKey: "tasks" },
-          { label: "Projects", href: "/projects", icon: FolderKanban, templateFeatureKey: "projects" },
+          { label: "Tasks", href: "/tasks", icon: ListChecks, templateFeatureKey: "tasks" },
+          { label: "Projects", href: "/projects", icon: Layers, templateFeatureKey: "projects" },
           {
             label: "Notifications",
             href: "/inbox",
@@ -443,31 +444,31 @@ export function Sidebar({
           {
             label: "Home",
             href: isManagerOfActiveDept ? "/manager" : "/",
-            icon: House,
+            icon: LayoutDashboard,
           },
           {
             label: "Tasks",
             href: "/tasks",
-            icon: ListTodo,
+            icon: ListChecks,
             templateFeatureKey: "tasks",
             badge: isManagerOfActiveDept
               ? undefined
               : myTasksCount || undefined,
           },
-          { label: "Projects", href: "/projects", icon: FolderKanban, templateFeatureKey: "projects" },
+          { label: "Projects", href: "/projects", icon: Layers, templateFeatureKey: "projects" },
           {
             label: "Notifications",
             href: "/inbox",
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "My Time", href: "/time", icon: Timer, templateFeatureKey: "myTime" },
+          { label: "My Time", href: "/time", icon: Clock, templateFeatureKey: "myTime" },
           { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity", hideForAgent: true },
           ...(isAdmin || isManager
             ? [
-                { label: "Members", href: "/department", icon: Users, templateFeatureKey: "members" as const },
-                { label: "Shared Mailboxes", href: "/mailboxes", icon: Mail, templateFeatureKey: "members" as const },
-                { label: "Sub Departments", href: "/sub-departments", icon: ChartPie, templateFeatureKey: "subDepartmentReports" as const },
+                { label: "Members", href: "/department", icon: UsersRound, templateFeatureKey: "members" as const },
+                { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "members" as const },
+                { label: "Sub Departments", href: "/sub-departments", icon: Network, templateFeatureKey: "subDepartmentReports" as const },
                 // Recruitment is hidden from the UI (code/routes/APIs retained).
                 // { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { acceptDepartmentInvite } from "@/lib/invites/accept-department-invite"
 import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope"
 import { loginBlockReason } from "@/lib/tenant-lifecycle"
+import { resolvePostLoginLanding } from "@/lib/auth/post-login-redirect"
 
 const AUTH_NEXT_COOKIE = "pen_auth_next"
 
@@ -125,20 +126,6 @@ export async function completeLogin(args: {
   const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin)
   const inviteToken = inviteTokenFromNext(next)
 
-  // Super-admins land on the platform console first. Clear any stale active-dept
-  // cookie from a prior session so they don't drop into a department dashboard.
-  // A specific deep link (next !== "/") still wins over the platform default.
-  if (profile.isSuperAdmin && !inviteToken && next === "/") {
-    return {
-      redirectPath: "/platform",
-      cookies: [
-        clearNextCookie,
-        ...tenantCookie(tenantId),
-        { name: "pen_active_dept", value: "", options: { path: "/", maxAge: 0 } },
-      ],
-    }
-  }
-
   if (inviteToken) {
     const result = await acceptDepartmentInvite(inviteToken, {
       id: profile.id,
@@ -167,6 +154,17 @@ export async function completeLogin(args: {
     return {
       redirectPath: `/invite/${encodeURIComponent(inviteToken)}?error=${encodeURIComponent(result.code)}`,
       cookies: [clearNextCookie],
+    }
+  }
+
+  // No specific deep link: land by role (role-hierarchy.md) — Super Admin to the
+  // platform console, tenant admin to the org console, manager/agent to their
+  // department board, unassigned to onboarding. A deep link still wins.
+  if (next === "/") {
+    const landing = await resolvePostLoginLanding(profile.id, profile.isSuperAdmin)
+    return {
+      redirectPath: landing.redirectPath,
+      cookies: [clearNextCookie, ...tenantCookie(tenantId), ...landing.cookies],
     }
   }
 

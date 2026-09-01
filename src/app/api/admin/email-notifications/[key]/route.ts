@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   EMAIL_NOTIFY_KEYS,
@@ -11,16 +11,12 @@ function isNotifyKey(value: string): value is EmailNotifyKey {
   return (EMAIL_NOTIFY_KEYS as readonly string[]).includes(value);
 }
 
-/** Department overrides only — a manager may only touch departments in their scope. */
+/** Department overrides are admin-only — scoped to the caller's departments. */
 function checkScope(
-  profile: NonNullable<Awaited<ReturnType<typeof requireAdmin>>["profile"]>,
+  profile: NonNullable<Awaited<ReturnType<typeof requireAuth>>["profile"]>,
   departmentId: string,
 ): NextResponse | null {
-  const deptScope = managerDeptScope(profile);
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
-  }
-  return null;
+  return assertDepartmentAdmin(profile, departmentId);
 }
 
 /** Validate an optional sub-department belongs to the given department. */
@@ -35,7 +31,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const { key } = await params;
@@ -66,7 +62,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const { key } = await params;

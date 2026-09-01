@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAdmin } from "../../_guard"
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params
+  const scopeError = assertDepartmentAdmin(profile!, id)
+  if (scopeError) return scopeError
   const body = await request.json()
   const name = (body.name as string)?.trim()
 
@@ -31,10 +33,12 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin()
+  const { profile, error } = await requireAuth()
   if (error) return error
 
   const { id } = await params
+  const scopeError = assertDepartmentAdmin(profile!, id)
+  if (scopeError) return scopeError
 
   const subDepartmentCount = await prisma.subDepartment.count({ where: { departmentId: id } })
   if (subDepartmentCount > 0) {

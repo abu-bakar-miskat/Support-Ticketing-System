@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   EMAIL_NOTIFY_KEYS,
@@ -8,18 +8,18 @@ import {
 } from "@/lib/email-config";
 
 export async function GET(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const departmentId = request.nextUrl.searchParams.get("departmentId");
   const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
 
-  if (!departmentId && profile!.role !== "admin") {
+  if (departmentId) {
+    const scopeError = assertDepartmentAdmin(profile!, departmentId);
+    if (scopeError) return scopeError;
+  } else if (profile!.role !== "admin") {
+    // Only a tenant admin may read the tenant-wide notification defaults (no dept).
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const deptScope = managerDeptScope(profile!);
-  if (departmentId && deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
   }
   if (subDepartmentId) {
     if (!departmentId) return NextResponse.json({ error: "departmentId is required with subDepartmentId" }, { status: 400 });

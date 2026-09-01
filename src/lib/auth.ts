@@ -58,6 +58,39 @@ export async function requireSuperAdmin(
 }
 
 /**
+ * Departments where the caller may change admin-only settings (branding, SLA,
+ * rules, forms, mailbox, delete — role-hierarchy.md). `null` means unrestricted
+ * (a tenant admin); otherwise the finite set of departments they administer as a
+ * DEPARTMENT-scoped Admin. A department *Manager* is NOT included — operational
+ * power (managedDepartmentIds) does not grant admin-only settings.
+ */
+export function departmentAdminScope(profile: AuthProfile): Set<string> | null {
+  if (profile.role === "admin") return null;
+  return new Set(profile.departmentAdminIds ?? []);
+}
+
+/**
+ * Gate for a department admin-only setting scoped to `departmentId`: returns a
+ * NextResponse error when the caller is neither a tenant admin nor an Admin of
+ * that department, else null. Use in place of `requireAdmin()` on routes that
+ * mutate a single department's admin-only configuration.
+ */
+export function assertDepartmentAdmin(
+  profile: AuthProfile,
+  departmentId: string | null,
+  message = "You must be an admin of this department.",
+): NextResponse | null {
+  if (!departmentId) {
+    return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
+  }
+  const scope = departmentAdminScope(profile);
+  if (scope && !scope.has(departmentId)) {
+    return forbidden(message);
+  }
+  return null;
+}
+
+/**
  * NextResponse error when the caller may not act within `tenantId`, else null.
  * The outermost gate: call before any tenant-scoped data access. Members and
  * super-admins pass; everyone else is rejected.

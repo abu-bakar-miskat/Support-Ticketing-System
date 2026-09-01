@@ -20,6 +20,8 @@ export default async function DepartmentsPage() {
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
 
   // ── Admin: full org management view ──────────────────────────────────────
+  // Tenant admins and super admins who have switched into this tenant (their
+  // profile.role resolves to "admin" via getProfile) get the org management view.
   if (profile.role === "admin") {
     const [rawDepts, users, orgStats] = await Promise.all([
       prisma.department.findMany({

@@ -373,6 +373,11 @@ model DepartmentManager {
   id           String     @id @default(cuid())
   departmentId String
   userId       String     @db.Uuid
+  // Discriminates a department-scoped Admin (full admin-only settings power for
+  // this department) from an operational Manager. Only `admin` | `manager` are
+  // meaningful here (role-hierarchy.md). Defaults to `manager` so existing rows
+  // and legacy assignment paths stay operational-only.
+  role         Role       @default(manager)
   assignedAt   DateTime   @default(now())
   assignedBy   String     @db.Uuid
   // DS-09: null shows the dismissible setup overview once for a newly-assigned

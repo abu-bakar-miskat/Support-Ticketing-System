@@ -224,7 +224,7 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   const [profile, tenantM, deptMgr, deptMem, deptAcc, subDepartmentM] = await Promise.all([
     prisma.profile.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
     prisma.tenantMembership.findMany({ where: { userId, isActive: true }, select: { role: true, tenantId: true } }),
-    prisma.departmentManager.findMany({ where: { userId }, select: { departmentId: true } }),
+    prisma.departmentManager.findMany({ where: { userId }, select: { departmentId: true, role: true } }),
     prisma.departmentMember.findMany({ where: { userId }, select: { departmentId: true } }),
     prisma.departmentAccess.findMany({
       where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
@@ -236,7 +236,12 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   const rows: ScopeRow[] = [];
   if (profile?.isSuperAdmin) rows.push({ role: "admin", scopeType: "PLATFORM", scopeId: null });
   for (const t of tenantM) rows.push({ role: t.role, scopeType: "TENANT", scopeId: t.tenantId });
-  for (const d of deptMgr) rows.push({ role: "manager", scopeType: "DEPARTMENT", scopeId: d.departmentId });
+  for (const d of deptMgr) {
+    // A department-scoped Admin surfaces as DEPARTMENT+admin (→ departmentAdminIds);
+    // any other value is operational Manager power.
+    const role = d.role === "admin" ? "admin" : "manager";
+    rows.push({ role, scopeType: "DEPARTMENT", scopeId: d.departmentId });
+  }
   for (const d of deptMem) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: d.departmentId });
   for (const a of deptAcc) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: a.departmentId });
   for (const tm of subDepartmentM) rows.push({ role: tm.role, scopeType: "SUB_DEPARTMENT", scopeId: tm.subDepartmentId });

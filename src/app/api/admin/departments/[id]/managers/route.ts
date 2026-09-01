@@ -33,8 +33,20 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
-  const { userId } = body as { userId?: string }
+  const { userId, role: rawRole } = body as { userId?: string; role?: string }
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
+
+  // role-hierarchy.md: a department Admin holds full admin-only settings power;
+  // only a tenant admin or an existing Admin of this department may grant it. A
+  // plain department Manager may add Managers/Agents but not Admins.
+  const role = rawRole === "admin" ? "admin" : "manager"
+  if (role === "admin") {
+    const isTenantAdmin = profile!.role === "admin"
+    const isDeptAdmin = (profile!.departmentAdminIds ?? []).includes(id)
+    if (!isTenantAdmin && !isDeptAdmin) {
+      return NextResponse.json({ error: "Only an admin of this department can grant admin." }, { status: 403 })
+    }
+  }
 
   const dept = await prisma.department.findUnique({ where: { id } })
   if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -42,8 +54,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const [manager] = await Promise.all([
     prisma.departmentManager.upsert({
       where: { departmentId_userId: { departmentId: id, userId } },
-      create: { departmentId: id, userId, assignedBy: profile!.id },
-      update: {},
+      create: { departmentId: id, userId, role, assignedBy: profile!.id },
+      update: { role },
       include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } },
     }),
     // Also add manager as a direct department member
@@ -68,7 +80,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     targetType: "DepartmentManager",
     targetId: `${id}:${userId}`,
     before: null,
-    after: { departmentId: id, userId },
+    after: { departmentId: id, userId, role },
   })
 
   return NextResponse.json(manager, { status: 201 })

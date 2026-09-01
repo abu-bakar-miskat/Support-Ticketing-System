@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { saveDepartmentEmailSenders } from "@/lib/email-config";
 
@@ -11,18 +11,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * semantics, so the client always sends its complete edited list.
  */
 export async function PUT(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const body = await request.json().catch(() => ({}));
   const departmentId = typeof body?.departmentId === "string" ? body.departmentId : "";
-  if (!departmentId) {
-    return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
-  }
-  const deptScope = managerDeptScope(profile!);
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
-  }
+  const scopeError = assertDepartmentAdmin(profile!, departmentId || null);
+  if (scopeError) return scopeError;
   const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
   if (subDepartmentId) {
     const sub = await prisma.subDepartment.findFirst({ where: { id: subDepartmentId, departmentId }, select: { id: true } });

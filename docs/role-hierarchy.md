@@ -27,10 +27,9 @@ Manages the platform, not a substitute for being added as Admin/Manager of a dep
 - Tenant-level settings: feature flags, agreements, branding at tenant scope
 - Template catalogue: create, edit, publish/unpublish, enable/disable per tenant, approve/reject access requests
 - Open the platform console (tenants, templates, activity, platform settings)
-- Switch into a tenant for platform administration
+- Switch into a tenant ("Enter"): while a tenant is active, a Super Admin acts with **tenant Admin** authority in that tenant — full department power across it (settings, members, delete). Implemented by `getProfile` injecting a synthetic `TENANT` admin assignment for the active tenant, so `profile.role` resolves to `admin` there. Power applies only to the entered tenant, not tenants they haven't switched into.
 
 **Cannot**
-- Be the only check that grants department settings — department change/delete still requires an Admin assignment on that tenant or department (Super Admin may grant those assignments)
 - Publish or edit templates from a tenant-admin screen; that stays on the platform catalogue
 
 ---

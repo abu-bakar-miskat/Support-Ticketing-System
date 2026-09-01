@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   brandingFrom,
@@ -20,24 +20,14 @@ async function checkSubScope(departmentId: string, subDepartmentId: string | nul
 }
 
 function requireDepartmentId(
-  profile: NonNullable<Awaited<ReturnType<typeof requireAdmin>>["profile"]>,
+  profile: NonNullable<Awaited<ReturnType<typeof requireAuth>>["profile"]>,
   departmentId: string | null,
 ): NextResponse | null {
-  if (!departmentId) {
-    return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
-  }
-  const deptScope = managerDeptScope(profile);
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json(
-      { error: "Forbidden: department is outside your scope" },
-      { status: 403 },
-    );
-  }
-  return null;
+  return assertDepartmentAdmin(profile, departmentId);
 }
 
 export async function GET(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const departmentId = request.nextUrl.searchParams.get("departmentId");
@@ -67,7 +57,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const body = await request.json().catch(() => ({}));
@@ -98,7 +88,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const departmentId = request.nextUrl.searchParams.get("departmentId");

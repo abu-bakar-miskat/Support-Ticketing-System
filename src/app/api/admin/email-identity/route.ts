@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   getEmailConfig,
@@ -19,18 +19,18 @@ async function checkSubScope(departmentId: string, subDepartmentId: string | nul
 }
 
 export async function GET(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const departmentId = request.nextUrl.searchParams.get("departmentId");
   const subDepartmentId = request.nextUrl.searchParams.get("subDepartmentId");
 
-  if (!departmentId && profile!.role !== "admin") {
+  if (departmentId) {
+    const scopeError = assertDepartmentAdmin(profile!, departmentId);
+    if (scopeError) return scopeError;
+  } else if (profile!.role !== "admin") {
+    // Only a tenant admin may read the tenant-wide default identity (no dept).
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  const deptScope = managerDeptScope(profile!);
-  if (departmentId && deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
   }
   if (subDepartmentId && !departmentId) {
     return NextResponse.json({ error: "departmentId is required with subDepartmentId" }, { status: 400 });
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const featureCheck = await assertTemplateFeatureEnabled(profile!.activeTenantId ?? "__no_tenant__", "emailSettings");
@@ -68,13 +68,8 @@ export async function PUT(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const departmentId = typeof body?.departmentId === "string" ? body.departmentId : "";
-  if (!departmentId) {
-    return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
-  }
-  const deptScope = managerDeptScope(profile!);
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json({ error: "Forbidden: department is outside your scope" }, { status: 403 });
-  }
+  const scopeError = assertDepartmentAdmin(profile!, departmentId || null);
+  if (scopeError) return scopeError;
   const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
   const subScopeError = await checkSubScope(departmentId, subDepartmentId);
   if (subScopeError) return subScopeError;

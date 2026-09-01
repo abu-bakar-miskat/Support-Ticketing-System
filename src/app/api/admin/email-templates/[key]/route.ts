@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, managerDeptScope } from "@/lib/auth";
+import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   EMAIL_TEMPLATE_KEYS,
@@ -19,29 +19,19 @@ async function checkSubScope(departmentId: string, subDepartmentId: string | nul
   return null;
 }
 
-/** Templates are department-scoped — managers may only edit departments in scope. */
+/** Templates are department admin-only — scoped to the caller's departments. */
 function checkDepartmentScope(
-  profile: NonNullable<Awaited<ReturnType<typeof requireAdmin>>["profile"]>,
+  profile: NonNullable<Awaited<ReturnType<typeof requireAuth>>["profile"]>,
   departmentId: string | null,
 ): NextResponse | null {
-  if (!departmentId) {
-    return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
-  }
-  const deptScope = managerDeptScope(profile);
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json(
-      { error: "Forbidden: department is outside your scope" },
-      { status: 403 },
-    );
-  }
-  return null;
+  return assertDepartmentAdmin(profile, departmentId);
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const { key } = await params;
@@ -88,7 +78,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ key: string }> },
 ) {
-  const { profile, error } = await requireAdmin();
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
   const { key } = await params;

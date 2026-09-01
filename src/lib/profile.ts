@@ -31,8 +31,8 @@ function loadProfileAndRelations(userId: string) {
 
     prisma.departmentManager.findMany({
       where: { userId },
-      select: { departmentId: true },
-    }).catch(() => [] as { departmentId: string }[]),
+      select: { departmentId: true, role: true },
+    }).catch(() => [] as { departmentId: string; role: string }[]),
 
     prisma.departmentAccess.findMany({
       where: {
@@ -94,6 +94,7 @@ export const getProfile = cache(async () => {
       memberships: [] as ProfileMembership[],
       subDepartmentIds: [] as string[],
       managedDepartmentIds: [] as string[],
+      departmentAdminIds: [] as string[],
       grantedAccessDeptIds: [] as string[],
       fullAccessGrantedDeptIds: [] as string[],
       directMemberDeptIds: [] as string[],
@@ -141,7 +142,15 @@ export const getProfile = cache(async () => {
     // soft-deleted one is — their data is untouched, only login is blocked.
     if (!profile.isActive) return null
 
-    const managedDepartmentIds = (managedRaw as { departmentId: string }[]).map((m) => m.departmentId)
+    const typedManaged = managedRaw as { departmentId: string; role: string }[]
+    const managedDepartmentIds = typedManaged.map((m) => m.departmentId)
+    // Departments this user administers (DEPARTMENT-scoped Admin) — the subset of
+    // managed departments with role=admin. Grants admin-only settings power for
+    // those departments (role-hierarchy.md); operational power still comes from
+    // managedDepartmentIds, which includes both admins and managers.
+    const departmentAdminIds = typedManaged
+      .filter((m) => m.role === "admin")
+      .map((m) => m.departmentId)
     const grantedAccessDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[]).map((g) => g.departmentId)
     const fullAccessGrantedDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[])
       .filter((g) => g.fullAccess)
@@ -184,15 +193,24 @@ export const getProfile = cache(async () => {
       ...(profile.isSuperAdmin
         ? [{ role: "admin" as const, scopeType: "PLATFORM" as const, scopeId: null }]
         : []),
+      // A Super Admin who has switched into a tenant administers it as a tenant
+      // admin (role-hierarchy.md — "Switch into a tenant for platform
+      // administration"). Injecting a synthetic TENANT admin assignment for the
+      // active tenant makes profile.role resolve to "admin" so every downstream
+      // gate (requireAdmin, assertDepartmentAdmin, managerDeptScope, page views)
+      // honors it — without granting power in tenants they haven't entered.
+      ...(profile.isSuperAdmin && activeTenantId
+        ? [{ role: "admin" as const, scopeType: "TENANT" as const, scopeId: activeTenantId }]
+        : []),
       ...tenantMemberships.map((t) => ({
         role: t.role as ScopeRow["role"],
         scopeType: "TENANT" as const,
         scopeId: t.tenantId,
       })),
-      ...managedDepartmentIds.map((id) => ({
-        role: "manager" as const,
+      ...typedManaged.map((m) => ({
+        role: (m.role === "admin" ? "admin" : "manager") as ScopeRow["role"],
         scopeType: "DEPARTMENT" as const,
-        scopeId: id,
+        scopeId: m.departmentId,
       })),
       ...directMemberDeptIds.map((id) => ({
         role: "agent" as const,
@@ -218,6 +236,7 @@ export const getProfile = cache(async () => {
       memberships: typedMemberships,
       subDepartmentIds: typedMemberships.map((m) => m.subDepartmentId),
       managedDepartmentIds,
+      departmentAdminIds,
       grantedAccessDeptIds,
       fullAccessGrantedDeptIds,
       directMemberDeptIds,

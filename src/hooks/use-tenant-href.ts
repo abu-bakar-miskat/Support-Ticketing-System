@@ -9,14 +9,20 @@ import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedPath } from "@/lib/tenan
  * the URL isn't prefixed (feature dormant) — links then stay bare and the
  * middleware redirect handles them.
  */
-export function useTenantPrefix(): { tenantSlug: string; deptSlug: string } {
+export function useTenantPrefix(): {
+  tenantSlug: string;
+  deptSlug: string;
+  subDeptSlug: string;
+} {
   const raw = usePathname();
   const segs = raw.split("/").filter(Boolean);
   const s0 = segs[0] ?? "";
   const tenantSlug = s0 && !TENANT_SCOPED_ROOTS.has(s0) ? s0 : "";
   const s1 = segs[1] ?? "";
   const deptSlug = tenantSlug && s1 && !TENANT_SCOPED_ROOTS.has(s1) ? s1 : "";
-  return { tenantSlug, deptSlug };
+  const s2 = segs[2] ?? "";
+  const subDeptSlug = deptSlug && s2 && !TENANT_SCOPED_ROOTS.has(s2) ? s2 : "";
+  return { tenantSlug, deptSlug, subDeptSlug };
 }
 
 /**
@@ -26,14 +32,17 @@ export function useTenantPrefix(): { tenantSlug: string; deptSlug: string } {
  * isn't yet prefixed.
  */
 export function useTenantHref(): (internalPath: string) => string {
-  const { tenantSlug, deptSlug } = useTenantPrefix();
+  const { tenantSlug, deptSlug, subDeptSlug } = useTenantPrefix();
   return (internalPath: string) => {
     if (!tenantSlug || !internalPath.startsWith("/")) return internalPath;
     const root = firstSegment(internalPath);
     // Only prefix tenant-scoped internal paths (leave /platform, /login, etc.).
     if (internalPath !== "/" && !TENANT_SCOPED_ROOTS.has(root)) return internalPath;
-    const base =
-      deptSlug && isDeptScopedPath(internalPath) ? `/${tenantSlug}/${deptSlug}` : `/${tenantSlug}`;
+    let base = `/${tenantSlug}`;
+    if (deptSlug && isDeptScopedPath(internalPath)) {
+      base += `/${deptSlug}`;
+      if (subDeptSlug) base += `/${subDeptSlug}`;
+    }
     return internalPath === "/" ? base : `${base}${internalPath}`;
   };
 }

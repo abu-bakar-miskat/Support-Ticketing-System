@@ -3,9 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   TENANT_SLUG_COOKIE,
   DEPT_SLUG_COOKIE,
+  SUBDEPT_SLUG_COOKIE,
+  TENANT_SCOPED_ROOTS,
   isBareTenantScoped,
   isDeptScopedPath,
-  withTenant,
 } from "@/lib/tenant-path";
 
 /** Copy any refreshed Supabase auth cookies from `from` onto `to`. */
@@ -92,41 +93,36 @@ export async function proxy(request: NextRequest) {
   if (user && !isPublic) {
     const tSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value || "";
     const dSlug = request.cookies.get(DEPT_SLUG_COOKIE)?.value || "";
+    const sSlug = request.cookies.get(SUBDEPT_SLUG_COOKIE)?.value || "";
     if (tSlug) {
       const segs = pathname.split("/").filter(Boolean);
-      if (segs[0] === tSlug) {
-        const afterTenant = segs.slice(1); // ["dept","board"] | ["board"] | ["departments"] | []
-        const nextSeg = afterTenant[0] ?? "";
-        if (dSlug && nextSeg === dSlug) {
-          // Fully prefixed /<tenant>/<dept>/rest → serve internal /rest.
-          const url = request.nextUrl.clone();
-          url.pathname = "/" + afterTenant.slice(1).join("/");
-          if (url.pathname === "") url.pathname = "/";
+      const startsWithTenant = segs[0] === tSlug;
+      if (startsWithTenant || isBareTenantScoped(pathname)) {
+        // The internal path is everything after the leading slug segments — those
+        // are the tenant/dept/subdept slugs (any segment that isn't a known root).
+        let i = 0;
+        while (i < segs.length && !TENANT_SCOPED_ROOTS.has(segs[i]!)) i++;
+        const rest = segs.slice(i).join("/");
+        const internal = rest === "" ? "/" : `/${rest}`;
+
+        // Canonical prefix for this internal path from the active cookies:
+        //   tenant-level pages → /<tenant>
+        //   department-scoped  → /<tenant>/<dept>[/<subdept>]
+        let prefix = `/${tSlug}`;
+        if (isDeptScopedPath(internal)) {
+          if (dSlug) prefix += `/${dSlug}`;
+          if (dSlug && sSlug) prefix += `/${sSlug}`;
+        }
+        const target = internal === "/" ? prefix : `${prefix}${internal}`;
+
+        const url = request.nextUrl.clone();
+        if (pathname === target) {
+          // Already canonical → serve the internal route.
+          url.pathname = internal;
           return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
         }
-        // Internal path implied by everything after the tenant slug ("/", "/board", …).
-        const internal = "/" + afterTenant.join("/");
-        const normalized = internal === "" ? "/" : internal;
-        if (dSlug && isDeptScopedPath(normalized)) {
-          // Department-scoped (incl. home "/") but missing the dept slug → insert it.
-          const url = request.nextUrl.clone();
-          url.pathname =
-            normalized === "/" ? `/${tSlug}/${dSlug}` : `/${tSlug}/${dSlug}${normalized}`;
-          return carryCookies(supabaseResponse, NextResponse.redirect(url));
-        }
-        // Tenant-level (departments/profile/docs) or no active dept → serve internal.
-        const url = request.nextUrl.clone();
-        url.pathname = normalized;
-        return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
-      }
-      if (isBareTenantScoped(pathname)) {
-        // Bare path → redirect to the fully-prefixed URL (tenant, plus dept for
-        // department-scoped paths — including home — when a department is active).
-        const url = request.nextUrl.clone();
-        url.pathname =
-          dSlug && isDeptScopedPath(pathname)
-            ? `/${tSlug}/${dSlug}${pathname === "/" ? "" : pathname}`
-            : withTenant(tSlug, pathname);
+        // Not canonical (bare, or missing/extra slug segments) → redirect.
+        url.pathname = target;
         return carryCookies(supabaseResponse, NextResponse.redirect(url));
       }
     }

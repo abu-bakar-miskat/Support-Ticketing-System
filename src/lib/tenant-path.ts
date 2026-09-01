@@ -13,6 +13,10 @@ export const TENANT_SLUG_COOKIE = "pen_active_tenant_slug";
  *  department cookie (pen_active_dept) is set. */
 export const DEPT_SLUG_COOKIE = "pen_active_dept_slug";
 
+/** Cookie mirroring the active sub-department's slug — the third URL segment
+ *  (/<tenant>/<dept>/<subdept>/board). Set wherever pen_active_team is set. */
+export const SUBDEPT_SLUG_COOKIE = "pen_active_subdept_slug";
+
 /**
  * Tenant-scoped roots that are NOT tied to a single department, so they carry
  * only the tenant slug (/<tenant>/departments), never a department slug.

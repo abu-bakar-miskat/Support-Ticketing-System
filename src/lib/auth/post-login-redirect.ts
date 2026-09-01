@@ -1,6 +1,6 @@
 import "server-only"
 import { prisma } from "@/lib/db"
-import { DEPT_SLUG_COOKIE } from "@/lib/tenant-path"
+import { DEPT_SLUG_COOKIE, SUBDEPT_SLUG_COOKIE } from "@/lib/tenant-path"
 import type { LoginCookie } from "@/lib/auth/complete-login"
 
 const DEPT_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
@@ -90,7 +90,7 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
       where: { userId, isActive: true },
       select: {
         subDepartmentId: true,
-        subDepartment: { select: { departmentId: true } },
+        subDepartment: { select: { departmentId: true, slug: true } },
       },
       orderBy: { joinedAt: "asc" },
     }),
@@ -122,7 +122,14 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
 
   if (memberships.length > 0) {
     const primary = memberships[0]!
-    const cookies: LoginCookie[] = [activeTeamCookie(primary.subDepartmentId)]
+    const cookies: LoginCookie[] = [
+      activeTeamCookie(primary.subDepartmentId),
+      {
+        name: SUBDEPT_SLUG_COOKIE,
+        value: primary.subDepartment.slug ?? "",
+        options: { path: "/", maxAge: DEPT_COOKIE_MAX_AGE, sameSite: "lax" },
+      },
+    ]
     if (primary.subDepartment.departmentId) {
       cookies.unshift(...(await deptCookies(primary.subDepartment.departmentId)))
     }

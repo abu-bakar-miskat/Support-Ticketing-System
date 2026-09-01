@@ -470,6 +470,9 @@ model DepartmentInvite {
 model SubDepartment {
   id                String             @id @default(cuid())
   name              String
+  // URL slug, unique WITHIN a department (see @@unique) so different departments
+  // may reuse sub-department names. Used for /<tenant>/<dept>/<subdept>/… routing.
+  slug              String?
   prefix            String             @unique
   color             String?            @default("#0a76b9")
   tenantId          String
@@ -503,6 +506,7 @@ model SubDepartment {
   mailboxConnections MailboxConnection[]
   assignmentRules   AssignmentRule[]
 
+  @@unique([departmentId, slug])
   @@index([tenantId])
   @@map("Team")
 }

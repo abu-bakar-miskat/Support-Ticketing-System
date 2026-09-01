@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { SUBDEPT_SLUG_COOKIE } from "@/lib/tenant-path"
 
 export async function POST(req: NextRequest) {
   const { profile, error } = await requireAuth()
@@ -26,10 +27,24 @@ export async function POST(req: NextRequest) {
 
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const res = NextResponse.json({ ok: true })
+  const target = subDepartmentId
+    ? await prisma.subDepartment.findUnique({
+        where: { id: subDepartmentId },
+        select: { slug: true },
+      })
+    : null
+  const subDeptSlug = target?.slug ?? ""
+
+  const res = NextResponse.json({ ok: true, slug: subDeptSlug })
   res.cookies.set("pen_active_team", subDepartmentId, {
     path: "/",
     httpOnly: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30,
+  })
+  // Mirror the sub-dept slug for /<tenant>/<dept>/<subdept>/… URLs.
+  res.cookies.set(SUBDEPT_SLUG_COOKIE, subDeptSlug, {
+    path: "/",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 30,
   })

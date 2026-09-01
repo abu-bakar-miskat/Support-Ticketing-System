@@ -237,7 +237,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
 
       {/* ── Step 1: Connect ────────────────────────────────────────────────── */}
       {step === 1 && (
-        <div className="flex flex-col gap-4 rounded-[10px] border border-sts-card-border bg-sts-card p-5 sm:max-w-xl">
+        <div className="flex flex-col gap-4 rounded-[6px] border border-sts-card-border bg-sts-card p-5 sm:max-w-xl">
           <div className="flex items-start gap-2.5 rounded-[8px] bg-sts-surface px-3.5 py-2.5">
             <Info className="mt-px size-3.5 shrink-0 text-sts-muted" strokeWidth={2} />
             <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
@@ -280,7 +280,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
       {step === 2 && (
         <div className="flex flex-col gap-4">
           {/* Databases & subDepartment */}
-          <div className="flex flex-col gap-4 rounded-[10px] border border-sts-card-border bg-sts-card p-5">
+          <div className="flex flex-col gap-4 rounded-[6px] border border-sts-card-border bg-sts-card p-5">
             <SectionLabel>Databases</SectionLabel>
             <p className="font-sans text-[12.5px] text-sts-muted">
               Found{" "}
@@ -339,7 +339,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
 
           {/* Project fields */}
           {projectsDb && (
-            <div className="flex flex-col gap-3 rounded-[10px] border border-sts-card-border bg-sts-card p-5">
+            <div className="flex flex-col gap-3 rounded-[6px] border border-sts-card-border bg-sts-card p-5">
               <SectionLabel>Project fields — {projectsDb.title}</SectionLabel>
               <FieldRow
                 label="Name"
@@ -365,7 +365,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
 
           {/* Task fields */}
           {tasksDb && (
-            <div className="flex flex-col gap-3 rounded-[10px] border border-sts-card-border bg-sts-card p-5">
+            <div className="flex flex-col gap-3 rounded-[6px] border border-sts-card-border bg-sts-card p-5">
               <SectionLabel>Task fields — {tasksDb.title}</SectionLabel>
               <FieldRow label="Title" required value={taskTitleProp} onChange={setTaskTitleProp}
                 properties={tasksDb.properties.filter((p) => ["title", "rich_text"].includes(p.type))} />
@@ -407,7 +407,7 @@ export function SettingsNotionImportPage({ subDepartments }: { subDepartments: S
 
       {/* ── Step 3: Import ─────────────────────────────────────────────────── */}
       {step === 3 && (
-        <div className="flex flex-col gap-4 rounded-[10px] border border-sts-card-border bg-sts-card p-5 sm:max-w-xl">
+        <div className="flex flex-col gap-4 rounded-[6px] border border-sts-card-border bg-sts-card p-5 sm:max-w-xl">
           {!result && !importing && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">

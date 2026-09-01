@@ -523,7 +523,7 @@ export function NewTicketModal({
         aria-labelledby="modal-title"
         className="
           sts-glass-panel sts-modal-enter flex max-h-[calc(100svh/var(--sts-font-scale,1)-24px)] w-full max-w-[720px] flex-col overflow-hidden
-          rounded-[14px] ring-1 ring-white/35 dark:ring-white/10
+          rounded-[8px] ring-1 ring-white/35 dark:ring-white/10
         "
       >
         {/* ── Header ── */}

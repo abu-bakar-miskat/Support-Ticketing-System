@@ -162,8 +162,8 @@ function SidebarNavLink({
           // instant transitions (fresh for staleTimes.dynamic seconds).
           prefetch={true}
           className={cn(
-            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
-            active && "bg-sts-blue-tint font-semibold text-sts-id",
+            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+            active && "bg-sts-surface font-semibold text-sts-foreground",
           )}
           style={{ height: "28px" }}
         >
@@ -186,7 +186,7 @@ function SidebarNavLink({
           }}
           aria-label={`New ${item.label}`}
           title={`New ${item.label.toLowerCase()}`}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-id"
+          className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
         >
           <Plus className="size-3" aria-hidden="true" />
         </button>
@@ -200,9 +200,9 @@ function SidebarNavLink({
       prefetch={true}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "sts-nav-link relative flex h-7 items-center rounded-md font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
+        "sts-nav-link relative flex h-7 items-center rounded-md font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
         collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "bg-sts-blue-tint font-semibold text-sts-id",
+        active && "bg-sts-surface font-semibold text-sts-foreground",
       )}
     >
       <span className="relative shrink-0">
@@ -387,7 +387,7 @@ export function Sidebar({
 
   const deptContextClassName = cn(
     "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors",
-    "hover:border-sts-blue/40 hover:bg-sts-blue-tint data-popup-open:border-sts-blue/40 data-popup-open:bg-sts-blue-tint",
+    "hover:border-sts-card-border hover:bg-sts-surface data-popup-open:border-sts-card-border data-popup-open:bg-sts-surface",
   );
 
   const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
@@ -496,7 +496,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-blue-tint"
+              className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-surface"
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
@@ -561,7 +561,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
+              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
             >
@@ -640,7 +640,7 @@ export function Sidebar({
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="min-w-[200px] font-sans [&_[data-slot=dropdown-menu-item]]:text-[12px] [&_[data-slot=dropdown-menu-item]]:text-sts-foreground [&_[data-slot=dropdown-menu-item]]:focus:bg-sts-blue-tint"
+                  className="min-w-[200px] font-sans [&_[data-slot=dropdown-menu-item]]:text-[12px] [&_[data-slot=dropdown-menu-item]]:text-sts-foreground [&_[data-slot=dropdown-menu-item]]:focus:bg-sts-surface"
                   side="right"
                   align="start"
                   sideOffset={8}
@@ -718,7 +718,7 @@ export function Sidebar({
         {isAdmin && isAdminGlobalView && (
           <div
             className={cn(
-              "flex items-center rounded-lg border border-sts-blue/30 bg-sts-blue-tint",
+              "flex items-center rounded-md bg-sts-surface",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
             )}
             title={isCollapsed ? "All Departments" : undefined}
@@ -833,7 +833,7 @@ export function Sidebar({
                       type="button"
                       onClick={() => setShowCreateProject(true)}
                       aria-label="New project"
-                      className="flex size-4 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-id"
+                      className="flex size-4 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
                     >
                       <Plus className="size-3" aria-hidden="true" />
                     </button>
@@ -849,9 +849,9 @@ export function Sidebar({
                           key={p.id}
                           href={p.href}
                           className={cn(
-                            "group sts-nav-link flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
+                            "group sts-nav-link flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
                             pathname === p.href &&
-                              "bg-sts-blue-tint font-semibold text-sts-id",
+                              "bg-sts-surface font-semibold text-sts-foreground",
                           )}
                         >
                           <ProjectDot

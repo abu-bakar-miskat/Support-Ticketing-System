@@ -119,13 +119,13 @@ export function DepartmentsSidebar({
           <span className="font-sans text-[11.5px] font-medium">Platform</span>
         </Link>
       )}
-      <div className="flex items-center gap-2 rounded-lg border border-sts-blue/30 bg-sts-blue-tint px-2.5 py-2">
+      <div className="flex items-center gap-2 rounded-md bg-sts-surface px-2.5 py-2">
         <SidebarNavIcon
           icon={DepartmentIcon}
           size="sm"
-          className="shrink-0 text-sts-blue"
+          className="shrink-0 text-sts-foreground"
         />
-        <span className="font-sans text-[12px] font-semibold text-sts-id">
+        <span className="font-sans text-[12px] font-semibold text-sts-foreground">
           All Departments
         </span>
       </div>
@@ -141,8 +141,8 @@ export function DepartmentsSidebar({
             href={item.href}
             prefetch={true}
             className={cn(
-              "sts-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-foreground hover:bg-sts-blue-tint",
-              active && "bg-sts-blue-tint font-semibold text-sts-id",
+              "sts-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+              active && "bg-sts-surface font-semibold text-sts-foreground",
             )}
           >
             <SidebarNavIcon icon={item.icon} />

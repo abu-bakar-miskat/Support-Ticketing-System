@@ -56,7 +56,7 @@ function ClaudeConnectGuide() {
   }
 
   return (
-    <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card">
+    <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -488,7 +488,7 @@ export function SettingsApiKeysPage({
 
         <ClaudeConnectGuide />
 
-        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">

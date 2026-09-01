@@ -134,7 +134,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
+      <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">Create tenant</h2>
           <button

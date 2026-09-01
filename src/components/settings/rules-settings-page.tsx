@@ -861,7 +861,7 @@ function NewRuleModal({
   return (
     <div className="sts-overlay-backdrop fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onCancel}>
       <div
-        className="sts-glass-panel sts-modal-enter flex w-full max-w-md flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        className="sts-glass-panel sts-modal-enter flex w-full max-w-md flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

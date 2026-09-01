@@ -357,7 +357,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]" onClick={onClose}>
       <div className="sts-overlay-enter absolute inset-0 sts-overlay-backdrop" />
       <div
-        className="relative z-10 w-full max-w-[640px] overflow-hidden rounded-[14px] sts-glass-panel sts-modal-enter border ring-1 ring-white/30 dark:ring-white/10"
+        className="relative z-10 w-full max-w-[640px] overflow-hidden rounded-[8px] sts-glass-panel sts-modal-enter border ring-1 ring-white/30 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input */}

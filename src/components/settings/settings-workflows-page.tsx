@@ -409,7 +409,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
 
       {/* Status list */}
       {selectedSubDepartmentId && (
-        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
+        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
           <div className="pb-1.5">
             <h2 className="font-sans text-sm font-semibold text-sts-foreground">
               {selectedSubDepartment?.prefix} workflow

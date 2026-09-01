@@ -554,7 +554,7 @@ function BoardColumn({
     <div
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        "flex h-full w-[320px] shrink-0 flex-col gap-2 rounded-[10px] bg-sts-surface p-3 transition-colors",
+        "flex h-full w-[320px] shrink-0 flex-col gap-2 rounded-[6px] bg-sts-surface p-3 transition-colors",
         isActive && "ring-2 ring-inset",
       )}
       style={

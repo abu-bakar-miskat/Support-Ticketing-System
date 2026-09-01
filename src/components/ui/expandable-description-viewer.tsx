@@ -65,7 +65,7 @@ export function ExpandableDescriptionViewer({
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={() => onExpandedChange(false)}
       />
-      <div className="sts-glass-panel relative flex max-h-[calc(100svh/var(--sts-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10">
+      <div className="sts-glass-panel relative flex max-h-[calc(100svh/var(--sts-font-scale,1)-32px)] w-full max-w-[960px] flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
         <div className="flex h-[52px] shrink-0 items-center gap-2 border-b border-sts-card-border px-4 sm:px-5">
           <h3 className="font-sans text-[14px] font-semibold text-sts-foreground">
             {label}

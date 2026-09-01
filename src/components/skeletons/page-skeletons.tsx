@@ -258,7 +258,7 @@ export function HomeDashboardSectionsSkeleton() {
 export function MentionCardSkeleton({ style }: { style?: CSSProperties }) {
   return (
     <article
-      className="flex flex-col gap-2 rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-3.5"
+      className="flex flex-col gap-2 rounded-[6px] border border-sts-card-border bg-sts-card px-[18px] py-3.5"
       style={style}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1514,7 +1514,7 @@ export function MentionsPageSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col gap-2 rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-3.5"
+          className="flex flex-col gap-2 rounded-[6px] border border-sts-card-border bg-sts-card px-[18px] py-3.5"
           style={fade(i, 0.08)}
         >
           <div className="flex items-center gap-2">
@@ -1635,7 +1635,7 @@ export function IntakeSubmissionsSkeleton() {
           <Skeleton className="h-3.5 w-40" />
         </div>
       </div>
-      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <div className="flex flex-col gap-3 py-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div

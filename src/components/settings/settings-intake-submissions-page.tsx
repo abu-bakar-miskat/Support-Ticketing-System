@@ -318,7 +318,7 @@ export function SettingsIntakeSubmissionsPage({
       )}
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
           <p className="font-sans text-[13px] text-sts-muted">
             {filter === "unassigned" ? "No unassigned tickets." : filter === "assigned" ? "No assigned tickets." : "No submissions yet."}
           </p>
@@ -329,7 +329,7 @@ export function SettingsIntakeSubmissionsPage({
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">

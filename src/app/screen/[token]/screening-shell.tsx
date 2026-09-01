@@ -26,7 +26,7 @@ export function ScreeningShell({ children }: { children: React.ReactNode }) {
 
 export function ScreeningNotice({ heading, body }: { heading: string; body: string }) {
   return (
-    <div className="rounded-[12px] border border-[#384584] bg-[#051251] p-8">
+    <div className="rounded-[7px] border border-[#384584] bg-[#051251] p-8">
       <h1 className="mb-3 text-xl font-semibold text-[#EBECF3]">{heading}</h1>
       <p className="text-[15px] leading-relaxed text-[#EBECF3]/70">{body}</p>
     </div>

@@ -527,7 +527,7 @@ export function ProjectModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="project-modal-title"
-        className="sts-glass-panel sts-modal-enter relative flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-[580px] flex-col overflow-hidden rounded-[14px] ring-1 ring-white/35 dark:ring-white/10"
+        className="sts-glass-panel sts-modal-enter relative flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-[580px] flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex h-[52px] shrink-0 items-center gap-3 border-b border-sts-card-border pl-[22px] pr-3.5">

@@ -41,23 +41,13 @@ function StatCard({
   onClick?: () => void;
 }) {
   const inner = (
-    <div className={cn(
-      "flex flex-col gap-2 rounded-2xl border p-5 transition-colors",
-      alert && value > 0
-        ? "border-amber-400/50 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/5"
-        : "border-sts-card-border bg-sts-card hover:border-sts-blue/30",
-    )}>
-      <div className="flex items-center gap-2">
-        <span className={cn(
-          "flex size-8 items-center justify-center rounded-xl",
-          alert && value > 0 ? "bg-amber-100 dark:bg-amber-900/30" : "bg-sts-blue/10",
-        )}>
-          <Icon className={cn("size-4", alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-blue")} />
-        </span>
+    <div className="flex h-full flex-col gap-2 p-4">
+      <div className="flex items-center gap-1.5">
+        <Icon className={cn("size-3.5", alert && value > 0 ? "text-amber-500" : "text-sts-subtle")} />
         <span className="sts-text-section-label">{label}</span>
       </div>
       <p className={cn(
-        "font-mono text-[32px] font-semibold leading-none",
+        "font-mono text-[26px] font-semibold leading-none tracking-tight",
         alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-foreground",
       )}>
         {value}
@@ -66,10 +56,10 @@ function StatCard({
   );
 
   if (onClick) {
-    return <button type="button" onClick={onClick} className="block text-left">{inner}</button>;
+    return <button type="button" onClick={onClick} className="block h-full text-left transition-colors hover:bg-sts-surface">{inner}</button>;
   }
   if (href) {
-    return <Link href={href} className="block">{inner}</Link>;
+    return <Link href={href} className="block h-full transition-colors hover:bg-sts-surface">{inner}</Link>;
   }
   return inner;
 }
@@ -133,8 +123,8 @@ export function DepartmentsClient({
             className="mb-5"
           />
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+          {/* Stats — single flat panel, hairline-divided (clean/flat) */}
+          <div className="grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-3 lg:grid-cols-7 lg:divide-y-0">
             <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
             <StatCard icon={Users}        label="SubDepartments"             value={orgStats.subDepartmentCount} />
             <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    href="/departments/users" />

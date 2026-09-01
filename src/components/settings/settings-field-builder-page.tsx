@@ -566,7 +566,7 @@ export function SettingsFieldBuilderPage({
       {/* Field list */}
       <div className="flex flex-col gap-2">
         {fields.length === 0 && !addingField && (
-          <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-12 text-center">
+          <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-12 text-center">
             <p className="font-sans text-[13px] text-sts-muted">No fields yet.</p>
             <p className="mt-1 font-sans text-[12px] text-sts-subtle">
               Add fields to define what submitters will fill in.

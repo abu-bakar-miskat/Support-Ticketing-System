@@ -486,7 +486,7 @@ export function ScreeningFlow(props: Props) {
 
   // ── UI pieces ──────────────────────────────────────────────────────────────
 
-  const card = "rounded-[12px] border p-6 sm:p-8"
+  const card = "rounded-[7px] border p-6 sm:p-8"
   const cardStyle = { background: COLORS.card, borderColor: COLORS.border }
   const primaryBtn =
     "inline-flex items-center justify-center rounded-[8px] px-5 py-2.5 text-[15px] font-semibold text-[#030A2E] transition-opacity hover:opacity-90 disabled:opacity-50"

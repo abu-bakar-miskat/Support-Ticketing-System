@@ -70,7 +70,7 @@ export function SettingsBrandingPage({
 
       <section
         className={cn(
-          "w-full max-w-[920px] rounded-[10px] border border-sts-card-border bg-sts-card",
+          "w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card",
           "px-[22px] py-5",
         )}
       >

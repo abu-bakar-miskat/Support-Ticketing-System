@@ -335,7 +335,7 @@ export function SettingsEmailTemplatesPage({
         Array.from({ length: TEMPLATE_SKELETON_COUNT }).map((_, i) => (
           <section
             key={i}
-            className="w-full max-w-[1040px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
+            className="w-full max-w-[1040px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
           >
             <div className="flex w-full items-center justify-between gap-3">
               <div className="flex flex-col gap-1.5">
@@ -353,7 +353,7 @@ export function SettingsEmailTemplatesPage({
           return (
             <section
               key={template.key}
-              className="w-full max-w-[1040px] rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
+              className="w-full max-w-[1040px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4"
             >
               <button
                 type="button"

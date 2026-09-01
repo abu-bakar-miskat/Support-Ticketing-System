@@ -458,7 +458,7 @@ function ProjectColumn({
     <div
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        "flex h-full w-[280px] shrink-0 flex-col gap-[9px] rounded-[12px] bg-sts-surface px-2.5 py-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
+        "flex h-full w-[280px] shrink-0 flex-col gap-[9px] rounded-[7px] bg-sts-surface px-2.5 py-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
         isActive && "ring-2 ring-inset",
       )}
       style={isActive ? ({ "--tw-ring-color": status.color } as React.CSSProperties) : undefined}

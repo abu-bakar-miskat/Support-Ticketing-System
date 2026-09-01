@@ -178,7 +178,7 @@ export function JoinRequestDetailPane({
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-7 py-6">
         {/* Request card */}
-        <div className="rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-3.5">
+        <div className="rounded-[6px] border border-sts-card-border bg-sts-card px-[18px] py-3.5">
           <div className="flex items-center gap-3">
             <UserAvatar name={notification.actor} size={36} avatarUrl={notification.actorAvatarUrl ?? null} />
             <div className="min-w-0 flex-1">
@@ -216,7 +216,7 @@ export function JoinRequestDetailPane({
 
         {/* Approval form — only show if pending */}
         {isPending && notification.requestId && (
-          <div className="rounded-[10px] border border-sts-card-border bg-sts-card px-[18px] py-4">
+          <div className="rounded-[6px] border border-sts-card-border bg-sts-card px-[18px] py-4">
             <p className="mb-3 font-sans text-[11.5px] font-medium tracking-[0.8px] text-sts-subtle">
               APPROVAL OPTIONS
             </p>

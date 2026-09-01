@@ -661,7 +661,7 @@ function NewDepartmentModal({
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {selectedManagers.map((m) => (
-                  <div key={m.id} className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
+                  <div key={m.id} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                     <UserAvatar name={m.name} size={18} avatarUrl={m.avatarUrl ?? null} />
                     <span className="font-sans text-[11.5px] text-sts-foreground">{m.name}</span>
                     <button type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
@@ -966,7 +966,7 @@ function DepartmentCard({
         />
       )}
       <div className={cn(
-        "flex flex-col rounded-2xl border bg-sts-card",
+        "flex flex-col rounded-xl border bg-sts-card",
         needsSetup ? "border-amber-400/60 dark:border-amber-500/40" : "border-sts-card-border",
       )}>
 
@@ -1119,7 +1119,7 @@ function DepartmentCard({
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {managers.map((m) => (
-                    <div key={m.id} className="group flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
+                    <div key={m.id} className="group flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                       <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                       <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
                       <button type="button" onClick={() => removeManager(m.userId)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500">
@@ -1174,7 +1174,7 @@ function DepartmentCard({
               ) : (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {allMemberEntries.map((m) => (
-                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
+                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                       <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                       <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
                       <span className="ml-0.5 rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">{m.user.role}</span>
@@ -1364,7 +1364,7 @@ function DepartmentCard({
               type="button"
               disabled={entering}
               onClick={() => { setEntering(true); onEnterWorkspace(dept.id); }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-80"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-80"
             >
               {entering ? (
                 <>

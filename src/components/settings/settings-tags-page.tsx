@@ -154,7 +154,7 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+      <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">

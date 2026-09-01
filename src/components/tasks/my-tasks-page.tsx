@@ -759,7 +759,7 @@ function BoardColumn({
     <div
       ref={dropRef as unknown as React.Ref<HTMLDivElement>}
       className={cn(
-        "flex h-full w-[280px] shrink-0 flex-col gap-2 rounded-[10px] bg-sts-surface p-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
+        "flex h-full w-[280px] shrink-0 flex-col gap-2 rounded-[6px] bg-sts-surface p-3 transition-colors sm:w-[300px] lg:w-[min(320px,calc((100cqw-3.5rem)/5))]",
         isActive && "ring-2 ring-inset",
       )}
       style={isActive ? ({ "--tw-ring-color": status.color } as React.CSSProperties) : undefined}

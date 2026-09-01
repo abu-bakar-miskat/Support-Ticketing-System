@@ -829,7 +829,7 @@ export function ProjectAssetManager({
       >
         {/* Upload overlay */}
         {uploading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[10px] bg-sts-surface/80 backdrop-blur-sm dark:bg-sts-bg/70">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[6px] bg-sts-surface/80 backdrop-blur-sm dark:bg-sts-bg/70">
             <div className="flex size-14 items-center justify-center rounded-2xl border border-sts-card-border bg-sts-card shadow-lg">
               <Loader2 className="size-7 animate-spin text-sts-id" />
             </div>

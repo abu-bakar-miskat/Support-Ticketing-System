@@ -1395,7 +1395,7 @@ function FieldBuilderModal({
                 Custom fields
               </p>
               {fields.length === 0 && !addingField && (
-                <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-12 text-center">
+                <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-12 text-center">
                   <p className="font-sans text-[13px] text-sts-muted">No fields yet.</p>
                   <p className="mt-1 font-sans text-[12px] text-sts-subtle">
                     Add fields to define what submitters will fill in.
@@ -1920,7 +1920,7 @@ export function SettingsIntakeFormsPage({
       </div>
 
       {initialForms.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-sts-card-border py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
           <p className="font-sans text-[13px] text-sts-muted">
             No support forms yet.
           </p>
@@ -1929,7 +1929,7 @@ export function SettingsIntakeFormsPage({
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[780px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">

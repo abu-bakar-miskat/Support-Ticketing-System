@@ -345,7 +345,7 @@ export function SettingsProfilePage({
         </p>
       </div>
 
-      <div className="flex w-full max-w-[912px] flex-col gap-5 rounded-[10px] border border-sts-card-border bg-sts-card px-5 py-[22px] sm:px-[26px]">
+      <div className="flex w-full max-w-[912px] flex-col gap-5 rounded-[6px] border border-sts-card-border bg-sts-card px-5 py-[22px] sm:px-[26px]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative shrink-0">
             <Avatar className="size-16">

@@ -1,5 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  TENANT_SLUG_COOKIE,
+  DEPT_SLUG_COOKIE,
+  firstSegment,
+  isBareTenantScoped,
+  isDeptScopedRoot,
+  withTenant,
+} from "@/lib/tenant-path";
+
+/** Copy any refreshed Supabase auth cookies from `from` onto `to`. */
+function carryCookies(from: NextResponse, to: NextResponse): NextResponse {
+  for (const c of from.cookies.getAll()) to.cookies.set(c);
+  return to;
+}
 
 export async function proxy(request: NextRequest) {
   // DEV-ONLY auth bypass for building/designing the app without a live login.
@@ -70,6 +84,51 @@ export async function proxy(request: NextRequest) {
       url.searchParams.set("next", returnTo);
     }
     return NextResponse.redirect(url);
+  }
+
+  // Tenant name in the URL. Fully guarded on the slug cookie so existing sessions
+  // (no cookie) behave exactly as before — activates only once the slug cookie is
+  // set (login / tenant switch). The tenant-id cookie stays authoritative for
+  // data scoping; the slug is cosmetic and always forced to match it.
+  if (user && !isPublic) {
+    const tSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value || "";
+    const dSlug = request.cookies.get(DEPT_SLUG_COOKIE)?.value || "";
+    if (tSlug) {
+      const segs = pathname.split("/").filter(Boolean);
+      if (segs[0] === tSlug) {
+        const afterTenant = segs.slice(1); // e.g. ["dept","board"] | ["board"] | ["departments"] | []
+        const nextSeg = afterTenant[0] ?? "";
+        if (dSlug && nextSeg === dSlug) {
+          // Fully prefixed /<tenant>/<dept>/rest → serve internal /rest.
+          const url = request.nextUrl.clone();
+          url.pathname = "/" + afterTenant.slice(1).join("/");
+          if (url.pathname === "") url.pathname = "/";
+          return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
+        }
+        if (dSlug && isDeptScopedRoot(nextSeg)) {
+          // /<tenant>/board but missing the dept slug → insert it (always show dept).
+          const url = request.nextUrl.clone();
+          url.pathname = `/${tSlug}/${dSlug}/${afterTenant.join("/")}`;
+          return carryCookies(supabaseResponse, NextResponse.redirect(url));
+        }
+        // /<tenant>/departments (tenant-level root) or /<tenant> → serve internal.
+        const url = request.nextUrl.clone();
+        url.pathname = "/" + afterTenant.join("/");
+        if (url.pathname === "") url.pathname = "/";
+        return carryCookies(supabaseResponse, NextResponse.rewrite(url, { request }));
+      }
+      if (isBareTenantScoped(pathname)) {
+        // Bare path → redirect to the fully-prefixed URL (tenant, plus dept for
+        // department-scoped roots when a department is active).
+        const root = firstSegment(pathname);
+        const url = request.nextUrl.clone();
+        url.pathname =
+          dSlug && isDeptScopedRoot(root)
+            ? `/${tSlug}/${dSlug}${pathname === "/" ? "" : pathname}`
+            : withTenant(tSlug, pathname);
+        return carryCookies(supabaseResponse, NextResponse.redirect(url));
+      }
+    }
   }
 
   return supabaseResponse;

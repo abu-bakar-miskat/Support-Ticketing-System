@@ -59,6 +59,7 @@ import {
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
+import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,8 @@ export type DepartmentDetailData = {
   memberCount: number;
   isAdmin: boolean;
   canGrantAdmin: boolean;
+  /** Super Admin — may grant/revoke this department's features. */
+  canControlFeatures: boolean;
   availableSubDepartments: { id: string; name: string }[];
   allUsers: UserOption[];
   managers: ManagerRow[];
@@ -759,6 +762,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </Table>
           </div>
         </Section>
+      )}
+
+      {/* Super-Admin feature control — grant/revoke this department's features. */}
+      {data.canControlFeatures && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Settings2 className="size-4 text-sts-muted" />
+            <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+              Features <span className="font-normal text-sts-subtle">(super admin)</span>
+            </h2>
+          </div>
+          <div className="rounded-[6px] border border-sts-card-border bg-sts-card p-[22px]">
+            <DepartmentFeaturesPanel departmentId={data.id} />
+          </div>
+        </div>
       )}
 
       {/* Cross-department access */}

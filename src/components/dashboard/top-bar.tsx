@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useAppPathname } from "@/hooks/use-app-pathname";
 import { Bell, ChevronLeft, Menu, PanelLeft, Search } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { FontSizeZoomControls } from "@/components/font-size/font-size-zoom-controls";
@@ -34,7 +35,11 @@ export function TopBar({
     sidebarCollapsed,
     toggleSidebar,
   } = useDashboardContext();
-  const pathname = usePathname();
+  // Raw path (keeps any /<tenant>/<dept> prefix) — used only to match the
+  // breadcrumb store key set by BreadcrumbRegistrar. `pathname` is the internal
+  // (prefix-stripped) path used for all route logic below.
+  const rawPathname = usePathname();
+  const pathname = useAppPathname();
   const storeCount = useNotificationStore((s) => s.unreadCount);
   const storeInit = useNotificationStore((s) => s.initialized);
   const badgeCount = storeInit ? storeCount : inboxCount;
@@ -71,7 +76,7 @@ export function TopBar({
   });
 
   const crumbs =
-    pageCrumbsState?.pathname === pathname
+    pageCrumbsState?.pathname === rawPathname
       ? pageCrumbsState.crumbs
       : autoCrumbs;
 

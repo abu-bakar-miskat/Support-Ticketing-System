@@ -222,7 +222,7 @@ export async function getAdminDepartments(): Promise<AdminDepartment[]> {
   return res.json()
 }
 
-export async function createAdminDepartment(body: { name: string; type?: string }) {
+export async function createAdminDepartment(body: { name: string; type?: string; templateSlug?: string }) {
   const res = await fetch("/api/admin/departments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

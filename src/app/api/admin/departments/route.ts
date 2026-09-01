@@ -27,11 +27,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 })
   }
 
-  const rawType = (body.type as string | undefined)?.trim()
-  if (rawType !== undefined && !isValidDepartmentType(rawType)) {
-    return NextResponse.json({ error: "Invalid department type" }, { status: 400 })
+  // The modal sends the chosen option's slug — either a built-in department type
+  // (development/support/hub) or a catalogue template slug. Board behaviour still
+  // keys off the built-in `type`; a catalogue slug that isn't one of the built-ins
+  // falls back to the default type but is remembered as `templateSlug` so the
+  // department's settings/sidebar reflect that template's features.
+  const selected = ((body.templateSlug ?? body.type) as string | undefined)?.trim()
+  const type = selected && isValidDepartmentType(selected) ? selected : DEFAULT_DEPARTMENT_TYPE
+
+  // Seed the department's controllable feature allowlist from the chosen
+  // template's features. Left null (uncontrolled → all features) when the
+  // selection isn't a catalogue template.
+  let templateSlug: string | null = null
+  let featureKeys: string[] | null = null
+  if (selected) {
+    const tpl = await prisma.template.findUnique({
+      where: { slug: selected },
+      select: { slug: true, features: { select: { key: true } } },
+    })
+    if (tpl) {
+      templateSlug = tpl.slug
+      featureKeys = tpl.features.map((f) => f.key)
+    }
   }
-  const type = rawType ?? DEFAULT_DEPARTMENT_TYPE
 
   const tenantId = profile.activeTenantId
   if (!tenantId) {
@@ -55,7 +73,14 @@ export async function POST(request: Request) {
   const department = await runWithScope(scope, () =>
     prisma.$transaction(async (tx) => {
       const dept = await tx.department.create({
-        data: { name, tenantId, type, isHub: type === "hub" },
+        data: {
+          name,
+          tenantId,
+          type,
+          templateSlug,
+          ...(featureKeys ? { featureKeys } : {}),
+          isHub: type === "hub",
+        },
       })
       return dept
     }),

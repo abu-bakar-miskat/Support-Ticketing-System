@@ -2,8 +2,38 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
-import { TEMPLATE_FEATURE_KEYS, type TemplateFeatureKey } from "@/lib/template-features";
+import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey, type TemplateFeatureKey } from "@/lib/template-features";
 import type { TemplateRequestStatus } from "@/generated/prisma/enums";
+
+/**
+ * Effective feature keys for a department — its Super-Admin-controllable
+ * allowlist (Department.featureKeys), seeded from its template at creation and
+ * editable via the per-department features API. Drives per-department settings
+ * and sidebar gating (and thus its sub-departments), unlike
+ * getTenantActiveFeatureKeys which is tenant-wide.
+ *
+ * `null` featureKeys = uncontrolled → "ALL" (every feature visible, fail-open).
+ * A (possibly empty) array = exactly those features; an empty controlled set
+ * means every template-gated feature is revoked. Resilient to the column not
+ * existing yet (additive migration pending): fails open to "ALL".
+ */
+export async function getDepartmentActiveFeatureKeys(
+  departmentId: string,
+): Promise<Set<TemplateFeatureKey> | "ALL"> {
+  const dept = await prisma.department
+    .findUnique({ where: { id: departmentId }, select: { featureKeys: true } })
+    .catch(() => null);
+
+  const raw = dept?.featureKeys;
+  if (raw == null) return "ALL";
+
+  const arr = Array.isArray(raw) ? raw : [];
+  const keys = new Set<TemplateFeatureKey>();
+  for (const k of arr) {
+    if (typeof k === "string" && isTemplateFeatureKey(k)) keys.add(k);
+  }
+  return keys;
+}
 
 /**
  * Template Catalogue feature gating. Fail-open by design, same rationale as

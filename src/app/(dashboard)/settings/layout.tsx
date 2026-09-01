@@ -4,7 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SettingsLayout } from "@/components/settings/settings-layout";
-import { getTenantActiveFeatureKeys } from "@/lib/template-catalogue";
+import { getTenantActiveFeatureKeys, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
 import { listFeatureFlags } from "@/lib/feature-flags";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
@@ -37,9 +37,13 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const counts: Record<string, number> = {};
   if (pendingCount > 0) counts["/settings/sub-departments"] = pendingCount;
 
-  const activeFeatureKeySet = profile.activeTenantId
-    ? await getTenantActiveFeatureKeys(profile.activeTenantId)
-    : "ALL";
+  // Inside a department, gate settings by that department's template features;
+  // otherwise (tenant-level view) fall back to the tenant's active templates.
+  const activeFeatureKeySet = activeDeptId
+    ? await getDepartmentActiveFeatureKeys(activeDeptId)
+    : profile.activeTenantId
+      ? await getTenantActiveFeatureKeys(profile.activeTenantId)
+      : "ALL";
   const activeFeatureKeys = activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet);
   const platformFlags = profile.activeTenantId
     ? await listFeatureFlags(profile.activeTenantId)

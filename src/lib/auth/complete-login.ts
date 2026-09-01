@@ -4,6 +4,7 @@ import type { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
 import { acceptDepartmentInvite } from "@/lib/invites/accept-department-invite"
 import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope"
+import { TENANT_SLUG_COOKIE, DEPT_SLUG_COOKIE } from "@/lib/tenant-path"
 import { loginBlockReason } from "@/lib/tenant-lifecycle"
 import { resolvePostLoginLanding } from "@/lib/auth/post-login-redirect"
 
@@ -35,9 +36,9 @@ const clearNextCookie: LoginCookie = {
   options: { path: "/", maxAge: 0 },
 }
 
-function tenantCookie(tenantId: string | null): LoginCookie[] {
+async function tenantCookie(tenantId: string | null): Promise<LoginCookie[]> {
   if (!tenantId) return []
-  return [
+  const cookies: LoginCookie[] = [
     {
       name: ACTIVE_TENANT_COOKIE,
       value: tenantId,
@@ -49,6 +50,19 @@ function tenantCookie(tenantId: string | null): LoginCookie[] {
       },
     },
   ]
+  // Mirror the slug so middleware can show the tenant in the URL without a lookup.
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { slug: true },
+  })
+  if (tenant?.slug) {
+    cookies.push({
+      name: TENANT_SLUG_COOKIE,
+      value: tenant.slug,
+      options: { path: "/", maxAge: TENANT_COOKIE_MAX_AGE, sameSite: "lax" },
+    })
+  }
+  return cookies
 }
 
 /**
@@ -132,11 +146,15 @@ export async function completeLogin(args: {
       email: profile.email,
     })
     if (result.ok) {
+      const invitedDept = await prisma.department.findUnique({
+        where: { id: result.departmentId },
+        select: { slug: true },
+      })
       return {
         redirectPath: "/",
         cookies: [
           clearNextCookie,
-          ...tenantCookie(tenantId),
+          ...(await tenantCookie(tenantId)),
           {
             name: "pen_active_dept",
             value: result.departmentId,
@@ -146,6 +164,11 @@ export async function completeLogin(args: {
               maxAge: 60 * 60 * 24 * 30,
               sameSite: "lax",
             },
+          },
+          {
+            name: DEPT_SLUG_COOKIE,
+            value: invitedDept?.slug ?? "",
+            options: { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" },
           },
         ],
       }
@@ -164,12 +187,12 @@ export async function completeLogin(args: {
     const landing = await resolvePostLoginLanding(profile.id, profile.isSuperAdmin)
     return {
       redirectPath: landing.redirectPath,
-      cookies: [clearNextCookie, ...tenantCookie(tenantId), ...landing.cookies],
+      cookies: [clearNextCookie, ...(await tenantCookie(tenantId)), ...landing.cookies],
     }
   }
 
   return {
     redirectPath: next,
-    cookies: [clearNextCookie, ...tenantCookie(tenantId)],
+    cookies: [clearNextCookie, ...(await tenantCookie(tenantId))],
   }
 }

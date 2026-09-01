@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useAppPathname } from "@/hooks/use-app-pathname";
 import { ArrowLeft } from "lucide-react";
 import {
   Select,
@@ -171,7 +172,7 @@ export function SubDepartmentLayout({
   title: string;
   subtitle?: string;
 }) {
-  const pathname = usePathname();
+  const pathname = useAppPathname();
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] min-h-0 w-full flex-col overflow-hidden lg:flex-row">

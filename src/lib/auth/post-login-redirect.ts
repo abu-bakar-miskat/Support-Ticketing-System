@@ -1,5 +1,6 @@
 import "server-only"
 import { prisma } from "@/lib/db"
+import { DEPT_SLUG_COOKIE } from "@/lib/tenant-path"
 import type { LoginCookie } from "@/lib/auth/complete-login"
 
 const DEPT_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
@@ -15,6 +16,22 @@ function activeDeptCookie(departmentId: string): LoginCookie {
       sameSite: "lax",
     },
   }
+}
+
+/** Active-dept id cookie plus its slug cookie (for /<tenant>/<dept>/… URLs). */
+async function deptCookies(departmentId: string): Promise<LoginCookie[]> {
+  const dept = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { slug: true },
+  })
+  return [
+    activeDeptCookie(departmentId),
+    {
+      name: DEPT_SLUG_COOKIE,
+      value: dept?.slug ?? "",
+      options: { path: "/", maxAge: DEPT_COOKIE_MAX_AGE, sameSite: "lax" },
+    },
+  ]
 }
 
 function clearActiveDeptCookie(): LoginCookie {
@@ -99,7 +116,7 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
   if (managedDepts.length > 0) {
     return {
       redirectPath: "/board",
-      cookies: [activeDeptCookie(managedDepts[0]!.departmentId)],
+      cookies: await deptCookies(managedDepts[0]!.departmentId),
     }
   }
 
@@ -107,7 +124,7 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     const primary = memberships[0]!
     const cookies: LoginCookie[] = [activeTeamCookie(primary.subDepartmentId)]
     if (primary.subDepartment.departmentId) {
-      cookies.unshift(activeDeptCookie(primary.subDepartment.departmentId))
+      cookies.unshift(...(await deptCookies(primary.subDepartment.departmentId)))
     }
     return { redirectPath: "/board", cookies }
   }
@@ -115,14 +132,14 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
   if (directMembers.length > 0) {
     return {
       redirectPath: "/board",
-      cookies: [activeDeptCookie(directMembers[0]!.departmentId)],
+      cookies: await deptCookies(directMembers[0]!.departmentId),
     }
   }
 
   if (deptAccess.length > 0) {
     return {
       redirectPath: "/board",
-      cookies: [activeDeptCookie(deptAccess[0]!.departmentId)],
+      cookies: await deptCookies(deptAccess[0]!.departmentId),
     }
   }
 

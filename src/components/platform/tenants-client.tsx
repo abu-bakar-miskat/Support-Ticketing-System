@@ -71,7 +71,8 @@ export function TenantsClient({
       setBusy(null);
       return;
     }
-    window.location.href = "/departments";
+    const { slug } = await res.json().catch(() => ({ slug: "" }));
+    window.location.href = slug ? `/${slug}/departments` : "/departments";
   }
 
   async function setTenantStatus(tenantId: string, status: "active" | "suspended") {

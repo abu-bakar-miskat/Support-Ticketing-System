@@ -159,6 +159,8 @@ export default async function DepartmentRoute() {
     // may add Managers/Agents but not Admins, so the toggle is hidden for them.
     canGrantAdmin:
       profile.role === "admin" || (profile.departmentAdminIds ?? []).includes(activeDeptId),
+    // Super Admins control any department's feature allowlist (role-hierarchy.md).
+    canControlFeatures: profile.isSuperAdmin,
     managers: managers.map((m) => ({
       id: m.id,
       userId: m.userId,

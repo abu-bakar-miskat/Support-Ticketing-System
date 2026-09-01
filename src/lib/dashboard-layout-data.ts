@@ -15,7 +15,7 @@ import type { LayoutData } from "@/components/dashboard/dashboard-layout";
 import type { AuthProfile } from "@/lib/auth";
 import type { ProfileMembership } from "@/lib/profile";
 import { parsePinnedProjectIds } from "@/lib/pinned-projects-prefs";
-import { getTenantActiveFeatureKeys } from "@/lib/template-catalogue";
+import { getTenantActiveFeatureKeys, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
 import { listFeatureFlags } from "@/lib/feature-flags";
 
 const projectSelect = {
@@ -297,9 +297,13 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           : {}),
       },
     }),
-    profile.activeTenantId
-      ? getTenantActiveFeatureKeys(profile.activeTenantId)
-      : Promise.resolve("ALL" as const),
+    // Inside a department, gate the sidebar by that department's template
+    // features; otherwise fall back to the tenant's active templates.
+    activeDeptId
+      ? getDepartmentActiveFeatureKeys(activeDeptId)
+      : profile.activeTenantId
+        ? getTenantActiveFeatureKeys(profile.activeTenantId)
+        : Promise.resolve("ALL" as const),
     profile.activeTenantId
       ? listFeatureFlags(profile.activeTenantId)
       : Promise.resolve({} as Record<string, boolean>),

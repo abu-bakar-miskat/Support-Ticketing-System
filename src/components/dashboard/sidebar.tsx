@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useAppPathname } from "@/hooks/use-app-pathname";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { ProjectDot } from "@/components/projects/project-avatar";
 import { DepartmentIcon } from "@/components/icons/department-icon";
@@ -152,12 +154,13 @@ function SidebarNavLink({
 }) {
   const Icon = item.icon;
   const showAdd = !!onQuickAdd && !collapsed;
+  const href = useTenantHref();
 
   if (showAdd) {
     return (
       <div className="group flex h-7 items-center gap-0.5">
         <Link
-          href={item.href}
+          href={href(item.href)}
           // Full prefetch: dashboard routes are dynamic, so the default only
           // prefetches an empty shell — this caches the whole RSC payload for
           // instant transitions (fresh for staleTimes.dynamic seconds).
@@ -197,7 +200,7 @@ function SidebarNavLink({
 
   return (
     <Link
-      href={item.href}
+      href={href(item.href)}
       prefetch={true}
       title={collapsed ? item.label : undefined}
       className={cn(
@@ -314,7 +317,7 @@ export function Sidebar({
     platformFlags,
     pinnedProjectIds: initialPins,
   } = useDashboardContext();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
   const router = useRouter();
   const [switchingSubDepartment, setSwitchingSubDepartment] = useState<string | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);

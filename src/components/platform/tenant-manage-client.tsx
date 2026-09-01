@@ -401,7 +401,10 @@ export function TenantManageClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenantId: tenant.id }),
     });
-    if (res.ok) window.location.href = "/departments";
+    if (res.ok) {
+      const { slug } = await res.json().catch(() => ({ slug: "" }));
+      window.location.href = slug ? `/${slug}/departments` : "/departments";
+    }
   }
 
   async function updateStatus(next: "active" | "suspended") {

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useAppPathname } from "@/hooks/use-app-pathname";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
   Activity,
   Bell,
@@ -41,7 +42,8 @@ export function DepartmentsSidebar({
   brandingLogoUrl = null,
 }: DepartmentsSidebarProps) {
   const { isSuperAdmin, inboxCount } = useDashboardContext();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
+  const href = useTenantHref();
   const storeCount = useNotificationStore((s) => s.unreadCount);
   const storeInit = useNotificationStore((s) => s.initialized);
   const notifCount = storeInit ? storeCount : inboxCount;
@@ -138,7 +140,7 @@ export function DepartmentsSidebar({
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href(item.href)}
             prefetch={true}
             className={cn(
               "sts-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",

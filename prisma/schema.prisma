@@ -289,9 +289,23 @@ model Department {
   tenantId          String
   tenant            Tenant               @relation(fields: [tenantId], references: [id])
   name              String
+  // URL slug for the department, unique WITHIN a tenant (see @@unique below) so
+  // different tenants may reuse department names. Used for /<tenant>/<dept>/…
+  // routing. Nullable while backfilling; resolved from name.
+  slug              String?
   // Template (development | support | hub | …). Drives per-type settings/UI.
   // `isHub` is kept in sync (isHub == (type == "hub")). See lib/department-types.
   type              String               @default("development")
+  // Slug of the catalogue Template a department was created from (board type +
+  // the initial seed for featureKeys). Reference only.
+  templateSlug      String?
+  // Effective feature-key allowlist for THIS department, controllable per
+  // department by a Super Admin (grant/revoke). Seeded from templateSlug's
+  // template at creation. `null` = uncontrolled → every feature visible
+  // (fail-open); a JSON string[] = exactly those features are enabled, and the
+  // department + its sub-departments reflect it everywhere. See
+  // getDepartmentActiveFeatureKeys.
+  featureKeys       Json?
   isHub             Boolean              @default(false)
   emailConfig       Json?
   // Per-department overrides (label/placeholder) for the Classic Form's default
@@ -332,6 +346,7 @@ model Department {
   rules             Rule[]
   mailboxConnections MailboxConnection[]
 
+  @@unique([tenantId, slug])
   @@index([tenantId])
 }
 

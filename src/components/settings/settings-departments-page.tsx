@@ -521,7 +521,10 @@ function NewDepartmentModal({
     let deptId = createdDeptIdRef.current;
     if (!deptId) {
       try {
-        const dept = await createAdminDepartment({ name: deptName, type });
+        // `type` holds the selected option's slug — pass it as templateSlug so a
+        // catalogue template gates the new department's features (server derives
+        // the board type and stores the slug).
+        const dept = await createAdminDepartment({ name: deptName, type, templateSlug: type });
         deptId = dept.id;
         createdDeptIdRef.current = dept.id;
       } catch {

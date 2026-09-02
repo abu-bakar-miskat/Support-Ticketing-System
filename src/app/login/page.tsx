@@ -116,64 +116,84 @@ export default async function LoginPage({
   const sentStep = step === "sent" && sentEmail.length > 0;
 
   return (
-    <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 font-sans">
-      {/* Soft accent glow so the card doesn't float on flat grey */}
+    <main className="sts-ambient-bg relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-20 font-sans sm:px-8">
+      {/* Quiet structure and light keep the sign-in surface connected to the app. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(58% 46% at 50% 0%, color-mix(in srgb, var(--sts-accent) 9%, transparent) 0%, transparent 72%)",
+            "radial-gradient(56% 48% at 50% 0%, color-mix(in srgb, var(--sts-accent) 12%, transparent) 0%, transparent 72%), radial-gradient(40% 35% at 8% 92%, color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%, transparent 78%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.32] dark:opacity-[0.14]"
+        style={{
+          backgroundImage:
+            "linear-gradient(color-mix(in srgb, var(--sts-foreground) 5%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--sts-foreground) 5%, transparent) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage:
+            "radial-gradient(ellipse 70% 70% at 50% 50%, black 0%, transparent 78%)",
         }}
       />
 
-      <ThemeToggle className="absolute right-6 top-6 z-20" />
+      <ThemeToggle className="absolute right-5 top-5 z-20 shadow-sm sm:right-8 sm:top-8" />
 
       <div
         className={cn(
-          "relative z-10 flex w-full max-w-96 flex-col items-center",
-          "sts-glass-panel sts-modal-enter rounded-2xl border px-9 pb-9 pt-11 ring-1 ring-white/40 dark:ring-white/10",
-          "shadow-[0_2px_8px_-3px_rgba(16,24,40,0.08),0_24px_48px_-16px_rgba(16,24,40,0.16)]",
+          "relative z-10 flex w-full max-w-[30rem] flex-col items-center overflow-hidden",
+          "sts-glass-panel sts-modal-enter rounded-[1.375rem] border px-6 pb-8 pt-9 sm:px-10 sm:pb-10 sm:pt-11",
+          "ring-1 ring-white/50 dark:ring-white/[0.07]",
+          "shadow-[0_3px_10px_-4px_rgba(16,35,52,0.12),0_32px_70px_-28px_rgba(16,35,52,0.3)] dark:shadow-[0_32px_80px_-28px_rgba(0,0,0,0.55)]",
         )}
       >
-        <div className="[&_img]:h-20">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sts-accent/45 to-transparent"
+        />
+
+        <div className="rounded-2xl bg-sts-surface/80 px-5 py-2.5 ring-1 ring-sts-card-border/70 [&_img]:h-[4.5rem]">
           <PenLogo />
         </div>
 
-        <div className="h-7" />
+        <div className="h-7 sm:h-8" />
 
         {sentStep && (
-          <>
-            <h1
-              className="text-center text-[26px] font-semibold leading-tight tracking-tight text-balance text-sts-foreground"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Check your inbox
-            </h1>
-
-            <div className="h-2" />
-          </>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sts-accent">
+            Link sent
+          </p>
         )}
+
+        <h1
+          className={cn(
+            "text-center font-semibold leading-[1.12] tracking-[-0.025em] text-sts-foreground",
+            sentStep
+              ? "text-[28px] text-balance sm:text-[30px]"
+              : "whitespace-nowrap text-[clamp(1.4rem,7vw,1.875rem)]",
+          )}
+        >
+          {sentStep ? "Check your inbox" : "Sign in to your workspace"}
+        </h1>
+
+        <div className="h-2.5" />
 
         <p
           className={cn(
-            "max-w-[17rem] text-center leading-normal text-balance",
-            sentStep
-              ? "text-[13.5px] text-sts-muted"
-              : "text-[15px] font-medium text-sts-foreground",
+            "max-w-[20rem] text-center text-[13.5px] leading-relaxed text-pretty text-sts-muted",
           )}
         >
           {sentStep
             ? `We emailed a sign-in link to ${sentEmail}`
-            : "Sign in to the Support Ticketing System"}
+            : "Enter your work email and we’ll send you a secure, password-free sign-in link."}
         </p>
 
-        <div className="h-7" />
+        <div className="h-7 sm:h-8" />
 
         {error && (
           <div
             role="alert"
-            className="mb-4 w-full rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-center text-[13px] text-destructive"
+            className="mb-5 w-full rounded-xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-left text-[13px] leading-relaxed text-destructive"
           >
             {decodeURIComponent(error)}
           </div>
@@ -182,13 +202,13 @@ export default async function LoginPage({
         {sentStep ? (
           <>
             <div className="flex w-full flex-col items-center text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-sts-accent/10 text-sts-accent">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-sts-accent/10 text-sts-accent ring-1 ring-sts-accent/15">
                 <MailIcon />
               </div>
 
               <div className="h-5" />
 
-              <p className="text-[13.5px] leading-normal text-sts-muted">
+              <p className="max-w-[19rem] text-[13.5px] leading-relaxed text-sts-muted">
                 Click the link in the email to finish signing in. It stays valid
                 for a few minutes — you can close this tab afterward.
               </p>
@@ -196,7 +216,7 @@ export default async function LoginPage({
 
             <div className="h-6" />
 
-            <div className="flex w-full items-center justify-center gap-4 text-[12.5px]">
+            <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px]">
               <form action={requestMagicLink}>
                 {next !== "/" && (
                   <input type="hidden" name="next" value={next} />
@@ -204,7 +224,7 @@ export default async function LoginPage({
                 <input type="hidden" name="email" value={sentEmail} />
                 <button
                   type="submit"
-                  className="font-medium text-sts-accent underline-offset-4 hover:underline"
+                  className="rounded-sm font-semibold text-sts-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
                 >
                   Resend link
                 </button>
@@ -214,7 +234,7 @@ export default async function LoginPage({
               </span>
               <a
                 href={`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
-                className="text-sts-muted underline-offset-4 hover:text-foreground hover:underline"
+                className="rounded-sm text-sts-muted underline-offset-4 transition-colors hover:text-sts-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
               >
                 Use a different email
               </a>
@@ -224,29 +244,30 @@ export default async function LoginPage({
           <>
             <form action={requestMagicLink} className="w-full space-y-4">
               {next !== "/" && <input type="hidden" name="next" value={next} />}
-              <label className="flex w-full flex-col gap-1.5">
-                <span className="text-[11.5px] font-semibold uppercase tracking-[0.6px] text-sts-subtle">
+              <label className="flex w-full flex-col gap-2">
+                <span className="text-[12.5px] font-semibold text-sts-foreground">
                   Work email
                 </span>
                 <input
                   type="email"
                   name="email"
                   required
-                  placeholder="you@mail.com"
+                  placeholder="name@company.com"
                   autoComplete="email"
+                  autoFocus
                   className={cn(
-                    "h-11 w-full rounded-lg border border-sts-card-border bg-sts-card px-3.5 text-[14px] text-sts-foreground",
+                    "h-12 w-full rounded-xl border border-sts-card-border bg-sts-card px-4 text-[14px] text-sts-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
                     "placeholder:text-sts-subtle",
-                    "transition-colors focus-visible:border-sts-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/50",
+                    "transition-[border-color,box-shadow] duration-200 hover:border-sts-subtle/70 focus-visible:border-sts-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-sts-accent/20",
                   )}
                 />
               </label>
               <SubmitButton
                 pendingLabel="Sending link…"
                 className={cn(
-                  "flex h-11 w-full items-center justify-center gap-2 rounded-lg",
-                  "bg-sts-button text-[14px] font-medium text-sts-button-fg",
-                  "sts-pressable transition-colors hover:bg-sts-button/90",
+                  "flex h-12 w-full items-center justify-center gap-2 rounded-xl",
+                  "bg-sts-button text-[14px] font-semibold text-sts-button-fg shadow-sm",
+                  "sts-pressable transition-[background-color,transform,box-shadow] duration-200 hover:bg-sts-button/90 hover:shadow-md",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-sts-card",
                 )}
               >
@@ -255,17 +276,38 @@ export default async function LoginPage({
               </SubmitButton>
             </form>
 
-            <div className="h-6" />
+            <div className="h-5" />
 
-            <p className="text-center text-[11.5px] leading-normal text-sts-subtle">
-              We&rsquo;ll email you a secure link — no password needed. It
-              expires after a few minutes.
+            <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-normal text-sts-subtle">
+              <LockIcon />
+              Your sign-in link expires after a few minutes.
             </p>
           </>
         )}
 
       </div>
     </main>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <rect width="16" height="11" x="4" y="11" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
   );
 }
 

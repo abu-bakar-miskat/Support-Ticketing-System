@@ -94,8 +94,8 @@ function inviteTokenFromNext(next: string): string | null {
 }
 
 /**
- * Shared post-verification login flow used by both the OAuth/magic-link
- * callback and the email-OTP sign-in action. Reconciles the profile, rejects
+ * Shared post-verification login flow used by the OAuth and magic-link
+ * callback round-trips. Reconciles the profile, rejects
  * blocked/suspended accounts, resolves the active tenant, accepts a pending
  * department invite, and returns the destination plus the cookies to set.
  *

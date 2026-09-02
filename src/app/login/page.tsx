@@ -4,15 +4,7 @@ import { PenLogo } from "@/components/auth/sts-logo";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/auth-redirect";
-import { completeLogin } from "@/lib/auth/complete-login";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -78,8 +70,8 @@ async function signInWithMicrosoft(formData: FormData) {
   if (data.url) redirect(data.url);
 }
 
-/** Step 1 — email the user a 6-digit sign-in code. */
-async function requestOtp(formData: FormData) {
+/** Email the user a one-click magic sign-in link. */
+async function requestMagicLink(formData: FormData) {
   "use server";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const next = safeNextPath(String(formData.get("next") ?? ""));
@@ -91,87 +83,36 @@ async function requestOtp(formData: FormData) {
     );
   }
 
+  const origin = await getOrigin();
+  const cookieStore = await cookies();
+  // Persist `next` for the callback round-trip, mirroring the OAuth flow.
+  if (next !== "/") {
+    cookieStore.set("pen_auth_next", next, {
+      httpOnly: true,
+      path: "/",
+      maxAge: 60 * 10,
+      sameSite: "lax",
+    });
+  } else {
+    cookieStore.set("pen_auth_next", "", { path: "/", maxAge: 0 });
+  }
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo:
+        next === "/"
+          ? `${origin}/auth/callback`
+          : `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
   }
 
-  redirect(
-    `/login?step=otp&email=${encodeURIComponent(email)}${nextQuery}`,
-  );
-}
-
-/** Step 2 — verify the 6-digit code and complete the login. */
-async function verifyOtp(formData: FormData) {
-  "use server";
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const token = String(formData.get("token") ?? "").replace(/\s/g, "");
-  const next = safeNextPath(String(formData.get("next") ?? ""));
-  const nextQuery = nextQueryPart(next);
-  const otpQuery = `&step=otp&email=${encodeURIComponent(email)}${nextQuery}`;
-
-  if (!email) {
-    redirect(`/login?error=${encodeURIComponent("Enter your email address")}${nextQuery}`);
-  }
-  if (!/^\d{8}$/.test(token)) {
-    redirect(`/login?error=${encodeURIComponent("Enter the 8-digit code from your email")}${otpQuery}`);
-  }
-
-  const supabase = await createClient();
-
-  // Dev-only backdoor: entering the fixed code below signs the user in without a
-  // real emailed OTP. We mint a genuine Supabase session via the admin client so
-  // the rest of the login flow behaves exactly as it does in production. This is
-  // hard-gated to non-production builds and must never run in prod.
-  const DEV_OTP = "12345678";
-  let data:
-    | Awaited<ReturnType<typeof supabase.auth.verifyOtp>>["data"]
-    | undefined;
-
-  if (process.env.NODE_ENV !== "production" && token === DEV_OTP) {
-    const admin = createAdminClient();
-    const { data: linkData, error: linkError } =
-      await admin.auth.admin.generateLink({ type: "magiclink", email });
-    const tokenHash = linkData?.properties?.hashed_token;
-    if (linkError || !tokenHash) {
-      redirect(
-        `/login?error=${encodeURIComponent(linkError?.message ?? "Dev sign-in failed (user must exist)")}${otpQuery}`,
-      );
-    }
-    const verified = await supabase.auth.verifyOtp({
-      type: "email",
-      token_hash: tokenHash,
-    });
-    if (verified.error) {
-      redirect(`/login?error=${encodeURIComponent(verified.error.message)}${otpQuery}`);
-    }
-    data = verified.data;
-  } else {
-    const verified = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
-    if (verified.error) {
-      redirect(`/login?error=${encodeURIComponent(verified.error.message)}${otpQuery}`);
-    }
-    data = verified.data;
-  }
-
-  if (data?.user) {
-    const { redirectPath, cookies: loginCookies } = await completeLogin({
-      supabase,
-      user: data.user,
-      next,
-    });
-    const cookieStore = await cookies();
-    for (const c of loginCookies) cookieStore.set(c.name, c.value, c.options);
-    redirect(redirectPath);
-  }
-
-  redirect(next);
+  redirect(`/login?step=sent&email=${encodeURIComponent(email)}${nextQuery}`);
 }
 
 export default async function LoginPage({
@@ -202,8 +143,8 @@ export default async function LoginPage({
     redirect(next);
   }
 
-  const otpEmail = (emailParam ?? "").trim();
-  const otpStep = step === "otp" && otpEmail.length > 0;
+  const sentEmail = (emailParam ?? "").trim();
+  const sentStep = step === "sent" && sentEmail.length > 0;
 
   return (
     <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
@@ -226,8 +167,8 @@ export default async function LoginPage({
         <div className="h-2" />
 
         <p className="text-center text-[13.5px] leading-normal text-sts-muted">
-          {otpStep
-            ? `Enter the 8-digit code sent to ${otpEmail}`
+          {sentStep
+            ? `We emailed a sign-in link to ${sentEmail}`
             : "Sign in with your PEN work account"}
         </p>
 
@@ -242,69 +183,34 @@ export default async function LoginPage({
           </div>
         )}
 
-        {otpStep ? (
+        {sentStep ? (
           <>
-            <form action={verifyOtp} className="w-full space-y-3">
-              {next !== "/" && <input type="hidden" name="next" value={next} />}
-              <input type="hidden" name="email" value={otpEmail} />
-              <div className="flex justify-center py-1">
-                <InputOTP
-                  name="token"
-                  maxLength={8}
-                  required
-                  autoFocus
-                  inputMode="numeric"
-                  pattern="^\d*$"
-                  aria-label="8-digit code"
-                  containerClassName="justify-center"
-                >
-                  <InputOTPGroup>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <InputOTPSlot
-                        key={i}
-                        index={i}
-                        className="h-11 w-9 text-[16px]"
-                      />
-                    ))}
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <InputOTPSlot
-                        key={i + 4}
-                        index={i + 4}
-                        className="h-11 w-9 text-[16px]"
-                      />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
+            <div className="flex w-full flex-col items-center text-center">
+              <div className="flex size-12 items-center justify-center rounded-full bg-sts-accent/10 text-sts-accent">
+                <MailIcon />
               </div>
-              <SubmitButton
-                pendingLabel="Verifying…"
-                className={cn(
-                  "flex h-12 w-full items-center justify-center gap-2 rounded-lg",
-                  "bg-sts-button text-[14px] font-medium text-sts-button-fg",
-                  "sts-pressable transition-colors hover:bg-sts-button/90",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
-                )}
-              >
-                Verify &amp; sign in
-              </SubmitButton>
-            </form>
 
-            <div className="h-4" />
+              <div className="h-5" />
+
+              <p className="text-[13.5px] leading-normal text-sts-muted">
+                Click the link in the email to finish signing in. It stays valid
+                for a few minutes — you can close this tab afterward.
+              </p>
+            </div>
+
+            <div className="h-6" />
 
             <div className="flex w-full items-center justify-between text-[12px]">
-              <form action={requestOtp}>
+              <form action={requestMagicLink}>
                 {next !== "/" && (
                   <input type="hidden" name="next" value={next} />
                 )}
-                <input type="hidden" name="email" value={otpEmail} />
+                <input type="hidden" name="email" value={sentEmail} />
                 <button
                   type="submit"
                   className="text-sts-muted underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  Resend code
+                  Resend link
                 </button>
               </form>
               <a
@@ -343,7 +249,7 @@ export default async function LoginPage({
 
             <div className="h-6" />
 
-            <form action={requestOtp} className="w-full space-y-3">
+            <form action={requestMagicLink} className="w-full space-y-3">
               {next !== "/" && <input type="hidden" name="next" value={next} />}
               <input
                 type="email"
@@ -365,7 +271,7 @@ export default async function LoginPage({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60",
                 )}
               >
-                Email me a code
+                Email me a sign-in link
               </SubmitButton>
             </form>
           </>
@@ -384,6 +290,26 @@ export default async function LoginPage({
         </div>
       </div>
     </main>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m2 7 10 6 10-6" />
+    </svg>
   );
 }
 

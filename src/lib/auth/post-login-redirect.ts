@@ -83,7 +83,7 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     }),
     prisma.departmentManager.findMany({
       where: { userId },
-      select: { departmentId: true },
+      select: { departmentId: true, role: true },
       orderBy: { assignedAt: "asc" },
     }),
     prisma.subDepartmentMembership.findMany({
@@ -113,10 +113,30 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     return { redirectPath: "/departments", cookies: [] }
   }
 
-  if (managedDepts.length > 0) {
+  // A department-scoped Admin (departmentManager.role === "admin") owns the
+  // department, so they land on their departments list — every department they
+  // administer. Plain Managers (any other role) run one department day-to-day
+  // and drop straight into its board. The /departments page itself collapses to
+  // the single board when an admin administers just one department, so pre-set
+  // that department's cookie for the single-department case.
+  const adminDeptIds = managedDepts
+    .filter((m) => m.role === "admin")
+    .map((m) => m.departmentId)
+  const managerDeptIds = managedDepts
+    .filter((m) => m.role !== "admin")
+    .map((m) => m.departmentId)
+
+  if (adminDeptIds.length > 1) {
+    return { redirectPath: "/departments", cookies: [] }
+  }
+  if (adminDeptIds.length === 1) {
+    return { redirectPath: "/board", cookies: await deptCookies(adminDeptIds[0]!) }
+  }
+
+  if (managerDeptIds.length > 0) {
     return {
       redirectPath: "/board",
-      cookies: await deptCookies(managedDepts[0]!.departmentId),
+      cookies: await deptCookies(managerDeptIds[0]!),
     }
   }
 

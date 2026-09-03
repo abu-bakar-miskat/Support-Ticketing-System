@@ -61,11 +61,14 @@ export type PostLoginLanding = {
  * caller did not request a specific deep link (`next === "/"`).
  *
  * Role routing (role-hierarchy.md):
- *   Super Admin     → /platform (no active dept)
- *   Tenant admin    → /departments (org console)
- *   Manager         → /board in first managed department
- *   Sub-manager/Agent → /board in assigned sub-department's department
- *   Unassigned      → /onboarding
+ *   Super Admin      → /platform (no active dept)
+ *   Tenant admin     → /departments (org console)
+ *   Department admin → /departments (their assigned departments), or "/" when
+ *                      they administer just one
+ *   Manager/Sub-manager/Agent → "/" (their own home dashboard), with the active
+ *                      department/sub-department cookie set so home dispatches
+ *                      by role (manager → /manager, others → HomeDashboard)
+ *   Unassigned       → /onboarding
  */
 export async function resolvePostLoginLanding(userId: string, isSuperAdmin: boolean): Promise<PostLoginLanding> {
   if (isSuperAdmin) {
@@ -115,10 +118,9 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
 
   // A department-scoped Admin (departmentManager.role === "admin") owns the
   // department, so they land on their departments list — every department they
-  // administer. Plain Managers (any other role) run one department day-to-day
-  // and drop straight into its board. The /departments page itself collapses to
-  // the single board when an admin administers just one department, so pre-set
-  // that department's cookie for the single-department case.
+  // administer. Plain Managers (any other role) run one department day-to-day.
+  // The /departments page collapses to a single home when an admin administers
+  // just one department, so pre-set that department's cookie for that case.
   const adminDeptIds = managedDepts
     .filter((m) => m.role === "admin")
     .map((m) => m.departmentId)
@@ -130,12 +132,15 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     return { redirectPath: "/departments", cookies: [] }
   }
   if (adminDeptIds.length === 1) {
-    return { redirectPath: "/board", cookies: await deptCookies(adminDeptIds[0]!) }
+    return { redirectPath: "/", cookies: await deptCookies(adminDeptIds[0]!) }
   }
 
+  // Managers, sub-managers, and agents land on their own home dashboard ("/"),
+  // not the raw board. Home dispatches by role (manager → /manager, everyone
+  // else → HomeDashboard) using the active-dept cookie set here.
   if (managerDeptIds.length > 0) {
     return {
-      redirectPath: "/board",
+      redirectPath: "/",
       cookies: await deptCookies(managerDeptIds[0]!),
     }
   }
@@ -153,19 +158,19 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     if (primary.subDepartment.departmentId) {
       cookies.unshift(...(await deptCookies(primary.subDepartment.departmentId)))
     }
-    return { redirectPath: "/board", cookies }
+    return { redirectPath: "/", cookies }
   }
 
   if (directMembers.length > 0) {
     return {
-      redirectPath: "/board",
+      redirectPath: "/",
       cookies: await deptCookies(directMembers[0]!.departmentId),
     }
   }
 
   if (deptAccess.length > 0) {
     return {
-      redirectPath: "/board",
+      redirectPath: "/",
       cookies: await deptCookies(deptAccess[0]!.departmentId),
     }
   }

@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
 import { EmailIdentityCard } from "./settings-email-identity";
+import { LogoUploadButton } from "./logo-upload-button";
 
 const DEFAULT_FROM_EMAIL = "onboarding@mail.pengroup.com";
 
@@ -507,17 +508,28 @@ function EmailBrandingCard({
       <div className="flex flex-col gap-4 py-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="sts-text-label">Logo URL</label>
-            <input
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              disabled={loading}
-              placeholder="https://…/logo.svg"
-              className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-            />
+            <label className="sts-text-label">Logo</label>
+            <div className="flex items-center gap-2">
+              <input
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                disabled={loading}
+                placeholder="https://…/logo.svg"
+                className="h-9 w-full min-w-0 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+              />
+              <LogoUploadButton
+                disabled={loading}
+                scopeKey={subDepartmentId ? `${departmentId}-${subDepartmentId}` : departmentId}
+                onUploaded={(url) => {
+                  setLogoUrl(url);
+                  toast.success("Logo uploaded. Click “Save branding” to apply.");
+                }}
+                onError={(m) => toast.error(m)}
+              />
+            </div>
             <p className="font-sans text-[11px] text-sts-subtle">
-              Shown on the dark email header. Use a PNG or SVG hosted on a public
-              URL; light-colored logos read best.
+              Upload an image or paste a public URL. Shown on the dark email
+              header — a PNG or SVG with a light-colored logo reads best.
             </p>
           </div>
 

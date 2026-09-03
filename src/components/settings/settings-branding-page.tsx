@@ -1,11 +1,12 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
 import { EmailIdentityCard } from "./settings-email-identity"
+import { LogoUploadButton } from "./logo-upload-button"
 import type { DeptOption } from "./settings-email-templates-page"
 
 export function SettingsBrandingPage({
@@ -20,31 +21,8 @@ export function SettingsBrandingPage({
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = "" // allow re-selecting the same file
-    if (!file) return
-    setUploading(true)
-    setError(null)
-    setStatus(null)
-    const body = new FormData()
-    body.append("file", file)
-    const res = await fetch("/api/admin/tenant-branding", { method: "POST", body })
-    setUploading(false)
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}))
-      setError(b.error ?? "Upload failed")
-      return
-    }
-    const { url } = await res.json()
-    setLogoUrl(url)
-    setStatus("Logo uploaded. Click “Save branding” to apply.")
-  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -131,28 +109,19 @@ export function SettingsBrandingPage({
                 </div>
               )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                onChange={onUpload}
-                className="hidden"
+              <LogoUploadButton
+                onUploaded={(url) => {
+                  setLogoUrl(url)
+                  setError(null)
+                  setStatus("Logo uploaded. Click “Save branding” to apply.")
+                }}
+                onError={(m) => setError(m)}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {uploading ? "Uploading…" : "Upload image"}
-              </Button>
               {logoUrl && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  disabled={uploading}
                   onClick={() => setLogoUrl("")}
                 >
                   Remove

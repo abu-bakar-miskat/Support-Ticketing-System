@@ -75,7 +75,31 @@ export async function PATCH(
     data.subDepartmentId = nextSubDepartmentId
   }
 
-  if (Object.keys(data).length === 0) {
+  // Move a member to a different department (tenant-wide Members view). This is a
+  // department-level move: the user lands as a direct department member with no
+  // sub-department, and their memberships in other departments are cleared. The
+  // caller then picks a sub-department (via subDepartmentId) to place them inside.
+  let moveToDepartmentId: string | null | undefined
+  if ("departmentId" in body && !("subDepartmentId" in body)) {
+    moveToDepartmentId = body.departmentId ?? null
+    if (moveToDepartmentId) {
+      const dept = await prisma.department.findUnique({
+        where: { id: moveToDepartmentId },
+        select: { id: true, tenantId: true },
+      })
+      if (!dept || (profile!.activeTenantId && dept.tenantId !== profile!.activeTenantId)) {
+        return NextResponse.json({ error: "Department not found" }, { status: 404 })
+      }
+      // Managers may only move users into departments they manage.
+      if (isManager && !(profile!.managedDepartmentIds ?? []).includes(moveToDepartmentId)) {
+        return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
+      }
+    }
+    // Landing at department level means no sub-department yet.
+    data.subDepartmentId = null
+  }
+
+  if (Object.keys(data).length === 0 && moveToDepartmentId === undefined) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 })
   }
 
@@ -114,6 +138,42 @@ export async function PATCH(
       where: { userId: id },
       data: { role: data.role },
     }).catch(() => {})
+  }
+
+  // Department-level move: land the user as a direct member of the target department
+  // and clear every membership tied to other departments, so the tenant-wide Members
+  // view shows them under the new department with no sub-department.
+  if (moveToDepartmentId !== undefined) {
+    await prisma.$transaction([
+      // Deactivate sub-department memberships that belong to a different department.
+      prisma.subDepartmentMembership.updateMany({
+        where: {
+          userId: id,
+          isActive: true,
+          ...(moveToDepartmentId
+            ? { subDepartment: { departmentId: { not: moveToDepartmentId } } }
+            : {}),
+        },
+        data: { isActive: false },
+      }),
+      // Drop direct department memberships for other departments.
+      prisma.departmentMember.deleteMany({
+        where: {
+          userId: id,
+          ...(moveToDepartmentId ? { departmentId: { not: moveToDepartmentId } } : {}),
+        },
+      }),
+      // Add the direct membership for the target department (no-op when clearing).
+      ...(moveToDepartmentId
+        ? [
+            prisma.departmentMember.upsert({
+              where: { departmentId_userId: { departmentId: moveToDepartmentId, userId: id } },
+              create: { departmentId: moveToDepartmentId, userId: id, addedBy: profile!.id },
+              update: {},
+            }),
+          ]
+        : []),
+    ])
   }
 
   // Keep SubDepartmentMembership in sync with Profile.teamId. The department members list is

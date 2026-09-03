@@ -26,16 +26,22 @@ export function InviteMemberDialog({
   tenantId,
   departments,
   triggerClassName,
+  initialDeptIds,
+  triggerLabel = "Invite member",
 }: {
   tenantId: string
   departments: { id: string; name: string }[]
   triggerClassName?: string
+  /** Departments pre-selected when the dialog opens — e.g. inviting from a specific department card. */
+  initialDeptIds?: string[]
+  /** Text shown on the trigger button. */
+  triggerLabel?: string
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<string>("agent")
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([])
+  const [selectedDepts, setSelectedDepts] = useState<string[]>(initialDeptIds ?? [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
@@ -45,7 +51,7 @@ export function InviteMemberDialog({
   function reset() {
     setEmail("")
     setRole("agent")
-    setSelectedDepts([])
+    setSelectedDepts(initialDeptIds ?? [])
     setError(null)
     setInviteLink(null)
   }
@@ -100,7 +106,7 @@ export function InviteMemberDialog({
         )}
       >
         <UserPlus className="size-3.5" />
-        Invite member
+        {triggerLabel}
       </button>
 
       {open && (

@@ -89,7 +89,6 @@ export default async function DepartmentsPage() {
       Promise.all([
         prisma.department.count({ where: { tenantId } }),
         prisma.subDepartment.count({ where: { tenantId } }),
-        prisma.tenantMembership.count({ where: { tenantId, isActive: true } }),
         prisma.project.count({ where: { tenantId } }),
         prisma.ticket.count({ where: { tenantId, deletedAt: null, status: { not: "Live" } } }),
         prisma.joinRequest.count({
@@ -101,7 +100,7 @@ export default async function DepartmentsPage() {
       ]),
     ]);
 
-    const [deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests] = orgStats;
+    const [deptCount, subDepartmentCount, projectCount, openTickets, pendingRequests] = orgStats;
 
     // ── Per-department shared-mailbox usage (tenant-wide) ────────────────────
     const mailboxGroups = await prisma.mailboxConnection.groupBy({
@@ -134,7 +133,7 @@ export default async function DepartmentsPage() {
         orderBy: { name: "asc" },
       }),
       (prisma.subDepartmentMembership as any).findMany({
-        where: { isActive: true, subDepartment: { tenantId } },
+        where: { isActive: true, subDepartment: { tenantId }, user: { deletedAt: null } },
         select: {
           userId: true,
           doNotAssign: true,
@@ -142,7 +141,7 @@ export default async function DepartmentsPage() {
         },
       }),
       (prisma.departmentMember as any).findMany({
-        where: { department: { tenantId } },
+        where: { department: { tenantId }, user: { deletedAt: null } },
         select: { userId: true, department: { select: { id: true, name: true } } },
       }),
     ]);
@@ -175,6 +174,18 @@ export default async function DepartmentsPage() {
       if (!deptByUser.has(dm.userId)) deptByUser.set(dm.userId, dm.department.name);
       if (!deptIdByUser.has(dm.userId)) deptIdByUser.set(dm.userId, dm.department.id);
     }
+
+    // Distinct member count spans three tables: tenant admins/managers have a
+    // TenantMembership (tenantProfiles), while sub-managers/agents are added via
+    // the sub-department flow (tenantMemberships) or directly to a department
+    // (tenantDirectDeptMembers) with NO TenantMembership. Count the union so the
+    // "Members" stat reflects everyone — a plain TenantMembership count shows
+    // just the tenant admin.
+    const memberIdSet = new Set<string>();
+    for (const p of tenantProfiles) memberIdSet.add(p.id);
+    for (const m of tenantMemberships as { userId: string }[]) memberIdSet.add(m.userId);
+    for (const dm of tenantDirectDeptMembers as { userId: string }[]) memberIdSet.add(dm.userId);
+    const memberCount = memberIdSet.size;
 
     const tenantMembers: MemberRow[] = tenantProfiles.map((p) => ({
       id: p.id,

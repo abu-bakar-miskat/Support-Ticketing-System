@@ -95,12 +95,14 @@ type Candidate = {
 function AddMemberModal({
   departmentId,
   availableSubDepartments,
+  availableDepartments,
   isAdmin,
   isManager,
   onClose,
 }: {
   departmentId: string | null;
-  availableSubDepartments: { id: string; name: string }[];
+  availableSubDepartments: { id: string; name: string; departmentId?: string | null }[];
+  availableDepartments: { id: string; name: string }[];
   isAdmin: boolean;
   isManager: boolean;
   onClose: () => void;
@@ -111,13 +113,32 @@ function AddMemberModal({
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [accessType, setAccessType] = useState<"full" | "guest">("full");
-  const [subDepartmentId, setSubDepartmentId] = useState(availableSubDepartments[0]?.id ?? "");
+  // When no department is fixed (tenant-wide view) the admin picks one here; it
+  // then scopes both the candidate search and the sub-department options.
+  const [selectedDeptId, setSelectedDeptId] = useState(departmentId ?? availableDepartments[0]?.id ?? "");
+  const effectiveDeptId = departmentId ?? selectedDeptId;
+  const subDeptOptions = availableSubDepartments.filter(
+    (sd) => sd.departmentId == null || sd.departmentId === effectiveDeptId,
+  );
+  const [subDepartmentId, setSubDepartmentId] = useState(subDeptOptions[0]?.id ?? "");
   const [role, setRole] = useState<string>("agent");
   const [guestPermanent, setGuestPermanent] = useState(true);
   const [guestExpiresAt, setGuestExpiresAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Switch the target department: reset the candidate + sub-department selections so a
+  // stale sub-department from another department can't be submitted.
+  function changeDepartment(nextDeptId: string) {
+    setSelectedDeptId(nextDeptId);
+    setSelected(null);
+    setCandidates([]);
+    const first = availableSubDepartments.find(
+      (sd) => sd.departmentId == null || sd.departmentId === nextDeptId,
+    );
+    setSubDepartmentId(first?.id ?? "");
+  }
 
   // Debounced search
   useEffect(() => {
@@ -126,11 +147,11 @@ function AddMemberModal({
       return;
     }
     const timer = setTimeout(async () => {
-      if (!departmentId) return;
+      if (!effectiveDeptId) return;
       setSearching(true);
       try {
         const res = await fetch(
-          `/api/admin/departments/${departmentId}/candidates?q=${encodeURIComponent(search.trim())}`,
+          `/api/admin/departments/${effectiveDeptId}/candidates?q=${encodeURIComponent(search.trim())}`,
         );
         if (res.ok) {
           const data = await res.json();
@@ -143,7 +164,7 @@ function AddMemberModal({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, departmentId]);
+  }, [search, effectiveDeptId]);
 
   async function handleSubmit() {
     if (!selected) return;
@@ -158,8 +179,12 @@ function AddMemberModal({
         }
         await addAdminSubDepartmentMember(subDepartmentId, selected.id, role);
       } else {
-        if (!departmentId) return;
-        await grantDepartmentAccess(departmentId, {
+        if (!effectiveDeptId) {
+          setSubmitError("Please select a department.");
+          setSubmitting(false);
+          return;
+        }
+        await grantDepartmentAccess(effectiveDeptId, {
           userId: selected.id,
           ...(!guestPermanent && guestExpiresAt ? { expiresAt: guestExpiresAt } : {}),
         });
@@ -192,16 +217,32 @@ function AddMemberModal({
         </div>
 
         <div className="flex flex-col gap-4 p-5">
+          {/* Department picker — only on the tenant-wide view (no fixed department) */}
+          {!departmentId && (
+            <div className="flex flex-col gap-1">
+              <label className="font-sans text-[11.5px] text-sts-subtle">Department</label>
+              <SearchableSelect
+                value={selectedDeptId}
+                onChange={changeDepartment}
+                options={availableDepartments.map((d) => ({ value: d.id, label: d.name }))}
+                placeholder="— Select department —"
+                className="bg-sts-bg"
+                aria-label="Department"
+              />
+            </div>
+          )}
+
           {/* Search */}
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
             <input
               ref={searchRef}
               autoFocus
+              disabled={!effectiveDeptId}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
-              placeholder="Search by name or email…"
-              className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg pl-8 pr-2.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60"
+              placeholder={effectiveDeptId ? "Search by name or email…" : "Select a department first…"}
+              className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg pl-8 pr-2.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60 disabled:opacity-50"
             />
             {searching && (
               <Loader2 className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-sts-subtle" />
@@ -304,7 +345,7 @@ function AddMemberModal({
                     <SearchableSelect
                       value={subDepartmentId}
                       onChange={setSubDepartmentId}
-                      options={availableSubDepartments.map((t) => ({ value: t.id, label: t.name }))}
+                      options={subDeptOptions.map((t) => ({ value: t.id, label: t.name }))}
                       placeholder="— Select sub department —"
                       className="bg-sts-bg"
                       aria-label="SubDepartment"
@@ -416,6 +457,7 @@ export function SettingsMembersPage({
   isAdmin,
   isManager = false,
   availableSubDepartments = [],
+  availableDepartments = [],
   currentUserId,
   departmentId = null,
   departmentName = null,
@@ -423,7 +465,8 @@ export function SettingsMembersPage({
   members: MemberRow[];
   isAdmin: boolean;
   isManager?: boolean;
-  availableSubDepartments?: { id: string; name: string }[];
+  availableSubDepartments?: { id: string; name: string; departmentId?: string | null }[];
+  availableDepartments?: { id: string; name: string }[];
   currentUserId?: string;
   departmentId?: string | null;
   departmentName?: string | null;
@@ -434,6 +477,10 @@ export function SettingsMembersPage({
   const [error, setError] = useState<string | null>(null);
   const [localRoles, setLocalRoles] = useState<Record<string, Role>>({});
   const [localSubDepartments, setLocalSubDepartments] = useState<Record<string, string>>({});
+  const [localDepartments, setLocalDepartments] = useState<Record<string, string>>({});
+  // Tenant-wide view (no department is active) — admins can move members between
+  // departments here; inside a specific department the column stays read-only.
+  const canEditDepartment = !departmentId && isAdmin && availableDepartments.length > 0;
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
@@ -453,6 +500,38 @@ export function SettingsMembersPage({
 
   function currentSubDepartmentId(m: MemberRow): string {
     return localSubDepartments[m.id] ?? m.subDepartmentId ?? "";
+  }
+
+  function currentDepartmentId(m: MemberRow): string {
+    return localDepartments[m.id] ?? m.departmentId ?? "";
+  }
+
+  // Sub-departments belonging to the member's (current) department — the dropdown
+  // is scoped so the department choice drives which sub-departments are offered.
+  function subDepartmentsForMember(m: MemberRow) {
+    const deptId = currentDepartmentId(m);
+    // When sub-departments carry no departmentId (legacy rows / fixed-department
+    // view) fall back to the full list so the dropdown is never wrongly empty.
+    const hasDeptTags = availableSubDepartments.some((sd) => sd.departmentId != null);
+    if (!hasDeptTags || !deptId) return availableSubDepartments;
+    return availableSubDepartments.filter((sd) => sd.departmentId === deptId);
+  }
+
+  async function handleDepartmentChange(memberId: string, newDepartmentId: string) {
+    setLocalDepartments((prev) => ({ ...prev, [memberId]: newDepartmentId }));
+    // A department move clears the sub-department; drop any stale local override.
+    setLocalSubDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+    setSaving(memberId);
+    setError(null);
+    try {
+      await updateAdminUser(memberId, { departmentId: newDepartmentId });
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Failed to change department");
+      setLocalDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
@@ -592,6 +671,7 @@ export function SettingsMembersPage({
       <AddMemberModal
         departmentId={departmentId}
         availableSubDepartments={availableSubDepartments}
+        availableDepartments={availableDepartments}
         isAdmin={isAdmin}
         isManager={isManager}
         onClose={() => setAddMemberOpen(false)}
@@ -639,18 +719,20 @@ export function SettingsMembersPage({
             Manage roles, subDepartments, status, and availability for everyone in the workspace.
           </p>
         </div>
-        {departmentId && (isAdmin || isManager) && (
+        {(isAdmin || isManager) && (departmentId || availableDepartments.length > 0) && (
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              disabled={availableSubDepartments.length === 0}
-              title={availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Plus className="size-3.5" />
-              Invite by email
-            </button>
+            {departmentId && (
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                disabled={availableSubDepartments.length === 0}
+                title={availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
+                className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Plus className="size-3.5" />
+                Invite by email
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setAddMemberOpen(true)}
@@ -793,10 +875,45 @@ export function SettingsMembersPage({
                     </div>
                   </TableCell>
 
-                  {/* Department */}
+                  {/* Department — editable on the tenant-wide view (admin), read-only
+                      inside a specific department and for guests */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center">
-                      {member.department ? (
+                      {canEditDepartment && !member.isCrossAccess ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            disabled={saving === member.id}
+                            className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
+                          >
+                            <span className="max-w-[130px] truncate">
+                              {availableDepartments.find((d) => d.id === currentDepartmentId(member))?.name ?? "No department"}
+                            </span>
+                            {saving === member.id ? (
+                              <Loader2 className="size-3 animate-spin opacity-70" />
+                            ) : (
+                              <ChevronDown className="size-3 opacity-60" />
+                            )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="min-w-[160px]">
+                            {availableDepartments.map((d) => (
+                              <DropdownMenuItem
+                                key={d.id}
+                                onClick={() => {
+                                  if (currentDepartmentId(member) !== d.id) handleDepartmentChange(member.id, d.id);
+                                }}
+                                className={cn(
+                                  "gap-2 font-sans text-[12px]",
+                                  currentDepartmentId(member) === d.id && "font-semibold",
+                                )}
+                              >
+                                <span className="inline-flex rounded-full bg-sts-blue-tint px-2 py-0.5 text-[11.5px] font-semibold text-sts-id">
+                                  {d.name}
+                                </span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : member.department ? (
                         <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
                           {member.department}
                         </span>
@@ -810,14 +927,14 @@ export function SettingsMembersPage({
                       or managers (they oversee the whole department, not a single subDepartment) */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center gap-1 flex-wrap">
-                      {(isAdmin || isManager) && availableSubDepartments.length > 0 && !member.isCrossAccess && role !== "manager" ? (
+                      {(isAdmin || isManager) && !member.isCrossAccess && role !== "manager" && currentDepartmentId(member) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}
                             className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
                           >
                             <span className="max-w-[120px] truncate">
-                              {availableSubDepartments.find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No subDepartment"}
+                              {subDepartmentsForMember(member).find((t) => t.id === currentSubDepartmentId(member))?.name ?? "No subDepartment"}
                             </span>
                             {saving === member.id ? (
                               <Loader2 className="size-3 animate-spin opacity-70" />
@@ -837,7 +954,7 @@ export function SettingsMembersPage({
                                 No sub department
                               </span>
                             </DropdownMenuItem>
-                            {availableSubDepartments.map((t) => (
+                            {subDepartmentsForMember(member).map((t) => (
                               <DropdownMenuItem
                                 key={t.id}
                                 onClick={() => handleSubDepartmentChange(member.id, t.id)}

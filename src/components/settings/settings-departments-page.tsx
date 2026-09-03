@@ -17,6 +17,7 @@ import {
 } from "@/lib/department-types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
+import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -759,6 +760,7 @@ function DepartmentCard({
   dept,
   allUsers,
   isAdmin = false,
+  tenantId = null,
   onRename,
   onDelete,
   onEnterWorkspace,
@@ -767,6 +769,7 @@ function DepartmentCard({
   dept: DepartmentRow;
   allUsers: UserOption[];
   isAdmin?: boolean;
+  tenantId?: string | null;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => void;
   onEnterWorkspace?: (id: string) => void;
@@ -1065,14 +1068,25 @@ function DepartmentCard({
                 </span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setWalkthroughOpen(true)}
-              className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
-            >
-              <BookOpen className="size-3.5" />
-              View setup walkthrough
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setWalkthroughOpen(true)}
+                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              >
+                <BookOpen className="size-3.5" />
+                View setup walkthrough
+              </button>
+              {isAdmin && tenantId && (
+                <InviteMemberDialog
+                  tenantId={tenantId}
+                  departments={[{ id: dept.id, name: dept.name }]}
+                  initialDeptIds={[dept.id]}
+                  triggerLabel="Invite member"
+                  triggerClassName="h-7 rounded-lg px-2.5 text-[11.5px] font-medium"
+                />
+              )}
+            </div>
           </div>
           {isAdmin && !editing && (
             <div className="flex items-center gap-0.5">
@@ -1396,6 +1410,7 @@ export function SettingsDepartmentsPage({
   isAdmin = false,
   inWorkspace = false,
   templateOptions = [],
+  tenantId = null,
   onEnterWorkspace,
 }: {
   departments: DepartmentRow[];
@@ -1405,6 +1420,8 @@ export function SettingsDepartmentsPage({
   inWorkspace?: boolean;
   /** Catalogue templates offered as department "template" options; empty falls back to built-in types. */
   templateOptions?: TemplateOption[];
+  /** Active tenant — enables the per-card "Invite member" action when present. */
+  tenantId?: string | null;
   onEnterWorkspace?: (deptId: string) => void;
 }) {
   const router = useRouter();
@@ -1500,6 +1517,7 @@ export function SettingsDepartmentsPage({
             dept={departments[0]}
             allUsers={allUsers}
             isAdmin={isAdmin}
+            tenantId={tenantId}
             onRename={handleRename}
             onDelete={setConfirmDeleteId}
             onEnterWorkspace={onEnterWorkspace}
@@ -1514,6 +1532,7 @@ export function SettingsDepartmentsPage({
               dept={dept}
               allUsers={allUsers}
               isAdmin={isAdmin}
+              tenantId={tenantId}
               onRename={handleRename}
               onDelete={setConfirmDeleteId}
               onEnterWorkspace={onEnterWorkspace}

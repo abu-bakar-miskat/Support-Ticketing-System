@@ -214,21 +214,51 @@ export type TenantAgreementSummaryRow = {
 
 /** SA-05: Super-Admin summary — status, agreement end date, department and active-user counts per tenant. */
 export async function listTenantAgreementSummaries(): Promise<TenantAgreementSummaryRow[]> {
-  const tenants = await prisma.tenant.findMany({
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      _count: { select: { departments: true } },
-      memberships: { where: { isActive: true }, select: { id: true } },
-      agreements: {
-        select: { endDate: true, renewalStatus: true },
-        orderBy: { endDate: "desc" },
-        take: 1,
+  const [tenants, tenantMemberRows, subDeptMemberRows, directDeptMemberRows] = await Promise.all([
+    prisma.tenant.findMany({
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        _count: { select: { departments: true } },
+        agreements: {
+          select: { endDate: true, renewalStatus: true },
+          orderBy: { endDate: "desc" },
+          take: 1,
+        },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    }),
+    // Members span three tables. Tenant admins/managers have a TenantMembership,
+    // but sub-managers/agents are added via the sub-department flow
+    // (SubDepartmentMembership) or directly to a department (DepartmentMember)
+    // with NO TenantMembership. Union the DISTINCT active users per tenant so the
+    // count reflects everyone — counting only TenantMemberships shows just the
+    // tenant admin.
+    prisma.tenantMembership.findMany({
+      where: { isActive: true, user: { deletedAt: null } },
+      select: { tenantId: true, userId: true },
+    }),
+    prisma.subDepartmentMembership.findMany({
+      where: { isActive: true, user: { deletedAt: null } },
+      select: { userId: true, subDepartment: { select: { tenantId: true } } },
+    }),
+    prisma.departmentMember.findMany({
+      where: { user: { deletedAt: null } },
+      select: { userId: true, department: { select: { tenantId: true } } },
+    }),
+  ]);
+
+  const memberIdsByTenant = new Map<string, Set<string>>();
+  const addMember = (tenantId: string | null | undefined, userId: string) => {
+    if (!tenantId) return;
+    const set = memberIdsByTenant.get(tenantId) ?? new Set<string>();
+    set.add(userId);
+    memberIdsByTenant.set(tenantId, set);
+  };
+  for (const m of tenantMemberRows) addMember(m.tenantId, m.userId);
+  for (const m of subDeptMemberRows) addMember(m.subDepartment?.tenantId, m.userId);
+  for (const m of directDeptMemberRows) addMember(m.department?.tenantId, m.userId);
 
   return tenants.map((tenant) => {
     const current = tenant.agreements[0];
@@ -239,7 +269,7 @@ export async function listTenantAgreementSummaries(): Promise<TenantAgreementSum
       agreementEndDate: current?.endDate ?? null,
       renewalStatus: current?.renewalStatus ?? null,
       departmentCount: tenant._count.departments,
-      activeUserCount: tenant.memberships.length,
+      activeUserCount: memberIdsByTenant.get(tenant.id)?.size ?? 0,
     };
   });
 }

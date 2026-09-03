@@ -108,7 +108,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 
 export async function updateAdminUser(
   id: string,
-  body: { role?: string; subDepartmentId?: string },
+  body: { role?: string; subDepartmentId?: string | null; departmentId?: string | null },
 ) {
   const res = await fetch(`/api/admin/users/${id}`, {
     method: "PATCH",

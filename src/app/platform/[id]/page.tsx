@@ -31,35 +31,60 @@ export default async function TenantManagePage({
       status: true,
       deletedAt: true,
       branding: true,
-      _count: { select: { departments: true, memberships: true } },
+      _count: { select: { departments: true } },
     },
   })
   if (!tenant) notFound()
 
-  const [memberRows, departmentRows, agreements, catalogue] = await Promise.all([
-    prisma.tenantMembership.findMany({
-      where: { tenantId: id, isActive: true },
-      orderBy: { createdAt: "asc" },
-      select: {
-        role: true,
-        user: { select: { id: true, name: true, email: true, avatarUrl: true, isActive: true } },
-      },
-    }),
-    prisma.department.findMany({
-      where: { tenantId: id },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    listAgreementsForTenant(id),
-    listCatalogueForTenant(id),
-  ])
-  const members = memberRows.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    email: m.user.email,
-    avatarUrl: m.user.avatarUrl ?? null,
-    role: m.role,
-    isActive: m.user.isActive,
+  // Members live across three tables. Tenant admins/managers get a
+  // TenantMembership, but sub-managers/agents are added via the sub-department
+  // flow (SubDepartmentMembership) or directly to a department (DepartmentMember)
+  // and have NO TenantMembership. Union all three so every member shows — not
+  // just the ones with a tenant-wide membership. Mirrors settings/members/page.tsx.
+  const [tenantMemberRows, subDeptMemberRows, directDeptMemberRows, departmentRows, agreements, catalogue] =
+    await Promise.all([
+      prisma.tenantMembership.findMany({
+        where: { tenantId: id, isActive: true },
+        select: { userId: true },
+      }),
+      prisma.subDepartmentMembership.findMany({
+        where: { isActive: true, subDepartment: { tenantId: id } },
+        select: { userId: true },
+      }),
+      prisma.departmentMember.findMany({
+        where: { department: { tenantId: id } },
+        select: { userId: true },
+      }),
+      prisma.department.findMany({
+        where: { tenantId: id },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      listAgreementsForTenant(id),
+      listCatalogueForTenant(id),
+    ])
+
+  const memberUserIds = [
+    ...new Set([
+      ...tenantMemberRows.map((m) => m.userId),
+      ...subDeptMemberRows.map((m) => m.userId),
+      ...directDeptMemberRows.map((m) => m.userId),
+    ]),
+  ]
+
+  const memberProfiles = await prisma.profile.findMany({
+    where: { id: { in: memberUserIds }, deletedAt: null },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, email: true, avatarUrl: true, role: true, isActive: true },
+  })
+
+  const members = memberProfiles.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    avatarUrl: p.avatarUrl ?? null,
+    role: p.role,
+    isActive: p.isActive,
   }))
 
   return (
@@ -72,7 +97,7 @@ export default async function TenantManagePage({
         status: tenant.status,
         deleted: tenant.deletedAt != null,
         departments: tenant._count.departments,
-        members: tenant._count.memberships,
+        members: members.length,
       }}
       initialBranding={readTenantBranding(tenant.branding)}
       initialMembers={members}

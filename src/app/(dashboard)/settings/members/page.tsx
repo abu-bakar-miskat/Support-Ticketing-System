@@ -69,11 +69,7 @@ export default async function SettingsMembersRoute() {
       });
     } else {
       // No dept filter — show all members OF THIS TENANT
-      [profiles, allMemberships, directDeptMembers] = await Promise.all([
-        prisma.profile.findMany({
-          where: { deletedAt: null, tenantMemberships: { some: { tenantId, isActive: true } } },
-          orderBy: { name: "asc" },
-        }),
+      [allMemberships, directDeptMembers] = await Promise.all([
         (prisma.subDepartmentMembership as any)
           .findMany({
             where: { isActive: true, subDepartment: { tenantId } },
@@ -91,6 +87,23 @@ export default async function SettingsMembersRoute() {
           })
           .catch((e: unknown) => { console.error("[members/page] admin-all departmentMember query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; }),
       ]);
+      // Sub-managers/agents are added via the sub-department flow, which creates a
+      // SubDepartmentMembership but no TenantMembership. Union those users in so they
+      // aren't dropped — otherwise only the tenant admin shows on the tenant-wide view.
+      const memberUserIds = [...new Set([
+        ...allMemberships.map((m: any) => m.userId),
+        ...directDeptMembers.map((dm: any) => dm.userId),
+      ])];
+      profiles = await prisma.profile.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { tenantMemberships: { some: { tenantId, isActive: true } } },
+            { id: { in: memberUserIds } },
+          ],
+        },
+        orderBy: { name: "asc" },
+      });
     }
   } else if (isManager) {
     // Managers see only members of their department(s)
@@ -163,6 +176,25 @@ export default async function SettingsMembersRoute() {
                 ];
                 return deptIds.length ? { departmentId: { in: deptIds } } : { id: { in: [] as string[] } };
               })(),
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, departmentId: true },
+      })
+    : [];
+
+  // Departments the caller can assign members to — powers the tenant-wide
+  // Department dropdown + the Add-member department picker. Admins see every
+  // department in the tenant; managers see only the ones they manage.
+  const availableDepartments = (isAdmin || isManager)
+    ? await prisma.department.findMany({
+        where: isAdmin
+          ? { tenantId }
+          : (() => {
+              const deptIds = [
+                ...(profile.managedDepartmentIds ?? []),
+                ...(profile.grantedAccessDeptIds ?? []),
+              ];
+              return deptIds.length ? { id: { in: deptIds } } : { id: { in: [] as string[] } };
+            })(),
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -274,6 +306,7 @@ export default async function SettingsMembersRoute() {
       isAdmin={isAdmin}
       isManager={isManager}
       availableSubDepartments={availableSubDepartments}
+      availableDepartments={availableDepartments}
       currentUserId={profile.id}
       departmentId={activeDeptId}
       departmentName={activeDept?.name ?? null}

@@ -143,6 +143,7 @@ export function DepartmentsClient({
         departments={departments}
         allUsers={allUsers}
         isAdmin
+        tenantId={tenantId}
         onEnterWorkspace={enterWorkspace}
         templateOptions={templateOptions}
       />

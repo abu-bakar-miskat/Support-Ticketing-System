@@ -45,6 +45,7 @@ export function isDeptScopedPath(pathname: string): boolean {
  * screen, …) is tenant-agnostic and never prefixed.
  */
 export const TENANT_SCOPED_ROOTS = new Set([
+  "activity",
   "board",
   "all-tasks",
   "calendar",

@@ -4,6 +4,37 @@ import { requireAdmin } from "../_guard"
 import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
 import { runWithScope } from "@/lib/request-scope"
+import type { Prisma } from "@/generated/prisma/client"
+
+/** URL-safe slug from a name (mirrors scripts/backfill-department-slugs.ts). */
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/[\s-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "dept"
+  )
+}
+
+/** A slug unique within the tenant, suffixing -2, -3… on collision. */
+async function uniqueDepartmentSlug(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  name: string,
+): Promise<string> {
+  const base = slugify(name)
+  const existing = await tx.department.findMany({
+    where: { tenantId, slug: { startsWith: base } },
+    select: { slug: true },
+  })
+  const used = new Set(existing.map((d) => d.slug).filter(Boolean) as string[])
+  let slug = base
+  let i = 2
+  while (used.has(slug)) slug = `${base}-${i++}`
+  return slug
+}
 
 export async function GET() {
   const { profile, error } = await requireAdmin()
@@ -72,12 +103,14 @@ export async function POST(request: Request) {
     : { tenantIds: profile.tenantIds }
   const department = await runWithScope(scope, () =>
     prisma.$transaction(async (tx) => {
+      const slug = await uniqueDepartmentSlug(tx, tenantId, name)
       const dept = await tx.department.create({
         data: {
           name,
           tenantId,
           type,
           templateSlug,
+          slug,
           ...(featureKeys ? { featureKeys } : {}),
           isHub: type === "hub",
         },

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
 
 /**
@@ -187,14 +188,22 @@ export async function resolveSubDepartmentTeamIds(userId: string): Promise<strin
     return null;
   }
 
-  const [deptSubDepartments, tenantSubDepartments] = await Promise.all([
-    scope.departmentIds.length > 0
-      ? prisma.subDepartment.findMany({ where: { departmentId: { in: scope.departmentIds } }, select: { id: true, departmentId: true } })
-      : Promise.resolve([]),
-    scope.tenantAdminIds.length > 0
-      ? prisma.subDepartment.findMany({ where: { tenantId: { in: scope.tenantAdminIds } }, select: { id: true, tenantId: true } })
-      : Promise.resolve([]),
-  ]);
+  // These lookups bootstrap the caller's own scope, so they must NOT re-enter the
+  // tenant-scope extension: `subDepartment` is a scoped model, and resolving its
+  // scope calls back into `resolveSubDepartmentTeamIds` → infinite recursion that
+  // exhausts the pool and surfaces as P2028 (see lib/prisma-scope + lib/db). The
+  // `where` clauses already restrict to the caller's own departments/tenants, so
+  // running unscoped here leaks nothing.
+  const [deptSubDepartments, tenantSubDepartments] = await runAsSystem(() =>
+    Promise.all([
+      scope.departmentIds.length > 0
+        ? prisma.subDepartment.findMany({ where: { departmentId: { in: scope.departmentIds } }, select: { id: true, departmentId: true } })
+        : Promise.resolve([]),
+      scope.tenantAdminIds.length > 0
+        ? prisma.subDepartment.findMany({ where: { tenantId: { in: scope.tenantAdminIds } }, select: { id: true, tenantId: true } })
+        : Promise.resolve([]),
+    ]),
+  );
 
   const departmentTeamIds: Record<string, string[]> = {};
   for (const t of deptSubDepartments) (departmentTeamIds[t.departmentId] ??= []).push(t.id);

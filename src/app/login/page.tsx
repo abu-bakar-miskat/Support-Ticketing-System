@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { PenLogo } from "@/components/auth/sts-logo";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { OtpVerifyForm } from "@/components/auth/otp-verify-form";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
@@ -161,7 +162,7 @@ export default async function LoginPage({
 
         {sentStep && (
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-sts-accent">
-            Link sent
+            Code sent
           </p>
         )}
 
@@ -184,8 +185,8 @@ export default async function LoginPage({
           )}
         >
           {sentStep
-            ? `We emailed a sign-in link to ${sentEmail}`
-            : "Enter your work email and we’ll send you a secure, password-free sign-in link."}
+            ? `We emailed a sign-in code to ${sentEmail}`
+            : "Enter your work email and we’ll send you a secure, password-free sign-in code."}
         </p>
 
         <div className="h-7 sm:h-8" />
@@ -209,10 +210,14 @@ export default async function LoginPage({
               <div className="h-5" />
 
               <p className="max-w-[19rem] text-[13.5px] leading-relaxed text-sts-muted">
-                Click the link in the email to finish signing in. It stays valid
-                for a few minutes — you can close this tab afterward.
+                Enter the code from the email to finish signing in. The code
+                stays valid for a few minutes.
               </p>
             </div>
+
+            <div className="h-6" />
+
+            <OtpVerifyForm email={sentEmail} next={next} />
 
             <div className="h-6" />
 
@@ -226,7 +231,7 @@ export default async function LoginPage({
                   type="submit"
                   className="rounded-sm font-semibold text-sts-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
                 >
-                  Resend link
+                  Resend code
                 </button>
               </form>
               <span className="text-sts-card-border" aria-hidden>
@@ -271,7 +276,7 @@ export default async function LoginPage({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-sts-card",
                 )}
               >
-                Email me a sign-in link
+                Email me a sign-in code
                 <ArrowIcon />
               </SubmitButton>
             </form>
@@ -280,7 +285,7 @@ export default async function LoginPage({
 
             <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-normal text-sts-subtle">
               <LockIcon />
-              Your sign-in link expires after a few minutes.
+              Your sign-in code expires after a few minutes.
             </p>
           </>
         )}

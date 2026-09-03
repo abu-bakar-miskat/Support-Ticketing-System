@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PenLogo } from "@/components/auth/sts-logo";
 import { SubmitButton } from "@/components/auth/submit-button";
@@ -29,19 +29,12 @@ async function redirectSuperAdminToPlatform(
   redirect("/platform");
 }
 
-async function getOrigin() {
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  return `${protocol}://${host}`;
-}
-
 function nextQueryPart(next: string) {
   return next !== "/" ? `&next=${encodeURIComponent(next)}` : "";
 }
 
-/** Email the user a one-click magic sign-in link. */
-async function requestMagicLink(formData: FormData) {
+/** Email the user a one-time sign-in code (OTP). No magic link is issued. */
+async function requestLoginCode(formData: FormData) {
   "use server";
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const next = safeNextPath(String(formData.get("next") ?? ""));
@@ -53,30 +46,12 @@ async function requestMagicLink(formData: FormData) {
     );
   }
 
-  const origin = await getOrigin();
-  const cookieStore = await cookies();
-  // Persist `next` for the callback round-trip, mirroring the OAuth flow.
-  if (next !== "/") {
-    cookieStore.set("pen_auth_next", next, {
-      httpOnly: true,
-      path: "/",
-      maxAge: 60 * 10,
-      sameSite: "lax",
-    });
-  } else {
-    cookieStore.set("pen_auth_next", "", { path: "/", maxAge: 0 });
-  }
-
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo:
-        next === "/"
-          ? `${origin}/auth/callback`
-          : `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
+  // Deliberately omit `emailRedirectTo` so Supabase does not mint a clickable
+  // magic link — the user finishes sign-in by entering the emailed code, which
+  // `next` carries through the OTP form. (The Supabase "Magic Link" email
+  // template must also use {{ .Token }} rather than {{ .ConfirmationURL }}.)
+  const { error } = await supabase.auth.signInWithOtp({ email });
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
@@ -222,7 +197,7 @@ export default async function LoginPage({
             <div className="h-6" />
 
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px]">
-              <form action={requestMagicLink}>
+              <form action={requestLoginCode}>
                 {next !== "/" && (
                   <input type="hidden" name="next" value={next} />
                 )}
@@ -247,7 +222,7 @@ export default async function LoginPage({
           </>
         ) : (
           <>
-            <form action={requestMagicLink} className="w-full space-y-4">
+            <form action={requestLoginCode} className="w-full space-y-4">
               {next !== "/" && <input type="hidden" name="next" value={next} />}
               <label className="flex w-full flex-col gap-2">
                 <span className="text-[12.5px] font-semibold text-sts-foreground">
@@ -268,7 +243,7 @@ export default async function LoginPage({
                 />
               </label>
               <SubmitButton
-                pendingLabel="Sending link…"
+                pendingLabel="Sending code…"
                 className={cn(
                   "flex h-12 w-full items-center justify-center gap-2 rounded-xl",
                   "bg-sts-button text-[14px] font-semibold text-sts-button-fg shadow-sm",

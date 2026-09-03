@@ -31,7 +31,7 @@ export async function acceptDepartmentInvite(
   const invite = await prisma.departmentInvite.findUnique({
     where: { token },
     include: {
-      department: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true, tenantId: true } },
       subDepartment: { select: { id: true, name: true, departmentId: true } },
     },
   });
@@ -70,6 +70,33 @@ export async function acceptDepartmentInvite(
   }
 
   await prisma.$transaction(async (tx) => {
+    // Scope the user to the department's tenant so activeTenantId resolves and
+    // every tenant-scoped query returns their data. Baseline role is `agent`;
+    // their real power comes from the department/sub-department scope below.
+    // Never downgrade an existing membership — only reactivate it.
+    await tx.tenantMembership.upsert({
+      where: { tenantId_userId: { tenantId: invite.department.tenantId, userId: profile.id } },
+      create: {
+        tenantId: invite.department.tenantId,
+        userId: profile.id,
+        role: "agent",
+        isActive: true,
+      },
+      update: { isActive: true },
+    });
+
+    // Join the parent department directly (mirrors the "Add member" flow) so the
+    // invitee is a full department member, not only a sub-department member.
+    await tx.departmentMember.upsert({
+      where: { departmentId_userId: { departmentId: invite.departmentId, userId: profile.id } },
+      create: {
+        departmentId: invite.departmentId,
+        userId: profile.id,
+        addedBy: invite.invitedBy,
+      },
+      update: {},
+    });
+
     await (tx.subDepartmentMembership as any).upsert({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId: invite.subDepartmentId } },
       create: {

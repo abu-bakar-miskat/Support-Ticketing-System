@@ -180,6 +180,34 @@ export async function completeLogin(args: {
     }
   }
 
+  // No explicit /invite/<token> deep link: still consume any pending invite
+  // addressed to this email so an invited user becomes a member however they
+  // signed in — typing their email directly, an already-open session, or a mail
+  // gateway (Safe Links) that mangled the invite link. Without this they land on
+  // /onboarding despite holding a valid invite. Accepting here means the landing
+  // resolution below finds the fresh sub-department membership and routes to the
+  // board. Best-effort: a failed accept just falls through to normal landing.
+  if (!inviteToken) {
+    const pending = await prisma.departmentInvite.findFirst({
+      where: {
+        email: { equals: profile.email, mode: "insensitive" },
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { token: true },
+    })
+    if (pending) {
+      await acceptDepartmentInvite(pending.token, {
+        id: profile.id,
+        email: profile.email,
+      }).catch((err) => {
+        console.error("[completeLogin] pending invite auto-accept failed:", err)
+      })
+    }
+  }
+
   // No specific deep link: land by role (role-hierarchy.md) — Super Admin to the
   // platform console, tenant admin to the org console, manager/agent to their
   // department board, unassigned to onboarding. A deep link still wins.

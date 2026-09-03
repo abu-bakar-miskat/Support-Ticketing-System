@@ -116,6 +116,29 @@ describe("createRecoveryHandler", () => {
     expect(recreate).toHaveBeenCalledTimes(1)
   })
 
+  it("recovers reads when HMR has closed the cached pg pool", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const freshQuery = vi.fn().mockResolvedValue({ id: "p1" })
+    const handler = createRecoveryHandler(
+      recreate,
+      vi.fn().mockReturnValue(freshQuery),
+    )
+    const query = vi
+      .fn()
+      .mockRejectedValue(new Error("Cannot use a pool after calling end on the pool"))
+
+    const result = await handler({
+      model: "Profile",
+      operation: "findUnique",
+      args: { where: { id: "p1" } },
+      query,
+    })
+
+    expect(result).toEqual({ id: "p1" })
+    expect(recreate).toHaveBeenCalledTimes(1)
+    expect(freshQuery).toHaveBeenCalledTimes(1)
+  })
+
   it("rethrows non-connection errors without recovery", async () => {
     const recreate = vi.fn()
     const handler = createRecoveryHandler(recreate, vi.fn())

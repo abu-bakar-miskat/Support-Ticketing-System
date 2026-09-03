@@ -10,8 +10,8 @@ import { completeLogin } from "@/lib/auth/complete-login";
 /**
  * Fixed code that logs any existing user in on non-production builds only.
  * We never verify it directly — instead we ask Supabase (via the service-role
- * admin client) to mint the real OTP for the email, then redeem that through
- * the normal verifyOtp path so a genuine session is established.
+ * admin client) to mint a real magic-link OTP for the email, then redeem that
+ * through Supabase so a genuine session is established.
  */
 const DEV_BYPASS_CODE = "12345678";
 
@@ -33,7 +33,9 @@ const isDevBypassEnabled =
  */
 async function resolveDevBypassToken(
   email: string,
-): Promise<{ token: string } | { error: string }> {
+): Promise<
+  { token: string; verificationType: "signup" | "magiclink" } | { error: string }
+> {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { error: "Dev login unavailable: SUPABASE_SERVICE_ROLE_KEY is not set" };
   }
@@ -47,7 +49,13 @@ async function resolveDevBypassToken(
   if (!otp) {
     return { error: `Dev login failed: no OTP returned for ${email}` };
   }
-  return { token: otp };
+  const verificationType = data.properties?.verification_type;
+  if (verificationType !== "signup" && verificationType !== "magiclink") {
+    return {
+      error: `Dev login failed: unexpected verification type ${verificationType ?? "unknown"}`,
+    };
+  }
+  return { token: otp, verificationType };
 }
 
 /**
@@ -73,9 +81,13 @@ export async function verifyOtpCode(formData: FormData) {
     );
   }
 
-  // Dev-only shortcut: the fixed code is swapped for the email's real OTP so
-  // the verification below still goes through Supabase and yields a real session.
+  // Dev-only shortcut: the fixed code is swapped for a real magic-link OTP so
+  // verification still goes through Supabase and yields a real session. The
+  // generated credential must be redeemed using the verification type Supabase
+  // returns. Existing confirmed users normally return `magiclink`; a newly
+  // created or unconfirmed address can return `signup` instead.
   let effectiveToken = token;
+  let verificationType: "email" | "signup" | "magiclink" = "email";
   if (isDevBypassEnabled && token === DEV_BYPASS_CODE) {
     const result = await resolveDevBypassToken(email);
     if ("error" in result) {
@@ -85,13 +97,14 @@ export async function verifyOtpCode(formData: FormData) {
       );
     }
     effectiveToken = result.token;
+    verificationType = result.verificationType;
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.verifyOtp({
     email,
     token: effectiveToken,
-    type: "email",
+    type: verificationType,
   });
 
   if (error || !data.user) {

@@ -200,7 +200,17 @@ function getPrisma() {
     return globalForPrisma.prismaExtended
   }
 
-  void globalForPrisma.prisma?.$disconnect()
+  // PrismaPg owns the Pool passed to it, so disconnecting the stale client also
+  // ends that pool. Detach it from the global cache before starting the async
+  // disconnect; otherwise getPool() hands the newly-created Prisma client the
+  // same pool while it is being closed, leaving requests stuck/failing with
+  // "Cannot use a pool after calling end on the pool" after an HMR refresh.
+  const stalePrisma = globalForPrisma.prisma
+  if (stalePrisma) {
+    globalForPrisma.pool = undefined
+    globalForPrisma.databaseUrl = undefined
+    void stalePrisma.$disconnect().catch(() => {})
+  }
 
   const pool = getPool()
   const prisma = new PrismaClient({
@@ -293,6 +303,7 @@ function isConnectionError(err: unknown): boolean {
     msg.includes("connection terminated") ||
     msg.includes("connection timeout") ||
     msg.includes("connection closed") ||
+    msg.includes("cannot use a pool after calling end on the pool") ||
     msg.includes("econnreset") ||
     msg.includes("econnrefused") ||
     msg.includes("etimedout") ||

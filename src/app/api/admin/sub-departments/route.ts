@@ -5,6 +5,35 @@ import { departmentTenantId } from "@/lib/tenant-scope"
 import { ensureDefaultSupportForm } from "@/lib/support-template"
 import { seedSubDepartmentStatuses } from "@/lib/board-columns"
 
+/** URL-safe slug from a name (mirrors scripts/backfill-subdepartment-slugs.ts). */
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/[\s-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "team"
+  )
+}
+
+/** A slug unique within the department, suffixing -2, -3… on collision. */
+async function uniqueSubDepartmentSlug(
+  departmentId: string,
+  name: string,
+): Promise<string> {
+  const base = slugify(name)
+  const existing = await prisma.subDepartment.findMany({
+    where: { departmentId, slug: { startsWith: base } },
+    select: { slug: true },
+  })
+  const used = new Set(existing.map((s) => s.slug).filter(Boolean) as string[])
+  let slug = base
+  let i = 2
+  while (used.has(slug)) slug = `${base}-${i++}`
+  return slug
+}
+
 function isUniqueViolation(e: unknown): boolean {
   return (
     typeof e === "object" &&
@@ -71,8 +100,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    const slug = await uniqueSubDepartmentSlug(departmentId, name)
     const subDepartment = await prisma.subDepartment.create({
-      data: { name, prefix, color, departmentId, tenantId },
+      data: { name, prefix, color, departmentId, tenantId, slug },
       include: { department: { select: { id: true, name: true } } },
     })
     // Seed the default statuses (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED) so

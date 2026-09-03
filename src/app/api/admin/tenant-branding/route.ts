@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { forbidden, badRequest } from "@/lib/api-response"
 import { getTenantConfig, setTenantBranding } from "@/lib/tenant-config"
 import { sanitizeTenantBranding, readTenantBranding } from "@/lib/tenant-branding"
+import { uploadTenantLogo } from "@/lib/storage"
 
 /** True when the caller may edit the active tenant's branding. */
 function canEditBranding(profile: { isSuperAdmin?: boolean; role: string; activeTenantId?: string | null; tenantMemberships?: { tenantId: string; role: string }[] }) {
@@ -22,6 +23,28 @@ export async function GET() {
     tenantName: tenant?.name ?? null,
     branding: readTenantBranding(tenant?.branding),
   })
+}
+
+// Upload a logo image for the active tenant and return its public URL. The
+// caller sets it into the logoUrl field and persists via PUT (Save branding).
+export async function POST(request: Request) {
+  const { profile, error } = await requireAuth()
+  if (error) return error
+  if (!profile.activeTenantId) return NextResponse.json({ error: "No active tenant" }, { status: 400 })
+  if (!canEditBranding(profile)) {
+    return forbidden("Only a tenant admin or super-admin can edit branding.")
+  }
+
+  const form = await request.formData().catch(() => null)
+  const file = form?.get("file")
+  if (!(file instanceof File)) return badRequest("No file provided")
+
+  try {
+    const { url } = await uploadTenantLogo(profile.activeTenantId, file)
+    return NextResponse.json({ ok: true, url })
+  } catch (e) {
+    return badRequest(e instanceof Error ? e.message : "Upload failed")
+  }
 }
 
 export async function PUT(request: Request) {

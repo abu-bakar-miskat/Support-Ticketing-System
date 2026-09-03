@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,31 @@ export function SettingsBrandingPage({
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-selecting the same file
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    setStatus(null)
+    const body = new FormData()
+    body.append("file", file)
+    const res = await fetch("/api/admin/tenant-branding", { method: "POST", body })
+    setUploading(false)
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}))
+      setError(b.error ?? "Upload failed")
+      return
+    }
+    const { url } = await res.json()
+    setLogoUrl(url)
+    setStatus("Logo uploaded. Click “Save branding” to apply.")
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -89,16 +112,63 @@ export function SettingsBrandingPage({
           </div>
 
           <div className="flex flex-col gap-[5px]">
-            <label className={labelClass}>Logo URL</label>
+            <label className={labelClass}>Logo</label>
             <p className="font-sans text-[12px] text-sts-muted">
-              Absolute (https://…) or root-relative (/…) image URL.
+              Upload an image or paste an absolute (https://…) or root-relative (/…) URL.
             </p>
+
+            <div className="mt-1 flex items-center gap-3">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoUrl}
+                  alt="Logo preview"
+                  className="h-10 w-10 shrink-0 rounded-md border border-sts-card-border object-contain bg-sts-surface"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-[10px] text-sts-muted">
+                  Logo
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                onChange={onUpload}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? "Uploading…" : "Upload image"}
+              </Button>
+              {logoUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => setLogoUrl("")}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+
             <Input
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               placeholder="https://example.com/logo.svg"
-              className="mt-1 h-9"
+              className="mt-2 h-9"
             />
+            <p className="font-sans text-[11px] text-sts-muted">
+              PNG, JPG, GIF, WebP, or SVG · up to 5 MB.
+            </p>
           </div>
 
           <Button type="submit" size="lg" disabled={saving} className="w-fit">

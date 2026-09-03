@@ -15,7 +15,16 @@ import { completeLogin } from "@/lib/auth/complete-login";
  */
 const DEV_BYPASS_CODE = "12345678";
 
-const isDevBypassEnabled = process.env.NODE_ENV !== "production";
+/**
+ * The bypass is enabled on any non-production build, OR when the explicit
+ * `ALLOW_DEV_OTP_BYPASS=true` flag is set. The flag lets it work in a
+ * production-mode build you run locally for testing (`next build && next start`,
+ * a preview deploy…) where `NODE_ENV` is "production". It stays OFF by default in
+ * real production because the flag is absent there — never set it in prod env.
+ */
+const isDevBypassEnabled =
+  process.env.NODE_ENV !== "production" ||
+  process.env.ALLOW_DEV_OTP_BYPASS === "true";
 
 /**
  * Mint the email's real OTP via the service-role admin client so the fixed dev
@@ -35,7 +44,9 @@ async function resolveDevBypassToken(
   });
   if (error) return { error: `Dev login failed: ${error.message}` };
   const otp = data.properties?.email_otp;
-  if (!otp) return { error: "Dev login failed: no OTP returned for this email" };
+  if (!otp) {
+    return { error: `Dev login failed: no OTP returned for ${email}` };
+  }
   return { token: otp };
 }
 

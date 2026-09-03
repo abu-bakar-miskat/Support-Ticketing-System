@@ -128,6 +128,37 @@ export async function uploadTenantLogo(
 }
 
 /**
+ * Upload a branding logo (tenant / department / sub-department / form).
+ * The image blob isn't scoped by itself — callers persist the returned URL onto
+ * the relevant branding record, which enforces its own authorization.
+ * Path: branding/{key}/logo-{timestamp}.{ext}
+ */
+export async function uploadBrandingLogo(
+  key: string,
+  file: File,
+): Promise<UploadResult> {
+  if (file.size > MAX_AVATAR_BYTES) {
+    throw new Error("Logo must be under 5 MB");
+  }
+  if (!isAllowedAvatarIcon(file)) {
+    throw new Error("Logo must be an image (JPEG, PNG, GIF, WebP, or SVG)");
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const path = `branding/${sanitize(key) || "shared"}/logo-${Date.now()}.${ext}`;
+  const supabase = await createClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { upsert: true, contentType: avatarIconContentType(file) });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
+/**
  * Upload a project asset.
  * Path: projects/{projectId}/{timestamp}-{sanitizedName}
  */

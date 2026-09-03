@@ -56,6 +56,7 @@ import {
   type ResolvedDefaultFields,
 } from "@/lib/intake-default-fields";
 import { cn } from "@/lib/utils";
+import { LogoUploadButton } from "./logo-upload-button";
 import { useRouter } from "next/navigation";
 import {
   isHexColor,
@@ -1687,17 +1688,27 @@ function FormDesignModal({
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-                  Logo URL
+                  Logo
                 </label>
-                <input
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://…/logo.svg"
-                  className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://…/logo.svg"
+                    className="h-9 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
+                  />
+                  <LogoUploadButton
+                    scopeKey={form.id}
+                    onUploaded={(url) => {
+                      setLogoUrl(url);
+                      toast.success("Logo uploaded. Save the design to apply.");
+                    }}
+                    onError={(m) => toast.error(m)}
+                  />
+                </div>
                 <p className="font-sans text-[11px] text-sts-subtle">
-                  Shown in a banner at the top of the form. Leave blank to use the
-                  workspace logo.
+                  Upload an image or paste a public URL. Shown in a banner at the
+                  top of the form. Leave blank to use the workspace logo.
                 </p>
               </div>
 

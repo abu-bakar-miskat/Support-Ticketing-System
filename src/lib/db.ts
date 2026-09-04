@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks"
 import { statSync } from "fs"
 import { join } from "path"
 import { PrismaClient } from "@/generated/prisma/client"
@@ -395,6 +396,23 @@ type ModelQueryContext = {
   query: (args: unknown) => Promise<unknown>
 }
 
+const interactiveTransactionDepth = new AsyncLocalStorage<number>()
+
+function getInteractiveTransactionDepth(): number {
+  return interactiveTransactionDepth.getStore() ?? 0
+}
+
+function inInteractiveTransaction(): boolean {
+  return getInteractiveTransactionDepth() > 0
+}
+
+function withInteractiveTransactionScope<TArgs extends unknown[], TResult>(
+  callback: (...args: TArgs) => Promise<TResult>,
+): (...args: TArgs) => Promise<TResult> {
+  return (...args: TArgs) =>
+    interactiveTransactionDepth.run(getInteractiveTransactionDepth() + 1, () => callback(...args))
+}
+
 /**
  * Connection-error recovery for model-level queries (`prisma.profile.findUnique`
  * etc.). The top-level Proxy below only covers `$transaction`/`$queryRaw`-style
@@ -406,6 +424,7 @@ type ModelQueryContext = {
 export function createRecoveryHandler(
   recreate: () => Promise<void>,
   getFreshDelegateMethod: (model: string, operation: string) => (args: unknown) => unknown,
+  isInInteractiveTransaction: () => boolean = () => false,
 ) {
   return async function handleModelQuery({ model, operation, args, query }: ModelQueryContext) {
     try {
@@ -414,6 +433,9 @@ export function createRecoveryHandler(
       return await retryOnMaxConnections(`${model}.${operation}`, () => query(args))
     } catch (err) {
       if (isTransactionAbortedError(err)) {
+        if (isInInteractiveTransaction()) {
+          throw err
+        }
         // P2028: the connection pinned to this query's (implicit) transaction
         // was torn down mid-flight by a concurrent recreatePool() / HMR
         // $disconnect(). The transaction rolled back atomically — nothing
@@ -426,6 +448,9 @@ export function createRecoveryHandler(
         return await getFreshDelegateMethod(model, operation)(args)
       }
       if (isConnectionError(err)) {
+        if (isInInteractiveTransaction()) {
+          throw err
+        }
         // The pooled socket died (suspended instance resumed, pooler reaped it,
         // network drop). Rebuild the pool so later queries get live connections.
         await recreate()
@@ -445,11 +470,15 @@ export function createRecoveryHandler(
 }
 
 function withConnectionRecovery(client: PrismaInstance) {
-  const handler = createRecoveryHandler(() => recreatePool(client), (model, operation) => {
-    const fresh = getPrisma() as Record<string, any>
-    const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)]
-    return (args: unknown) => delegate[operation](args)
-  })
+  const handler = createRecoveryHandler(
+    () => recreatePool(client),
+    (model, operation) => {
+      const fresh = getPrisma() as Record<string, any>
+      const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)]
+      return (args: unknown) => delegate[operation](args)
+    },
+    inInteractiveTransaction,
+  )
 
   return client.$extends({
     query: {
@@ -519,16 +548,20 @@ export const prisma = new Proxy({} as PrismaInstance, {
     if (typeof value === "function") {
       const fn = value as (...args: unknown[]) => unknown
       return async (...args: unknown[]) => {
+        const callArgs =
+          prop === "$transaction" && typeof args[0] === "function"
+            ? [withInteractiveTransactionScope(args[0] as (...a: unknown[]) => Promise<unknown>), ...args.slice(1)]
+            : args
         try {
           // EMAXCONN fails before the statement runs, so replay is safe even for
           // $transaction — retry with backoff before giving up.
-          return await retryOnMaxConnections(String(prop), () => fn.bind(client)(...args) as Promise<unknown>)
+          return await retryOnMaxConnections(String(prop), () => fn.bind(client)(...callArgs) as Promise<unknown>)
         } catch (err) {
           if (isConnectionError(err)) {
             console.warn(`[db] connection error on ${String(prop)} — retrying on a fresh pool`)
             await recreatePool(client)
             const fresh = getPrisma() as unknown as PrismaInstance
-            return await (fresh[prop as keyof PrismaInstance] as (...a: unknown[]) => unknown).bind(fresh)(...args)
+            return await (fresh[prop as keyof PrismaInstance] as (...a: unknown[]) => unknown).bind(fresh)(...callArgs)
           }
           // Only the interactive (callback) form is safely replayable: its closure
           // re-runs cleanly, whereas the batch form's args are PrismaPromises already
@@ -540,7 +573,7 @@ export const prisma = new Proxy({} as PrismaInstance, {
             console.warn("[db] P2028 transaction aborted mid-flight — replaying on a fresh client")
             await recreatePool(client)
             const fresh = getPrisma() as unknown as PrismaInstance
-            return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...args)
+            return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...callArgs)
           }
           throw err
         }

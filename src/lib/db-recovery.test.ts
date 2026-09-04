@@ -145,6 +145,49 @@ describe("createRecoveryHandler", () => {
     expect(recreate).toHaveBeenCalledTimes(1)
   })
 
+  it("does not replay a P2028 model query from inside an interactive transaction", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const freshQuery = vi.fn()
+    const handler = createRecoveryHandler(
+      recreate,
+      vi.fn().mockReturnValue(freshQuery),
+      () => true,
+    )
+    const err = Object.assign(
+      new Error(
+        "Transaction API error: Transaction already closed: A rollback cannot be executed on a transaction that was rolled back.",
+      ),
+      { code: "P2028" },
+    )
+    const query = vi.fn().mockRejectedValue(err)
+
+    await expect(
+      handler({ model: "RoleAssignment", operation: "deleteMany", args: {}, query }),
+    ).rejects.toBe(err)
+
+    expect(recreate).not.toHaveBeenCalled()
+    expect(freshQuery).not.toHaveBeenCalled()
+  })
+
+  it("does not replay a connection error model query from inside an interactive transaction", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const freshQuery = vi.fn()
+    const handler = createRecoveryHandler(
+      recreate,
+      vi.fn().mockReturnValue(freshQuery),
+      () => true,
+    )
+    const err = connectionError()
+    const query = vi.fn().mockRejectedValue(err)
+
+    await expect(
+      handler({ model: "Department", operation: "findUnique", args: {}, query }),
+    ).rejects.toBe(err)
+
+    expect(recreate).not.toHaveBeenCalled()
+    expect(freshQuery).not.toHaveBeenCalled()
+  })
+
   it("treats server-initiated disconnects (57P01) as connection errors", async () => {
     const recreate = vi.fn().mockResolvedValue(undefined)
     const freshQuery = vi.fn().mockResolvedValue({ id: "p1" })

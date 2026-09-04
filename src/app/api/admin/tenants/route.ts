@@ -5,6 +5,8 @@ import { badRequest } from "@/lib/api-response"
 import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
 import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
 import { SUPPORT_TEMPLATE } from "@/lib/system-templates"
+import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
+import { completeDepartmentSetup } from "@/lib/department-setup"
 
 function slugify(name: string): string {
   return name
@@ -85,8 +87,25 @@ export async function POST(request: Request) {
       // to grant membership from).
       memberships: { create: { userId: profile!.id, role: "admin", isActive: true } },
     },
-    select: { id: true, slug: true, name: true, type: true, status: true, createdAt: true },
+    select: {
+      id: true, slug: true, name: true, type: true, status: true, createdAt: true,
+      departments: { select: { id: true } },
+    },
   })
+
+  // Bring the bootstrap Support department fully online: provision its support
+  // template (email config, Support project, SLA policies, sample rules) and
+  // mark setup complete so it can accept tickets immediately — no manual review
+  // gate for the auto-created first department.
+  const bootstrapDept = tenant.departments[0]
+  if (bootstrapDept) {
+    await provisionDepartmentSupportTemplate(bootstrapDept.id).catch((e) =>
+      console.error("[POST /api/admin/tenants] support template provisioning failed:", e),
+    )
+    await completeDepartmentSetup(bootstrapDept.id).catch((e) =>
+      console.error("[POST /api/admin/tenants] completing department setup failed:", e),
+    )
+  }
 
   // Apply platform-wide new-tenant feature defaults: seed a disabled FeatureFlag
   // row for any feature the platform admin has defaulted off. Flags are fail-open,
@@ -104,5 +123,8 @@ export async function POST(request: Request) {
     })
   }
 
-  return NextResponse.json(tenant, { status: 201 })
+  return NextResponse.json(
+    { id: tenant.id, slug: tenant.slug, name: tenant.name, type: tenant.type, status: tenant.status, createdAt: tenant.createdAt },
+    { status: 201 },
+  )
 }

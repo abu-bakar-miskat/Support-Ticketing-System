@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth"
 
 /**
  * SA-03: guaranteed fallback for "active sessions invalidated within 60
- * seconds" — the client polls this every ~25s (see
+ * seconds" — the client polls this every ~55s (see
  * components/realtime/notifications-realtime.tsx) and force-signs-out on a
  * 401. The force_logout Realtime broadcast (lib/realtime-broadcast.ts) covers
  * the common case near-instantly; this covers a dropped/reconnecting socket.

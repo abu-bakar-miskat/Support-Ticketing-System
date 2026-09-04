@@ -22,6 +22,10 @@ function playNotificationSound() {
   } catch { /* ignore */ }
 }
 
+export function shouldForceLogoutFromStatus(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
 /** Mounted once in DashboardLayout — keeps the bell badge live and shows toasts. */
 export function NotificationsRealtime() {
   const router = useRouter();
@@ -68,7 +72,7 @@ export function NotificationsRealtime() {
     };
   }, [requestAndSetup]);
 
-  // SA-03: force-sign-out on either the near-instant broadcast or the ~25s
+  // SA-03: force-sign-out on either the near-instant broadcast or the ~55s
   // poll fallback (covers a disconnected/reconnecting Realtime socket) —
   // whichever fires first wins, forceLogoutRef prevents a double redirect.
   const forceLoggedOut = useRef(false);
@@ -85,13 +89,16 @@ export function NotificationsRealtime() {
     const interval = setInterval(async () => {
       try {
         const res = await fetch("/api/session/status", { cache: "no-store" });
-        if (!res.ok) {
+        // Only an explicit auth rejection invalidates the browser session.
+        // A transient 5xx (for example, Supabase/Postgres being unavailable)
+        // must not turn an infrastructure failure into a forced logout.
+        if (shouldForceLogoutFromStatus(res.status)) {
           await forceLogout("Your session is no longer valid. Please sign in again.");
         }
       } catch {
         // Network hiccup — don't force a logout on a transient fetch failure.
       }
-    }, 25_000);
+    }, 55_000);
     return () => clearInterval(interval);
   }, [userId, forceLogout]);
 

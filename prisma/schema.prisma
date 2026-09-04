@@ -237,6 +237,21 @@ model Tenant {
   ruleExecutionLogs RuleExecutionLog[]
 }
 
+// Catalog of tenant category types (institution, agency, company, …). Tenant.type
+// stores the `key` of one of these as a plain string (no FK, so existing tenant
+// flows and validation in lib/tenant-types are untouched). This table just lets
+// super-admins manage the catalog from /platform/tenant-types.
+model TenantType {
+  id          String   @id @default(cuid())
+  // Stable slug used as the value stored in Tenant.type.
+  key         String   @unique
+  // Human-readable display label shown in the UI.
+  label       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // Grants a user access to a tenant with a role. A user may hold many (multi-tenant
 // access). `role == admin` marks a tenant-admin who controls that tenant's
 // departments. Mirrors DepartmentAccess one level up.

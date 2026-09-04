@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
-type TemplateOption = {
+type TenantTypeOption = {
   id: string;
-  name: string;
-  isActive: boolean;
+  key: string;
+  label: string;
 };
 
 type UserResult = {
@@ -28,9 +28,9 @@ type UserResult = {
 
 export function CreateTenantModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
-  const [templateId, setTemplateId] = useState<string>("");
-  const [templates, setTemplates] = useState<TemplateOption[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [typeKey, setTypeKey] = useState<string>("");
+  const [types, setTypes] = useState<TenantTypeOption[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
   const [adminEmail, setAdminEmail] = useState("");
   const [pickedUser, setPickedUser] = useState<UserResult | null>(null);
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
@@ -41,14 +41,17 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/admin/templates")
+    fetch("/api/admin/tenant-types")
       .then((res) => (res.ok ? res.json() : []))
-      .then((data: TemplateOption[]) => {
-        if (!cancelled) setTemplates(Array.isArray(data) ? data.filter((t) => t.isActive) : []);
+      .then((data: TenantTypeOption[]) => {
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setTypes(list);
+        if (list.length > 0) setTypeKey(list[0].key);
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setLoadingTemplates(false);
+        if (!cancelled) setLoadingTypes(false);
       });
     return () => {
       cancelled = true;
@@ -90,27 +93,13 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
     const createRes = await fetch("/api/admin/tenants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
+      body: JSON.stringify({ name: name.trim(), ...(typeKey ? { type: typeKey } : {}) }),
     });
     const created = await createRes.json().catch(() => ({}));
     if (!createRes.ok) {
       setSubmitting(false);
       toast.error(created.error ?? "Failed to create tenant");
       return;
-    }
-
-    if (templateId) {
-      const templateRes = await fetch(`/api/admin/tenants/${created.id}/templates`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId }),
-      });
-      if (!templateRes.ok) {
-        const body = await templateRes.json().catch(() => ({}));
-        setSubmitting(false);
-        toast.error(`Tenant created, but assigning the template failed: ${body.error ?? "unknown error"}`);
-        return;
-      }
     }
 
     const email = adminEmail.trim();
@@ -160,30 +149,29 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Starting template</label>
-            <Select value={templateId || "__none__"} onValueChange={(v) => setTemplateId(v === "__none__" ? "" : v ?? "")}>
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Tenant type</label>
+            <Select value={typeKey || "__none__"} onValueChange={(v) => setTypeKey(v === "__none__" ? "" : v ?? "")}>
               <SelectTrigger className="h-9 w-full">
                 <span className="truncate font-sans text-[12.5px]">
-                  {loadingTemplates
+                  {loadingTypes
                     ? "Loading…"
-                    : templateId
-                      ? (templates.find((t) => t.id === templateId)?.name ?? "Selected")
-                      : "No template"}
+                    : typeKey
+                      ? (types.find((t) => t.key === typeKey)?.label ?? "Selected")
+                      : types.length === 0
+                        ? "No types available"
+                        : "Select a type"}
                 </span>
               </SelectTrigger>
               <SelectContent className="max-h-56 border border-sts-card-border bg-sts-bg shadow-xl">
-                <SelectItem value="__none__" className="font-sans text-[12.5px]">
-                  No template
-                </SelectItem>
-                {templates.map((t) => (
-                  <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
-                    {t.name}
+                {types.map((t) => (
+                  <SelectItem key={t.id} value={t.key} className="font-sans text-[12.5px]">
+                    {t.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="font-sans text-[11px] text-sts-subtle">
-              Grants the tenant this template&apos;s features immediately. Optional — more can be requested later.
+              Manage the available types under Platform → Tenant Types.
             </p>
           </div>
 

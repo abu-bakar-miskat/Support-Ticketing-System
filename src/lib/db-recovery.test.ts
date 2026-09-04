@@ -145,6 +145,31 @@ describe("createRecoveryHandler", () => {
     expect(recreate).toHaveBeenCalledTimes(1)
   })
 
+  it("does not attempt another recovery when the single fresh replay also fails", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const secondP2028 = Object.assign(
+      new Error("Transaction API error: Transaction not found."),
+      { code: "P2028" },
+    )
+    const freshQuery = vi.fn().mockRejectedValue(secondP2028)
+    const handler = createRecoveryHandler(
+      recreate,
+      vi.fn().mockReturnValue(freshQuery),
+    )
+    const firstP2028 = Object.assign(
+      new Error("Transaction API error: Transaction not found."),
+      { code: "P2028" },
+    )
+    const query = vi.fn().mockRejectedValue(firstP2028)
+
+    await expect(
+      handler({ model: "SubDepartment", operation: "findFirst", args: {}, query }),
+    ).rejects.toBe(secondP2028)
+
+    expect(recreate).toHaveBeenCalledTimes(1)
+    expect(freshQuery).toHaveBeenCalledTimes(1)
+  })
+
   it("does not replay a P2028 model query from inside an interactive transaction", async () => {
     const recreate = vi.fn().mockResolvedValue(undefined)
     const freshQuery = vi.fn()

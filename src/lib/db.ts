@@ -506,7 +506,14 @@ function withConnectionRecovery(client: PrismaInstance) {
   const handler = createRecoveryHandler(
     () => recreatePool(client),
     (model, operation) => {
-      const fresh = getPrisma() as Record<string, any>;
+      // Deliberately bypass the extended client here. Calling getPrisma() and
+      // dispatching through its model delegate re-enters this handler; if the
+      // replacement client also reports P2028, that turns one recovery into an
+      // unbounded recreate/replay loop. `args` have already been tenant-scoped
+      // by the outer extension before this handler runs, so the base delegate
+      // preserves the query while making this the single recovery attempt.
+      getPrisma();
+      const fresh = globalForPrisma.prisma as unknown as Record<string, any>;
       const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)];
       return (args: unknown) => delegate[operation](args);
     },

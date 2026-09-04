@@ -53,7 +53,12 @@ export async function POST(request: Request) {
   if (!slug) return badRequest("Could not derive a slug from the name")
 
   const rawType = (body.type as string | undefined)?.trim()
-  if (rawType !== undefined && !isValidTenantType(rawType)) return badRequest("Invalid tenant type")
+  if (rawType !== undefined) {
+    // Accept a built-in type OR any key present in the managed TenantType catalog.
+    const known =
+      isValidTenantType(rawType) || (await prisma.tenantType.count({ where: { key: rawType } })) > 0
+    if (!known) return badRequest("Invalid tenant type")
+  }
   const type = rawType ?? DEFAULT_TENANT_TYPE
 
   const existing = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } })

@@ -21,10 +21,7 @@ import {
   TenantAgreements,
   type AgreementRow,
 } from "@/components/platform/tenant-agreements";
-import {
-  TenantTemplates,
-  type CatalogueEntry,
-} from "@/components/platform/tenant-templates";
+import { tenantTypeLabel } from "@/lib/tenant-types";
 
 type UserResult = {
   id: string;
@@ -164,17 +161,18 @@ export function TenantManageClient({
   initialMembers,
   departments,
   initialAgreements,
-  initialCatalogue,
+  tenantTypes,
 }: {
   tenant: TenantInfo;
   initialBranding: TenantBranding;
   initialMembers: Member[];
   departments: { id: string; name: string }[];
   initialAgreements: AgreementRow[];
-  initialCatalogue: CatalogueEntry[];
+  tenantTypes: { id: string; key: string; label: string }[];
 }) {
   const [tenantName, setTenantName] = useState(tenant.name);
   const [tenantSlug, setTenantSlug] = useState(tenant.slug);
+  const [tenantType, setTenantType] = useState(tenant.type);
   const [identitySaving, setIdentitySaving] = useState(false);
   const [displayName, setDisplayName] = useState(
     initialBranding.displayName ?? "",
@@ -359,7 +357,11 @@ export function TenantManageClient({
     const res = await fetch(`/api/admin/tenants/${tenant.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: tenantName.trim(), slug: tenantSlug.trim().toLowerCase() }),
+      body: JSON.stringify({
+        name: tenantName.trim(),
+        slug: tenantSlug.trim().toLowerCase(),
+        type: tenantType,
+      }),
     });
     setIdentitySaving(false);
     if (!res.ok) {
@@ -367,10 +369,11 @@ export function TenantManageClient({
       setError(body.error ?? "Failed to save tenant identity");
       return;
     }
-    const updated = await res.json() as { name: string; slug: string };
+    const updated = await res.json() as { name: string; slug: string; type: string };
     setTenantName(updated.name);
     setTenantSlug(updated.slug);
-    setStatus("Tenant name and slug saved.");
+    setTenantType(updated.type);
+    setStatus("Tenant identity saved.");
   }
 
   async function saveBranding(e: React.FormEvent) {
@@ -562,14 +565,34 @@ export function TenantManageClient({
                     required
                   />
                 </div>
+                <div>
+                  <label className={labelClass}>Type</label>
+                  <Select value={tenantType} onValueChange={(v) => setTenantType(v ?? "")}>
+                    <SelectTrigger className="mt-1 h-9 w-full">
+                      <span className="truncate font-sans text-[12.5px]">
+                        {tenantTypes.find((t) => t.key === tenantType)?.label ?? tenantTypeLabel(tenantType)}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent className="max-h-56 border border-sts-card-border bg-sts-bg shadow-xl">
+                      {tenantTypes.map((t) => (
+                        <SelectItem key={t.id} value={t.key} className="font-sans text-[12.5px]">
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                      {/* Keep the tenant's current type selectable even if it's not in the catalog. */}
+                      {tenantType && !tenantTypes.some((t) => t.key === tenantType) && (
+                        <SelectItem value={tenantType} className="font-sans text-[12.5px]">
+                          {tenantTypeLabel(tenantType)}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button type="submit" size="lg" disabled={identitySaving || deleted}>
                   {identitySaving ? "Saving…" : "Save identity"}
                 </Button>
               </form>
             </section>
-
-            {/* Templates (dynamic, replaces the old static Tenant.type) */}
-            <TenantTemplates tenantId={tenant.id} initialCatalogue={initialCatalogue} />
 
             {/* Branding editor + live preview */}
             <section className={cn(sectionCard, "space-y-4")}>

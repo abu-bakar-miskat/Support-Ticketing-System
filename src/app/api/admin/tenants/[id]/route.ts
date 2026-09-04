@@ -38,8 +38,13 @@ export async function PATCH(request: Request, { params }: Params) {
   if (slug !== undefined && !SLUG_RE.test(slug)) {
     return badRequest("Slug must be lowercase letters, numbers, and hyphens")
   }
-  if (body.type !== undefined && !isValidTenantType(body.type)) {
-    return badRequest("Invalid tenant type")
+  if (body.type !== undefined) {
+    // Accept a built-in type OR any key present in the managed TenantType catalog.
+    const known =
+      isValidTenantType(body.type) ||
+      (typeof body.type === "string" &&
+        (await prisma.tenantType.count({ where: { key: body.type } })) > 0)
+    if (!known) return badRequest("Invalid tenant type")
   }
   if (body.status !== undefined && !isValidTenantStatus(body.status)) {
     return badRequest("status must be one of: active, suspended")

@@ -3,7 +3,6 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { readTenantBranding } from "@/lib/tenant-branding"
 import { listAgreementsForTenant } from "@/lib/agreements"
-import { listCatalogueForTenant } from "@/lib/template-catalogue"
 import { TenantManageClient } from "@/components/platform/tenant-manage-client"
 
 export const dynamic = "force-dynamic"
@@ -41,7 +40,7 @@ export default async function TenantManagePage({
   // flow (SubDepartmentMembership) or directly to a department (DepartmentMember)
   // and have NO TenantMembership. Union all three so every member shows — not
   // just the ones with a tenant-wide membership. Mirrors settings/members/page.tsx.
-  const [tenantMemberRows, subDeptMemberRows, directDeptMemberRows, departmentRows, agreements, catalogue] =
+  const [tenantMemberRows, subDeptMemberRows, directDeptMemberRows, departmentRows, agreements, tenantTypes] =
     await Promise.all([
       prisma.tenantMembership.findMany({
         where: { tenantId: id, isActive: true },
@@ -61,7 +60,10 @@ export default async function TenantManagePage({
         select: { id: true, name: true },
       }),
       listAgreementsForTenant(id),
-      listCatalogueForTenant(id),
+      prisma.tenantType.findMany({
+        orderBy: { label: "asc" },
+        select: { id: true, key: true, label: true },
+      }),
     ])
 
   const memberUserIds = [
@@ -110,7 +112,7 @@ export default async function TenantManagePage({
         updatedAt: a.updatedAt.toISOString(),
         documents: a.documents.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })),
       }))}
-      initialCatalogue={catalogue}
+      tenantTypes={tenantTypes}
     />
   )
 }

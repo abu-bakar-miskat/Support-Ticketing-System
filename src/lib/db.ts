@@ -71,13 +71,13 @@ function ensureQueryParam(url: string, key: string, value: string): string {
 }
 
 function poolMax(): number {
-  // Supavisor caps CLIENT connections at 600 (compute-tier bound), shared by
-  // every function instance — pool size divides that ceiling, and a deploy
-  // flurry saturated it at pool-of-5 on 2026-07-29 (120 instances × 5).
-  // With functions colocated in cdg1, queries run in single-digit ms, so 2
-  // clients drain an RSC query batch imperceptibly slower than 5 did.
-  // Raise via DB_POOL_MAX only with the 600-connection budget in mind.
-  return Number(process.env.DB_POOL_MAX ?? 2)
+  // Supavisor's CLIENT connection cap is shared by every local dev server and
+  // deployed function instance. One connection per instance is the safe
+  // serverless default; concurrency is handled by transaction mode (port 6543).
+  // Only raise this after checking the project's current client-connection
+  // budget and peak instance count in Supabase/Vercel.
+  const configured = Number(process.env.DB_POOL_MAX ?? 1)
+  return Number.isInteger(configured) && configured > 0 ? configured : 1
 }
 
 function createPool(connectionString: string) {
@@ -88,10 +88,11 @@ function createPool(connectionString: string) {
     connectionString: toPgConnectionString(normalized),
     ssl: { rejectUnauthorized: false },
     max: poolMax(),
-    // Keep connections warm across navigations — reconnecting costs ~1s RTT
-    // per query burst. The transaction pooler multiplexes, so holding a few
-    // idle clients is cheap relative to the reconnect penalty.
-    idleTimeoutMillis: 60_000,
+    // Release idle Supavisor client slots promptly. The client limit is shared
+    // across every dev server and deployed instance, so holding a slot for the
+    // full interval between background session checks causes idle instances to
+    // exhaust the project-wide budget.
+    idleTimeoutMillis: 10_000,
     keepAlive: true,
     connectionTimeoutMillis: 20_000,
     allowExitOnIdle: true,

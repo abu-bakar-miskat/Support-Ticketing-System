@@ -15,15 +15,18 @@ import { cn } from "@/lib/utils";
 export function OtpVerifyForm({
   email,
   next,
+  verificationType,
 }: {
   email: string;
   next: string;
+  verificationType: "signup" | "magiclink";
 }) {
   const [code, setCode] = useState("");
 
   return (
     <form action={verifyOtpCode} className="flex w-full flex-col items-center">
       <input type="hidden" name="email" value={email} />
+      <input type="hidden" name="verificationType" value={verificationType} />
       {next !== "/" && <input type="hidden" name="next" value={next} />}
       <input type="hidden" name="token" value={code} />
 

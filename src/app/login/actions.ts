@@ -70,9 +70,11 @@ export async function verifyOtpCode(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const token = String(formData.get("token") ?? "").replace(/\D/g, "");
   const next = safeNextPath(String(formData.get("next") ?? ""));
+  const requestedType = String(formData.get("verificationType") ?? "");
 
   const backQuery =
     `&email=${encodeURIComponent(email)}` +
+    `&verificationType=${requestedType === "signup" ? "signup" : "magiclink"}` +
     (next !== "/" ? `&next=${encodeURIComponent(next)}` : "");
 
   if (!email || token.length < 6) {
@@ -87,7 +89,8 @@ export async function verifyOtpCode(formData: FormData) {
   // returns. Existing confirmed users normally return `magiclink`; a newly
   // created or unconfirmed address can return `signup` instead.
   let effectiveToken = token;
-  let verificationType: "email" | "signup" | "magiclink" = "email";
+  let verificationType: "signup" | "magiclink" =
+    requestedType === "signup" ? "signup" : "magiclink";
   if (isDevBypassEnabled && token === DEV_BYPASS_CODE) {
     const result = await resolveDevBypassToken(email);
     if ("error" in result) {

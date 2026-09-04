@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { sendLoginCode } from "@/lib/auth/send-login-code";
 
 /**
  * Super-admins land on the platform console on login (mirrors /auth/callback).
@@ -46,18 +47,16 @@ async function requestLoginCode(formData: FormData) {
     );
   }
 
-  const supabase = await createClient();
-  // Deliberately omit `emailRedirectTo` so Supabase does not mint a clickable
-  // magic link — the user finishes sign-in by entering the emailed code, which
-  // `next` carries through the OTP form. (The Supabase "Magic Link" email
-  // template must also use {{ .Token }} rather than {{ .ConfirmationURL }}.)
-  const { error } = await supabase.auth.signInWithOtp({ email });
+  // Generate the credential with Supabase, but send the numeric OTP ourselves.
+  // A hosted Supabase template can otherwise silently turn signInWithOtp into
+  // a magic-link email when it contains {{ .ConfirmationURL }}.
+  const result = await sendLoginCode(email);
 
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}${nextQuery}`);
+  if (result.error) {
+    redirect(`/login?error=${encodeURIComponent(result.error)}${nextQuery}`);
   }
 
-  redirect(`/login?step=sent&email=${encodeURIComponent(email)}${nextQuery}`);
+  redirect(`/login?step=sent&email=${encodeURIComponent(email)}&verificationType=${result.verificationType}${nextQuery}`);
 }
 
 export default async function LoginPage({
@@ -68,6 +67,7 @@ export default async function LoginPage({
     next?: string;
     step?: string;
     email?: string;
+    verificationType?: string;
   }>;
 }) {
   const {
@@ -75,6 +75,7 @@ export default async function LoginPage({
     next: nextParam,
     step,
     email: emailParam,
+    verificationType: verificationTypeParam,
   } = await searchParams;
   const next = safeNextPath(nextParam);
 
@@ -89,6 +90,7 @@ export default async function LoginPage({
   }
 
   const sentEmail = (emailParam ?? "").trim();
+  const verificationType = verificationTypeParam === "signup" ? "signup" : "magiclink";
   const sentStep = step === "sent" && sentEmail.length > 0;
 
   return (
@@ -192,7 +194,7 @@ export default async function LoginPage({
 
             <div className="h-6" />
 
-            <OtpVerifyForm email={sentEmail} next={next} />
+            <OtpVerifyForm email={sentEmail} next={next} verificationType={verificationType} />
 
             <div className="h-6" />
 
@@ -202,6 +204,7 @@ export default async function LoginPage({
                   <input type="hidden" name="next" value={next} />
                 )}
                 <input type="hidden" name="email" value={sentEmail} />
+                <input type="hidden" name="verificationType" value={verificationType} />
                 <button
                   type="submit"
                   className="rounded-sm font-semibold text-sts-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"

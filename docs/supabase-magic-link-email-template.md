@@ -1,4 +1,9 @@
-# Supabase Magic Link Email Template
+# Legacy Supabase Magic Link Email Template
+
+> **Not used by the current login flow.** The app now generates a Supabase OTP
+> server-side and sends the numeric code through Resend. This prevents the
+> hosted template from changing an OTP request into a clickable magic link.
+> Keep this document only for deployments that intentionally restore magic-link login.
 
 Branded one-click sign-in email for Supabase Auth (magic link flow).
 Matches the PEN Support Ticketing System email system (`src/lib/email-templates/_shared.ts`):

@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { sendLoginCode } from "@/lib/auth/send-login-code"
 import { requireAdmin } from "../../_guard"
 
 export async function POST(request: Request) {
@@ -13,17 +13,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
   }
 
-  const supabase = await createClient()
-  const { error: otpError } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketing-system.pengroup.com"}/auth/callback`,
-    },
-  })
-
-  if (otpError) {
-    return NextResponse.json({ error: otpError.message }, { status: 500 })
+  // Use the same code-only flow as the login page. Calling signInWithOtp here
+  // would render Supabase's hosted template, which may include a clickable
+  // ConfirmationURL depending on the project's email configuration.
+  const result = await sendLoginCode(email)
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

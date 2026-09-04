@@ -267,7 +267,14 @@ export function PlatformAdministrators({
           <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
             {admins.map((admin) => {
               const isSelf = admin.id === currentUserId;
-              const roleLabel = admin.role ? ROLE_LABELS[admin.role] ?? admin.role : null;
+              // Everyone in this list holds super-admin, so that's the badge to
+              // show (matches the "All users" directory). Fall back to the tenant
+              // role only if a row somehow isn't flagged super-admin.
+              const roleLabel = admin.isSuperAdmin
+                ? "Super Admin"
+                : admin.role
+                  ? ROLE_LABELS[admin.role] ?? admin.role
+                  : null;
               // undefined = just added via search (not yet hydrated); [] = server
               // confirmed no memberships.
               const departments = admin.departments;
@@ -286,7 +293,14 @@ export function PlatformAdministrators({
                         </span>
                         {isSelf && <span className="font-sans text-[11px] text-sts-subtle">(you)</span>}
                         {roleLabel && (
-                          <span className="rounded-full bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
+                          <span
+                            className={cn(
+                              "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-medium",
+                              admin.isSuperAdmin
+                                ? "bg-sts-blue text-white dark:text-gray-900"
+                                : "bg-sts-blue-tint text-sts-blue",
+                            )}
+                          >
                             {roleLabel}
                           </span>
                         )}

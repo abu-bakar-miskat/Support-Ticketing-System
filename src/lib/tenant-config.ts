@@ -55,10 +55,14 @@ export async function tenantEmailConfig(tenantId: string): Promise<unknown | nul
 export async function getTenantBranding(tenantId: string): Promise<ResolvedTenantBranding | null> {
   const t = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { branding: true },
+    select: { name: true, branding: true },
   });
   if (!t) return null;
-  return resolveTenantBranding(t.branding);
+  const branding = resolveTenantBranding(t.branding);
+  return {
+    ...branding,
+    displayName: branding.displayName ?? t.name,
+  };
 }
 
 /** Replace a tenant's branding wholesale (so cleared fields actually disappear). */

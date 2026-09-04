@@ -16,6 +16,17 @@ export type ScopeType = "PLATFORM" | "TENANT" | "DEPARTMENT" | "SUB_DEPARTMENT";
 
 export type ScopeRow = { role: Role; scopeType: ScopeType; scopeId: string | null };
 
+const globalForRoleAssignments = globalThis as unknown as {
+  roleAssignmentSyncs?: Map<string, Promise<void>>;
+};
+
+// A page bootstraps several scoped endpoints in parallel. They all resolve the
+// same signed-in user's scope, so share one rebuild instead of queuing identical
+// interactive transactions behind the single-connection DB pool.
+const roleAssignmentSyncs =
+  globalForRoleAssignments.roleAssignmentSyncs ?? new Map<string, Promise<void>>();
+globalForRoleAssignments.roleAssignmentSyncs = roleAssignmentSyncs;
+
 export type UserScope = {
   /** Super admin — access to everything, all tenants. */
   isPlatformAdmin: boolean;
@@ -272,7 +283,7 @@ function isUniqueViolation(err: unknown): boolean {
  * Rebuild a user's RoleAssignment rows from the source tables. Idempotent.
  * Transitional bridge until slice 03 makes RoleAssignment the write source.
  */
-export async function syncUserRoleAssignments(userId: string): Promise<void> {
+async function rebuildUserRoleAssignments(userId: string): Promise<void> {
   const derived = await deriveAssignments(userId);
   const data = derived.map((r) => ({ userId, role: r.role, scopeType: r.scopeType, scopeId: r.scopeId }));
 
@@ -296,6 +307,21 @@ export async function syncUserRoleAssignments(userId: string): Promise<void> {
       return;
     }
     throw err;
+  }
+}
+
+export async function syncUserRoleAssignments(userId: string): Promise<void> {
+  const existing = roleAssignmentSyncs.get(userId);
+  if (existing) return existing;
+
+  const sync = rebuildUserRoleAssignments(userId);
+  roleAssignmentSyncs.set(userId, sync);
+  try {
+    await sync;
+  } finally {
+    if (roleAssignmentSyncs.get(userId) === sync) {
+      roleAssignmentSyncs.delete(userId);
+    }
   }
 }
 

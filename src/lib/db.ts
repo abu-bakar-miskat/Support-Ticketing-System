@@ -283,7 +283,11 @@ function isMaxConnectionsError(err: unknown): boolean {
     msg.includes("max client connections reached") ||
     // pg Pool checkout timeout — like EMAXCONN, it fails before the statement
     // ever reaches the server, so backoff-and-replay is safe even for writes.
-    msg.includes("timeout exceeded when trying to connect")
+    msg.includes("timeout exceeded when trying to connect") ||
+    // Interactive transaction maxWait expired before Prisma obtained the
+    // pool's only connection. No transaction started, so retrying is safe and
+    // the healthy pool must not be torn down.
+    msg.includes("unable to start a transaction in the given time")
   )
 }
 
@@ -296,7 +300,13 @@ function isTransactionAbortedError(err: unknown): boolean {
   // committed and replaying the whole closure on a fresh client is safe.
   if (!err || typeof err !== "object") return false
   const e = err as Record<string, unknown>
-  return (e.code ?? e.errorCode) === "P2028"
+  const msg = errorText(err)
+  return (
+    (e.code ?? e.errorCode) === "P2028" &&
+    (msg.includes("transaction not found") ||
+      msg.includes("old closed transaction") ||
+      msg.includes("obtained before disconnecting"))
+  )
 }
 
 function isConnectionError(err: unknown): boolean {
@@ -419,7 +429,7 @@ export function createRecoveryHandler(
 }
 
 function withConnectionRecovery(client: PrismaInstance) {
-  const handler = createRecoveryHandler(recreatePool, (model, operation) => {
+  const handler = createRecoveryHandler(() => recreatePool(client), (model, operation) => {
     const fresh = getPrisma() as Record<string, any>
     const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)]
     return (args: unknown) => delegate[operation](args)
@@ -437,9 +447,22 @@ function withConnectionRecovery(client: PrismaInstance) {
 type ExtendedPrismaClient = ReturnType<typeof withConnectionRecovery>
 
 /** Tear down pool+client once; concurrent callers await the same teardown. */
-async function recreatePool(): Promise<void> {
+async function recreatePool(
+  failedClient?: PrismaInstance | ExtendedPrismaClient,
+): Promise<void> {
   if (globalForPrisma.poolRecreatePromise) {
     await globalForPrisma.poolRecreatePromise
+    return
+  }
+
+  // Another request may already have replaced the client that produced this
+  // error. Do not let a late sibling recovery tear down that fresh client's
+  // in-flight transaction.
+  if (
+    failedClient &&
+    globalForPrisma.prisma !== failedClient &&
+    globalForPrisma.prismaExtended !== failedClient
+  ) {
     return
   }
 
@@ -487,7 +510,7 @@ export const prisma = new Proxy({} as PrismaInstance, {
         } catch (err) {
           if (isConnectionError(err)) {
             console.warn(`[db] connection error on ${String(prop)} — retrying on a fresh pool`)
-            await recreatePool()
+            await recreatePool(client)
             const fresh = getPrisma() as unknown as PrismaInstance
             return await (fresh[prop as keyof PrismaInstance] as (...a: unknown[]) => unknown).bind(fresh)(...args)
           }
@@ -499,7 +522,7 @@ export const prisma = new Proxy({} as PrismaInstance, {
           // P2028, and the replay throws P2028 again. A second P2028 propagates.
           if (prop === "$transaction" && isTransactionAbortedError(err) && typeof args[0] === "function") {
             console.warn("[db] P2028 transaction aborted mid-flight — replaying on a fresh client")
-            await recreatePool()
+            await recreatePool(client)
             const fresh = getPrisma() as unknown as PrismaInstance
             return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...args)
           }

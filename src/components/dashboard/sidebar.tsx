@@ -522,17 +522,32 @@ export function Sidebar({
               />
             </button>
           ) : brandingLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={brandingLogoUrl}
-              alt={brandingName ?? "Logo"}
-              height={36}
-              className="h-9 w-auto max-w-[140px] object-contain"
-            />
+            <div className="flex min-w-0 items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={brandingLogoUrl}
+                alt=""
+                height={36}
+                className="h-9 w-auto max-w-[72px] shrink-0 object-contain"
+              />
+              {brandingName && (
+                <span className="truncate text-[15px] font-semibold text-sts-foreground">
+                  {brandingName}
+                </span>
+              )}
+            </div>
           ) : brandingName ? (
-            <span className="truncate text-[15px] font-semibold text-sts-foreground">
-              {brandingName}
-            </span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+              >
+                {brandingName.charAt(0)}
+              </span>
+              <span className="truncate text-[15px] font-semibold text-sts-foreground">
+                {brandingName}
+              </span>
+            </div>
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}

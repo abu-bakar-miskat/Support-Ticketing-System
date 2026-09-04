@@ -88,6 +88,26 @@ describe("createRecoveryHandler", () => {
     expect(query).toHaveBeenCalledTimes(2)
   })
 
+  it("retries when an interactive transaction cannot start before maxWait", async () => {
+    const recreate = vi.fn()
+    const query = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error("Transaction API error: Unable to start a transaction in the given time."),
+          { code: "P2028" },
+        ),
+      )
+      .mockResolvedValueOnce({ id: "t1" })
+    const handler = createRecoveryHandler(recreate, vi.fn())
+
+    const result = await handler({ model: "Ticket", operation: "update", args: {}, query })
+
+    expect(result).toEqual({ id: "t1" })
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(recreate).not.toHaveBeenCalled()
+  })
+
   it("treats server-initiated disconnects (57P01) as connection errors", async () => {
     const recreate = vi.fn().mockResolvedValue(undefined)
     const freshQuery = vi.fn().mockResolvedValue({ id: "p1" })

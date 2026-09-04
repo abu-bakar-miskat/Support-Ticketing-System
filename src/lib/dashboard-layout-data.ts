@@ -28,6 +28,11 @@ const projectSelect = {
   subDepartmentId: true,
   departmentId: true,
   projectStatus: true,
+  _count: {
+    select: {
+      tickets: { where: { deletedAt: null } },
+    },
+  },
   subDepartment: { select: { department: { select: { id: true, name: true } } } },
   department: { select: { id: true, name: true } },
 } as const;
@@ -322,23 +327,10 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     }
   }
 
-  const ticketCountRows =
-    projects.length === 0
-      ? []
-      : await prisma.ticket.groupBy({
-          by: ["projectId"],
-          where: {
-            deletedAt: null,
-            projectId: { in: projects.map((p) => p.id) },
-          },
-          _count: { _all: true },
-        });
-
   const ticketCounts = new Map<string, number>();
-  for (const row of ticketCountRows) {
-    if (!row.projectId) continue;
-    const targetId = miscProjectIdRedirect.get(row.projectId) ?? row.projectId;
-    ticketCounts.set(targetId, (ticketCounts.get(targetId) ?? 0) + row._count._all);
+  for (const project of projects) {
+    const targetId = miscProjectIdRedirect.get(project.id) ?? project.id;
+    ticketCounts.set(targetId, (ticketCounts.get(targetId) ?? 0) + project._count.tickets);
   }
 
   const pinnedProjectIds = parsePinnedProjectIds(profile.preferences);

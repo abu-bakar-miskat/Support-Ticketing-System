@@ -387,39 +387,61 @@ export async function POST(request: Request) {
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
+  // The ticket is already committed above. Everything below is a side effect:
+  // if any of it throws (or hangs then throws under pooler contention), it must
+  // NOT turn into an unhandled 500 — that returns a non-JSON body the client
+  // can't parse (SyntaxError on res.json()) and, because the ticket already
+  // exists, drives the user to retry and create duplicates. Each step is
+  // isolated so one failure doesn't skip the rest, and none can fail the 201.
   if (!isDraft && columnDeptId) {
-    await startSlaTimers(
-      ticket.id,
-      ticketTenantId,
-      columnDeptId,
-      { priority, type, title, description, labels },
-      ticket.createdAt,
-      ticket.subDepartment.id,
-    )
+    try {
+      await startSlaTimers(
+        ticket.id,
+        ticketTenantId,
+        columnDeptId,
+        { priority, type, title, description, labels },
+        ticket.createdAt,
+        ticket.subDepartment.id,
+      )
+    } catch (err) {
+      console.error("[POST /api/tickets] startSlaTimers failed:", err)
+    }
   }
 
   // RE-01/02: run the department's automation rules on the new ticket.
   if (!isDraft) {
-    await applyRulesToTicket(
-      {
-        id: ticket.id,
-        tenantId: ticketTenantId,
-        departmentId: ticket.subDepartment.departmentId,
-        subDepartmentId: ticket.subDepartment.id,
-        assigneeId: ticket.assignee?.id ?? null,
-      },
-      { priority, type, title, description, labels },
-    )
+    try {
+      await applyRulesToTicket(
+        {
+          id: ticket.id,
+          tenantId: ticketTenantId,
+          departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartment.id,
+          assigneeId: ticket.assignee?.id ?? null,
+        },
+        { priority, type, title, description, labels },
+      )
+    } catch (err) {
+      console.error("[POST /api/tickets] applyRulesToTicket failed:", err)
+    }
   }
 
-  await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
-    humanId,
-    title,
-    status,
-  })
+  try {
+    await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
+      humanId,
+      title,
+      status,
+    })
+  } catch (err) {
+    console.error("[POST /api/tickets] appendTicketEvent(TICKET_CREATED) failed:", err)
+  }
 
   // Primary assignee (and later co/QA via their own routes) join the project automatically.
-  await ensureProjectMembers(resolvedProjectId, [assigneeId])
+  try {
+    await ensureProjectMembers(resolvedProjectId, [assigneeId])
+  } catch (err) {
+    console.error("[POST /api/tickets] ensureProjectMembers failed:", err)
+  }
 
   // Record the sub-ticket on its parent's timeline so it shows up in the
   // parent's activity feed and pushes a live update to everyone viewing it.
@@ -433,13 +455,17 @@ export async function POST(request: Request) {
 
   // Drafts may have assignees selected, but never notify until published.
   if (!isDraft && ticket.assignee) {
-    await createNotification({
-      recipientId: ticket.assignee.id,
-      actorId: profile.id,
-      type: "assignment",
-      ticketId: ticket.id,
-      message: title,
-    })
+    try {
+      await createNotification({
+        recipientId: ticket.assignee.id,
+        actorId: profile.id,
+        type: "assignment",
+        ticketId: ticket.id,
+        message: title,
+      })
+    } catch (err) {
+      console.error("[POST /api/tickets] createNotification failed:", err)
+    }
     if (ticket.assignee.id !== profile.id) {
       sendAssignmentEmail({
         to: ticket.assignee.email,

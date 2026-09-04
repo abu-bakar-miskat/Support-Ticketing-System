@@ -322,6 +322,37 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// EMAXCONN ("max client connections reached") means the pooler is momentarily
+// out of client slots — the statement never reached the server, so replaying is
+// always safe (reads and writes alike). A single retry is too fragile when the
+// shared pooler is saturated by a burst, so back off with exponential delay +
+// jitter across several attempts before surfacing the error to the request.
+const MAX_EMAXCONN_ATTEMPTS = 5
+
+async function retryOnMaxConnections<T>(
+  label: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < MAX_EMAXCONN_ATTEMPTS; attempt++) {
+    try {
+      return await run()
+    } catch (err) {
+      if (!isMaxConnectionsError(err)) throw err
+      lastErr = err
+      if (attempt === MAX_EMAXCONN_ATTEMPTS - 1) break
+      // 300ms, 600, 1200, 2400 (capped 3s) + up to 300ms jitter so concurrent
+      // callers don't retry in lockstep and re-saturate the pooler together.
+      const backoff = Math.min(300 * 2 ** attempt, 3000) + Math.random() * 300
+      console.warn(
+        `[db] EMAXCONN on ${label} — backing off ${Math.round(backoff)}ms (attempt ${attempt + 1}/${MAX_EMAXCONN_ATTEMPTS})`,
+      )
+      await sleep(backoff)
+    }
+  }
+  throw lastErr
+}
+
 // Operations that are safe to replay after a dropped connection: they never
 // mutate, so re-running one cannot double-apply anything.
 const READ_OPERATIONS = new Set([
@@ -358,15 +389,10 @@ export function createRecoveryHandler(
 ) {
   return async function handleModelQuery({ model, operation, args, query }: ModelQueryContext) {
     try {
-      return await query(args)
+      // EMAXCONN fails at connection checkout, before the statement runs, so
+      // replaying any operation (including writes) is safe — retry with backoff.
+      return await retryOnMaxConnections(`${model}.${operation}`, () => query(args))
     } catch (err) {
-      if (isMaxConnectionsError(err)) {
-        // EMAXCONN fails at connection checkout, before the statement runs,
-        // so replaying any operation (including writes) is safe.
-        console.warn(`[db] EMAXCONN on ${model}.${operation} — backing off`)
-        await sleep(750)
-        return await query(args)
-      }
       if (isConnectionError(err)) {
         // The pooled socket died (suspended instance resumed, pooler reaped it,
         // network drop). Rebuild the pool so later queries get live connections.
@@ -449,13 +475,10 @@ export const prisma = new Proxy({} as PrismaInstance, {
       const fn = value as (...args: unknown[]) => unknown
       return async (...args: unknown[]) => {
         try {
-          return await fn.bind(client)(...args)
+          // EMAXCONN fails before the statement runs, so replay is safe even for
+          // $transaction — retry with backoff before giving up.
+          return await retryOnMaxConnections(String(prop), () => fn.bind(client)(...args) as Promise<unknown>)
         } catch (err) {
-          if (isMaxConnectionsError(err)) {
-            console.warn(`[db] EMAXCONN on ${String(prop)} — backing off`)
-            await sleep(750)
-            return await fn.bind(client)(...args)
-          }
           if (isConnectionError(err)) {
             console.warn(`[db] connection error on ${String(prop)} — retrying on a fresh pool`)
             await recreatePool()

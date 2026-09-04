@@ -88,11 +88,20 @@ function createPool(connectionString: string) {
     connectionString: toPgConnectionString(normalized),
     ssl: { rejectUnauthorized: false },
     max: poolMax(),
-    // Keep connections warm across navigations — reconnecting costs ~1s RTT
-    // per query burst. The transaction pooler multiplexes, so holding a few
+    // Prod: keep connections warm across navigations — reconnecting costs ~1s RTT
+    // per query burst, and the transaction pooler multiplexes, so holding a few
     // idle clients is cheap relative to the reconnect penalty.
-    idleTimeoutMillis: 60_000,
-    keepAlive: true,
+    //
+    // Dev: reap idle clients aggressively. Turbopack HMR / schema-version reloads
+    // rebuild the Prisma client + pool, and Next can discard the module holding
+    // the old pool reference before its $disconnect() runs — orphaning that pool's
+    // sockets, which then only close on idle timeout. At 60s they stack up across
+    // recompiles (observed one dev process pinning 25 pooler connections) and,
+    // together with prod/teammates, tip the shared 200-client pooler over. A short
+    // idle timeout bounds that accumulation; the reconnect cost is irrelevant to a
+    // single local dev instance.
+    idleTimeoutMillis: isDev ? 5_000 : 60_000,
+    keepAlive: !isDev,
     connectionTimeoutMillis: 20_000,
     allowExitOnIdle: true,
     application_name: isDev ? "pen-tickets-dev" : "pen-tickets",

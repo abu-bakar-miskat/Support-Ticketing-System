@@ -1,21 +1,28 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
-import { badRequest, notFound } from "@/lib/api-response"
+import { badRequest, forbidden, notFound } from "@/lib/api-response"
 import { updateTemplate, archiveTemplate, setTemplateFeatures } from "@/lib/template-catalogue"
 import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey } from "@/lib/template-features"
+import { isSystemTemplateSlug } from "@/lib/system-templates"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSuperAdmin()
   if (error) return error
 
   const { id } = await params
-  const template = await prisma.template.findUnique({ where: { id }, select: { id: true } })
+  const template = await prisma.template.findUnique({ where: { id }, select: { id: true, slug: true } })
   if (!template) return notFound("Template not found")
 
   const body = await request.json().catch(() => ({}))
   const name = (body.name as string | undefined)?.trim()
   if (name === "") return badRequest("Name cannot be empty")
+
+  // System templates back a department type and must always stay active —
+  // block archiving them via the isActive toggle.
+  if (body.isActive === false && isSystemTemplateSlug(template.slug)) {
+    return forbidden("This is a system template and can't be archived.")
+  }
 
   if ("featureKeys" in body) {
     const featureKeys = Array.isArray(body.featureKeys) ? body.featureKeys : []
@@ -49,8 +56,13 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   if (error) return error
 
   const { id } = await params
-  const template = await prisma.template.findUnique({ where: { id }, select: { id: true } })
+  const template = await prisma.template.findUnique({ where: { id }, select: { id: true, slug: true } })
   if (!template) return notFound("Template not found")
+
+  // System templates back a department type and cannot be deleted/archived.
+  if (isSystemTemplateSlug(template.slug)) {
+    return forbidden("This is a system template and can't be deleted.")
+  }
 
   await archiveTemplate(id)
   return NextResponse.json({ ok: true })

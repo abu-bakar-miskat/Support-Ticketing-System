@@ -4,6 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest } from "@/lib/api-response"
 import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
 import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
+import { SUPPORT_TEMPLATE } from "@/lib/system-templates"
 
 function slugify(name: string): string {
   return name
@@ -69,7 +70,16 @@ export async function POST(request: Request) {
       slug,
       name,
       type,
-      departments: { create: { name: "Support" } },
+      // Bootstrap a Support department, defined by the Support system template:
+      // its type + feature allowlist come straight from that template.
+      departments: {
+        create: {
+          name: SUPPORT_TEMPLATE.name,
+          type: SUPPORT_TEMPLATE.departmentType,
+          templateSlug: SUPPORT_TEMPLATE.slug,
+          featureKeys: SUPPORT_TEMPLATE.featureKeys,
+        },
+      },
       // Seed the creating admin as a member so the tenant isn't born empty —
       // otherwise nobody can be added to its departments (no bootstrap member
       // to grant membership from).

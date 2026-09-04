@@ -9,6 +9,7 @@ import { Pool } from "pg"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/generated/prisma/client"
 import { TEMPLATE_FEATURE_KEYS } from "../src/lib/template-features"
+import { SUPPORT_TEMPLATE } from "../src/lib/system-templates"
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -17,22 +18,11 @@ const pool = new Pool({
 })
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
 
-const SLUG = "support"
-const NAME = "Support"
-const DESCRIPTION =
-  "Customer-support desk: intake forms, email, SLAs, automation and assignment. No development tooling (projects, modules, sprints)."
-
-// Support-only feature keys. Everything development-related is intentionally left out.
-const SUPPORT_FEATURES = [
-  // Views a support team uses (no timeline/modules — those are sprint/dev views)
-  "tasks", "board", "reports", "calendar", "myTime", "activity", "subDepartmentReports", "helpCenter",
-  // Workspace
-  "members", "branding", "departmentsSettings",
-  // Configuration — support operations
-  "tagsLabels", "ticketTemplates", "workflows", "slaPolicies", "automationRules", "assignmentMethods",
-  // Integrations — customer channels
-  "supportForm", "emailSettings", "apiKeys",
-] as const
+// Single source of truth lives in src/lib/system-templates.ts.
+const SLUG = SUPPORT_TEMPLATE.slug
+const NAME = SUPPORT_TEMPLATE.name
+const DESCRIPTION = SUPPORT_TEMPLATE.description
+const SUPPORT_FEATURES = SUPPORT_TEMPLATE.featureKeys
 
 // Explicitly excluded (development-related): projects, modules, timeline, importForm.
 const EXCLUDED = ["projects", "modules", "timeline", "importForm"]

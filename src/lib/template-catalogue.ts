@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
 import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey, type TemplateFeatureKey } from "@/lib/template-features";
+import { SYSTEM_TEMPLATES } from "@/lib/system-templates";
 import type { TemplateRequestStatus } from "@/generated/prisma/enums";
 
 /**
@@ -300,4 +301,38 @@ export async function setTemplateFeatures(templateId: string, featureKeys: Templ
 
 export async function archiveTemplate(id: string) {
   await prisma.template.update({ where: { id }, data: { isActive: false } });
+}
+
+/**
+ * Ensure every system template (see system-templates.ts) exists in the
+ * catalogue with exactly its defined feature set. Idempotent: creates missing
+ * ones and re-syncs features/name/description on existing ones, keeping them
+ * active. Additive only — never deletes. Safe to run on every deploy/boot.
+ */
+export async function ensureSystemTemplates(createdById: string) {
+  for (const tpl of SYSTEM_TEMPLATES) {
+    const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } });
+    if (existing) {
+      await prisma.$transaction([
+        prisma.templateFeature.deleteMany({ where: { templateId: existing.id } }),
+        prisma.templateFeature.createMany({
+          data: tpl.featureKeys.map((key) => ({ templateId: existing.id, key })),
+        }),
+        prisma.template.update({
+          where: { id: existing.id },
+          data: { name: tpl.name, description: tpl.description, isActive: true },
+        }),
+      ]);
+    } else {
+      await prisma.template.create({
+        data: {
+          name: tpl.name,
+          slug: tpl.slug,
+          description: tpl.description,
+          createdById,
+          features: { create: tpl.featureKeys.map((key) => ({ key })) },
+        },
+      });
+    }
+  }
 }

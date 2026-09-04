@@ -108,6 +108,43 @@ describe("createRecoveryHandler", () => {
     expect(recreate).not.toHaveBeenCalled()
   })
 
+  it("replays a write on a fresh client after a P2028 aborted transaction", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const freshQuery = vi.fn().mockResolvedValue({ count: 1 })
+    const getFreshDelegateMethod = vi.fn().mockReturnValue(freshQuery)
+    const handler = createRecoveryHandler(recreate, getFreshDelegateMethod)
+    const args = { where: { departmentId: "d1", userId: "u1" }, data: {} }
+    const query = vi.fn().mockRejectedValue(
+      Object.assign(
+        new Error(
+          "Transaction API error: Transaction already closed: A rollback cannot be executed on a transaction that was rolled back.",
+        ),
+        { code: "P2028" },
+      ),
+    )
+
+    const result = await handler({ model: "DepartmentManager", operation: "updateMany", args, query })
+
+    expect(result).toEqual({ count: 1 })
+    expect(recreate).toHaveBeenCalledTimes(1)
+    expect(getFreshDelegateMethod).toHaveBeenCalledWith("DepartmentManager", "updateMany")
+    expect(freshQuery).toHaveBeenCalledWith(args)
+  })
+
+  it("replays a read on a fresh client after a P2028 'transaction not found'", async () => {
+    const recreate = vi.fn().mockResolvedValue(undefined)
+    const freshQuery = vi.fn().mockResolvedValue({ id: "p1" })
+    const handler = createRecoveryHandler(recreate, vi.fn().mockReturnValue(freshQuery))
+    const query = vi.fn().mockRejectedValue(
+      Object.assign(new Error("Transaction API error: Transaction not found."), { code: "P2028" }),
+    )
+
+    const result = await handler({ model: "Profile", operation: "findUnique", args: {}, query })
+
+    expect(result).toEqual({ id: "p1" })
+    expect(recreate).toHaveBeenCalledTimes(1)
+  })
+
   it("treats server-initiated disconnects (57P01) as connection errors", async () => {
     const recreate = vi.fn().mockResolvedValue(undefined)
     const freshQuery = vi.fn().mockResolvedValue({ id: "p1" })

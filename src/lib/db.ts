@@ -305,7 +305,11 @@ function isTransactionAbortedError(err: unknown): boolean {
     (e.code ?? e.errorCode) === "P2028" &&
     (msg.includes("transaction not found") ||
       msg.includes("old closed transaction") ||
-      msg.includes("obtained before disconnecting"))
+      msg.includes("obtained before disconnecting") ||
+      // Same tear-down, later engine phase: the pinned connection was already
+      // gone when Prisma tried to roll the (implicit) transaction back.
+      msg.includes("transaction already closed") ||
+      msg.includes("was rolled back"))
   )
 }
 
@@ -409,6 +413,18 @@ export function createRecoveryHandler(
       // replaying any operation (including writes) is safe — retry with backoff.
       return await retryOnMaxConnections(`${model}.${operation}`, () => query(args))
     } catch (err) {
+      if (isTransactionAbortedError(err)) {
+        // P2028: the connection pinned to this query's (implicit) transaction
+        // was torn down mid-flight by a concurrent recreatePool() / HMR
+        // $disconnect(). The transaction rolled back atomically — nothing
+        // committed — so replaying on a fresh client is safe for reads AND
+        // writes alike (unlike a bare connection error below, where the write
+        // may already have reached the server). Recreate first, otherwise the
+        // cached client whose teardown caused the P2028 would just throw again.
+        await recreate()
+        console.warn(`[db] P2028 transaction aborted on ${model}.${operation} — replaying on a fresh client`)
+        return await getFreshDelegateMethod(model, operation)(args)
+      }
       if (isConnectionError(err)) {
         // The pooled socket died (suspended instance resumed, pooler reaped it,
         // network drop). Rebuild the pool so later queries get live connections.

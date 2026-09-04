@@ -9,6 +9,7 @@ import {
   Archive,
   Pencil,
   Trash2,
+  Lock,
   RotateCcw,
   Search,
   Users,
@@ -22,6 +23,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TemplateFormModal } from "@/components/platform/template-form-modal";
 import { cn } from "@/lib/utils";
 import { TEMPLATE_FEATURE_LABELS, TEMPLATE_FEATURE_GROUPS, type TemplateFeatureKey } from "@/lib/template-features";
+import { isSystemTemplateSlug } from "@/lib/system-templates";
 
 type TemplateRow = {
   id: string;
@@ -519,6 +521,7 @@ function TemplateCard({
   onDelete: () => void;
   onRestore: () => void;
 }) {
+  const isSystem = isSystemTemplateSlug(t.slug);
   return (
     <li
       className={cn(
@@ -528,8 +531,15 @@ function TemplateCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <span className="block truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
-            {t.name}
+          <span className="flex items-center gap-1.5">
+            <span className="truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
+              {t.name}
+            </span>
+            {isSystem && (
+              <span className="shrink-0 rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+                System
+              </span>
+            )}
           </span>
           <span className="font-sans text-[11px] text-sts-subtle">
             {t.featureKeys.length} feature{t.featureKeys.length === 1 ? "" : "s"}
@@ -546,15 +556,25 @@ function TemplateCard({
               >
                 <Pencil className="size-3.5" />
               </button>
-              <button
-                type="button"
-                aria-label="Delete template"
-                disabled={busy}
-                onClick={onDelete}
-                className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+              {isSystem ? (
+                <span
+                  aria-label="System template — can't be deleted"
+                  title="System template — can't be deleted"
+                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle"
+                >
+                  <Lock className="size-3.5" />
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Delete template"
+                  disabled={busy}
+                  onClick={onDelete}
+                  className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
             </>
           ) : (
             <button

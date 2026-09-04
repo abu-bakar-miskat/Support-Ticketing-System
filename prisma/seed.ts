@@ -5,6 +5,7 @@ import "dotenv/config"
 import { Pool } from "pg"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/generated/prisma/client"
+import { SYSTEM_TEMPLATES } from "../src/lib/system-templates"
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -67,6 +68,31 @@ async function main() {
       create: { tenantId: tenant.id, userId: p.id, role: p.role },
     })
   }
+
+  // ── 1c. System templates ──────────────────────────────────────────────────────
+  // Catalogue templates that define a Department type (see system-templates.ts).
+  // Always present + non-deletable. Idempotent: re-syncs features on each run.
+  for (const tpl of SYSTEM_TEMPLATES) {
+    const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } })
+    if (existing) {
+      await prisma.$transaction([
+        prisma.templateFeature.deleteMany({ where: { templateId: existing.id } }),
+        prisma.templateFeature.createMany({ data: tpl.featureKeys.map((key) => ({ templateId: existing.id, key })) }),
+        prisma.template.update({ where: { id: existing.id }, data: { name: tpl.name, description: tpl.description, isActive: true } }),
+      ])
+    } else {
+      await prisma.template.create({
+        data: {
+          name: tpl.name,
+          slug: tpl.slug,
+          description: tpl.description,
+          createdById: admin.id,
+          features: { create: tpl.featureKeys.map((key) => ({ key })) },
+        },
+      })
+    }
+  }
+  console.log(`✓ System templates: ${SYSTEM_TEMPLATES.map((t) => t.slug).join(", ")}`)
 
   // ── 2. Departments ───────────────────────────────────────────────────────────
   const deptEng = (await prisma.department.findFirst({ where: { name: "Engineering" } }))

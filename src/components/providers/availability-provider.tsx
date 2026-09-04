@@ -21,10 +21,21 @@ type AvailabilityContextValue = {
 
 const AvailabilityContext = createContext<AvailabilityContextValue | null>(null);
 
+// React development mode may mount/replay effects twice, and several consumers
+// can request a refresh at once. Keep one network request in flight so those
+// refreshes do not queue duplicate database work behind the shared pool.
+let availabilityRequest: Promise<AvailabilityMap> | null = null;
+
 async function fetchAvailability(): Promise<AvailabilityMap> {
-  const res = await fetch("/api/availability");
-  if (!res.ok) return {};
-  return (await res.json()) as AvailabilityMap;
+  if (availabilityRequest) return availabilityRequest;
+
+  availabilityRequest = fetch("/api/availability")
+    .then(async (res) => (res.ok ? (await res.json()) as AvailabilityMap : {}))
+    .finally(() => {
+      availabilityRequest = null;
+    });
+
+  return availabilityRequest;
 }
 
 export function AvailabilityProvider({ children }: { children: ReactNode }) {

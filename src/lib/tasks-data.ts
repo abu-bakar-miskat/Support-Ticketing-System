@@ -57,7 +57,13 @@ export async function getMyTasksData(profile: Profile): Promise<MyTasksResponse>
     ),
   ]);
 
-  const subDepartmentIds = [...new Set(myCards.map((c) => c.subDepartmentId))];
+  // Send every visible team's statuses with the initial ticket payload. This
+  // avoids a separate status request for each ticket row on first paint.
+  const subDepartmentIds = [...new Set([
+    ...myCards.map((c) => c.subDepartmentId),
+    ...reviewCards.map((c) => c.subDepartmentId),
+    ...subtasks.map((s) => s.subDepartmentId),
+  ])];
   const subDepartmentStatusMap = await getSubDepartmentStatusesForSubDepartmentIds(subDepartmentIds);
 
   return {

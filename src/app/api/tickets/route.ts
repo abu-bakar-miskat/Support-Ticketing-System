@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db"
-import { NextResponse } from "next/server"
+import { NextResponse, after } from "next/server"
 import { parseStartDatePayload, parseDueDatePayload } from "@/lib/ticket-datetime"
 import { requireAuth } from "@/app/api/admin/_guard"
 import { assertTicketEditAccess } from "@/lib/auth"
@@ -337,14 +337,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   }
 
-  // Resolve the ticket's department (the project's, or its subDepartment's) — used below
-  // to start SLA timers for the new ticket.
-  const columnProject = await prisma.project.findUnique({
-    where: { id: resolvedProjectId },
-    select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
-  })
-  const columnDeptId = columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
-
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
   let ticket
   try {
@@ -387,100 +379,121 @@ export async function POST(request: Request) {
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
-  // The ticket is already committed above. Everything below is a side effect:
-  // if any of it throws (or hangs then throws under pooler contention), it must
-  // NOT turn into an unhandled 500 — that returns a non-JSON body the client
-  // can't parse (SyntaxError on res.json()) and, because the ticket already
-  // exists, drives the user to retry and create duplicates. Each step is
-  // isolated so one failure doesn't skip the rest, and none can fail the 201.
-  if (!isDraft && columnDeptId) {
-    try {
-      await startSlaTimers(
-        ticket.id,
-        ticketTenantId,
-        columnDeptId,
-        { priority, type, title, description, labels },
-        ticket.createdAt,
-        ticket.subDepartment.id,
-      )
-    } catch (err) {
-      console.error("[POST /api/tickets] startSlaTimers failed:", err)
+  // The ticket is already committed above. Everything below is a side effect —
+  // SLA timers, automation rules, the activity event, project-member sync, and
+  // the assignment notification/email. On a single-connection pool these add
+  // ~6-10 sequential DB round-trips; awaiting them here made "Create" feel slow
+  // (the client blocks on the 201 for work it doesn't need in the response —
+  // the returned `ticket` is the create() row and is never re-read after these).
+  //
+  // Run them via `after()` so the 201 returns immediately and the heavy work
+  // happens post-response on this long-lived server. Each step stays isolated in
+  // its own try/catch so one failure doesn't skip the rest, and — because the
+  // response is already sent — none can turn into an unhandled 500 that returns
+  // a non-JSON body the client can't parse (which would drive retries/dupes).
+  after(async () => {
+    if (!isDraft) {
+      // Resolve the ticket's department (the project's, or its subDepartment's)
+      // to start SLA timers for the new ticket.
+      const columnProject = await prisma.project
+        .findUnique({
+          where: { id: resolvedProjectId },
+          select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
+        })
+        .catch(() => null)
+      const columnDeptId =
+        columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
+
+      if (columnDeptId) {
+        try {
+          await startSlaTimers(
+            ticket.id,
+            ticketTenantId,
+            columnDeptId,
+            { priority, type, title, description, labels },
+            ticket.createdAt,
+            ticket.subDepartment.id,
+          )
+        } catch (err) {
+          console.error("[POST /api/tickets] startSlaTimers failed:", err)
+        }
+      }
     }
-  }
 
-  // RE-01/02: run the department's automation rules on the new ticket.
-  if (!isDraft) {
-    try {
-      await applyRulesToTicket(
-        {
-          id: ticket.id,
-          tenantId: ticketTenantId,
-          departmentId: ticket.subDepartment.departmentId,
-          subDepartmentId: ticket.subDepartment.id,
-          assigneeId: ticket.assignee?.id ?? null,
-        },
-        { priority, type, title, description, labels },
-      )
-    } catch (err) {
-      console.error("[POST /api/tickets] applyRulesToTicket failed:", err)
+    // RE-01/02: run the department's automation rules on the new ticket.
+    if (!isDraft) {
+      try {
+        await applyRulesToTicket(
+          {
+            id: ticket.id,
+            tenantId: ticketTenantId,
+            departmentId: ticket.subDepartment.departmentId,
+            subDepartmentId: ticket.subDepartment.id,
+            assigneeId: ticket.assignee?.id ?? null,
+          },
+          { priority, type, title, description, labels },
+        )
+      } catch (err) {
+        console.error("[POST /api/tickets] applyRulesToTicket failed:", err)
+      }
     }
-  }
 
-  try {
-    await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
-      humanId,
-      title,
-      status,
-    })
-  } catch (err) {
-    console.error("[POST /api/tickets] appendTicketEvent(TICKET_CREATED) failed:", err)
-  }
-
-  // Primary assignee (and later co/QA via their own routes) join the project automatically.
-  try {
-    await ensureProjectMembers(resolvedProjectId, [assigneeId])
-  } catch (err) {
-    console.error("[POST /api/tickets] ensureProjectMembers failed:", err)
-  }
-
-  // Record the sub-ticket on its parent's timeline so it shows up in the
-  // parent's activity feed and pushes a live update to everyone viewing it.
-  if (parentId && !isDraft) {
-    void appendTicketEvent(parentId, profile.id, "SUBTICKET_ADDED", {
-      humanId,
-      title,
-      subTicketId: ticket.id,
-    }).catch(() => undefined)
-  }
-
-  // Drafts may have assignees selected, but never notify until published.
-  if (!isDraft && ticket.assignee) {
     try {
-      await createNotification({
-        recipientId: ticket.assignee.id,
-        actorId: profile.id,
-        type: "assignment",
-        ticketId: ticket.id,
-        message: title,
+      await appendTicketEvent(ticket.id, profile.id, "TICKET_CREATED", {
+        humanId,
+        title,
+        status,
       })
     } catch (err) {
-      console.error("[POST /api/tickets] createNotification failed:", err)
+      console.error("[POST /api/tickets] appendTicketEvent(TICKET_CREATED) failed:", err)
     }
-    if (ticket.assignee.id !== profile.id) {
-      sendAssignmentEmail({
-        to: ticket.assignee.email,
-        assigneeName: ticket.assignee.name,
-        assigneeId: ticket.assignee.id,
-        ticketId: ticket.id,
+
+    // Primary assignee (and later co/QA via their own routes) join the project automatically.
+    try {
+      await ensureProjectMembers(resolvedProjectId, [assigneeId])
+    } catch (err) {
+      console.error("[POST /api/tickets] ensureProjectMembers failed:", err)
+    }
+
+    // Record the sub-ticket on its parent's timeline so it shows up in the
+    // parent's activity feed and pushes a live update to everyone viewing it.
+    if (parentId && !isDraft) {
+      await appendTicketEvent(parentId, profile.id, "SUBTICKET_ADDED", {
         humanId,
-        ticketTitle: title,
-        assignedByName: profile.name,
-        assignedById: profile.id,
-        departmentId: ticket.subDepartment.departmentId,
-        subDepartmentId: ticket.subDepartment.id,
-      }).catch((err) => console.error("[assignment email] failed:", err))
+        title,
+        subTicketId: ticket.id,
+      }).catch(() => undefined)
     }
-  }
+
+    // Drafts may have assignees selected, but never notify until published.
+    if (!isDraft && ticket.assignee) {
+      try {
+        await createNotification({
+          recipientId: ticket.assignee.id,
+          actorId: profile.id,
+          type: "assignment",
+          ticketId: ticket.id,
+          message: title,
+        })
+      } catch (err) {
+        console.error("[POST /api/tickets] createNotification failed:", err)
+      }
+      if (ticket.assignee.id !== profile.id) {
+        await sendAssignmentEmail({
+          to: ticket.assignee.email,
+          assigneeName: ticket.assignee.name,
+          assigneeId: ticket.assignee.id,
+          ticketId: ticket.id,
+          humanId,
+          ticketTitle: title,
+          assignedByName: profile.name,
+          assignedById: profile.id,
+          departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartment.id,
+        }).catch((err) => console.error("[assignment email] failed:", err))
+      }
+    }
+  })
 
   return NextResponse.json(ticket, { status: 201 })
 }

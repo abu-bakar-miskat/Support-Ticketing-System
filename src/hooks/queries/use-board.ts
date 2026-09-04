@@ -5,7 +5,7 @@ import { getSubDepartmentMembers } from "@/lib/api/sub-departments"
 import { moveTicket, type MoveTicketBody } from "@/lib/api/tickets"
 import { ticketKeys, subDepartmentKeys } from "./keys"
 
-export function useSubDepartmentMembers(subDepartmentId: string) {
+export function useSubDepartmentMembers(subDepartmentId: string, enabled = true) {
   return useQuery({
     queryKey: subDepartmentKeys.members(subDepartmentId),
     queryFn: () => getSubDepartmentMembers(subDepartmentId),
@@ -13,7 +13,7 @@ export function useSubDepartmentMembers(subDepartmentId: string) {
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    enabled: !!subDepartmentId,
+    enabled: enabled && !!subDepartmentId,
   })
 }
 

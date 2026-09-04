@@ -11,6 +11,7 @@ import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { TasksTableSkeleton } from "@/components/skeletons/page-skeletons";
 import { useMyTasks, useTasksMeta, useUnassignedCount } from "@/hooks/queries/use-tasks";
 import type { MyTasksResponse, TasksMetaResponse } from "@/lib/api/tasks";
+import { DEFAULT_STATUSES } from "@/components/board/board-types";
 
 type Scope = "mine" | "all" | "unassigned" | "drafts";
 
@@ -27,13 +28,21 @@ export function TasksPage({
   const canSeeUnassigned = currentUser?.role === "admin" || currentUser?.role === "manager";
   const [scope, setScope] = usePersistedView(VIEW_KEYS.tasksScope, "mine", SCOPES);
   const [creating, setCreating] = useState(false);
+  const effectiveScope: Scope = scope === "unassigned" && !canSeeUnassigned ? "mine" : scope;
+
+  // The metadata response includes the full department people/project picker data.
+  // It is only needed for New Task and the non-personal tabs, so do not make the
+  // initial My Tasks paint wait for it.
+  const needsMeta = creating || effectiveScope !== "mine";
 
   const { data: myData } = useMyTasks(initialMyTasks);
-  const { data: meta } = useTasksMeta(true, undefined, initialMeta);
+  const { data: meta } = useTasksMeta(needsMeta, undefined, initialMeta);
   const { data: unassignedCount } = useUnassignedCount(canSeeUnassigned);
   const metaReady = meta ?? initialMeta;
-  const effectiveScope: Scope = scope === "unassigned" && !canSeeUnassigned ? "mine" : scope;
-  const canRender = (effectiveScope === "mine" ? (myData ?? initialMyTasks) : true) && metaReady;
+  const personalData = myData ?? initialMyTasks;
+  const taskStatuses = Object.values(personalData?.subDepartmentStatusMap ?? {}).flat();
+  const fallbackStatuses = taskStatuses.length > 0 ? taskStatuses : DEFAULT_STATUSES;
+  const canRender = effectiveScope === "mine" ? Boolean(personalData) : Boolean(metaReady);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -93,12 +102,13 @@ export function TasksPage({
       <div className="min-h-0 flex-1 overflow-hidden">
         {canRender && effectiveScope === "mine" ? (
           <MyTasksPage
-            tasks={myData?.tasks ?? initialMyTasks?.tasks ?? []}
-            subDepartmentStatuses={metaReady.subDepartmentStatuses}
-            subDepartmentStatusMap={myData?.subDepartmentStatusMap ?? initialMyTasks?.subDepartmentStatusMap ?? {}}
-            reviewTasks={myData?.reviewTasks ?? initialMyTasks?.reviewTasks ?? []}
-            isManager={myData?.isManager ?? initialMyTasks?.isManager ?? false}
-            subtasks={myData?.subtasks ?? initialMyTasks?.subtasks ?? []}
+            tasks={personalData?.tasks ?? []}
+            subDepartmentStatuses={metaReady?.subDepartmentStatuses ?? fallbackStatuses}
+            subDepartmentStatusMap={personalData?.subDepartmentStatusMap ?? {}}
+            reviewTasks={personalData?.reviewTasks ?? []}
+            isManager={personalData?.isManager ?? false}
+            subtasks={personalData?.subtasks ?? []}
+            taskMeta={metaReady}
             hideTitleBar
           />
         ) : canRender &&
@@ -106,10 +116,10 @@ export function TasksPage({
             effectiveScope === "unassigned" ||
             effectiveScope === "drafts") ? (
           <AllTasksPage
-            subDepartmentStatuses={metaReady.subDepartmentStatuses}
-            availableProjects={metaReady.availableProjects}
-            availableModules={metaReady.availableModules ?? []}
-            availableMembers={metaReady.availableMembers}
+            subDepartmentStatuses={metaReady!.subDepartmentStatuses}
+            availableProjects={metaReady!.availableProjects}
+            availableModules={metaReady!.availableModules ?? []}
+            availableMembers={metaReady!.availableMembers}
             unassignedOnly={effectiveScope === "unassigned"}
             draftsOnly={effectiveScope === "drafts"}
             hideTitleBar

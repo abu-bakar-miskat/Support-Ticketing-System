@@ -1,27 +1,27 @@
-import { AsyncLocalStorage } from "node:async_hooks"
-import { statSync } from "fs"
-import { join } from "path"
-import { PrismaClient } from "@/generated/prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
-import { withTenantScope } from "@/lib/prisma-scope"
+import { AsyncLocalStorage } from "node:async_hooks";
+import { statSync } from "fs";
+import { join } from "path";
+import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import { withTenantScope } from "@/lib/prisma-scope";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: InstanceType<typeof PrismaClient>
-  prismaExtended?: ExtendedPrismaClient
-  pool?: Pool
-  databaseUrl?: string
-  schemaVersion?: string
-  poolRecreatePromise?: Promise<void>
-}
+  prisma?: InstanceType<typeof PrismaClient>;
+  prismaExtended?: ExtendedPrismaClient;
+  pool?: Pool;
+  databaseUrl?: string;
+  schemaVersion?: string;
+  poolRecreatePromise?: Promise<void>;
+};
 
-const isDev = process.env.NODE_ENV !== "production"
+const isDev = process.env.NODE_ENV !== "production";
 
 function assertDatabaseUrl(connectionString: string) {
   if (/db\.[a-z0-9]+\.supabase\.co/.test(connectionString)) {
     throw new Error(
-      "DATABASE_URL must use the Supabase pooler (pooler.supabase.com), not db.*.supabase.co. Restart the dev server after updating .env."
-    )
+      "DATABASE_URL must use the Supabase pooler (pooler.supabase.com), not db.*.supabase.co. Restart the dev server after updating .env.",
+    );
   }
 }
 
@@ -33,42 +33,42 @@ function assertDatabaseUrl(connectionString: string) {
  * non-adapter Prisma tooling stays at 1 client. The `pg` Pool uses `poolMax()`.
  */
 export function normalizePoolerUrl(connectionString: string): string {
-  let url = connectionString
+  let url = connectionString;
 
   if (/pooler\.supabase\.com:5432\//.test(url)) {
     url = url.replace(
       /pooler\.supabase\.com:5432\//,
       "pooler.supabase.com:6543/",
-    )
+    );
   }
 
-  url = ensureQueryParam(url, "pgbouncer", "true")
-  url = ensureQueryParam(url, "connection_limit", String(poolMax()))
-  url = ensureQueryParam(url, "pool_timeout", "30")
+  url = ensureQueryParam(url, "pgbouncer", "true");
+  url = ensureQueryParam(url, "connection_limit", String(poolMax()));
+  url = ensureQueryParam(url, "pool_timeout", "30");
 
-  return url
+  return url;
 }
 
 /** Strip Prisma-only query params before handing the URL to node-pg. */
 function toPgConnectionString(connectionString: string): string {
-  const [base, query = ""] = connectionString.split("?", 2)
-  if (!query) return connectionString
+  const [base, query = ""] = connectionString.split("?", 2);
+  if (!query) return connectionString;
   const params = query
     .split("&")
     .filter(Boolean)
     .filter((p) => {
-      const key = p.split("=")[0]
-      return key !== "connection_limit" && key !== "pool_timeout"
-    })
-  return params.length > 0 ? `${base}?${params.join("&")}` : base
+      const key = p.split("=")[0];
+      return key !== "connection_limit" && key !== "pool_timeout";
+    });
+  return params.length > 0 ? `${base}?${params.join("&")}` : base;
 }
 
 function ensureQueryParam(url: string, key: string, value: string): string {
-  const re = new RegExp(`([?&])${key}=[^&]*`)
+  const re = new RegExp(`([?&])${key}=[^&]*`);
   if (re.test(url)) {
-    return url.replace(re, `$1${key}=${value}`)
+    return url.replace(re, `$1${key}=${value}`);
   }
-  return `${url}${url.includes("?") ? "&" : "?"}${key}=${value}`
+  return `${url}${url.includes("?") ? "&" : "?"}${key}=${value}`;
 }
 
 function poolMax(): number {
@@ -77,13 +77,13 @@ function poolMax(): number {
   // serverless default; concurrency is handled by transaction mode (port 6543).
   // Only raise this after checking the project's current client-connection
   // budget and peak instance count in Supabase/Vercel.
-  const configured = Number(process.env.DB_POOL_MAX ?? 1)
-  return Number.isInteger(configured) && configured > 0 ? configured : 1
+  const configured = Number(process.env.DB_POOL_MAX);
+  return Number.isInteger(configured) && configured > 0 ? configured : 1;
 }
 
 function createPool(connectionString: string) {
-  assertDatabaseUrl(connectionString)
-  const normalized = normalizePoolerUrl(connectionString)
+  assertDatabaseUrl(connectionString);
+  const normalized = normalizePoolerUrl(connectionString);
 
   const pool = new Pool({
     connectionString: toPgConnectionString(normalized),
@@ -103,14 +103,14 @@ function createPool(connectionString: string) {
     connectionTimeoutMillis: 20_000,
     allowExitOnIdle: true,
     application_name: isDev ? "pen-tickets-dev" : "pen-tickets",
-  })
+  });
 
   // The pooler may reap connections we hold idle; without a listener that
   // 'error' event would crash the process. The dead client is discarded and
   // the pool replaces it on the next checkout.
   pool.on("error", (err) => {
-    console.warn("[db pool] idle connection error:", err.message)
-  })
+    console.warn("[db pool] idle connection error:", err.message);
+  });
 
   // @prisma/adapter-pg attaches its own 'error' listener to this (external,
   // singleton) pool on every adapter.connect() and only removes it when that
@@ -120,56 +120,68 @@ function createPool(connectionString: string) {
   // cap of 10 on this one long-lived emitter — triggering a spurious
   // MaxListenersExceededWarning. Raise the cap to a bounded value so a genuine
   // unbounded leak would still surface, rather than silencing it entirely.
-  pool.setMaxListeners(Math.max(32, poolMax() * 4))
+  pool.setMaxListeners(Math.max(32, poolMax() * 4));
 
-  return pool
+  return pool;
 }
 
 function getPool() {
-  const connectionString = process.env.DATABASE_URL
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not set")
+    throw new Error("DATABASE_URL is not set");
   }
 
-  const normalized = normalizePoolerUrl(connectionString)
+  const normalized = normalizePoolerUrl(connectionString);
 
   if (globalForPrisma.pool && globalForPrisma.databaseUrl === normalized) {
-    return globalForPrisma.pool
+    return globalForPrisma.pool;
   }
 
-  const stalePool = globalForPrisma.pool
+  const stalePool = globalForPrisma.pool;
   if (stalePool) {
-    void stalePool.end().catch(() => {})
+    void stalePool.end().catch(() => {});
   }
 
-  const pool = createPool(connectionString)
-  globalForPrisma.pool = pool
-  globalForPrisma.databaseUrl = normalized
-  return pool
+  const pool = createPool(connectionString);
+  globalForPrisma.pool = pool;
+  globalForPrisma.databaseUrl = normalized;
+  return pool;
 }
 
 function getSchemaVersion() {
   try {
-    const schemaPath = join(process.cwd(), "prisma/schema.prisma")
-    const clientPath = join(process.cwd(), "src/generated/prisma/client.ts")
-    return `${statSync(schemaPath).mtimeMs}:${statSync(clientPath).mtimeMs}`
+    const schemaPath = join(process.cwd(), "prisma/schema.prisma");
+    const clientPath = join(process.cwd(), "src/generated/prisma/client.ts");
+    return `${statSync(schemaPath).mtimeMs}:${statSync(clientPath).mtimeMs}`;
   } catch {
-    return "unknown"
+    return "unknown";
   }
 }
 
-function isStalePrismaClient(client: InstanceType<typeof PrismaClient> | undefined) {
+function isStalePrismaClient(
+  client: InstanceType<typeof PrismaClient> | undefined,
+) {
   // After schema changes, Turbopack can keep an old global client that lacks new delegates.
   // Use a try/catch access instead of `in` — Prisma delegates may live on the prototype
   // and the `in` operator can fail on Proxy-wrapped instances in some Turbopack builds.
   if (!client) return true;
   try {
     const projectFields =
-      (client as { _runtimeDataModel?: { models?: { Project?: { fields?: { name: string }[] } } } })
-        ._runtimeDataModel?.models?.Project?.fields ?? [];
+      (
+        client as {
+          _runtimeDataModel?: {
+            models?: { Project?: { fields?: { name: string }[] } };
+          };
+        }
+      )._runtimeDataModel?.models?.Project?.fields ?? [];
     const ticketFields =
-      (client as { _runtimeDataModel?: { models?: { Ticket?: { fields?: { name: string }[] } } } })
-        ._runtimeDataModel?.models?.Ticket?.fields ?? [];
+      (
+        client as {
+          _runtimeDataModel?: {
+            models?: { Ticket?: { fields?: { name: string }[] } };
+          };
+        }
+      )._runtimeDataModel?.models?.Ticket?.fields ?? [];
     const hasEnabledBoardSubDepartmentIds = projectFields.some(
       (f) => f.name === "enabledBoardTeamIds",
     );
@@ -190,13 +202,13 @@ function isStalePrismaClient(client: InstanceType<typeof PrismaClient> | undefin
 }
 
 function getPrisma() {
-  const connectionString = process.env.DATABASE_URL
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not set")
+    throw new Error("DATABASE_URL is not set");
   }
 
-  const normalized = normalizePoolerUrl(connectionString)
-  const schemaVersion = getSchemaVersion()
+  const normalized = normalizePoolerUrl(connectionString);
+  const schemaVersion = getSchemaVersion();
 
   if (
     !isStalePrismaClient(globalForPrisma.prisma) &&
@@ -204,7 +216,7 @@ function getPrisma() {
     globalForPrisma.databaseUrl === normalized &&
     globalForPrisma.schemaVersion === schemaVersion
   ) {
-    return globalForPrisma.prismaExtended
+    return globalForPrisma.prismaExtended;
   }
 
   // PrismaPg owns the Pool passed to it, so disconnecting the stale client also
@@ -212,14 +224,14 @@ function getPrisma() {
   // disconnect; otherwise getPool() hands the newly-created Prisma client the
   // same pool while it is being closed, leaving requests stuck/failing with
   // "Cannot use a pool after calling end on the pool" after an HMR refresh.
-  const stalePrisma = globalForPrisma.prisma
+  const stalePrisma = globalForPrisma.prisma;
   if (stalePrisma) {
-    globalForPrisma.pool = undefined
-    globalForPrisma.databaseUrl = undefined
-    void stalePrisma.$disconnect().catch(() => {})
+    globalForPrisma.pool = undefined;
+    globalForPrisma.databaseUrl = undefined;
+    void stalePrisma.$disconnect().catch(() => {});
   }
 
-  const pool = getPool()
+  const pool = getPool();
   const prisma = new PrismaClient({
     adapter: new PrismaPg(pool),
     // Under pooler contention the default 2s maxWait to *acquire* a connection
@@ -228,25 +240,30 @@ function getPrisma() {
     // a dev-server HMR recompile can pause an in-flight request for several
     // seconds mid-transaction, which otherwise blows the execution budget too.
     transactionOptions: { maxWait: 10_000, timeout: 30_000 },
-  })
+  });
 
-  globalForPrisma.prisma = prisma
+  globalForPrisma.prisma = prisma;
   // Scope extension is outermost so it rewrites tenant-scoped args before the
   // inner connection-recovery hook runs the query against the DB.
   //
   // ROLLOUT: anonymous/background paths that query tenant-scoped models are now
   // wrapped in system/tenant scope (see withSystemScope + runWithApiKeyScope), so
   // the extension is safe to enforce beyond `ticket`. Enabled incrementally.
-  const SCOPED_MODELS = ["ticket", "project", "subDepartment", "department"] as const
+  const SCOPED_MODELS = [
+    "ticket",
+    "project",
+    "subDepartment",
+    "department",
+  ] as const;
   globalForPrisma.prismaExtended = withTenantScope(
     withConnectionRecovery(prisma),
     SCOPED_MODELS,
-  )
-  globalForPrisma.schemaVersion = schemaVersion
-  return globalForPrisma.prismaExtended
+  );
+  globalForPrisma.schemaVersion = schemaVersion;
+  return globalForPrisma.prismaExtended;
 }
 
-type PrismaInstance = InstanceType<typeof PrismaClient>
+type PrismaInstance = InstanceType<typeof PrismaClient>;
 
 const CONNECTION_ERROR_CODES = new Set([
   "CONNECTION_CLOSED",
@@ -258,12 +275,12 @@ const CONNECTION_ERROR_CODES = new Set([
   "57P03", // cannot_connect_now (database system is starting up / in recovery)
   "ETIMEDOUT",
   "EPIPE",
-])
+]);
 
 function errorText(err: unknown): string {
-  if (!err || typeof err !== "object") return ""
-  const e = err as Record<string, unknown>
-  const cause = e.cause as Record<string, unknown> | undefined
+  if (!err || typeof err !== "object") return "";
+  const e = err as Record<string, unknown>;
+  const cause = e.cause as Record<string, unknown> | undefined;
   return [
     e.message,
     e.code,
@@ -274,11 +291,11 @@ function errorText(err: unknown): string {
   ]
     .filter(Boolean)
     .join(" ")
-    .toLowerCase()
+    .toLowerCase();
 }
 
 function isMaxConnectionsError(err: unknown): boolean {
-  const msg = errorText(err)
+  const msg = errorText(err);
   return (
     msg.includes("emaxconn") ||
     msg.includes("max client connections reached") ||
@@ -289,7 +306,7 @@ function isMaxConnectionsError(err: unknown): boolean {
     // pool's only connection. No transaction started, so retrying is safe and
     // the healthy pool must not be torn down.
     msg.includes("unable to start a transaction in the given time")
-  )
+  );
 }
 
 function isTransactionAbortedError(err: unknown): boolean {
@@ -299,9 +316,9 @@ function isTransactionAbortedError(err: unknown): boolean {
   // HMR-triggered $disconnect() in getPrisma() when the client is rebuilt after
   // a schema/version change. The transaction rolls back atomically, so nothing
   // committed and replaying the whole closure on a fresh client is safe.
-  if (!err || typeof err !== "object") return false
-  const e = err as Record<string, unknown>
-  const msg = errorText(err)
+  if (!err || typeof err !== "object") return false;
+  const e = err as Record<string, unknown>;
+  const msg = errorText(err);
   return (
     (e.code ?? e.errorCode) === "P2028" &&
     (msg.includes("transaction not found") ||
@@ -311,14 +328,14 @@ function isTransactionAbortedError(err: unknown): boolean {
       // gone when Prisma tried to roll the (implicit) transaction back.
       msg.includes("transaction already closed") ||
       msg.includes("was rolled back"))
-  )
+  );
 }
 
 function isConnectionError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false
-  const e = err as Record<string, unknown>
-  const code = (e.code ?? e.errorCode ?? "") as string
-  const msg = errorText(err)
+  if (!err || typeof err !== "object") return false;
+  const e = err as Record<string, unknown>;
+  const code = (e.code ?? e.errorCode ?? "") as string;
+  const msg = errorText(err);
   return (
     CONNECTION_ERROR_CODES.has(code) ||
     msg.includes("connection terminated") ||
@@ -336,11 +353,11 @@ function isConnectionError(err: unknown): boolean {
     // 57P03 during instance restart windows.
     msg.includes("database system is starting up") ||
     msg.includes("database system is in recovery mode")
-  )
+  );
 }
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // EMAXCONN ("max client connections reached") means the pooler is momentarily
@@ -348,30 +365,30 @@ function sleep(ms: number) {
 // always safe (reads and writes alike). A single retry is too fragile when the
 // shared pooler is saturated by a burst, so back off with exponential delay +
 // jitter across several attempts before surfacing the error to the request.
-const MAX_EMAXCONN_ATTEMPTS = 5
+const MAX_EMAXCONN_ATTEMPTS = 5;
 
 async function retryOnMaxConnections<T>(
   label: string,
   run: () => Promise<T>,
 ): Promise<T> {
-  let lastErr: unknown
+  let lastErr: unknown;
   for (let attempt = 0; attempt < MAX_EMAXCONN_ATTEMPTS; attempt++) {
     try {
-      return await run()
+      return await run();
     } catch (err) {
-      if (!isMaxConnectionsError(err)) throw err
-      lastErr = err
-      if (attempt === MAX_EMAXCONN_ATTEMPTS - 1) break
+      if (!isMaxConnectionsError(err)) throw err;
+      lastErr = err;
+      if (attempt === MAX_EMAXCONN_ATTEMPTS - 1) break;
       // 300ms, 600, 1200, 2400 (capped 3s) + up to 300ms jitter so concurrent
       // callers don't retry in lockstep and re-saturate the pooler together.
-      const backoff = Math.min(300 * 2 ** attempt, 3000) + Math.random() * 300
+      const backoff = Math.min(300 * 2 ** attempt, 3000) + Math.random() * 300;
       console.warn(
         `[db] EMAXCONN on ${label} — backing off ${Math.round(backoff)}ms (attempt ${attempt + 1}/${MAX_EMAXCONN_ATTEMPTS})`,
-      )
-      await sleep(backoff)
+      );
+      await sleep(backoff);
     }
   }
-  throw lastErr
+  throw lastErr;
 }
 
 // Operations that are safe to replay after a dropped connection: they never
@@ -387,30 +404,32 @@ const READ_OPERATIONS = new Set([
   "groupBy",
   "findRaw",
   "aggregateRaw",
-])
+]);
 
 type ModelQueryContext = {
-  model: string
-  operation: string
-  args: unknown
-  query: (args: unknown) => Promise<unknown>
-}
+  model: string;
+  operation: string;
+  args: unknown;
+  query: (args: unknown) => Promise<unknown>;
+};
 
-const interactiveTransactionDepth = new AsyncLocalStorage<number>()
+const interactiveTransactionDepth = new AsyncLocalStorage<number>();
 
 function getInteractiveTransactionDepth(): number {
-  return interactiveTransactionDepth.getStore() ?? 0
+  return interactiveTransactionDepth.getStore() ?? 0;
 }
 
 function inInteractiveTransaction(): boolean {
-  return getInteractiveTransactionDepth() > 0
+  return getInteractiveTransactionDepth() > 0;
 }
 
 function withInteractiveTransactionScope<TArgs extends unknown[], TResult>(
   callback: (...args: TArgs) => Promise<TResult>,
 ): (...args: TArgs) => Promise<TResult> {
   return (...args: TArgs) =>
-    interactiveTransactionDepth.run(getInteractiveTransactionDepth() + 1, () => callback(...args))
+    interactiveTransactionDepth.run(getInteractiveTransactionDepth() + 1, () =>
+      callback(...args),
+    );
 }
 
 /**
@@ -423,18 +442,28 @@ function withInteractiveTransactionScope<TArgs extends unknown[], TResult>(
  */
 export function createRecoveryHandler(
   recreate: () => Promise<void>,
-  getFreshDelegateMethod: (model: string, operation: string) => (args: unknown) => unknown,
+  getFreshDelegateMethod: (
+    model: string,
+    operation: string,
+  ) => (args: unknown) => unknown,
   isInInteractiveTransaction: () => boolean = () => false,
 ) {
-  return async function handleModelQuery({ model, operation, args, query }: ModelQueryContext) {
+  return async function handleModelQuery({
+    model,
+    operation,
+    args,
+    query,
+  }: ModelQueryContext) {
     try {
       // EMAXCONN fails at connection checkout, before the statement runs, so
       // replaying any operation (including writes) is safe — retry with backoff.
-      return await retryOnMaxConnections(`${model}.${operation}`, () => query(args))
+      return await retryOnMaxConnections(`${model}.${operation}`, () =>
+        query(args),
+      );
     } catch (err) {
       if (isTransactionAbortedError(err)) {
         if (isInInteractiveTransaction()) {
-          throw err
+          throw err;
         }
         // P2028: the connection pinned to this query's (implicit) transaction
         // was torn down mid-flight by a concurrent recreatePool() / HMR
@@ -443,42 +472,46 @@ export function createRecoveryHandler(
         // writes alike (unlike a bare connection error below, where the write
         // may already have reached the server). Recreate first, otherwise the
         // cached client whose teardown caused the P2028 would just throw again.
-        await recreate()
-        console.warn(`[db] P2028 transaction aborted on ${model}.${operation} — replaying on a fresh client`)
-        return await getFreshDelegateMethod(model, operation)(args)
+        await recreate();
+        console.warn(
+          `[db] P2028 transaction aborted on ${model}.${operation} — replaying on a fresh client`,
+        );
+        return await getFreshDelegateMethod(model, operation)(args);
       }
       if (isConnectionError(err)) {
         if (isInInteractiveTransaction()) {
-          throw err
+          throw err;
         }
         // The pooled socket died (suspended instance resumed, pooler reaped it,
         // network drop). Rebuild the pool so later queries get live connections.
-        await recreate()
+        await recreate();
         if (READ_OPERATIONS.has(operation)) {
-          console.warn(`[db] connection error on ${model}.${operation} — retrying on a fresh pool`)
-          return await getFreshDelegateMethod(model, operation)(args)
+          console.warn(
+            `[db] connection error on ${model}.${operation} — retrying on a fresh pool`,
+          );
+          return await getFreshDelegateMethod(model, operation)(args);
         }
         // Writes are not replayed: the statement may have reached the server
         // before the socket dropped, and replaying could double-apply it.
         console.warn(
           `[db] connection error on ${model}.${operation} — pool recreated, write not replayed`,
-        )
+        );
       }
-      throw err
+      throw err;
     }
-  }
+  };
 }
 
 function withConnectionRecovery(client: PrismaInstance) {
   const handler = createRecoveryHandler(
     () => recreatePool(client),
     (model, operation) => {
-      const fresh = getPrisma() as Record<string, any>
-      const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)]
-      return (args: unknown) => delegate[operation](args)
+      const fresh = getPrisma() as Record<string, any>;
+      const delegate = fresh[model.charAt(0).toLowerCase() + model.slice(1)];
+      return (args: unknown) => delegate[operation](args);
     },
     inInteractiveTransaction,
-  )
+  );
 
   return client.$extends({
     query: {
@@ -486,18 +519,18 @@ function withConnectionRecovery(client: PrismaInstance) {
         $allOperations: handler as never,
       },
     },
-  })
+  });
 }
 
-type ExtendedPrismaClient = ReturnType<typeof withConnectionRecovery>
+type ExtendedPrismaClient = ReturnType<typeof withConnectionRecovery>;
 
 /** Tear down pool+client once; concurrent callers await the same teardown. */
 async function recreatePool(
   failedClient?: PrismaInstance | ExtendedPrismaClient,
 ): Promise<void> {
   if (globalForPrisma.poolRecreatePromise) {
-    await globalForPrisma.poolRecreatePromise
-    return
+    await globalForPrisma.poolRecreatePromise;
+    return;
   }
 
   // Another request may already have replaced the client that produced this
@@ -508,60 +541,74 @@ async function recreatePool(
     globalForPrisma.prisma !== failedClient &&
     globalForPrisma.prismaExtended !== failedClient
   ) {
-    return
+    return;
   }
 
   globalForPrisma.poolRecreatePromise = (async () => {
-    const oldPool = globalForPrisma.pool
-    const oldPrisma = globalForPrisma.prisma
-    globalForPrisma.pool = undefined
-    globalForPrisma.prisma = undefined
-    globalForPrisma.prismaExtended = undefined
-    globalForPrisma.databaseUrl = undefined
-    globalForPrisma.schemaVersion = undefined
+    const oldPool = globalForPrisma.pool;
+    const oldPrisma = globalForPrisma.prisma;
+    globalForPrisma.pool = undefined;
+    globalForPrisma.prisma = undefined;
+    globalForPrisma.prismaExtended = undefined;
+    globalForPrisma.databaseUrl = undefined;
+    globalForPrisma.schemaVersion = undefined;
 
     try {
-      await oldPrisma?.$disconnect().catch(() => {})
+      await oldPrisma?.$disconnect().catch(() => {});
     } catch {
       /* ignore */
     }
     try {
-      await oldPool?.end().catch(() => {})
+      await oldPool?.end().catch(() => {});
     } catch {
       /* ignore */
     }
-  })()
+  })();
 
   try {
-    await globalForPrisma.poolRecreatePromise
+    await globalForPrisma.poolRecreatePromise;
   } finally {
-    globalForPrisma.poolRecreatePromise = undefined
+    globalForPrisma.poolRecreatePromise = undefined;
   }
 }
 
 export const prisma = new Proxy({} as PrismaInstance, {
   get(_target, prop) {
-    const client = getPrisma() as unknown as PrismaInstance
-    const value = client[prop as keyof PrismaInstance]
+    const client = getPrisma() as unknown as PrismaInstance;
+    const value = client[prop as keyof PrismaInstance];
 
     // Top-level function ($transaction, $queryRaw, etc.)
     if (typeof value === "function") {
-      const fn = value as (...args: unknown[]) => unknown
+      const fn = value as (...args: unknown[]) => unknown;
       return async (...args: unknown[]) => {
         const callArgs =
           prop === "$transaction" && typeof args[0] === "function"
-            ? [withInteractiveTransactionScope(args[0] as (...a: unknown[]) => Promise<unknown>), ...args.slice(1)]
-            : args
+            ? [
+                withInteractiveTransactionScope(
+                  args[0] as (...a: unknown[]) => Promise<unknown>,
+                ),
+                ...args.slice(1),
+              ]
+            : args;
         try {
           // EMAXCONN fails before the statement runs, so replay is safe even for
           // $transaction — retry with backoff before giving up.
-          return await retryOnMaxConnections(String(prop), () => fn.bind(client)(...callArgs) as Promise<unknown>)
+          return await retryOnMaxConnections(
+            String(prop),
+            () => fn.bind(client)(...callArgs) as Promise<unknown>,
+          );
         } catch (err) {
           if (isConnectionError(err)) {
-            console.warn(`[db] connection error on ${String(prop)} — retrying on a fresh pool`)
-            await recreatePool(client)
-            const fresh = getPrisma() as unknown as PrismaInstance
-            return await (fresh[prop as keyof PrismaInstance] as (...a: unknown[]) => unknown).bind(fresh)(...callArgs)
+            console.warn(
+              `[db] connection error on ${String(prop)} — retrying on a fresh pool`,
+            );
+            await recreatePool(client);
+            const fresh = getPrisma() as unknown as PrismaInstance;
+            return await (
+              fresh[prop as keyof PrismaInstance] as (
+                ...a: unknown[]
+              ) => unknown
+            ).bind(fresh)(...callArgs);
           }
           // Only the interactive (callback) form is safely replayable: its closure
           // re-runs cleanly, whereas the batch form's args are PrismaPromises already
@@ -569,23 +616,31 @@ export const prisma = new Proxy({} as PrismaInstance, {
           // committed), so tear the pool down before replaying — otherwise getPrisma()
           // hands back the SAME cached client/pool whose still-live teardown caused the
           // P2028, and the replay throws P2028 again. A second P2028 propagates.
-          if (prop === "$transaction" && isTransactionAbortedError(err) && typeof args[0] === "function") {
-            console.warn("[db] P2028 transaction aborted mid-flight — replaying on a fresh client")
-            await recreatePool(client)
-            const fresh = getPrisma() as unknown as PrismaInstance
-            return await (fresh.$transaction as (...a: unknown[]) => unknown).bind(fresh)(...callArgs)
+          if (
+            prop === "$transaction" &&
+            isTransactionAbortedError(err) &&
+            typeof args[0] === "function"
+          ) {
+            console.warn(
+              "[db] P2028 transaction aborted mid-flight — replaying on a fresh client",
+            );
+            await recreatePool(client);
+            const fresh = getPrisma() as unknown as PrismaInstance;
+            return await (
+              fresh.$transaction as (...a: unknown[]) => unknown
+            ).bind(fresh)(...callArgs);
           }
-          throw err
+          throw err;
         }
-      }
+      };
     }
 
     // Model delegates must stay unwrapped so methods return PrismaPromises.
     // Async wrappers break prisma.$transaction([...]) batch form.
     if (value !== null && typeof value === "object") {
-      return value
+      return value;
     }
 
-    return value
+    return value;
   },
-})
+});

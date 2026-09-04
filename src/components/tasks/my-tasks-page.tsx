@@ -49,7 +49,6 @@ function truncateTitle(title: string, maxWords = 6): string {
 }
 import { sortCards } from "@/lib/sort-cards";
 import { useSubDepartmentMembers } from "@/hooks/queries/use-board"
-import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-statuses"
 import { useCardState } from "@/hooks/use-card-state"
 import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
@@ -64,6 +63,7 @@ import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { ProjectAvatar, ProjectDot } from "@/components/projects/project-avatar";
 import type { AssignedSubtask } from "@/lib/board-data";
+import type { TasksMetaResponse } from "@/lib/api/tasks";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
 import { CardModuleSegment, ModuleCell } from "@/components/board/module-label";
 import {
@@ -120,10 +120,11 @@ function PersonCell({ name, avatarUrl, subDepartment }: { name: string; avatarUr
   );
 }
 
-function DraggableBoardCard({ task }: { task: BoardCardData }) {
+function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses: SubDepartmentStatusConfig[] }) {
   const { subTicketCards, expanded, creatingSubTicket, subTotal, subDone, subtasksDone, openSubTicketModal, closeSubTicketModal, toggleExpanded, onSubTicketCreated } = useCardState(task.subTicketCards);
-  const { data: subDepartmentMembers = [] } = useSubDepartmentMembers(task.subDepartmentId);
-  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
+  // Members are only needed after "Add sub-task" is chosen. Avoid one request
+  // per visible card while the board is loading.
+  const { data: subDepartmentMembers = [] } = useSubDepartmentMembers(task.subDepartmentId, creatingSubTicket);
   const [startingTimer, setStartingTimer] = useState(false);
   const [stoppingTimer, setStoppingTimer] = useState(false);
   const timerEntryId = useTimerStore((s) => s.entryId);
@@ -382,13 +383,12 @@ function DraggableBoardCard({ task }: { task: BoardCardData }) {
 }
 
 // Review/PR row — shown in the manager's subDepartment review section
-function ReviewTaskRow({ task, colorMap }: { task: BoardCardData; colorMap: Record<string, string> }) {
+function ReviewTaskRow({ task, colorMap, statuses }: { task: BoardCardData; colorMap: Record<string, string>; statuses: SubDepartmentStatusConfig[] }) {
   const isPR = task.status.toLowerCase().includes("pull request") || task.status.toLowerCase() === "pr";
 
   const [liveStatus, setLiveStatus] = useState(task.status);
   useEffect(() => { setLiveStatus(task.status); }, [task.status]);
 
-  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const queryClient = useQueryClient();
 
   async function handleStatusChange(newStatus: string, chosenLabel?: string) {
@@ -469,7 +469,7 @@ function ReviewTaskRow({ task, colorMap }: { task: BoardCardData; colorMap: Reco
   );
 }
 
-function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record<string, string> }) {
+function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorMap: Record<string, string>; statuses: SubDepartmentStatusConfig[] }) {
   const [expanded, setExpanded] = useState(false);
   const hasChildren = task.subTicketCards.length > 0;
 
@@ -486,8 +486,8 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
     setLiveAssigneeAvatarUrl(task.assigneeAvatarUrl ?? null);
   }, [task.assigneeId, task.assigneeName, task.assigneeAvatarUrl]);
 
-  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
-  const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
+  const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId, assigneePickerOpen);
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
 
@@ -558,7 +558,12 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
           {task.creatorName ? <PersonCell name={task.creatorName} avatarUrl={task.creatorAvatarUrl} /> : <span className="font-sans text-[11.5px] text-sts-subtle">—</span>}
         </td>
         <td className={cn(COL_ASSIGNEE, "overflow-hidden", LIST_TD)}>
-          <InlineAssigneePicker members={members} currentId={liveAssigneeId} onSelect={handleAssigneeChange}>
+          <InlineAssigneePicker
+            members={members}
+            currentId={liveAssigneeId}
+            onSelect={handleAssigneeChange}
+            onOpen={() => setAssigneePickerOpen(true)}
+          >
             {({ ref, onClick }) => (
               <button ref={ref} type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className="rounded px-1 py-0.5 transition-colors hover:bg-sts-surface">
                 <AssigneeAvatars
@@ -646,10 +651,9 @@ function TaskListRow({ task, colorMap }: { task: BoardCardData; colorMap: Record
   );
 }
 
-function SubtaskListRow({ task, colorMap }: { task: AssignedSubtask; colorMap: Record<string, string> }) {
+function SubtaskListRow({ task, colorMap, statuses }: { task: AssignedSubtask; colorMap: Record<string, string>; statuses: SubDepartmentStatusConfig[] }) {
   const [liveStatus, setLiveStatus] = useState(task.status);
   useEffect(() => { setLiveStatus(task.status); }, [task.status]);
-  const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const statusColor = colorMap[liveStatus] ?? colorMap[task.status] ?? "#94a3b8";
   const queryClient = useQueryClient();
 
@@ -735,11 +739,13 @@ function SubtaskListRow({ task, colorMap }: { task: AssignedSubtask; colorMap: R
 function BoardColumn({
   status,
   cards,
+  statusesForCard,
   onDrop,
   onAdd,
 }: {
   status: SubDepartmentStatusConfig;
   cards: BoardCardData[];
+  statusesForCard: (subDepartmentId: string) => SubDepartmentStatusConfig[];
   onDrop: (dbId: string, toStatus: string) => void;
   onAdd: (statusLabel: string) => void;
 }) {
@@ -785,7 +791,7 @@ function BoardColumn({
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {cards.map((task) => (
-          <DraggableBoardCard key={task.dbId} task={task} />
+          <DraggableBoardCard key={task.dbId} task={task} statuses={statusesForCard(task.subDepartmentId)} />
         ))}
         {cards.length === 0 && (
           <p className={cn("py-2 text-center font-sans text-[11.5px] transition-colors", isActive ? "text-sts-blue" : "text-sts-subtle")}>
@@ -814,6 +820,8 @@ type Props = {
   reviewTasks?: BoardCardData[];
   isManager?: boolean;
   subtasks?: AssignedSubtask[];
+  /** Loaded lazily by the parent because it is only needed to create a task. */
+  taskMeta?: TasksMetaResponse;
   hideTitleBar?: boolean;
 };
 
@@ -823,7 +831,7 @@ type FlatRow =
   | { kind: "task"; data: BoardCardData }
   | { kind: "subtask"; data: AssignedSubtask };
 
-export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDepartmentStatusMap = {}, reviewTasks = [], isManager = false, subtasks = [], hideTitleBar = false }: Props) {
+export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDepartmentStatusMap = {}, reviewTasks = [], isManager = false, subtasks = [], taskMeta, hideTitleBar = false }: Props) {
   const [localTasks, setLocalTasks] = useState<BoardCardData[]>(initialTasks);
   const [sortKey, setSortKey] = useState<SortKey>("created");
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
@@ -832,7 +840,11 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   // Managers see a subDepartment review/PR list — kept collapsed by default and below
   // their own tasks so the view leads with what's assigned to them.
   const [reviewOpen, setReviewOpen] = useState(false);
-  const { data: meta } = useTasksMeta();
+  // Board "Add task" is the only action inside this component that needs the
+  // heavyweight projects/people metadata. Keeping it disabled initially avoids
+  // a duplicate blocking request on every My Tasks visit.
+  const { data: fetchedMeta } = useTasksMeta(!taskMeta && !!createForStatus);
+  const meta = taskMeta ?? fetchedMeta;
   const queryClient = useQueryClient();
   const boardTimerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const boardTimerEntryId = useTimerStore((s) => s.entryId);
@@ -1339,8 +1351,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                   </tr>
                 ) : pagedRows.map((row) =>
                   row.kind === "task"
-                    ? <TaskListRow key={row.data.dbId} task={row.data} colorMap={colorMap} />
-                    : <SubtaskListRow key={row.data.dbId} task={row.data} colorMap={colorMap} />
+                    ? <TaskListRow key={row.data.dbId} task={row.data} colorMap={colorMap} statuses={resolveStatusesForCard(row.data.subDepartmentId)} />
+                    : <SubtaskListRow key={row.data.dbId} task={row.data} colorMap={colorMap} statuses={resolveStatusesForCard(row.data.subDepartmentId)} />
                 )}
               </tbody>
             </table>
@@ -1449,7 +1461,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                             </td>
                           </tr>
                           {g.tasks.map((task) => (
-                            <ReviewTaskRow key={task.dbId} task={task} colorMap={colorMap} />
+                            <ReviewTaskRow key={task.dbId} task={task} colorMap={colorMap} statuses={resolveStatusesForCard(task.subDepartmentId)} />
                           ))}
                         </React.Fragment>
                       ))}
@@ -1471,6 +1483,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 key={status.id}
                 status={status}
                 cards={filteredByStatus.get(status.label) ?? []}
+                statusesForCard={resolveStatusesForCard}
                 onDrop={moveCard}
                 onAdd={setCreateForStatus}
               />
@@ -1486,6 +1499,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                   isComplete: ["Live", "Done", "Completed", "Closed"].includes(label),
                 }}
                 cards={filteredByStatus.get(label) ?? []}
+                statusesForCard={resolveStatusesForCard}
                 onDrop={moveCard}
                 onAdd={setCreateForStatus}
               />

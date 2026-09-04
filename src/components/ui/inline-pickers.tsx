@@ -22,7 +22,6 @@ import {
   hasLinkedLabelSelection,
 } from "@/lib/status-label-choice";
 import type { SubDepartmentMember } from "@/lib/api/sub-departments";
-import type { SubDepartmentStatus } from "@/lib/api/sub-departments";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,7 +46,9 @@ function DropdownBackdrop({ onClose }: { onClose: () => void }) {
 
 interface StatusPickerProps {
   subDepartmentId: string;
-  statuses: SubDepartmentStatus[];
+  // The picker only needs these display/label-choice fields. Keeping this
+  // narrower lets task lists use their already-loaded board status config.
+  statuses: { id: string; label: string; color: string; allowedLabels?: string[] }[];
   current: string;
   /** Called with the new status label (and the chosen linked label, if the status requires one). */
   onSelect: (status: string, chosenLabel?: string) => void;
@@ -184,6 +185,8 @@ interface AssigneePickerProps {
   members: SubDepartmentMember[];
   currentId: string | null | undefined;
   onSelect: (member: SubDepartmentMember | null) => void;
+  /** Fetch member data only when the user opens this picker. */
+  onOpen?: () => void;
   children: (props: {
     ref: React.RefObject<HTMLButtonElement | null>;
     onClick: () => void;
@@ -194,6 +197,7 @@ export function InlineAssigneePicker({
   members,
   currentId,
   onSelect,
+  onOpen,
   children,
 }: AssigneePickerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -202,6 +206,7 @@ export function InlineAssigneePicker({
   const mounted = usePortalMounted();
 
   const open = useCallback(() => {
+    onOpen?.();
     if (!triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
     const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
@@ -217,7 +222,7 @@ export function InlineAssigneePicker({
     }
     setPos({ top, left: Math.max(8, left) });
     setSearch("");
-  }, []);
+  }, [onOpen]);
 
   const close = useCallback(() => setPos(null), []);
 

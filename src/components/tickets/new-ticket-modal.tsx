@@ -436,17 +436,28 @@ export function NewTicketModal({
       ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
     };
 
-    const res = await fetch("/api/tickets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const json = await res.json();
+    let res: Response;
+    let json;
+    try {
+      res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      // A 500 can return a non-JSON body (an error page); parsing it throws.
+      // Read as text first so a parse failure never leaves the button spinning.
+      const text = await res.text();
+      json = text ? JSON.parse(text) : {};
+    } catch (err) {
+      console.error("Ticket creation request failed:", err);
+      setSubmitting(null);
+      setError(asDraft ? "Failed to save draft" : "Failed to create ticket");
+      return;
+    }
 
     if (!res.ok) {
       setSubmitting(null);
-      setError(json.error ?? (asDraft ? "Failed to save draft" : "Failed to create ticket"));
+      setError(json?.error ?? (asDraft ? "Failed to save draft" : "Failed to create ticket"));
       return;
     }
 

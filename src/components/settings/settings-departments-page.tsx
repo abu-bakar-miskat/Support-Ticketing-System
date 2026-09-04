@@ -20,6 +20,7 @@ import { DepartmentWalkthroughModal } from "@/components/departments/department-
 import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   assignDepartmentManager,
   removeDepartmentManager,
@@ -617,40 +618,38 @@ function NewDepartmentModal({
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Template
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {options.map((opt) => {
-                const on = type === opt.slug;
-                return (
-                  <button
-                    key={opt.slug}
-                    type="button"
-                    onClick={() => setType(opt.slug)}
-                    className={cn(
-                      "rounded-lg border px-2.5 py-2 text-left transition-colors",
-                      on
-                        ? "border-sts-blue bg-sts-blue-tint"
-                        : "border-sts-card-border hover:border-sts-blue/40",
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn("font-sans text-[12.5px] font-semibold", on ? "text-sts-blue" : "text-sts-foreground")}>
-                        {opt.name}
-                      </span>
-                      {opt.featureCount > 0 && (
-                        <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
-                          {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
+            <Select
+              items={options.map((opt) => ({ value: opt.slug, label: opt.name }))}
+              value={type}
+              onValueChange={(v) => setType(v ?? DEFAULT_DEPARTMENT_TYPE)}
+            >
+              <SelectTrigger className="h-9 w-full border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt.slug} value={opt.slug} className="py-1.5">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                          {opt.name}
+                        </span>
+                        {opt.featureCount > 0 && (
+                          <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
+                            {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
+                          </span>
+                        )}
+                      </div>
+                      {opt.description && (
+                        <span className="font-sans text-[10.5px] leading-tight text-sts-subtle">
+                          {opt.description}
                         </span>
                       )}
                     </div>
-                    {opt.description && (
-                      <div className="mt-0.5 font-sans text-[10.5px] leading-tight text-sts-subtle">
-                        {opt.description}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Managers */}

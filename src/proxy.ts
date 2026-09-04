@@ -48,11 +48,26 @@ export async function proxy(request: NextRequest) {
   );
 
   // Verify the session JWT locally against the project's public signing keys
-  // (ES256) — no network round trip to Supabase Auth on the hot path. Token
-  // rotation still works: when the access token is expired, supabase-js
-  // refreshes it via the refresh-token cookie, so this must not be removed.
+  // (ES256) — no network round trip to Supabase Auth on the hot path.
   const { data } = await supabase.auth.getClaims();
-  const user = data?.claims ?? null;
+  // Only truthiness matters downstream (authenticated vs not), so widen the type
+  // to accept either the local claims payload or a refreshed User (below).
+  let user: object | null = data?.claims ?? null;
+
+  // getClaims() verifies the JWT LOCALLY and does NOT refresh an expired token
+  // (with asymmetric signing keys there's no network call at all). So once the
+  // access token hits its ~1h TTL, local verification yields no claims even
+  // though the refresh token is still valid — which previously logged the user
+  // out ("session is no longer valid"). When claims are absent, attempt a real
+  // refresh via getUser(): it contacts Auth and, if the refresh token is good,
+  // rotates the session. The server client's setAll writes the rotated cookies
+  // onto supabaseResponse (and request), so downstream getProfile() in this same
+  // request sees the fresh token. This network call happens at most ~once per
+  // token lifetime, keeping navigations local-verify-only.
+  if (!user) {
+    const { data: refreshed } = await supabase.auth.getUser();
+    user = refreshed.user ?? null;
+  }
 
   const { pathname } = request.nextUrl;
   const isPublic =

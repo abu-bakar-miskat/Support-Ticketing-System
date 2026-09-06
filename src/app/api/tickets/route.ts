@@ -2,12 +2,15 @@ import { prisma } from "@/lib/db"
 import { NextResponse, after } from "next/server"
 import { parseStartDatePayload, parseDueDatePayload } from "@/lib/ticket-datetime"
 import { requireAuth } from "@/app/api/admin/_guard"
-import { assertTicketEditAccess } from "@/lib/auth"
+import { assertTicketEditAccess, type AuthProfile } from "@/lib/auth"
 import { sendAssignmentEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { projectInScope, subDepartmentInScope, getProfileDeptScope } from "@/lib/dept-scope"
-import { subDepartmentTenantId } from "@/lib/tenant-scope"
+import { resolveProfileTicketScope } from "@/lib/prisma-scope"
+import { getRequestScope, runWithScope } from "@/lib/request-scope"
+import { buildProjectDepartmentPeopleWhere } from "@/lib/project-department-people"
+import type { Prisma } from "@/generated/prisma/client"
 import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTicket, isProjectMember } from "@/lib/cross-access"
 import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
@@ -21,6 +24,8 @@ const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as cons
 
 type TicketType = (typeof VALID_TYPES)[number]
 type TicketPriority = (typeof VALID_PRIORITIES)[number]
+
+class AttachmentLinkConflict extends Error {}
 
 export async function GET(request: Request) {
   const { profile, error } = await requireAuth()
@@ -57,9 +62,25 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const started = performance.now()
   const { profile, error } = await requireAuth()
   if (error) return error
+  const authenticated = performance.now()
+  const scope = await resolveProfileTicketScope(profile)
+  const scoped = performance.now()
+  const response = await runWithScope({
+    tenantIds: scope.kind === "tenant" ? scope.tenantIds : [],
+    isPlatformAdmin: scope.kind === "platform",
+    ...(scope.kind === "tenant" ? {
+      subDepartmentTeamIds: scope.subDepartmentTeamIds,
+      grantedTicketIds: scope.grantedTicketIds,
+    } : {}),
+  }, () => createTicket(request, profile))
+  response.headers.set("Server-Timing", `auth;dur=${(authenticated - started).toFixed(1)}, scope;dur=${(scoped - authenticated).toFixed(1)}, create;dur=${(performance.now() - scoped).toFixed(1)}`)
+  return response
+}
 
+async function createTicket(request: Request, profile: AuthProfile) {
   const body = await request.json()
   const isDraft = body.isDraft === true
   const title = (body.title as string)?.trim()
@@ -70,6 +91,13 @@ export async function POST(request: Request) {
   const assigneeId = body.unassigned === true
     ? null
     : ((body.assigneeId as string | undefined) || profile.id)
+  for (const key of ["coAssigneeIds", "attachmentIds"] as const) {
+    if (body[key] !== undefined && (!Array.isArray(body[key]) || body[key].some((id: unknown) => typeof id !== "string" || !id.trim()))) {
+      return NextResponse.json({ error: `${key} must be an array of non-empty IDs` }, { status: 400 })
+    }
+  }
+  const coAssigneeIds = [...new Set<string>(body.coAssigneeIds ?? [])].filter(id => id !== assigneeId)
+  const attachmentIds = [...new Set<string>(body.attachmentIds ?? [])]
   const now = new Date()
   const startDate = body.startDate
     ? parseStartDatePayload(body.startDate as string)
@@ -140,6 +168,7 @@ export async function POST(request: Request) {
   let resolvedSubDepartmentId: string | null = null
 
   let projectForSubDepartment: {
+    kind: string
     subDepartmentId: string | null
     departmentId: string | null
     subDepartment: { departmentId: string | null } | null
@@ -149,6 +178,7 @@ export async function POST(request: Request) {
     projectForSubDepartment = await prisma.project.findUnique({
       where: { id: projectId },
       select: {
+        kind: true,
         subDepartmentId: true,
         departmentId: true,
         subDepartment: { select: { departmentId: true } },
@@ -227,7 +257,7 @@ export async function POST(request: Request) {
 
   const subDepartmentRecord = await prisma.subDepartment.findUnique({
     where: { id: resolvedSubDepartmentId },
-    select: { id: true, departmentId: true },
+    select: { id: true, departmentId: true, tenantId: true },
   })
   if (!subDepartmentRecord) {
     return NextResponse.json(
@@ -293,11 +323,7 @@ export async function POST(request: Request) {
     if (!canModifyProjectContent(profile, isMember)) {
       return NextResponse.json({ error: PROJECT_MODIFY_FORBIDDEN_MESSAGE }, { status: 403 })
     }
-    const target = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: { kind: true },
-    })
-    if (target?.kind === "support") {
+    if (projectForSubDepartment?.kind === "support") {
       return NextResponse.json(
         { error: "Support projects only accept tickets from the support form" },
         { status: 403 },
@@ -332,47 +358,90 @@ export async function POST(request: Request) {
     : null
 
   // A ticket lives in its subDepartment's tenant — the outermost isolation boundary.
-  const ticketTenantId = await subDepartmentTenantId(resolvedSubDepartmentId)
+  const ticketTenantId = subDepartmentRecord.tenantId
   if (!ticketTenantId) {
     return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
+  }
+
+  const coAssignees = coAssigneeIds.length > 0
+    ? await prisma.profile.findMany({
+        where: {
+          ...buildProjectDepartmentPeopleWhere(subDepartmentRecord.departmentId),
+          id: { in: coAssigneeIds },
+        },
+        select: { id: true, name: true, email: true },
+      })
+    : []
+  if (coAssignees.length !== coAssigneeIds.length) {
+    return NextResponse.json({ error: "Co-assignees must belong to the ticket's department" }, { status: 400 })
   }
 
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
   let ticket
   try {
-    ticket = await prisma.ticket.create({
-      data: {
-        title,
-        description,
-        type: type as TicketType,
-        priority: priority as TicketPriority,
-        status,
-        isDraft,
-        ticketNumber: 0,
-        startDate,
-        dueDate,
-        creator: { connect: { id: profile.id } },
-        tenant: { connect: { id: ticketTenantId } },
-        subDepartment: { connect: { id: resolvedSubDepartmentId } },
-        project: { connect: { id: resolvedProjectId } },
-        ...(assigneeId ? { assignee: { connect: { id: assigneeId } } } : {}),
-        ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
-        ...(storyPoints != null && !isNaN(storyPoints) ? { storyPoints } : {}),
-        ...(estimatedTime != null && !isNaN(estimatedTime) ? { estimatedTime } : {}),
-        ...(sprintId ? { sprint: { connect: { id: sprintId } } } : {}),
-        ...(moduleId ? { module: { connect: { id: moduleId } } } : {}),
-        ...(labels.length > 0 ? { labels } : {}),
-        ...(assetLinks.length > 0 ? { assetLinks } : {}),
-        ...(templateData ? { templateData } : {}),
-        ...(validTemplateId ? { template: { connect: { id: validTemplateId } } } : {}),
-      },
-      include: {
-        subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
-        assignee: { select: { id: true, name: true, email: true } },
-        project: { select: { id: true, name: true } },
-      },
-    })
+    const persist = async (db: Prisma.TransactionClient | typeof prisma) => {
+      const created = await db.ticket.create({
+        data: {
+          title,
+          description,
+          type: type as TicketType,
+          priority: priority as TicketPriority,
+          status,
+          isDraft,
+          ticketNumber: 0,
+          startDate,
+          dueDate,
+          creator: { connect: { id: profile.id } },
+          tenant: { connect: { id: ticketTenantId } },
+          subDepartment: { connect: { id: resolvedSubDepartmentId } },
+          project: { connect: { id: resolvedProjectId } },
+          ...(assigneeId ? { assignee: { connect: { id: assigneeId } } } : {}),
+          ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
+          ...(storyPoints != null && !isNaN(storyPoints) ? { storyPoints } : {}),
+          ...(estimatedTime != null && !isNaN(estimatedTime) ? { estimatedTime } : {}),
+          ...(sprintId ? { sprint: { connect: { id: sprintId } } } : {}),
+          ...(moduleId ? { module: { connect: { id: moduleId } } } : {}),
+          ...(labels.length > 0 ? { labels } : {}),
+          ...(assetLinks.length > 0 ? { assetLinks } : {}),
+          ...(templateData ? { templateData } : {}),
+          ...(validTemplateId ? { template: { connect: { id: validTemplateId } } } : {}),
+          ...(coAssigneeIds.length > 0 ? {
+            assignees: { createMany: { data: coAssigneeIds.map(userId => ({ userId })) } },
+          } : {}),
+        },
+        include: {
+          subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
+          assignee: { select: { id: true, name: true, email: true } },
+          project: { select: { id: true, name: true } },
+        },
+      })
+      if (attachmentIds.length > 0) {
+        // Conditional write prevents another request claiming the same uploads.
+        // Throwing rolls back both the ticket and any attachments already linked.
+        const linked = await db.attachment.updateMany({
+          where: {
+            id: { in: attachmentIds },
+            uploaderProfileId: profile.id,
+            status: "temporary",
+            ticketId: null,
+          },
+          data: { ticketId: created.id, status: "attached" },
+        })
+        if (linked.count !== attachmentIds.length) throw new AttachmentLinkConflict()
+      }
+      if (coAssigneeIds.length > 0) {
+        await ensureProjectMembers(resolvedProjectId, [assigneeId, ...coAssigneeIds], db)
+      }
+      return created
+    }
+    // Keep the simple case to one Prisma create; related saves commit atomically.
+    ticket = attachmentIds.length > 0 || coAssigneeIds.length > 0
+      ? await prisma.$transaction(tx => persist(tx))
+      : await persist(prisma)
   } catch (err) {
+    if (err instanceof AttachmentLinkConflict) {
+      return NextResponse.json({ error: "One or more attachments cannot be linked to this ticket" }, { status: 403 })
+    }
     console.error("[POST /api/tickets] prisma.ticket.create failed:", err)
     return NextResponse.json({ error: "Failed to create ticket" }, { status: 500 })
   }
@@ -391,7 +460,8 @@ export async function POST(request: Request) {
   // its own try/catch so one failure doesn't skip the rest, and — because the
   // response is already sent — none can turn into an unhandled 500 that returns
   // a non-JSON body the client can't parse (which would drive retries/dupes).
-  after(async () => {
+  const creationScope = getRequestScope()!
+  after(() => runWithScope(creationScope, async () => {
     if (!isDraft) {
       // Resolve the ticket's department (the project's, or its subDepartment's)
       // to start SLA timers for the new ticket.
@@ -448,11 +518,39 @@ export async function POST(request: Request) {
       console.error("[POST /api/tickets] appendTicketEvent(TICKET_CREATED) failed:", err)
     }
 
-    // Primary assignee (and later co/QA via their own routes) join the project automatically.
+    // Batched assignments already joined in the save transaction.
     try {
-      await ensureProjectMembers(resolvedProjectId, [assigneeId])
+      if (coAssigneeIds.length === 0) await ensureProjectMembers(resolvedProjectId, [assigneeId])
     } catch (err) {
       console.error("[POST /api/tickets] ensureProjectMembers failed:", err)
+    }
+
+    for (const assignee of coAssignees) {
+      await appendTicketEvent(ticket.id, profile.id, "CO_ASSIGNEE_ADDED", {
+        userId: assignee.id,
+        userName: assignee.name,
+      }).catch(err => console.error("[co-assignee activity] failed:", err))
+      if (!isDraft) {
+        await createNotification({
+          recipientId: assignee.id,
+          actorId: profile.id,
+          type: "assignment",
+          ticketId: ticket.id,
+          message: title,
+        }).catch(err => console.error("[co-assignee notification] failed:", err))
+        await sendAssignmentEmail({
+          to: assignee.email,
+          assigneeName: assignee.name,
+          assigneeId: assignee.id,
+          ticketId: ticket.id,
+          humanId,
+          ticketTitle: title,
+          assignedByName: profile.name,
+          assignedById: profile.id,
+          departmentId: ticket.subDepartment.departmentId,
+          subDepartmentId: ticket.subDepartment.id,
+        }).catch(err => console.error("[co-assignee email] failed:", err))
+      }
     }
 
     // Record the sub-ticket on its parent's timeline so it shows up in the
@@ -493,7 +591,7 @@ export async function POST(request: Request) {
         }).catch((err) => console.error("[assignment email] failed:", err))
       }
     }
-  })
+  }))
 
   return NextResponse.json(ticket, { status: 201 })
 }

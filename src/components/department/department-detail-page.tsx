@@ -734,7 +734,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       <span className="font-sans text-[11.5px] text-sts-muted">{inv.subDepartment.name}</span>
                     </TableCell>
                     <TableCell className="py-0">
-                      <span className={cn("inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize", ROLE_COLORS[inv.role] ?? ROLE_COLORS.staff)}>
+                      <span className={cn("inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize", ROLE_COLORS[inv.role] ?? ROLE_COLORS.agent)}>
                         {inv.role}
                       </span>
                     </TableCell>

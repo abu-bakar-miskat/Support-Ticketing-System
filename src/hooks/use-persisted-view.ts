@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 const STORAGE_PREFIX = "pen_view_";
+const VIEW_CHANGED = "pen-view-changed";
+
+function subscribe(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(VIEW_CHANGED, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(VIEW_CHANGED, onChange);
+  };
+}
 
 /** Shared localStorage keys for persisted tab / layout preferences. */
 export const VIEW_KEYS = {
@@ -27,29 +37,37 @@ export function usePersistedView<T extends string>(
 ): [T, (value: T) => void] {
   const storageKey = `${STORAGE_PREFIX}${key}`;
 
-  const [value, setValueState] = useState<T>(defaultValue);
-
-  useEffect(() => {
+  const [fallback, setFallback] = useState<T>(defaultValue);
+  const getSnapshot = useCallback(() => {
     try {
       const stored = localStorage.getItem(storageKey);
-      if (stored === null) return;
-      if (validValues && !(validValues as readonly string[]).includes(stored)) return;
-      setValueState(stored as T);
+      if (stored !== null && (!validValues || (validValues as readonly string[]).includes(stored))) return stored as T;
     } catch {
-      // ignore storage errors
+      // Storage can be disabled; retain this tab's selection.
     }
-  }, [storageKey, validValues]);
+    return fallback;
+  }, [storageKey, validValues, fallback]);
+  const value = useSyncExternalStore(subscribe, getSnapshot, () => defaultValue);
+
+  useEffect(() => {
+    if (key !== VIEW_KEYS.tasksScope) return;
+    try {
+      document.cookie = `pen_tasks_scope=${encodeURIComponent(value)}; Path=/; SameSite=Lax; Max-Age=31536000`;
+    } catch { /* Cookies may be disabled. */ }
+  }, [key, value]);
 
   const setValue = useCallback(
     (next: T) => {
-      setValueState(next);
+      setFallback(next);
       try {
         localStorage.setItem(storageKey, next);
+        window.dispatchEvent(new Event(VIEW_CHANGED));
+        if (key === VIEW_KEYS.tasksScope) document.cookie = `pen_tasks_scope=${encodeURIComponent(next)}; Path=/; SameSite=Lax; Max-Age=31536000`;
       } catch {
         // ignore storage errors
       }
     },
-    [storageKey],
+    [key, storageKey],
   );
 
   return [value, setValue];

@@ -12,12 +12,8 @@ datasource db {
 enum Role {
   admin
   manager
-  // Renamed from `lead`; the DB value stays "lead" via @map so no data
-  // migration is needed. UI display label is "Sub-manager".
-  sub_manager @map("lead")
-  // Renamed from `staff`; DB value stays "staff" via @map (no data migration).
-  // UI display label is "Agent".
-  agent @map("staff")
+  sub_manager
+  agent
 }
 
 // Scope levels for the canonical RoleAssignment authorization model (SRS D-06).

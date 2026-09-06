@@ -11,7 +11,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { DualClock } from "@/components/dashboard/london-clock";
@@ -219,10 +218,13 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
 
   const { data, isPending } = useQuery<HomeDashboardData>({
     queryKey: ["dashboard", "home"],
-    queryFn: () => fetch("/api/dashboard/home").then((r) => r.json()),
+    queryFn: async () => {
+      const response = await fetch("/api/dashboard/home");
+      if (!response.ok) throw new Error("Could not load dashboard");
+      return response.json();
+    },
     staleTime: 30_000,
     initialData,
-    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     refetchOnWindowFocus: false,
   });
 

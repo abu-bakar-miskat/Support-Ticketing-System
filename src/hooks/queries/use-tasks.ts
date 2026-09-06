@@ -5,14 +5,14 @@ import { fetchMyTasks, fetchAllTasks, fetchTasksMeta } from "@/lib/api/tasks";
 import type { MyTasksResponse, TasksMetaResponse, AllTasksFilters } from "@/lib/api/tasks";
 import { taskKeys } from "./keys";
 
-export function useMyTasks(initialData?: MyTasksResponse) {
+export function useMyTasks(initialData?: MyTasksResponse, enabled = true) {
   return useQuery({
     queryKey: taskKeys.my(),
     queryFn: fetchMyTasks,
+    enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     initialData,
-    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -69,7 +69,6 @@ export function useTasksMeta(enabled = true, activeDeptId?: string | null, initi
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     initialData,
-    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     refetchOnWindowFocus: false,
     retry: 1,
   });

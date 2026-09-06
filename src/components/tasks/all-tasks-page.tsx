@@ -502,6 +502,8 @@ export function AllTasksPage({
     isFetchingNextPage,
     isLoading,
     isFetching,
+    isError,
+    refetch,
   } = useInfiniteAllTasks(filters);
 
   const allTasks = useMemo(
@@ -869,7 +871,11 @@ export function AllTasksPage({
       </div>
 
       {/* Table — skeleton on first load, real table once data arrives */}
-      {isLoading ? (
+      {isError && allTasks.length === 0 ? (
+        <div role="alert" className="p-6 text-sm">
+          Could not load tasks. <button className="underline" onClick={() => refetch()}>Try again</button>
+        </div>
+      ) : isLoading ? (
         <div className="min-h-0 flex-1 overflow-hidden">
           <TasksTableSkeleton />
         </div>
@@ -908,7 +914,8 @@ export function AllTasksPage({
                         ? (id) =>
                             setSelectedIds((prev) => {
                               const next = new Set(prev);
-                              next.has(id) ? next.delete(id) : next.add(id);
+                              if (next.has(id)) next.delete(id);
+                              else next.add(id);
                               return next;
                             })
                         : undefined

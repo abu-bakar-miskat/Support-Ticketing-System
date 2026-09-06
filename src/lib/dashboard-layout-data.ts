@@ -2,7 +2,8 @@ import "server-only";
 
 import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { buildProjectDeptWhere, getProfileDeptScope, getPersonalTaskDeptScope } from "@/lib/dept-scope";
+import { buildProjectDeptWhere, getProfileDeptScope } from "@/lib/dept-scope";
+import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { canAccessModulesArea } from "@/lib/module-permissions";
 import { dedupeMiscProjects } from "@/lib/misc-project";
@@ -39,6 +40,7 @@ const projectSelect = {
 
 export const getDashboardLayoutData = cache(async function getDashboardLayoutData(
   profile: AuthProfile,
+  deferBadges = false,
 ): Promise<LayoutData> {
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
@@ -82,15 +84,8 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
       ]
     : [];
 
-  // getPersonalTaskDeptScope calls the cache()-wrapped getProfileDeptScope
-  // internally, so running these concurrently still executes it only once.
-  const [deptScope, personalTaskScope] = await Promise.all([
-    getProfileDeptScope(profile),
-    getPersonalTaskDeptScope(profile),
-  ]);
+  const deptScope = await getProfileDeptScope(profile);
   const activeDeptId = deptScope?.activeDeptId ?? null;
-  const deptSubDepartmentIds = deptScope?.subDepartmentIds ?? null;
-  const personalTaskSubDepartmentIds = personalTaskScope?.subDepartmentIds ?? null;
 
   // True only when the user is a manager AND manages the currently active department.
   // A manager visiting a dept they're a member of (not managing) should get the member experience.
@@ -183,7 +178,6 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   // Hub department: show only projects the user (or their dept members) are assigned to
   const isHubDept = deptScope?.isHub === true;
-  const isHubMember = (profile as any).isHubMember === true || isAdmin || isManager;
   // Cross-access: user is visiting a dept they were granted access to, not a native member.
   // This still applies (guest badge, restricted nav) even with a full-access grant — full
   // access only changes which projects are visible, not the guest-level experience.
@@ -244,9 +238,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     projects,
     recentTicketRows,
     assignedRows,
-    myOpenCount,
-    mentionCount,
-    inboxCount,
+    badges,
     activeFeatureKeySet,
     platformFlags,
   ] = await Promise.all([
@@ -271,37 +263,9 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
       where: { userId: profile.id },
       select: { projectId: true },
     }),
-    prisma.ticket.count({
-      where: {
-        assigneeId: profile.id,
-        deletedAt: null,
-        status: { notIn: ["Live", "Done", "Completed", "Closed"] },
-        ...(personalTaskSubDepartmentIds ? { subDepartmentId: { in: personalTaskSubDepartmentIds } } : {}),
-      },
-    }),
-    prisma.mention.count({
-      where: {
-        mentionedUserId: profile.id,
-        readAt: null,
-        ...(deptSubDepartmentIds
-          ? { comment: { ticket: { subDepartmentId: { in: deptSubDepartmentIds } } } }
-          : {}),
-      },
-    }),
-    prisma.notification.count({
-      where: {
-        recipientId: profile.id,
-        readAt: null,
-        ...(deptSubDepartmentIds
-          ? {
-              OR: [
-                { ticketId: null },
-                { ticket: { subDepartmentId: { in: deptSubDepartmentIds } } },
-              ],
-            }
-          : {}),
-      },
-    }),
+    deferBadges
+      ? Promise.resolve({ myTasksCount: 0, mentionsCount: 0, inboxCount: 0 })
+      : getDashboardBadgesData(profile),
     // Inside a department, gate the sidebar by that department's template
     // features; otherwise fall back to the tenant's active templates.
     activeDeptId
@@ -364,7 +328,6 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     ]),
   );
 
-  const assignedProjectIdSet = new Set(assignedProjectIds);
   const visibleProjects = activeDeptId
     ? isHubDept
       // Hub context: projectWhere already scoped correctly — show everything fetched
@@ -407,9 +370,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     projectNames,
     pinnedProjectIds,
     assignedProjectIds,
-    myTasksCount: myOpenCount,
-    mentionsCount: mentionCount,
-    inboxCount,
+    ...badges,
     userRole: profile.role,
     isSuperAdmin: profile.isSuperAdmin,
     userId: profile.id,

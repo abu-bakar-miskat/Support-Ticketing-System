@@ -252,6 +252,15 @@ export async function resolveTicketScope(): Promise<TicketScope> {
         "scope via getProfile; wrap system/background access in runAsSystem().",
     );
   }
+  return resolveProfileTicketScope(profile);
+}
+
+/** Resolve once at an HTTP boundary, then carry the result with runWithScope. */
+export async function resolveProfileTicketScope(profile: {
+  id: string;
+  isSuperAdmin?: boolean;
+  tenantIds: string[];
+}): Promise<TicketScope> {
   if (profile.isSuperAdmin) return { kind: "platform" };
 
   const [subDepartmentTeamIds, grantedTicketIds] = await Promise.all([

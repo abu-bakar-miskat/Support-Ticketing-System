@@ -15,7 +15,6 @@ import type {
 } from "@/components/dashboard/sidebar";
 import type { RecentTicket } from "@/components/dashboard/command-palette";
 import { PageEnter } from "@/components/motion/page-enter";
-import { RoutePrefetcher } from "@/components/dashboard/route-prefetcher";
 import { TicketDrawerRoot } from "@/components/tickets/ticket-drawer";
 import { DepartmentWalkthroughHost } from "@/components/departments/department-walkthrough";
 import { NotificationsRealtime } from "@/components/realtime/notifications-realtime";
@@ -29,7 +28,6 @@ import { TicketsRealtime } from "@/components/realtime/tickets-realtime";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { useTasksMeta } from "@/hooks/queries/use-tasks";
-import { useLabels } from "@/hooks/queries/use-labels";
 import { cn } from "@/lib/utils";
 import type { TemplateFeatureKey } from "@/lib/template-features";
 
@@ -114,12 +112,10 @@ export function DashboardLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
-    initialDataUpdatedAt: initialLayoutData ? Date.now() : undefined,
     refetchOnWindowFocus: false,
   });
 
-  const { data: taskMeta } = useTasksMeta(true, data.activeDeptId);
-  useLabels();
+  const { data: taskMeta, isError: taskMetaError, refetch: retryTaskMeta } = useTasksMeta(showCreateTask);
 
   const openCreateTask = useCallback(() => setShowCreateTask(true), []);
 
@@ -246,7 +242,6 @@ export function DashboardLayout({
 
         <TicketDrawerRoot />
         <DepartmentWalkthroughHost />
-        <RoutePrefetcher />
         <NotificationSidebar
           open={notifOpen}
           onClose={() => setNotifOpen(false)}
@@ -257,7 +252,16 @@ export function DashboardLayout({
         <TicketsRealtime />
 
         {/* Global new-task modal — triggered by sidebar + or X+Space */}
-        {showCreateTask && (
+        {showCreateTask && !taskMeta && (
+          <div role="dialog" aria-modal="true" aria-label="New task" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="rounded-lg bg-sts-card p-6 text-sm" role="status">
+              {taskMetaError ? "Could not load task options." : "Loading task options…"}
+              {taskMetaError && <button className="ml-3 underline" onClick={() => retryTaskMeta()}>Try again</button>}
+              <button className="ml-3 underline" onClick={() => setShowCreateTask(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+        {showCreateTask && taskMeta && (
           <NewTicketModal
             projects={taskMeta?.availableProjects ?? []}
             subDepartmentMembers={taskMeta?.availableMembers ?? []}

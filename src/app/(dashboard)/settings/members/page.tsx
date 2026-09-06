@@ -161,6 +161,28 @@ export default async function SettingsMembersRoute() {
     profiles = await prisma.profile.findMany({ where: { id: { in: memberUserIds }, deletedAt: null }, orderBy: { name: "asc" } });
   }
 
+  // A department-filtered admin view chooses *which people* to show from that
+  // department, but the membership columns must still reveal every department and
+  // subDepartment those people belong to. This is deliberately admin-only: managers
+  // retain their existing department-scoped visibility.
+  if (isAdmin && activeDeptId && profiles.length > 0) {
+    const profileIds = profiles.map((member) => member.id);
+    [allMemberships, directDeptMembers] = await Promise.all([
+      (prisma.subDepartmentMembership as any).findMany({
+        where: { userId: { in: profileIds }, isActive: true, subDepartment: { tenantId } },
+        select: {
+          userId: true,
+          doNotAssign: true,
+          subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+        },
+      }).catch((e: unknown) => { console.error("[members/page] admin membership detail query failed:", e); return [] as any[]; }),
+      (prisma.departmentMember as any).findMany({
+        where: { userId: { in: profileIds }, department: { tenantId } },
+        select: { userId: true, department: { select: { id: true, name: true } } },
+      }).catch((e: unknown) => { console.error("[members/page] admin direct membership detail query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; }),
+    ]);
+  }
+
   // Fetch available subDepartments for the subDepartment assignment dropdown (admin/manager only).
   // When a department is active, only that department's subDepartments — required for invites + Add member.
   const availableSubDepartments = (isAdmin || isManager)
@@ -201,6 +223,8 @@ export default async function SettingsMembersRoute() {
     : [];
 
   const subDepartmentsByUser = new Map<string, string[]>();
+  const departmentsByUser = new Map<string, { id: string; name: string }[]>();
+  const membershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[]>();
   const subDepartmentIdByUser = new Map<string, string>();
   const deptByUser = new Map<string, string>();
   const deptIdByUser = new Map<string, string>();
@@ -209,6 +233,11 @@ export default async function SettingsMembersRoute() {
     const list = subDepartmentsByUser.get(m.userId) ?? [];
     list.push(m.subDepartment.name);
     subDepartmentsByUser.set(m.userId, list);
+    const departments = departmentsByUser.get(m.userId) ?? [];
+    if (m.subDepartment?.department?.id && !departments.some((department) => department.id === m.subDepartment.department.id)) {
+      departments.push({ id: m.subDepartment.department.id, name: m.subDepartment.department.name });
+      departmentsByUser.set(m.userId, departments);
+    }
     if (!subDepartmentIdByUser.has(m.userId) && m.subDepartment?.id) {
       subDepartmentIdByUser.set(m.userId, m.subDepartment.id);
     }
@@ -224,6 +253,9 @@ export default async function SettingsMembersRoute() {
       const existing = doNotAssignMap.get(m.userId) ?? [];
       existing.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
       doNotAssignMap.set(m.userId, existing);
+      const memberships = membershipsByUser.get(m.userId) ?? [];
+      memberships.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, departmentId: m.subDepartment.department.id, departmentName: m.subDepartment.department.name, doNotAssign: m.doNotAssign ?? false });
+      membershipsByUser.set(m.userId, memberships);
     }
   }
   // Fill in dept info for direct members who have no subDepartment membership
@@ -234,6 +266,11 @@ export default async function SettingsMembersRoute() {
     }
     if (!deptIdByUser.has(dm.userId)) {
       deptIdByUser.set(dm.userId, dm.department.id);
+    }
+    const departments = departmentsByUser.get(dm.userId) ?? [];
+    if (!departments.some((department) => department.id === dm.department.id)) {
+      departments.push({ id: dm.department.id, name: dm.department.name });
+      departmentsByUser.set(dm.userId, departments);
     }
   }
 
@@ -296,6 +333,8 @@ export default async function SettingsMembersRoute() {
       departmentId: deptIdByUser.get(p.id) ?? null,
       isCrossAccess: false,
       subDepartmentMemberships: doNotAssignMap.get(p.id) ?? [],
+      departments: departmentsByUser.get(p.id) ?? [],
+      memberships: membershipsByUser.get(p.id) ?? [],
     })),
     ...crossAccessRows,
   ];

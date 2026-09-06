@@ -649,6 +649,7 @@ export function BoardPage({
     currentUser?.role === "agent";
   const queryClient = useQueryClient();
   const [localCards, setLocalCards] = useState<BoardCardData[]>(initialCards);
+  const pendingMoves = useRef(new Set<string>());
   const timerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const timerEntryId = useTimerStore((s) => s.entryId);
   const { stopTimer: stopTimerOnMove } = useTimerActions();
@@ -820,17 +821,6 @@ export function BoardPage({
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
   }, [localCards, activeSubDepartmentId]);
 
-  // Drop stale project filters that don't apply to the active subDepartment
-  useEffect(() => {
-    if (!filtersReady) return;
-    if (
-      projectFilter !== "all" &&
-      !subDepartmentProjects.some((p) => p.id === projectFilter)
-    ) {
-      setProjectFilter("all");
-    }
-  }, [filtersReady, subDepartmentProjects, projectFilter, setProjectFilter]);
-
   const handleCreated = useCallback(
     (ticket: {
       id: string;
@@ -902,7 +892,10 @@ export function BoardPage({
   );
 
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
-    const snapshot = localCards;
+    if (pendingMoves.current.has(dbId)) return;
+    const previousCard = localCards.find((c) => c.dbId === dbId);
+    if (!previousCard || previousCard.status === toStatus) return;
+    pendingMoves.current.add(dbId);
     setLocalCards((prev) =>
       prev.map((c) => {
         if (c.dbId !== dbId) return c;
@@ -929,13 +922,25 @@ export function BoardPage({
         queryClient.invalidateQueries({ queryKey: ticketKeys.detail(dbId) });
       })
       .catch(() => {
-        setLocalCards(snapshot);
+        setLocalCards((prev) =>
+          prev.map((c) =>
+            c.dbId === dbId && c.status === toStatus
+              ? { ...c, status: previousCard.status, isComplete: previousCard.isComplete }
+              : c,
+          ),
+        );
         if (prevDetail !== undefined) {
-          queryClient.setQueryData(ticketKeys.detail(dbId), prevDetail);
+          queryClient.setQueryData<TicketDetailProps>(
+            ticketKeys.detail(dbId),
+            (old) => old?.status === toStatus ? { ...old, status: prevDetail.status } : old,
+          );
         }
         toast.error("Failed to move ticket", {
           description: "The card has been moved back.",
         });
+      })
+      .finally(() => {
+        pendingMoves.current.delete(dbId);
       });
   }, [localCards, timerTicketDbId, timerEntryId, stopTimerOnMove, queryClient, resolveStatusesForCard]);
 
@@ -962,6 +967,17 @@ export function BoardPage({
   const projects = useMemo(() => collectProjects(scopedCards), [scopedCards]);
   const modules = useMemo(() => collectModules(scopedCards), [scopedCards]);
   const availableLabels = useMemo(() => collectLabels(scopedCards), [scopedCards]);
+
+  // Validate against the filter dropdown's projects, including the merged board.
+  useEffect(() => {
+    if (!filtersReady) return;
+    if (
+      projectFilter !== "all" &&
+      !projects.some((p) => p.id === projectFilter)
+    ) {
+      setProjectFilter("all");
+    }
+  }, [filtersReady, projects, projectFilter, setProjectFilter]);
 
   useEffect(() => {
     if (!filtersReady) return;

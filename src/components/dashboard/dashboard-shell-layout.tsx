@@ -5,6 +5,18 @@ import { getDashboardLayoutData } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
+import { Suspense } from "react";
+import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
+import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
+import type { AuthProfile } from "@/lib/auth";
+
+async function DeferredBadges({ profile, activeDeptId }: { profile: AuthProfile; activeDeptId: string | null }) {
+  const badges = await getDashboardBadgesData(profile).catch((error) => {
+    console.error("[dashboard-badges] Could not load counts", error);
+    return null;
+  });
+  return badges ? <DashboardBadgesHydrator badges={badges} userId={profile.id} activeDeptId={activeDeptId} /> : null;
+}
 
 export async function DashboardShellLayout({ children }: { children: React.ReactNode }) {
   let profile;
@@ -47,6 +59,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
                 {detail}
               </pre>
             )}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- A hard reload retries the failed database connection. */}
             <a
               href="/"
               className="mt-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -69,7 +82,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
   }
 
   const [layoutData, branding] = await Promise.all([
-    getDashboardLayoutData(profile),
+    getDashboardLayoutData(profile, true),
     profile.activeTenantId ? getTenantBranding(profile.activeTenantId) : Promise.resolve(null),
   ]);
 
@@ -97,6 +110,9 @@ export async function DashboardShellLayout({ children }: { children: React.React
         brandingLogoUrl={branding?.logoUrl ?? null}
       >
         {children}
+        <Suspense fallback={null}>
+          <DeferredBadges profile={profile} activeDeptId={layoutData.activeDeptId} />
+        </Suspense>
       </DashboardLayout>
     </>
   );

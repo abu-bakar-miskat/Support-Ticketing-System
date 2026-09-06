@@ -407,6 +407,8 @@ export function NewTicketModal({
       priority: data.get("priority") || (asDraft ? "Low" : undefined),
       projectId: rawProjectId || null,
       assigneeId: primaryAssigneeId || undefined,
+      coAssigneeIds: coIds,
+      attachmentIds: extractAttachmentIdsFromHtml(descriptionHtml),
       unassigned: keepUnassigned || undefined,
       status: data.get("status"),
       sprintId: data.get("sprintId") || null,
@@ -461,29 +463,6 @@ export function NewTicketModal({
       return;
     }
 
-    // Add co-assignees in parallel (best-effort) — drafts store them without notifying
-    if (coIds.length > 0) {
-      await Promise.allSettled(
-        coIds.map((id) =>
-          fetch(`/api/tickets/${json.id}/assignees`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: id }),
-          })
-        )
-      );
-    }
-
-    // Extract attachment IDs from embedded file nodes in description
-    const attachmentIds = extractAttachmentIdsFromHtml(descriptionHtml);
-    if (attachmentIds.length > 0) {
-      await fetch(`/api/tickets/${json.id}/attachments/link`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attachmentIds }),
-      }).catch((err) => console.error("Failed to link attachments:", err));
-    }
-
     invalidateTaskCaches(queryClient);
 
     setSubmitting(null);
@@ -505,10 +484,8 @@ export function NewTicketModal({
           selectedProject?.name ??
           null,
       });
-    } else if (!asDraft) {
-      router.push(`/tickets/${json.id}`);
     } else {
-      router.push(`/tickets/${json.id}`);
+      router.push(`/tasks/${json.id}`);
     }
   }
 

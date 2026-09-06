@@ -150,7 +150,7 @@ export async function PATCH(
     } else {
       // lead or staff — subDepartment assignment required
       if (!subDepartmentId) {
-        return NextResponse.json({ error: "teamId is required for lead/staff roles" }, { status: 400 })
+        return NextResponse.json({ error: "teamId is required for sub-manager/agent roles" }, { status: 400 })
       }
 
       const subDepartment = await prisma.subDepartment.findFirst({

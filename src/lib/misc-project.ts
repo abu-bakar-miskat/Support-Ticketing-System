@@ -15,6 +15,10 @@ export async function resolveMiscProjectForSubDepartment(
   subDepartmentId: string,
   db: Db = prisma,
 ): Promise<string> {
+  const slug = miscProjectSlug(subDepartmentId);
+  const existing = await db.project.findUnique({ where: { slug }, select: { id: true } });
+  if (existing) return existing.id;
+
   const subDepartment = await db.subDepartment.findUnique({
     where: { id: subDepartmentId },
     select: { departmentId: true, tenantId: true },
@@ -23,15 +27,9 @@ export async function resolveMiscProjectForSubDepartment(
     throw new Error("SubDepartment not found");
   }
 
-  const slug = miscProjectSlug(subDepartmentId);
-
   const project = await db.project.upsert({
     where: { slug },
-    update: {
-      name: "Miscellaneous",
-      subDepartmentId,
-      departmentId: subDepartment.departmentId,
-    },
+    update: {},
     create: {
       name: "Miscellaneous",
       slug,
@@ -43,19 +41,22 @@ export async function resolveMiscProjectForSubDepartment(
     select: { id: true },
   });
 
-  // Merge tickets from legacy duplicate Miscellaneous rows for this subDepartment.
+  return project.id;
+}
+
+/** Explicit maintenance operation; never move legacy tickets during creation. */
+export async function reconcileMiscProjectTickets(subDepartmentId: string, db: Db = prisma): Promise<void> {
+  const projectId = await resolveMiscProjectForSubDepartment(subDepartmentId, db);
   const legacy = await db.project.findMany({
-    where: { name: "Miscellaneous", subDepartmentId, id: { not: project.id } },
+    where: { name: "Miscellaneous", subDepartmentId, id: { not: projectId } },
     select: { id: true },
   });
   if (legacy.length > 0) {
     await db.ticket.updateMany({
       where: { projectId: { in: legacy.map((row) => row.id) } },
-      data: { projectId: project.id },
+      data: { projectId },
     });
   }
-
-  return project.id;
 }
 
 type MiscProjectRow = {

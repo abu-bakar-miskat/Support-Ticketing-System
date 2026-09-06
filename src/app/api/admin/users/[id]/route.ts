@@ -60,7 +60,7 @@ export async function PATCH(
     // Managers can only assign lead or staff — not admin or manager
     if (isManager && !MANAGER_ALLOWED_ROLES.includes(body.role)) {
       return NextResponse.json(
-        { error: "Managers can only assign lead or staff roles" },
+        { error: "Managers can only assign sub-manager or agent roles" },
         { status: 403 },
       )
     }

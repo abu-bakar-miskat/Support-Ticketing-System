@@ -34,12 +34,14 @@ export async function DELETE(
   })
   const subDepartmentIds = subDepartments.map((t) => t.id)
 
-  if (subDepartmentIds.length === 0) return new NextResponse(null, { status: 204 })
-
   // Use an interactive transaction so we can find the remaining subDepartment after deletion
   await prisma.$transaction(async (tx) => {
     // 1. Remove only memberships for this department's subDepartments
     await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId: { in: subDepartmentIds } } })
+
+    // A direct membership can exist without a subDepartment (notably for managers).
+    // Remove only this department's direct relationship; other departments remain intact.
+    await tx.departmentMember.deleteMany({ where: { userId, departmentId: deptId } })
 
     // 2. If profile.teamId was in this dept, point it to the next remaining active subDepartment
     //    (from any other department) rather than nulling it out entirely.

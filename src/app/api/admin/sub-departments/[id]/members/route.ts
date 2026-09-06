@@ -135,8 +135,20 @@ export async function DELETE(
 
   const { userId } = await req.json()
 
-  await prisma.subDepartmentMembership.deleteMany({
-    where: { userId, subDepartmentId },
+  await prisma.$transaction(async (tx) => {
+    await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId } })
+
+    // Profile.teamId is a legacy primary membership pointer. Keep it valid when the
+    // membership it points to is removed, without disturbing any other memberships.
+    const remaining = await tx.subDepartmentMembership.findFirst({
+      where: { userId, isActive: true },
+      orderBy: { joinedAt: "asc" },
+      select: { subDepartmentId: true },
+    })
+    await tx.profile.updateMany({
+      where: { id: userId, subDepartmentId },
+      data: { subDepartmentId: remaining?.subDepartmentId ?? null },
+    })
   })
 
   return new NextResponse(null, { status: 204 })

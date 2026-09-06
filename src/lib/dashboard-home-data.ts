@@ -37,6 +37,13 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
   endOfWeek.setDate(endOfWeek.getDate() + 7);
 
   const deptScope = await getProfileDeptScope(profile);
+  const ticketWhere = {
+    assigneeId: profile.id,
+    deletedAt: null,
+    ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
+  };
+  const threeDaysOut = new Date(startOfToday);
+  threeDaysOut.setDate(threeDaysOut.getDate() + 3);
 
   const assignedProjectsWhere = {
     userId: profile.id,
@@ -45,35 +52,12 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       : {}),
   };
 
-  const [myTickets, myProjectRows, weekEntries, activityRows] =
+  const [ticketGroups, myProjectRows, weekEntries, activityRows, overdueGroups, dueWeekGroups] =
     await Promise.all([
-      prisma.ticket.findMany({
-        where: {
-          assigneeId: profile.id,
-          deletedAt: null,
-          ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
-        },
-        select: {
-          id: true,
-          title: true,
-          ticketNumber: true,
-          priority: true,
-          status: true,
-          dueDate: true,
-          createdAt: true,
-          subDepartmentId: true,
-          projectId: true,
-          project: { select: { id: true, name: true, slug: true, color: true } },
-          subDepartment: { select: { prefix: true } },
-          creator: { select: { name: true } },
-          parent: {
-            select: {
-              ticketNumber: true,
-              subDepartment: { select: { prefix: true } },
-            },
-          },
-        },
-        orderBy: [{ createdAt: "desc" }],
+      prisma.ticket.groupBy({
+        by: ["subDepartmentId", "status", "projectId"],
+        where: ticketWhere,
+        _count: { _all: true },
       }),
       prisma.projectMember.findMany({
         where: assignedProjectsWhere,
@@ -128,6 +112,16 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
           },
         },
       }),
+      prisma.ticket.groupBy({
+        by: ["subDepartmentId", "status"],
+        where: { ...ticketWhere, dueDate: { lt: startOfToday } },
+        _count: { _all: true },
+      }),
+      prisma.ticket.groupBy({
+        by: ["subDepartmentId", "status"],
+        where: { ...ticketWhere, dueDate: { gte: startOfToday, lt: endOfWeek } },
+        _count: { _all: true },
+      }),
     ]);
 
   const secsByDay = [0, 0, 0, 0, 0, 0, 0];
@@ -135,7 +129,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     const dayIdx = (e.startedAt.getDay() + 6) % 7;
     secsByDay[dayIdx] += entryDuration(e, now);
   }
-  const subDepartmentIds = [...new Set(myTickets.map((t) => t.subDepartmentId))];
+  const subDepartmentIds = [...new Set(ticketGroups.map((t) => t.subDepartmentId))];
   const allSubDepartmentStatuses =
     subDepartmentIds.length > 0
       ? await prisma.subDepartmentStatus.findMany({
@@ -177,23 +171,39 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       normalizeStatus(t.status) === "Pull Request" ||
       normalizeStatus(t.status) === "Blocked");
 
-  const openTickets = myTickets.filter((t) => !isTicketComplete(t));
-  const completedCount = myTickets.filter(isTicketComplete).length;
-  const todoCount = myTickets.filter((t) => !isTicketComplete(t) && !isTicketInProgress(t)).length;
-  const inProgressCount = myTickets.filter(isTicketInProgress).length;
+  const sum = (groups: { _count: { _all: number } }[]) => groups.reduce((n, g) => n + g._count._all, 0);
+  const openGroups = ticketGroups.filter((t) => !isTicketComplete(t));
+  const completedCount = sum(ticketGroups.filter(isTicketComplete));
+  const todoCount = sum(openGroups.filter((t) => !isTicketInProgress(t)));
+  const inProgressCount = sum(ticketGroups.filter(isTicketInProgress));
+  // Fetch details only for the attention list, not every historical assignment.
+  const openStatuses = [...new Set(openGroups.map((t) => t.status))];
+  const blockedStatuses = openStatuses.filter((s) => normalizeStatus(s) === "Blocked");
+  const attentionRows = openStatuses.length ? await prisma.ticket.findMany({
+    where: {
+      ...ticketWhere,
+      status: { in: openStatuses },
+      OR: [{ dueDate: { lt: threeDaysOut } }, { status: { in: blockedStatuses } }],
+    },
+    select: {
+      id: true, title: true, ticketNumber: true, priority: true, status: true,
+      dueDate: true, subDepartmentId: true,
+      subDepartment: { select: { prefix: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  }) : [];
+  // A label may be complete in one team and open in another.
+  const openTickets = attentionRows.filter((t) => !isTicketComplete(t));
 
   // ── Personal metrics ──────────────────────────────────────────────────────
   const overdueTickets = openTickets.filter(
     (t) => t.dueDate && t.dueDate < startOfToday && normalizeStatus(t.status) !== "Blocked",
   );
-  const dueThisWeekTickets = openTickets.filter(
-    (t) => t.dueDate && t.dueDate >= startOfToday && t.dueDate < endOfWeek,
-  );
+  const overdueCount = sum(overdueGroups.filter((t) => !isTicketComplete(t) && normalizeStatus(t.status) !== "Blocked"));
+  const dueThisWeekCount = sum(dueWeekGroups.filter((t) => !isTicketComplete(t)));
   const timeTodaySecs = secsByDay[dayOfWeek];
 
   // ── Needs attention: overdue → due soon (3d) → blocked ────────────────────
-  const threeDaysOut = new Date(startOfToday);
-  threeDaysOut.setDate(threeDaysOut.getDate() + 3);
   const isBlocked = (t: { status: string }) => normalizeStatus(t.status) === "Blocked";
 
   const toAttention = (
@@ -234,8 +244,8 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
 
   // ── My projects (with my open-ticket counts) ──────────────────────────────
   const openByProject = new Map<string, number>();
-  for (const t of openTickets) {
-    if (t.projectId) openByProject.set(t.projectId, (openByProject.get(t.projectId) ?? 0) + 1);
+  for (const t of openGroups) {
+    if (t.projectId) openByProject.set(t.projectId, (openByProject.get(t.projectId) ?? 0) + t._count._all);
   }
   const projectById = new Map<string, { id: string; name: string; slug: string; color: string | null }>();
   for (const row of myProjectRows) {
@@ -303,9 +313,9 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       day: "numeric",
     }),
     metrics: {
-      open: openTickets.length,
-      overdue: overdueTickets.length,
-      dueThisWeek: dueThisWeekTickets.length,
+      open: sum(openGroups),
+      overdue: overdueCount,
+      dueThisWeek: dueThisWeekCount,
       inProgress: inProgressCount,
       completed: completedCount,
       todo: todoCount,

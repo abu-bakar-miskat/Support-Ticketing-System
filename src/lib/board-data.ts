@@ -34,7 +34,10 @@ function formatDue(
   return { due: withTime, dueUrgent, dueOverdue }
 }
 
-const ticketInclude = {
+const ticketSelect = {
+  id: true, title: true, ticketNumber: true, priority: true, status: true,
+  moduleId: true, labels: true, estimatedTime: true, startDate: true,
+  dueDate: true, createdAt: true,
   subDepartment: { select: { id: true, prefix: true, name: true } },
   project: { select: { id: true, name: true, slug: true, color: true, avatarUrl: true, kind: true } },
   module: { select: { id: true, name: true } },
@@ -66,7 +69,7 @@ const ticketInclude = {
   },
 } as const
 
-type TicketWithRelations = TicketGetPayload<{ include: typeof ticketInclude }>
+type TicketWithRelations = TicketGetPayload<{ select: typeof ticketSelect }>
 
 export function toBoardCard(
   t: TicketWithRelations,
@@ -519,12 +522,13 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
  * scope-safe by construction. No-ops (returns `where` unchanged) when none of
  * the three are set — zero extra round-trip for the common case.
  */
-async function applyAdvancedFilters<T extends BoardCardWhere>(where: T): Promise<T> {
+export async function resolveBoardCardFilters<T extends BoardCardWhere>(where: T): Promise<T> {
   if (!where.search && !where.subStatusIn?.length && !where.formFieldFilters?.length) {
     return where
   }
 
   const { search, subStatusIn, formFieldFilters, idIn: _ignored, ...rest } = where
+  void _ignored
   const candidates = await prisma.ticket.findMany({
     where: buildTicketWhere(rest),
     select: { id: true },
@@ -535,19 +539,20 @@ async function applyAdvancedFilters<T extends BoardCardWhere>(where: T): Promise
   if (subStatusIn?.length) ids = await resolveSubStatusTicketIds(subStatusIn, ids)
   if (formFieldFilters?.length) ids = await resolveFormFieldTicketIds(formFieldFilters, ids)
 
-  return { ...where, idIn: ids }
+  // The allowlist replaces these filters so count and page queries can reuse it.
+  return { ...where, search: undefined, subStatusIn: undefined, formFieldFilters: undefined, idIn: ids }
 }
 
 export async function countBoardCards(where: Omit<BoardCardWhere, "skip" | "take" | "timeForUserId" | "sortKey"> = {}): Promise<number> {
-  const resolved = await applyAdvancedFilters(where)
+  const resolved = await resolveBoardCardFilters(where)
   return prisma.ticket.count({ where: buildTicketWhere(resolved) })
 }
 
 export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCardData[]> {
-  const resolvedWhere = await applyAdvancedFilters(where)
+  const resolvedWhere = await resolveBoardCardFilters(where)
   const tickets = await prisma.ticket.findMany({
     where: buildTicketWhere(resolvedWhere),
-    include: ticketInclude,
+    select: ticketSelect,
     orderBy: buildOrderBy(where.sortKey),
     ...(where.skip !== undefined ? { skip: where.skip } : {}),
     ...(where.take !== undefined ? { take: where.take } : {}),
@@ -595,7 +600,7 @@ export async function getSubDepartmentReviewCards(
         { status: { equals: "PR", mode: "insensitive" } },
       ],
     },
-    include: ticketInclude,
+    select: ticketSelect,
     orderBy: [{ updatedAt: "desc" }],
   })
   const [{ totalMap, userMap }, completeStatuses] = await Promise.all([

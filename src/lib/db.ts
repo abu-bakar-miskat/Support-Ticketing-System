@@ -158,7 +158,7 @@ function getSchemaVersion() {
   }
 }
 
-function isStalePrismaClient(
+export function isStalePrismaClient(
   client: InstanceType<typeof PrismaClient> | undefined,
 ) {
   // After schema changes, Turbopack can keep an old global client that lacks new delegates.
@@ -183,7 +183,8 @@ function isStalePrismaClient(
         }
       )._runtimeDataModel?.models?.Ticket?.fields ?? [];
     const hasEnabledBoardSubDepartmentIds = projectFields.some(
-      (f) => f.name === "enabledBoardTeamIds",
+      // Runtime metadata uses Prisma field names, not the @map database name.
+      (f) => f.name === "enabledBoardSubDepartmentIds",
     );
     const hasTicketIsDraft = ticketFields.some((f) => f.name === "isDraft");
     return (

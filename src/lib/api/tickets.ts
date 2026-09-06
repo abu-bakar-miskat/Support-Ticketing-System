@@ -15,6 +15,8 @@ export type CreateTicketBody = {
   status?: string;
   projectId: string;
   assigneeId?: string;
+  coAssigneeIds?: string[];
+  attachmentIds?: string[];
   startDate?: string;
   dueDate?: string;
   parentId?: string;

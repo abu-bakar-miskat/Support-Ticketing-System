@@ -95,7 +95,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "teamId required" }, { status: 400 });
   }
   if (!INVITE_ROLES.has(roleRaw as Role)) {
-    return NextResponse.json({ error: "role must be staff or lead" }, { status: 400 });
+    return NextResponse.json({ error: "role must be agent or sub_manager" }, { status: 400 });
   }
   const role = roleRaw as Role;
 

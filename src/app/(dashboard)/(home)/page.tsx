@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { HomeDashboard } from "@/components/dashboard/home-dashboard";
+import { getHomeDashboardData } from "@/lib/dashboard-home-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Home — Support Ticketing System" };
@@ -29,13 +30,13 @@ export default async function HomePage() {
   }
 
   if (profile.role === "manager") {
-    const managedIds: string[] = (profile as any).managedDepartmentIds ?? [];
+    const managedIds: string[] = profile.managedDepartmentIds ?? [];
     // Only redirect to manager dashboard when in a dept they actually manage.
     if (!activeDeptId || managedIds.includes(activeDeptId)) {
       redirect("/manager");
     }
   }
 
-  // Paint greeting/clock immediately; HomeDashboard skeletons sections while fetching.
-  return <HomeDashboard />;
+  const initialData = await getHomeDashboardData(profile);
+  return <HomeDashboard initialData={initialData} />;
 }

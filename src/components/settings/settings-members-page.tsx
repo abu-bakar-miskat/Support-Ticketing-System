@@ -46,6 +46,8 @@ export type MemberRow = {
   isCrossAccess?: boolean;
   /** Per-team doNotAssign flags (used inside Configure Schedule panel) */
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
+  departments?: { id: string; name: string }[];
+  memberships?: { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[];
 };
 
 const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
@@ -549,6 +551,34 @@ export function SettingsMembersPage({
     }
   }
 
+  async function handleAddToSubDepartment(member: MemberRow, subDepartmentId: string) {
+    setSaving(member.id);
+    setError(null);
+    try {
+      await addAdminSubDepartmentMember(subDepartmentId, member.id, currentRole(member));
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Failed to add subDepartment membership");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleRemoveMembership(member: MemberRow, subDepartmentId: string) {
+    setSaving(member.id);
+    try {
+      await removeAdminSubDepartmentMember(subDepartmentId, member.id);
+      setLiveMembers((members) => members.map((current) => current.id === member.id
+        ? { ...current, memberships: current.memberships?.filter((item) => item.subDepartmentId !== subDepartmentId) }
+        : current));
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Failed to remove subDepartment membership");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function handleDelete(memberId: string) {
     await deleteAdminUser(memberId);
     setLiveMembers((prev) => prev.filter((m) => m.id !== memberId));
@@ -787,6 +817,12 @@ export function SettingsMembersPage({
             ) : null}
             {liveMembers.map((member) => {
               const role = currentRole(member);
+              const departmentEntries = member.departments?.length
+                ? member.departments
+                : member.departmentId && member.department ? [{ id: member.departmentId, name: member.department }] : [];
+              const subDepartmentEntries = member.memberships?.length
+                ? member.memberships.map((membership) => ({ id: membership.subDepartmentId, name: membership.subDepartmentName }))
+                : member.subDepartments.map((name) => ({ id: name, name }));
               return (
                 <TableRow
                   key={member.id}
@@ -913,6 +949,20 @@ export function SettingsMembersPage({
                             ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      ) : member.departments?.length ? (
+                        <div className="flex items-center gap-1 flex-wrap" title={`${departmentEntries.length} department${departmentEntries.length === 1 ? "" : "s"}`}>
+                          {departmentEntries.map((department) => (
+                            <span key={department.id} className="inline-flex items-center gap-1 rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
+                              {department.name}
+                              {(isAdmin || isManager) && !member.isCrossAccess && (
+                                <button type="button" title={`Remove from ${department.name}`} disabled={saving === member.id} onClick={() => setConfirmRemoveDept({ ...member, departmentId: department.id, department: department.name })} className="rounded text-sts-id/60 hover:text-red-500 disabled:opacity-50">
+                                  <X className="size-3" />
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                          {departmentEntries.length > 1 && <span className="rounded-full bg-sts-blue/10 px-1.5 py-0.5 text-[10px] font-semibold text-sts-blue">{departmentEntries.length}</span>}
+                        </div>
                       ) : member.department ? (
                         <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
                           {member.department}
@@ -926,8 +976,25 @@ export function SettingsMembersPage({
                   {/* SubDepartments — not editable for guests (their subDepartment belongs to another department)
                       or managers (they oversee the whole department, not a single subDepartment) */}
                   <TableCell className="py-0">
-                    <div className="flex h-[54px] items-center gap-1 flex-wrap">
-                      {(isAdmin || isManager) && !member.isCrossAccess && role !== "manager" && currentDepartmentId(member) ? (
+                    <div className="flex h-[54px] items-center gap-1 flex-wrap" title={`${subDepartmentEntries.length} subDepartment${subDepartmentEntries.length === 1 ? "" : "s"}`}>
+                      {(isAdmin || isManager) && !member.isCrossAccess && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            disabled={saving === member.id}
+                            className="inline-flex h-[26px] items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2 font-sans text-[11.5px] text-sts-muted outline-none hover:border-sts-blue/50 hover:text-sts-foreground disabled:opacity-60"
+                          >
+                            <Plus className="size-3" /> Add
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="min-w-[150px]">
+                            {availableSubDepartments.filter((subDepartment) => !member.memberships?.some((membership) => membership.subDepartmentId === subDepartment.id)).map((subDepartment) => (
+                              <DropdownMenuItem key={subDepartment.id} onClick={() => handleAddToSubDepartment(member, subDepartment.id)} className="gap-2 font-sans text-[12px]">
+                                <span className="inline-flex rounded-full bg-sts-blue/10 px-2 py-0.5 text-[11.5px] font-semibold text-sts-blue">{subDepartment.name}</span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {!member.memberships && (isAdmin || isManager) && !member.isCrossAccess && role !== "manager" && currentDepartmentId(member) ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}
@@ -973,15 +1040,21 @@ export function SettingsMembersPage({
                       ) : member.subDepartments.length === 0 ? (
                         <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
                       ) : (
-                        member.subDepartments.map((t) => (
+                        subDepartmentEntries.map((t) => (
                           <span
-                            key={t}
-                            className="inline-flex items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted"
+                            key={t.id}
+                            className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted"
                           >
-                            {t}
+                            {t.name}
+                            {(isAdmin || isManager) && !member.isCrossAccess && member.memberships?.some((membership) => membership.subDepartmentId === t.id) && (
+                              <button type="button" title={`Remove from ${t.name}`} disabled={saving === member.id} onClick={() => handleRemoveMembership(member, t.id)} className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50">
+                                <X className="size-3" />
+                              </button>
+                            )}
                           </span>
                         ))
                       )}
+                      {subDepartmentEntries.length > 1 && <span className="rounded-full bg-sts-blue/10 px-1.5 py-0.5 text-[10px] font-semibold text-sts-blue">{subDepartmentEntries.length}</span>}
                     </div>
                   </TableCell>
 
@@ -1043,7 +1116,7 @@ export function SettingsMembersPage({
                                 </DropdownMenuItem>
                               )}
                               {/* Guests only get one action: revoke their cross-department access */}
-                              {member.subDepartmentId && !member.isCrossAccess && (
+                              {member.subDepartmentId && !member.memberships?.length && !member.isCrossAccess && (
                                 <DropdownMenuItem
                                   variant="destructive"
                                   className="gap-2 font-sans text-xs"

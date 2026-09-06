@@ -20,13 +20,15 @@ const SCOPES = ["mine", "all", "unassigned", "drafts"] as const;
 export function TasksPage({
   initialMyTasks,
   initialMeta,
+  initialScope = "mine",
 }: {
   initialMyTasks?: MyTasksResponse;
   initialMeta?: TasksMetaResponse;
+  initialScope?: Scope;
 }) {
   const currentUser = useCurrentUser();
   const canSeeUnassigned = currentUser?.role === "admin" || currentUser?.role === "manager";
-  const [scope, setScope] = usePersistedView(VIEW_KEYS.tasksScope, "mine", SCOPES);
+  const [scope, setScope] = usePersistedView(VIEW_KEYS.tasksScope, initialScope, SCOPES);
   const [creating, setCreating] = useState(false);
   const effectiveScope: Scope = scope === "unassigned" && !canSeeUnassigned ? "mine" : scope;
 
@@ -35,14 +37,14 @@ export function TasksPage({
   // initial My Tasks paint wait for it.
   const needsMeta = creating || effectiveScope !== "mine";
 
-  const { data: myData } = useMyTasks(initialMyTasks);
-  const { data: meta } = useTasksMeta(needsMeta, undefined, initialMeta);
+  const { data: myData, isError: myError, refetch: retryMyTasks } = useMyTasks(initialMyTasks, effectiveScope === "mine");
+  const { data: meta, isError: metaError, refetch: retryMeta } = useTasksMeta(needsMeta, undefined, initialMeta);
   const { data: unassignedCount } = useUnassignedCount(canSeeUnassigned);
   const metaReady = meta ?? initialMeta;
   const personalData = myData ?? initialMyTasks;
   const taskStatuses = Object.values(personalData?.subDepartmentStatusMap ?? {}).flat();
   const fallbackStatuses = taskStatuses.length > 0 ? taskStatuses : DEFAULT_STATUSES;
-  const canRender = effectiveScope === "mine" ? Boolean(personalData) : Boolean(metaReady);
+  const canRender = effectiveScope === "mine" ? Boolean(personalData) : true;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -98,6 +100,13 @@ export function TasksPage({
         </button>
       </div>
 
+      {creating && !metaReady && (
+        <div role="status" className="px-6 py-3 text-sm">
+          {metaError ? "Could not load task options." : "Loading task options…"}
+          {metaError && <button className="ml-3 underline" onClick={() => retryMeta()}>Try again</button>}
+          <button className="ml-3 underline" onClick={() => setCreating(false)}>Cancel</button>
+        </div>
+      )}
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-hidden">
         {canRender && effectiveScope === "mine" ? (
@@ -116,14 +125,18 @@ export function TasksPage({
             effectiveScope === "unassigned" ||
             effectiveScope === "drafts") ? (
           <AllTasksPage
-            subDepartmentStatuses={metaReady!.subDepartmentStatuses}
-            availableProjects={metaReady!.availableProjects}
-            availableModules={metaReady!.availableModules ?? []}
-            availableMembers={metaReady!.availableMembers}
+            subDepartmentStatuses={metaReady?.subDepartmentStatuses ?? DEFAULT_STATUSES}
+            availableProjects={metaReady?.availableProjects ?? []}
+            availableModules={metaReady?.availableModules ?? []}
+            availableMembers={metaReady?.availableMembers ?? []}
             unassignedOnly={effectiveScope === "unassigned"}
             draftsOnly={effectiveScope === "drafts"}
             hideTitleBar
           />
+        ) : myError ? (
+          <div role="alert" className="p-6 text-sm">
+            Could not load your tasks. <button onClick={() => retryMyTasks()} className="underline">Try again</button>
+          </div>
         ) : (
           <TasksTableSkeleton />
         )}

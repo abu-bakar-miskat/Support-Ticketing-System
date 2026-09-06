@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: Params) {
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return badRequest("A valid email is required")
   if (!VALID_ROLES.includes(role)) return badRequest("Invalid role")
   if (role !== "admin" && departmentIds.length === 0) {
-    return badRequest("Select at least one department for a manager, lead, or staff member")
+    return badRequest("Select at least one department for a manager, sub-manager, or agent")
   }
 
   const existing = await prisma.profile.findUnique({

@@ -247,7 +247,7 @@ export function TenantManageClient({
     if (!email) return;
     if (needsDepartments && selectedDepts.length === 0) {
       setError(
-        "Select at least one department for a manager, lead, or staff member.",
+        "Select at least one department for a manager, sub-manager, or agent.",
       );
       return;
     }
@@ -885,7 +885,7 @@ export function TenantManageClient({
               )}
             </form>
             <p className="mt-1 font-sans text-[11px] text-sts-subtle">
-              Admins get the whole tenant; managers/leads/staff are scoped to
+              Admins get the whole tenant; managers/sub-managers/agents are scoped to
               the departments you pick. Existing users are added instantly; a
               new email gets an invitation link.
             </p>

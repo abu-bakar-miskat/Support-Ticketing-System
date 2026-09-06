@@ -65,7 +65,7 @@ export function InviteMemberDialog({
     const value = email.trim()
     if (!value) return
     if (needsDepartments && selectedDepts.length === 0) {
-      setError("Select at least one department for a manager, lead, or staff member.")
+      setError("Select at least one department for a manager, sub-manager, or agent.")
       return
     }
     setBusy(true)

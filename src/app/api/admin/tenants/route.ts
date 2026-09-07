@@ -6,7 +6,6 @@ import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
 import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
 import { SUPPORT_TEMPLATE } from "@/lib/system-templates"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
-import { completeDepartmentSetup } from "@/lib/department-setup"
 
 function slugify(name: string): string {
   return name
@@ -80,6 +79,7 @@ export async function POST(request: Request) {
           type: SUPPORT_TEMPLATE.departmentType,
           templateSlug: SUPPORT_TEMPLATE.slug,
           featureKeys: SUPPORT_TEMPLATE.featureKeys,
+          setupCompletedAt: new Date(),
         },
       },
       // Seed the creating admin as a member so the tenant isn't born empty —
@@ -94,16 +94,12 @@ export async function POST(request: Request) {
   })
 
   // Bring the bootstrap Support department fully online: provision its support
-  // template (email config, Support project, SLA policies, sample rules) and
-  // mark setup complete so it can accept tickets immediately — no manual review
-  // gate for the auto-created first department.
+  // template (email config, Support project, SLA policies, sample rules).
+  // setupCompletedAt is set on create so the department can accept tickets immediately.
   const bootstrapDept = tenant.departments[0]
   if (bootstrapDept) {
     await provisionDepartmentSupportTemplate(bootstrapDept.id).catch((e) =>
       console.error("[POST /api/admin/tenants] support template provisioning failed:", e),
-    )
-    await completeDepartmentSetup(bootstrapDept.id).catch((e) =>
-      console.error("[POST /api/admin/tenants] completing department setup failed:", e),
     )
   }
 

@@ -118,6 +118,8 @@ export async function POST(request: Request) {
           slug,
           ...(featureKeys ? { featureKeys } : {}),
           isHub: type === "hub",
+          // Departments are operational immediately — no manual setup-review gate.
+          setupCompletedAt: new Date(),
         },
       })
       return dept

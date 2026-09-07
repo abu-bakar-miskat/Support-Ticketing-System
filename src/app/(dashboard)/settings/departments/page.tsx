@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
+import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
 import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 
 export const metadata = { title: "Departments — Support Ticketing System" };
@@ -153,6 +154,7 @@ export default async function SettingsDepartmentsRoute() {
     description: t.description,
     featureCount: t.features.length,
     status: t.status,
+    departmentType: departmentTypeForTemplateSlug(t.slug),
   }));
 
   return (

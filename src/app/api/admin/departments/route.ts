@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdmin } from "../_guard"
-import { isValidDepartmentType, DEFAULT_DEPARTMENT_TYPE } from "@/lib/department-types"
+import { isValidDepartmentType } from "@/lib/department-types"
+import { departmentTypeForTemplateSlug } from "@/lib/system-templates"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
 import { runWithScope } from "@/lib/request-scope"
 import type { Prisma } from "@/generated/prisma/client"
@@ -58,28 +59,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 })
   }
 
-  // The modal sends the chosen option's slug — either a built-in department type
-  // (development/support/hub) or a catalogue template slug. Board behaviour still
-  // keys off the built-in `type`; a catalogue slug that isn't one of the built-ins
-  // falls back to the default type but is remembered as `templateSlug` so the
-  // department's settings/sidebar reflect that template's features.
+  // Template is required. The modal sends the chosen option's slug — either a
+  // built-in department type (development/support/hub) or a catalogue template
+  // slug. Board behaviour still keys off the built-in `type`; a catalogue slug
+  // that isn't one of the built-ins / system templates falls back to the default
+  // type but is remembered as `templateSlug` so the department's settings/sidebar
+  // reflect that template's features.
   const selected = ((body.templateSlug ?? body.type) as string | undefined)?.trim()
-  const type = selected && isValidDepartmentType(selected) ? selected : DEFAULT_DEPARTMENT_TYPE
+  if (!selected) {
+    return NextResponse.json({ error: "Template is required" }, { status: 400 })
+  }
+  const type = departmentTypeForTemplateSlug(selected)
 
   // Seed the department's controllable feature allowlist from the chosen
   // template's features. Left null (uncontrolled → all features) when the
   // selection isn't a catalogue template.
   let templateSlug: string | null = null
   let featureKeys: string[] | null = null
-  if (selected) {
-    const tpl = await prisma.template.findUnique({
-      where: { slug: selected },
-      select: { slug: true, features: { select: { key: true } } },
-    })
-    if (tpl) {
-      templateSlug = tpl.slug
-      featureKeys = tpl.features.map((f) => f.key)
-    }
+  const tpl = await prisma.template.findUnique({
+    where: { slug: selected },
+    select: { slug: true, features: { select: { key: true } } },
+  })
+  if (tpl) {
+    templateSlug = tpl.slug
+    featureKeys = tpl.features.map((f) => f.key)
+  } else if (!isValidDepartmentType(selected)) {
+    return NextResponse.json({ error: "Template not found" }, { status: 400 })
   }
 
   const tenantId = profile.activeTenantId

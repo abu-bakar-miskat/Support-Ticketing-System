@@ -11,9 +11,9 @@ import { DepartmentIconVisual } from "@/components/icons/department-icon-visual"
 import { cn } from "@/lib/utils";
 import {
   DEPARTMENT_TYPES,
-  DEFAULT_DEPARTMENT_TYPE,
   departmentTypeLabel,
   departmentTypeDescription,
+  type DepartmentType,
 } from "@/lib/department-types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
@@ -50,7 +50,17 @@ export type TemplateOption = {
   description: string | null;
   featureCount: number;
   status: "active" | "requested" | "available";
+  /** Board/interface type this template creates (shown as a badge beside the name). */
+  departmentType: DepartmentType;
 };
+
+function TemplateTypeBadge({ type }: { type: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
+      {departmentTypeLabel(type)}
+    </span>
+  );
+}
 
 type DeptManager = {
   id: string;
@@ -441,6 +451,7 @@ function builtInTemplateOptions(): TemplateOption[] {
     description: departmentTypeDescription(t),
     featureCount: 0,
     status: "active" as const,
+    departmentType: t,
   }));
 }
 
@@ -457,7 +468,8 @@ function NewDepartmentModal({
 }) {
   const options = templateOptions.length > 0 ? templateOptions : builtInTemplateOptions();
   const [name, setName] = useState("");
-  const [type, setType] = useState<string>(options[0]?.slug ?? DEFAULT_DEPARTMENT_TYPE);
+  // Empty until the admin explicitly picks a template — selection is required.
+  const [templateSlug, setTemplateSlug] = useState("");
   const [selectedManagers, setSelectedManagers] = useState<UserOption[]>([]);
   const [subDepartments, setSubDepartments] = useState<PendingSubDepartment[]>([]);
   const [subDepartmentInput, setSubDepartmentInput] = useState("");
@@ -468,6 +480,8 @@ function NewDepartmentModal({
   // Holds the department id once created, so a retry (after a sub-department
   // error) never creates a duplicate department.
   const createdDeptIdRef = useRef<string | null>(null);
+
+  const selectedTemplate = options.find((opt) => opt.slug === templateSlug) ?? null;
 
   function handleSubDepartmentNameChange(v: string) {
     setSubDepartmentInput(v);
@@ -504,7 +518,7 @@ function NewDepartmentModal({
 
   async function handleSubmit() {
     const deptName = name.trim();
-    if (!deptName) return;
+    if (!deptName || !templateSlug) return;
     setSaving(true);
     setError(null);
 
@@ -523,10 +537,13 @@ function NewDepartmentModal({
     let deptId = createdDeptIdRef.current;
     if (!deptId) {
       try {
-        // `type` holds the selected option's slug — pass it as templateSlug so a
-        // catalogue template gates the new department's features (server derives
-        // the board type and stores the slug).
-        const dept = await createAdminDepartment({ name: deptName, type, templateSlug: type });
+        // Pass the selected catalogue/built-in slug as templateSlug so the server
+        // seeds features and derives the board type.
+        const dept = await createAdminDepartment({
+          name: deptName,
+          type: templateSlug,
+          templateSlug,
+        });
         deptId = dept.id;
         createdDeptIdRef.current = dept.id;
       } catch {
@@ -576,6 +593,7 @@ function NewDepartmentModal({
   }
 
   const managerIds = selectedManagers.map((m) => m.id);
+  const canCreate = Boolean(name.trim() && templateSlug) && !saving;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
@@ -616,15 +634,22 @@ function NewDepartmentModal({
           {/* Template */}
           <div>
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-              Template
+              Template <span className="text-red-500">*</span>
             </label>
             <Select
               items={options.map((opt) => ({ value: opt.slug, label: opt.name }))}
-              value={type}
-              onValueChange={(v) => setType(v ?? DEFAULT_DEPARTMENT_TYPE)}
+              value={templateSlug || null}
+              onValueChange={(v) => setTemplateSlug(v ?? "")}
             >
               <SelectTrigger className="h-9 w-full border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground">
-                <SelectValue />
+                <SelectValue placeholder="Select a template…">
+                  {selectedTemplate ? (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{selectedTemplate.name}</span>
+                      <TemplateTypeBadge type={selectedTemplate.departmentType} />
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {options.map((opt) => (
@@ -634,6 +659,7 @@ function NewDepartmentModal({
                         <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {opt.name}
                         </span>
+                        <TemplateTypeBadge type={opt.departmentType} />
                         {opt.featureCount > 0 && (
                           <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
                             {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
@@ -731,7 +757,7 @@ function NewDepartmentModal({
           </button>
           <button
             type="button"
-            disabled={!name.trim() || saving}
+            disabled={!canCreate}
             onClick={handleSubmit}
             className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
@@ -1041,7 +1067,7 @@ function DepartmentCard({
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="sts-text-modal-title">{dept.name}</h3>
-                {dept.type && dept.type !== "development" ? (
+                {dept.type ? (
                   <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
                     {departmentTypeLabel(dept.type)}
                   </span>

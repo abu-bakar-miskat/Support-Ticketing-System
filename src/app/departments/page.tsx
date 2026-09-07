@@ -10,6 +10,7 @@ import type { DepartmentRow, TemplateOption } from "@/components/settings/settin
 import type { MemberRow } from "@/components/settings/settings-members-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
+import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
 
 // Tab title reflects the active tenant so multiple tenant tabs are
 // distinguishable (e.g. "Pen Global BD · Departments").
@@ -285,6 +286,7 @@ export default async function DepartmentsPage() {
       description: t.description,
       featureCount: t.features.length,
       status: t.status,
+      departmentType: departmentTypeForTemplateSlug(t.slug),
     }));
 
     return (

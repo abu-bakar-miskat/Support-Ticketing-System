@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, BookOpen,
+  Check, Pencil, Plus, Trash2, X, Search, Users, Shield,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, BookOpen, MoreHorizontal,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
@@ -17,17 +17,17 @@ import {
 } from "@/lib/department-types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
-import { InviteMemberDialog } from "@/components/platform/invite-member-dialog";
-import { UserAvatar } from "@/components/ui/user-avatar";
+import { UserAvatar, AvatarVisual } from "@/components/ui/user-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   assignDepartmentManager,
-  removeDepartmentManager,
-  grantDepartmentAccess,
-  revokeDepartmentAccess,
-  fetchDepartmentAccessGrant,
-  updateDepartmentAccess,
   fetchDepartmentProjects,
   createAdminDepartment,
   updateAdminDepartment,
@@ -114,6 +114,39 @@ export type DepartmentRow = {
 
 function Avatar({ name, size = 24, avatarUrl }: { name: string; size?: number; avatarUrl?: string | null }) {
   return <UserAvatar name={name} avatarUrl={avatarUrl} size={size} />;
+}
+
+function AvatarStack({
+  people,
+  total,
+}: {
+  people: { key: string; name: string; avatarUrl?: string | null }[];
+  total: number;
+}) {
+  if (people.length === 0) return null;
+  const extra = Math.max(0, total - people.length);
+  return (
+    <div className="mr-1 flex items-center">
+      {people.map((p, i) => (
+        <div
+          key={p.key}
+          className="rounded-full border-2 border-sts-surface"
+          style={{ marginLeft: i === 0 ? 0 : -6, zIndex: i + 1 }}
+          title={p.name}
+        >
+          <AvatarVisual name={p.name} avatarUrl={p.avatarUrl} size={18} />
+        </div>
+      ))}
+      {extra > 0 && (
+        <div
+          className="flex size-[22px] items-center justify-center rounded-full border-2 border-sts-surface bg-sts-card font-sans text-[9px] font-medium text-sts-subtle"
+          style={{ marginLeft: -6, zIndex: people.length + 1 }}
+        >
+          +{extra}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function UserPickerDropdown({
@@ -792,34 +825,28 @@ function NewDepartmentModal({
 
 function DepartmentCard({
   dept,
-  allUsers,
   isAdmin = false,
-  tenantId = null,
-  showCrossDeptAccess = false,
   onRename,
   onDelete,
   onEnterWorkspace,
+  animationIndex = 0,
 }: {
   dept: DepartmentRow;
-  allUsers: UserOption[];
   isAdmin?: boolean;
-  tenantId?: string | null;
-  showCrossDeptAccess?: boolean;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => void;
   onEnterWorkspace?: (id: string) => void;
+  animationIndex?: number;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(dept.name);
   const [entering, setEntering] = useState(false);
-  const [managers, setManagers] = useState<DeptManager[]>(dept.managers);
-  const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(dept.accessGrants);
+  const [managing, setManaging] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showGrantModal, setShowGrantModal] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [managersExpanded, setManagersExpanded] = useState(false);
-  const [membersExpanded, setMembersExpanded] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [managersOpen, setManagersOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   async function saveEdit() {
     if (!editName.trim()) return;
@@ -829,111 +856,37 @@ function DepartmentCard({
     setEditing(false);
   }
 
-  async function assignManager(u: UserOption) {
-    const data = await assignDepartmentManager(dept.id, u.id).catch(() => null);
-    if (data) {
-      setManagers((prev) => [...prev.filter((m) => m.userId !== u.id), data]);
-    }
-  }
-
-  async function removeManager(userId: string) {
-    await removeDepartmentManager(dept.id, userId).catch(() => null);
-    setManagers((prev) => prev.filter((m) => m.userId !== userId));
-  }
-
-  async function grantAccess(
-    userId: string,
-    expiresAt: string,
-    reason: string,
-    fullAccess: boolean,
-    projectIds: string[],
-  ) {
-    const data = await grantDepartmentAccess(dept.id, {
-      userId,
-      expiresAt: expiresAt || undefined,
-      reason: reason || undefined,
-      fullAccess,
-      projectIds,
-    }).catch(() => null);
-    if (data) setAccessGrants((prev) => [...prev.filter((g) => g.userId !== userId), data]);
-  }
-
-  async function revokeAccess(userId: string) {
-    await revokeDepartmentAccess(dept.id, userId).catch(() => null);
-    setAccessGrants((prev) => prev.filter((g) => g.userId !== userId));
-  }
-
-  // Quick-edit an existing grant, without revoke + re-grant.
-  const [editingGrantId, setEditingGrantId] = useState<string | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editPermanent, setEditPermanent] = useState(true);
-  const [editExpiresAt, setEditExpiresAt] = useState("");
-  const [editReason, setEditReason] = useState("");
-  const [editFullAccess, setEditFullAccess] = useState(false);
-  const [editSelectedProjectIds, setEditSelectedProjectIds] = useState<Set<string>>(new Set());
-
-  function toggleEditProject(id: string) {
-    setEditSelectedProjectIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  async function setActiveDept() {
+    await fetch("/api/active-dept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deptId: dept.id }),
     });
   }
 
-  async function openEditGrant(g: AccessGrant) {
-    if (editingGrantId === g.userId) {
-      setEditingGrantId(null);
-      return;
-    }
-    setEditingGrantId(g.userId);
-    setEditLoading(true);
+  async function managePeople() {
+    setManaging(true);
     try {
-      const data = await fetchDepartmentAccessGrant(dept.id, g.userId);
-      setEditFullAccess(data.fullAccess);
-      setEditPermanent(!data.expiresAt);
-      setEditExpiresAt(data.expiresAt ? data.expiresAt.slice(0, 10) : "");
-      setEditReason(data.reason ?? "");
-      setEditSelectedProjectIds(new Set(data.projectIds));
+      await setActiveDept();
+      router.push("/department");
     } catch {
-      setEditingGrantId(null);
-    } finally {
-      setEditLoading(false);
+      setManaging(false);
     }
   }
 
-  async function saveGrantEdit(userId: string) {
-    setEditSaving(true);
-    try {
-      const data = await updateDepartmentAccess(dept.id, userId, {
-        expiresAt: editPermanent ? undefined : editExpiresAt || undefined,
-        reason: editReason || undefined,
-        fullAccess: editFullAccess,
-        projectIds: [...editSelectedProjectIds],
-      });
-      setAccessGrants((prev) => prev.map((g) => (g.userId === userId ? data : g)));
-      setEditingGrantId(null);
-    } catch {
-      // keep the panel open so the manager can retry
-    } finally {
-      setEditSaving(false);
-    }
-  }
-
-  const managerIds = managers.map((m) => m.userId);
-  const accessIds = accessGrants.map((g) => g.userId);
-  const nativeMemberIds = dept.memberIds;
   const membersBySub = dept.membersBySubDepartment ?? [];
-  const totalPeople = dept._count.members ?? nativeMemberIds.length;
-  const previewPeople = (() => {
+  const totalPeople = dept._count.members ?? dept.memberIds.length;
+  const filledSubs = membersBySub.filter((g) => g.members.length > 0);
+  const emptySubs = membersBySub.filter((g) => g.members.length === 0);
+  const memberPeek = (() => {
     const seen = new Set<string>();
-    const list: typeof membersBySub[number]["members"] = [];
+    const list: NativeMember[] = [];
     for (const group of membersBySub) {
       for (const m of group.members) {
         if (seen.has(m.userId)) continue;
         seen.add(m.userId);
         list.push(m);
-        if (list.length >= 4) return list;
+        if (list.length >= 3) return list;
       }
     }
     return list;
@@ -947,20 +900,12 @@ function DepartmentCard({
         open={walkthroughOpen}
         onOpenChange={setWalkthroughOpen}
       />
-      {showGrantModal && (
-        <GrantAccessModal
-          deptId={dept.id}
-          deptName={dept.name}
-          users={allUsers}
-          excludeIds={[...new Set([...managerIds, ...accessIds, ...nativeMemberIds])]}
-          onGrant={grantAccess}
-          onClose={() => setShowGrantModal(false)}
-        />
-      )}
-      <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card">
-
-        {/* ── Card header ── */}
-        <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+      <div
+        className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card transition-colors hover:border-sts-blue/30 animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300"
+        style={{ animationDelay: `${Math.min(animationIndex, 8) * 40}ms` }}
+      >
+        {/* Identity */}
+        <div className="flex items-start gap-3 px-5 pt-5 pb-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
             <DepartmentIconVisual
               name={dept.name}
@@ -977,7 +922,10 @@ function DepartmentCard({
                   autoFocus
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") { setEditing(false); setEditName(dept.name); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEdit();
+                    if (e.key === "Escape") { setEditing(false); setEditName(dept.name); }
+                  }}
                   className="min-w-0 flex-1 rounded-lg border border-sts-blue/50 bg-sts-surface px-3 py-1 font-sans text-[14px] font-semibold text-sts-foreground outline-none"
                 />
                 <button type="button" onClick={saveEdit} disabled={saving} className="rounded-md p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
@@ -991,366 +939,234 @@ function DepartmentCard({
                     {departmentTypeLabel(dept.type)}
                   </span>
                 ) : null}
+                {dept.isHub && (
+                  <span className="inline-flex items-center rounded-full bg-violet-100 px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                    Hub
+                  </span>
+                )}
               </div>
             )}
-            {/* Stats row */}
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11.5px] text-sts-muted">
+              <span className="flex items-center gap-1">
                 <Users className="size-3 shrink-0" />
-                {dept._count.subDepartments} subDepartment{dept._count.subDepartments !== 1 ? "s" : ""}
+                {dept._count.subDepartments} sub-department{dept._count.subDepartments !== 1 ? "s" : ""}
               </span>
               {dept._count.projects !== undefined && (
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
+                <span className="flex items-center gap-1">
                   <FolderKanban className="size-3 shrink-0" />
                   {dept._count.projects} project{dept._count.projects !== 1 ? "s" : ""}
                 </span>
               )}
-              {dept._count.members !== undefined && (
-                <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
-                  <Users className="size-3 shrink-0" />
-                  {dept._count.members} {dept._count.members === 1 ? "person" : "people"}
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setWalkthroughOpen(true)}
-                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
-              >
-                <BookOpen className="size-3.5" />
-                View setup walkthrough
-              </button>
-              {isAdmin && tenantId && (
-                <InviteMemberDialog
-                  tenantId={tenantId}
-                  departments={[{ id: dept.id, name: dept.name }]}
-                  initialDeptIds={[dept.id]}
-                  triggerLabel="Invite to sub-department"
-                  triggerClassName="h-7 rounded-lg px-2.5 text-[11.5px] font-medium"
-                />
-              )}
+              <span className="flex items-center gap-1">
+                <Shield className="size-3 shrink-0" />
+                {dept.managers.length} manager{dept.managers.length !== 1 ? "s" : ""}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="size-3 shrink-0" />
+                {totalPeople} member{totalPeople !== 1 ? "s" : ""}
+              </span>
             </div>
           </div>
           {isAdmin && !editing && (
-            <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setEditing(true)} className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Rename">
-                <Pencil className="size-3.5" />
-              </button>
-              <button type="button" onClick={() => onDelete(dept.id)} className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Delete">
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="rounded-md p-1.5 text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                aria-label="Department actions"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuItem onClick={() => setEditing(true)}>
+                  <Pencil className="size-3.5" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setWalkthroughOpen(true)}>
+                  <BookOpen className="size-3.5" />
+                  Setup walkthrough
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(dept.id)}>
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
-        {/* ── Managers (collapsible) ── */}
-        <div className="border-t border-sts-card-border px-5 py-3">
-          <button
-            type="button"
-            onClick={() => setManagersExpanded((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-          >
-            <Shield className="size-3.5 shrink-0 text-sts-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
-              Managers
-              {managers.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({managers.length})</span>}
-              <span className="ml-1.5 font-normal text-sts-subtle">· can manage multiple departments</span>
-            </span>
-            {managers.length > 0 && !managersExpanded && (
-              <div className="flex -space-x-1.5 mr-1">
-                {managers.slice(0, 4).map((m) => (
-                  <Avatar key={m.id} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                ))}
-                {managers.length > 4 && (
-                  <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
-                    +{managers.length - 4}
-                  </span>
-                )}
-              </div>
-            )}
-            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", managersExpanded && "rotate-180")} />
-          </button>
-          {managersExpanded && (
-            <>
-              <div className="mt-2 flex justify-end">
-                <UserPickerDropdown label="Assign manager" users={allUsers} excludeIds={managerIds} onSelect={assignManager} />
-              </div>
-              {managers.length === 0 ? (
-                <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">No managers assigned yet.</p>
-              ) : (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {managers.map((m) => (
-                    <div key={m.id} className="group flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
-                      <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                      <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
-                      <button type="button" onClick={() => removeManager(m.userId)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500">
-                        <X className="size-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+        {/* People quick view — collapsible, read-only */}
+        <div className="mx-5 mb-4 overflow-hidden rounded-xl border border-sts-card-border/80 bg-sts-surface/40">
+          {/* Managers */}
+          <div className="border-b border-sts-card-border/70">
+            <button
+              type="button"
+              onClick={() => setManagersOpen((v) => !v)}
+              className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left hover:bg-sts-surface/60"
+            >
+              <Shield className="size-3.5 shrink-0 text-sts-muted" />
+              <span className="min-w-0 flex-1 font-sans text-[12px] font-semibold text-sts-foreground">
+                Managers
+                <span className="ml-1.5 font-normal text-sts-subtle">({dept.managers.length})</span>
+              </span>
+              {!managersOpen && dept.managers.length > 0 && (
+                <AvatarStack
+                  people={dept.managers.slice(0, 3).map((m) => ({
+                    key: m.id,
+                    name: m.user.name,
+                    avatarUrl: m.user.avatarUrl,
+                  }))}
+                  total={dept.managers.length}
+                />
               )}
-            </>
-          )}
-        </div>
-
-        {/* ── Members by sub-department (collapsible) ── */}
-        <div className="border-t border-sts-card-border px-5 py-3">
-          <button
-            type="button"
-            onClick={() => setMembersExpanded((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-          >
-            <Users className="size-3.5 shrink-0 text-sts-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
-              Members
-              {totalPeople > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({totalPeople})</span>}
-              <span className="ml-1.5 font-normal text-sts-subtle">· by sub-department</span>
-            </span>
-            {previewPeople.length > 0 && !membersExpanded && (
-              <div className="flex -space-x-1.5 mr-1">
-                {previewPeople.map((m) => (
-                  <Avatar key={m.userId} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                ))}
-                {totalPeople > 4 && (
-                  <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
-                    +{totalPeople - 4}
-                  </span>
+              <ChevronDown className={cn("size-3.5 shrink-0 text-sts-subtle transition-transform", managersOpen && "rotate-180")} />
+            </button>
+            {managersOpen && (
+              <div className="border-t border-sts-card-border/60 px-3.5 pb-3 pt-2">
+                {dept.managers.length === 0 ? (
+                  <p className="font-sans text-[12px] text-sts-subtle">None assigned yet</p>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {dept.managers.map((m) => (
+                      <div
+                        key={m.id}
+                        className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1 pr-2"
+                        title={m.user.email}
+                      >
+                        <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
+                        <span className="max-w-[8rem] truncate font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
-            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", membersExpanded && "rotate-180")} />
-          </button>
-          {membersExpanded && (
-            <div className="mt-2 flex flex-col gap-2.5">
-              {membersBySub.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-sts-subtle">
-                  No sub-departments yet. Create one, then invite people into it.
-                </p>
-              ) : (
-                membersBySub.map((group) => (
-                  <div key={group.subDepartmentId} className="rounded-lg border border-sts-card-border bg-sts-surface/60 px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-sans text-[11px] font-semibold text-sts-foreground">
-                        {group.subDepartmentName}
-                      </span>
-                      <span className="font-sans text-[10.5px] text-sts-subtle">
-                        ({group.members.length})
-                      </span>
-                    </div>
-                    {group.members.length === 0 ? (
-                      <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">No members yet</p>
-                    ) : (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {group.members.map((m) => (
-                          <div
-                            key={`${group.subDepartmentId}-${m.userId}`}
-                            className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1.5 pr-2"
-                          >
-                            <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                            <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
-                            <span className="rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">
-                              {m.user.role}
-                            </span>
-                          </div>
-                        ))}
+          </div>
+
+          {/* Members by sub-department */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setMembersOpen((v) => !v)}
+              className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left hover:bg-sts-surface/60"
+            >
+              <Users className="size-3.5 shrink-0 text-sts-muted" />
+              <span className="min-w-0 flex-1 font-sans text-[12px] font-semibold text-sts-foreground">
+                Members
+                <span className="ml-1.5 font-normal text-sts-subtle">
+                  ({totalPeople} · by sub-department)
+                </span>
+              </span>
+              {!membersOpen && memberPeek.length > 0 && (
+                <AvatarStack
+                  people={memberPeek.map((m) => ({
+                    key: m.userId,
+                    name: m.user.name,
+                    avatarUrl: m.user.avatarUrl,
+                  }))}
+                  total={totalPeople}
+                />
+              )}
+              <ChevronDown className={cn("size-3.5 shrink-0 text-sts-subtle transition-transform", membersOpen && "rotate-180")} />
+            </button>
+            {membersOpen && (
+              <div className="border-t border-sts-card-border/60 px-3.5 pb-3 pt-2">
+                {membersBySub.length === 0 ? (
+                  <p className="font-sans text-[12px] text-sts-subtle">
+                    No sub-departments yet — create one, then invite people into it.
+                  </p>
+                ) : totalPeople === 0 ? (
+                  <p className="font-sans text-[12px] text-sts-subtle">
+                    {membersBySub.length} sub-department{membersBySub.length !== 1 ? "s" : ""} with no members yet.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {filledSubs.map((group) => (
+                      <div key={group.subDepartmentId} className="min-w-0 rounded-lg border border-sts-card-border/80 bg-sts-card/60 px-2.5 py-2">
+                        <p className="mb-1.5 truncate font-sans text-[11.5px] font-medium text-sts-foreground">
+                          {group.subDepartmentName}
+                          <span className="ml-1 font-normal text-sts-subtle">({group.members.length})</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {group.members.map((m) => (
+                            <div
+                              key={`${group.subDepartmentId}-${m.userId}`}
+                              className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1 pr-2"
+                              title={`${m.user.email} · ${m.user.role}`}
+                            >
+                              <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
+                              <span className="max-w-[7rem] truncate font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                              <span className="rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] capitalize text-sts-subtle">
+                                {m.user.role}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    ))}
+                    {emptySubs.length > 0 && (
+                      <p className="font-sans text-[11px] text-sts-subtle">
+                        Empty: {emptySubs.map((g) => g.subDepartmentName).join(", ")}
+                      </p>
                     )}
                   </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Cross-dept access (collapsible) — gated by platform setting ── */}
-        {showCrossDeptAccess && (
-        <div className="border-t border-sts-card-border px-5 py-3">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="flex w-full items-center gap-2 text-left"
-          >
-            <Users className="size-3.5 shrink-0 text-sts-muted" />
-            <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
-              Cross-department access
-              <span className="ml-1.5 font-normal text-sts-subtle">(managers)</span>
-              {accessGrants.length > 0 && (
-                <span className="ml-1.5 font-normal text-sts-subtle">({accessGrants.length})</span>
-              )}
-            </span>
-            {accessGrants.length > 0 && (
-              <div className="flex -space-x-1.5 mr-1">
-                {accessGrants.slice(0, 3).map((g) => <Avatar key={g.id} name={g.user.name} size={18} avatarUrl={g.user.avatarUrl ?? null} />)}
+                )}
               </div>
             )}
-            <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", expanded && "rotate-180")} />
-          </button>
+          </div>
 
-          {expanded && (
-            <div className="mt-2 flex flex-col gap-1">
-              {accessGrants.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-sts-subtle">No temporary access grants.</p>
-              ) : (
-                accessGrants.map((g) => (
-                  <Fragment key={g.id}>
-                  <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-sts-surface">
-                    <button
-                      type="button"
-                      onClick={() => openEditGrant(g)}
-                      title="Click to edit this grant"
-                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-                    >
-                      <Avatar name={g.user.name} size={22} avatarUrl={g.user.avatarUrl ?? null} />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-sans text-[12px] font-semibold text-sts-foreground">{g.user.name}</p>
-                        <p className="font-sans text-[11.5px] text-sts-subtle">
-                          {g.reason ?? "No reason"}
-                          {g.expiresAt && ` · expires ${new Date(g.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 font-sans text-[11.5px]",
-                          g.fullAccess
-                            ? "bg-sts-blue/10 text-sts-blue"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                        )}
-                      >
-                        {g.fullAccess ? "Full access" : "Limited"}
-                      </span>
-                      {g.expiresAt && new Date(g.expiresAt) < new Date() ? (
-                        <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 font-sans text-[11.5px] text-red-600 dark:bg-red-900/30 dark:text-red-400">Expired</span>
-                      ) : (
-                        <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-sans text-[11.5px] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                          <Clock className="size-2.5" /> Active
-                        </span>
-                      )}
-                    </button>
-                    <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="shrink-0 rounded-md p-1 text-sts-subtle hover:text-red-500">
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                  {editingGrantId === g.userId && (
-                      <div className="mx-2 mb-2 flex flex-col gap-3 rounded-lg border border-sts-card-border bg-sts-bg p-3">
-                        {editLoading ? (
-                          <p className="py-2 text-center font-sans text-[12px] text-sts-subtle">Loading…</p>
-                        ) : (
-                          <>
-                            <div>
-                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
-                              <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border">
-                                <button
-                                  type="button"
-                                  onClick={() => setEditPermanent(true)}
-                                  className={cn(
-                                    "flex flex-1 items-center justify-center font-sans text-[11.5px] font-medium transition-colors",
-                                    editPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                                  )}
-                                >
-                                  Permanent
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditPermanent(false)}
-                                  className={cn(
-                                    "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[11.5px] font-medium transition-colors",
-                                    !editPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                                  )}
-                                >
-                                  Set expiry
-                                </button>
-                              </div>
-                              {!editPermanent && (
-                                <input
-                                  type="date"
-                                  value={editExpiresAt}
-                                  onChange={(e) => setEditExpiresAt(e.target.value)}
-                                  className="mt-2 h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
-                                />
-                              )}
-                            </div>
-                            <ProjectAccessPicker
-                              deptId={dept.id}
-                              deptName={dept.name}
-                              fullAccess={editFullAccess}
-                              onFullAccessChange={setEditFullAccess}
-                              selectedProjectIds={editSelectedProjectIds}
-                              onToggleProject={toggleEditProject}
-                            />
-                            <div>
-                              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Reason (optional)</label>
-                              <input
-                                value={editReason}
-                                onChange={(e) => setEditReason(e.target.value)}
-                                className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
-                              />
-                            </div>
-                            <div className="flex justify-end gap-2">
-                              <button type="button" onClick={() => setEditingGrantId(null)} className="h-8 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:bg-sts-surface">
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                disabled={editSaving || (!editFullAccess && editSelectedProjectIds.size === 0)}
-                                onClick={() => saveGrantEdit(g.userId)}
-                                className="h-8 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
-                              >
-                                {editSaving ? "Saving…" : "Save"}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                  )}
-                  </Fragment>
-                ))
-              )}
+          {dept.accessGrants.length > 0 && (
+            <p className="border-t border-sts-card-border/70 px-3.5 py-2 font-sans text-[11px] text-sts-subtle">
+              {dept.accessGrants.length} cross-department access grant{dept.accessGrants.length !== 1 ? "s" : ""} — open Manage to review
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-auto flex items-center gap-3 border-t border-sts-card-border px-5 py-3.5">
+          {onEnterWorkspace ? (
+            <>
               <button
                 type="button"
-                onClick={() => setShowGrantModal(true)}
-                className="mt-1 flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] text-sts-subtle hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
+                disabled={managing}
+                onClick={managePeople}
+                className="font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:text-sts-blue disabled:opacity-60"
               >
-                <Plus className="size-3" /> Grant access
+                {managing ? "Opening…" : "Manage"}
               </button>
-            </div>
-          )}
-          {!expanded && (
+              <button
+                type="button"
+                disabled={entering}
+                onClick={() => { setEntering(true); onEnterWorkspace(dept.id); }}
+                className="ml-auto flex items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
+              >
+                {entering ? (
+                  <>
+                    <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-gray-900/30 dark:border-t-gray-900" />
+                    Entering…
+                  </>
+                ) : (
+                  <>
+                    Enter
+                    <ArrowRight className="size-3.5" />
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => setShowGrantModal(true)}
-              className="mt-1.5 flex h-6 items-center gap-1 font-sans text-[11.5px] text-sts-subtle hover:text-sts-blue transition-colors"
+              disabled={managing}
+              onClick={managePeople}
+              className="ml-auto flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
             >
-              <Plus className="size-3" /> Grant access
+              {managing ? "Opening…" : (
+                <>
+                  Manage
+                  <ArrowRight className="size-3.5" />
+                </>
+              )}
             </button>
           )}
         </div>
-        )}
-
-        {/* ── Enter workspace CTA ── */}
-        {onEnterWorkspace && (
-          <div className="mt-auto border-t border-sts-card-border px-5 py-3">
-            <button
-              type="button"
-              disabled={entering}
-              onClick={() => { setEntering(true); onEnterWorkspace(dept.id); }}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-80"
-            >
-              {entering ? (
-                <>
-                  <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Entering…
-                </>
-              ) : (
-                <>
-                  Enter
-                  <ArrowRight className="size-4" />
-                </>
-              )}
-            </button>
-          </div>
-        )}
       </div>
     </>
   );
@@ -1375,12 +1191,14 @@ export function SettingsDepartmentsPage({
   inWorkspace?: boolean;
   /** Catalogue templates offered as department "template" options; empty falls back to built-in types. */
   templateOptions?: TemplateOption[];
-  /** Active tenant — enables the per-card "Invite member" action when present. */
+  /** Active tenant — kept for callers; invites live on the org header / department detail. */
   tenantId?: string | null;
-  /** Platform setting: when true, show Cross-department access on each card. */
+  /** Kept for API compatibility; cross-dept access is managed on /department. */
   showCrossDeptAccess?: boolean;
   onEnterWorkspace?: (deptId: string) => void;
 }) {
+  void tenantId;
+  void showCrossDeptAccess;
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [showNewModal, setShowNewModal] = useState(false);
@@ -1433,8 +1251,8 @@ export function SettingsDepartmentsPage({
           </h1>
           <p className="mt-1 font-sans text-[13px] text-sts-muted">
             {inWorkspace
-              ? "Manage this department — assign managers and configure access."
-              : "Manage departments and assign managers. People join through sub-departments."}
+              ? "Enter the workspace, or Manage to assign managers, members, and access."
+              : "Browse departments, enter a workspace, or Manage people and access."}
           </p>
         </div>
         {isAdmin && !inWorkspace && (
@@ -1464,28 +1282,24 @@ export function SettingsDepartmentsPage({
           <DepartmentCard
             key={departments[0].id}
             dept={departments[0]}
-            allUsers={allUsers}
             isAdmin={isAdmin}
-            tenantId={tenantId}
             onRename={handleRename}
             onDelete={setConfirmDeleteId}
             onEnterWorkspace={onEnterWorkspace}
-            showCrossDeptAccess={showCrossDeptAccess}
+            animationIndex={0}
           />
         </div>
       ) : (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-          {departments.map((dept) => (
+          {departments.map((dept, i) => (
             <DepartmentCard
               key={dept.id}
               dept={dept}
-              allUsers={allUsers}
               isAdmin={isAdmin}
-              tenantId={tenantId}
               onRename={handleRename}
               onDelete={setConfirmDeleteId}
               onEnterWorkspace={onEnterWorkspace}
-              showCrossDeptAccess={showCrossDeptAccess}
+              animationIndex={i}
             />
           ))}
         </div>

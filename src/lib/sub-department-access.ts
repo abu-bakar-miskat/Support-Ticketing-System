@@ -148,7 +148,8 @@ export async function getSubDepartmentAboutData(
     color: subDepartment.color ?? avatarColorFor(subDepartment.name),
     departmentId: subDepartment.department.id,
     departmentName: subDepartment.department.name,
-    memberCount: subDepartment.memberships.length,
+    // Members = agents only; sub-managers are counted separately in the UI.
+    memberCount: agents.length,
     workloadThreshold: subDepartment.workloadThreshold,
     ticketsKeyed: subDepartment.counter?.lastNumber ?? 0,
     projectCount: subDepartment._count.projects,

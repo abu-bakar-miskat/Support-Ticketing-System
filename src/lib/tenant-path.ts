@@ -25,6 +25,24 @@ export const SUBDEPT_SLUG_COOKIE = "pen_active_subdept_slug";
  */
 export const TENANT_LEVEL_ROOTS = new Set(["departments", "profile", "docs"]);
 
+/**
+ * Paths that also carry the active sub-department slug
+ * (/<tenant>/<dept>/<subdept>/board). Department settings and similar stay at
+ * /<tenant>/<dept>/… even when a sub-department cookie is set — otherwise a
+ * sub-dept whose slug matches the tenant (e.g. both "vcad") looks like the
+ * tenant name repeating in the URL.
+ */
+export const SUBDEPT_SCOPED_ROOTS = new Set([
+  "board",
+  "all-tasks",
+  "tasks",
+  "timeline",
+  "calendar",
+  "tickets",
+  "modules",
+  "time",
+]);
+
 /** True when a root segment belongs to a specific department (gets a dept slug). */
 export function isDeptScopedRoot(seg: string): boolean {
   return TENANT_SCOPED_ROOTS.has(seg) && !TENANT_LEVEL_ROOTS.has(seg);
@@ -37,6 +55,12 @@ export function isDeptScopedRoot(seg: string): boolean {
 export function isDeptScopedPath(pathname: string): boolean {
   if (pathname === "/") return true;
   return isDeptScopedRoot(firstSegment(pathname));
+}
+
+/** True when the path should include /<subdept>/ in the public URL. */
+export function isSubDeptScopedPath(pathname: string): boolean {
+  if (pathname === "/") return false;
+  return SUBDEPT_SCOPED_ROOTS.has(firstSegment(pathname));
 }
 
 /**

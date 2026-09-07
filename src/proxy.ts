@@ -7,6 +7,7 @@ import {
   TENANT_SCOPED_ROOTS,
   isBareTenantScoped,
   isDeptScopedPath,
+  isSubDeptScopedPath,
 } from "@/lib/tenant-path";
 
 /** Copy any refreshed Supabase auth cookies from `from` onto `to`. */
@@ -126,7 +127,8 @@ export async function proxy(request: NextRequest) {
         let prefix = `/${tSlug}`;
         if (isDeptScopedPath(internal)) {
           if (dSlug) prefix += `/${dSlug}`;
-          if (dSlug && sSlug) prefix += `/${sSlug}`;
+          // Sub-dept segment only for board-like routes — not settings, etc.
+          if (dSlug && sSlug && isSubDeptScopedPath(internal)) prefix += `/${sSlug}`;
         }
         const target = internal === "/" ? prefix : `${prefix}${internal}`;
 

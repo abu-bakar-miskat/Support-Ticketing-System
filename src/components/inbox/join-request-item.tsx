@@ -243,10 +243,10 @@ export function JoinRequestDetailPane({
                       "font-sans text-[12px] font-semibold",
                       accessType === type ? "text-sts-id" : "text-sts-foreground",
                     )}>
-                      {type === "full" ? "Full member" : "Cross-dept access"}
+                      {type === "full" ? "Full member" : "Cross-sub-department"}
                     </span>
                     <span className="font-sans text-[11px] text-sts-subtle">
-                      {type === "full" ? "Joins as sub department member" : "Guest access, no sub department"}
+                      {type === "full" ? "Joins as sub-department member" : "Add access to this sub-department (keeps their home)"}
                     </span>
                   </button>
                 ))}

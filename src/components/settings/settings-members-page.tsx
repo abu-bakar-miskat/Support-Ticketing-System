@@ -186,6 +186,11 @@ function AddMemberModal({
           setSubmitting(false);
           return;
         }
+        if (selected.role !== "manager" && selected.role !== "admin") {
+          setSubmitError("Cross-department access is only for department managers. Add this person to a sub-department instead.");
+          setSubmitting(false);
+          return;
+        }
         await grantDepartmentAccess(effectiveDeptId, {
           userId: selected.id,
           ...(!guestPermanent && guestExpiresAt ? { expiresAt: guestExpiresAt } : {}),
@@ -338,6 +343,14 @@ function AddMemberModal({
                   Guest access
                 </button>
               </div>
+              <p className="font-sans text-[11px] text-sts-subtle">
+                Full member = join a sub-department. Guest access = cross-department access for managers only.
+              </p>
+              {accessType === "guest" && selected && selected.role !== "manager" && selected.role !== "admin" && (
+                <p className="font-sans text-[11.5px] text-amber-700 dark:text-amber-400">
+                  Cross-department guest access is for department managers only. Add agents and sub-managers to a sub-department instead.
+                </p>
+              )}
 
               {/* Full member fields */}
               {accessType === "full" && (
@@ -537,11 +550,14 @@ export function SettingsMembersPage({
   }
 
   async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
+    if (!newSubDepartmentId) return;
+    const member = liveMembers.find((m) => m.id === memberId) ?? members.find((m) => m.id === memberId);
     setLocalSubDepartments((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
     setSaving(memberId);
     setError(null);
     try {
-      await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
+      // Additive — keep existing sub-department memberships.
+      await addAdminSubDepartmentMember(newSubDepartmentId, memberId, member ? currentRole(member) : "agent");
       startTransition(() => router.refresh());
     } catch {
       setError("Failed to update subDepartment");

@@ -35,12 +35,9 @@ export default async function TenantManagePage({
   })
   if (!tenant) notFound()
 
-  // Members live across three tables. Tenant admins/managers get a
-  // TenantMembership, but sub-managers/agents are added via the sub-department
-  // flow (SubDepartmentMembership) or directly to a department (DepartmentMember)
-  // and have NO TenantMembership. Union all three so every member shows — not
-  // just the ones with a tenant-wide membership. Mirrors settings/members/page.tsx.
-  const [tenantMemberRows, subDeptMemberRows, directDeptMemberRows, departmentRows, agreements, tenantTypes] =
+  // Members: tenant admins/managers via TenantMembership; agents/sub-managers via
+  // SubDepartmentMembership. Union both so everyone shows.
+  const [tenantMemberRows, subDeptMemberRows, departmentRows, agreements, tenantTypes] =
     await Promise.all([
       prisma.tenantMembership.findMany({
         where: { tenantId: id, isActive: true },
@@ -48,10 +45,6 @@ export default async function TenantManagePage({
       }),
       prisma.subDepartmentMembership.findMany({
         where: { isActive: true, subDepartment: { tenantId: id } },
-        select: { userId: true },
-      }),
-      prisma.departmentMember.findMany({
-        where: { department: { tenantId: id } },
         select: { userId: true },
       }),
       prisma.department.findMany({
@@ -70,7 +63,6 @@ export default async function TenantManagePage({
     ...new Set([
       ...tenantMemberRows.map((m) => m.userId),
       ...subDeptMemberRows.map((m) => m.userId),
-      ...directDeptMemberRows.map((m) => m.userId),
     ]),
   ]
 

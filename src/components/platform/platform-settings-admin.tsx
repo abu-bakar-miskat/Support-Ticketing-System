@@ -33,6 +33,7 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   intakeForms: "Public intake forms",
   recruitment: "Recruitment boards",
   timeTracking: "Time tracking",
+  crossDepartmentAccess: "Cross-department access (managers only)",
 };
 
 type TenantOption = { id: string; name: string; slug: string; status: string };

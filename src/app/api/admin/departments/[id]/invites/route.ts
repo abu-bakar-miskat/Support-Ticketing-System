@@ -120,7 +120,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json(
       {
         error:
-          "This email already has an account. Use Add member to add them to the department instead.",
+          "This email already has an account. Invite them to a sub-department instead.",
       },
       { status: 409 },
     );

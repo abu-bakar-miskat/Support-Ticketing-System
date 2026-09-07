@@ -22,7 +22,7 @@ export default async function DepartmentRoute() {
   const activeDeptId = profileScope?.activeDeptId ?? null;
   if (!activeDeptId) redirect("/departments");
 
-  const [dept, managers, memberships, directMembers, accessGrants, availableSubDepartments, allUsers, pendingInvites] =
+  const [dept, managers, memberships, accessGrants, availableSubDepartments, allUsers, pendingInvites] =
     await Promise.all([
       prisma.department.findUnique({
         where: { id: activeDeptId },
@@ -47,11 +47,6 @@ export default async function DepartmentRoute() {
           subDepartment: { select: { id: true, name: true } },
           user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true } },
         },
-      }),
-      prisma.departmentMember.findMany({
-        where: { departmentId: activeDeptId },
-        include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, location: true, timezone: true } } },
-        orderBy: { addedAt: "asc" },
       }),
       prisma.departmentAccess.findMany({
         where: { departmentId: activeDeptId },
@@ -108,12 +103,9 @@ export default async function DepartmentRoute() {
     subDepartmentMembershipsByUser.set(m.userId, dna);
   }
 
-  const nativeUserIds = new Set([
-    ...memberships.map((m) => m.userId),
-    ...directMembers.map((d) => d.userId),
-  ]);
+  const nativeUserIds = new Set(memberships.map((m) => m.userId));
 
-  // Members table = everyone native to this department, minus managers (shown separately).
+  // Members table = people on sub-departments in this department, minus managers (shown separately).
   const memberProfilesById = new Map<string, {
     id: string;
     name: string;
@@ -131,16 +123,6 @@ export default async function DepartmentRoute() {
       avatarUrl: m.user.avatarUrl ?? null,
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,
-    });
-  }
-  for (const d of directMembers) {
-    if (managerUserIds.has(d.userId) || memberProfilesById.has(d.userId)) continue;
-    memberProfilesById.set(d.userId, {
-      ...d.user,
-      avatarUrl: d.user.avatarUrl ?? null,
-      subDepartmentId: null,
-      location: d.user.location ?? null,
-      timezone: d.user.timezone ?? null,
     });
   }
 
@@ -182,7 +164,7 @@ export default async function DepartmentRoute() {
       role: p.role,
       subDepartmentNames: subDepartmentNamesByUser.get(p.id) ?? [],
       subDepartmentId: p.subDepartmentId ?? subDepartmentIdByUser.get(p.id) ?? null,
-      source: subDepartmentNamesByUser.has(p.id) ? "native" as const : "direct" as const,
+      source: "native" as const,
       location: p.location,
       timezone: p.timezone,
       subDepartmentMemberships: subDepartmentMembershipsByUser.get(p.id) ?? [],

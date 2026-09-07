@@ -9,7 +9,11 @@
  * ensureSystemTemplates lives in template-catalogue.ts (server-only).
  */
 import type { TemplateFeatureKey } from "@/lib/template-features";
-import type { DepartmentType } from "@/lib/department-types";
+import {
+  DEFAULT_DEPARTMENT_TYPE,
+  isValidDepartmentType,
+  type DepartmentType,
+} from "@/lib/department-types";
 
 export type SystemTemplate = {
   slug: string;
@@ -56,4 +60,15 @@ export function isSystemTemplateSlug(slug: string | null | undefined): boolean {
 /** The system template that defines a given department type, if any. */
 export function systemTemplateForDepartmentType(type: string): SystemTemplate | undefined {
   return SYSTEM_TEMPLATES.find((t) => t.departmentType === type);
+}
+
+/**
+ * Board/interface type implied by a New Department template selection.
+ * Built-in type slugs and system template slugs map to a known DepartmentType;
+ * other catalogue templates fall back to the default type.
+ */
+export function departmentTypeForTemplateSlug(slug: string): DepartmentType {
+  if (isValidDepartmentType(slug)) return slug;
+  const sys = SYSTEM_TEMPLATES.find((t) => t.slug === slug);
+  return sys?.departmentType ?? DEFAULT_DEPARTMENT_TYPE;
 }

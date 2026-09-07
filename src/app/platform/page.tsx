@@ -25,13 +25,9 @@ export default async function TenantsPage() {
     },
   })
 
-  // A tenant's members span three tables: tenant admins/managers have a
-  // TenantMembership, but sub-managers/agents are added via the sub-department
-  // flow (SubDepartmentMembership) or directly to a department (DepartmentMember)
-  // with NO TenantMembership. Count the DISTINCT union per tenant so the card
-  // matches the member list on the tenant detail page — counting only
-  // TenantMemberships undercounts to just the tenant admins.
-  const [tenantMemberRows, subDeptMemberRows, directDeptMemberRows] = await Promise.all([
+  // A tenant's members: tenant admins/managers have a TenantMembership; agents/
+  // sub-managers join via SubDepartmentMembership. Count the DISTINCT union.
+  const [tenantMemberRows, subDeptMemberRows] = await Promise.all([
     prisma.tenantMembership.findMany({
       where: { isActive: true, user: { deletedAt: null } },
       select: { tenantId: true, userId: true },
@@ -39,10 +35,6 @@ export default async function TenantsPage() {
     prisma.subDepartmentMembership.findMany({
       where: { isActive: true, user: { deletedAt: null } },
       select: { userId: true, subDepartment: { select: { tenantId: true } } },
-    }),
-    prisma.departmentMember.findMany({
-      where: { user: { deletedAt: null } },
-      select: { userId: true, department: { select: { tenantId: true } } },
     }),
   ])
 
@@ -55,7 +47,6 @@ export default async function TenantsPage() {
   }
   for (const m of tenantMemberRows) addMember(m.tenantId, m.userId)
   for (const m of subDeptMemberRows) addMember(m.subDepartment?.tenantId, m.userId)
-  for (const m of directDeptMemberRows) addMember(m.department?.tenantId, m.userId)
 
   const tenants = rows.map((t) => {
     const b = readTenantBranding(t.branding)

@@ -4,16 +4,16 @@ import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check, Pencil, Plus, Trash2, X, Search, Users, Shield, Clock,
-  ChevronDown, UserPlus, FolderKanban, ArrowRight, AlertTriangle, BookOpen,
+  ChevronDown, UserPlus, FolderKanban, ArrowRight, BookOpen,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
 import { cn } from "@/lib/utils";
 import {
   DEPARTMENT_TYPES,
-  DEFAULT_DEPARTMENT_TYPE,
   departmentTypeLabel,
   departmentTypeDescription,
+  type DepartmentType,
 } from "@/lib/department-types";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
@@ -28,15 +28,11 @@ import {
   revokeDepartmentAccess,
   fetchDepartmentAccessGrant,
   updateDepartmentAccess,
-  addDepartmentMember,
-  removeDepartmentDirectMember,
-  removeDepartmentMember,
   fetchDepartmentProjects,
   createAdminDepartment,
   updateAdminDepartment,
   deleteAdminDepartment,
   createAdminSubDepartment,
-  completeAdminDepartmentSetup,
 } from "@/lib/api/admin";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -50,7 +46,17 @@ export type TemplateOption = {
   description: string | null;
   featureCount: number;
   status: "active" | "requested" | "available";
+  /** Board/interface type this template creates (shown as a badge beside the name). */
+  departmentType: DepartmentType;
 };
+
+function TemplateTypeBadge({ type }: { type: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
+      {departmentTypeLabel(type)}
+    </span>
+  );
+}
 
 type DeptManager = {
   id: string;
@@ -80,19 +86,26 @@ export type NativeMember = {
   user: { id: string; name: string; email: string; role: string; avatarUrl?: string | null };
 };
 
+export type SubDepartmentMembersGroup = {
+  subDepartmentId: string;
+  subDepartmentName: string;
+  members: NativeMember[];
+};
+
 export type DepartmentRow = {
   id: string;
   name: string;
   isHub: boolean;
   type?: string;
-  /** DS-08: null until an admin/manager completes the initial setup review.
-   * While null, the department rejects ticket creation on every path. */
+  /** ISO timestamp — set automatically on create so the department is operational immediately. */
   setupCompletedAt?: string | null;
   _count: { subDepartments: number; projects?: number; members?: number };
   managers: DeptManager[];
   accessGrants: AccessGrant[];
   directMembers: DeptMember[];
   nativeMembers: NativeMember[];
+  /** People on each sub-department (membership is sub-department-scoped only). */
+  membersBySubDepartment: SubDepartmentMembersGroup[];
   memberIds: string[];
   subDepartments: { id: string; name: string }[];
 };
@@ -315,6 +328,8 @@ export function GrantAccessModal({
 
   const filtered = users
     .filter((u) => !excludeIds.includes(u.id))
+    // Cross-department access is for managers/admins only.
+    .filter((u) => u.role === "manager" || u.role === "admin")
     .filter((u) => !search || u.name.toLowerCase().includes(search.toLowerCase()));
 
   function toggleProject(id: string) {
@@ -339,7 +354,7 @@ export function GrantAccessModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Grant access to {deptName}</p>
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Grant manager access to {deptName}</p>
           <button type="button" onClick={onClose}><X className="size-4 text-sts-muted" /></button>
         </div>
         <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
@@ -350,7 +365,11 @@ export function GrantAccessModal({
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] outline-none focus:border-sts-id" />
             </div>
             <div className="max-h-36 overflow-y-auto rounded-lg border border-sts-card-border">
-              {filtered.map((u) => (
+              {filtered.length === 0 ? (
+                <p className="px-3 py-4 text-center font-sans text-[12px] text-sts-subtle">
+                  No eligible managers. Cross-department access is for department managers only — add agents to a sub-department instead.
+                </p>
+              ) : filtered.map((u) => (
                 <button key={u.id} type="button" onClick={() => { setUserId(u.id); setUserName(u.name); }}
                   className={cn("flex w-full items-center gap-2 px-3 py-2 text-left", userId === u.id ? "bg-sts-blue-tint" : "hover:bg-sts-surface")}>
                   <Avatar name={u.name} size={22} avatarUrl={u.avatarUrl ?? null} />
@@ -441,6 +460,7 @@ function builtInTemplateOptions(): TemplateOption[] {
     description: departmentTypeDescription(t),
     featureCount: 0,
     status: "active" as const,
+    departmentType: t,
   }));
 }
 
@@ -457,7 +477,8 @@ function NewDepartmentModal({
 }) {
   const options = templateOptions.length > 0 ? templateOptions : builtInTemplateOptions();
   const [name, setName] = useState("");
-  const [type, setType] = useState<string>(options[0]?.slug ?? DEFAULT_DEPARTMENT_TYPE);
+  // Empty until the admin explicitly picks a template — selection is required.
+  const [templateSlug, setTemplateSlug] = useState("");
   const [selectedManagers, setSelectedManagers] = useState<UserOption[]>([]);
   const [subDepartments, setSubDepartments] = useState<PendingSubDepartment[]>([]);
   const [subDepartmentInput, setSubDepartmentInput] = useState("");
@@ -468,6 +489,8 @@ function NewDepartmentModal({
   // Holds the department id once created, so a retry (after a sub-department
   // error) never creates a duplicate department.
   const createdDeptIdRef = useRef<string | null>(null);
+
+  const selectedTemplate = options.find((opt) => opt.slug === templateSlug) ?? null;
 
   function handleSubDepartmentNameChange(v: string) {
     setSubDepartmentInput(v);
@@ -504,7 +527,7 @@ function NewDepartmentModal({
 
   async function handleSubmit() {
     const deptName = name.trim();
-    if (!deptName) return;
+    if (!deptName || !templateSlug) return;
     setSaving(true);
     setError(null);
 
@@ -523,10 +546,13 @@ function NewDepartmentModal({
     let deptId = createdDeptIdRef.current;
     if (!deptId) {
       try {
-        // `type` holds the selected option's slug — pass it as templateSlug so a
-        // catalogue template gates the new department's features (server derives
-        // the board type and stores the slug).
-        const dept = await createAdminDepartment({ name: deptName, type, templateSlug: type });
+        // Pass the selected catalogue/built-in slug as templateSlug so the server
+        // seeds features and derives the board type.
+        const dept = await createAdminDepartment({
+          name: deptName,
+          type: templateSlug,
+          templateSlug,
+        });
         deptId = dept.id;
         createdDeptIdRef.current = dept.id;
       } catch {
@@ -576,6 +602,7 @@ function NewDepartmentModal({
   }
 
   const managerIds = selectedManagers.map((m) => m.id);
+  const canCreate = Boolean(name.trim() && templateSlug) && !saving;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
@@ -616,15 +643,22 @@ function NewDepartmentModal({
           {/* Template */}
           <div>
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-              Template
+              Template <span className="text-red-500">*</span>
             </label>
             <Select
               items={options.map((opt) => ({ value: opt.slug, label: opt.name }))}
-              value={type}
-              onValueChange={(v) => setType(v ?? DEFAULT_DEPARTMENT_TYPE)}
+              value={templateSlug || null}
+              onValueChange={(v) => setTemplateSlug(v ?? "")}
             >
               <SelectTrigger className="h-9 w-full border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground">
-                <SelectValue />
+                <SelectValue placeholder="Select a template…">
+                  {selectedTemplate ? (
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{selectedTemplate.name}</span>
+                      <TemplateTypeBadge type={selectedTemplate.departmentType} />
+                    </span>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {options.map((opt) => (
@@ -634,6 +668,7 @@ function NewDepartmentModal({
                         <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {opt.name}
                         </span>
+                        <TemplateTypeBadge type={opt.departmentType} />
                         {opt.featureCount > 0 && (
                           <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
                             {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
@@ -731,7 +766,7 @@ function NewDepartmentModal({
           </button>
           <button
             type="button"
-            disabled={!name.trim() || saving}
+            disabled={!canCreate}
             onClick={handleSubmit}
             className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
@@ -760,52 +795,31 @@ function DepartmentCard({
   allUsers,
   isAdmin = false,
   tenantId = null,
+  showCrossDeptAccess = false,
   onRename,
   onDelete,
   onEnterWorkspace,
-  onCompleteSetup,
 }: {
   dept: DepartmentRow;
   allUsers: UserOption[];
   isAdmin?: boolean;
   tenantId?: string | null;
+  showCrossDeptAccess?: boolean;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => void;
   onEnterWorkspace?: (id: string) => void;
-  onCompleteSetup: (id: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(dept.name);
   const [entering, setEntering] = useState(false);
   const [managers, setManagers] = useState<DeptManager[]>(dept.managers);
-  const [directMembers, setDirectMembers] = useState<DeptMember[]>(dept.directMembers);
   const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(dept.accessGrants);
-  const [removedNativeIds, setRemovedNativeIds] = useState<Set<string>>(new Set());
-  const nativeMembers = dept.nativeMembers.filter((m) => !removedNativeIds.has(m.userId));
   const [saving, setSaving] = useState(false);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [membersExpanded, setMembersExpanded] = useState(false);
   const [managersExpanded, setManagersExpanded] = useState(false);
-  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
-  const [completingSetup, setCompletingSetup] = useState(false);
-  const [setupError, setSetupError] = useState<string | null>(null);
+  const [membersExpanded, setMembersExpanded] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
-
-  const needsSetup = dept.setupCompletedAt == null;
-
-  async function completeSetup() {
-    setCompletingSetup(true);
-    setSetupError(null);
-    try {
-      await onCompleteSetup(dept.id);
-      // Parent refreshes the route on success — the banner disappears when the
-      // row reloads with a non-null setupCompletedAt.
-    } catch (e) {
-      setSetupError(e instanceof Error ? e.message : "Failed to complete setup");
-      setCompletingSetup(false);
-    }
-  }
 
   async function saveEdit() {
     if (!editName.trim()) return;
@@ -819,33 +833,12 @@ function DepartmentCard({
     const data = await assignDepartmentManager(dept.id, u.id).catch(() => null);
     if (data) {
       setManagers((prev) => [...prev.filter((m) => m.userId !== u.id), data]);
-      // Manager is also automatically added as a direct member
-      setDirectMembers((prev) =>
-        prev.some((m) => m.userId === u.id)
-          ? prev
-          : [...prev, { id: data.id + "_m", userId: u.id, user: data.user }],
-      );
     }
   }
 
   async function removeManager(userId: string) {
     await removeDepartmentManager(dept.id, userId).catch(() => null);
     setManagers((prev) => prev.filter((m) => m.userId !== userId));
-  }
-
-  async function addMember(u: UserOption) {
-    const data = await addDepartmentMember(dept.id, u.id).catch(() => null);
-    if (data) setDirectMembers((prev) => [...prev.filter((m) => m.userId !== u.id), data]);
-  }
-
-  async function removeDirectMember(userId: string) {
-    await removeDepartmentDirectMember(dept.id, userId).catch(() => null);
-    setDirectMembers((prev) => prev.filter((m) => m.userId !== userId));
-  }
-
-  async function removeNativeMember(userId: string) {
-    await removeDepartmentMember(dept.id, userId).catch(() => null);
-    setRemovedNativeIds((prev) => new Set(prev).add(userId));
   }
 
   async function grantAccess(
@@ -928,20 +921,23 @@ function DepartmentCard({
   }
 
   const managerIds = managers.map((m) => m.userId);
-  const directMemberIds = directMembers.map((m) => m.userId);
   const accessIds = accessGrants.map((g) => g.userId);
   const nativeMemberIds = dept.memberIds;
-
-  // Merge all members for display: native subDepartment members + direct-added members + managers, deduped
-  const allMemberEntries = [
-    ...nativeMembers.map((m) => ({ ...m, source: "native" as const })),
-    ...directMembers
-      .filter((m) => !nativeMemberIds.includes(m.userId))
-      .map((m) => ({ userId: m.userId, user: m.user, source: "direct" as const })),
-    ...managers
-      .filter((m) => !nativeMemberIds.includes(m.userId) && !directMemberIds.includes(m.userId))
-      .map((m) => ({ userId: m.userId, user: m.user, source: "native" as const })),
-  ];
+  const membersBySub = dept.membersBySubDepartment ?? [];
+  const totalPeople = dept._count.members ?? nativeMemberIds.length;
+  const previewPeople = (() => {
+    const seen = new Set<string>();
+    const list: typeof membersBySub[number]["members"] = [];
+    for (const group of membersBySub) {
+      for (const m of group.members) {
+        if (seen.has(m.userId)) continue;
+        seen.add(m.userId);
+        list.push(m);
+        if (list.length >= 4) return list;
+      }
+    }
+    return list;
+  })();
 
   return (
     <>
@@ -951,68 +947,17 @@ function DepartmentCard({
         open={walkthroughOpen}
         onOpenChange={setWalkthroughOpen}
       />
-      <ConfirmDialog
-        open={!!confirmRemoveMember}
-        onOpenChange={(open) => { if (!open) setConfirmRemoveMember(null); }}
-        title="Remove member"
-        description={confirmRemoveMember ? `Remove ${confirmRemoveMember.name} from the department? This removes them from all of this department's subDepartments.` : ""}
-        confirmLabel="Remove"
-        successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed` : undefined}
-        onConfirm={async () => { if (confirmRemoveMember) await removeNativeMember(confirmRemoveMember.userId); }}
-      />
       {showGrantModal && (
         <GrantAccessModal
           deptId={dept.id}
           deptName={dept.name}
           users={allUsers}
-          excludeIds={[...new Set([...managerIds, ...directMemberIds, ...accessIds, ...nativeMemberIds])]}
+          excludeIds={[...new Set([...managerIds, ...accessIds, ...nativeMemberIds])]}
           onGrant={grantAccess}
           onClose={() => setShowGrantModal(false)}
         />
       )}
-      <div className={cn(
-        "flex flex-col rounded-xl border bg-sts-card",
-        needsSetup ? "border-amber-400/60 dark:border-amber-500/40" : "border-sts-card-border",
-      )}>
-
-        {/* ── Setup-required banner (DS-08) ── */}
-        {needsSetup && (
-          <div className="flex flex-col gap-2 rounded-t-2xl border-b border-amber-400/50 bg-amber-50/70 px-5 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <div className="min-w-0 flex-1">
-                <p className="font-sans text-[12px] font-semibold text-amber-800 dark:text-amber-300">
-                  Setup not complete
-                </p>
-                <p className="mt-0.5 font-sans text-[11.5px] leading-snug text-amber-700/90 dark:text-amber-400/80">
-                  This department can&apos;t accept tickets — from support forms, mailboxes, or manual
-                  creation — until its initial setup review is marked complete.
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={completingSetup}
-                onClick={completeSetup}
-                className="flex h-7 shrink-0 items-center gap-1.5 rounded-lg bg-amber-500 px-3 font-sans text-[11.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:text-amber-950"
-              >
-                {completingSetup ? (
-                  <>
-                    <span className="size-3 animate-spin rounded-full border-2 border-white/40 border-t-white dark:border-amber-950/40 dark:border-t-amber-950" />
-                    Completing…
-                  </>
-                ) : (
-                  <>
-                    <Check className="size-3.5" strokeWidth={2.5} />
-                    Complete setup
-                  </>
-                )}
-              </button>
-            </div>
-            {setupError && (
-              <p className="pl-[26px] font-sans text-[11.5px] text-red-600 dark:text-red-400">{setupError}</p>
-            )}
-          </div>
-        )}
+      <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card">
 
         {/* ── Card header ── */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -1041,7 +986,7 @@ function DepartmentCard({
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="sts-text-modal-title">{dept.name}</h3>
-                {dept.type && dept.type !== "development" ? (
+                {dept.type ? (
                   <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
                     {departmentTypeLabel(dept.type)}
                   </span>
@@ -1063,7 +1008,7 @@ function DepartmentCard({
               {dept._count.members !== undefined && (
                 <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <Users className="size-3 shrink-0" />
-                  {dept._count.members} member{dept._count.members !== 1 ? "s" : ""}
+                  {dept._count.members} {dept._count.members === 1 ? "person" : "people"}
                 </span>
               )}
             </div>
@@ -1081,7 +1026,7 @@ function DepartmentCard({
                   tenantId={tenantId}
                   departments={[{ id: dept.id, name: dept.name }]}
                   initialDeptIds={[dept.id]}
-                  triggerLabel="Invite member"
+                  triggerLabel="Invite to sub-department"
                   triggerClassName="h-7 rounded-lg px-2.5 text-[11.5px] font-medium"
                 />
               )}
@@ -1110,6 +1055,7 @@ function DepartmentCard({
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Managers
               {managers.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({managers.length})</span>}
+              <span className="ml-1.5 font-normal text-sts-subtle">· can manage multiple departments</span>
             </span>
             {managers.length > 0 && !managersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
@@ -1149,7 +1095,7 @@ function DepartmentCard({
           )}
         </div>
 
-        {/* ── Members (collapsible) ── */}
+        {/* ── Members by sub-department (collapsible) ── */}
         <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
@@ -1159,16 +1105,17 @@ function DepartmentCard({
             <Users className="size-3.5 shrink-0 text-sts-muted" />
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Members
-              {allMemberEntries.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({allMemberEntries.length})</span>}
+              {totalPeople > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({totalPeople})</span>}
+              <span className="ml-1.5 font-normal text-sts-subtle">· by sub-department</span>
             </span>
-            {allMemberEntries.length > 0 && !membersExpanded && (
+            {previewPeople.length > 0 && !membersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
-                {allMemberEntries.slice(0, 4).map((m) => (
+                {previewPeople.map((m) => (
                   <Avatar key={m.userId} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                 ))}
-                {allMemberEntries.length > 4 && (
+                {totalPeople > 4 && (
                   <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
-                    +{allMemberEntries.length - 4}
+                    +{totalPeople - 4}
                   </span>
                 )}
               </div>
@@ -1176,43 +1123,49 @@ function DepartmentCard({
             <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", membersExpanded && "rotate-180")} />
           </button>
           {membersExpanded && (
-            <>
-              <div className="mt-2 flex justify-end">
-                <UserPickerDropdown
-                  label="Add member"
-                  users={allUsers}
-                  excludeIds={[...new Set([...nativeMemberIds, ...directMemberIds, ...managerIds])]}
-                  onSelect={addMember}
-                />
-              </div>
-              {allMemberEntries.length === 0 ? (
-                <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">No members yet.</p>
+            <div className="mt-2 flex flex-col gap-2.5">
+              {membersBySub.length === 0 ? (
+                <p className="font-sans text-[11.5px] text-sts-subtle">
+                  No sub-departments yet. Create one, then invite people into it.
+                </p>
               ) : (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {allMemberEntries.map((m) => (
-                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
-                      <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                      <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
-                      <span className="ml-0.5 rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">{m.user.role}</span>
-                      {!managerIds.includes(m.userId) && (
-                        <button
-                          type="button"
-                          onClick={() => (m.source === "direct" ? removeDirectMember(m.userId) : setConfirmRemoveMember({ userId: m.userId, name: m.user.name }))}
-                          title="Remove from department"
-                          className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500"
-                        >
-                          <X className="size-2.5" />
-                        </button>
-                      )}
+                membersBySub.map((group) => (
+                  <div key={group.subDepartmentId} className="rounded-lg border border-sts-card-border bg-sts-surface/60 px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-sans text-[11px] font-semibold text-sts-foreground">
+                        {group.subDepartmentName}
+                      </span>
+                      <span className="font-sans text-[10.5px] text-sts-subtle">
+                        ({group.members.length})
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    {group.members.length === 0 ? (
+                      <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">No members yet</p>
+                    ) : (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {group.members.map((m) => (
+                          <div
+                            key={`${group.subDepartmentId}-${m.userId}`}
+                            className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1.5 pr-2"
+                          >
+                            <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
+                            <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                            <span className="rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">
+                              {m.user.role}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* ── Cross-dept access (collapsible) ── */}
+        {/* ── Cross-dept access (collapsible) — gated by platform setting ── */}
+        {showCrossDeptAccess && (
         <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
@@ -1222,6 +1175,7 @@ function DepartmentCard({
             <Users className="size-3.5 shrink-0 text-sts-muted" />
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Cross-department access
+              <span className="ml-1.5 font-normal text-sts-subtle">(managers)</span>
               {accessGrants.length > 0 && (
                 <span className="ml-1.5 font-normal text-sts-subtle">({accessGrants.length})</span>
               )}
@@ -1372,6 +1326,7 @@ function DepartmentCard({
             </button>
           )}
         </div>
+        )}
 
         {/* ── Enter workspace CTA ── */}
         {onEnterWorkspace && (
@@ -1410,6 +1365,7 @@ export function SettingsDepartmentsPage({
   inWorkspace = false,
   templateOptions = [],
   tenantId = null,
+  showCrossDeptAccess = false,
   onEnterWorkspace,
 }: {
   departments: DepartmentRow[];
@@ -1421,6 +1377,8 @@ export function SettingsDepartmentsPage({
   templateOptions?: TemplateOption[];
   /** Active tenant — enables the per-card "Invite member" action when present. */
   tenantId?: string | null;
+  /** Platform setting: when true, show Cross-department access on each card. */
+  showCrossDeptAccess?: boolean;
   onEnterWorkspace?: (deptId: string) => void;
 }) {
   const router = useRouter();
@@ -1441,14 +1399,6 @@ export function SettingsDepartmentsPage({
 
   async function handleDelete(id: string) {
     await deleteAdminDepartment(id);
-    startTransition(() => router.refresh());
-  }
-
-  // DS-08: mark setup review complete, then refresh so the row reloads with a
-  // non-null setupCompletedAt (which clears the card's banner). Errors are
-  // surfaced by the card itself, so let them propagate.
-  async function handleCompleteSetup(id: string) {
-    await completeAdminDepartmentSetup(id);
     startTransition(() => router.refresh());
   }
 
@@ -1483,8 +1433,8 @@ export function SettingsDepartmentsPage({
           </h1>
           <p className="mt-1 font-sans text-[13px] text-sts-muted">
             {inWorkspace
-              ? "Manage this department — assign managers and grant cross-department access."
-              : "Manage departments, assign managers, and grant cross-department access."}
+              ? "Manage this department — assign managers and configure access."
+              : "Manage departments and assign managers. People join through sub-departments."}
           </p>
         </div>
         {isAdmin && !inWorkspace && (
@@ -1520,7 +1470,7 @@ export function SettingsDepartmentsPage({
             onRename={handleRename}
             onDelete={setConfirmDeleteId}
             onEnterWorkspace={onEnterWorkspace}
-            onCompleteSetup={handleCompleteSetup}
+            showCrossDeptAccess={showCrossDeptAccess}
           />
         </div>
       ) : (
@@ -1535,7 +1485,7 @@ export function SettingsDepartmentsPage({
               onRename={handleRename}
               onDelete={setConfirmDeleteId}
               onEnterWorkspace={onEnterWorkspace}
-              onCompleteSetup={handleCompleteSetup}
+              showCrossDeptAccess={showCrossDeptAccess}
             />
           ))}
         </div>

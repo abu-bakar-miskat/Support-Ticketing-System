@@ -129,6 +129,7 @@ export function TasksPage({
             availableProjects={metaReady?.availableProjects ?? []}
             availableModules={metaReady?.availableModules ?? []}
             availableMembers={metaReady?.availableMembers ?? []}
+            availableSubDepartments={metaReady?.availableSubDepartments ?? []}
             unassignedOnly={effectiveScope === "unassigned"}
             draftsOnly={effectiveScope === "drafts"}
             hideTitleBar

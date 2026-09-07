@@ -786,13 +786,16 @@ function AssignMemberModal({
       .catch(() => setLoading(false));
   }, [subDepartment.id]);
 
-  const filtered = profiles.filter(
-    (p) =>
-      !subManagerIds.has(p.id) &&
-      (isSubManagerMode ? p.subDepartment === null || existingIds.has(p.id) : !existingIds.has(p.id) && p.subDepartment === null) &&
-      (p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        p.email.toLowerCase().includes(debouncedSearch.toLowerCase())),
-  );
+  const filtered = profiles.filter((p) => {
+    if (subManagerIds.has(p.id)) return false;
+    // Agents may already be in other sub-departments; only skip people already on this one
+    // (unless promoting an existing member to sub-manager).
+    if (!isSubManagerMode && existingIds.has(p.id)) return false;
+    return (
+      p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      p.email.toLowerCase().includes(debouncedSearch.toLowerCase())
+    );
+  });
 
   function toggle(id: string) {
     setSelectedIds((prev) => {
@@ -908,8 +911,8 @@ function AssignMemberModal({
                 <p className="px-3 py-4 text-center font-sans text-[11.5px] text-sts-subtle">
                   {isSubManagerMode
                     ? "No eligible members found"
-                    : profiles.every((p) => p.subDepartment !== null || existingIds.has(p.id))
-                      ? "All users are already assigned to a sub department"
+                    : existingIds.size > 0 && profiles.every((p) => existingIds.has(p.id))
+                      ? "Everyone is already in this sub-department"
                       : "No users found"}
                 </p>
               ) : (
@@ -932,6 +935,7 @@ function AssignMemberModal({
                         </p>
                         <p className="truncate font-sans text-[11.5px] text-sts-subtle">
                           {p.email}
+                          {p.subDepartment?.name ? ` · ${p.subDepartment.name}` : ""}
                         </p>
                       </div>
                       <span
@@ -1014,7 +1018,7 @@ const APPROVAL_ROLES: { value: ApprovalRole; label: string; hint: string }[] = [
   { value: "manager",      label: "Manager",         hint: "Manages whole department" },
   { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub department" },
   { value: "agent",        label: "Agent",           hint: "Member — pick a sub department" },
-  { value: "cross-access", label: "Cross-dept access", hint: "Guest access, no sub department" },
+  { value: "cross-access", label: "Cross-dept access", hint: "Managers only — guest access to this department" },
 ];
 
 function JoinRequestsSection({
@@ -1111,8 +1115,8 @@ function JoinRequestsSection({
         setRequests((prev) => prev.filter((r) => r.id !== req.id));
         setExpanded(null);
         router.refresh();
-      } catch {
-        // silently ignore
+      } catch (err) {
+        setApproveError(err instanceof Error ? err.message : "Failed to process request");
       }
     } finally {
       setSubmitting(null);

@@ -245,18 +245,16 @@ type RoleDerivationClient = Pick<
   | "profile"
   | "tenantMembership"
   | "departmentManager"
-  | "departmentMember"
   | "departmentAccess"
   | "subDepartmentMembership"
 >;
 
 /** Derive the canonical assignments for a user from the existing role tables. */
 async function deriveAssignmentsFromClient(client: RoleDerivationClient, userId: string): Promise<ScopeRow[]> {
-  const [profile, tenantM, deptMgr, deptMem, deptAcc, subDepartmentM] = await Promise.all([
+  const [profile, tenantM, deptMgr, deptAcc, subDepartmentM] = await Promise.all([
     client.profile.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
     client.tenantMembership.findMany({ where: { userId, isActive: true }, select: { role: true, tenantId: true } }),
     client.departmentManager.findMany({ where: { userId }, select: { departmentId: true, role: true } }),
-    client.departmentMember.findMany({ where: { userId }, select: { departmentId: true } }),
     client.departmentAccess.findMany({
       where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: { departmentId: true },
@@ -273,7 +271,7 @@ async function deriveAssignmentsFromClient(client: RoleDerivationClient, userId:
     const role = d.role === "admin" ? "admin" : "manager";
     rows.push({ role, scopeType: "DEPARTMENT", scopeId: d.departmentId });
   }
-  for (const d of deptMem) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: d.departmentId });
+  // DepartmentMember is legacy — agents/sub-managers join via SubDepartmentMembership only.
   for (const a of deptAcc) rows.push({ role: "agent", scopeType: "DEPARTMENT", scopeId: a.departmentId });
   for (const tm of subDepartmentM) rows.push({ role: tm.role, scopeType: "SUB_DEPARTMENT", scopeId: tm.subDepartmentId });
 

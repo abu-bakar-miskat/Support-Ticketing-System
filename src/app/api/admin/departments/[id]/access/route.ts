@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { createNotification } from "@/lib/notify"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
+import {
+  DEPARTMENT_ACCESS_ELIGIBILITY_ERROR,
+  isEligibleForDepartmentAccess,
+} from "@/lib/department-access"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -13,10 +18,23 @@ async function canManageDept(profile: { role: string; managedDepartmentIds?: str
   return false
 }
 
+async function assertCrossDeptFeatureForDept(deptId: string) {
+  const dept = await prisma.department.findUnique({
+    where: { id: deptId },
+    select: { tenantId: true },
+  })
+  if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const check = await assertFeatureEnabled(dept.tenantId, "crossDepartmentAccess")
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: 403 })
+  return null
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id } = await params
+  const disabled = await assertCrossDeptFeatureForDept(id)
+  if (disabled) return disabled
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   const grants = await prisma.departmentAccess.findMany({
     where: { departmentId: id },
@@ -33,6 +51,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id } = await params
+  const disabled = await assertCrossDeptFeatureForDept(id)
+  if (disabled) return disabled
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
@@ -44,6 +64,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     projectIds?: string[]
   }
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
+
+  if (!(await isEligibleForDepartmentAccess(userId))) {
+    return NextResponse.json({ error: DEPARTMENT_ACCESS_ELIGIBILITY_ERROR }, { status: 400 })
+  }
 
   const dept = await prisma.department.findUnique({ where: { id } })
   if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })

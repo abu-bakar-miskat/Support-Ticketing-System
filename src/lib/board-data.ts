@@ -319,6 +319,8 @@ export type BoardCardWhere = {
   staffUserId?: string
   /** Manager-scoped: only show tickets from these department IDs */
   allowedDeptIds?: string[]
+  /** Narrow to specific sub-departments (within allowed dept / SD-06 ACL). */
+  subDepartmentIdIn?: string[]
   /** Cross-access-only: restrict to projects this user is a member of */
   crossAccessUserId?: string
   /** When set with crossAccessUserId, limit to this department's projects */
@@ -438,6 +440,9 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
     })
   } else if (where.allowedDeptIds) {
     and.push({ subDepartment: { departmentId: { in: where.allowedDeptIds } } })
+  }
+  if (where.subDepartmentIdIn?.length) {
+    and.push({ subDepartmentId: { in: where.subDepartmentIdIn } })
   }
 
   // ── Filter params ───────────────────────────────────────────────────────────

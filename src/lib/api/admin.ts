@@ -306,7 +306,10 @@ export async function grantDepartmentAccess(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error("Failed to grant access")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to grant access")
+  }
   return res.json()
 }
 
@@ -537,6 +540,9 @@ export async function handleDepartmentJoinRequest(
       body: JSON.stringify(body),
     },
   )
-  if (!res.ok) throw new Error("Failed to handle join request")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to handle join request")
+  }
   return res.json()
 }

@@ -85,17 +85,7 @@ export async function acceptDepartmentInvite(
       update: { isActive: true },
     });
 
-    // Join the parent department directly (mirrors the "Add member" flow) so the
-    // invitee is a full department member, not only a sub-department member.
-    await tx.departmentMember.upsert({
-      where: { departmentId_userId: { departmentId: invite.departmentId, userId: profile.id } },
-      create: {
-        departmentId: invite.departmentId,
-        userId: profile.id,
-        addedBy: invite.invitedBy,
-      },
-      update: {},
-    });
+    // Membership is sub-department-scoped. Whole-department access is for managers only.
 
     await (tx.subDepartmentMembership as any).upsert({
       where: { userId_subDepartmentId: { userId: profile.id, subDepartmentId: invite.subDepartmentId } },

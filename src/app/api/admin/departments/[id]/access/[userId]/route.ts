@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 type Params = { params: Promise<{ id: string; userId: string }> }
 
@@ -10,12 +11,25 @@ async function canManageDept(profile: { role: string; managedDepartmentIds?: str
   return false
 }
 
+async function assertCrossDeptFeatureForDept(deptId: string) {
+  const dept = await prisma.department.findUnique({
+    where: { id: deptId },
+    select: { tenantId: true },
+  })
+  if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  const check = await assertFeatureEnabled(dept.tenantId, "crossDepartmentAccess")
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: 403 })
+  return null
+}
+
 // GET — current grant fields plus which of the department's projects this user is assigned to,
 // for prefilling the quick-edit panel.
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id, userId } = await params
+  const disabled = await assertCrossDeptFeatureForDept(id)
+  if (disabled) return disabled
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const grant = await prisma.departmentAccess.findUnique({
@@ -46,6 +60,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id, userId } = await params
+  const disabled = await assertCrossDeptFeatureForDept(id)
+  if (disabled) return disabled
   if (!(await canManageDept(profile!, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
@@ -119,6 +135,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
   const { id, userId } = await params
+  const disabled = await assertCrossDeptFeatureForDept(id)
+  if (disabled) return disabled
 
   if (profile!.role !== "admin") {
     if (!(profile!.managedDepartmentIds ?? []).includes(id)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })

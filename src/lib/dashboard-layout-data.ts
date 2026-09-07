@@ -49,7 +49,6 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   const managedDeptIds: string[] = profile.managedDepartmentIds ?? [];
   const grantedDeptIds: string[] = profile.grantedAccessDeptIds ?? [];
-  const directMemberDeptIds: string[] = profile.directMemberDeptIds ?? [];
 
   const membershipSubDepartments = memberships.map((m) => ({
     id: m.subDepartment.id,
@@ -71,15 +70,14 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   // Primary dept for staff/lead (first subDepartment's department)
   const primaryDeptId = membershipSubDepartments[0]?.departmentId ?? null;
-  // Staff/lead with access to more than one department — via multiple subDepartment memberships,
-  // a DepartmentAccess grant (cross-access), or a DepartmentMember grant (direct member)
+  // Staff/lead with access to more than one department — via multiple subDepartment
+  // memberships or a DepartmentAccess grant (cross-access).
   const crossDeptIds = !isDeptLevel
     ? [
         ...new Set([
           ...(primaryDeptId ? [primaryDeptId] : []),
           ...membershipDeptIds,
           ...grantedDeptIds,
-          ...directMemberDeptIds,
         ]),
       ]
     : [];
@@ -161,6 +159,12 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     .filter((d) => checkIsCrossAccessDept(profile, d.id))
     .map((d) => d.id);
 
+  // Staff: only sub-departments they belong to in the active department (or all
+  // memberships when no active dept). Managers/admins: every sub-dept in scope.
+  const membershipInActiveDept = activeDeptId
+    ? membershipSubDepartments.filter((t) => t.departmentId === activeDeptId)
+    : membershipSubDepartments;
+
   const subDepartments =
     deptSubDepartmentsRaw.length > 0
       ? deptSubDepartmentsRaw.map((t) => ({
@@ -170,11 +174,11 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           departmentId: t.departmentId ?? null,
           departmentName: t.department?.name ?? null,
         }))
-      : membershipSubDepartments;
+      : membershipInActiveDept;
 
   const visibleSubDepartmentIds = isDeptLevel
-    ? subDepartments.map((t) => t.id)
-    : membershipSubDepartments.map((t) => t.id);
+    ? (deptScope?.subDepartmentIds?.length ? deptScope.subDepartmentIds : subDepartments.map((t) => t.id))
+    : membershipInActiveDept.map((t) => t.id);
 
   // Hub department: show only projects the user (or their dept members) are assigned to
   const isHubDept = deptScope?.isHub === true;

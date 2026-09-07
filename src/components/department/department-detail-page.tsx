@@ -47,14 +47,13 @@ import {
 import {
   assignDepartmentManager,
   removeDepartmentManager,
-  addDepartmentMember,
-  removeDepartmentDirectMember,
   removeDepartmentMember,
   grantDepartmentAccess,
   revokeDepartmentAccess,
   fetchDepartmentAccessGrant,
   updateDepartmentAccess,
   updateAdminUser,
+  addAdminSubDepartmentMember,
   revokeDepartmentInvite,
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
@@ -75,7 +74,7 @@ type MemberRow = {
   role: string;
   subDepartmentNames: string[];
   subDepartmentId: string | null;
-  source: "native" | "direct";
+  source: "native";
   location?: string | null;
   timezone?: string | null;
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
@@ -430,23 +429,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     refresh();
   }
 
-  async function addMember(u: UserOption) {
-    const created = await addDepartmentMember(data.id, u.id).catch(() => null);
-    if (created) {
-      setMembers((prev) => [...prev.filter((m) => m.userId !== u.id), {
-        userId: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl ?? null, color: "",
-        role: u.role, subDepartmentNames: [], subDepartmentId: null, source: "direct",
-      }]);
-      refresh();
-    }
-  }
-
   async function removeMember(member: MemberRow) {
-    if (member.source === "native") {
-      await removeDepartmentMember(data.id, member.userId).catch(() => null);
-    } else {
-      await removeDepartmentDirectMember(data.id, member.userId).catch(() => null);
-    }
+    await removeDepartmentMember(data.id, member.userId).catch(() => null);
     setMembers((prev) => prev.filter((m) => m.userId !== member.userId));
     refresh();
   }
@@ -463,10 +447,12 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
 
   async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
+    if (!newSubDepartmentId) return;
     setLocalSubDepartmentIds((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
     setSaving(memberId);
     try {
-      await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
+      // Additive: agents/sub-managers may belong to multiple sub-departments.
+      await addAdminSubDepartmentMember(newSubDepartmentId, memberId);
       refresh();
     } finally {
       setSaving(null);
@@ -522,7 +508,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <Users className="size-3.5 shrink-0" /> {data.memberCount} member{data.memberCount !== 1 ? "s" : ""}
+              <Users className="size-3.5 shrink-0" /> {data.memberCount} {data.memberCount === 1 ? "person" : "people"}
             </span>
           </div>
         </div>
@@ -607,24 +593,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
       </Section>
 
-      {/* Members */}
+      {/* Sub-department members — no department-wide membership */}
       <Section
         icon={Users}
-        title="Members"
+        title="Sub-department members"
         count={members.length}
         action={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowInviteModal(true)}
-              disabled={data.availableSubDepartments.length === 0}
-              title={data.availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Plus className="size-3" /> Invite by email
-            </button>
-            <UserPickerDropdown label="Add member" users={data.allUsers} excludeIds={[...managerIds, ...memberIds]} onSelect={addMember} />
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            disabled={data.availableSubDepartments.length === 0}
+            title={data.availableSubDepartments.length === 0 ? "Create a sub-department before inviting" : undefined}
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus className="size-3" /> Invite to sub-department
+          </button>
         }
       >
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
@@ -643,7 +626,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                   <TableCell colSpan={5} className="py-0">
                     <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-sts-muted">No members yet</span>
+                      <span className="font-sans text-[11.5px] text-sts-muted">No sub-department members yet. Invite people into a sub-department.</span>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -779,7 +762,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
       )}
 
-      {/* Cross-department access */}
+      {/* Cross-department access — managers only */}
       <Section
         icon={Users}
         title="Cross-department access"
@@ -915,11 +898,11 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         title="Remove from department"
         description={
           confirmRemoveMember
-            ? `Remove ${confirmRemoveMember.name} from ${data.name}? They will lose access to all sub departments in this department.`
+            ? `Remove ${confirmRemoveMember.name} from all sub-departments in ${data.name}?`
             : ""
         }
         confirmLabel="Remove"
-        successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed from department` : undefined}
+        successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed from sub-departments` : undefined}
         onConfirm={async () => { if (confirmRemoveMember) await removeMember(confirmRemoveMember); }}
       />
     </div>

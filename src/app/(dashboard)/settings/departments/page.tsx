@@ -3,6 +3,8 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
+import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 
 export const metadata = { title: "Departments — Support Ticketing System" };
@@ -59,10 +61,6 @@ export default async function SettingsDepartmentsRoute() {
           },
           orderBy: { grantedAt: "desc" },
         },
-        directMembers: {
-          include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
-          orderBy: { addedAt: "asc" },
-        },
       },
     }),
     prisma.profile.findMany({
@@ -79,27 +77,46 @@ export default async function SettingsDepartmentsRoute() {
         where: { isActive: true, subDepartment: { departmentId: { in: deptIds } } },
         select: {
           userId: true,
-          subDepartment: { select: { departmentId: true } },
+          subDepartment: { select: { id: true, name: true, departmentId: true } },
           user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
         },
       })
     : [];
 
-  // Group member data by department
+  // Group members by department, then by sub-department
   const membersByDept = new Map<string, Map<string, { id: string; name: string; email: string; role: string; avatarUrl: string | null }>>();
+  const byDeptSub = new Map<string, Map<string, { name: string; members: Map<string, { id: string; name: string; email: string; role: string; avatarUrl: string | null }> }>>();
   for (const m of memberships) {
     const dId = m.subDepartment.departmentId;
     const map = membersByDept.get(dId) ?? new Map();
     map.set(m.userId, { ...m.user, avatarUrl: m.user.avatarUrl ?? null });
     membersByDept.set(dId, map);
+
+    const subMap = byDeptSub.get(dId) ?? new Map();
+    const group = subMap.get(m.subDepartment.id) ?? {
+      name: m.subDepartment.name,
+      members: new Map(),
+    };
+    group.members.set(m.userId, { ...m.user, avatarUrl: m.user.avatarUrl ?? null });
+    subMap.set(m.subDepartment.id, group);
+    byDeptSub.set(dId, subMap);
   }
 
   const rows: DepartmentRow[] = departments.map((d) => {
     const nativeMemberMap = membersByDept.get(d.id) ?? new Map();
-    const totalMembers = new Set([
-      ...nativeMemberMap.keys(),
-      ...d.directMembers.map((m) => m.userId),
-    ]).size;
+    const totalMembers = nativeMemberMap.size;
+    const subGroups = byDeptSub.get(d.id) ?? new Map();
+    // Include every sub-department (even empty) so the card shows the full breakdown.
+    const membersBySubDepartment = d.subDepartments.map((sub) => {
+      const group = subGroups.get(sub.id);
+      return {
+        subDepartmentId: sub.id,
+        subDepartmentName: sub.name,
+        members: group
+          ? [...group.members.entries()].map(([uid, u]) => ({ userId: uid, user: u }))
+          : [],
+      };
+    });
     return {
       id: d.id,
       name: d.name,
@@ -122,15 +139,12 @@ export default async function SettingsDepartmentsRoute() {
         user: { id: g.user.id, name: g.user.name, email: g.user.email, role: g.user.role, avatarUrl: g.user.avatarUrl ?? null },
         grantor: { id: g.grantor.id, name: g.grantor.name },
       })),
-      directMembers: d.directMembers.map((m) => ({
-        id: m.id,
-        userId: m.userId,
-        user: { id: m.user.id, name: m.user.name, email: m.user.email, role: m.user.role, avatarUrl: m.user.avatarUrl ?? null },
-      })),
+      directMembers: [],
       nativeMembers: [...nativeMemberMap.entries()].map(([uid, u]) => ({
         userId: uid,
         user: u,
       })),
+      membersBySubDepartment,
       memberIds: [...nativeMemberMap.keys()],
       subDepartments: d.subDepartments,
     };
@@ -146,13 +160,17 @@ export default async function SettingsDepartmentsRoute() {
 
   // Templates available to this tenant, so the New Department modal can offer
   // them dynamically instead of the hardcoded department-type list.
-  const catalogue = await listCatalogueForTenant(tenantId);
+  const [catalogue, showCrossDeptAccess] = await Promise.all([
+    listCatalogueForTenant(tenantId),
+    isFeatureEnabled(tenantId, "crossDepartmentAccess"),
+  ]);
   const templateOptions: TemplateOption[] = catalogue.map((t) => ({
     slug: t.slug,
     name: t.name,
     description: t.description,
     featureCount: t.features.length,
     status: t.status,
+    departmentType: departmentTypeForTemplateSlug(t.slug),
   }));
 
   return (
@@ -162,6 +180,7 @@ export default async function SettingsDepartmentsRoute() {
       isAdmin={isAdmin}
       inWorkspace={!!activeDeptId}
       templateOptions={templateOptions}
+      showCrossDeptAccess={showCrossDeptAccess}
     />
   );
 }

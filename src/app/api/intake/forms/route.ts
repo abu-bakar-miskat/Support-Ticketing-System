@@ -1,13 +1,24 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAuth, departmentAdminScope } from "@/lib/auth"
+import { requireAuth, managerDeptScope } from "@/lib/auth"
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
+import { AssignmentMethod } from "@/generated/prisma/enums"
+
+const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
+
+/** Parses a per-form assignment-method override: null = inherit, a valid enum
+ *  value = override, undefined = leave untouched (invalid values are ignored). */
+function parseAssignmentMethod(value: unknown): AssignmentMethod | null | undefined {
+  if (value === null) return null
+  if (typeof value === "string" && VALID_METHODS.has(value)) return value as AssignmentMethod
+  return undefined
+}
 
 export async function GET() {
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const deptScope = departmentAdminScope(profile!)
+  const deptScope = managerDeptScope(profile!)
   const forms = await prisma.intakeFormConfig.findMany({
     where: deptScope
       ? { departmentId: { in: [...deptScope] } }
@@ -38,6 +49,7 @@ export async function POST(request: Request) {
   const workloadThreshold =
     typeof body.workloadThreshold === "number" ? body.workloadThreshold : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
+  const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
   const displayMode =
     body.displayMode === "FORM" || body.displayMode === "CHAT" ? body.displayMode : undefined
   // Owner level: a form created from a sub-department is SUB_DEPARTMENT-owned;
@@ -51,7 +63,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const deptScope = departmentAdminScope(profile!)
+  const deptScope = managerDeptScope(profile!)
   if (deptScope && !deptScope.has(departmentId)) {
     return NextResponse.json(
       { error: "Forbidden: department is outside your scope" },
@@ -88,6 +100,7 @@ export async function POST(request: Request) {
       intakeSubDepartmentId,
       scope,
       ...(autoAssign !== undefined ? { autoAssign } : {}),
+      ...(assignmentMethod !== undefined ? { assignmentMethod } : {}),
       ...(displayMode !== undefined ? { displayMode } : {}),
     },
     include: {

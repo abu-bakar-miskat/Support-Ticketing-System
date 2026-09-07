@@ -3,6 +3,17 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@/generated/prisma/client"
 import { requireAuth, departmentAdminScope } from "@/lib/auth"
 import { sanitizeFormBranding } from "@/lib/form-branding"
+import { AssignmentMethod } from "@/generated/prisma/enums"
+
+const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
+
+/** Parses a per-form assignment-method override: null = inherit, a valid enum
+ *  value = override, undefined = leave untouched (invalid values are ignored). */
+function parseAssignmentMethod(value: unknown): AssignmentMethod | null | undefined {
+  if (value === null) return null
+  if (typeof value === "string" && VALID_METHODS.has(value)) return value as AssignmentMethod
+  return undefined
+}
 
 async function assertFormScope(
   formId: string,
@@ -39,6 +50,7 @@ export async function PATCH(
   const intakeSubDepartmentId = (body.intakeSubDepartmentId as string | undefined)?.trim()
   const isActive = typeof body.isActive === "boolean" ? body.isActive : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
+  const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
   const workloadThreshold =
     typeof body.workloadThreshold === "number" ? body.workloadThreshold : undefined
   const displayMode =
@@ -81,6 +93,7 @@ export async function PATCH(
       ...(intakeSubDepartmentId !== undefined ? { intakeSubDepartmentId } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
       ...(autoAssign !== undefined ? { autoAssign } : {}),
+      ...(assignmentMethod !== undefined ? { assignmentMethod } : {}),
       ...(displayMode !== undefined ? { displayMode } : {}),
       ...(brandingProvided
         ? { branding: (branding ?? Prisma.JsonNull) as Prisma.InputJsonValue }

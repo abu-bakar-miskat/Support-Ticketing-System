@@ -276,7 +276,10 @@ function IntakeFormModal({
     isEdit ? mode.form.workloadThreshold : 5,
   );
   const [isActive, setIsActive] = useState(isEdit ? mode.form.isActive : true);
-  const [autoAssign, setAutoAssign] = useState(isEdit ? mode.form.autoAssign : true);
+  // null = inherit the sub-department's method (→ department → round-robin).
+  const [assignmentMethod, setAssignmentMethod] = useState<AssignmentMethod | null>(
+    isEdit ? mode.form.assignmentMethod : null,
+  );
   const [displayMode, setDisplayMode] = useState<"FORM" | "CHAT">(
     isEdit ? mode.form.displayMode : "FORM",
   );
@@ -303,6 +306,11 @@ function IntakeFormModal({
       return;
     }
 
+    // The engine's autoAssign gate short-circuits assignment entirely; keep it
+    // in sync with the chosen method so an explicit "Manual" leaves tickets
+    // unassigned, while every auto method (and "inherit") lets the engine run.
+    const autoAssign = assignmentMethod !== "MANUAL";
+
     setSaving(true);
     try {
       const url = isEdit
@@ -313,13 +321,14 @@ function IntakeFormModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           isEdit
-            ? { name: name.trim(), intakeSubDepartmentId, workloadThreshold, isActive, autoAssign, displayMode }
+            ? { name: name.trim(), intakeSubDepartmentId, workloadThreshold, isActive, autoAssign, assignmentMethod, displayMode }
             : {
                 name: name.trim(),
                 departmentId,
                 intakeSubDepartmentId,
                 workloadThreshold,
                 autoAssign,
+                assignmentMethod,
                 displayMode,
                 scope: lockedSubDepartmentId ? "SUB_DEPARTMENT" : "DEPARTMENT",
               },
@@ -490,21 +499,43 @@ function IntakeFormModal({
             </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-0.5">
-              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-                Auto-assign
-              </label>
-              <p className="font-sans text-[11px] text-sts-subtle">
-                {autoAssign ? "New tickets assigned via ROTA round-robin" : "New tickets left unassigned for manual pick"}
-              </p>
-            </div>
-            <LabeledSwitch
-              checked={autoAssign}
-              onLabel="Auto"
-              offLabel="Manual"
-              onToggle={() => setAutoAssign((v) => !v)}
-            />
+          <div className="flex flex-col gap-1.5">
+            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+              Assignment method
+            </label>
+            <Select
+              value={assignmentMethod ?? "INHERIT"}
+              onValueChange={(v) =>
+                setAssignmentMethod(v === "INHERIT" ? null : (v as AssignmentMethod))
+              }
+            >
+              <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
+                <span className="text-sts-foreground">
+                  {assignmentMethod === null
+                    ? "Inherit from sub-department"
+                    : ASSIGNMENT_METHOD_LABELS[assignmentMethod]}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INHERIT" className="font-sans text-[12.5px]">
+                  Inherit from sub-department
+                </SelectItem>
+                {(
+                  ["RULE_BASED", "ROUND_ROBIN", "WORKLOAD_BASED", "MANUAL"] as const
+                ).map((m) => (
+                  <SelectItem key={m} value={m} className="font-sans text-[12.5px]">
+                    {ASSIGNMENT_METHOD_LABELS[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="font-sans text-[11.5px] text-sts-subtle">
+              {assignmentMethod === null
+                ? "Uses the sub-department's method (then department, then round-robin)."
+                : assignmentMethod === "MANUAL"
+                  ? "New tickets are left unassigned for manual pick."
+                  : `New tickets are assigned via ${ASSIGNMENT_METHOD_LABELS[assignmentMethod].toLowerCase()}.`}
+            </p>
           </div>
 
           {isEdit && (

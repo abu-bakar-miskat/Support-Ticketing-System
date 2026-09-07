@@ -251,17 +251,9 @@ export function DashboardLayout({
         <TimerHydrator />
         <TicketsRealtime />
 
-        {/* Global new-task modal — triggered by sidebar + or X+Space */}
-        {showCreateTask && !taskMeta && (
-          <div role="dialog" aria-modal="true" aria-label="New task" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="rounded-lg bg-sts-card p-6 text-sm" role="status">
-              {taskMetaError ? "Could not load task options." : "Loading task options…"}
-              {taskMetaError && <button className="ml-3 underline" onClick={() => retryTaskMeta()}>Try again</button>}
-              <button className="ml-3 underline" onClick={() => setShowCreateTask(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-        {showCreateTask && taskMeta && (
+        {/* Global new-task modal — triggered by sidebar + or X+Space.
+            Opens instantly; data-dependent fields shimmer until task meta loads. */}
+        {showCreateTask && (
           <NewTicketModal
             projects={taskMeta?.availableProjects ?? []}
             subDepartmentMembers={taskMeta?.availableMembers ?? []}
@@ -273,6 +265,10 @@ export function DashboardLayout({
               label: s.label,
               color: s.color,
             }))}
+            metaLoading={!taskMeta}
+            metaError={taskMetaError}
+            onRetryMeta={() => retryTaskMeta()}
+            membersLoading={!taskMeta}
             onClose={() => setShowCreateTask(false)}
             onCreated={() => setShowCreateTask(false)}
           />

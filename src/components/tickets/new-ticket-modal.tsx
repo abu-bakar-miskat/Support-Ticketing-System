@@ -29,6 +29,7 @@ import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ExpandableDescriptionEditor } from "@/components/ui/expandable-description-editor";
 import { AiComposeButton } from "@/components/tickets/ai-compose-button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -120,6 +121,16 @@ interface NewTicketModalProps {
   subDepartmentMembersForCreate?: UserListPerson[];
   /** When true, the assignee list is still loading — avoids a flash of "No members found" */
   membersLoading?: boolean;
+  /**
+   * When true, the modal-level task meta (projects, sub-departments, members,
+   * statuses) is still loading. The modal opens instantly with all the static
+   * inputs live; the data-dependent fields render a shimmer until it resolves.
+   */
+  metaLoading?: boolean;
+  /** True when the task-meta fetch failed — shows an inline error + retry. */
+  metaError?: boolean;
+  /** Retry handler for a failed task-meta fetch. */
+  onRetryMeta?: () => void;
   /** When set, the created ticket is linked as a sub-ticket of this parent */
   parentId?: string;
   /** Human-readable ID of the parent ticket, shown in the modal header */
@@ -156,6 +167,9 @@ export function NewTicketModal({
   statuses,
   subDepartmentMembersForCreate,
   membersLoading = false,
+  metaLoading = false,
+  metaError = false,
+  onRetryMeta,
   parentId,
   parentHumanId,
   onCreated,
@@ -262,6 +276,16 @@ export function NewTicketModal({
       return effectiveStatuses[0]?.label ?? "";
     });
   }, [effectiveStatuses, defaultStatus]);
+
+  // Sub-department default is derived from props (subDepartments / defaultSubDepartmentId),
+  // which may arrive after mount when the modal opens before task-meta loads. Apply the
+  // default via an effect so it isn't stuck at the empty initial value.
+  useEffect(() => {
+    if (!showSubDepartmentPicker) return;
+    setSelectedSubDepartmentId(
+      (cur) => cur ?? defaultSubDepartmentId ?? subDepartments?.[0]?.id ?? null,
+    );
+  }, [showSubDepartmentPicker, defaultSubDepartmentId, subDepartments]);
 
   // Fetch available templates
   const { data: templates = [] } = useQuery({
@@ -556,6 +580,20 @@ export function NewTicketModal({
                 className="mb-4 rounded-md bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
               >
                 {error}
+              </p>
+            )}
+
+            {metaError && (
+              <p
+                role="alert"
+                className="mb-4 flex items-center gap-3 rounded-md bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
+              >
+                Could not load task options.
+                {onRetryMeta && (
+                  <button type="button" onClick={onRetryMeta} className="font-semibold underline">
+                    Try again
+                  </button>
+                )}
               </p>
             )}
 
@@ -877,7 +915,9 @@ export function NewTicketModal({
 
             {/* Fields */}
             <FormGrid className="items-start">
-                {projectLocked && defaultProject ? (
+                {metaLoading ? (
+                  <SkeletonField label="Project" />
+                ) : projectLocked && defaultProject ? (
                   <FormField label="Project">
                     <input type="hidden" name="projectId" value={defaultProject.id} />
                     <div className={READONLY_CLASS}>
@@ -901,7 +941,9 @@ export function NewTicketModal({
                   />
                 )}
 
-                {showSubDepartmentPicker && (
+                {metaLoading && <SkeletonField label="Sub-department" />}
+
+                {!metaLoading && showSubDepartmentPicker && (
                   <>
                     {departmentName ? (
                       <FormField label="Department">
@@ -922,7 +964,9 @@ export function NewTicketModal({
                   </>
                 )}
 
-                {showBoardField ? (
+                {metaLoading ? (
+                  <SkeletonField label="Status" />
+                ) : showBoardField ? (
                   boardSubDepartments!.length > 1 ? (
                     <StyledSelect
                       label="Board"
@@ -947,7 +991,7 @@ export function NewTicketModal({
                   />
                 )}
 
-                {showBoardField && (
+                {!metaLoading && showBoardField && (
                   <StatusField
                     effectiveStatuses={effectiveStatuses}
                     selectedStatus={selectedStatus}
@@ -960,19 +1004,23 @@ export function NewTicketModal({
                   setSelectedPriority={setSelectedPriority}
                 />
 
-                <AssigneePicker
-                  keepUnassigned={keepUnassigned}
-                  setKeepUnassigned={setKeepUnassigned}
-                  assigneeIds={assigneeIds}
-                  setAssigneeIds={setAssigneeIds}
-                  assigneeOpen={assigneeOpen}
-                  setAssigneeOpen={setAssigneeOpen}
-                  assigneeSearch={assigneeSearch}
-                  setAssigneeSearch={setAssigneeSearch}
-                  effectiveMembers={effectiveMembers}
-                  defaultAssigneeId={currentUserId}
-                  membersLoading={membersLoading}
-                />
+                {metaLoading ? (
+                  <SkeletonField label="Assignee" />
+                ) : (
+                  <AssigneePicker
+                    keepUnassigned={keepUnassigned}
+                    setKeepUnassigned={setKeepUnassigned}
+                    assigneeIds={assigneeIds}
+                    setAssigneeIds={setAssigneeIds}
+                    assigneeOpen={assigneeOpen}
+                    setAssigneeOpen={setAssigneeOpen}
+                    assigneeSearch={assigneeSearch}
+                    setAssigneeSearch={setAssigneeSearch}
+                    effectiveMembers={effectiveMembers}
+                    defaultAssigneeId={currentUserId}
+                    membersLoading={membersLoading}
+                  />
+                )}
 
                 <AssetLinksField
                   assetLinks={assetLinks}
@@ -1026,7 +1074,7 @@ export function NewTicketModal({
             {!parentHumanId && (
               <button
                 type="button"
-                disabled={submitting !== null}
+                disabled={submitting !== null || metaLoading}
                 onClick={() => void createTicket(true)}
                 className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-50"
               >
@@ -1035,7 +1083,7 @@ export function NewTicketModal({
             )}
             <button
               type="submit"
-              disabled={submitting !== null}
+              disabled={submitting !== null || metaLoading}
               className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {submitting === "create" && <LoadingSpinner className="size-3.5" />}
@@ -1095,6 +1143,15 @@ function FormField({
       <div>{children}</div>
       {footer ? <div className="font-sans text-[11.5px] leading-tight">{footer}</div> : null}
     </div>
+  );
+}
+
+/** Shimmer placeholder for a field whose options are still being fetched. */
+function SkeletonField({ label }: { label: string }) {
+  return (
+    <FormField label={label}>
+      <Skeleton className="h-10 w-full" />
+    </FormField>
   );
 }
 

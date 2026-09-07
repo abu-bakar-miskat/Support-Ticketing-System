@@ -20,6 +20,8 @@ export const PLATFORM_FEATURE_KEYS = [
   "recruitment",
   /** Time entries / time tracking. */
   "timeTracking",
+  /** Temporary grants of access across departments (department cards UI + APIs). */
+  "crossDepartmentAccess",
 ] as const;
 
 export type FeatureKey = (typeof PLATFORM_FEATURE_KEYS)[number];

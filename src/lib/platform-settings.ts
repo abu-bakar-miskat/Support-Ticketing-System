@@ -26,15 +26,21 @@ function allFeaturesEnabled(): Record<FeatureKey, boolean> {
   return Object.fromEntries(PLATFORM_FEATURE_KEYS.map((k) => [k, true])) as Record<FeatureKey, boolean>;
 }
 
+function defaultNewTenantFeatureDefaults(): Record<FeatureKey, boolean> {
+  // Cross-department access starts off for new tenants; Super Admins enable it
+  // per tenant from Platform settings when ready.
+  return { ...allFeaturesEnabled(), crossDepartmentAccess: false };
+}
+
 export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   platformName: "Support Platform",
   supportEmail: "",
-  newTenantFeatureDefaults: allFeaturesEnabled(),
+  newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
 };
 
 /** Coerce a stored JSON value into a validated feature-defaults map. */
 function parseFeatureDefaults(value: unknown): Record<FeatureKey, boolean> {
-  const result = allFeaturesEnabled();
+  const result = defaultNewTenantFeatureDefaults();
   if (value && typeof value === "object" && !Array.isArray(value)) {
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       if (isFeatureKey(k) && typeof v === "boolean") result[k] = v;

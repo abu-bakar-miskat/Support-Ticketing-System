@@ -784,6 +784,7 @@ function DepartmentCard({
   allUsers,
   isAdmin = false,
   tenantId = null,
+  showCrossDeptAccess = false,
   onRename,
   onDelete,
   onEnterWorkspace,
@@ -792,6 +793,7 @@ function DepartmentCard({
   allUsers: UserOption[];
   isAdmin?: boolean;
   tenantId?: string | null;
+  showCrossDeptAccess?: boolean;
   onRename: (id: string, name: string) => Promise<void>;
   onDelete: (id: string) => void;
   onEnterWorkspace?: (id: string) => void;
@@ -1175,7 +1177,8 @@ function DepartmentCard({
           )}
         </div>
 
-        {/* ── Cross-dept access (collapsible) ── */}
+        {/* ── Cross-dept access (collapsible) — gated by platform setting ── */}
+        {showCrossDeptAccess && (
         <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
@@ -1335,6 +1338,7 @@ function DepartmentCard({
             </button>
           )}
         </div>
+        )}
 
         {/* ── Enter workspace CTA ── */}
         {onEnterWorkspace && (
@@ -1373,6 +1377,7 @@ export function SettingsDepartmentsPage({
   inWorkspace = false,
   templateOptions = [],
   tenantId = null,
+  showCrossDeptAccess = false,
   onEnterWorkspace,
 }: {
   departments: DepartmentRow[];
@@ -1384,6 +1389,8 @@ export function SettingsDepartmentsPage({
   templateOptions?: TemplateOption[];
   /** Active tenant — enables the per-card "Invite member" action when present. */
   tenantId?: string | null;
+  /** Platform setting: when true, show Cross-department access on each card. */
+  showCrossDeptAccess?: boolean;
   onEnterWorkspace?: (deptId: string) => void;
 }) {
   const router = useRouter();
@@ -1475,6 +1482,7 @@ export function SettingsDepartmentsPage({
             onRename={handleRename}
             onDelete={setConfirmDeleteId}
             onEnterWorkspace={onEnterWorkspace}
+            showCrossDeptAccess={showCrossDeptAccess}
           />
         </div>
       ) : (
@@ -1489,6 +1497,7 @@ export function SettingsDepartmentsPage({
               onRename={handleRename}
               onDelete={setConfirmDeleteId}
               onEnterWorkspace={onEnterWorkspace}
+              showCrossDeptAccess={showCrossDeptAccess}
             />
           ))}
         </div>

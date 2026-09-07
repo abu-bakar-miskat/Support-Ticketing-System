@@ -4,6 +4,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 
 export const metadata = { title: "Departments — Support Ticketing System" };
@@ -147,7 +148,10 @@ export default async function SettingsDepartmentsRoute() {
 
   // Templates available to this tenant, so the New Department modal can offer
   // them dynamically instead of the hardcoded department-type list.
-  const catalogue = await listCatalogueForTenant(tenantId);
+  const [catalogue, showCrossDeptAccess] = await Promise.all([
+    listCatalogueForTenant(tenantId),
+    isFeatureEnabled(tenantId, "crossDepartmentAccess"),
+  ]);
   const templateOptions: TemplateOption[] = catalogue.map((t) => ({
     slug: t.slug,
     name: t.name,
@@ -164,6 +168,7 @@ export default async function SettingsDepartmentsRoute() {
       isAdmin={isAdmin}
       inWorkspace={!!activeDeptId}
       templateOptions={templateOptions}
+      showCrossDeptAccess={showCrossDeptAccess}
     />
   );
 }

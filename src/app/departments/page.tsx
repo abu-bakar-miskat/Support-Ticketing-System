@@ -11,6 +11,7 @@ import type { MemberRow } from "@/components/settings/settings-members-page";
 import { readTenantBranding } from "@/lib/tenant-branding";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 // Tab title reflects the active tenant so multiple tenant tabs are
 // distinguishable (e.g. "Pen Global BD · Departments").
@@ -279,7 +280,10 @@ export default async function DepartmentsPage() {
 
     // Templates available to this tenant so the New Department modal can offer
     // them instead of the built-in department-type list (matches /settings/departments).
-    const catalogue = await listCatalogueForTenant(tenantId);
+    const [catalogue, showCrossDeptAccess] = await Promise.all([
+      listCatalogueForTenant(tenantId),
+      isFeatureEnabled(tenantId, "crossDepartmentAccess"),
+    ]);
     const templateOptions: TemplateOption[] = catalogue.map((t) => ({
       slug: t.slug,
       name: t.name,
@@ -300,6 +304,7 @@ export default async function DepartmentsPage() {
         currentUserId={profile.id}
         mailboxUsage={mailboxUsage}
         templateOptions={templateOptions}
+        showCrossDeptAccess={showCrossDeptAccess}
       />
     );
   }

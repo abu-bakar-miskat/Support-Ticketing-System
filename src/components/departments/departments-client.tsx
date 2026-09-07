@@ -72,6 +72,7 @@ export function DepartmentsClient({
   tenantId,
   mailboxUsage,
   templateOptions,
+  showCrossDeptAccess = false,
 }: {
   departments: DepartmentRow[];
   allUsers: UserOption[];
@@ -82,6 +83,7 @@ export function DepartmentsClient({
   currentUserId?: string;
   mailboxUsage?: DepartmentMailboxUsage[];
   templateOptions?: TemplateOption[];
+  showCrossDeptAccess?: boolean;
 }) {
   const router = useRouter();
   const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
@@ -146,6 +148,7 @@ export function DepartmentsClient({
         tenantId={tenantId}
         onEnterWorkspace={enterWorkspace}
         templateOptions={templateOptions}
+        showCrossDeptAccess={showCrossDeptAccess}
       />
     </div>
   );

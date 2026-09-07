@@ -192,6 +192,9 @@ export type IntakeFormRow = {
   effectiveMethod: AssignmentMethod;
   /** Owner level — where the form was created. */
   scope: "DEPARTMENT" | "SUB_DEPARTMENT";
+  /** Whether this form has any enabled SLA policy. When false the public form
+   *  hides the issue-type field, so its editor is hidden here too. */
+  hasSlaPolicies: boolean;
 };
 
 export type SubDepartmentOption = { id: string; name: string };
@@ -1458,6 +1461,12 @@ function FieldBuilderModal({
   const [defaultsCollapsed, setDefaultsCollapsed] = useState(true);
   const defaultsDirty =
     JSON.stringify(defaults) !== JSON.stringify(savedDefaults);
+  // The issue-type field only renders on the public form when the form has
+  // enabled SLA policies (its options ARE those policies), so hide its editor
+  // here when there are none — matching what the requester actually sees.
+  const visibleDefaultKeys = form.hasSlaPolicies
+    ? DEFAULT_FIELD_KEYS
+    : DEFAULT_FIELD_KEYS.filter((key) => key !== "issueType");
 
   async function saveDefaults() {
     setSavingDefaults(true);
@@ -1679,7 +1688,7 @@ function FieldBuilderModal({
                     Default fields
                   </span>
                   <span className="rounded-full bg-sts-surface px-1.5 py-px font-sans text-[10.5px] font-medium text-sts-subtle">
-                    {DEFAULT_FIELD_KEYS.length}
+                    {visibleDefaultKeys.length}
                   </span>
                   {defaultsDirty && (
                     <span
@@ -1710,7 +1719,7 @@ function FieldBuilderModal({
                     Rename the title &amp; placeholder for this form. These
                     can&apos;t be removed.
                   </p>
-                  {DEFAULT_FIELD_KEYS.map((key) => {
+                  {visibleDefaultKeys.map((key) => {
                     const meta = DEFAULT_FIELD_META[key];
                     return (
                       <div

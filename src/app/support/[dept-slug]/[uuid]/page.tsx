@@ -40,6 +40,7 @@ export default async function PublicIntakeFormPage({
     where: { id: uuid },
     include: {
       department: { select: { id: true, name: true } },
+      intakeSubDepartment: { select: { name: true } },
       fields: { orderBy: { order: "asc" } },
     },
   })
@@ -114,6 +115,9 @@ export default async function PublicIntakeFormPage({
         <div className="mb-8">
           <p className="font-poppins text-[11px] font-semibold uppercase tracking-[1.4px] text-sts-muted">
             {form.department.name}
+            {form.intakeSubDepartment?.name && (
+              <span className="text-sts-muted/70"> · {form.intakeSubDepartment.name}</span>
+            )}
           </p>
           <h1 className="mt-1.5 font-poppins text-[28px] font-semibold leading-tight text-sts-foreground">
             {form.name}

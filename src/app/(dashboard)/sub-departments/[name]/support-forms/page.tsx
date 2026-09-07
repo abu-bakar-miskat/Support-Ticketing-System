@@ -42,6 +42,18 @@ export default async function Page({
     },
   })
 
+  // Which of these forms have at least one enabled SLA policy — the same
+  // condition that makes the public form render its issue-type field.
+  const formsWithSla = new Set(
+    (
+      await prisma.slaPolicy.findMany({
+        where: { formConfigId: { in: forms.map((f) => f.id) }, enabled: true },
+        select: { formConfigId: true },
+        distinct: ["formConfigId"],
+      })
+    ).flatMap((p) => (p.formConfigId ? [p.formConfigId] : [])),
+  )
+
   const rows: IntakeFormRow[] = forms.map((f) => ({
     id: f.id,
     name: f.name,
@@ -64,6 +76,7 @@ export default async function Page({
       f.department.assignmentMethod ??
       "ROUND_ROBIN",
     scope: f.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" as const : "DEPARTMENT" as const,
+    hasSlaPolicies: formsWithSla.has(f.id),
   }))
 
   // Constrain creation/editing to this sub-department: a single department

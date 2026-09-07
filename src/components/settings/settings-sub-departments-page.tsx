@@ -241,7 +241,7 @@ function SubDepartmentModal({
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 className="sts-text-modal-title">
-            {isEdit ? "Edit sub department" : "New sub department"}
+            {isEdit ? "Edit sub-department" : "New sub-department"}
           </h2>
           <button
             type="button"
@@ -255,7 +255,7 @@ function SubDepartmentModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-              Sub department name
+              Sub-department name
             </label>
             <input
               value={name}
@@ -345,7 +345,7 @@ function SubDepartmentModal({
               disabled={saving}
               className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
             >
-              {saving ? "Saving…" : isEdit ? "Save changes" : "Create sub department"}
+              {saving ? "Saving…" : isEdit ? "Save changes" : "Create sub-department"}
             </button>
           </div>
         </form>
@@ -844,7 +844,7 @@ function AssignMemberModal({
               {isSubManagerMode ? "Add sub-manager" : "Add members"}
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
-              Sub department:{" "}
+              Sub-department:{" "}
               <span className="font-semibold text-sts-foreground">
                 {subDepartment.name}
               </span>
@@ -1016,8 +1016,8 @@ type ApprovalRole = "admin" | "manager" | "sub_manager" | "agent" | "cross-acces
 const APPROVAL_ROLES: { value: ApprovalRole; label: string; hint: string }[] = [
   { value: "admin",        label: "Admin",           hint: "Full workspace access" },
   { value: "manager",      label: "Manager",         hint: "Manages whole department" },
-  { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub department" },
-  { value: "agent",        label: "Agent",           hint: "Member — pick a sub department" },
+  { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub-department" },
+  { value: "agent",        label: "Agent",           hint: "Member — pick a sub-department" },
   { value: "cross-access", label: "Cross-dept access", hint: "Managers only — guest access to this department" },
 ];
 
@@ -1083,7 +1083,7 @@ function JoinRequestsSection({
     action: "approve" | "reject",
   ) {
     if (action === "approve" && needsSubDepartment && !isCrossAccess && !selectedSubDepartmentId) {
-      setApproveError("Please select a sub department");
+      setApproveError("Please select a sub-department");
       return;
     }
     if (action === "approve" && isCrossAccess && !crossFullAccess && crossSelectedProjectIds.size === 0) {
@@ -1222,19 +1222,19 @@ function JoinRequestsSection({
                     {needsSubDepartment && (
                       <div className="flex flex-col gap-1.5">
                         <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
-                          Sub department
+                          Sub-department
                         </label>
                         <SearchableSelect
                           value={selectedSubDepartmentId}
                           onChange={setSelectedSubDepartmentId}
                           options={
                             req.subDepartments.length === 0
-                              ? [{ value: "", label: "No sub departments available" }]
+                              ? [{ value: "", label: "No sub-departments available" }]
                               : req.subDepartments.map((t) => ({ value: t.id, label: t.name }))
                           }
                           disabled={req.subDepartments.length === 0}
                           className="min-w-[160px] bg-sts-bg"
-                          aria-label="Sub department"
+                          aria-label="Sub-department"
                         />
                       </div>
                     )}
@@ -1382,8 +1382,9 @@ function SubDepartmentCard({
   const [managersExpanded, setManagersExpanded] = useState(false);
   const [membersExpanded, setMembersExpanded] = useState(false);
 
-  const totalMembers =
-    subDepartment.leads.length + (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
+  const memberCount =
+    (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
+  const subManagerCount = subDepartment.leads.length;
 
   return (
     <div className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
@@ -1405,8 +1406,12 @@ function SubDepartmentCard({
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
+              <Shield className="size-3 shrink-0" />
+              {subManagerCount} sub-manager{subManagerCount === 1 ? "" : "s"}
+            </span>
+            <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
               <Users className="size-3 shrink-0" />
-              {totalMembers} member{totalMembers === 1 ? "" : "s"}
+              {memberCount} member{memberCount === 1 ? "" : "s"}
             </span>
             <ProjectPill label={subDepartment.department} />
           </div>
@@ -1424,7 +1429,7 @@ function SubDepartmentCard({
             <button
               type="button"
               onClick={onEdit}
-              title="Edit sub department"
+              title="Edit sub-department"
               className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <Pencil className="size-3.5" />
@@ -1432,7 +1437,7 @@ function SubDepartmentCard({
             <button
               type="button"
               onClick={onDelete}
-              title="Delete sub department"
+              title="Delete sub-department"
               className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             >
               <Trash2 className="size-3.5" />
@@ -1449,6 +1454,7 @@ function SubDepartmentCard({
         <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
           <Shield className="size-3.5 text-sts-muted" />
           Sub-managers
+          <span className="font-normal text-sts-subtle">({subManagerCount})</span>
         </span>
         {managersExpanded ? (
           <ChevronUp className="size-3.5 text-sts-muted" />
@@ -1483,7 +1489,8 @@ function SubDepartmentCard({
       >
         <span className="flex items-center gap-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
           <Users className="size-3.5 text-sts-muted" />
-          Members {subDepartment.members?.length ? `(${totalMembers})` : ""}
+          Members
+          <span className="font-normal text-sts-subtle">({memberCount})</span>
         </span>
         {membersExpanded ? (
           <ChevronUp className="size-3.5 text-sts-muted" />
@@ -1519,7 +1526,7 @@ function SubDepartmentCard({
       <div className="mt-auto border-t border-sts-card-border px-5 py-3">
         <Link
           href={`/sub-departments/${encodeURIComponent(subDepartment.name)}`}
-          title="Enter sub department"
+          title="Enter sub-department"
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90"
         >
           Enter
@@ -1570,7 +1577,7 @@ export function SettingsSubDepartmentsPage({
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
-        title="Delete sub department"
+        title="Delete sub-department"
         description={confirmDelete ? `Delete "${confirmDelete.name}"? This cannot be undone.` : ""}
         confirmLabel="Delete"
         successMessage={confirmDelete ? `"${confirmDelete.name}" deleted` : undefined}
@@ -1619,10 +1626,10 @@ export function SettingsSubDepartmentsPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="sts-text-admin-title">
-              Sub departments & roles
+              Sub-departments & roles
             </h1>
             <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-              Sub departments can have multiple sub-managers. Roles control what everyone can see
+              Sub-departments can have multiple sub-managers. Roles control what everyone can see
               and do.
             </p>
           </div>
@@ -1633,14 +1640,14 @@ export function SettingsSubDepartmentsPage({
               className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-sts-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-auto"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
-              New sub department
+              New sub-department
             </Button>
           )}
         </div>
 
         {subDepartments.length === 0 ? (
           <div className="rounded-2xl border border-sts-card-border bg-sts-card px-4 py-6 text-center">
-            <p className="font-sans text-[12.5px] text-sts-muted">No sub departments yet.</p>
+            <p className="font-sans text-[12.5px] text-sts-muted">No sub-departments yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

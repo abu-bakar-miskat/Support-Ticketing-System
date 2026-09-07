@@ -3,7 +3,7 @@
 import Link from "next/link";
 import {
   Users, FolderKanban, LayoutList,
-  AlertCircle, Settings, Mail,
+  AlertCircle, Settings, Mail, Shield,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ type UserOption = { id: string; name: string; email: string; role: string };
 type OrgStats = {
   deptCount: number;
   subDepartmentCount: number;
+  managerCount: number;
   memberCount: number;
   projectCount: number;
   openTickets: number;
@@ -126,9 +127,10 @@ export function DepartmentsClient({
           />
 
           {/* Stats — single flat panel, hairline-divided */}
-          <div className="grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-3 lg:grid-cols-7 lg:divide-y-0">
+          <div className="grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-4 lg:grid-cols-8 lg:divide-y-0">
             <StatCard icon={DepartmentIcon} label="Departments" value={orgStats.deptCount} />
-            <StatCard icon={Users} label="SubDepartments" value={orgStats.subDepartmentCount} />
+            <StatCard icon={Users} label="Sub-departments" value={orgStats.subDepartmentCount} />
+            <StatCard icon={Shield} label="Managers" value={orgStats.managerCount} />
             <StatCard icon={Users} label="Members" value={orgStats.memberCount} href="/departments/users" />
             <StatCard icon={Mail} label="Mailboxes" value={mailboxTotal} href="/departments/mailboxes" />
             <StatCard icon={FolderKanban} label="Projects" value={orgStats.projectCount} href="/projects" />

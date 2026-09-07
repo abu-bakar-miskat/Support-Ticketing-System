@@ -171,6 +171,7 @@ export default async function DepartmentsPage() {
     for (const p of tenantProfiles) memberIdSet.add(p.id);
     for (const m of tenantMemberships as { userId: string }[]) memberIdSet.add(m.userId);
     const memberCount = memberIdSet.size;
+    const managerCount = new Set(rawDepts.flatMap((d) => d.managers.map((m) => m.userId))).size;
 
     const tenantMembers: MemberRow[] = tenantProfiles.map((p) => ({
       id: p.id,
@@ -284,7 +285,7 @@ export default async function DepartmentsPage() {
       <DepartmentsClient
         departments={departments}
         allUsers={users}
-        orgStats={{ deptCount, subDepartmentCount, memberCount, projectCount, openTickets, pendingRequests }}
+        orgStats={{ deptCount, subDepartmentCount, managerCount, memberCount, projectCount, openTickets, pendingRequests }}
         tenantName={tenantName}
         tenantId={profile.activeTenantId ?? null}
         members={tenantMembers}
@@ -312,7 +313,7 @@ export default async function DepartmentsPage() {
     where: { id: { in: allIds }, tenantId },
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { subDepartments: true, projects: true } },
+      _count: { select: { subDepartments: true, projects: true, managers: true } },
       subDepartments: {
         select: {
           _count: { select: { memberships: { where: { isActive: true } } } },
@@ -327,6 +328,7 @@ export default async function DepartmentsPage() {
     isHub: d.isHub,
     subDepartmentCount: d._count.subDepartments,
     projectCount: d._count.projects,
+    managerCount: d._count.managers,
     memberCount: d.subDepartments.reduce((sum, t) => sum + t._count.memberships, 0),
     accessType: managedIds.includes(d.id)
       ? "manager"

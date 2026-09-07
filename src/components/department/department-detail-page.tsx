@@ -87,6 +87,7 @@ export type DepartmentDetailData = {
   subDepartmentCount: number;
   projectCount: number;
   memberCount: number;
+  managerCount: number;
   isAdmin: boolean;
   canGrantAdmin: boolean;
   /** Super Admin — may grant/revoke this department's features. */
@@ -502,13 +503,16 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} subDepartment{data.subDepartmentCount !== 1 ? "s" : ""}
+              <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} sub-department{data.subDepartmentCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <Users className="size-3.5 shrink-0" /> {data.memberCount} {data.memberCount === 1 ? "person" : "people"}
+              <Shield className="size-3.5 shrink-0" /> {data.managerCount} manager{data.managerCount !== 1 ? "s" : ""}
+            </span>
+            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
+              <Users className="size-3.5 shrink-0" /> {data.memberCount} member{data.memberCount !== 1 ? "s" : ""}
             </span>
           </div>
         </div>

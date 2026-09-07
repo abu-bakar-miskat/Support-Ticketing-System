@@ -949,7 +949,7 @@ function DepartmentCard({
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11.5px] text-sts-muted">
               <span className="flex items-center gap-1">
                 <Users className="size-3 shrink-0" />
-                {dept._count.subDepartments} sub-dept{dept._count.subDepartments !== 1 ? "s" : ""}
+                {dept._count.subDepartments} sub-department{dept._count.subDepartments !== 1 ? "s" : ""}
               </span>
               {dept._count.projects !== undefined && (
                 <span className="flex items-center gap-1">
@@ -958,8 +958,12 @@ function DepartmentCard({
                 </span>
               )}
               <span className="flex items-center gap-1">
+                <Shield className="size-3 shrink-0" />
+                {dept.managers.length} manager{dept.managers.length !== 1 ? "s" : ""}
+              </span>
+              <span className="flex items-center gap-1">
                 <Users className="size-3 shrink-0" />
-                {totalPeople} {totalPeople === 1 ? "member" : "members"}
+                {totalPeople} member{totalPeople !== 1 ? "s" : ""}
               </span>
             </div>
           </div>

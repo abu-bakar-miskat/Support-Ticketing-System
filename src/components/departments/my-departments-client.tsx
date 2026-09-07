@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
-import { Users, FolderKanban, ArrowRight } from "lucide-react";
+import { Users, FolderKanban, ArrowRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -14,6 +14,7 @@ export type MyDepartmentItem = {
   subDepartmentCount: number;
   projectCount: number;
   memberCount: number;
+  managerCount: number;
   accessType: "manager" | "guest" | "member";
 };
 
@@ -73,15 +74,19 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12px] text-sts-subtle">
               <Users className="size-3.5" />
-              {dept.subDepartmentCount} {dept.subDepartmentCount === 1 ? "subDepartment" : "subDepartments"}
+              {dept.subDepartmentCount} sub-department{dept.subDepartmentCount === 1 ? "" : "s"}
+            </span>
+            <span className="flex items-center gap-1 font-sans text-[12px] text-sts-subtle">
+              <Shield className="size-3.5" />
+              {dept.managerCount} manager{dept.managerCount === 1 ? "" : "s"}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12px] text-sts-subtle">
               <Users className="size-3.5" />
-              {dept.memberCount} {dept.memberCount === 1 ? "member" : "members"}
+              {dept.memberCount} member{dept.memberCount === 1 ? "" : "s"}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12px] text-sts-subtle">
               <FolderKanban className="size-3.5" />
-              {dept.projectCount} {dept.projectCount === 1 ? "project" : "projects"}
+              {dept.projectCount} project{dept.projectCount === 1 ? "" : "s"}
             </span>
           </div>
         </div>

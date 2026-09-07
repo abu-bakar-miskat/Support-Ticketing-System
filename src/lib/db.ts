@@ -193,7 +193,7 @@ export function isStalePrismaClient(
           _engineConfig?: { inlineSchema?: string };
         }
       )._engineConfig?.inlineSchema ?? "";
-    const roleEnumBlock = inlineSchema.match(/enum Role \{([^}]*)\}/s)?.[1] ?? "";
+    const roleEnumBlock = inlineSchema.match(/enum Role \{([^}]*)\}/)?.[1] ?? "";
     const hasCurrentRoleEnum =
       roleEnumBlock.includes("sub_manager") &&
       roleEnumBlock.includes("agent") &&

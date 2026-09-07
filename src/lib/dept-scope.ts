@@ -20,7 +20,7 @@ export type DeptScope = {
   /** True when the active department is a hub (cross-dept oversight) department */
   isHub?: boolean;
   /**
-   * True when the caller only reaches this department via a DepartmentAccess/DepartmentMember
+   * True when the caller only reaches this department via a DepartmentAccess
    * grant (not native subDepartment membership or management) — visibility must be restricted to their
    * own ProjectMember assignments within this department.
    */
@@ -69,16 +69,14 @@ async function buildScope(deptId: string, profile?: ProfileLike): Promise<DeptSc
   const allIds = subDepartments.map((t) => t.id);
 
   // SD-06: whole-department access (super/tenant admin, a manager/admin of this
-  // department, a direct department member, or a cross-access grant) sees every
-  // sub-department. A user who is ONLY a member of some sub-departments sees just
-  // those — never other sub-departments' data. No profile = cookie-only admin
-  // context (getActiveDeptScope) → unrestricted.
+  // department, or a cross-access grant) sees every sub-department. People who
+  // only hold sub-department memberships see just those sub-departments.
+  // Direct DepartmentMember rows are legacy and do not grant whole-dept access.
   const wholeDept =
     !profile ||
     profile.isSuperAdmin === true ||
     profile.role === "admin" ||
     (profile.managedDepartmentIds ?? []).includes(deptId) ||
-    (profile.directMemberDeptIds ?? []).includes(deptId) ||
     (profile.grantedAccessDeptIds ?? []).includes(deptId);
 
   const memberSubs = new Set(profile?.subDepartmentIds ?? []);
@@ -150,7 +148,7 @@ async function buildHubScope(
 
 /**
  * Build scope for a plain (non-hub) department the caller only reaches via a
- * DepartmentAccess/DepartmentMember grant. Restricted to the projects they're
+ * DepartmentAccess grant. Restricted to the projects they're
  * explicitly assigned to within this specific department — unlike hub scope,
  * this does not aggregate assignments across other departments.
  */
@@ -579,7 +577,6 @@ export async function departmentIdInScope(
   const allowed = [
     ...(profile.managedDepartmentIds ?? []),
     ...(profile.grantedAccessDeptIds ?? []),
-    ...(profile.directMemberDeptIds ?? []),
   ];
   return allowed.includes(departmentId);
 }
@@ -682,17 +679,16 @@ async function resolveDeptScopeInner(
     return buildScopeForDept(fallbackDeptId, profile, !nativeIds.has(fallbackDeptId));
   }
 
-  // Lead / staff — native depts (subDepartments, direct membership) vs cross-access grants
+  // Lead / staff — native depts (sub-department memberships) vs cross-access grants
   const granted = profile.grantedAccessDeptIds ?? [];
   const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
-  const directMember = profile.directMemberDeptIds ?? [];
   const memberDeptIds: string[] = ((profile as any).memberships ?? [])
     .map((m: any) => m.subDepartment?.department?.id)
     .filter((id: unknown): id is string => typeof id === "string");
 
-  const nativeIds = new Set([...memberDeptIds, ...directMember, ...fullAccessGranted]);
+  const nativeIds = new Set([...memberDeptIds, ...fullAccessGranted]);
   const hasMultiDeptContext =
-    granted.length > 0 || directMember.length > 0 || memberDeptIds.length > 1;
+    granted.length > 0 || memberDeptIds.length > 1;
 
   if (hasMultiDeptContext) {
     const primaryScope = await getSubDepartmentDeptScope(profile);
@@ -702,7 +698,6 @@ async function resolveDeptScopeInner(
     const allowed = [
       ...new Set([
         ...memberDeptIds,
-        ...directMember,
         ...(primaryDeptId ? [primaryDeptId] : []),
         ...granted,
       ]),
@@ -712,7 +707,7 @@ async function resolveDeptScopeInner(
       return buildScopeForDept(cookieDeptId, profile, !nativeIds.has(cookieDeptId));
     }
     if (primaryScope) return primaryScope;
-    const fallbackDeptId = directMember[0] ?? memberDeptIds[0] ?? granted[0];
+    const fallbackDeptId = memberDeptIds[0] ?? granted[0];
     if (fallbackDeptId) {
       return buildScopeForDept(fallbackDeptId, profile, !nativeIds.has(fallbackDeptId));
     }
@@ -744,9 +739,8 @@ export async function getPersonalTaskDeptScope(
 ): Promise<DeptScope> {
   const deptScope = await getProfileDeptScope(profile);
   const granted = profile.grantedAccessDeptIds ?? [];
-  const directMember = profile.directMemberDeptIds ?? [];
   const hasCrossAccess =
-    (granted.length > 0 || directMember.length > 0) &&
+    granted.length > 0 &&
     (profile.role === "agent" || profile.role === "sub_manager");
 
   if (!hasCrossAccess) {
@@ -761,8 +755,8 @@ export async function getPersonalTaskDeptScope(
     return deptScope;
   }
 
-  // Home department — show all assignments across home + granted + direct-member depts
-  const allDeptIds = [...new Set([...homeDeptIds, ...granted, ...directMember])];
+  // Home department — show all assignments across home + granted depts
+  const allDeptIds = [...new Set([...homeDeptIds, ...granted])];
   if (allDeptIds.length === 0) {
     return deptScope;
   }
@@ -832,8 +826,7 @@ export function canAdminDeptSettings(
 
 /**
  * Whether an admin/manager may edit a target member (role, schedule, holidays, etc.).
- * Admins: always. Managers: target must be on a subDepartment in their active dept scope,
- * or a direct DepartmentMember of that department.
+ * Admins: always. Managers: target must be on a sub-department in their active dept scope.
  */
 export async function managerCanManageUser(
   caller: ProfileLike,
@@ -846,18 +839,12 @@ export async function managerCanManageUser(
   if (!deptScope) return false;
 
   const subDepartmentIds = deptScope.subDepartmentIds;
-  const [subDepartmentMember, deptMember] = await Promise.all([
-    subDepartmentIds.length > 0
-      ? prisma.subDepartmentMembership.findFirst({
-          where: { userId: targetUserId, subDepartmentId: { in: subDepartmentIds }, isActive: true },
-          select: { id: true },
-        })
-      : Promise.resolve(null),
-    prisma.departmentMember.findFirst({
-      where: { userId: targetUserId, departmentId: deptScope.activeDeptId },
-      select: { id: true },
-    }),
-  ]);
+  if (subDepartmentIds.length === 0) return false;
 
-  return Boolean(subDepartmentMember || deptMember);
+  const subDepartmentMember = await prisma.subDepartmentMembership.findFirst({
+    where: { userId: targetUserId, subDepartmentId: { in: subDepartmentIds }, isActive: true },
+    select: { id: true },
+  });
+
+  return Boolean(subDepartmentMember);
 }

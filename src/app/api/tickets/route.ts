@@ -149,10 +149,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
     )
   }
 
-  // Admin/manager/cross-dept-access users can create tickets on behalf of any subDepartment
-  const hasGrantedAccess =
-    (profile.grantedAccessDeptIds ?? []).length > 0 ||
-    (profile.directMemberDeptIds ?? []).length > 0
+  const hasGrantedAccess = (profile.grantedAccessDeptIds ?? []).length > 0
   const canPickSubDepartment = profile.role === "admin" || profile.role === "manager" || hasGrantedAccess
   const deptScope = await getProfileDeptScope(profile)
 

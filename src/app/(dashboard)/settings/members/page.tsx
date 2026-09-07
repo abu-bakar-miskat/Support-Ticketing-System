@@ -33,67 +33,43 @@ export default async function SettingsMembersRoute() {
 
   let profiles: any[];
   let allMemberships: any[];
-  // Direct department members (added via department page, not via a subDepartment)
-  let directDeptMembers: Array<{ userId: string; department: { id: string; name: string } }> = [];
   // doNotAssign map: userId → list of { teamId, subDepartmentName, doNotAssign }
   const doNotAssignMap = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
 
   if (isAdmin) {
     if (activeDeptId) {
-      // Dept cookie active — show only members of that department
-      [allMemberships, directDeptMembers] = await Promise.all([
-        (prisma.subDepartmentMembership as any)
-          .findMany({
-            where: { isActive: true, subDepartment: { departmentId: activeDeptId } },
-            select: {
-              userId: true,
-              doNotAssign: true,
-              subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
-            },
-          })
-          .catch((e: unknown) => { console.error("[members/page] admin-dept subDepartmentMembership query failed:", e); return [] as any[]; }),
-        (prisma.departmentMember as any)
-          .findMany({
-            where: { departmentId: activeDeptId },
-            select: { userId: true, department: { select: { id: true, name: true } } },
-          })
-          .catch((e: unknown) => { console.error("[members/page] admin-dept departmentMember query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; }),
-      ]);
-      const deptUserIds = [...new Set([
-        ...allMemberships.map((m: any) => m.userId),
-        ...directDeptMembers.map((dm: any) => dm.userId),
-      ])];
+      // Dept cookie active — show people on sub-departments in that department
+      allMemberships = await (prisma.subDepartmentMembership as any)
+        .findMany({
+          where: { isActive: true, subDepartment: { departmentId: activeDeptId } },
+          select: {
+            userId: true,
+            doNotAssign: true,
+            subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+          },
+        })
+        .catch((e: unknown) => { console.error("[members/page] admin-dept subDepartmentMembership query failed:", e); return [] as any[]; });
+      const deptUserIds = [...new Set(allMemberships.map((m: any) => m.userId))];
       profiles = await prisma.profile.findMany({
         where: { id: { in: deptUserIds }, deletedAt: null },
         orderBy: { name: "asc" },
       });
     } else {
       // No dept filter — show all members OF THIS TENANT
-      [allMemberships, directDeptMembers] = await Promise.all([
-        (prisma.subDepartmentMembership as any)
-          .findMany({
-            where: { isActive: true, subDepartment: { tenantId } },
-            select: {
-              userId: true,
-              doNotAssign: true,
-              subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
-            },
-          })
-          .catch((e: unknown) => { console.error("[members/page] admin-all subDepartmentMembership query failed:", e); return [] as any[]; }),
-        (prisma.departmentMember as any)
-          .findMany({
-            where: { department: { tenantId } },
-            select: { userId: true, department: { select: { id: true, name: true } } },
-          })
-          .catch((e: unknown) => { console.error("[members/page] admin-all departmentMember query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; }),
-      ]);
+      allMemberships = await (prisma.subDepartmentMembership as any)
+        .findMany({
+          where: { isActive: true, subDepartment: { tenantId } },
+          select: {
+            userId: true,
+            doNotAssign: true,
+            subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+          },
+        })
+        .catch((e: unknown) => { console.error("[members/page] admin-all subDepartmentMembership query failed:", e); return [] as any[]; });
       // Sub-managers/agents are added via the sub-department flow, which creates a
       // SubDepartmentMembership but no TenantMembership. Union those users in so they
       // aren't dropped — otherwise only the tenant admin shows on the tenant-wide view.
-      const memberUserIds = [...new Set([
-        ...allMemberships.map((m: any) => m.userId),
-        ...directDeptMembers.map((dm: any) => dm.userId),
-      ])];
+      const memberUserIds = [...new Set(allMemberships.map((m: any) => m.userId))];
       profiles = await prisma.profile.findMany({
         where: {
           deletedAt: null,
@@ -111,39 +87,28 @@ export default async function SettingsMembersRoute() {
       ? [profileScope.activeDeptId]
       : [...new Set([...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])])];
 
-    [allMemberships, directDeptMembers] = await Promise.all([
-      (prisma.subDepartmentMembership as any)
-        .findMany({
-          where: {
-            isActive: true,
-            subDepartment: { departmentId: { in: deptIds } },
-          },
-          select: {
-            userId: true,
-            doNotAssign: true,
-            subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
-          },
-        })
-        .catch((e: unknown) => { console.error("[members/page] manager subDepartmentMembership query failed:", e); return [] as any[]; }),
-      (prisma.departmentMember as any)
-        .findMany({
-          where: { departmentId: { in: deptIds } },
-          select: { userId: true, department: { select: { id: true, name: true } } },
-        })
-        .catch(() => [] as { userId: string; department: { id: string; name: string } }[]),
-    ]);
+    allMemberships = await (prisma.subDepartmentMembership as any)
+      .findMany({
+        where: {
+          isActive: true,
+          subDepartment: { departmentId: { in: deptIds } },
+        },
+        select: {
+          userId: true,
+          doNotAssign: true,
+          subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+        },
+      })
+      .catch((e: unknown) => { console.error("[members/page] manager subDepartmentMembership query failed:", e); return [] as any[]; });
 
-    const allUserIds = [...new Set([
-      ...allMemberships.map((m: any) => m.userId),
-      ...directDeptMembers.map((dm) => dm.userId),
-    ])];
+    const allUserIds = [...new Set(allMemberships.map((m: any) => m.userId))];
     profiles = await prisma.profile.findMany({
       where: { id: { in: allUserIds }, deletedAt: null },
       orderBy: { name: "asc" },
     });
   } else {
     // Lead — scoped to their own subDepartment(s), handled in the isLead block below
-    [profiles, allMemberships, directDeptMembers] = [[], [], []];
+    [profiles, allMemberships] = [[], []];
   }
 
   if (isLead) {
@@ -167,20 +132,14 @@ export default async function SettingsMembersRoute() {
   // retain their existing department-scoped visibility.
   if (isAdmin && activeDeptId && profiles.length > 0) {
     const profileIds = profiles.map((member) => member.id);
-    [allMemberships, directDeptMembers] = await Promise.all([
-      (prisma.subDepartmentMembership as any).findMany({
-        where: { userId: { in: profileIds }, isActive: true, subDepartment: { tenantId } },
-        select: {
-          userId: true,
-          doNotAssign: true,
-          subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
-        },
-      }).catch((e: unknown) => { console.error("[members/page] admin membership detail query failed:", e); return [] as any[]; }),
-      (prisma.departmentMember as any).findMany({
-        where: { userId: { in: profileIds }, department: { tenantId } },
-        select: { userId: true, department: { select: { id: true, name: true } } },
-      }).catch((e: unknown) => { console.error("[members/page] admin direct membership detail query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; }),
-    ]);
+    allMemberships = await (prisma.subDepartmentMembership as any).findMany({
+      where: { userId: { in: profileIds }, isActive: true, subDepartment: { tenantId } },
+      select: {
+        userId: true,
+        doNotAssign: true,
+        subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
+      },
+    }).catch((e: unknown) => { console.error("[members/page] admin membership detail query failed:", e); return [] as any[]; });
   }
 
   // Fetch available subDepartments for the subDepartment assignment dropdown (admin/manager only).
@@ -258,22 +217,6 @@ export default async function SettingsMembersRoute() {
       membershipsByUser.set(m.userId, memberships);
     }
   }
-  // Fill in dept info for direct members who have no subDepartment membership
-  for (const dm of directDeptMembers) {
-    nativeUserIds.add(dm.userId);
-    if (!deptByUser.has(dm.userId)) {
-      deptByUser.set(dm.userId, dm.department.name);
-    }
-    if (!deptIdByUser.has(dm.userId)) {
-      deptIdByUser.set(dm.userId, dm.department.id);
-    }
-    const departments = departmentsByUser.get(dm.userId) ?? [];
-    if (!departments.some((department) => department.id === dm.department.id)) {
-      departments.push({ id: dm.department.id, name: dm.department.name });
-      departmentsByUser.set(dm.userId, departments);
-    }
-  }
-
   // Fetch cross-access users for the active department and append them with an indicator
   let crossAccessRows: MemberRow[] = [];
   if (activeDeptId) {

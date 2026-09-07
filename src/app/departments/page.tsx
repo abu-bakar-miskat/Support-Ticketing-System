@@ -77,10 +77,6 @@ export default async function DepartmentsPage() {
             },
             orderBy: { grantedAt: "desc" },
           },
-          directMembers: {
-            include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
-            orderBy: { addedAt: "asc" },
-          },
         },
       }),
       prisma.profile.findMany({
@@ -129,7 +125,7 @@ export default async function DepartmentsPage() {
     }
 
     // ── Tenant-wide user list, grouped by department + sub-department ────────
-    const [tenantProfiles, tenantMemberships, tenantDirectDeptMembers] = await Promise.all([
+    const [tenantProfiles, tenantMemberships] = await Promise.all([
       prisma.profile.findMany({
         where: { deletedAt: null, tenantMemberships: { some: { tenantId, isActive: true } } },
         orderBy: { name: "asc" },
@@ -141,10 +137,6 @@ export default async function DepartmentsPage() {
           doNotAssign: true,
           subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
         },
-      }),
-      (prisma.departmentMember as any).findMany({
-        where: { department: { tenantId }, user: { deletedAt: null } },
-        select: { userId: true, department: { select: { id: true, name: true } } },
       }),
     ]);
 
@@ -172,21 +164,12 @@ export default async function DepartmentsPage() {
         doNotAssignMap.set(m.userId, existing);
       }
     }
-    for (const dm of tenantDirectDeptMembers as { userId: string; department: { id: string; name: string } }[]) {
-      if (!deptByUser.has(dm.userId)) deptByUser.set(dm.userId, dm.department.name);
-      if (!deptIdByUser.has(dm.userId)) deptIdByUser.set(dm.userId, dm.department.id);
-    }
 
-    // Distinct member count spans three tables: tenant admins/managers have a
-    // TenantMembership (tenantProfiles), while sub-managers/agents are added via
-    // the sub-department flow (tenantMemberships) or directly to a department
-    // (tenantDirectDeptMembers) with NO TenantMembership. Count the union so the
-    // "Members" stat reflects everyone — a plain TenantMembership count shows
-    // just the tenant admin.
+    // Distinct member count: tenant memberships + people on sub-departments.
+    // Managers get whole-dept access via DepartmentManager; agents join via sub-departments only.
     const memberIdSet = new Set<string>();
     for (const p of tenantProfiles) memberIdSet.add(p.id);
     for (const m of tenantMemberships as { userId: string }[]) memberIdSet.add(m.userId);
-    for (const dm of tenantDirectDeptMembers as { userId: string }[]) memberIdSet.add(dm.userId);
     const memberCount = memberIdSet.size;
 
     const tenantMembers: MemberRow[] = tenantProfiles.map((p) => ({
@@ -233,11 +216,7 @@ export default async function DepartmentsPage() {
         user: { id: g.user.id, name: g.user.name, email: g.user.email, role: g.user.role },
         grantor: { id: g.grantor.id, name: g.grantor.name },
       })),
-      directMembers: d.directMembers.map((m) => ({
-        id: m.id,
-        userId: m.userId,
-        user: { id: m.user.id, name: m.user.name, email: m.user.email, role: m.user.role, avatarUrl: m.user.avatarUrl ?? null },
-      })),
+      directMembers: [],
       nativeMembers: (() => {
         const seen = new Set<string>();
         const result: { userId: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }[] = [];
@@ -251,6 +230,14 @@ export default async function DepartmentsPage() {
         }
         return result;
       })(),
+      membersBySubDepartment: d.subDepartments.map((sub) => ({
+        subDepartmentId: sub.id,
+        subDepartmentName: sub.name,
+        members: sub.memberships.map((ms) => ({
+          userId: ms.userId,
+          user: { ...ms.user, avatarUrl: ms.user.avatarUrl ?? null },
+        })),
+      })),
       memberIds: (() => {
         const seen = new Set<string>();
         for (const subDepartment of d.subDepartments) for (const ms of subDepartment.memberships) seen.add(ms.userId);
@@ -312,12 +299,11 @@ export default async function DepartmentsPage() {
   // ── Non-admin: show all departments the user can access ──────────────────
   const managedIds: string[] = profile.managedDepartmentIds ?? [];
   const grantedIds: string[] = profile.grantedAccessDeptIds ?? [];
-  const directMemberIds: string[] = profile.directMemberDeptIds ?? [];
   const membershipDeptIds = ((profile.memberships ?? []) as ProfileMembership[])
     .map((m) => m.subDepartment?.department?.id)
     .filter((id): id is string => Boolean(id));
 
-  const allIds = [...new Set([...managedIds, ...grantedIds, ...directMemberIds, ...membershipDeptIds])];
+  const allIds = [...new Set([...managedIds, ...grantedIds, ...membershipDeptIds])];
 
   // Only one (or zero) accessible department — no need for a picker page
   if (allIds.length <= 1) redirect("/");
@@ -346,9 +332,7 @@ export default async function DepartmentsPage() {
       ? "manager"
       : grantedIds.includes(d.id)
         ? "guest"
-        : directMemberIds.includes(d.id)
-          ? "member"
-          : "member",
+        : "member",
   }));
 
   return <MyDepartmentsClient departments={myDepts} />;

@@ -35,21 +35,21 @@ export async function GET(
   })
   const subDepartmentIds = subDepartments.map((t) => t.id)
 
-  const [subDepartmentMembers, directMembers] = await Promise.all([
+  const [subDepartmentMembers, managers] = await Promise.all([
     subDepartmentIds.length > 0
       ? prisma.subDepartmentMembership.findMany({
           where: { subDepartmentId: { in: subDepartmentIds }, isActive: true },
           select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
         })
       : Promise.resolve([]),
-    prisma.departmentMember.findMany({
+    prisma.departmentManager.findMany({
       where: { departmentId },
       select: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } },
     }),
   ])
 
   const memberMap = new Map<string, { id: string; name: string; email: string; avatarUrl: string | null }>()
-  for (const row of [...subDepartmentMembers, ...directMembers]) {
+  for (const row of [...subDepartmentMembers, ...managers]) {
     if (row.user) memberMap.set(row.user.id, row.user)
   }
   const memberIds = [...memberMap.keys()]

@@ -60,12 +60,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       update: { role },
       include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } } },
     }),
-    // Also add manager as a direct department member
-    prisma.departmentMember.upsert({
-      where: { departmentId_userId: { departmentId: id, userId } },
-      create: { departmentId: id, userId, addedBy: profile!.id },
-      update: {},
-    }),
   ])
 
   // Promote the user's role to manager if they're staff/lead

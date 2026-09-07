@@ -49,7 +49,6 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   const managedDeptIds: string[] = profile.managedDepartmentIds ?? [];
   const grantedDeptIds: string[] = profile.grantedAccessDeptIds ?? [];
-  const directMemberDeptIds: string[] = profile.directMemberDeptIds ?? [];
 
   const membershipSubDepartments = memberships.map((m) => ({
     id: m.subDepartment.id,
@@ -71,15 +70,14 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
 
   // Primary dept for staff/lead (first subDepartment's department)
   const primaryDeptId = membershipSubDepartments[0]?.departmentId ?? null;
-  // Staff/lead with access to more than one department — via multiple subDepartment memberships,
-  // a DepartmentAccess grant (cross-access), or a DepartmentMember grant (direct member)
+  // Staff/lead with access to more than one department — via multiple subDepartment
+  // memberships or a DepartmentAccess grant (cross-access).
   const crossDeptIds = !isDeptLevel
     ? [
         ...new Set([
           ...(primaryDeptId ? [primaryDeptId] : []),
           ...membershipDeptIds,
           ...grantedDeptIds,
-          ...directMemberDeptIds,
         ]),
       ]
     : [];

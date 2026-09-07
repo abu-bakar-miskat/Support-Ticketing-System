@@ -28,9 +28,6 @@ import {
   revokeDepartmentAccess,
   fetchDepartmentAccessGrant,
   updateDepartmentAccess,
-  addDepartmentMember,
-  removeDepartmentDirectMember,
-  removeDepartmentMember,
   fetchDepartmentProjects,
   createAdminDepartment,
   updateAdminDepartment,
@@ -89,6 +86,12 @@ export type NativeMember = {
   user: { id: string; name: string; email: string; role: string; avatarUrl?: string | null };
 };
 
+export type SubDepartmentMembersGroup = {
+  subDepartmentId: string;
+  subDepartmentName: string;
+  members: NativeMember[];
+};
+
 export type DepartmentRow = {
   id: string;
   name: string;
@@ -101,6 +104,8 @@ export type DepartmentRow = {
   accessGrants: AccessGrant[];
   directMembers: DeptMember[];
   nativeMembers: NativeMember[];
+  /** People on each sub-department (membership is sub-department-scoped only). */
+  membersBySubDepartment: SubDepartmentMembersGroup[];
   memberIds: string[];
   subDepartments: { id: string; name: string }[];
 };
@@ -802,16 +807,12 @@ function DepartmentCard({
   const [editName, setEditName] = useState(dept.name);
   const [entering, setEntering] = useState(false);
   const [managers, setManagers] = useState<DeptManager[]>(dept.managers);
-  const [directMembers, setDirectMembers] = useState<DeptMember[]>(dept.directMembers);
   const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(dept.accessGrants);
-  const [removedNativeIds, setRemovedNativeIds] = useState<Set<string>>(new Set());
-  const nativeMembers = dept.nativeMembers.filter((m) => !removedNativeIds.has(m.userId));
   const [saving, setSaving] = useState(false);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [membersExpanded, setMembersExpanded] = useState(false);
   const [managersExpanded, setManagersExpanded] = useState(false);
-  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ userId: string; name: string } | null>(null);
+  const [membersExpanded, setMembersExpanded] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
 
   async function saveEdit() {
@@ -826,33 +827,12 @@ function DepartmentCard({
     const data = await assignDepartmentManager(dept.id, u.id).catch(() => null);
     if (data) {
       setManagers((prev) => [...prev.filter((m) => m.userId !== u.id), data]);
-      // Manager is also automatically added as a direct member
-      setDirectMembers((prev) =>
-        prev.some((m) => m.userId === u.id)
-          ? prev
-          : [...prev, { id: data.id + "_m", userId: u.id, user: data.user }],
-      );
     }
   }
 
   async function removeManager(userId: string) {
     await removeDepartmentManager(dept.id, userId).catch(() => null);
     setManagers((prev) => prev.filter((m) => m.userId !== userId));
-  }
-
-  async function addMember(u: UserOption) {
-    const data = await addDepartmentMember(dept.id, u.id).catch(() => null);
-    if (data) setDirectMembers((prev) => [...prev.filter((m) => m.userId !== u.id), data]);
-  }
-
-  async function removeDirectMember(userId: string) {
-    await removeDepartmentDirectMember(dept.id, userId).catch(() => null);
-    setDirectMembers((prev) => prev.filter((m) => m.userId !== userId));
-  }
-
-  async function removeNativeMember(userId: string) {
-    await removeDepartmentMember(dept.id, userId).catch(() => null);
-    setRemovedNativeIds((prev) => new Set(prev).add(userId));
   }
 
   async function grantAccess(
@@ -935,20 +915,23 @@ function DepartmentCard({
   }
 
   const managerIds = managers.map((m) => m.userId);
-  const directMemberIds = directMembers.map((m) => m.userId);
   const accessIds = accessGrants.map((g) => g.userId);
   const nativeMemberIds = dept.memberIds;
-
-  // Merge all members for display: native subDepartment members + direct-added members + managers, deduped
-  const allMemberEntries = [
-    ...nativeMembers.map((m) => ({ ...m, source: "native" as const })),
-    ...directMembers
-      .filter((m) => !nativeMemberIds.includes(m.userId))
-      .map((m) => ({ userId: m.userId, user: m.user, source: "direct" as const })),
-    ...managers
-      .filter((m) => !nativeMemberIds.includes(m.userId) && !directMemberIds.includes(m.userId))
-      .map((m) => ({ userId: m.userId, user: m.user, source: "native" as const })),
-  ];
+  const membersBySub = dept.membersBySubDepartment ?? [];
+  const totalPeople = dept._count.members ?? nativeMemberIds.length;
+  const previewPeople = (() => {
+    const seen = new Set<string>();
+    const list: typeof membersBySub[number]["members"] = [];
+    for (const group of membersBySub) {
+      for (const m of group.members) {
+        if (seen.has(m.userId)) continue;
+        seen.add(m.userId);
+        list.push(m);
+        if (list.length >= 4) return list;
+      }
+    }
+    return list;
+  })();
 
   return (
     <>
@@ -958,21 +941,12 @@ function DepartmentCard({
         open={walkthroughOpen}
         onOpenChange={setWalkthroughOpen}
       />
-      <ConfirmDialog
-        open={!!confirmRemoveMember}
-        onOpenChange={(open) => { if (!open) setConfirmRemoveMember(null); }}
-        title="Remove member"
-        description={confirmRemoveMember ? `Remove ${confirmRemoveMember.name} from the department? This removes them from all of this department's subDepartments.` : ""}
-        confirmLabel="Remove"
-        successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed` : undefined}
-        onConfirm={async () => { if (confirmRemoveMember) await removeNativeMember(confirmRemoveMember.userId); }}
-      />
       {showGrantModal && (
         <GrantAccessModal
           deptId={dept.id}
           deptName={dept.name}
           users={allUsers}
-          excludeIds={[...new Set([...managerIds, ...directMemberIds, ...accessIds, ...nativeMemberIds])]}
+          excludeIds={[...new Set([...managerIds, ...accessIds, ...nativeMemberIds])]}
           onGrant={grantAccess}
           onClose={() => setShowGrantModal(false)}
         />
@@ -1028,7 +1002,7 @@ function DepartmentCard({
               {dept._count.members !== undefined && (
                 <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-muted">
                   <Users className="size-3 shrink-0" />
-                  {dept._count.members} member{dept._count.members !== 1 ? "s" : ""}
+                  {dept._count.members} {dept._count.members === 1 ? "person" : "people"}
                 </span>
               )}
             </div>
@@ -1046,7 +1020,7 @@ function DepartmentCard({
                   tenantId={tenantId}
                   departments={[{ id: dept.id, name: dept.name }]}
                   initialDeptIds={[dept.id]}
-                  triggerLabel="Invite member"
+                  triggerLabel="Invite to sub-department"
                   triggerClassName="h-7 rounded-lg px-2.5 text-[11.5px] font-medium"
                 />
               )}
@@ -1114,7 +1088,7 @@ function DepartmentCard({
           )}
         </div>
 
-        {/* ── Members (collapsible) ── */}
+        {/* ── Members by sub-department (collapsible) ── */}
         <div className="border-t border-sts-card-border px-5 py-3">
           <button
             type="button"
@@ -1124,16 +1098,16 @@ function DepartmentCard({
             <Users className="size-3.5 shrink-0 text-sts-muted" />
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Members
-              {allMemberEntries.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({allMemberEntries.length})</span>}
+              {totalPeople > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({totalPeople})</span>}
             </span>
-            {allMemberEntries.length > 0 && !membersExpanded && (
+            {previewPeople.length > 0 && !membersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
-                {allMemberEntries.slice(0, 4).map((m) => (
+                {previewPeople.map((m) => (
                   <Avatar key={m.userId} name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                 ))}
-                {allMemberEntries.length > 4 && (
+                {totalPeople > 4 && (
                   <span className="flex size-[18px] items-center justify-center rounded-full bg-sts-surface border border-sts-card-border font-sans text-[9px] text-sts-subtle">
-                    +{allMemberEntries.length - 4}
+                    +{totalPeople - 4}
                   </span>
                 )}
               </div>
@@ -1141,39 +1115,44 @@ function DepartmentCard({
             <ChevronDown className={cn("size-3.5 text-sts-subtle transition-transform", membersExpanded && "rotate-180")} />
           </button>
           {membersExpanded && (
-            <>
-              <div className="mt-2 flex justify-end">
-                <UserPickerDropdown
-                  label="Add member"
-                  users={allUsers}
-                  excludeIds={[...new Set([...nativeMemberIds, ...directMemberIds, ...managerIds])]}
-                  onSelect={addMember}
-                />
-              </div>
-              {allMemberEntries.length === 0 ? (
-                <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">No members yet.</p>
+            <div className="mt-2 flex flex-col gap-2.5">
+              {membersBySub.length === 0 ? (
+                <p className="font-sans text-[11.5px] text-sts-subtle">
+                  No sub-departments yet. Create one, then invite people into it.
+                </p>
               ) : (
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {allMemberEntries.map((m) => (
-                    <div key={m.userId} className="group flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
-                      <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
-                      <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
-                      <span className="ml-0.5 rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">{m.user.role}</span>
-                      {!managerIds.includes(m.userId) && (
-                        <button
-                          type="button"
-                          onClick={() => (m.source === "direct" ? removeDirectMember(m.userId) : setConfirmRemoveMember({ userId: m.userId, name: m.user.name }))}
-                          title="Remove from department"
-                          className="ml-0.5 rounded-full p-0.5 text-sts-subtle transition-opacity hover:text-red-500"
-                        >
-                          <X className="size-2.5" />
-                        </button>
-                      )}
+                membersBySub.map((group) => (
+                  <div key={group.subDepartmentId} className="rounded-lg border border-sts-card-border bg-sts-surface/60 px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-sans text-[11px] font-semibold text-sts-foreground">
+                        {group.subDepartmentName}
+                      </span>
+                      <span className="font-sans text-[10.5px] text-sts-subtle">
+                        ({group.members.length})
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    {group.members.length === 0 ? (
+                      <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">No members yet</p>
+                    ) : (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {group.members.map((m) => (
+                          <div
+                            key={`${group.subDepartmentId}-${m.userId}`}
+                            className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1.5 pr-2"
+                          >
+                            <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
+                            <span className="font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
+                            <span className="rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] text-sts-subtle capitalize">
+                              {m.user.role}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -1445,8 +1424,8 @@ export function SettingsDepartmentsPage({
           </h1>
           <p className="mt-1 font-sans text-[13px] text-sts-muted">
             {inWorkspace
-              ? "Manage this department — assign managers and grant cross-department access."
-              : "Manage departments, assign managers, and grant cross-department access."}
+              ? "Manage this department — assign managers and configure access."
+              : "Manage departments and assign managers. People join through sub-departments."}
           </p>
         </div>
         {isAdmin && !inWorkspace && (

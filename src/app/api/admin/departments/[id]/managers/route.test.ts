@@ -5,7 +5,6 @@ vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn() }))
 vi.mock("@/lib/db", () => ({
   prisma: {
     departmentManager: { findUnique: vi.fn(), upsert: vi.fn() },
-    departmentMember: { upsert: vi.fn() },
     department: { findUnique: vi.fn() },
     profile: { findUnique: vi.fn(), update: vi.fn() },
   },
@@ -57,7 +56,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockDept.mockResolvedValue({ id: DEPT, tenantId: "t1" } as never)
   mockUpsertManager.mockResolvedValue({ id: "dm1", userId: "target", user: {} } as never)
-  vi.mocked(prisma.departmentMember.upsert).mockResolvedValue({} as never)
   mockProfileFind.mockResolvedValue({ role: "agent" } as never)
 })
 

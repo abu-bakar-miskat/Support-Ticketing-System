@@ -27,12 +27,8 @@ async function resolveRoleChangeDepartmentId(
 ): Promise<string | null> {
   if (typeof bodyDepartmentId === "string" && bodyDepartmentId.length > 0) return bodyDepartmentId
   if (!tenantId) return null
-  const [manager, member, subDepartmentMembership] = await Promise.all([
+  const [manager, subDepartmentMembership] = await Promise.all([
     prisma.departmentManager.findFirst({
-      where: { userId, department: { tenantId } },
-      select: { departmentId: true },
-    }),
-    prisma.departmentMember.findFirst({
       where: { userId, department: { tenantId } },
       select: { departmentId: true },
     }),
@@ -41,7 +37,7 @@ async function resolveRoleChangeDepartmentId(
       select: { subDepartment: { select: { departmentId: true } } },
     }),
   ])
-  return manager?.departmentId ?? member?.departmentId ?? subDepartmentMembership?.subDepartment.departmentId ?? null
+  return manager?.departmentId ?? subDepartmentMembership?.subDepartment.departmentId ?? null
 }
 
 export async function PATCH(
@@ -233,9 +229,8 @@ export async function PATCH(
     await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
   }
 
-  // Department-level move: land the user as a direct member of the target department
-  // and clear every membership tied to other departments, so the tenant-wide Members
-  // view shows them under the new department with no sub-department.
+  // Department-level move: clear memberships outside the target department.
+  // People join via sub-departments only — no DepartmentMember rows are created.
   if (moveToDepartmentId !== undefined) {
     await prisma.$transaction([
       // Deactivate sub-department memberships that belong to a different department.
@@ -249,23 +244,10 @@ export async function PATCH(
         },
         data: { isActive: false },
       }),
-      // Drop direct department memberships for other departments.
+      // Drop legacy direct department memberships.
       prisma.departmentMember.deleteMany({
-        where: {
-          userId: id,
-          ...(moveToDepartmentId ? { departmentId: { not: moveToDepartmentId } } : {}),
-        },
+        where: { userId: id },
       }),
-      // Add the direct membership for the target department (no-op when clearing).
-      ...(moveToDepartmentId
-        ? [
-            prisma.departmentMember.upsert({
-              where: { departmentId_userId: { departmentId: moveToDepartmentId, userId: id } },
-              create: { departmentId: moveToDepartmentId, userId: id, addedBy: profile!.id },
-              update: {},
-            }),
-          ]
-        : []),
     ])
   }
 
@@ -351,6 +333,7 @@ export async function DELETE(
     // ── Membership & access ──────────────────────────────────────────────────
     (prisma.subDepartmentMembership as any).deleteMany({ where: { userId: id } }),
     prisma.departmentManager.deleteMany({ where: { userId: id } }),
+    prisma.departmentMember.deleteMany({ where: { userId: id } }),
     prisma.departmentAccess.deleteMany({ where: { userId: id } }),
     (prisma.projectMember as any).deleteMany({ where: { userId: id } }),
     (prisma.ticketAssignee as any).deleteMany({ where: { userId: id } }),

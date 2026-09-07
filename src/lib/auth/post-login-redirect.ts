@@ -78,7 +78,7 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     }
   }
 
-  const [tenantMembership, managedDepts, memberships, directMembers, deptAccess] = await Promise.all([
+  const [tenantMembership, managedDepts, memberships, deptAccess] = await Promise.all([
     prisma.tenantMembership.findFirst({
       where: { userId, isActive: true },
       orderBy: { createdAt: "asc" },
@@ -96,11 +96,6 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
         subDepartment: { select: { departmentId: true, slug: true } },
       },
       orderBy: { joinedAt: "asc" },
-    }),
-    prisma.departmentMember.findMany({
-      where: { userId },
-      select: { departmentId: true },
-      orderBy: { addedAt: "asc" },
     }),
     prisma.departmentAccess.findMany({
       where: {
@@ -159,13 +154,6 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
       cookies.unshift(...(await deptCookies(primary.subDepartment.departmentId)))
     }
     return { redirectPath: "/", cookies }
-  }
-
-  if (directMembers.length > 0) {
-    return {
-      redirectPath: "/",
-      cookies: await deptCookies(directMembers[0]!.departmentId),
-    }
   }
 
   if (deptAccess.length > 0) {

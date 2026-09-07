@@ -42,11 +42,6 @@ function loadProfileAndRelations(userId: string) {
       select: { departmentId: true, fullAccess: true },
     }).catch(() => [] as { departmentId: string; fullAccess: boolean }[]),
 
-    prisma.departmentMember.findMany({
-      where: { userId },
-      select: { departmentId: true },
-    }).catch(() => [] as { departmentId: string }[]),
-
     prisma.tenantMembership.findMany({
       where: { userId, isActive: true },
       select: {
@@ -125,7 +120,7 @@ export const getProfile = cache(async () => {
     // Fetch the profile and its relations in one parallel batch. Reconciliation
     // already runs at login (auth/callback), so on the hot path this is the only
     // round-trip getProfile makes.
-    let [profile, memberships, managedRaw, grantedRaw, directMemberRaw, tenantRaw] =
+    let [profile, memberships, managedRaw, grantedRaw, tenantRaw] =
       await loadProfileAndRelations(user.id)
 
     // Self-heal only when the row is genuinely missing or soft-deleted: fresh
@@ -133,7 +128,7 @@ export const getProfile = cache(async () => {
     // relations onto the new id, so refetch the whole batch afterwards.
     if (!profile || profile.deletedAt) {
       await reconcileProfileOnLogin(user)
-      ;[profile, memberships, managedRaw, grantedRaw, directMemberRaw, tenantRaw] =
+      ;[profile, memberships, managedRaw, grantedRaw, tenantRaw] =
         await loadProfileAndRelations(user.id)
     }
 
@@ -155,7 +150,6 @@ export const getProfile = cache(async () => {
     const fullAccessGrantedDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[])
       .filter((g) => g.fullAccess)
       .map((g) => g.departmentId)
-    const directMemberDeptIds = (directMemberRaw as { departmentId: string }[]).map((m) => m.departmentId)
 
     const typedMemberships = memberships as ProfileMembership[]
     // True when the user belongs to at least one hub department
@@ -212,11 +206,7 @@ export const getProfile = cache(async () => {
         scopeType: "DEPARTMENT" as const,
         scopeId: m.departmentId,
       })),
-      ...directMemberDeptIds.map((id) => ({
-        role: "agent" as const,
-        scopeType: "DEPARTMENT" as const,
-        scopeId: id,
-      })),
+      // Direct DepartmentMember rows are legacy and do not grant DEPARTMENT scope.
       ...grantedAccessDeptIds.map((id) => ({
         role: "agent" as const,
         scopeType: "DEPARTMENT" as const,
@@ -239,7 +229,8 @@ export const getProfile = cache(async () => {
       departmentAdminIds,
       grantedAccessDeptIds,
       fullAccessGrantedDeptIds,
-      directMemberDeptIds,
+      // Kept for compatibility with older callers; always empty — membership is sub-department only.
+      directMemberDeptIds: [] as string[],
       isHubMember,
       tenantMemberships,
       tenantIds,

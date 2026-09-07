@@ -187,6 +187,18 @@ export function isStalePrismaClient(
       (f) => f.name === "enabledBoardSubDepartmentIds",
     );
     const hasTicketIsDraft = ticketFields.some((f) => f.name === "isDraft");
+    const inlineSchema =
+      (
+        client as {
+          _engineConfig?: { inlineSchema?: string };
+        }
+      )._engineConfig?.inlineSchema ?? "";
+    const roleEnumBlock = inlineSchema.match(/enum Role \{([^}]*)\}/s)?.[1] ?? "";
+    const hasCurrentRoleEnum =
+      roleEnumBlock.includes("sub_manager") &&
+      roleEnumBlock.includes("agent") &&
+      !roleEnumBlock.includes("lead") &&
+      !roleEnumBlock.includes("staff");
     return (
       (client as any).subDepartmentMembership == null ||
       (client as any).joinRequest == null ||
@@ -195,7 +207,8 @@ export function isStalePrismaClient(
       (client as any).pushSubscription == null ||
       (client as any).memberSchedule == null ||
       !hasEnabledBoardSubDepartmentIds ||
-      !hasTicketIsDraft
+      !hasTicketIsDraft ||
+      !hasCurrentRoleEnum
     );
   } catch {
     return true;

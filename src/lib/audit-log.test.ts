@@ -42,4 +42,20 @@ describe("recordAuditEvent", () => {
       data: expect.objectContaining({ before: undefined, after: undefined }),
     })
   })
+
+  it("writes through a supplied transaction client", async () => {
+    const tx = { auditEvent: { create: vi.fn() } } as unknown as Parameters<typeof recordAuditEvent>[0]["client"]
+    await recordAuditEvent({
+      client: tx,
+      tenantId: "t1",
+      actorId: "u1",
+      action: "ROLE_ASSIGNMENTS_CHANGED",
+      targetType: "Profile",
+      targetId: "u2",
+      before: [],
+      after: [],
+    })
+    expect(tx!.auditEvent.create).toHaveBeenCalledOnce()
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
 })

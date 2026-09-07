@@ -5,10 +5,44 @@ import { Role } from "@/generated/prisma/enums"
 import { managerCanManageUser, subDepartmentInScope } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
+import {
+  buildRoleChangeActor,
+  changeRoles,
+  expectedBeforeForChanges,
+  loadUserRoleChanges,
+  planLegacyDepartmentRoleUpdate,
+  roleChangeHttpStatus,
+  RoleChangeError,
+  type RoleChange,
+} from "@/lib/role-management"
 
 const VALID_ROLES = Object.values(Role)
 // Managers can only assign these roles — not admin or manager
 const MANAGER_ALLOWED_ROLES: Role[] = ["sub_manager", "agent"]
+
+async function resolveRoleChangeDepartmentId(
+  userId: string,
+  tenantId: string | null | undefined,
+  bodyDepartmentId?: string | null,
+): Promise<string | null> {
+  if (typeof bodyDepartmentId === "string" && bodyDepartmentId.length > 0) return bodyDepartmentId
+  if (!tenantId) return null
+  const [manager, member, subDepartmentMembership] = await Promise.all([
+    prisma.departmentManager.findFirst({
+      where: { userId, department: { tenantId } },
+      select: { departmentId: true },
+    }),
+    prisma.departmentMember.findFirst({
+      where: { userId, department: { tenantId } },
+      select: { departmentId: true },
+    }),
+    prisma.subDepartmentMembership.findFirst({
+      where: { userId, isActive: true, subDepartment: { tenantId } },
+      select: { subDepartment: { select: { departmentId: true } } },
+    }),
+  ])
+  return manager?.departmentId ?? member?.departmentId ?? subDepartmentMembership?.subDepartment.departmentId ?? null
+}
 
 export async function PATCH(
   request: Request,
@@ -31,12 +65,14 @@ export async function PATCH(
   }
 
   const data: {
-    role?: Role
     subDepartmentId?: string | null
     location?: string | null
     timezone?: string | null
     isActive?: boolean
   } = {}
+
+  let scopedRoleChanges: RoleChange[] | undefined
+  let scopedRoleExpectedBefore: RoleChange[] | undefined
 
   if ("location" in body) {
     data.location = body.location ? String(body.location).trim() : null
@@ -50,21 +86,67 @@ export async function PATCH(
     data.isActive = Boolean(body.isActive)
   }
 
-  if ("role" in body) {
-    if (!VALID_ROLES.includes(body.role)) {
-      return NextResponse.json(
-        { error: `role must be one of: ${VALID_ROLES.join(", ")}` },
-        { status: 400 },
+  if ("role" in body || "roleChanges" in body) {
+    if ("roleChanges" in body && Array.isArray(body.roleChanges)) {
+      scopedRoleChanges = body.roleChanges as RoleChange[]
+      scopedRoleExpectedBefore = Array.isArray(body.expectedBefore) ? (body.expectedBefore as RoleChange[]) : []
+    } else if ("role" in body) {
+      if (!VALID_ROLES.includes(body.role)) {
+        return NextResponse.json(
+          { error: `role must be one of: ${VALID_ROLES.join(", ")}` },
+          { status: 400 },
+        )
+      }
+      if (isManager && !MANAGER_ALLOWED_ROLES.includes(body.role)) {
+        return NextResponse.json(
+          { error: "Managers can only assign sub-manager or agent roles" },
+          { status: 403 },
+        )
+      }
+      const departmentId = await resolveRoleChangeDepartmentId(
+        id,
+        profile!.activeTenantId,
+        typeof body.departmentId === "string" ? body.departmentId : null,
       )
+      if (!departmentId) {
+        return NextResponse.json(
+          { error: "departmentId is required for scoped role changes" },
+          { status: 400 },
+        )
+      }
+      const subDepartmentId =
+        typeof body.subDepartmentId === "string"
+          ? body.subDepartmentId
+          : (
+              await prisma.profile.findUnique({
+                where: { id },
+                select: { subDepartmentId: true },
+              })
+            )?.subDepartmentId ?? null
+      try {
+        const current = await loadUserRoleChanges(id, profile!.activeTenantId ?? undefined)
+        scopedRoleChanges = planLegacyDepartmentRoleUpdate({
+          departmentId,
+          subDepartmentId,
+          newRole: body.role as Role,
+          current,
+        })
+        scopedRoleExpectedBefore = await expectedBeforeForChanges(id, scopedRoleChanges)
+      } catch (err) {
+        if (err instanceof RoleChangeError) {
+          return NextResponse.json({ error: err.message }, { status: roleChangeHttpStatus(err) })
+        }
+        throw err
+      }
     }
-    // Managers can only assign lead or staff — not admin or manager
-    if (isManager && !MANAGER_ALLOWED_ROLES.includes(body.role)) {
-      return NextResponse.json(
-        { error: "Managers can only assign sub-manager or agent roles" },
-        { status: 403 },
-      )
-    }
-    data.role = body.role
+  }
+
+  if ("role" in body && !("roleChanges" in body) && !scopedRoleChanges) {
+    return NextResponse.json({ error: "Could not resolve scoped role changes" }, { status: 400 })
+  }
+
+  if ("role" in body && "roleChanges" in body) {
+    return NextResponse.json({ error: "Send either role or roleChanges, not both" }, { status: 400 })
   }
 
   if ("subDepartmentId" in body) {
@@ -80,7 +162,7 @@ export async function PATCH(
   // sub-department, and their memberships in other departments are cleared. The
   // caller then picks a sub-department (via subDepartmentId) to place them inside.
   let moveToDepartmentId: string | null | undefined
-  if ("departmentId" in body && !("subDepartmentId" in body)) {
+  if ("departmentId" in body && !("subDepartmentId" in body) && !("role" in body) && !("roleChanges" in body)) {
     moveToDepartmentId = body.departmentId ?? null
     if (moveToDepartmentId) {
       const dept = await prisma.department.findUnique({
@@ -99,28 +181,47 @@ export async function PATCH(
     data.subDepartmentId = null
   }
 
-  if (Object.keys(data).length === 0 && moveToDepartmentId === undefined) {
+  if (Object.keys(data).length === 0 && moveToDepartmentId === undefined && !scopedRoleChanges) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 })
   }
 
-  const before = await prisma.profile.findUnique({
-    where: { id },
-    select: { role: true, subDepartmentId: true, location: true, timezone: true, isActive: true },
-  })
+  const profileBefore = Object.keys(data).length > 0
+    ? await prisma.profile.findUnique({
+        where: { id },
+        select: { subDepartmentId: true, location: true, timezone: true, isActive: true },
+      })
+    : null
 
-  const updatedProfile = await prisma.profile.update({ where: { id }, data })
+  if (scopedRoleChanges) {
+    try {
+      await changeRoles({
+        userId: id,
+        actor: buildRoleChangeActor(profile!),
+        changes: scopedRoleChanges,
+        expectedBefore: scopedRoleExpectedBefore ?? [],
+      })
+    } catch (err) {
+      if (err instanceof RoleChangeError) {
+        return NextResponse.json({ error: err.message }, { status: roleChangeHttpStatus(err) })
+      }
+      throw err
+    }
+  }
+
+  const updatedProfile = Object.keys(data).length > 0
+    ? await prisma.profile.update({ where: { id }, data })
+    : await prisma.profile.findUniqueOrThrow({ where: { id } })
 
   // NFR-09/DAT-05 (slice 20): user changes are audited with actor + before/after
-  // state. Awaited (not fire-and-forget) — an audit write failure should
-  // surface as a 500, not be silently swallowed.
-  if (profile!.activeTenantId) {
+  // state. Role mutations are audited inside changeRoles; profile metadata here.
+  if (profile!.activeTenantId && Object.keys(data).length > 0) {
     await recordAuditEvent({
       tenantId: profile!.activeTenantId,
       actorId: profile!.id,
       action: "USER_UPDATED",
       targetType: "Profile",
       targetId: id,
-      before,
+      before: profileBefore,
       after: data,
     })
   }
@@ -128,16 +229,8 @@ export async function PATCH(
   // SA-03: an individual user restriction (isActive: false) needs the same
   // "invalidated within 60s" guarantee as a tenant suspension — getProfile()
   // already blocks their next request, this covers an already-open tab.
-  if (data.isActive === false && before?.isActive !== false) {
+  if (data.isActive === false && profileBefore?.isActive !== false) {
     await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
-  }
-
-  // Keep SubDepartmentMembership.role in sync with Profile.role — non-fatal if it fails
-  if (data.role) {
-    await prisma.subDepartmentMembership.updateMany({
-      where: { userId: id },
-      data: { role: data.role },
-    }).catch(() => {})
   }
 
   // Department-level move: land the user as a direct member of the target department
@@ -201,8 +294,8 @@ export async function PATCH(
           }),
           (prisma.subDepartmentMembership as any).upsert({
             where: { userId_subDepartmentId: { userId: id, subDepartmentId: nextSubDepartmentId } },
-            create: { userId: id, subDepartmentId: nextSubDepartmentId, role: updatedProfile.role, isActive: true },
-            update: { isActive: true, role: updatedProfile.role },
+            create: { userId: id, subDepartmentId: nextSubDepartmentId, role: "agent", isActive: true },
+            update: { isActive: true },
           }),
         ])
       }

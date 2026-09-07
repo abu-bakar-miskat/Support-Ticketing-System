@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import type { AuthProfile } from "@/lib/auth"
+import { isValidSubDepartmentRole } from "@/lib/role-management"
 
 async function assertSubDepartmentScope(subDepartmentId: string, caller: AuthProfile): Promise<NextResponse | null> {
   if (caller.role === "admin") return null
@@ -35,6 +36,12 @@ export async function POST(
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 })
+  }
+  if (role !== undefined && !isValidSubDepartmentRole(role)) {
+    return NextResponse.json(
+      { error: "role must be sub_manager or agent for a sub-department membership" },
+      { status: 400 },
+    )
   }
 
   const [subDepartment, profile] = await Promise.all([
@@ -107,6 +114,12 @@ export async function PATCH(
   }
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 })
+  if (role !== undefined && !isValidSubDepartmentRole(role)) {
+    return NextResponse.json(
+      { error: "role must be sub_manager or agent for a sub-department membership" },
+      { status: 400 },
+    )
+  }
 
   const data: Record<string, unknown> = {}
   if (isActive !== undefined) data.isActive = isActive

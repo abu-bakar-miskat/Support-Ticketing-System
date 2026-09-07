@@ -7,21 +7,58 @@ const mockAdmin = {
   name: "Admin",
   avatarUrl: null,
   role: "admin" as const,
+  activeTenantId: "tenant-1",
   subDepartmentId: null,
-  subDepartmentIds: [], memberships: [], timezone: null, notificationPrefs: null,
+  subDepartmentIds: [],
+  memberships: [],
+  timezone: null,
+  notificationPrefs: null,
   createdAt: new Date(),
 }
 
-vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
+vi.mock("@/lib/auth", () => ({ requireAuth: vi.fn() }))
+vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn() }))
+vi.mock("@/lib/realtime-broadcast", () => ({ broadcastForceLogout: vi.fn() }))
+vi.mock("@/lib/role-management", () => ({
+  buildRoleChangeActor: vi.fn((profile) => profile),
+  changeRoles: vi.fn(),
+  expectedBeforeForChanges: vi.fn(),
+  loadUserRoleChanges: vi.fn(),
+  planLegacyDepartmentRoleUpdate: vi.fn(),
+  roleChangeHttpStatus: vi.fn(() => 400),
+  RoleChangeError: class RoleChangeError extends Error {},
+}))
 vi.mock("@/lib/db", () => ({
-  prisma: { profile: { update: vi.fn() } },
+  prisma: {
+    profile: {
+      findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      update: vi.fn(),
+    },
+    departmentManager: { findFirst: vi.fn() },
+    departmentMember: { findFirst: vi.fn() },
+    subDepartmentMembership: {
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+      upsert: vi.fn(),
+    },
+    department: { findUnique: vi.fn() },
+    subDepartment: { findUnique: vi.fn() },
+    $transaction: vi.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg({ subDepartmentMembership: { updateMany: vi.fn(), upsert: vi.fn() } }))),
+  },
 }))
 
-import { getProfile } from "@/lib/profile"
+import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { changeRoles, loadUserRoleChanges, planLegacyDepartmentRoleUpdate } from "@/lib/role-management"
 
-const mockGetProfile = vi.mocked(getProfile)
+const mockRequireAuth = vi.mocked(requireAuth)
+const mockFindUnique = vi.mocked(prisma.profile.findUnique)
 const mockUpdate = vi.mocked(prisma.profile.update)
+const mockFindUniqueOrThrow = vi.mocked(prisma.profile.findUniqueOrThrow)
+const mockChangeRoles = vi.mocked(changeRoles)
+const mockLoadUserRoleChanges = vi.mocked(loadUserRoleChanges)
+const mockPlanLegacy = vi.mocked(planLegacyDepartmentRoleUpdate)
 
 function makeRequest(id: string, body: unknown) {
   return {
@@ -36,29 +73,35 @@ function makeRequest(id: string, body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockGetProfile.mockResolvedValue(mockAdmin as never)
+  mockRequireAuth.mockResolvedValue({ profile: mockAdmin as never, error: null })
+  mockFindUnique.mockResolvedValue({ subDepartmentId: null, location: null, timezone: null, isActive: true } as never)
+  mockFindUniqueOrThrow.mockResolvedValue(mockAdmin as never)
+  mockLoadUserRoleChanges.mockResolvedValue([])
+  mockPlanLegacy.mockReturnValue([
+    { scopeType: "DEPARTMENT", scopeId: "dept-1", role: "manager" },
+  ])
 })
 
 describe("PATCH /api/admin/users/[id]", () => {
-  it("returns 200 with updated profile on role change", async () => {
+  it("routes role changes through the scoped role-management service", async () => {
     const targetId = "00000000-0000-0000-0000-000000000002"
-    const updated = { ...mockAdmin, id: targetId, role: "developer" as const }
-    mockUpdate.mockResolvedValue(updated as never)
+    mockFindUniqueOrThrow.mockResolvedValue({ ...mockAdmin, id: targetId } as never)
 
-    const { request, params } = makeRequest(targetId, { role: "developer" })
+    const { request, params } = makeRequest(targetId, {
+      role: "manager",
+      departmentId: "dept-1",
+    })
     const res = await PATCH(request, { params })
-    const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body.role).toBe("developer")
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: targetId }, data: { role: "developer" } })
-    )
+    expect(mockChangeRoles).toHaveBeenCalledOnce()
+    expect(mockUpdate).not.toHaveBeenCalled()
   })
 
   it("returns 200 when assigning a subDepartment", async () => {
     const targetId = "00000000-0000-0000-0000-000000000002"
     mockUpdate.mockResolvedValue({ ...mockAdmin, id: targetId, subDepartmentId: "subDepartment1" } as never)
+    vi.mocked(prisma.subDepartment.findUnique).mockResolvedValue({ departmentId: "dept-1" } as never)
 
     const { request, params } = makeRequest(targetId, { subDepartmentId: "subDepartment1" })
     const res = await PATCH(request, { params })
@@ -67,7 +110,7 @@ describe("PATCH /api/admin/users/[id]", () => {
   })
 
   it("returns 400 for an invalid role value", async () => {
-    const { request, params } = makeRequest("some-id", { role: "superuser" })
+    const { request, params } = makeRequest("some-id", { role: "superuser", departmentId: "dept-1" })
     const res = await PATCH(request, { params })
 
     expect(res.status).toBe(400)
@@ -80,10 +123,13 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect(res.status).toBe(400)
   })
 
-  it("returns 403 when caller is not admin", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockAdmin, role: "developer" } as never)
+  it("returns 403 when caller is not admin or manager", async () => {
+    mockRequireAuth.mockResolvedValue({
+      profile: { ...mockAdmin, role: "agent" } as never,
+      error: null,
+    })
 
-    const { request, params } = makeRequest("some-id", { role: "admin" })
+    const { request, params } = makeRequest("some-id", { role: "admin", departmentId: "dept-1" })
     const res = await PATCH(request, { params })
 
     expect(res.status).toBe(403)

@@ -1,5 +1,8 @@
 import "server-only";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+
+type AuditWriteClient = Pick<typeof prisma, "auditEvent"> | Prisma.TransactionClient;
 
 /**
  * Minimal system-wide audit trail (slice 19 needs SA-04's "flag changes are
@@ -16,8 +19,11 @@ export async function recordAuditEvent(params: {
   targetId: string;
   before?: unknown;
   after?: unknown;
+  /** When supplied, the audit row is written in the same transaction. */
+  client?: AuditWriteClient;
 }): Promise<void> {
-  await prisma.auditEvent.create({
+  const db = params.client ?? prisma;
+  await db.auditEvent.create({
     data: {
       tenantId: params.tenantId,
       actorId: params.actorId,

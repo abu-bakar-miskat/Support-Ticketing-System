@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
@@ -239,18 +240,28 @@ export function resolveEffectiveSubDepartmentManager(params: {
   return uniq(params.departmentAdminUserIds);
 }
 
+type RoleDerivationClient = Pick<
+  Prisma.TransactionClient,
+  | "profile"
+  | "tenantMembership"
+  | "departmentManager"
+  | "departmentMember"
+  | "departmentAccess"
+  | "subDepartmentMembership"
+>;
+
 /** Derive the canonical assignments for a user from the existing role tables. */
-async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
+async function deriveAssignmentsFromClient(client: RoleDerivationClient, userId: string): Promise<ScopeRow[]> {
   const [profile, tenantM, deptMgr, deptMem, deptAcc, subDepartmentM] = await Promise.all([
-    prisma.profile.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
-    prisma.tenantMembership.findMany({ where: { userId, isActive: true }, select: { role: true, tenantId: true } }),
-    prisma.departmentManager.findMany({ where: { userId }, select: { departmentId: true, role: true } }),
-    prisma.departmentMember.findMany({ where: { userId }, select: { departmentId: true } }),
-    prisma.departmentAccess.findMany({
+    client.profile.findUnique({ where: { id: userId }, select: { isSuperAdmin: true } }),
+    client.tenantMembership.findMany({ where: { userId, isActive: true }, select: { role: true, tenantId: true } }),
+    client.departmentManager.findMany({ where: { userId }, select: { departmentId: true, role: true } }),
+    client.departmentMember.findMany({ where: { userId }, select: { departmentId: true } }),
+    client.departmentAccess.findMany({
       where: { userId, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
       select: { departmentId: true },
     }),
-    prisma.subDepartmentMembership.findMany({ where: { userId, isActive: true }, select: { role: true, subDepartmentId: true } }),
+    client.subDepartmentMembership.findMany({ where: { userId, isActive: true }, select: { role: true, subDepartmentId: true } }),
   ]);
 
   const rows: ScopeRow[] = [];
@@ -275,6 +286,26 @@ async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
   });
 }
 
+async function deriveAssignments(userId: string): Promise<ScopeRow[]> {
+  return deriveAssignmentsFromClient(prisma, userId);
+}
+
+/**
+ * Rebuild RoleAssignment rows from legacy tables inside an open transaction.
+ * Callers must hold a per-user lock before invoking when racing with readers.
+ */
+export async function synchronizeLegacyRoleAssignments(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<void> {
+  const derived = await deriveAssignmentsFromClient(tx, userId);
+  const data = derived.map((r) => ({ userId, role: r.role, scopeType: r.scopeType, scopeId: r.scopeId }));
+  await tx.roleAssignment.deleteMany({ where: { userId } });
+  if (data.length > 0) {
+    await tx.roleAssignment.createMany({ data });
+  }
+}
+
 function isUniqueViolation(err: unknown): boolean {
   return err != null && typeof err === "object" && (err as { code?: string }).code === "P2002";
 }
@@ -284,17 +315,12 @@ function isUniqueViolation(err: unknown): boolean {
  * Transitional bridge until slice 03 makes RoleAssignment the write source.
  */
 async function rebuildUserRoleAssignments(userId: string): Promise<void> {
-  const derived = await deriveAssignments(userId);
-  const data = derived.map((r) => ({ userId, role: r.role, scopeType: r.scopeType, scopeId: r.scopeId }));
-
   // Interactive (callback) form — batch `$transaction([...])` binds PrismaPromises
   // to a single client so P2028 mid-flight cannot be replayed (see lib/db.ts).
   const write = () =>
     prisma.$transaction(async (tx) => {
-      await tx.roleAssignment.deleteMany({ where: { userId } });
-      if (data.length > 0) {
-        await tx.roleAssignment.createMany({ data });
-      }
+      await tx.$queryRaw`SELECT "id" FROM "Profile" WHERE "id" = ${userId} FOR UPDATE`;
+      await synchronizeLegacyRoleAssignments(tx, userId);
     });
 
   try {

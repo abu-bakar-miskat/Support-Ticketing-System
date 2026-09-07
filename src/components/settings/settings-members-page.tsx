@@ -611,8 +611,13 @@ export function SettingsMembersPage({
     setLocalRoles((prev) => ({ ...prev, [memberId]: newRole }));
     setSaving(memberId);
     setError(null);
+    const member = liveMembers.find((m) => m.id === memberId);
     try {
-      await updateAdminUser(memberId, { role: newRole });
+      await updateAdminUser(memberId, {
+        role: newRole,
+        departmentId: member?.departmentId ?? departmentId ?? undefined,
+        subDepartmentId: member?.subDepartmentId ?? undefined,
+      });
       startTransition(() => router.refresh());
     } catch {
       setError("Failed to update role");

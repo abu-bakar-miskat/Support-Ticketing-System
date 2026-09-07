@@ -55,7 +55,7 @@ const COLUMNS: { key: SortField; label: string }[] = [
   { key: "tenantStatus", label: "Status" },
   { key: "agreementEndDate", label: "Agreement ends" },
   { key: "renewalStatus", label: "Renewal" },
-  { key: "departmentCount", label: "Depts" },
+  { key: "departmentCount", label: "Departments" },
   { key: "activeUserCount", label: "Active users" },
 ];
 
@@ -105,9 +105,14 @@ export function TenantStatusSummary() {
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Tenant status summary</h2>
+    <div className="mt-10">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">Status & agreements</h2>
+          <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+            Renewal and access health across every tenant.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
         <Select value={tenantStatusFilter || "__all__"} onValueChange={(v) => setTenantStatusFilter(v === "__all__" ? "" : v ?? "")}>
           <SelectTrigger className="h-8 min-w-[160px]">

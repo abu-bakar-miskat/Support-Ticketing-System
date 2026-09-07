@@ -15,6 +15,7 @@ import {
   PauseCircle,
   PlayCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,158 @@ type TenantRow = {
   members: number;
 };
 
+function StatusBadge({ tenant }: { tenant: TenantRow }) {
+  if (tenant.deleted) {
+    return (
+      <span className="inline-flex shrink-0 items-center rounded-full bg-sts-red/10 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-red">
+        Deleted
+      </span>
+    );
+  }
+  if (tenant.status === "suspended") {
+    return (
+      <span className="inline-flex shrink-0 items-center rounded-full bg-amber-500/15 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+        Suspended
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-sts-green/10 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-green">
+      Active
+    </span>
+  );
+}
+
+function TenantCard({
+  tenant,
+  canManage,
+  busy,
+  index,
+  onEnter,
+  onManage,
+  onSuspend,
+  onReactivate,
+  onDelete,
+  onRestore,
+}: {
+  tenant: TenantRow;
+  canManage: boolean;
+  busy: boolean;
+  index: number;
+  onEnter: () => void;
+  onManage: () => void;
+  onSuspend: () => void;
+  onReactivate: () => void;
+  onDelete: () => void;
+  onRestore: () => void;
+}) {
+  const locked = tenant.deleted || tenant.status === "suspended";
+
+  return (
+    <li
+      className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card transition-colors hover:border-sts-blue/30 animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300"
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+    >
+      <div className="flex items-start gap-3 px-5 pt-5 pb-3">
+        <TenantAvatar name={tenant.name} logoUrl={tenant.logoUrl} size={44} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 truncate font-sans text-[15px] font-semibold text-sts-foreground">
+              {tenant.name}
+            </h3>
+            <StatusBadge tenant={tenant} />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="truncate font-mono text-[11.5px] text-sts-subtle">/{tenant.slug}</span>
+            <span className="rounded-full bg-sts-surface px-2 py-px font-sans text-[10px] font-medium text-sts-muted">
+              {tenantTypeLabel(tenant.type)}
+            </span>
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-sts-muted">
+            <span className="flex items-center gap-1">
+              <Layers className="size-3.5 shrink-0 text-sts-subtle" />
+              {tenant.departments} department{tenant.departments === 1 ? "" : "s"}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="size-3.5 shrink-0 text-sts-subtle" />
+              {tenant.members} member{tenant.members === 1 ? "" : "s"}
+            </span>
+          </div>
+        </div>
+        {canManage && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label={`More actions for ${tenant.name}`}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle outline-none transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem onClick={onManage}>
+                <Settings className="size-3.5" />
+                Manage
+              </DropdownMenuItem>
+              {!tenant.deleted &&
+                (tenant.status === "suspended" ? (
+                  <DropdownMenuItem onClick={onReactivate}>
+                    <PlayCircle className="size-3.5" />
+                    Reactivate
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={onSuspend}>
+                    <PauseCircle className="size-3.5" />
+                    Suspend
+                  </DropdownMenuItem>
+                ))}
+              {tenant.deleted ? (
+                <DropdownMenuItem onClick={onRestore}>
+                  <RotateCcw className="size-3.5" />
+                  Restore
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      <div className="mt-auto flex items-center gap-3 border-t border-sts-card-border px-5 py-3.5">
+        {canManage && (
+          <button
+            type="button"
+            onClick={onManage}
+            className="font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:text-sts-blue"
+          >
+            Manage
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={busy || locked}
+          onClick={onEnter}
+          className={cn(
+            "ml-auto flex items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900",
+            !canManage && "w-full",
+          )}
+        >
+          {busy ? (
+            "Entering…"
+          ) : (
+            <>
+              Enter
+              <ArrowRight className="size-3.5" />
+            </>
+          )}
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export function TenantsClient({
   tenants: initialTenants,
   canManage,
@@ -56,6 +209,11 @@ export function TenantsClient({
   const [confirmTarget, setConfirmTarget] = useState<{ action: "suspend" | "delete"; tenant: TenantRow } | null>(
     null,
   );
+
+  const activeCount = tenants.filter((t) => !t.deleted && t.status !== "suspended").length;
+  const suspendedCount = tenants.filter((t) => !t.deleted && t.status === "suspended").length;
+  const memberTotal = tenants.reduce((sum, t) => sum + t.members, 0);
+  const deptTotal = tenants.reduce((sum, t) => sum + t.departments, 0);
 
   async function enterTenant(tenantId: string) {
     setBusy(`enter-${tenantId}`);
@@ -111,8 +269,9 @@ export function TenantsClient({
       <div className="w-full px-6 py-8 lg:px-10">
         <PageHeader
           icon={Building2}
+          iconClassName="text-sts-blue"
           title="Tenants"
-          description="Each tenant is fully independent, with its own departments, members, theme, and data. Enter a tenant to work inside its scope, or manage its branding without switching."
+          description="Browse independent organisations. Enter to work inside a tenant, or Manage for branding and settings."
           actions={
             canManage && (
               <Button size="lg" onClick={() => setShowCreateModal(true)}>
@@ -123,124 +282,69 @@ export function TenantsClient({
           }
         />
 
+        {/* Overview band */}
+        {tenants.length > 0 && (
+          <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-4 sm:divide-y-0">
+            {[
+              { label: "Tenants", value: tenants.length },
+              { label: "Active", value: activeCount },
+              { label: "Departments", value: deptTotal },
+              { label: "Members", value: memberTotal },
+            ].map((stat) => (
+              <div key={stat.label} className="flex flex-col gap-1.5 px-3.5 py-3">
+                <span className="sts-text-section-label">{stat.label}</span>
+                <p className="font-mono text-[22px] font-semibold leading-none tracking-tight text-sts-foreground">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {suspendedCount > 0 && (
+          <p className="mt-2 font-sans text-[12px] text-amber-600 dark:text-amber-400">
+            {suspendedCount} suspended tenant{suspendedCount === 1 ? "" : "s"} — members are locked out until reactivated.
+          </p>
+        )}
+
         {error && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
             {error}
           </div>
         )}
 
-        {/* List */}
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {tenants.map((t) => {
-            return (
-              <li
+        {tenants.length === 0 ? (
+          <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-sts-card-border py-16 text-center">
+            <Building2 className="size-8 text-sts-subtle" strokeWidth={1.2} />
+            <p className="font-sans text-[13px] text-sts-muted">No tenants yet. Create one to get started.</p>
+            {canManage && (
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="size-4" />
+                Create tenant
+              </Button>
+            )}
+          </div>
+        ) : (
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {tenants.map((t, i) => (
+              <TenantCard
                 key={t.id}
-                className="group flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card transition-all duration-200 hover:-translate-y-0.5 hover:border-sts-muted/40 hover:shadow-md"
-              >
-                <div className="flex items-start gap-3">
-                  <TenantAvatar name={t.name} logoUrl={t.logoUrl} size={44} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 flex-1 truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
-                        {t.name}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue">
-                        {tenantTypeLabel(t.type)}
-                      </span>
-                      {canManage && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            aria-label={`More actions for ${t.name}`}
-                            className="flex size-6 shrink-0 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/platform/${t.id}`)}>
-                              <Settings />
-                              Manage
-                            </DropdownMenuItem>
-                            {!t.deleted &&
-                              (t.status === "suspended" ? (
-                                <DropdownMenuItem onClick={() => setTenantStatus(t.id, "active")}>
-                                  <PlayCircle />
-                                  Reactivate
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={() => setConfirmTarget({ action: "suspend", tenant: t })}>
-                                  <PauseCircle />
-                                  Suspend
-                                </DropdownMenuItem>
-                              ))}
-                            {t.deleted ? (
-                              <DropdownMenuItem onClick={() => restoreTenant(t.id)}>
-                                <RotateCcw />
-                                Restore
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setConfirmTarget({ action: "delete", tenant: t })}
-                              >
-                                <Trash2 />
-                                Delete
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1.5">
-                      <span className="truncate font-mono text-[11px] text-sts-subtle">
-                        /{t.slug}
-                      </span>
-                      {t.deleted ? (
-                        <span className="shrink-0 rounded-full bg-sts-red/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-red">
-                          Deleted
-                        </span>
-                      ) : t.status === "suspended" ? (
-                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                          Suspended
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
+                tenant={t}
+                canManage={canManage}
+                busy={busy === `enter-${t.id}`}
+                index={i}
+                onEnter={() => enterTenant(t.id)}
+                onManage={() => router.push(`/platform/${t.id}`)}
+                onSuspend={() => setConfirmTarget({ action: "suspend", tenant: t })}
+                onReactivate={() => setTenantStatus(t.id, "active")}
+                onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
+                onRestore={() => restoreTenant(t.id)}
+              />
+            ))}
+          </ul>
+        )}
 
-                <div className="mt-3 flex items-center gap-4 border-t border-sts-card-border/60 pt-3 font-sans text-[12px] text-sts-muted">
-                  <span className="flex items-center gap-1.5">
-                    <Layers className="size-3.5 text-sts-subtle" />
-                    {t.departments} dept{t.departments === 1 ? "" : "s"}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Users className="size-3.5 text-sts-subtle" />
-                    {t.members} member{t.members === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2">
-                  <Button
-                    size="lg"
-                    className="flex-1"
-                    onClick={() => enterTenant(t.id)}
-                    disabled={busy === `enter-${t.id}`}
-                  >
-                    {busy === `enter-${t.id}` ? (
-                      "Entering…"
-                    ) : (
-                      <>
-                        Enter
-                        <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-
-        {canManage && <TenantStatusSummary />}
+        {canManage && tenants.length > 0 && <TenantStatusSummary />}
       </div>
 
       {confirmTarget && (

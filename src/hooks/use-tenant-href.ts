@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedPath } from "@/lib/tenant-path";
+import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedPath, isSubDeptScopedPath } from "@/lib/tenant-path";
 
 /**
  * The active tenant/department slugs, read straight from the current URL (the
@@ -21,7 +21,13 @@ export function useTenantPrefix(): {
   const s1 = segs[1] ?? "";
   const deptSlug = tenantSlug && s1 && !TENANT_SCOPED_ROOTS.has(s1) ? s1 : "";
   const s2 = segs[2] ?? "";
-  const subDeptSlug = deptSlug && s2 && !TENANT_SCOPED_ROOTS.has(s2) ? s2 : "";
+  // Only treat s2 as a sub-dept when the rest of the path is sub-dept-scoped
+  // (e.g. /tenant/dept/sub/board). For /tenant/dept/settings/…, s2 is "settings".
+  const restFrom2 = s2 ? `/${segs.slice(2).join("/")}` : "/";
+  const subDeptSlug =
+    deptSlug && s2 && !TENANT_SCOPED_ROOTS.has(s2) && isSubDeptScopedPath(restFrom2)
+      ? s2
+      : "";
   return { tenantSlug, deptSlug, subDeptSlug };
 }
 
@@ -41,7 +47,7 @@ export function useTenantHref(): (internalPath: string) => string {
     let base = `/${tenantSlug}`;
     if (deptSlug && isDeptScopedPath(internalPath)) {
       base += `/${deptSlug}`;
-      if (subDeptSlug) base += `/${subDeptSlug}`;
+      if (subDeptSlug && isSubDeptScopedPath(internalPath)) base += `/${subDeptSlug}`;
     }
     return internalPath === "/" ? base : `${base}${internalPath}`;
   };

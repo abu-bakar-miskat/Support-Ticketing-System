@@ -130,14 +130,20 @@ function LabeledSwitch({
       <span
         className={cn(
           "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
-          checked ? cn("translate-x-[52px]", colors.thumb) : "translate-x-0 bg-sts-muted",
+          checked
+            ? cn("translate-x-[52px]", colors.thumb)
+            : "translate-x-0 bg-sts-muted",
         )}
       />
     </button>
   );
 }
 
-export type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+export type AssignmentMethod =
+  | "RULE_BASED"
+  | "ROUND_ROBIN"
+  | "WORKLOAD_BASED"
+  | "MANUAL";
 
 export const ASSIGNMENT_METHOD_LABELS: Record<AssignmentMethod, string> = {
   RULE_BASED: "Rule-based",
@@ -150,10 +156,19 @@ export const ASSIGNMENT_METHOD_STYLES: Record<
   AssignmentMethod,
   { icon: LucideIcon; className: string }
 > = {
-  RULE_BASED: { icon: ListChecks, className: "text-violet-600 dark:text-violet-400" },
+  RULE_BASED: {
+    icon: ListChecks,
+    className: "text-violet-600 dark:text-violet-400",
+  },
   ROUND_ROBIN: { icon: RefreshCw, className: "text-sky-600 dark:text-sky-400" },
-  WORKLOAD_BASED: { icon: Gauge, className: "text-amber-600 dark:text-amber-400" },
-  MANUAL: { icon: UserCog, className: "text-emerald-600 dark:text-emerald-400" },
+  WORKLOAD_BASED: {
+    icon: Gauge,
+    className: "text-amber-600 dark:text-amber-400",
+  },
+  MANUAL: {
+    icon: UserCog,
+    className: "text-emerald-600 dark:text-emerald-400",
+  },
 };
 
 export type IntakeFormRow = {
@@ -272,14 +287,12 @@ function IntakeFormModal({
   const [intakeSubDepartmentId, setIntakeSubDepartmentId] = useState(
     isEdit ? mode.form.intakeSubDepartmentId : (lockedSubDepartmentId ?? ""),
   );
-  const [workloadThreshold, setWorkloadThreshold] = useState(
-    isEdit ? mode.form.workloadThreshold : 5,
-  );
   const [isActive, setIsActive] = useState(isEdit ? mode.form.isActive : true);
   // null = inherit the sub-department's method (→ department → round-robin).
-  const [assignmentMethod, setAssignmentMethod] = useState<AssignmentMethod | null>(
-    isEdit ? mode.form.assignmentMethod : null,
-  );
+  const [assignmentMethod, setAssignmentMethod] =
+    useState<AssignmentMethod | null>(
+      isEdit ? mode.form.assignmentMethod : null,
+    );
   const [displayMode, setDisplayMode] = useState<"FORM" | "CHAT">(
     isEdit ? mode.form.displayMode : "FORM",
   );
@@ -321,12 +334,18 @@ function IntakeFormModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           isEdit
-            ? { name: name.trim(), intakeSubDepartmentId, workloadThreshold, isActive, autoAssign, assignmentMethod, displayMode }
+            ? {
+                name: name.trim(),
+                intakeSubDepartmentId,
+                isActive,
+                autoAssign,
+                assignmentMethod,
+                displayMode,
+              }
             : {
                 name: name.trim(),
                 departmentId,
                 intakeSubDepartmentId,
-                workloadThreshold,
                 autoAssign,
                 assignmentMethod,
                 displayMode,
@@ -380,7 +399,11 @@ function IntakeFormModal({
             />
           </div>
 
-          {!isEdit && (
+          {/* Only offer the picker when there's a real choice. A single
+              department (sub-department page, or a single-dept manager) is
+              auto-selected via the departmentId default — no dead one-item
+              dropdown. */}
+          {!isEdit && departments.length > 1 && (
             <div className="flex flex-col gap-1.5">
               <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Department
@@ -417,38 +440,45 @@ function IntakeFormModal({
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-              Support subDepartment
-            </label>
-            <Select
-              value={intakeSubDepartmentId}
-              onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
-              disabled={!departmentId && !isEdit}
-            >
-              <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
-                <span
-                  className={
-                    intakeSubDepartmentId ? "text-sts-foreground" : "text-sts-subtle"
-                  }
-                >
-                  {availableSubDepartments.find((t) => t.id === intakeSubDepartmentId)?.name ??
-                    "Select sub department"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {availableSubDepartments.map((t) => (
-                  <SelectItem
-                    key={t.id}
-                    value={t.id}
-                    className="font-sans text-[12.5px]"
+          {/* On a sub-department's own page the routing target is fixed
+              (lockedSubDepartmentId) — it's pre-selected, so skip the picker. */}
+          {!lockedSubDepartmentId && (
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+                Support subDepartment
+              </label>
+              <Select
+                value={intakeSubDepartmentId}
+                onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
+                disabled={!departmentId && !isEdit}
+              >
+                <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
+                  <span
+                    className={
+                      intakeSubDepartmentId
+                        ? "text-sts-foreground"
+                        : "text-sts-subtle"
+                    }
                   >
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                    {availableSubDepartments.find(
+                      (t) => t.id === intakeSubDepartmentId,
+                    )?.name ?? "Select sub department"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSubDepartments.map((t) => (
+                    <SelectItem
+                      key={t.id}
+                      value={t.id}
+                      className="font-sans text-[12.5px]"
+                    >
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-sts-foreground">
@@ -457,8 +487,16 @@ function IntakeFormModal({
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
-                  { value: "FORM", label: "Classic form", icon: <FileText className="size-3.5" /> },
-                  { value: "CHAT", label: "Chat", icon: <MessageCircle className="size-3.5" /> },
+                  {
+                    value: "FORM",
+                    label: "Classic form",
+                    icon: <FileText className="size-3.5" />,
+                  },
+                  {
+                    value: "CHAT",
+                    label: "Chat",
+                    icon: <MessageCircle className="size-3.5" />,
+                  },
                 ] as const
               ).map((opt) => (
                 <button
@@ -478,24 +516,8 @@ function IntakeFormModal({
               ))}
             </div>
             <p className="font-sans text-[11.5px] text-sts-subtle">
-              Chat asks the form&apos;s questions one at a time, like a conversation.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-              Workload threshold
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={workloadThreshold}
-              onChange={(e) => setWorkloadThreshold(Number(e.target.value))}
-              className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id focus:ring-1 focus:ring-sts-id"
-            />
-            <p className="font-sans text-[11.5px] text-sts-subtle">
-              Max open tickets before a member is considered at capacity.
+              Chat asks the form&apos;s questions one at a time, like a
+              conversation.
             </p>
           </div>
 
@@ -506,7 +528,9 @@ function IntakeFormModal({
             <Select
               value={assignmentMethod ?? "INHERIT"}
               onValueChange={(v) =>
-                setAssignmentMethod(v === "INHERIT" ? null : (v as AssignmentMethod))
+                setAssignmentMethod(
+                  v === "INHERIT" ? null : (v as AssignmentMethod),
+                )
               }
             >
               <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
@@ -521,9 +545,18 @@ function IntakeFormModal({
                   Inherit from sub-department
                 </SelectItem>
                 {(
-                  ["RULE_BASED", "ROUND_ROBIN", "WORKLOAD_BASED", "MANUAL"] as const
+                  [
+                    "RULE_BASED",
+                    "ROUND_ROBIN",
+                    "WORKLOAD_BASED",
+                    "MANUAL",
+                  ] as const
                 ).map((m) => (
-                  <SelectItem key={m} value={m} className="font-sans text-[12.5px]">
+                  <SelectItem
+                    key={m}
+                    value={m}
+                    className="font-sans text-[12.5px]"
+                  >
                     {ASSIGNMENT_METHOD_LABELS[m]}
                   </SelectItem>
                 ))}
@@ -600,7 +633,16 @@ type FieldValidation = {
 type FieldRow = {
   id: string;
   label: string;
-  type: "text" | "richtext" | "select" | "file" | "email" | "number" | "checkbox" | "radio" | "date";
+  type:
+    | "text"
+    | "richtext"
+    | "select"
+    | "file"
+    | "email"
+    | "number"
+    | "checkbox"
+    | "radio"
+    | "date";
   isRequired: boolean;
   options: string[];
   childOptions: Record<string, string[]>;
@@ -611,16 +653,36 @@ type FieldRow = {
   visibleWhen?: { fieldId: string; equals?: string; in?: string[] } | null;
 };
 
-const FIELD_TYPES: { value: FieldRow["type"]; label: string; icon: React.ReactNode }[] = [
+const FIELD_TYPES: {
+  value: FieldRow["type"];
+  label: string;
+  icon: React.ReactNode;
+}[] = [
   { value: "text", label: "Short text", icon: <Type className="size-3.5" /> },
-  { value: "richtext", label: "Rich text", icon: <AlignLeft className="size-3.5" /> },
+  {
+    value: "richtext",
+    label: "Rich text",
+    icon: <AlignLeft className="size-3.5" />,
+  },
   { value: "email", label: "Email", icon: <Mail className="size-3.5" /> },
   { value: "number", label: "Number", icon: <Hash className="size-3.5" /> },
-  { value: "select", label: "Dropdown", icon: <ChevronDown className="size-3.5" /> },
+  {
+    value: "select",
+    label: "Dropdown",
+    icon: <ChevronDown className="size-3.5" />,
+  },
   { value: "radio", label: "Radio", icon: <Circle className="size-3.5" /> },
-  { value: "checkbox", label: "Checkbox", icon: <CheckSquare className="size-3.5" /> },
+  {
+    value: "checkbox",
+    label: "Checkbox",
+    icon: <CheckSquare className="size-3.5" />,
+  },
   { value: "date", label: "Date", icon: <CalendarDays className="size-3.5" /> },
-  { value: "file", label: "File upload", icon: <Paperclip className="size-3.5" /> },
+  {
+    value: "file",
+    label: "File upload",
+    icon: <Paperclip className="size-3.5" />,
+  },
 ];
 
 function typeLabel(type: FieldRow["type"]) {
@@ -642,10 +704,26 @@ const DEFAULT_FIELD_META: Record<
   DefaultFieldKey,
   { typeLabel: string; required: boolean; icon: React.ReactNode }
 > = {
-  submitterName: { typeLabel: "Short text", required: true, icon: <Type className="size-3.5" /> },
-  submitterEmail: { typeLabel: "Email", required: true, icon: <Mail className="size-3.5" /> },
-  title: { typeLabel: "Short text", required: false, icon: <Type className="size-3.5" /> },
-  issueType: { typeLabel: "Dropdown", required: true, icon: <ChevronDown className="size-3.5" /> },
+  submitterName: {
+    typeLabel: "Short text",
+    required: true,
+    icon: <Type className="size-3.5" />,
+  },
+  submitterEmail: {
+    typeLabel: "Email",
+    required: true,
+    icon: <Mail className="size-3.5" />,
+  },
+  title: {
+    typeLabel: "Short text",
+    required: false,
+    icon: <Type className="size-3.5" />,
+  },
+  issueType: {
+    typeLabel: "Dropdown",
+    required: true,
+    icon: <ChevronDown className="size-3.5" />,
+  },
 };
 
 type FieldEditorState = {
@@ -679,8 +757,15 @@ function FieldEditor({
   const [newOption, setNewOption] = useState("");
   const [expandedOption, setExpandedOption] = useState<string | null>(null);
   const [newChild, setNewChild] = useState("");
-  const [editingChild, setEditingChild] = useState<{ parent: string; idx: number; draft: string } | null>(null);
-  const [editingOption, setEditingOption] = useState<{ idx: number; draft: string } | null>(null);
+  const [editingChild, setEditingChild] = useState<{
+    parent: string;
+    idx: number;
+    draft: string;
+  } | null>(null);
+  const [editingOption, setEditingOption] = useState<{
+    idx: number;
+    draft: string;
+  } | null>(null);
 
   function addOption() {
     const trimmed = newOption.trim();
@@ -693,7 +778,11 @@ function FieldEditor({
     setState((s) => {
       const childOptions = { ...s.childOptions };
       delete childOptions[opt];
-      return { ...s, options: s.options.filter((o) => o !== opt), childOptions };
+      return {
+        ...s,
+        options: s.options.filter((o) => o !== opt),
+        childOptions,
+      };
     });
     if (expandedOption === opt) setExpandedOption(null);
   }
@@ -749,15 +838,29 @@ function FieldEditor({
       setState((s) => {
         const children = [...(s.childOptions[parent] ?? [])];
         children[idx] = trimmed;
-        return { ...s, childOptions: { ...s.childOptions, [parent]: children } };
+        return {
+          ...s,
+          childOptions: { ...s.childOptions, [parent]: children },
+        };
       });
     }
     setEditingChild(null);
   }
 
-  const hasPlaceholder = state.type === "text" || state.type === "email" || state.type === "number" || state.type === "date";
-  const hasValidation = state.type !== "select" && state.type !== "file" && state.type !== "checkbox" && state.type !== "radio";
-  const hasOptions = state.type === "select" || state.type === "radio" || state.type === "checkbox";
+  const hasPlaceholder =
+    state.type === "text" ||
+    state.type === "email" ||
+    state.type === "number" ||
+    state.type === "date";
+  const hasValidation =
+    state.type !== "select" &&
+    state.type !== "file" &&
+    state.type !== "checkbox" &&
+    state.type !== "radio";
+  const hasOptions =
+    state.type === "select" ||
+    state.type === "radio" ||
+    state.type === "checkbox";
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-sts-id/30 bg-sts-card px-4 py-3.5 shadow-sm">
@@ -787,7 +890,15 @@ function FieldEditor({
             <button
               key={t.value}
               type="button"
-              onClick={() => setState((s) => ({ ...s, type: t.value, options: [], childOptions: {}, validation: {} }))}
+              onClick={() =>
+                setState((s) => ({
+                  ...s,
+                  type: t.value,
+                  options: [],
+                  childOptions: {},
+                  validation: {},
+                }))
+              }
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                 state.type === t.value
@@ -814,42 +925,74 @@ function FieldEditor({
               const isOpen = expandedOption === opt;
               const isEditingOpt = editingOption?.idx === idx;
               return (
-                <div key={opt} className="rounded-lg border border-sts-card-border bg-sts-surface">
+                <div
+                  key={opt}
+                  className="rounded-lg border border-sts-card-border bg-sts-surface"
+                >
                   <div className="flex items-center gap-2 px-2.5 py-1.5">
                     {isEditingOpt ? (
                       <>
                         <input
                           autoFocus
                           value={editingOption.draft}
-                          onChange={(e) => setEditingOption({ ...editingOption, draft: e.target.value })}
+                          onChange={(e) =>
+                            setEditingOption({
+                              ...editingOption,
+                              draft: e.target.value,
+                            })
+                          }
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); confirmEditOption(); }
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              confirmEditOption();
+                            }
                             if (e.key === "Escape") setEditingOption(null);
                           }}
                           className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
+                        <button
+                          type="button"
+                          onClick={confirmEditOption}
+                          className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white"
+                        >
                           <Check className="size-3" />
                         </button>
-                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                        <button
+                          type="button"
+                          onClick={() => setEditingOption(null)}
+                          className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                        >
                           <X className="size-3" />
                         </button>
                       </>
                     ) : (
                       <>
-                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">{opt}</span>
+                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">
+                          {opt}
+                        </span>
                         {state.type === "select" && (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedOption(isOpen ? null : opt)}
-                          className={cn(
-                            "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
-                            isOpen ? "bg-sts-blue-tint text-sts-id" : "text-sts-subtle hover:text-sts-foreground",
-                          )}
-                        >
-                          <ChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
-                          {children.length > 0 ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}` : "Sub-options"}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedOption(isOpen ? null : opt)
+                            }
+                            className={cn(
+                              "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
+                              isOpen
+                                ? "bg-sts-blue-tint text-sts-id"
+                                : "text-sts-subtle hover:text-sts-foreground",
+                            )}
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "size-3 transition-transform",
+                                isOpen && "rotate-180",
+                              )}
+                            />
+                            {children.length > 0
+                              ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}`
+                              : "Sub-options"}
+                          </button>
                         )}
                         <button
                           type="button"
@@ -874,32 +1017,62 @@ function FieldEditor({
                       {children.length > 0 && (
                         <div className="flex flex-col gap-1">
                           {children.map((child, idx) => {
-                            const isEditingThis = editingChild?.parent === opt && editingChild?.idx === idx;
+                            const isEditingThis =
+                              editingChild?.parent === opt &&
+                              editingChild?.idx === idx;
                             return isEditingThis ? (
                               <div key={child} className="flex gap-1.5">
                                 <input
                                   autoFocus
                                   value={editingChild.draft}
-                                  onChange={(e) => setEditingChild({ ...editingChild, draft: e.target.value })}
+                                  onChange={(e) =>
+                                    setEditingChild({
+                                      ...editingChild,
+                                      draft: e.target.value,
+                                    })
+                                  }
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") { e.preventDefault(); confirmEditChild(); }
-                                    if (e.key === "Escape") setEditingChild(null);
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      confirmEditChild();
+                                    }
+                                    if (e.key === "Escape")
+                                      setEditingChild(null);
                                   }}
                                   className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
+                                <button
+                                  type="button"
+                                  onClick={confirmEditChild}
+                                  className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white"
+                                >
                                   <Check className="size-2.5" />
                                 </button>
-                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingChild(null)}
+                                  className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                                >
                                   <X className="size-2.5" />
                                 </button>
                               </div>
                             ) : (
-                              <div key={child} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1">
-                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">{child}</span>
+                              <div
+                                key={child}
+                                className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1"
+                              >
+                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">
+                                  {child}
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => setEditingChild({ parent: opt, idx, draft: child })}
+                                  onClick={() =>
+                                    setEditingChild({
+                                      parent: opt,
+                                      idx,
+                                      draft: child,
+                                    })
+                                  }
                                   className="text-sts-subtle hover:text-sts-foreground"
                                 >
                                   <Pencil className="size-2.5" />
@@ -921,7 +1094,10 @@ function FieldEditor({
                           value={newChild}
                           onChange={(e) => setNewChild(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); addChild(opt); }
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addChild(opt);
+                            }
                           }}
                           placeholder={`Add sub-option for "${opt}"…`}
                           className="h-6 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
@@ -946,7 +1122,12 @@ function FieldEditor({
             <input
               value={newOption}
               onChange={(e) => setNewOption(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addOption();
+                }
+              }}
               placeholder="Add option…"
               className="h-7 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
@@ -970,7 +1151,9 @@ function FieldEditor({
           </label>
           <input
             value={state.placeholder}
-            onChange={(e) => setState((s) => ({ ...s, placeholder: e.target.value }))}
+            onChange={(e) =>
+              setState((s) => ({ ...s, placeholder: e.target.value }))
+            }
             placeholder="e.g. Enter your answer here…"
             className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
           />
@@ -984,11 +1167,15 @@ function FieldEditor({
         </label>
         <input
           value={state.helperText}
-          onChange={(e) => setState((s) => ({ ...s, helperText: e.target.value }))}
+          onChange={(e) =>
+            setState((s) => ({ ...s, helperText: e.target.value }))
+          }
           placeholder="e.g. Include your department and issue type"
           className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
-        <p className="font-sans text-[10.5px] text-sts-subtle">Shown below the field to guide submitters.</p>
+        <p className="font-sans text-[10.5px] text-sts-subtle">
+          Shown below the field to guide submitters.
+        </p>
       </div>
 
       {/* Validation rules */}
@@ -1001,23 +1188,47 @@ function FieldEditor({
           {(state.type === "text" || state.type === "richtext") && (
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-sts-muted">Min length</span>
+                <span className="font-sans text-[11px] text-sts-muted">
+                  Min length
+                </span>
                 <input
                   type="number"
                   min={0}
                   value={state.validation.minLength ?? ""}
-                  onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, minLength: e.target.value ? Number(e.target.value) : undefined } }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      validation: {
+                        ...s.validation,
+                        minLength: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      },
+                    }))
+                  }
                   placeholder="—"
                   className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-sts-muted">Max length</span>
+                <span className="font-sans text-[11px] text-sts-muted">
+                  Max length
+                </span>
                 <input
                   type="number"
                   min={0}
                   value={state.validation.maxLength ?? ""}
-                  onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, maxLength: e.target.value ? Number(e.target.value) : undefined } }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      validation: {
+                        ...s.validation,
+                        maxLength: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      },
+                    }))
+                  }
                   placeholder="—"
                   className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
@@ -1028,21 +1239,45 @@ function FieldEditor({
           {state.type === "number" && (
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-sts-muted">Min value</span>
+                <span className="font-sans text-[11px] text-sts-muted">
+                  Min value
+                </span>
                 <input
                   type="number"
                   value={state.validation.min ?? ""}
-                  onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, min: e.target.value ? Number(e.target.value) : undefined } }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      validation: {
+                        ...s.validation,
+                        min: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      },
+                    }))
+                  }
                   placeholder="—"
                   className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-sts-muted">Max value</span>
+                <span className="font-sans text-[11px] text-sts-muted">
+                  Max value
+                </span>
                 <input
                   type="number"
                   value={state.validation.max ?? ""}
-                  onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, max: e.target.value ? Number(e.target.value) : undefined } }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      validation: {
+                        ...s.validation,
+                        max: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      },
+                    }))
+                  }
                   placeholder="—"
                   className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
                 />
@@ -1053,20 +1288,40 @@ function FieldEditor({
           {(state.type === "text" || state.type === "email") && (
             <div className="flex flex-col gap-1.5">
               <div className="flex flex-col gap-1">
-                <span className="font-sans text-[11px] text-sts-muted">Regex pattern</span>
+                <span className="font-sans text-[11px] text-sts-muted">
+                  Regex pattern
+                </span>
                 <input
                   value={state.validation.pattern ?? ""}
-                  onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, pattern: e.target.value || undefined } }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      validation: {
+                        ...s.validation,
+                        pattern: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   placeholder="e.g. ^[A-Z]{2}-\d{4}$"
                   className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-mono text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                 />
               </div>
               {state.validation.pattern && (
                 <div className="flex flex-col gap-1">
-                  <span className="font-sans text-[11px] text-sts-muted">Pattern error message</span>
+                  <span className="font-sans text-[11px] text-sts-muted">
+                    Pattern error message
+                  </span>
                   <input
                     value={state.validation.patternMessage ?? ""}
-                    onChange={(e) => setState((s) => ({ ...s, validation: { ...s.validation, patternMessage: e.target.value || undefined } }))}
+                    onChange={(e) =>
+                      setState((s) => ({
+                        ...s,
+                        validation: {
+                          ...s.validation,
+                          patternMessage: e.target.value || undefined,
+                        },
+                      }))
+                    }
                     placeholder="e.g. Must be in format XX-0000"
                     className="h-7 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                   />
@@ -1093,24 +1348,36 @@ function FieldEditor({
                 const fieldId = e.target.value;
                 setState((s) => ({
                   ...s,
-                  visibleWhen: fieldId ? { fieldId, equals: s.visibleWhen?.equals ?? "" } : null,
+                  visibleWhen: fieldId
+                    ? { fieldId, equals: s.visibleWhen?.equals ?? "" }
+                    : null,
                 }));
               }}
               className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
             >
               <option value="">Always visible</option>
               {siblingFields.map((f) => (
-                <option key={f.id} value={f.id}>{f.label}</option>
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
               ))}
             </select>
             <input
               value={state.visibleWhen?.equals ?? ""}
               disabled={!state.visibleWhen}
-              onChange={(e) => setState((s) => (
-                s.visibleWhen
-                  ? { ...s, visibleWhen: { ...s.visibleWhen, equals: e.target.value } }
-                  : s
-              ))}
+              onChange={(e) =>
+                setState((s) =>
+                  s.visibleWhen
+                    ? {
+                        ...s,
+                        visibleWhen: {
+                          ...s.visibleWhen,
+                          equals: e.target.value,
+                        },
+                      }
+                    : s,
+                )
+              }
               placeholder="equals…"
               className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id disabled:opacity-50"
             />
@@ -1120,13 +1387,19 @@ function FieldEditor({
 
       <label className="flex cursor-pointer items-center justify-between rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2">
         <span className="flex flex-col">
-          <span className="font-sans text-[12px] font-medium text-sts-foreground">Required field</span>
-          <span className="font-sans text-[10.5px] text-sts-subtle">Submitters must fill this in.</span>
+          <span className="font-sans text-[12px] font-medium text-sts-foreground">
+            Required field
+          </span>
+          <span className="font-sans text-[10.5px] text-sts-subtle">
+            Submitters must fill this in.
+          </span>
         </span>
         <input
           type="checkbox"
           checked={state.isRequired}
-          onChange={(e) => setState((s) => ({ ...s, isRequired: e.target.checked }))}
+          onChange={(e) =>
+            setState((s) => ({ ...s, isRequired: e.target.checked }))
+          }
           className="size-4 rounded accent-sts-blue"
         />
       </label>
@@ -1177,11 +1450,14 @@ function FieldBuilderModal({
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   // Editable default-field labels/placeholders (per form). Starts from the
   // resolved values passed in; persisted via the form endpoint.
-  const [defaults, setDefaults] = useState<ResolvedDefaultFields>(defaultFields);
-  const [savedDefaults, setSavedDefaults] = useState<ResolvedDefaultFields>(defaultFields);
+  const [defaults, setDefaults] =
+    useState<ResolvedDefaultFields>(defaultFields);
+  const [savedDefaults, setSavedDefaults] =
+    useState<ResolvedDefaultFields>(defaultFields);
   const [savingDefaults, setSavingDefaults] = useState(false);
   const [defaultsCollapsed, setDefaultsCollapsed] = useState(true);
-  const defaultsDirty = JSON.stringify(defaults) !== JSON.stringify(savedDefaults);
+  const defaultsDirty =
+    JSON.stringify(defaults) !== JSON.stringify(savedDefaults);
 
   async function saveDefaults() {
     setSavingDefaults(true);
@@ -1193,7 +1469,10 @@ function FieldBuilderModal({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { error?: string }).error ?? "Failed to save default fields.");
+        toast.error(
+          (data as { error?: string }).error ??
+            "Failed to save default fields.",
+        );
         return;
       }
       const saved: ResolvedDefaultFields = await res.json();
@@ -1208,7 +1487,9 @@ function FieldBuilderModal({
   useEffect(() => {
     fetch(`/api/intake/forms/${form.id}/fields`)
       .then((r) => r.json())
-      .then((data: FieldRow[]) => setFields([...data].sort((a, b) => a.order - b.order)))
+      .then((data: FieldRow[]) =>
+        setFields([...data].sort((a, b) => a.order - b.order)),
+      )
       .catch(() => setFields([]))
       .finally(() => setLoadingFields(false));
   }, [form.id]);
@@ -1231,12 +1512,16 @@ function FieldBuilderModal({
   }
 
   function collidesWithStaticField(label: string) {
-    return DEFAULT_FIELD_KEYS
-      .some((key) => defaults[key].label.toLowerCase() === label.trim().toLowerCase());
+    return DEFAULT_FIELD_KEYS.some(
+      (key) => defaults[key].label.toLowerCase() === label.trim().toLowerCase(),
+    );
   }
 
   async function handleAdd(state: FieldEditorState) {
-    if (!state.label.trim()) { setEditorError("Label is required."); return; }
+    if (!state.label.trim()) {
+      setEditorError("Label is required.");
+      return;
+    }
     if (collidesWithStaticField(state.label)) {
       toast.error(`"${state.label.trim()}" is already used by a static field.`);
       return;
@@ -1251,7 +1536,9 @@ function FieldBuilderModal({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setEditorError((data as { error?: string }).error ?? "Failed to add field.");
+        setEditorError(
+          (data as { error?: string }).error ?? "Failed to add field.",
+        );
         return;
       }
       const field: FieldRow = await res.json();
@@ -1263,7 +1550,10 @@ function FieldBuilderModal({
   }
 
   async function handleEdit(fieldId: string, state: FieldEditorState) {
-    if (!state.label.trim()) { setEditorError("Label is required."); return; }
+    if (!state.label.trim()) {
+      setEditorError("Label is required.");
+      return;
+    }
     if (collidesWithStaticField(state.label)) {
       toast.error(`"${state.label.trim()}" is already used by a static field.`);
       return;
@@ -1271,18 +1561,27 @@ function FieldBuilderModal({
     setSaving(true);
     setEditorError(null);
     try {
-      const res = await fetch(`/api/intake/forms/${form.id}/fields/${fieldId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
-      });
+      const res = await fetch(
+        `/api/intake/forms/${form.id}/fields/${fieldId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(state),
+        },
+      );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setEditorError((data as { error?: string }).error ?? "Failed to update field.");
+        setEditorError(
+          (data as { error?: string }).error ?? "Failed to update field.",
+        );
         return;
       }
       const updated: FieldRow = await res.json();
-      setFields((prev) => prev.map((f) => (f.id === fieldId ? { ...updated, order: f.order } : f)));
+      setFields((prev) =>
+        prev.map((f) =>
+          f.id === fieldId ? { ...updated, order: f.order } : f,
+        ),
+      );
       setEditingId(null);
     } finally {
       setSaving(false);
@@ -1291,9 +1590,12 @@ function FieldBuilderModal({
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    const res = await fetch(`/api/intake/forms/${form.id}/fields/${deleteTarget.id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `/api/intake/forms/${form.id}/fields/${deleteTarget.id}`,
+      {
+        method: "DELETE",
+      },
+    );
     if (res.ok) {
       setFields((prev) => prev.filter((f) => f.id !== deleteTarget.id));
       setDeleteTarget(null);
@@ -1302,14 +1604,18 @@ function FieldBuilderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
-      <div className="sts-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl" style={{ height: "70vh", maxHeight: "70vh" }}>
+      <div
+        className="absolute inset-0 sts-overlay-backdrop"
+        onClick={onClose}
+      />
+      <div
+        className="sts-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
+        style={{ height: "70vh", maxHeight: "70vh" }}
+      >
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
           <div>
-            <h2 className="sts-text-modal-title">
-              Form fields
-            </h2>
+            <h2 className="sts-text-modal-title">Form fields</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
               {form.name} · {form.departmentName}
             </p>
@@ -1317,7 +1623,11 @@ function FieldBuilderModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => { setAddingField(true); setEditingId(null); setEditorError(null); }}
+              onClick={() => {
+                setAddingField(true);
+                setEditingId(null);
+                setEditorError(null);
+              }}
               disabled={loadingFields}
               className="flex items-center gap-1.5 rounded-[7px] bg-sts-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
@@ -1339,14 +1649,18 @@ function FieldBuilderModal({
           {loadingFields ? (
             <div className="flex h-full flex-col items-center justify-center gap-2">
               <Loader2 className="size-5 animate-spin text-sts-muted" />
-              <p className="font-sans text-[12px] text-sts-subtle">Loading fields…</p>
+              <p className="font-sans text-[12px] text-sts-subtle">
+                Loading fields…
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <div
                 className={cn(
                   "flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-surface/40 px-3 py-2 transition-colors",
-                  defaultsCollapsed ? "hover:border-sts-id/40 hover:bg-sts-surface/70" : "rounded-b-none border-b-0",
+                  defaultsCollapsed
+                    ? "hover:border-sts-id/40 hover:bg-sts-surface/70"
+                    : "rounded-b-none border-b-0",
                 )}
               >
                 <button
@@ -1368,7 +1682,10 @@ function FieldBuilderModal({
                     {DEFAULT_FIELD_KEYS.length}
                   </span>
                   {defaultsDirty && (
-                    <span className="size-1.5 shrink-0 rounded-full bg-sts-blue" title="Unsaved changes" />
+                    <span
+                      className="size-1.5 shrink-0 rounded-full bg-sts-blue"
+                      title="Unsaved changes"
+                    />
                   )}
                 </button>
                 {!defaultsCollapsed && (
@@ -1378,7 +1695,11 @@ function FieldBuilderModal({
                     disabled={!defaultsDirty || savingDefaults}
                     className="flex h-7 shrink-0 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
                   >
-                    {savingDefaults ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                    {savingDefaults ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Check className="size-3" />
+                    )}
                     Save
                   </button>
                 )}
@@ -1386,7 +1707,8 @@ function FieldBuilderModal({
               {!defaultsCollapsed && (
                 <div className="flex flex-col gap-2 rounded-b-xl border border-t-0 border-sts-card-border px-3 pb-3 pt-2">
                   <p className="font-sans text-[11px] text-sts-subtle">
-                    Rename the title &amp; placeholder for this form. These can&apos;t be removed.
+                    Rename the title &amp; placeholder for this form. These
+                    can&apos;t be removed.
                   </p>
                   {DEFAULT_FIELD_KEYS.map((key) => {
                     const meta = DEFAULT_FIELD_META[key];
@@ -1401,25 +1723,46 @@ function FieldBuilderModal({
                           </span>
                           <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
                             {meta.typeLabel}
-                            {meta.required && <span className="ml-1 text-sts-red">*</span>}
+                            {meta.required && (
+                              <span className="ml-1 text-sts-red">*</span>
+                            )}
                           </span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <div className="flex flex-col gap-1">
-                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">Title</label>
+                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+                              Title
+                            </label>
                             <input
                               value={defaults[key].label}
-                              onChange={(e) => setDefaults((d) => ({ ...d, [key]: { ...d[key], label: e.target.value } }))}
+                              onChange={(e) =>
+                                setDefaults((d) => ({
+                                  ...d,
+                                  [key]: { ...d[key], label: e.target.value },
+                                }))
+                              }
                               placeholder={DEFAULT_INTAKE_FIELDS[key].label}
                               className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">Placeholder</label>
+                            <label className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+                              Placeholder
+                            </label>
                             <input
                               value={defaults[key].placeholder}
-                              onChange={(e) => setDefaults((d) => ({ ...d, [key]: { ...d[key], placeholder: e.target.value } }))}
-                              placeholder={DEFAULT_INTAKE_FIELDS[key].placeholder}
+                              onChange={(e) =>
+                                setDefaults((d) => ({
+                                  ...d,
+                                  [key]: {
+                                    ...d[key],
+                                    placeholder: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder={
+                                DEFAULT_INTAKE_FIELDS[key].placeholder
+                              }
                               className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
                             />
                           </div>
@@ -1435,7 +1778,9 @@ function FieldBuilderModal({
               </p>
               {fields.length === 0 && !addingField && (
                 <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-12 text-center">
-                  <p className="font-sans text-[13px] text-sts-muted">No fields yet.</p>
+                  <p className="font-sans text-[13px] text-sts-muted">
+                    No fields yet.
+                  </p>
                   <p className="mt-1 font-sans text-[12px] text-sts-subtle">
                     Add fields to define what submitters will fill in.
                   </p>
@@ -1447,12 +1792,35 @@ function FieldBuilderModal({
                   return (
                     <FieldEditor
                       key={field.id}
-                      initial={{ label: field.label, type: field.type, isRequired: field.isRequired, options: field.options, childOptions: field.childOptions ?? {}, placeholder: field.placeholder ?? "", helperText: field.helperText ?? "", validation: (field.validation as FieldValidation) ?? {}, visibleWhen: field.visibleWhen?.fieldId ? { fieldId: field.visibleWhen.fieldId, equals: field.visibleWhen.equals ?? field.visibleWhen.in?.[0] ?? "" } : null }}
+                      initial={{
+                        label: field.label,
+                        type: field.type,
+                        isRequired: field.isRequired,
+                        options: field.options,
+                        childOptions: field.childOptions ?? {},
+                        placeholder: field.placeholder ?? "",
+                        helperText: field.helperText ?? "",
+                        validation: (field.validation as FieldValidation) ?? {},
+                        visibleWhen: field.visibleWhen?.fieldId
+                          ? {
+                              fieldId: field.visibleWhen.fieldId,
+                              equals:
+                                field.visibleWhen.equals ??
+                                field.visibleWhen.in?.[0] ??
+                                "",
+                            }
+                          : null,
+                      }}
                       onSave={(state) => handleEdit(field.id, state)}
-                      onCancel={() => { setEditingId(null); setEditorError(null); }}
+                      onCancel={() => {
+                        setEditingId(null);
+                        setEditorError(null);
+                      }}
                       saving={saving}
                       error={editorError}
-                      siblingFields={fields.filter((f) => f.id !== field.id).map((f) => ({ id: f.id, label: f.label }))}
+                      siblingFields={fields
+                        .filter((f) => f.id !== field.id)
+                        .map((f) => ({ id: f.id, label: f.label }))}
                     />
                   );
                 }
@@ -1460,14 +1828,27 @@ function FieldBuilderModal({
                   <div
                     key={field.id}
                     draggable
-                    onDragStart={() => { dragId.current = field.id; }}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverId(field.id); }}
+                    onDragStart={() => {
+                      dragId.current = field.id;
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverId(field.id);
+                    }}
                     onDragLeave={() => setDragOverId(null)}
-                    onDrop={() => { setDragOverId(null); if (dragId.current) reorder(dragId.current, field.id); dragId.current = null; }}
-                    onDragEnd={() => { dragId.current = null; setDragOverId(null); }}
+                    onDrop={() => {
+                      setDragOverId(null);
+                      if (dragId.current) reorder(dragId.current, field.id);
+                      dragId.current = null;
+                    }}
+                    onDragEnd={() => {
+                      dragId.current = null;
+                      setDragOverId(null);
+                    }}
                     className={cn(
                       "group flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
-                      dragOverId === field.id && "border-sts-id bg-sts-blue-tint",
+                      dragOverId === field.id &&
+                        "border-sts-id bg-sts-blue-tint",
                     )}
                   >
                     <GripVertical className="size-4 shrink-0 cursor-grab text-sts-subtle opacity-30 group-hover:opacity-70 active:cursor-grabbing" />
@@ -1475,19 +1856,30 @@ function FieldBuilderModal({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                         {field.label}
-                        {field.isRequired && <span className="ml-1 text-sts-red">*</span>}
+                        {field.isRequired && (
+                          <span className="ml-1 text-sts-red">*</span>
+                        )}
                       </p>
                       <p className="font-sans text-[11.5px] text-sts-subtle">
                         {typeLabel(field.type)}
-                        {field.type === "select" && field.options.length > 0 && (
-                          <> · {field.options.length} option{field.options.length !== 1 ? "s" : ""}</>
-                        )}
+                        {field.type === "select" &&
+                          field.options.length > 0 && (
+                            <>
+                              {" "}
+                              · {field.options.length} option
+                              {field.options.length !== 1 ? "s" : ""}
+                            </>
+                          )}
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 transition-opacity">
                       <button
                         type="button"
-                        onClick={() => { setEditingId(field.id); setAddingField(false); setEditorError(null); }}
+                        onClick={() => {
+                          setEditingId(field.id);
+                          setAddingField(false);
+                          setEditorError(null);
+                        }}
                         className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                       >
                         <Pencil className="size-3" />
@@ -1506,12 +1898,28 @@ function FieldBuilderModal({
 
               {addingField && (
                 <FieldEditor
-                  initial={{ label: "", type: "text", isRequired: false, options: [], childOptions: {}, placeholder: "", helperText: "", validation: {}, visibleWhen: null }}
+                  initial={{
+                    label: "",
+                    type: "text",
+                    isRequired: false,
+                    options: [],
+                    childOptions: {},
+                    placeholder: "",
+                    helperText: "",
+                    validation: {},
+                    visibleWhen: null,
+                  }}
                   onSave={handleAdd}
-                  onCancel={() => { setAddingField(false); setEditorError(null); }}
+                  onCancel={() => {
+                    setAddingField(false);
+                    setEditorError(null);
+                  }}
                   saving={saving}
                   error={editorError}
-                  siblingFields={fields.map((f) => ({ id: f.id, label: f.label }))}
+                  siblingFields={fields.map((f) => ({
+                    id: f.id,
+                    label: f.label,
+                  }))}
                 />
               )}
             </div>
@@ -1521,7 +1929,9 @@ function FieldBuilderModal({
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete field?"
         description={`"${deleteTarget?.label}" will be permanently removed from this form.`}
         confirmLabel="Delete"
@@ -1601,10 +2011,14 @@ function FormDesignModal({
   const b = form.branding;
   const [logoUrl, setLogoUrl] = useState(b.logoUrl ?? "");
   const [headerColor, setHeaderColor] = useState(b.headerColor ?? "");
-  const [backgroundColor, setBackgroundColor] = useState(b.backgroundColor ?? "");
+  const [backgroundColor, setBackgroundColor] = useState(
+    b.backgroundColor ?? "",
+  );
   const [accentColor, setAccentColor] = useState(b.accentColor ?? "");
   const [introText, setIntroText] = useState(b.introText ?? "");
-  const [confirmationText, setConfirmationText] = useState(b.confirmationText ?? "");
+  const [confirmationText, setConfirmationText] = useState(
+    b.confirmationText ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
@@ -1615,8 +2029,12 @@ function FormDesignModal({
     (!accentColor.trim() || isHexColor(accentColor));
 
   const previewLogo = logoUrl.trim() || defaults.logoUrl;
-  const previewHeader = isHexColor(headerColor) ? headerColor : defaults.headerColor;
-  const previewAccent = isHexColor(accentColor) ? accentColor : defaults.accentColor;
+  const previewHeader = isHexColor(headerColor)
+    ? headerColor
+    : defaults.headerColor;
+  const previewAccent = isHexColor(accentColor)
+    ? accentColor
+    : defaults.accentColor;
   const previewBg = isHexColor(backgroundColor) ? backgroundColor : "#f8f8fc";
 
   async function handleSave() {
@@ -1629,10 +2047,12 @@ function FormDesignModal({
     const branding: FormBranding = {};
     if (logoUrl.trim()) branding.logoUrl = logoUrl.trim();
     if (isHexColor(headerColor)) branding.headerColor = headerColor.trim();
-    if (isHexColor(backgroundColor)) branding.backgroundColor = backgroundColor.trim();
+    if (isHexColor(backgroundColor))
+      branding.backgroundColor = backgroundColor.trim();
     if (isHexColor(accentColor)) branding.accentColor = accentColor.trim();
     if (introText.trim()) branding.introText = introText.trim();
-    if (confirmationText.trim()) branding.confirmationText = confirmationText.trim();
+    if (confirmationText.trim())
+      branding.confirmationText = confirmationText.trim();
     const payload = Object.keys(branding).length > 0 ? branding : null;
     try {
       const res = await fetch(`/api/intake/forms/${form.id}`, {
@@ -1641,7 +2061,9 @@ function FormDesignModal({
         body: JSON.stringify({ branding: payload }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(data?.error ?? "Failed to save design");
       }
       toast.success("Form design saved");
@@ -1654,7 +2076,10 @@ function FormDesignModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
+      <div
+        className="absolute inset-0 sts-overlay-backdrop"
+        onClick={onClose}
+      />
       <div className="sts-glass-panel relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-sts-card-border shadow-2xl">
         <div className="flex items-center justify-between border-b border-sts-card-border px-6 py-4">
           <div>
@@ -1738,8 +2163,8 @@ function FormDesignModal({
                   />
                 </div>
                 <p className="font-sans text-[11px] text-sts-subtle">
-                  Upload an image or paste a public URL. Shown in a banner at the
-                  top of the form. Leave blank to use the workspace logo.
+                  Upload an image or paste a public URL. Shown in a banner at
+                  the top of the form. Leave blank to use the workspace logo.
                 </p>
               </div>
 
@@ -1813,7 +2238,10 @@ function FormDesignModal({
           <div
             className={`w-full flex-col items-center gap-1.5 ${view === "preview" ? "flex" : "hidden"}`}
           >
-            <div className="w-full max-w-[560px] overflow-hidden rounded-xl border border-sts-card-border" style={{ background: previewBg }}>
+            <div
+              className="w-full max-w-[560px] overflow-hidden rounded-xl border border-sts-card-border"
+              style={{ background: previewBg }}
+            >
               <div className="px-6 py-5" style={{ background: previewHeader }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1821,7 +2249,8 @@ function FormDesignModal({
                   alt="Logo preview"
                   className="h-10 w-auto"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                    (e.currentTarget as HTMLImageElement).style.visibility =
+                      "hidden";
                   }}
                 />
               </div>
@@ -1902,7 +2331,9 @@ export function SettingsIntakeFormsPage({
   const [designModal, setDesignModal] = useState<IntakeFormRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IntakeFormRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [optimisticActive, setOptimisticActive] = useState<Record<string, boolean>>({});
+  const [optimisticActive, setOptimisticActive] = useState<
+    Record<string, boolean>
+  >({});
 
   function getIsActive(form: IntakeFormRow) {
     return optimisticActive[form.id] ?? form.isActive;
@@ -1941,7 +2372,9 @@ export function SettingsIntakeFormsPage({
       method: "DELETE",
     });
     if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       throw new Error(body?.error ?? "Failed to delete form");
     }
     setDeleteTarget(null);
@@ -1955,9 +2388,7 @@ export function SettingsIntakeFormsPage({
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="sts-text-admin-title">
-            Support forms
-          </h1>
+          <h1 className="sts-text-admin-title">Support forms</h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             {scopedDepartmentName
               ? `Public submission forms for ${scopedDepartmentName}.`
@@ -1987,7 +2418,12 @@ export function SettingsIntakeFormsPage({
           <Table className="min-w-[780px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                <TableHead className={cn("h-8", showDepartmentColumn ? "w-[22%]" : "w-[28%]")}>
+                <TableHead
+                  className={cn(
+                    "h-8",
+                    showDepartmentColumn ? "w-[22%]" : "w-[28%]",
+                  )}
+                >
                   <SectionLabel>Form</SectionLabel>
                 </TableHead>
                 {showDepartmentColumn && (
@@ -2044,7 +2480,9 @@ export function SettingsIntakeFormsPage({
                       <TableCell className="py-0">
                         <div className="flex h-[56px] items-center">
                           <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                            <span className="truncate">{form.departmentName}</span>
+                            <span className="truncate">
+                              {form.departmentName}
+                            </span>
                           </span>
                         </div>
                       </TableCell>
@@ -2053,27 +2491,16 @@ export function SettingsIntakeFormsPage({
                     {/* Owner level + the sub-department the form is created from */}
                     <TableCell className="py-0">
                       <div className="flex h-[56px] items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "inline-flex shrink-0 items-center rounded-full px-[7px] py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide",
-                            form.scope === "SUB_DEPARTMENT"
-                              ? "bg-sts-blue/10 text-sts-blue"
-                              : "bg-sts-surface text-sts-subtle",
-                          )}
-                          title={
-                            form.scope === "SUB_DEPARTMENT"
-                              ? "Created for a sub-department"
-                              : "Department-wide form"
-                          }
-                        >
-                          {form.scope === "SUB_DEPARTMENT" ? "Sub-dept" : "Dept"}
-                        </span>
                         {form.intakeSubDepartmentName ? (
                           <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                            <span className="truncate">{form.intakeSubDepartmentName}</span>
+                            <span className="truncate">
+                              {form.intakeSubDepartmentName}
+                            </span>
                           </span>
                         ) : (
-                          <span className="font-sans text-[11.5px] text-sts-muted">—</span>
+                          <span className="font-sans text-[11.5px] text-sts-muted">
+                            —
+                          </span>
                         )}
                       </div>
                     </TableCell>
@@ -2097,12 +2524,12 @@ export function SettingsIntakeFormsPage({
                       </div>
                     </TableCell>
 
-
                     {/* Assignment method (configured on the Assignment methods page) */}
                     <TableCell className="py-0">
                       <div className="flex h-[56px] items-center">
                         {(() => {
-                          const style = ASSIGNMENT_METHOD_STYLES[form.effectiveMethod];
+                          const style =
+                            ASSIGNMENT_METHOD_STYLES[form.effectiveMethod];
                           const MethodIcon = style.icon;
                           return (
                             <span
@@ -2116,7 +2543,9 @@ export function SettingsIntakeFormsPage({
                               <MethodIcon className="size-3.5" />
                               {ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]}
                               {form.assignmentMethod === null && (
-                                <span className="text-sts-subtle">· inherited</span>
+                                <span className="text-sts-subtle">
+                                  · inherited
+                                </span>
                               )}
                             </span>
                           );
@@ -2139,8 +2568,7 @@ export function SettingsIntakeFormsPage({
                           </Link>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-sts-card-border py-1 pl-2.5 pr-2.5 font-sans text-[11.5px] font-medium text-sts-subtle">
-                            <Inbox className="size-3" />
-                            0
+                            <Inbox className="size-3" />0
                           </span>
                         )}
                       </div>

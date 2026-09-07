@@ -51,8 +51,6 @@ export async function PATCH(
   const isActive = typeof body.isActive === "boolean" ? body.isActive : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
-  const workloadThreshold =
-    typeof body.workloadThreshold === "number" ? body.workloadThreshold : undefined
   const displayMode =
     body.displayMode === "FORM" || body.displayMode === "CHAT" ? body.displayMode : undefined
   // `branding: null` (or an all-invalid object) clears the override; a valid
@@ -76,14 +74,6 @@ export async function PATCH(
         { status: 400 },
       )
     }
-  }
-
-  const targetSubDepartmentId = intakeSubDepartmentId ?? result.form.intakeSubDepartmentId
-  if (workloadThreshold !== undefined) {
-    await prisma.subDepartment.update({
-      where: { id: targetSubDepartmentId },
-      data: { workloadThreshold },
-    })
   }
 
   const form = await prisma.intakeFormConfig.update({

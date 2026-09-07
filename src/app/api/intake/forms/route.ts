@@ -46,8 +46,6 @@ export async function POST(request: Request) {
   const name = (body.name as string)?.trim()
   const departmentId = (body.departmentId as string)?.trim()
   const intakeSubDepartmentId = (body.intakeSubDepartmentId as string)?.trim()
-  const workloadThreshold =
-    typeof body.workloadThreshold === "number" ? body.workloadThreshold : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
   const displayMode =
@@ -84,13 +82,6 @@ export async function POST(request: Request) {
       { error: "Intake subDepartment must belong to the selected department" },
       { status: 400 },
     )
-  }
-
-  if (workloadThreshold !== undefined) {
-    await prisma.subDepartment.update({
-      where: { id: intakeSubDepartmentId },
-      data: { workloadThreshold },
-    })
   }
 
   const form = await prisma.intakeFormConfig.create({

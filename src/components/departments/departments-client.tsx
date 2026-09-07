@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Users, FolderKanban, LayoutList,
   AlertCircle, Settings, Mail,
@@ -41,13 +40,13 @@ function StatCard({
   onClick?: () => void;
 }) {
   const inner = (
-    <div className="flex h-full flex-col gap-2 p-4">
+    <div className="flex h-full flex-col gap-1.5 px-3.5 py-3">
       <div className="flex items-center gap-1.5">
         <Icon className={cn("size-3.5", alert && value > 0 ? "text-amber-500" : "text-sts-subtle")} />
         <span className="sts-text-section-label">{label}</span>
       </div>
       <p className={cn(
-        "font-mono text-[26px] font-semibold leading-none tracking-tight",
+        "font-mono text-[22px] font-semibold leading-none tracking-tight",
         alert && value > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-foreground",
       )}>
         {value}
@@ -85,7 +84,6 @@ export function DepartmentsClient({
   templateOptions?: TemplateOption[];
   showCrossDeptAccess?: boolean;
 }) {
-  const router = useRouter();
   const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
 
   async function enterWorkspace(deptId: string) {
@@ -101,10 +99,10 @@ export function DepartmentsClient({
     <div className="h-full overflow-y-auto">
       {/* ── Org overview header ─────────────────────────────────────────────── */}
       {orgStats && (
-        <div className="border-b border-sts-card-border bg-sts-card/50 px-6 py-6 sm:px-10">
+        <div className="border-b border-sts-card-border bg-sts-card/40 px-6 py-5 sm:px-10">
           <PageHeader
             title={tenantName || "Organisation Overview"}
-            description="Manage departments, sub departments and access across this tenant."
+            description="Browse departments across this tenant. Enter a workspace, or manage people and access from each card."
             icon={DepartmentIcon}
             iconClassName="text-sts-blue"
             actions={
@@ -124,18 +122,18 @@ export function DepartmentsClient({
                 </Link>
               </div>
             }
-            className="mb-5"
+            className="mb-4"
           />
 
-          {/* Stats — single flat panel, hairline-divided (clean/flat) */}
+          {/* Stats — single flat panel, hairline-divided */}
           <div className="grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-3 lg:grid-cols-7 lg:divide-y-0">
-            <StatCard icon={DepartmentIcon}     label="Departments"       value={orgStats.deptCount} />
-            <StatCard icon={Users}        label="SubDepartments"             value={orgStats.subDepartmentCount} />
-            <StatCard icon={Users}        label="Members"           value={orgStats.memberCount}    href="/departments/users" />
-            <StatCard icon={Mail}         label="Mailboxes"         value={mailboxTotal}            href="/departments/mailboxes" />
-            <StatCard icon={FolderKanban} label="Projects"          value={orgStats.projectCount}   href="/projects" />
-            <StatCard icon={LayoutList}   label="Open tickets"      value={orgStats.openTickets}    href="/all-tasks" />
-            <StatCard icon={AlertCircle}  label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/sub-departments" />
+            <StatCard icon={DepartmentIcon} label="Departments" value={orgStats.deptCount} />
+            <StatCard icon={Users} label="SubDepartments" value={orgStats.subDepartmentCount} />
+            <StatCard icon={Users} label="Members" value={orgStats.memberCount} href="/departments/users" />
+            <StatCard icon={Mail} label="Mailboxes" value={mailboxTotal} href="/departments/mailboxes" />
+            <StatCard icon={FolderKanban} label="Projects" value={orgStats.projectCount} href="/projects" />
+            <StatCard icon={LayoutList} label="Open tickets" value={orgStats.openTickets} href="/all-tasks" />
+            <StatCard icon={AlertCircle} label="Pending approvals" value={orgStats.pendingRequests} alert href="/settings/sub-departments" />
           </div>
         </div>
       )}

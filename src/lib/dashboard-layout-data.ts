@@ -159,6 +159,12 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     .filter((d) => checkIsCrossAccessDept(profile, d.id))
     .map((d) => d.id);
 
+  // Staff: only sub-departments they belong to in the active department (or all
+  // memberships when no active dept). Managers/admins: every sub-dept in scope.
+  const membershipInActiveDept = activeDeptId
+    ? membershipSubDepartments.filter((t) => t.departmentId === activeDeptId)
+    : membershipSubDepartments;
+
   const subDepartments =
     deptSubDepartmentsRaw.length > 0
       ? deptSubDepartmentsRaw.map((t) => ({
@@ -168,11 +174,11 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
           departmentId: t.departmentId ?? null,
           departmentName: t.department?.name ?? null,
         }))
-      : membershipSubDepartments;
+      : membershipInActiveDept;
 
   const visibleSubDepartmentIds = isDeptLevel
-    ? subDepartments.map((t) => t.id)
-    : membershipSubDepartments.map((t) => t.id);
+    ? (deptScope?.subDepartmentIds?.length ? deptScope.subDepartmentIds : subDepartments.map((t) => t.id))
+    : membershipInActiveDept.map((t) => t.id);
 
   // Hub department: show only projects the user (or their dept members) are assigned to
   const isHubDept = deptScope?.isHub === true;

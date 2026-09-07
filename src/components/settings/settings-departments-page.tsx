@@ -328,6 +328,8 @@ export function GrantAccessModal({
 
   const filtered = users
     .filter((u) => !excludeIds.includes(u.id))
+    // Cross-department access is for managers/admins only.
+    .filter((u) => u.role === "manager" || u.role === "admin")
     .filter((u) => !search || u.name.toLowerCase().includes(search.toLowerCase()));
 
   function toggleProject(id: string) {
@@ -352,7 +354,7 @@ export function GrantAccessModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Grant access to {deptName}</p>
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Grant manager access to {deptName}</p>
           <button type="button" onClick={onClose}><X className="size-4 text-sts-muted" /></button>
         </div>
         <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
@@ -363,7 +365,11 @@ export function GrantAccessModal({
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="h-8 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[12.5px] outline-none focus:border-sts-id" />
             </div>
             <div className="max-h-36 overflow-y-auto rounded-lg border border-sts-card-border">
-              {filtered.map((u) => (
+              {filtered.length === 0 ? (
+                <p className="px-3 py-4 text-center font-sans text-[12px] text-sts-subtle">
+                  No eligible managers. Cross-department access is for department managers only — add agents to a sub-department instead.
+                </p>
+              ) : filtered.map((u) => (
                 <button key={u.id} type="button" onClick={() => { setUserId(u.id); setUserName(u.name); }}
                   className={cn("flex w-full items-center gap-2 px-3 py-2 text-left", userId === u.id ? "bg-sts-blue-tint" : "hover:bg-sts-surface")}>
                   <Avatar name={u.name} size={22} avatarUrl={u.avatarUrl ?? null} />
@@ -1049,6 +1055,7 @@ function DepartmentCard({
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Managers
               {managers.length > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({managers.length})</span>}
+              <span className="ml-1.5 font-normal text-sts-subtle">· can manage multiple departments</span>
             </span>
             {managers.length > 0 && !managersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
@@ -1099,6 +1106,7 @@ function DepartmentCard({
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Members
               {totalPeople > 0 && <span className="ml-1.5 font-normal text-sts-subtle">({totalPeople})</span>}
+              <span className="ml-1.5 font-normal text-sts-subtle">· by sub-department</span>
             </span>
             {previewPeople.length > 0 && !membersExpanded && (
               <div className="flex -space-x-1.5 mr-1">
@@ -1167,6 +1175,7 @@ function DepartmentCard({
             <Users className="size-3.5 shrink-0 text-sts-muted" />
             <span className="font-sans text-[11.5px] font-semibold text-sts-foreground flex-1">
               Cross-department access
+              <span className="ml-1.5 font-normal text-sts-subtle">(managers)</span>
               {accessGrants.length > 0 && (
                 <span className="ml-1.5 font-normal text-sts-subtle">({accessGrants.length})</span>
               )}

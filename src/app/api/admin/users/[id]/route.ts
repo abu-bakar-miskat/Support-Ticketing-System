@@ -153,10 +153,9 @@ export async function PATCH(
     data.subDepartmentId = nextSubDepartmentId
   }
 
-  // Move a member to a different department (tenant-wide Members view). This is a
-  // department-level move: the user lands as a direct department member with no
-  // sub-department, and their memberships in other departments are cleared. The
-  // caller then picks a sub-department (via subDepartmentId) to place them inside.
+  // Move a member's primary department (tenant-wide Members view).
+  // Agents/sub-managers may keep sub-department memberships in other departments;
+  // this only clears the primary Profile.subDepartmentId so a new home can be chosen.
   let moveToDepartmentId: string | null | undefined
   if ("departmentId" in body && !("subDepartmentId" in body) && !("role" in body) && !("roleChanges" in body)) {
     moveToDepartmentId = body.departmentId ?? null
@@ -173,7 +172,7 @@ export async function PATCH(
         return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
       }
     }
-    // Landing at department level means no sub-department yet.
+    // Clear primary sub-department pointer only — do not revoke other memberships.
     data.subDepartmentId = null
   }
 
@@ -229,31 +228,17 @@ export async function PATCH(
     await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
   }
 
-  // Department-level move: clear memberships outside the target department.
-  // People join via sub-departments only — no DepartmentMember rows are created.
+  // Primary department change: drop legacy DepartmentMember rows only.
+  // Sub-department memberships are additive across departments — do not deactivate them.
   if (moveToDepartmentId !== undefined) {
-    await prisma.$transaction([
-      // Deactivate sub-department memberships that belong to a different department.
-      prisma.subDepartmentMembership.updateMany({
-        where: {
-          userId: id,
-          isActive: true,
-          ...(moveToDepartmentId
-            ? { subDepartment: { departmentId: { not: moveToDepartmentId } } }
-            : {}),
-        },
-        data: { isActive: false },
-      }),
-      // Drop legacy direct department memberships.
-      prisma.departmentMember.deleteMany({
-        where: { userId: id },
-      }),
-    ])
+    await prisma.departmentMember.deleteMany({
+      where: { userId: id },
+    })
   }
 
-  // Keep SubDepartmentMembership in sync with Profile.teamId. The department members list is
-  // built from active SubDepartmentMembership rows, so a teamId change must move the user's
-  // membership too — otherwise the change appears to save but never shows up.
+  // Keep SubDepartmentMembership in sync with Profile.subDepartmentId.
+  // Membership is additive: agents/sub-managers may belong to multiple
+  // sub-departments. Changing the primary sub-department must not remove others.
   if ("subDepartmentId" in data) {
     const nextSubDepartmentId = data.subDepartmentId ?? null
     if (nextSubDepartmentId) {
@@ -262,24 +247,11 @@ export async function PATCH(
         select: { departmentId: true },
       })
       if (subDepartment) {
-        await prisma.$transaction([
-          // Deactivate the user's other active memberships in the same department
-          // so this is a move (single-team dropdown), not an additive assignment.
-          (prisma.subDepartmentMembership as any).updateMany({
-            where: {
-              userId: id,
-              isActive: true,
-              subDepartmentId: { not: nextSubDepartmentId },
-              subDepartment: { departmentId: subDepartment.departmentId },
-            },
-            data: { isActive: false },
-          }),
-          (prisma.subDepartmentMembership as any).upsert({
-            where: { userId_subDepartmentId: { userId: id, subDepartmentId: nextSubDepartmentId } },
-            create: { userId: id, subDepartmentId: nextSubDepartmentId, role: "agent", isActive: true },
-            update: { isActive: true },
-          }),
-        ])
+        await (prisma.subDepartmentMembership as any).upsert({
+          where: { userId_subDepartmentId: { userId: id, subDepartmentId: nextSubDepartmentId } },
+          create: { userId: id, subDepartmentId: nextSubDepartmentId, role: "agent", isActive: true },
+          update: { isActive: true },
+        })
       }
     }
   }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import type { Role } from "@/generated/prisma/enums"
+import {
+  DEPARTMENT_ACCESS_ELIGIBILITY_ERROR,
+  isEligibleForDepartmentAccess,
+} from "@/lib/department-access"
 
 // PATCH — admin/manager approves or rejects a department join request
 export async function PATCH(
@@ -48,6 +52,9 @@ export async function PATCH(
 
   if (action === "approve") {
     if (isCrossAccess) {
+      if (!(await isEligibleForDepartmentAccess(joinRequest.userId))) {
+        return NextResponse.json({ error: DEPARTMENT_ACCESS_ELIGIBILITY_ERROR }, { status: 400 })
+      }
       const isFullAccess = fullAccess === true
 
       await prisma.$transaction([

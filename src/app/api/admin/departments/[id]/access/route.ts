@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { createNotification } from "@/lib/notify"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
+import {
+  DEPARTMENT_ACCESS_ELIGIBILITY_ERROR,
+  isEligibleForDepartmentAccess,
+} from "@/lib/department-access"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -60,6 +64,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     projectIds?: string[]
   }
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
+
+  if (!(await isEligibleForDepartmentAccess(userId))) {
+    return NextResponse.json({ error: DEPARTMENT_ACCESS_ELIGIBILITY_ERROR }, { status: 400 })
+  }
 
   const dept = await prisma.department.findUnique({ where: { id } })
   if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })

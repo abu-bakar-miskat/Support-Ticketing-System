@@ -206,16 +206,19 @@ export async function getTasksMetaData(
     deptId ? fetchProjectDepartmentPeople(deptId) : [],
   );
 
-  // Sub-departments in the current department, for the create-task "Board" picker.
-  const subDepartmentsPromise = resolvedDeptIdPromise.then((deptId) =>
-    deptId
-      ? prisma.subDepartment.findMany({
-          where: { departmentId: deptId },
-          select: { id: true, name: true },
-          orderBy: { name: "asc" },
-        })
-      : [],
-  );
+  // Sub-departments the caller can access in the current department
+  // (agents: memberships only; managers/admins: whole department via dept scope).
+  const subDepartmentsPromise = resolvedDeptIdPromise.then((deptId) => {
+    if (!deptId) return [];
+    const scopedIds = deptScope?.subDepartmentIds ?? [];
+    return prisma.subDepartment.findMany({
+      where: scopedIds.length
+        ? { departmentId: deptId, id: { in: scopedIds } }
+        : { departmentId: deptId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  });
 
   // Name of the current department scope, shown as read-only context in the
   // create-task modal's Department field.

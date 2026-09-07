@@ -83,7 +83,11 @@ async function BoardData({
           ? await getBoardCards({ ...boardSearchParams, allowedDeptIds })
           : await getBoardCards({ ...boardSearchParams, tenantId: profile.activeTenantId ?? "__no_tenant__" });
 
-  const forceSubDepartmentIds = [...new Set([...(deptScope?.subDepartmentIds ?? []), ...membershipIds])];
+  // Only the caller's accessible sub-departments in the active department.
+  // Do not merge every membership (that adds empty groups from other depts).
+  const forceSubDepartmentIds = deptScope?.subDepartmentIds?.length
+    ? deptScope.subDepartmentIds
+    : membershipIds;
   const subDepartmentBoardGroups = await getSubDepartmentBoardGroups(cards, forceSubDepartmentIds);
 
   return (

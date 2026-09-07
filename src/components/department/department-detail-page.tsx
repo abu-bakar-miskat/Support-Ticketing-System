@@ -53,6 +53,7 @@ import {
   fetchDepartmentAccessGrant,
   updateDepartmentAccess,
   updateAdminUser,
+  addAdminSubDepartmentMember,
   revokeDepartmentInvite,
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
@@ -446,10 +447,12 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
 
   async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
+    if (!newSubDepartmentId) return;
     setLocalSubDepartmentIds((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
     setSaving(memberId);
     try {
-      await updateAdminUser(memberId, { subDepartmentId: newSubDepartmentId });
+      // Additive: agents/sub-managers may belong to multiple sub-departments.
+      await addAdminSubDepartmentMember(newSubDepartmentId, memberId);
       refresh();
     } finally {
       setSaving(null);
@@ -759,7 +762,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
       )}
 
-      {/* Cross-department access */}
+      {/* Cross-department access — managers only */}
       <Section
         icon={Users}
         title="Cross-department access"

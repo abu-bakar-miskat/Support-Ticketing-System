@@ -12,6 +12,7 @@ export type SavedViewFilters = {
   status?: string[]
   priority?: string[]
   projectId?: string[]
+  subDepartmentId?: string[]
   assigneeId?: string[]
   moduleId?: string[]
   labels?: string[]
@@ -48,7 +49,7 @@ function parseViews(raw: unknown): SavedView[] {
   )
 }
 
-const STR_ARRAY_KEYS = ["status", "priority", "projectId", "assigneeId", "moduleId", "labels"] as const
+const STR_ARRAY_KEYS = ["status", "priority", "projectId", "subDepartmentId", "assigneeId", "moduleId", "labels"] as const
 const STR_KEYS = ["sort", "search", "dateFrom", "dateTo", "targetDateFrom", "targetDateTo"] as const
 
 function sanitizeFilters(raw: unknown): SavedViewFilters {

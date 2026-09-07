@@ -62,6 +62,8 @@ export type AllTasksFilters = {
   sort?: string;
   unassigned?: boolean;
   source?: "intake" | "manual";
+  /** Filter to one or more sub-departments the caller can access. */
+  subDepartmentId?: string[];
   /** List personal/admin draft tickets instead of published ones */
   drafts?: boolean;
 };
@@ -90,6 +92,7 @@ export function buildTaskListSearchParams(filters: AllTasksFilters = {}): URLSea
   if (filters.sort)       params.set("sort",       filters.sort);
   if (filters.unassigned) params.set("unassigned", "true");
   if (filters.source)     params.set("source",     filters.source);
+  if (filters.subDepartmentId?.length) params.set("subDepartmentId", filters.subDepartmentId.join(","));
   if (filters.drafts)     params.set("drafts",     "true");
   return params;
 }

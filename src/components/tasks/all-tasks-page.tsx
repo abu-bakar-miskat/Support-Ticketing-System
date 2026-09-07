@@ -337,6 +337,8 @@ type Props = {
     subDepartmentName: string | null;
     role: string;
   }[];
+  /** Sub-departments the caller can access — shown as a filter when more than one. */
+  availableSubDepartments?: { id: string; name: string }[];
   hideTitleBar?: boolean;
   unassignedOnly?: boolean;
   /** Show draft tickets (own drafts for staff; dept-scoped drafts for admins). */
@@ -348,6 +350,7 @@ export function AllTasksPage({
   availableProjects,
   availableModules,
   availableMembers,
+  availableSubDepartments = [],
   hideTitleBar = false,
   unassignedOnly = false,
   draftsOnly = false,
@@ -358,6 +361,7 @@ export function AllTasksPage({
   const [selStatus, setSelStatus] = useState<Set<string>>(new Set());
   const [selPriority, setSelPriority] = useState<Set<string>>(new Set());
   const [selProject, setSelProject] = useState<Set<string>>(new Set()); // project IDs
+  const [selSubDepartment, setSelSubDepartment] = useState<Set<string>>(new Set());
   const [selPeople, setSelPeople] = useState<Set<string>>(new Set()); // profile IDs
   const [selModule, setSelModule] = useState<Set<string>>(new Set()); // module IDs
   const [selLabels, setSelLabels] = useState<Set<string>>(new Set()); // label names
@@ -393,6 +397,7 @@ export function AllTasksPage({
       status: selStatus.size ? [...selStatus] : undefined,
       priority: selPriority.size ? [...selPriority] : undefined,
       projectId: selProject.size ? [...selProject] : undefined,
+      subDepartmentId: selSubDepartment.size ? [...selSubDepartment] : undefined,
       assigneeId: selPeople.size ? [...selPeople] : undefined,
       moduleId: selModule.size ? [...selModule] : undefined,
       labels: selLabels.size ? [...selLabels] : undefined,
@@ -404,7 +409,7 @@ export function AllTasksPage({
       targetDateFrom: targetRange?.from ?? undefined,
       targetDateTo: targetRange?.to ?? undefined,
     }),
-    [selStatus, selPriority, selProject, selPeople, selModule, selLabels, selSource, sortKey, search, dateRange, targetRange],
+    [selStatus, selPriority, selProject, selSubDepartment, selPeople, selModule, selLabels, selSource, sortKey, search, dateRange, targetRange],
   );
 
   function applySavedView(view: SavedView) {
@@ -412,6 +417,7 @@ export function AllTasksPage({
     setSelStatus(new Set(f.status ?? []));
     setSelPriority(new Set(f.priority ?? []));
     setSelProject(new Set(f.projectId ?? []));
+    setSelSubDepartment(new Set(f.subDepartmentId ?? []));
     setSelPeople(new Set(f.assigneeId ?? []));
     setSelModule(new Set(f.moduleId ?? []));
     setSelLabels(new Set(f.labels ?? []));
@@ -464,6 +470,7 @@ export function AllTasksPage({
       status: selStatus.size ? [...selStatus] : undefined,
       priority: selPriority.size ? [...selPriority] : undefined,
       projectId: selProject.size ? [...selProject] : undefined,
+      subDepartmentId: selSubDepartment.size ? [...selSubDepartment] : undefined,
       assigneeId: selPeople.size ? [...selPeople] : undefined,
       moduleId: selModule.size ? [...selModule] : undefined,
       labels: selLabels.size ? [...selLabels] : undefined,
@@ -482,6 +489,7 @@ export function AllTasksPage({
       selStatus,
       selPriority,
       selProject,
+      selSubDepartment,
       selPeople,
       selModule,
       selLabels,
@@ -597,6 +605,13 @@ export function AllTasksPage({
         onRemove: () => setSelProject(toggle(selProject, id)),
       };
     }),
+    ...[...selSubDepartment].map((id) => {
+      const name = availableSubDepartments.find((s) => s.id === id)?.name ?? id;
+      return {
+        label: `Sub-department: ${name}`,
+        onRemove: () => setSelSubDepartment(toggle(selSubDepartment, id)),
+      };
+    }),
     ...[...selPeople].map((id) => {
       const name = availableMembers.find((m) => m.id === id)?.name ?? id;
       return {
@@ -643,6 +658,7 @@ export function AllTasksPage({
     selStatus.size ||
     selPriority.size ||
     selProject.size ||
+    selSubDepartment.size ||
     selPeople.size ||
     selModule.size ||
     selLabels.size ||
@@ -655,6 +671,7 @@ export function AllTasksPage({
     setSelStatus(new Set());
     setSelPriority(new Set());
     setSelProject(new Set());
+    setSelSubDepartment(new Set());
     setSelPeople(new Set());
     setSelModule(new Set());
     setSelLabels(new Set());
@@ -758,6 +775,15 @@ export function AllTasksPage({
                 onToggle={(id) => setSelProject(toggle(selProject, id))}
                 onClear={() => setSelProject(new Set())}
               />
+              {availableSubDepartments.length > 1 && (
+                <FilterDropdown
+                  label="Sub-department"
+                  options={availableSubDepartments.map((s) => ({ id: s.id, label: s.name }))}
+                  selected={selSubDepartment}
+                  onToggle={(id) => setSelSubDepartment(toggle(selSubDepartment, id))}
+                  onClear={() => setSelSubDepartment(new Set())}
+                />
+              )}
               {!unassignedOnly && (
                 <FilterDropdown
                   label="People"

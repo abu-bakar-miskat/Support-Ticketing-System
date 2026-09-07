@@ -43,19 +43,32 @@ export async function PATCH(
   }
 
   if (action === "approve" && crossAccess) {
-    const departmentId = joinRequest.subDepartment?.departmentId
-    if (!departmentId) {
-      return NextResponse.json({ error: "SubDepartment has no department" }, { status: 400 })
-    }
+    // Agents/sub-managers get cross-sub-department access via membership in this
+    // sub-department (keeping any existing home memberships). DepartmentAccess is
+    // reserved for department managers.
+    const trimmedName = nickname?.trim() || null
     await prisma.$transaction([
-      (prisma.departmentAccess as any).upsert({
-        where: { departmentId_userId: { departmentId, userId: joinRequest.userId } },
-        create: { departmentId, userId: joinRequest.userId, grantedBy: profile.id },
-        update: {},
+      (prisma.subDepartmentMembership as any).upsert({
+        where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId } },
+        create: {
+          userId: joinRequest.userId,
+          subDepartmentId,
+          role: "agent",
+          nickname: trimmedName,
+          isActive: isActive ?? true,
+        },
+        update: {
+          nickname: trimmedName,
+          isActive: isActive ?? true,
+        },
       }),
       prisma.joinRequest.update({
         where: { id: requestId },
         data: { status: "approved", processedAt: new Date(), processedBy: profile.id },
+      }),
+      prisma.profile.updateMany({
+        where: { id: joinRequest.userId, subDepartmentId: null },
+        data: { subDepartmentId },
       }),
       prisma.notification.create({
         data: {
@@ -63,7 +76,7 @@ export async function PATCH(
           actorId: profile.id,
           type: "join_request",
           joinRequestId: requestId,
-          message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the subDepartment"} was approved. You've been granted cross-department access.`,
+          message: `approved: You've been granted access to the ${joinRequest.subDepartment?.name ?? "sub-department"} sub-department.`,
         },
       }),
     ])

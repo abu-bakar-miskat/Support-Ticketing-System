@@ -180,6 +180,16 @@ export const getProfile = cache(async () => {
       tenantIds,
     })
 
+    // Cross-department access is manager-level only. Agents/sub-managers use
+    // SubDepartmentMembership for cross-sub-department collaboration.
+    const canUseDepartmentAccess =
+      profile.isSuperAdmin === true ||
+      managedDepartmentIds.length > 0 ||
+      tenantMemberships.some((t) => t.role === "admin")
+
+    const scopedGrantedAccessDeptIds = canUseDepartmentAccess ? grantedAccessDeptIds : []
+    const scopedFullAccessGrantedDeptIds = canUseDepartmentAccess ? fullAccessGrantedDeptIds : []
+
     // Authorization role comes from the canonical assignments (SRS D-06), not the
     // Profile.role column. Assemble the caller's assignment rows from the source
     // data already loaded above and derive the effective role — no extra query.
@@ -206,8 +216,7 @@ export const getProfile = cache(async () => {
         scopeType: "DEPARTMENT" as const,
         scopeId: m.departmentId,
       })),
-      // Direct DepartmentMember rows are legacy and do not grant DEPARTMENT scope.
-      ...grantedAccessDeptIds.map((id) => ({
+      ...scopedGrantedAccessDeptIds.map((id) => ({
         role: "agent" as const,
         scopeType: "DEPARTMENT" as const,
         scopeId: id,
@@ -227,8 +236,8 @@ export const getProfile = cache(async () => {
       subDepartmentIds: typedMemberships.map((m) => m.subDepartmentId),
       managedDepartmentIds,
       departmentAdminIds,
-      grantedAccessDeptIds,
-      fullAccessGrantedDeptIds,
+      grantedAccessDeptIds: scopedGrantedAccessDeptIds,
+      fullAccessGrantedDeptIds: scopedFullAccessGrantedDeptIds,
       // Kept for compatibility with older callers; always empty — membership is sub-department only.
       directMemberDeptIds: [] as string[],
       isHubMember,

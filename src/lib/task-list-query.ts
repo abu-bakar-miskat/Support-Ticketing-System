@@ -43,6 +43,7 @@ export async function buildTaskListParams(
   const sortKey      = url.searchParams.get("sort") ?? "created";
   const sourceParam  = url.searchParams.get("source");
   const source       = sourceParam === "intake" || sourceParam === "manual" ? sourceParam : undefined;
+  const subDepartmentIdIn = url.searchParams.get("subDepartmentId")?.split(",").filter(Boolean) ?? [];
 
   const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined;
   const dateTo   = dateToStr   ? new Date(dateToStr + "T23:59:59.999Z") : undefined;
@@ -71,6 +72,12 @@ export async function buildTaskListParams(
   }
 
   const deptScope = await getProfileDeptScope(profile);
+
+  // Sub-department filter: only allow ids the caller can access in active scope.
+  const allowedSubIds = new Set(deptScope?.subDepartmentIds ?? profile.subDepartmentIds ?? []);
+  const scopedSubDepartmentIdIn = subDepartmentIdIn.filter((id) =>
+    allowedSubIds.size === 0 || allowedSubIds.has(id),
+  );
 
   const allowedDeptIds = isManager
     ? [...new Set([...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])])]
@@ -122,6 +129,7 @@ export async function buildTaskListParams(
     targetDateTo,
     unassignedOnly: unassignedOnly || undefined,
     source,
+    ...(scopedSubDepartmentIdIn.length ? { subDepartmentIdIn: scopedSubDepartmentIdIn } : {}),
   };
 
   return { filterParams, sortKey, isAdmin, isManager, isElevated, deptScope, error: null };

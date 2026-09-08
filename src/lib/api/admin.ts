@@ -250,7 +250,10 @@ export async function updateAdminDepartment(id: string, body: { name?: string; i
 
 export async function deleteAdminDepartment(id: string) {
   const res = await fetch(`/api/admin/departments/${id}`, { method: "DELETE" })
-  if (!res.ok) throw new Error("Failed to delete department")
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    throw new Error(body?.error || "Failed to delete department")
+  }
 }
 
 /** DS-08: mark the department's initial setup review complete, unblocking ticket

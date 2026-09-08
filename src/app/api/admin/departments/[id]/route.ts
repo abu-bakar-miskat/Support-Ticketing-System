@@ -43,11 +43,23 @@ export async function DELETE(
   const subDepartmentCount = await prisma.subDepartment.count({ where: { departmentId: id } })
   if (subDepartmentCount > 0) {
     return NextResponse.json(
-      { error: `Cannot delete: this department has ${subDepartmentCount} subDepartment${subDepartmentCount === 1 ? "" : "s"}` },
+      { error: `Cannot delete this department while it still has ${subDepartmentCount} sub-department${subDepartmentCount === 1 ? "" : "s"}. Delete or move ${subDepartmentCount === 1 ? "it" : "them"} first.` },
       { status: 409 }
     )
   }
 
-  await prisma.department.delete({ where: { id } })
+  try {
+    await prisma.department.delete({ where: { id } })
+  } catch (err) {
+    // A FK constraint (e.g. tickets, projects, or members still attached) surfaces
+    // as P2003 — translate it into a reason instead of a bare 500.
+    if (err && typeof err === "object" && (err as { code?: string }).code === "P2003") {
+      return NextResponse.json(
+        { error: "Cannot delete this department because other records (tickets, projects, or members) are still linked to it. Remove them first." },
+        { status: 409 }
+      )
+    }
+    throw err
+  }
   return new NextResponse(null, { status: 204 })
 }

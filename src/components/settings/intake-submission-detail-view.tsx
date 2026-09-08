@@ -1,0 +1,297 @@
+import { notFound } from "next/navigation"
+import Link from "next/link"
+import {
+  ArrowLeft,
+  ExternalLink,
+  Mail,
+  Clock,
+  CalendarDays,
+  CalendarClock,
+  Users,
+  Ticket as TicketIcon,
+} from "lucide-react"
+import { prisma } from "@/lib/db"
+import { IntakeCard, type IntakeResponseEntry } from "@/components/tickets/intake-card"
+import { IntakeSubmissionDeleteButton } from "@/components/settings/intake-submission-delete-button"
+import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar"
+import { AvatarVisual } from "@/components/ui/user-avatar"
+import { UI_PRIORITY_STYLE, uiPriorityFromDb } from "@/components/board/board-types"
+import { cn } from "@/lib/utils"
+
+/**
+ * Shared submission-detail view. Both the admin settings route and the
+ * sub-department support-forms route render this; each supplies its own
+ * `basePath` (the support-forms list the submission hangs off) and breadcrumb
+ * trail so navigation stays in the caller's context. Callers must enforce
+ * access before rendering — this only verifies the intake belongs to `formId`.
+ */
+export async function IntakeSubmissionDetailView({
+  formId,
+  intakeId,
+  basePath,
+  backLabel,
+  crumbs,
+}: {
+  formId: string
+  intakeId: string
+  /** Support-forms list base path, e.g. `/settings/intake-forms`. */
+  basePath: string
+  /** Label for the back link, e.g. the form name. */
+  backLabel?: string
+  /** Trail up to and including "Submissions"; this view appends the submitter. */
+  crumbs: { label: string; href: string }[]
+}) {
+  const intake = await prisma.intake.findUnique({
+    where: { id: intakeId },
+    include: {
+      formConfig: {
+        select: { id: true, name: true, departmentId: true },
+      },
+      ticket: {
+        select: {
+          id: true,
+          ticketNumber: true,
+          title: true,
+          status: true,
+          startDate: true,
+          dueDate: true,
+          deletedAt: true,
+          assignee: { select: { id: true, name: true, avatarUrl: true } },
+          assignees: {
+            select: {
+              user: { select: { id: true, name: true, avatarUrl: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!intake || intake.formConfigId !== formId) notFound()
+
+  const submissionsHref = `${basePath}/${formId}/submissions`
+
+  const responses: IntakeResponseEntry[] = (
+    intake.responses as Array<{
+      fieldId?: string
+      label?: string
+      type?: string
+      value?: string
+    }>
+  )
+    .filter((r) => r.fieldId && r.label && r.value)
+    .map((r) => ({
+      fieldId: r.fieldId as string,
+      label: r.label as string,
+      type: r.type ?? "text",
+      value: r.value as string,
+    }))
+
+  const ticket = intake.ticket && !intake.ticket.deletedAt ? intake.ticket : null
+  const fmtDate = (d: Date | null) =>
+    d
+      ? new Date(d).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "—"
+
+  const submittedDate = intake.createdAt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+
+  const priorityStyle = UI_PRIORITY_STYLE[uiPriorityFromDb(intake.priority)]
+
+  const workers = ticket
+    ? [
+        ...(ticket.assignee ? [ticket.assignee] : []),
+        ...ticket.assignees
+          .map((a) => a.user)
+          .filter((u) => u.id !== ticket.assignee?.id),
+      ]
+    : []
+
+  return (
+    <>
+      <BreadcrumbRegistrar
+        crumbs={[
+          ...crumbs,
+          { label: intake.submitterName, href: `${submissionsHref}/${intakeId}` },
+        ]}
+      />
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-8 lg:px-12 lg:py-12">
+      <div className="flex flex-col gap-5">
+        <Link
+          href={submissionsHref}
+          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
+        >
+          <ArrowLeft className="size-3.5" />
+          {backLabel ?? `${intake.formConfig.name} submissions`}
+        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="sts-text-admin-title">
+                  {intake.submitterName}
+                </h1>
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold",
+                    priorityStyle.pillBg,
+                    priorityStyle.pillText,
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", priorityStyle.dot)} />
+                  {priorityStyle.label}
+                </span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[12px] text-sts-muted">
+                <span className="inline-flex items-center gap-1">
+                  <Mail className="size-3.5" />
+                  {intake.submitterEmail}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="size-3.5" />
+                  Submitted {submittedDate}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {ticket ? (
+              <Link
+                href={`/tickets/${ticket.id}`}
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
+              >
+                <ExternalLink className="size-3.5" />
+                Ticket #{ticket.ticketNumber}
+              </Link>
+            ) : null}
+            <IntakeSubmissionDeleteButton
+              intakeId={intake.id}
+              submitterName={intake.submitterName}
+              backHref={submissionsHref}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex-1">
+          <IntakeCard
+            intake={{
+              submitterName: intake.submitterName,
+              submitterEmail: intake.submitterEmail,
+              submittedAt: intake.createdAt.toISOString(),
+              formName: intake.formConfig.name,
+              responses,
+            }}
+          />
+        </div>
+
+        {ticket ? (
+          <div className="flex flex-1 flex-col rounded-xl border border-sts-card-border bg-sts-card">
+            {/* Card header */}
+            <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
+                  <TicketIcon className="size-3.5" />
+                </span>
+                <div>
+                  <p className="sts-text-label">
+                    Linked ticket
+                  </p>
+                  <Link
+                    href={`/tickets/${ticket.id}`}
+                    className="font-sans text-[12.5px] font-semibold text-sts-id hover:underline"
+                  >
+                    #{ticket.ticketNumber}
+                  </Link>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-semibold text-sts-foreground">
+                <span className="size-1.5 rounded-full bg-sts-id" />
+                {ticket.status}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-5 px-5 py-5">
+              {/* Title */}
+              <div>
+                <p className="mb-1 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
+                  Title
+                </p>
+                <p className="font-sans text-[13px] font-medium text-sts-foreground">
+                  {ticket.title}
+                </p>
+              </div>
+
+              {/* Working on it */}
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-wide text-sts-subtle">
+                  <Users className="size-3.5" />
+                  Working on it
+                </p>
+                {workers.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {workers.map((w) => (
+                      <div key={w.id} className="flex items-center gap-2">
+                        <AvatarVisual
+                          name={w.name}
+                          avatarUrl={w.avatarUrl}
+                          size={22}
+                        />
+                        <span className="font-sans text-[12.5px] text-sts-foreground">
+                          {w.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="font-sans text-[12.5px] italic text-sts-muted">
+                    Unassigned
+                  </p>
+                )}
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3 border-t border-sts-card-border pt-5">
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
+                    <CalendarDays className="size-3.5" />
+                  </span>
+                  <div>
+                    <p className="font-sans text-[11px] text-sts-subtle">
+                      Start date
+                    </p>
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                      {fmtDate(ticket.startDate)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 flex size-7 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
+                    <CalendarClock className="size-3.5" />
+                  </span>
+                  <div>
+                    <p className="font-sans text-[11px] text-sts-subtle">
+                      Due date
+                    </p>
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                      {fmtDate(ticket.dueDate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+    </>
+  )
+}

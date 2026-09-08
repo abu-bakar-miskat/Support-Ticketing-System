@@ -79,13 +79,28 @@ export function SettingsIntakeSubmissionsPage({
   departmentName,
   submissions,
   subDepartmentMembers,
+  // Base path for the support-forms list this page hangs off. Defaults to the
+  // admin settings area; the sub-department support-forms area passes its own so
+  // navigation stays in that context instead of jumping into /settings.
+  formsBasePath = "/settings/intake-forms",
+  backLabel = "Support forms",
+  crumbs,
 }: {
   formId: string;
   formName: string;
   departmentName: string;
   submissions: SubmissionRow[];
   subDepartmentMembers: SubDepartmentMember[];
+  formsBasePath?: string;
+  backLabel?: string;
+  crumbs?: { label: string; href: string }[];
 }) {
+  const crumbList = crumbs ?? [
+    { label: "Settings", href: "/settings" },
+    { label: "Support forms", href: "/settings/intake-forms" },
+    { label: formName, href: `/settings/intake-forms/${formId}` },
+    { label: "Submissions", href: `/settings/intake-forms/${formId}/submissions` },
+  ];
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<SubmissionRow | null>(null);
@@ -231,22 +246,15 @@ export function SettingsIntakeSubmissionsPage({
 
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-      <BreadcrumbRegistrar
-        crumbs={[
-          { label: "Settings", href: "/settings" },
-          { label: "Support forms", href: "/settings/intake-forms" },
-          { label: formName, href: `/settings/intake-forms/${formId}` },
-          { label: "Submissions", href: `/settings/intake-forms/${formId}/submissions` },
-        ]}
-      />
+      <BreadcrumbRegistrar crumbs={crumbList} />
       {/* Header */}
       <div className="flex flex-col gap-3">
         <Link
-          href="/settings/intake-forms"
+          href={formsBasePath}
           className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
         >
           <ArrowLeft className="size-3.5" />
-          Support forms
+          {backLabel}
         </Link>
         <div className="min-w-0">
           <h1 className="sts-text-admin-title">{formName}</h1>
@@ -368,7 +376,7 @@ export function SettingsIntakeSubmissionsPage({
                   </TableCell>
 
                   <TableCell className="py-0">
-                    <Link href={`/settings/intake-forms/${formId}/submissions/${s.id}`} className="flex h-[56px] flex-col justify-center gap-0.5">
+                    <Link href={`${formsBasePath}/${formId}/submissions/${s.id}`} className="flex h-[56px] flex-col justify-center gap-0.5">
                       <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{s.submitterName}</span>
                       <span className="truncate font-sans text-[11.5px] text-sts-subtle">{s.submitterEmail}</span>
                     </Link>
@@ -443,7 +451,7 @@ export function SettingsIntakeSubmissionsPage({
                         <Trash2 className="size-3.5" />
                       </button>
                       <Link
-                        href={`/settings/intake-forms/${formId}/submissions/${s.id}`}
+                        href={`${formsBasePath}/${formId}/submissions/${s.id}`}
                         className="flex items-center gap-1 rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
                         title="View submission details"
                       >

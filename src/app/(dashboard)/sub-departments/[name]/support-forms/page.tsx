@@ -114,6 +114,7 @@ export default async function Page({
       activeSubDepartmentId={subDepartment.id}
       activeSubDepartmentName={subDepartment.name}
       workspaceBranding={workspaceBranding}
+      submissionsBasePath={`/sub-departments/${name}/support-forms`}
     />
   )
 }

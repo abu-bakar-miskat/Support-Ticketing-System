@@ -2323,6 +2323,10 @@ export function SettingsIntakeFormsPage({
   activeSubDepartmentId = null,
   activeSubDepartmentName = null,
   workspaceBranding,
+  // Base path the per-form "submissions" link hangs off. Defaults to the admin
+  // settings area; the sub-department support-forms page passes its own so the
+  // link stays within that context instead of jumping into /settings.
+  submissionsBasePath = "/settings/intake-forms",
 }: {
   forms: IntakeFormRow[];
   departments: DeptOption[];
@@ -2332,6 +2336,7 @@ export function SettingsIntakeFormsPage({
   activeSubDepartmentId?: string | null;
   activeSubDepartmentName?: string | null;
   workspaceBranding: FormBrandingDefaults;
+  submissionsBasePath?: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -2567,7 +2572,7 @@ export function SettingsIntakeFormsPage({
                       <div className="flex h-[56px] items-center justify-center">
                         {form.intakeCount > 0 ? (
                           <Link
-                            href={`/settings/intake-forms/${form.id}/submissions`}
+                            href={`${submissionsBasePath}/${form.id}/submissions`}
                             className="group/sub inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface py-1 pl-2.5 pr-2 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
                             title="View submissions"
                           >

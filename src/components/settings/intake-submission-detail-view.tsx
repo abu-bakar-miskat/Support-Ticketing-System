@@ -5,6 +5,7 @@ import {
   ExternalLink,
   Mail,
   Clock,
+  Inbox,
   CalendarDays,
   CalendarClock,
   Users,
@@ -122,66 +123,84 @@ export async function IntakeSubmissionDetailView({
           { label: intake.submitterName, href: `${submissionsHref}/${intakeId}` },
         ]}
       />
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 sm:px-8 lg:px-12 lg:py-12">
-      <div className="flex flex-col gap-5">
-        <Link
-          href={submissionsHref}
-          className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
-        >
-          <ArrowLeft className="size-3.5" />
-          {backLabel ?? `${intake.formConfig.name} submissions`}
-        </Link>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="sts-text-admin-title">
-                  {intake.submitterName}
-                </h1>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold",
-                    priorityStyle.pillBg,
-                    priorityStyle.pillText,
-                  )}
-                >
-                  <span className={cn("size-1.5 rounded-full", priorityStyle.dot)} />
-                  {priorityStyle.label}
-                </span>
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[12px] text-sts-muted">
-                <span className="inline-flex items-center gap-1">
-                  <Mail className="size-3.5" />
-                  {intake.submitterEmail}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="size-3.5" />
-                  Submitted {submittedDate}
-                </span>
-              </div>
+    <div className="flex w-full flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+      <Link
+        href={submissionsHref}
+        className="inline-flex w-fit items-center gap-1 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground transition-colors"
+      >
+        <ArrowLeft className="size-3.5" />
+        {backLabel ?? `${intake.formConfig.name} submissions`}
+      </Link>
+
+      {/* Hero header */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-sts-card-border bg-sts-card px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <AvatarVisual
+            name={intake.submitterName}
+            avatarUrl={null}
+            size={48}
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="sts-text-admin-title">
+                {intake.submitterName}
+              </h1>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold",
+                  priorityStyle.pillBg,
+                  priorityStyle.pillText,
+                )}
+              >
+                <span className={cn("size-1.5 rounded-full", priorityStyle.dot)} />
+                {priorityStyle.label}
+              </span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[12px] text-sts-muted">
+              <a
+                href={`mailto:${intake.submitterEmail}`}
+                className="inline-flex items-center gap-1.5 hover:text-sts-id transition-colors"
+              >
+                <Mail className="size-3.5 shrink-0" />
+                {intake.submitterEmail}
+              </a>
+              <span className="inline-flex items-center gap-1.5">
+                <Inbox className="size-3.5 shrink-0" />
+                {intake.formConfig.name}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="size-3.5 shrink-0" />
+                Submitted {submittedDate}
+              </span>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {ticket ? (
-              <Link
-                href={`/tickets/${ticket.id}`}
-                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
-              >
-                <ExternalLink className="size-3.5" />
-                Ticket #{ticket.ticketNumber}
-              </Link>
-            ) : null}
-            <IntakeSubmissionDeleteButton
-              intakeId={intake.id}
-              submitterName={intake.submitterName}
-              backHref={submissionsHref}
-            />
-          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {ticket ? (
+            <Link
+              href={`/tickets/${ticket.id}`}
+              className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
+            >
+              <ExternalLink className="size-3.5" />
+              Ticket #{ticket.ticketNumber}
+            </Link>
+          ) : null}
+          <IntakeSubmissionDeleteButton
+            intakeId={intake.id}
+            submitterName={intake.submitterName}
+            backHref={submissionsHref}
+          />
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="flex-1">
+      {/* Body: responses + ticket sidebar */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6",
+          ticket && "lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start",
+        )}
+      >
+        <div className="min-w-0">
           <IntakeCard
             intake={{
               submitterName: intake.submitterName,
@@ -194,7 +213,7 @@ export async function IntakeSubmissionDetailView({
         </div>
 
         {ticket ? (
-          <div className="flex flex-1 flex-col rounded-xl border border-sts-card-border bg-sts-card">
+          <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card lg:sticky lg:top-6">
             {/* Card header */}
             <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
               <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Building2, Check, Clock, Users, Loader2, LogOut, RotateCcw, XCircle, Layers } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { Check, Clock, Users, Loader2, LogOut, RotateCcw, XCircle, Search, ArrowRight, ChevronDown } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { BrandIcon } from "@/components/auth/sts-logo"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
@@ -53,26 +53,45 @@ type Props = {
   userName: string
 }
 
-const WHOLE_DEPT = "" // sentinel target: request the whole department
+function monogram(name: string) {
+  return name.trim().charAt(0).toUpperCase() || "?"
+}
+
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || name
+}
 
 export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props) {
   const [pending,  setPending]  = useState<Set<string>>(new Set(pendingKeys))
   const [rejected, setRejected] = useState<Set<string>>(new Set())
   const [requesting, setRequesting] = useState<string | null>(null)
   const [approved, setApproved] = useState(false)
-  // Per-department chosen sub-department id ("" = whole department)
-  const [targets, setTargets] = useState<Record<string, string>>({})
+  const [query, setQuery] = useState("")
+  // A single sub-department id selected across the WHOLE page ("" = none). Picking
+  // one anywhere clears any previous pick, so only one is ever selected at a time.
+  const [selected, setSelected] = useState<string>("")
+  // Workspaces start collapsed; the user opens the ones they care about. An empty
+  // set means every workspace is closed.
+  const [openTenants, setOpenTenants] = useState<Set<string>>(new Set())
+  const toggleTenant = useCallback((id: string) => {
+    setOpenTenants((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   const handleApproved = useCallback(() => {
     setApproved(true)
-    toast.success("You've been approved! Redirecting…")
+    toast.success("You're in! Taking you to your workspace…")
     setTimeout(() => { window.location.href = "/" }, 1500)
   }, [])
 
   const handleRejected = useCallback((key: string) => {
     setPending((prev)  => { const n = new Set(prev);  n.delete(key); return n })
     setRejected((prev) => new Set(prev).add(key))
-    toast.error("Your request was not approved. You can send a new request anytime.")
+    toast.error("That request wasn't approved. You can send a new one anytime.")
   }, [])
 
   useEffect(() => {
@@ -93,12 +112,11 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
     return () => { supabase.removeChannel(channel) }
   }, [userId, handleApproved, handleRejected])
 
-  async function requestToJoin(deptId: string, subDeptId: string) {
-    // The join target is a specific sub-department when chosen, else the dept.
-    const key = subDeptId || deptId
-    const url = subDeptId
-      ? `/api/sub-departments/${subDeptId}/join-requests`
-      : `/api/departments/${deptId}/join-requests`
+  async function requestToJoin(subDeptId: string) {
+    // New members always join a specific team (sub-department) as an agent.
+    if (!subDeptId) return
+    const key = subDeptId
+    const url = `/api/sub-departments/${subDeptId}/join-requests`
 
     // If previously rejected, clear that state first
     setRejected((prev) => { const n = new Set(prev); n.delete(key); return n })
@@ -111,16 +129,41 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
       })
       if (res.ok || res.status === 409) {
         setPending((prev) => new Set(prev).add(key))
-        if (res.ok) toast.success("Request sent! Waiting for approval…")
+        if (res.ok) toast.success("Request sent — a manager will review it shortly.")
       } else {
-        await toastResponseError(res, "Failed to send request")
+        await toastResponseError(res, "Couldn't send that request")
       }
     } catch {
-      toast.error("Something went wrong")
+      toast.error("Something went wrong. Please try again.")
     } finally {
       setRequesting(null)
     }
   }
+
+  const q = query.trim().toLowerCase()
+  const filteredTenants = useMemo(() => {
+    if (!q) return tenants
+    const hit = (s: string) => s.toLowerCase().includes(q)
+    return tenants
+      .map((t) => ({
+        ...t,
+        departments: hit(t.name)
+          ? t.departments
+          : t.departments.filter(
+              (d) => hit(d.name) || d.subDepartments.some((s) => hit(s.name)),
+            ),
+      }))
+      .filter((t) => t.departments.length > 0)
+  }, [tenants, q])
+
+  const totalDepartments = useMemo(
+    () => tenants.reduce((n, t) => n + t.departments.length, 0),
+    [tenants],
+  )
+  const hasAnyDepartments = totalDepartments > 0
+  const hasResults = filteredTenants.length > 0
+  const pendingCount  = pending.size
+  const rejectedCount = rejected.size
 
   if (approved) {
     return (
@@ -129,24 +172,20 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
           <div className="flex size-16 items-center justify-center rounded-full bg-sts-green/10">
             <Check className="size-8 text-sts-green" strokeWidth={2} />
           </div>
-          <p className="sts-text-modal-title">
-            You&apos;ve been approved!
+          <p className="font-display text-[22px] leading-tight text-sts-foreground">
+            You&apos;re in.
           </p>
-          <p className="font-sans text-[13px] text-sts-muted">Redirecting to your workspace…</p>
+          <p className="font-sans text-[13px] text-sts-muted">Taking you to your workspace…</p>
           <Loader2 className="size-5 animate-spin text-sts-muted" />
         </div>
       </main>
     )
   }
 
-  const pendingCount  = pending.size
-  const rejectedCount = rejected.size
-  const hasDepartments = tenants.some((t) => t.departments.length > 0)
-
   return (
     <main className="sts-ambient-bg relative flex min-h-svh flex-col font-sans">
       {/* Top bar */}
-      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between px-5 sm:px-8">
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-sts-card-border/60 bg-sts-bg/70 px-5 backdrop-blur sm:px-8">
         <BrandIcon className="h-7" />
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
@@ -155,209 +194,316 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
       </header>
 
       {/* Content */}
-      <div className="mx-auto flex w-full max-w-[620px] flex-col gap-6 px-5 pb-16 pt-8 sm:px-0">
-        {/* Greeting */}
-        <div className="sts-page-enter flex flex-col gap-2">
-          <div className="mb-1 flex items-center gap-2.5">
-            <UserAvatar name={userName} size={30} />
-            <span className="font-sans text-[12.5px] text-sts-muted">
-              Signed in as <span className="font-semibold text-sts-foreground">{userName}</span>
+      <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-7 px-5 pb-20 pt-10 sm:px-6 lg:px-8">
+        {/* Hero */}
+        <div className="sts-page-enter flex flex-col gap-4">
+          <div className="flex items-center gap-2.5">
+            <UserAvatar name={userName} size={28} />
+            <span className="font-sans text-[12px] text-sts-muted">
+              Signed in as <span className="font-medium text-sts-foreground">{userName}</span>
             </span>
           </div>
-          <h1 className="sts-text-admin-title leading-snug text-balance">
-            Join a workspace to get started
-          </h1>
-          <p className="max-w-[52ch] font-sans text-[13px] leading-relaxed text-sts-muted">
-            Pick a department — or a specific sub-department — and request access.
-            Once an admin or manager approves, you&apos;ll be redirected
-            automatically, no refresh needed.
-          </p>
+
+          <div className="flex flex-col gap-2.5">
+            <span className="sts-text-section-label">Welcome aboard</span>
+            <h1 className="font-display text-[34px] leading-[1.05] tracking-[-0.01em] text-sts-foreground text-balance sm:text-[40px]">
+              Hey {firstName(userName)} — find your team.
+            </h1>
+            <p className="max-w-[54ch] font-sans text-[13.5px] leading-relaxed text-sts-muted">
+              Find the sub-department you&apos;ll be working on and request to join.
+              The moment a manager approves it, you&apos;ll land in your workspace as
+              an agent — no refresh needed.
+            </p>
+          </div>
+
+          {/* Search — only earns its place once the directory is sizeable */}
+          {totalDepartments > 4 && (
+            <div className="relative mt-1 max-w-[420px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search workspaces, departments or sub-departments"
+                aria-label="Search workspaces and departments"
+                className="w-full rounded-xl border border-sts-card-border bg-sts-card/60 py-2.5 pl-9 pr-3 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle transition-colors focus-visible:border-sts-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/35"
+              />
+            </div>
+          )}
         </div>
 
         {/* Status banners */}
-        {pendingCount > 0 && (
-          <div className="sts-page-enter flex items-start gap-3 rounded-xl border border-sts-blue/25 bg-sts-blue-tint px-4 py-3">
-            <Clock className="mt-[1px] size-4 shrink-0 text-sts-id" />
-            <div className="min-w-0">
-              <p className="font-sans text-[12.5px] font-semibold text-sts-id">
-                {pendingCount === 1 ? "1 request pending" : `${pendingCount} requests pending`}
-              </p>
-              <p className="font-sans text-[11.5px] text-sts-id/70">
-                This page will redirect automatically once your request is approved.
-              </p>
-            </div>
+        {(pendingCount > 0 || rejectedCount > 0) && (
+          <div className="sts-page-enter flex flex-col gap-2">
+            {pendingCount > 0 && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-sts-blue/25 bg-sts-blue-tint px-3.5 py-2.5">
+                <Clock className="size-3.5 shrink-0 text-sts-id" />
+                <p className="font-sans text-[12px] text-sts-id">
+                  <span className="font-semibold">
+                    {pendingCount === 1 ? "1 request pending." : `${pendingCount} requests pending.`}
+                  </span>{" "}
+                  This page updates the second one is approved.
+                </p>
+              </div>
+            )}
+            {rejectedCount > 0 && (
+              <div className="flex items-center gap-2.5 rounded-xl border border-sts-red/20 bg-sts-red-tint px-3.5 py-2.5">
+                <XCircle className="size-3.5 shrink-0 text-sts-red" />
+                <p className="font-sans text-[12px] text-sts-red/90">
+                  <span className="font-semibold">
+                    {rejectedCount === 1 ? "1 request wasn't approved." : `${rejectedCount} requests weren't approved.`}
+                  </span>{" "}
+                  Send a new one to any team below.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {rejectedCount > 0 && (
-          <div className="sts-page-enter flex items-start gap-3 rounded-xl border border-sts-red/20 bg-sts-red-tint px-4 py-3">
-            <XCircle className="mt-[1px] size-4 shrink-0 text-sts-red" />
-            <div className="min-w-0">
-              <p className="font-sans text-[12.5px] font-semibold text-sts-red">
-                {rejectedCount === 1 ? "1 request was not approved" : `${rejectedCount} requests were not approved`}
-              </p>
-              <p className="font-sans text-[11.5px] text-sts-red/70">
-                You can send a new request to any department below.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Tenant → department → sub-department */}
-        {!hasDepartments ? (
-          <div className="sts-glass-panel sts-page-enter flex flex-col items-center gap-3 rounded-2xl border py-16 text-center">
-            <Building2 className="size-8 text-sts-subtle" strokeWidth={1.2} />
-            <div>
-              <p className="font-sans text-[13px] font-medium text-sts-muted">No workspaces yet</p>
-              <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
-                Contact your workspace admin to create one.
-              </p>
-            </div>
-          </div>
+        {/* States: no workspaces at all / no search matches / the directory */}
+        {!hasAnyDepartments ? (
+          <EmptyState
+            title="No workspaces yet"
+            body="Once an admin sets up a department, it'll show up here for you to join."
+          />
+        ) : !hasResults ? (
+          <EmptyState
+            title="Nothing matches that"
+            body={`No workspaces or teams match “${query.trim()}”. Try a different search.`}
+          />
         ) : (
-          <div className="sts-stagger flex flex-col gap-6">
-            {tenants.map((tenant) => {
-              if (tenant.departments.length === 0) return null
+          <div className="sts-stagger flex flex-col gap-8">
+            {filteredTenants.map((tenant) => {
+              // While searching, keep matching workspaces open so results are visible.
+              const isOpen = q !== "" || openTenants.has(tenant.id)
               return (
-                <section key={tenant.id} className="flex flex-col gap-2">
-                  {/* Tenant header */}
-                  <div className="flex items-center gap-2 px-1">
-                    <Building2 className="size-3.5 text-sts-subtle" strokeWidth={1.6} />
-                    <h2 className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-muted">
-                      {tenant.name}
-                    </h2>
-                  </div>
+                <section key={tenant.id} className="flex flex-col gap-3">
+                  {/* Workspace header — toggles the departments open/closed */}
+                  <button
+                    type="button"
+                    onClick={() => toggleTenant(tenant.id)}
+                    aria-expanded={isOpen}
+                    className="sts-pressable -mx-1.5 flex w-full items-center gap-3 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-sts-surface/60"
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-sts-accent/20 bg-sts-accent/10 font-display text-[16px] leading-none text-sts-accent">
+                      {monogram(tenant.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate font-sans text-[14px] font-semibold text-sts-foreground">
+                        {tenant.name}
+                      </h2>
+                      <p className="font-sans text-[11.5px] text-sts-subtle">
+                        {tenant.departments.length} {tenant.departments.length === 1 ? "department" : "departments"}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-sts-subtle transition-transform",
+                        isOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
 
-                  {tenant.departments.map((dept) => {
-                    const target = targets[dept.id] ?? WHOLE_DEPT
-                    const key = target || dept.id
-                    const isPending    = pending.has(key)
-                    const isRejected   = rejected.has(key)
-                    const isRequesting = requesting === key
-
-                    return (
-                      <div
-                        key={dept.id}
-                        className={cn(
-                          "sts-glass-panel group flex flex-col gap-3 rounded-2xl border px-5 py-4 transition-all sm:flex-row sm:items-center sm:gap-4",
-                          isPending  && "border-sts-blue/25",
-                          isRejected && "border-sts-red/20",
-                          !isPending && !isRejected && "hover:border-sts-accent/40 hover:shadow-sts-card",
-                        )}
-                      >
-                        {/* Icon */}
-                        <div className={cn(
-                          "flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors",
-                          isPending  && "border-sts-blue/20 bg-sts-blue-tint",
-                          isRejected && "border-sts-red/20 bg-sts-red-tint",
-                          !isPending && !isRejected && "border-sts-card-border bg-sts-surface group-hover:border-sts-accent/25",
-                        )}>
-                          <Building2
-                            className={cn(
-                              "size-[18px]",
-                              isPending ? "text-sts-id" : isRejected ? "text-sts-red/60" : "text-sts-muted",
-                            )}
-                            strokeWidth={1.5}
-                          />
-                        </div>
-
-                        {/* Info + sub-department picker */}
-                        <div className="min-w-0 flex-1">
-                          <p className="font-sans text-[13px] font-semibold text-sts-foreground">
-                            {dept.name}
-                          </p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                            <span className="flex items-center gap-1 font-sans text-[11.5px] text-sts-subtle">
-                              <Users className="size-3" />
-                              {dept.subDepartments.length} {dept.subDepartments.length === 1 ? "sub-department" : "sub-departments"}
-                            </span>
-                            {dept.managers.length > 0 && (
-                              <>
-                                <span className="text-sts-subtle/40">·</span>
-                                <span className="font-sans text-[11.5px] text-sts-subtle">
-                                  {dept.managers.join(", ")}
-                                </span>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Sub-department selector */}
-                          {dept.subDepartments.length > 0 && (
-                            <label className="mt-2.5 flex items-center gap-2">
-                              <span className="flex items-center gap-1 font-sans text-[11px] text-sts-subtle">
-                                <Layers className="size-3" />
-                                Join
-                              </span>
-                              <select
-                                value={target}
-                                onChange={(e) =>
-                                  setTargets((prev) => ({ ...prev, [dept.id]: e.target.value }))
-                                }
-                                disabled={approved}
-                                className="min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-foreground transition-colors focus-visible:border-sts-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/40 disabled:opacity-60"
-                              >
-                                <option value={WHOLE_DEPT}>Whole department</option>
-                                {dept.subDepartments.map((sub) => (
-                                  <option key={sub.id} value={sub.id}>{sub.name}</option>
-                                ))}
-                              </select>
-                            </label>
-                          )}
-                        </div>
-
-                        {/* Action */}
-                        {isPending ? (
-                          <span className="flex shrink-0 items-center gap-1.5 self-start rounded-full border border-sts-blue/20 bg-sts-blue-tint px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id sm:self-auto">
-                            <Clock className="size-3" />
-                            Pending
-                          </span>
-                        ) : isRejected ? (
-                          <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
-                            <span className="flex items-center gap-1 font-sans text-[11.5px] font-semibold text-sts-red/80">
-                              <XCircle className="size-3" />
-                              Not approved
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => requestToJoin(dept.id, target)}
-                              disabled={isRequesting || approved}
-                              className="sts-pressable flex items-center gap-1.5 rounded-lg border border-sts-card-border px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-foreground transition-colors hover:border-sts-accent/40 hover:bg-sts-surface disabled:opacity-60"
-                            >
-                              {isRequesting
-                                ? <Loader2 className="size-3 animate-spin" />
-                                : <RotateCcw className="size-3" />}
-                              Request again
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => requestToJoin(dept.id, target)}
-                            disabled={isRequesting || approved}
-                            className="sts-pressable flex shrink-0 items-center gap-1.5 self-start rounded-lg bg-sts-button px-4 py-2 font-sans text-[11.5px] font-medium text-sts-button-fg transition-colors hover:bg-sts-button/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 disabled:opacity-60 sm:self-auto"
-                          >
-                            {isRequesting
-                              ? <Loader2 className="size-3.5 animate-spin" />
-                              : <Check className="size-3.5" />}
-                            {isRequesting ? "Sending…" : "Request to Join"}
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {/* Departments */}
+                  {isOpen && (
+                    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {tenant.departments.map((dept) => (
+                        <DepartmentCard
+                          key={dept.id}
+                          dept={dept}
+                          selectedSubId={selected}
+                          onSelect={(subId) => setSelected((prev) => (prev === subId ? "" : subId))}
+                          pending={pending}
+                          rejected={rejected}
+                          requesting={requesting}
+                          onRequest={requestToJoin}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
               )
             })}
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-1.5">
-          <span className="size-1.25 shrink-0 rounded-full bg-sts-accent" aria-hidden />
-          <p className="text-center font-sans text-[11.5px] text-sts-muted">
-            Need help? Contact your workspace administrator.
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          <span className="size-1 shrink-0 rounded-full bg-sts-accent" aria-hidden />
+          <p className="text-center font-sans text-[11.5px] text-sts-subtle">
+            Can&apos;t find your team? Ask your workspace administrator.
           </p>
         </div>
       </div>
     </main>
+  )
+}
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="sts-glass-panel sts-page-enter flex flex-col items-center gap-2 rounded-2xl border px-6 py-16 text-center">
+      <div className="mb-1 flex size-11 items-center justify-center rounded-2xl bg-sts-surface">
+        <Search className="size-4 text-sts-subtle" strokeWidth={1.5} />
+      </div>
+      <p className="font-sans text-[13.5px] font-semibold text-sts-foreground">{title}</p>
+      <p className="max-w-[38ch] font-sans text-[12px] leading-relaxed text-sts-subtle">{body}</p>
+    </div>
+  )
+}
+
+function DepartmentCard({
+  dept,
+  selectedSubId,
+  onSelect,
+  pending,
+  rejected,
+  requesting,
+  onRequest,
+}: {
+  dept: Department
+  selectedSubId: string
+  onSelect: (subId: string) => void
+  pending: Set<string>
+  rejected: Set<string>
+  requesting: string | null
+  onRequest: (subId: string) => void
+}) {
+  // New members join exactly one sub-department as an agent. Selection is global
+  // (a single id for the whole page), so at most one of this card's chips is ever
+  // active. Pending/rejected status still surfaces here even once the selection
+  // has moved to another card, so a request in flight stays visible.
+  const hasSubs = dept.subDepartments.length > 0
+  const selectedHere = dept.subDepartments.some((s) => s.id === selectedSubId) ? selectedSubId : ""
+  const pendingSub  = dept.subDepartments.find((s) => pending.has(s.id))?.id ?? ""
+  const rejectedSub = dept.subDepartments.find((s) => rejected.has(s.id))?.id ?? ""
+  const isRequesting = requesting !== null && dept.subDepartments.some((s) => s.id === requesting)
+
+  return (
+    <div
+      className={cn(
+        "sts-card-interactive group flex flex-col rounded-2xl border bg-sts-card/50 p-4",
+        pendingSub  && "border-sts-blue/30",
+        !pendingSub && rejectedSub && "border-sts-red/25",
+        !pendingSub && !rejectedSub && "border-sts-card-border",
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-start gap-2.5">
+        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-sts-accent" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="font-sans text-[13.5px] font-semibold leading-snug text-sts-foreground">
+            {dept.name}
+          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-sans text-[11px] text-sts-subtle">
+            <span className="flex items-center gap-1">
+              <Users className="size-3" />
+              {dept.subDepartments.length} {dept.subDepartments.length === 1 ? "sub-department" : "sub-departments"}
+            </span>
+            {dept.managers.length > 0 && (
+              <>
+                <span className="text-sts-subtle/40">·</span>
+                <span className="truncate">{dept.managers.join(", ")}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-department picker — a new member joins exactly one, as an agent */}
+      {hasSubs && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          <span className="font-sans text-[10.5px] font-medium uppercase tracking-[0.6px] text-sts-subtle">
+            Choose a sub-department
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {dept.subDepartments.map((sub) => (
+              <Chip
+                key={sub.id}
+                active={selectedSubId === sub.id}
+                onClick={() => onSelect(sub.id)}
+              >
+                {sub.name}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action */}
+      <div className="mt-3.5 flex-1" />
+      {!hasSubs ? (
+        <div className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sts-card-border py-2 font-sans text-[11.5px] text-sts-subtle">
+          No sub-departments to join yet
+        </div>
+      ) : pendingSub ? (
+        <div className="flex items-center justify-center gap-1.5 rounded-xl border border-sts-blue/25 bg-sts-blue-tint py-2 font-sans text-[12px] font-semibold text-sts-id">
+          <Clock className="size-3.5" />
+          Pending review
+        </div>
+      ) : selectedHere ? (
+        <button
+          type="button"
+          onClick={() => onRequest(selectedHere)}
+          disabled={isRequesting}
+          className={cn(
+            "sts-pressable flex items-center justify-center gap-1.5 rounded-xl py-2 font-sans text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 disabled:opacity-60",
+            rejected.has(selectedHere)
+              ? "border border-sts-card-border text-sts-foreground hover:border-sts-accent/40 hover:bg-sts-surface"
+              : "bg-sts-button text-sts-button-fg hover:bg-sts-button/90",
+          )}
+        >
+          {isRequesting ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Sending…
+            </>
+          ) : rejected.has(selectedHere) ? (
+            <>
+              <RotateCcw className="size-3.5" />
+              Try again
+            </>
+          ) : (
+            <>
+              Request to join
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+            </>
+          )}
+        </button>
+      ) : rejectedSub ? (
+        <div className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sts-red/30 py-2 font-sans text-[11.5px] text-sts-red/80">
+          <XCircle className="size-3.5" />
+          Not approved — pick it again to retry
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-sts-card-border py-2 font-sans text-[11.5px] text-sts-subtle">
+          Select a sub-department to join
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "sts-pressable rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/40",
+        active
+          ? "border-sts-accent/50 bg-sts-accent/10 text-sts-foreground"
+          : "border-sts-card-border bg-sts-surface/60 text-sts-muted hover:border-sts-accent/30 hover:text-sts-foreground",
+      )}
+    >
+      {children}
+    </button>
   )
 }

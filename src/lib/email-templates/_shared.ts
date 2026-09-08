@@ -17,7 +17,6 @@ const LINK_COLOR = "#0269af";
 const BORDER_COLOR = "#d3d3fa";
 const SUPPORT_EMAIL = "support@penglobalbd.com";
 
-const SIGNATURE_LOGO_URL = `${BASE_URL}/images/support-logo-horizontal.png`;
 const SIGNATURE_ICON_BASE_URL = `${BASE_URL}/images/signature-icons`;
 const SIGNATURE_ICON_BG = "rgba(19,161,74,0.1)";
 const SIGNATURE_ICON_BORDER = "rgba(19,161,74,0.25)";
@@ -60,7 +59,7 @@ export const DUMMY_SIGNATURE_HTML = `<div style="padding:18px 0 0 0;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding-right:16px;border-right:1px solid #e5e7eb;vertical-align:middle;">
-            <img src="${SIGNATURE_LOGO_URL}" alt="Support Ticketing System" width="110" style="display:block;width:110px;height:auto;border:0;" />
+            <span style="display:inline-block;max-width:110px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.3;font-weight:700;color:#06446a;">Support Ticketing System</span>
           </td>
           <td style="padding-left:16px;vertical-align:middle;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;border-spacing:0 8px;">
@@ -322,7 +321,6 @@ export function layout({
 }): string {
   const brand = branding?.brandColor || BRAND;
   const headerBg = branding?.headerColor || HEADER_BG;
-  const logo = branding?.logoUrl || LOGO_URL;
   const normalizedBodyHtml = normalizeTemplateBodyHtml(bodyHtml, branding);
   const year = new Date().getFullYear();
   const footer = (footerOverride || branding?.footerText || `© ${year} Support Ticketing System. This is an automated message.`).replace(
@@ -344,7 +342,7 @@ export function layout({
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
             <tr>
               <td style="background:${headerBg};border-radius:8px 8px 0 0;padding:24px 32px;text-align:left;">
-                <img src="${logo}" alt="Support Ticketing System" width="172" height="42" style="display:inline-block;border:0;outline:none;text-decoration:none;height:42px;width:auto;" />
+                <span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:42px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">Support Ticketing System</span>
               </td>
             </tr>
             <tr>

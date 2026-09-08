@@ -13,8 +13,14 @@ export async function POST(
   const { id: subDepartmentId } = await params
   const body = await req.json().catch(() => ({}))
 
-  // Check subDepartment exists
-  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId } })
+  // Check subDepartment exists. Onboarding is cross-tenant: a caller with no (or
+  // a different) tenant must be able to request to join. The tenant-scoped Prisma
+  // extension would post-filter this `findUnique` to null for an out-of-tenant
+  // caller and 404 a valid request, so look existence up via raw SQL (which
+  // bypasses the model extension). Approval remains the access gate.
+  const [subDepartment] = await prisma.$queryRaw<{ id: string; name: string }[]>`
+    SELECT id, name FROM "Team" WHERE id = ${subDepartmentId} LIMIT 1
+  `
   if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
 
   // Check if already a member

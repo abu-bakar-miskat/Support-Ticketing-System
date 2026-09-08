@@ -15,7 +15,14 @@ export async function POST(
   const { id: departmentId } = await params
   const body = await req.json().catch(() => ({}))
 
-  const department = await prisma.department.findUnique({ where: { id: departmentId } })
+  // Onboarding is cross-tenant: a caller with no (or a different) tenant must be
+  // able to request to join any department. The tenant-scoped Prisma extension
+  // would post-filter this `findUnique` to null for an out-of-tenant caller and
+  // 404 a perfectly valid request, so look existence up via raw SQL (which
+  // bypasses the model extension). Approval remains the access gate.
+  const [department] = await prisma.$queryRaw<{ id: string; name: string }[]>`
+    SELECT id, name FROM "Department" WHERE id = ${departmentId} LIMIT 1
+  `
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
   // Already in a subDepartment under this department

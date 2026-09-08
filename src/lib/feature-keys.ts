@@ -35,7 +35,7 @@ export function platformFlagForPath(href: string): FeatureKey | null {
   if (href.includes("/settings/sla") || href.includes("/sla-policies")) return "slaPolicies";
   if (href.includes("/settings/rules") || href.includes("/automation-rules")) return "assignmentRules";
   if (href.includes("/settings/assignment")) return "assignmentRules";
-  if (href.includes("/settings/intake-forms") || href === "/settings/intake-forms") return "intakeForms";
+  if (href.includes("/support-forms") || href === "/support-forms") return "intakeForms";
   if (href.includes("/mailboxes") || href.includes("/mailbox")) return "mailboxConnections";
   if (href === "/reports" || href.startsWith("/reports")) return "customReports";
   if (href.includes("/recruitment")) return "recruitment";

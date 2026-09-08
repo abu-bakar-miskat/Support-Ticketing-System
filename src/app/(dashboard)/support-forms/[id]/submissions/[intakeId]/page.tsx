@@ -15,7 +15,7 @@ export default async function SettingsIntakeSubmissionDetailRoute({
 
   const isAdmin = profile.role === "admin"
   const isManager = profile.role === "manager"
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin && !isManager) redirect("/")
 
   const { id: formId, intakeId } = await params
 
@@ -31,19 +31,18 @@ export default async function SettingsIntakeSubmissionDetailRoute({
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.grantedAccessDeptIds ?? []),
     ])
-    if (!managedIds.has(form.departmentId)) redirect("/settings/intake-forms")
+    if (!managedIds.has(form.departmentId)) redirect("/support-forms")
   }
 
   return (
     <IntakeSubmissionDetailView
       formId={formId}
       intakeId={intakeId}
-      basePath="/settings/intake-forms"
+      basePath="/support-forms"
       crumbs={[
-        { label: "Settings", href: "/settings" },
-        { label: "Support forms", href: "/settings/intake-forms" },
-        { label: form.name, href: `/settings/intake-forms/${formId}` },
-        { label: "Submissions", href: `/settings/intake-forms/${formId}/submissions` },
+        { label: "Support forms", href: "/support-forms" },
+        { label: form.name, href: `/support-forms/${formId}` },
+        { label: "Submissions", href: `/support-forms/${formId}/submissions` },
       ]}
     />
   )

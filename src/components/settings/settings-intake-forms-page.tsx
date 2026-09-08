@@ -2323,10 +2323,10 @@ export function SettingsIntakeFormsPage({
   activeSubDepartmentId = null,
   activeSubDepartmentName = null,
   workspaceBranding,
-  // Base path the per-form "submissions" link hangs off. Defaults to the admin
-  // settings area; the sub-department support-forms page passes its own so the
-  // link stays within that context instead of jumping into /settings.
-  submissionsBasePath = "/settings/intake-forms",
+  // Base path the per-form "submissions" link hangs off. Defaults to the
+  // department Support Forms area; the sub-department support-forms page passes
+  // its own so the link stays within that context.
+  submissionsBasePath = "/support-forms",
 }: {
   forms: IntakeFormRow[];
   departments: DeptOption[];

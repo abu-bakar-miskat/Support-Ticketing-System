@@ -18,7 +18,7 @@ export default async function SettingsIntakeSubmissionsRoute({
 
   const isAdmin = profile.role === "admin"
   const isManager = profile.role === "manager"
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin && !isManager) redirect("/")
 
   const { id: formId } = await params
 
@@ -37,7 +37,7 @@ export default async function SettingsIntakeSubmissionsRoute({
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.grantedAccessDeptIds ?? []),
     ])
-    if (!managedIds.has(form.departmentId)) redirect("/settings/intake-forms")
+    if (!managedIds.has(form.departmentId)) redirect("/support-forms")
   }
 
   const [intakes, subDepartmentMemberships] = await Promise.all([

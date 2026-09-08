@@ -27,7 +27,7 @@ const STEPS = [
   },
   {
     title: "Support forms",
-    href: "/settings/intake-forms",
+    href: "/support-forms",
     icon: FileText,
     body: "Publish the public form customers use to reach this department.",
   },

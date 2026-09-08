@@ -18,7 +18,7 @@ export default async function SettingsFieldBuilderRoute({
 
   const isAdmin = profile.role === "admin"
   const isManager = profile.role === "manager"
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin && !isManager) redirect("/")
 
   const { id: formId } = await params
 
@@ -39,7 +39,7 @@ export default async function SettingsFieldBuilderRoute({
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.grantedAccessDeptIds ?? []),
     ])
-    if (!managedIds.has(form.departmentId)) redirect("/settings/intake-forms")
+    if (!managedIds.has(form.departmentId)) redirect("/support-forms")
   }
 
   const fields: FieldRow[] = form.fields.map((f) => ({

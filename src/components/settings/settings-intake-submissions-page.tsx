@@ -80,9 +80,9 @@ export function SettingsIntakeSubmissionsPage({
   submissions,
   subDepartmentMembers,
   // Base path for the support-forms list this page hangs off. Defaults to the
-  // admin settings area; the sub-department support-forms area passes its own so
-  // navigation stays in that context instead of jumping into /settings.
-  formsBasePath = "/settings/intake-forms",
+  // department Support Forms area; the sub-department support-forms area passes
+  // its own so navigation stays in that context.
+  formsBasePath = "/support-forms",
   backLabel = "Support forms",
   crumbs,
 }: {
@@ -96,10 +96,10 @@ export function SettingsIntakeSubmissionsPage({
   crumbs?: { label: string; href: string }[];
 }) {
   const crumbList = crumbs ?? [
-    { label: "Settings", href: "/settings" },
-    { label: "Support forms", href: "/settings/intake-forms" },
-    { label: formName, href: `/settings/intake-forms/${formId}` },
-    { label: "Submissions", href: `/settings/intake-forms/${formId}/submissions` },
+    { label: "Home", href: "/" },
+    { label: "Support forms", href: "/support-forms" },
+    { label: formName, href: `/support-forms/${formId}` },
+    { label: "Submissions", href: `/support-forms/${formId}/submissions` },
   ];
   const router = useRouter();
   const [, startTransition] = useTransition();

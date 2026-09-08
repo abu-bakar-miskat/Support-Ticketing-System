@@ -527,16 +527,16 @@ export function SettingsFieldBuilderPage({
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <BreadcrumbRegistrar
         crumbs={[
-          { label: "Settings", href: "/settings" },
-          { label: "Support forms", href: "/settings/intake-forms" },
-          { label: formName, href: `/settings/intake-forms/${formId}` },
+          { label: "Home", href: "/" },
+          { label: "Support forms", href: "/support-forms" },
+          { label: formName, href: `/support-forms/${formId}` },
         ]}
       />
       {/* Header */}
       <div className="flex flex-col gap-1">
         <button
           type="button"
-          onClick={() => startTransition(() => router.push("/settings/intake-forms"))}
+          onClick={() => startTransition(() => router.push("/support-forms"))}
           className="flex w-fit items-center gap-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ChevronLeft className="size-3.5" />

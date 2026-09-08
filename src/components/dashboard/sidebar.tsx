@@ -111,7 +111,7 @@ const navViews: NavItem[] = [
   { label: "Board", href: "/board", icon: Columns3, templateFeatureKey: "board" },
   { label: "Timeline", href: "/timeline", icon: GanttChart, hideForSupport: true, templateFeatureKey: "timeline" },
   { label: "Modules", href: "/modules", icon: Blocks, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
-  { label: "Support forms", href: "/settings/intake-forms", icon: ClipboardList, supportOnly: true, templateFeatureKey: "supportForm" },
+  { label: "Support forms", href: "/support-forms", icon: ClipboardList, supportOnly: true, templateFeatureKey: "supportForm" },
   { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports", hideForAgent: true },
   { label: "Calendar", href: "/calendar", icon: CalendarDays, templateFeatureKey: "calendar" },
   { label: "My Profile", href: "/profile", icon: UserRound },

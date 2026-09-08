@@ -14,7 +14,7 @@ import { LayoutGrid, Users2, Puzzle, Wrench } from "lucide-react";
 export const TEMPLATE_FEATURE_KEYS = [
   /** Tasks — sidebar "Tasks" (/tasks). */
   "tasks",
-  /** Public intake/support forms — /settings/intake-forms. */
+  /** Public intake/support forms — /support-forms. */
   "supportForm",
   /** Department/tenant email settings — /settings/email. */
   "emailSettings",

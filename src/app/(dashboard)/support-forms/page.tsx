@@ -23,7 +23,7 @@ export default async function SettingsIntakeFormsRoute() {
   const isManager = profile.role === "manager"
   // Managers may view/create support forms for the sub-departments of the
   // departments they manage; the queries below scope them to managedDeptIds.
-  if (!isAdmin && !isManager) redirect("/settings")
+  if (!isAdmin && !isManager) redirect("/")
 
   const profileScope = await getProfileDeptScope(profile)
   const activeDeptId = profileScope?.activeDeptId ?? null

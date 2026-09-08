@@ -48,47 +48,55 @@ function staticRouteCrumbs(pathname: string): BreadcrumbCrumb[] | null {
   ];
 }
 
-function settingsCrumbs(pathname: string): BreadcrumbCrumb[] {
-  const settingsRoot: BreadcrumbCrumb = { label: "Settings", href: "/settings" };
+function supportFormsCrumbs(pathname: string): BreadcrumbCrumb[] | null {
+  if (!pathname.startsWith("/support-forms")) return null;
+
+  const home: BreadcrumbCrumb = { label: "Home", href: "/" };
   const supportForms: BreadcrumbCrumb = {
     label: "Support forms",
-    href: "/settings/intake-forms",
+    href: "/support-forms",
   };
 
   const submissionDetail = pathname.match(
-    /^\/settings\/intake-forms\/([^/]+)\/submissions\/([^/]+)$/,
+    /^\/support-forms\/([^/]+)\/submissions\/([^/]+)$/,
   );
   if (submissionDetail) {
-    const [, formId, intakeId] = submissionDetail;
+    const [, formId] = submissionDetail;
     return [
-      settingsRoot,
+      home,
       supportForms,
-      { label: "Form", href: `/settings/intake-forms/${formId}` },
-      { label: "Submissions", href: `/settings/intake-forms/${formId}/submissions` },
+      { label: "Form", href: `/support-forms/${formId}` },
+      { label: "Submissions", href: `/support-forms/${formId}/submissions` },
       { label: "Submission", href: pathname },
     ];
   }
 
-  const submissions = pathname.match(/^\/settings\/intake-forms\/([^/]+)\/submissions$/);
+  const submissions = pathname.match(/^\/support-forms\/([^/]+)\/submissions$/);
   if (submissions) {
     const [, formId] = submissions;
     return [
-      settingsRoot,
+      home,
       supportForms,
-      { label: "Form", href: `/settings/intake-forms/${formId}` },
+      { label: "Form", href: `/support-forms/${formId}` },
       { label: "Submissions", href: pathname },
     ];
   }
 
-  const formBuilder = pathname.match(/^\/settings\/intake-forms\/([^/]+)$/);
+  const formBuilder = pathname.match(/^\/support-forms\/([^/]+)$/);
   if (formBuilder) {
     const [, formId] = formBuilder;
     return [
-      settingsRoot,
+      home,
       supportForms,
-      { label: "Form fields", href: `/settings/intake-forms/${formId}` },
+      { label: "Form fields", href: `/support-forms/${formId}` },
     ];
   }
+
+  return [home, supportForms];
+}
+
+function settingsCrumbs(pathname: string): BreadcrumbCrumb[] {
+  const settingsRoot: BreadcrumbCrumb = { label: "Settings", href: "/settings" };
 
   if (pathname.startsWith("/settings")) {
     const pageLabel = getSettingsPageLabel(pathname);
@@ -178,6 +186,9 @@ export function buildBreadcrumbs(opts: BuildCrumbsOptions): BreadcrumbCrumb[] {
 
   const project = projectCrumbs(pathname, projectNames, projectTab, projectTabName);
   if (project.length > 0) return project;
+
+  const supportForms = supportFormsCrumbs(pathname);
+  if (supportForms) return supportForms;
 
   if (pathname.startsWith("/settings")) {
     return settingsCrumbs(pathname);

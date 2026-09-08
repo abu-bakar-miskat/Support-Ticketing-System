@@ -35,7 +35,7 @@ export async function IntakeSubmissionDetailView({
 }: {
   formId: string
   intakeId: string
-  /** Support-forms list base path, e.g. `/settings/intake-forms`. */
+  /** Support-forms list base path, e.g. `/support-forms`. */
   basePath: string
   /** Label for the back link, e.g. the form name. */
   backLabel?: string

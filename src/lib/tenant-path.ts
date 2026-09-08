@@ -87,6 +87,7 @@ export const TENANT_SCOPED_ROOTS = new Set([
   "reports",
   "settings",
   "sub-departments",
+  "support-forms",
   "tasks",
   "tickets",
   "time",

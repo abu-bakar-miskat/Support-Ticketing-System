@@ -124,13 +124,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     label: "INTEGRATIONS",
     items: [
       {
-        label: "Support forms",
-        href: "/settings/intake-forms",
-        adminOnly: true,
-        deptSpecific: true,
-        templateFeatureKey: "supportForm",
-      },
-      {
         label: "API keys",
         href: "/settings/api-keys",
         adminOnly: true,

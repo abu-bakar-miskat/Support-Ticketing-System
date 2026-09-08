@@ -9,7 +9,8 @@
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notify";
 import { selectSlaTargets, type SlaPolicyLike } from "@/lib/sla-policy-match";
-import { type WorkingHoursCalendar } from "@/lib/sla-calendar";
+import { type SlaPauseInterval, type WorkingHoursCalendar } from "@/lib/sla-calendar";
+import { waitingForCustomerPauseIntervals } from "@/lib/sla-pause-intervals";
 import {
   evaluateSlaIndicator,
   planReopen,
@@ -20,7 +21,12 @@ import {
 import type { ConditionGroup } from "@/lib/rules-engine";
 import type { Prisma } from "@/generated/prisma/client";
 
-type SlaConfig = { pauseOutsideHours: boolean; atRiskPct: number };
+type SlaConfig = {
+  pauseOutsideHours: boolean;
+  /** Jira-like: pause Time to resolution while waiting for customer. Default true. */
+  pauseWhenWaitingForCustomer: boolean;
+  atRiskPct: number;
+};
 type BusinessHours = Pick<WorkingHoursCalendar, "timezone" | "workingDays" | "workStartTime" | "workEndTime">;
 
 const DEFAULT_BUSINESS_HOURS: BusinessHours = {
@@ -34,6 +40,9 @@ function readSlaConfig(value: unknown): SlaConfig {
   const stored = typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   return {
     pauseOutsideHours: typeof stored.pauseOutsideHours === "boolean" ? stored.pauseOutsideHours : false,
+    // Default true (Jira-like) when unset.
+    pauseWhenWaitingForCustomer:
+      typeof stored.pauseWhenWaitingForCustomer === "boolean" ? stored.pauseWhenWaitingForCustomer : true,
     atRiskPct: typeof stored.atRiskPct === "number" ? stored.atRiskPct : DEFAULT_AT_RISK_PCT,
   };
 }
@@ -132,7 +141,9 @@ export async function resolveCalendarForTicket(
 /**
  * Starts first-response + resolution timers for a newly created ticket
  * (SLA-03), if a department SLA policy matches the submitted form values
- * (SLA-01/02). Best-effort — never throws, so a failure here can't block
+ * (SLA-01/02). When `preferredPolicyId` is set (intake issue / request type),
+ * that policy's targets are used directly — Jira-style goal for the chosen
+ * request type. Best-effort — never throws, so a failure here can't block
  * ticket creation.
  */
 export async function startSlaTimers(
@@ -142,8 +153,30 @@ export async function startSlaTimers(
   formValues: Record<string, unknown>,
   now: Date = new Date(),
   subDepartmentId?: string | null,
+  preferredPolicyId?: string | null,
 ): Promise<void> {
   try {
+    if (preferredPolicyId) {
+      const preferred = await prisma.slaPolicy.findFirst({
+        where: { id: preferredPolicyId, departmentId, enabled: true },
+        select: { id: true, firstResponseMins: true, resolutionMins: true },
+      });
+      if (preferred) {
+        await prisma.slaTimer.create({
+          data: {
+            ticketId,
+            tenantId,
+            policyId: preferred.id,
+            firstResponseTargetMins: preferred.firstResponseMins,
+            resolutionTargetMins: preferred.resolutionMins,
+            firstResponseStartedAt: now,
+            resolutionStartedAt: now,
+          },
+        });
+        return;
+      }
+    }
+
     const policies = await prisma.slaPolicy.findMany({
       // Department-wide policies (subDepartmentId = null) apply to every ticket;
       // a sub-department's own policies apply additionally to its tickets.
@@ -173,6 +206,20 @@ export async function startSlaTimers(
   } catch {
     // best-effort — SLA timers are additive, never block ticket creation
   }
+}
+
+async function loadResolutionPauseIntervals(
+  ticketId: string,
+  until: Date,
+  pauseWhenWaitingForCustomer: boolean,
+): Promise<SlaPauseInterval[]> {
+  if (!pauseWhenWaitingForCustomer) return [];
+  const messages = await prisma.ticketMessage.findMany({
+    where: { ticketId, status: { not: "system" } },
+    select: { direction: true, status: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return waitingForCustomerPauseIntervals(messages, until);
 }
 
 /** SLA-03: the first-response timer stops on the first PUBLIC agent message. Idempotent. */
@@ -242,8 +289,14 @@ export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new
     now,
   );
   const { slaConfig } = await resolveSlaSettings(departmentId, subDepartmentId);
+  const resolutionUntil = timer.resolutionStoppedAt ?? now;
+  const resolutionPauses = await loadResolutionPauseIntervals(
+    ticketId,
+    resolutionUntil,
+    slaConfig.pauseWhenWaitingForCustomer,
+  );
 
-  return evaluateSlaIndicator(toTimerState(timer), now, calendar, slaConfig.atRiskPct);
+  return evaluateSlaIndicator(toTimerState(timer), now, calendar, slaConfig.atRiskPct, resolutionPauses);
 }
 
 /**
@@ -277,8 +330,14 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
     const calendar = await resolveCalendarForTicket({ departmentId, subDepartmentId, assigneeId: timer.ticket.assigneeId }, rangeFrom, now);
     const { slaConfig } = await resolveSlaSettings(departmentId, subDepartmentId);
     const atRiskPct = slaConfig.atRiskPct;
+    const resolutionUntil = timer.resolutionStoppedAt ?? now;
+    const resolutionPauses = await loadResolutionPauseIntervals(
+      ticketId,
+      resolutionUntil,
+      slaConfig.pauseWhenWaitingForCustomer,
+    );
 
-    const indicator = evaluateSlaIndicator(toTimerState(timer), now, calendar, atRiskPct);
+    const indicator = evaluateSlaIndicator(toTimerState(timer), now, calendar, atRiskPct, resolutionPauses);
 
     const updates: Prisma.SlaTimerUpdateInput = {};
     const breachRows: { metric: string; targetMins: number }[] = [];

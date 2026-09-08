@@ -115,7 +115,15 @@ export async function createTicketFromPayload(
 
   if (subDepartment && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
-    startSlaTimers(ticketId, subDepartment.tenantId, form.departmentId, formValues, ticket.createdAt, prep.intakeSubDepartmentId).catch(() => undefined)
+    startSlaTimers(
+      ticketId,
+      subDepartment.tenantId,
+      form.departmentId,
+      { ...formValues, priority: resolvedPriority },
+      ticket.createdAt,
+      prep.intakeSubDepartmentId,
+      issueId ?? null,
+    ).catch(() => undefined)
     // RE-01/02: run the department's automation rules against the submitted form
     // values and apply the fired actions to the new ticket.
     await applyRulesToTicket(

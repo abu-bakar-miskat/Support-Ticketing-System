@@ -4,8 +4,15 @@
  * time is computed lazily from `(startedAt, stoppedAt ?? now, calendar)` via
  * sla-calendar.ts, so there is no accumulated-pause counter to keep in sync
  * and every function here is trivially testable with an injected clock.
+ *
+ * Resolution may also exclude waiting-for-customer intervals (Jira-style);
+ * first response does not — that clock stops on the first public agent reply.
  */
-import { elapsedWorkingMs, type WorkingHoursCalendar } from "./sla-calendar";
+import {
+  elapsedCountableMs,
+  type SlaPauseInterval,
+  type WorkingHoursCalendar,
+} from "./sla-calendar";
 
 export type SlaStatus = "ON_TRACK" | "AT_RISK" | "BREACHED";
 
@@ -32,9 +39,10 @@ export function evaluateSlaMetric(
   targetMins: number,
   calendar: WorkingHoursCalendar | null,
   atRiskPct: number = DEFAULT_AT_RISK_PCT,
+  pauseIntervals: readonly SlaPauseInterval[] = [],
 ): SlaMetricResult {
   const endpoint = state.stoppedAt ?? now;
-  const elapsedMs = elapsedWorkingMs(state.startedAt, endpoint, calendar);
+  const elapsedMs = elapsedCountableMs(state.startedAt, endpoint, calendar, pauseIntervals);
   const targetMs = targetMins * 60_000;
   const remainingMs = targetMs - elapsedMs;
   const ratioPct = targetMs > 0 ? (elapsedMs / targetMs) * 100 : elapsedMs > 0 ? Infinity : 0;
@@ -63,12 +71,16 @@ export type SlaIndicator = {
 
 const SEVERITY: Record<SlaStatus, number> = { ON_TRACK: 0, AT_RISK: 1, BREACHED: 2 };
 
-/** Evaluate both metrics for a ticket's SLA indicator badge (SLA-06). */
+/**
+ * Evaluate both metrics for a ticket's SLA indicator badge (SLA-06).
+ * `resolutionPauseIntervals` (waiting-for-customer) apply to resolution only.
+ */
 export function evaluateSlaIndicator(
   timer: SlaTimerState,
   now: Date,
   calendar: WorkingHoursCalendar | null,
   atRiskPct: number = DEFAULT_AT_RISK_PCT,
+  resolutionPauseIntervals: readonly SlaPauseInterval[] = [],
 ): SlaIndicator {
   const firstResponse = evaluateSlaMetric(
     { startedAt: timer.firstResponseStartedAt, stoppedAt: timer.firstResponseStoppedAt },
@@ -83,6 +95,7 @@ export function evaluateSlaIndicator(
     timer.resolutionTargetMins,
     calendar,
     atRiskPct,
+    resolutionPauseIntervals,
   );
   const overall = SEVERITY[firstResponse.status] >= SEVERITY[resolution.status] ? firstResponse.status : resolution.status;
   return { firstResponse, resolution, overall };

@@ -4,10 +4,18 @@ import { prisma } from "@/lib/db"
 import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import type { Prisma } from "@/generated/prisma/client"
 
-type SlaConfig = { pauseOutsideHours: boolean; atRiskPct: number }
+type SlaConfig = {
+  pauseOutsideHours: boolean
+  pauseWhenWaitingForCustomer: boolean
+  atRiskPct: number
+}
 type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: string; workEndTime: string }
 
-const DEFAULT_SLA_CONFIG: SlaConfig = { pauseOutsideHours: false, atRiskPct: 80 }
+const DEFAULT_SLA_CONFIG: SlaConfig = {
+  pauseOutsideHours: false,
+  pauseWhenWaitingForCustomer: true,
+  atRiskPct: 80,
+}
 const DEFAULT_BUSINESS_HOURS: BusinessHours = {
   timezone: "UTC",
   workingDays: [1, 2, 3, 4, 5],
@@ -19,6 +27,10 @@ function readSlaConfig(value: unknown): SlaConfig {
   const stored = typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
   return {
     pauseOutsideHours: typeof stored.pauseOutsideHours === "boolean" ? stored.pauseOutsideHours : DEFAULT_SLA_CONFIG.pauseOutsideHours,
+    pauseWhenWaitingForCustomer:
+      typeof stored.pauseWhenWaitingForCustomer === "boolean"
+        ? stored.pauseWhenWaitingForCustomer
+        : DEFAULT_SLA_CONFIG.pauseWhenWaitingForCustomer,
     atRiskPct: typeof stored.atRiskPct === "number" ? stored.atRiskPct : DEFAULT_SLA_CONFIG.atRiskPct,
   }
 }

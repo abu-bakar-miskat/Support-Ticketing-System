@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { elapsedWorkingMs, type WorkingHoursCalendar } from "./sla-calendar";
+import { elapsedWorkingMs, elapsedCountableMs, type WorkingHoursCalendar } from "./sla-calendar";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -68,5 +68,41 @@ describe("elapsedWorkingMs", () => {
     const from = new Date("2026-08-17T09:00:00.000Z");
     const to = new Date("2026-08-19T17:00:00.000Z");
     expect(elapsedWorkingMs(from, to, utcCalendar())).toBe(24 * HOUR);
+  });
+});
+
+describe("elapsedCountableMs — waiting-for-customer pauses", () => {
+  it("equals elapsedWorkingMs when there are no pause intervals", () => {
+    const from = new Date("2026-08-17T10:00:00.000Z");
+    const to = new Date("2026-08-17T14:00:00.000Z");
+    expect(elapsedCountableMs(from, to, null, [])).toBe(elapsedWorkingMs(from, to, null));
+  });
+
+  it("subtracts continuous pause windows from wall-clock elapsed", () => {
+    const from = new Date("2026-08-17T09:00:00.000Z");
+    const to = new Date("2026-08-17T13:00:00.000Z"); // 4h gross
+    const pauses = [
+      { from: new Date("2026-08-17T10:00:00.000Z"), to: new Date("2026-08-17T12:00:00.000Z") }, // 2h paused
+    ];
+    expect(elapsedCountableMs(from, to, null, pauses)).toBe(2 * HOUR);
+  });
+
+  it("subtracts only the business-hours portion of a pause when a calendar is set", () => {
+    // Monday 08:00 -> 18:00 = 8h working (09-17). Pause 12:00-14:00 = 2h working.
+    const from = new Date("2026-08-17T08:00:00.000Z");
+    const to = new Date("2026-08-17T18:00:00.000Z");
+    const pauses = [
+      { from: new Date("2026-08-17T12:00:00.000Z"), to: new Date("2026-08-17T14:00:00.000Z") },
+    ];
+    expect(elapsedCountableMs(from, to, utcCalendar(), pauses)).toBe(6 * HOUR);
+  });
+
+  it("clips pause intervals to the evaluation window", () => {
+    const from = new Date("2026-08-17T10:00:00.000Z");
+    const to = new Date("2026-08-17T12:00:00.000Z");
+    const pauses = [
+      { from: new Date("2026-08-17T09:00:00.000Z"), to: new Date("2026-08-17T11:00:00.000Z") }, // only 10-11 overlaps
+    ];
+    expect(elapsedCountableMs(from, to, null, pauses)).toBe(1 * HOUR);
   });
 });

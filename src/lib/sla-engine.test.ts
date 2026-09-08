@@ -4,9 +4,10 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     department: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
-    slaPolicy: { findMany: vi.fn() },
+    slaPolicy: { findMany: vi.fn(), findFirst: vi.fn() },
     slaTimer: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     slaBreach: { create: vi.fn() },
+    ticketMessage: { findMany: vi.fn() },
     memberSchedule: { findUnique: vi.fn() },
     memberHoliday: { findMany: vi.fn() },
     departmentHoliday: { findMany: vi.fn() },
@@ -32,11 +33,13 @@ import {
 
 const mockDeptFind = vi.mocked(prisma.department.findUnique)
 const mockPolicyFindMany = vi.mocked(prisma.slaPolicy.findMany)
+const mockPolicyFindFirst = vi.mocked(prisma.slaPolicy.findFirst)
 const mockTimerCreate = vi.mocked(prisma.slaTimer.create)
 const mockTimerFind = vi.mocked(prisma.slaTimer.findUnique)
 const mockTimerUpdate = vi.mocked(prisma.slaTimer.update)
 const mockTimerUpdateMany = vi.mocked(prisma.slaTimer.updateMany)
 const mockBreachCreate = vi.mocked(prisma.slaBreach.create)
+const mockTicketMessages = vi.mocked(prisma.ticketMessage.findMany)
 const mockScheduleFind = vi.mocked(prisma.memberSchedule.findUnique)
 const mockMemberHolidays = vi.mocked(prisma.memberHoliday.findMany)
 const mockDeptHolidays = vi.mocked(prisma.departmentHoliday.findMany)
@@ -46,6 +49,7 @@ const mockCreateNotification = vi.mocked(createNotification)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockTicketMessages.mockResolvedValue([] as never)
 })
 
 describe("startSlaTimers — SLA-01/02/03", () => {
@@ -88,6 +92,58 @@ describe("startSlaTimers — SLA-01/02/03", () => {
   it("swallows errors so ticket creation is never blocked", async () => {
     mockPolicyFindMany.mockRejectedValue(new Error("db down"))
     await expect(startSlaTimers("ticket-1", "tenant-1", "dept-1", {})).resolves.toBeUndefined()
+  })
+
+  it("uses preferredPolicyId targets when the intake issue policy is enabled", async () => {
+    mockPolicyFindFirst.mockResolvedValue({
+      id: "issue-1",
+      firstResponseMins: 15,
+      resolutionMins: 120,
+    } as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", { priority: "High" }, now, null, "issue-1")
+
+    expect(mockPolicyFindFirst).toHaveBeenCalled()
+    expect(mockPolicyFindMany).not.toHaveBeenCalled()
+    expect(mockTimerCreate).toHaveBeenCalledWith({
+      data: {
+        ticketId: "ticket-1",
+        tenantId: "tenant-1",
+        policyId: "issue-1",
+        firstResponseTargetMins: 15,
+        resolutionTargetMins: 120,
+        firstResponseStartedAt: now,
+        resolutionStartedAt: now,
+      },
+    })
+  })
+
+  it("falls back to condition matching when preferredPolicyId is missing or disabled", async () => {
+    mockPolicyFindFirst.mockResolvedValue(null as never)
+    mockPolicyFindMany.mockResolvedValue([
+      {
+        id: "p-high",
+        conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "High" }] },
+        firstResponseMins: 60,
+        resolutionMins: 240,
+      },
+    ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", { priority: "High" }, new Date(), null, "gone")
+
+    expect(mockPolicyFindMany).toHaveBeenCalled()
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          policyId: "p-high",
+          firstResponseTargetMins: 60,
+          resolutionTargetMins: 240,
+        }),
+      }),
+    )
   })
 })
 

@@ -125,7 +125,13 @@ export async function seedDefaultSlaPolicies(departmentId: string, tenantId: str
       : {};
   await prisma.department.update({
     where: { id: departmentId },
-    data: { slaConfig: { ...cfg, pauseOutsideHours: true } as Prisma.InputJsonValue },
+    data: {
+      slaConfig: {
+        ...cfg,
+        pauseOutsideHours: true,
+        pauseWhenWaitingForCustomer: true,
+      } as Prisma.InputJsonValue,
+    },
   });
 }
 

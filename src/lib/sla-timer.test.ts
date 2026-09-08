@@ -89,6 +89,19 @@ describe("evaluateSlaIndicator — overall is the worse of the two metrics", () 
     expect(indicator.resolution.status).toBe("ON_TRACK");
     expect(indicator.overall).toBe("BREACHED");
   });
+
+  it("pauses resolution elapsed while waiting for customer, not first response", () => {
+    const now = new Date("2026-08-17T13:00:00.000Z"); // 4h wall since 09:00
+    const pauses = [
+      { from: new Date("2026-08-17T10:00:00.000Z"), to: new Date("2026-08-17T12:00:00.000Z") }, // 2h paused
+    ];
+    const indicator = evaluateSlaIndicator(base, now, null, 80, pauses);
+    // FR has no pauses — full 4h of 60m target → breached
+    expect(indicator.firstResponse.elapsedMs).toBe(4 * 60 * MIN);
+    // Resolution excludes 2h pause → 2h of 480m target
+    expect(indicator.resolution.elapsedMs).toBe(2 * 60 * MIN);
+    expect(indicator.resolution.status).toBe("ON_TRACK");
+  });
 });
 
 describe("planReopen — OQ-03", () => {

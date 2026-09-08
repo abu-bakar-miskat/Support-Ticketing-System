@@ -95,7 +95,7 @@ export async function createTicketFromInboundEmail(params: {
     await ensureProjectMembers(projectId, [assignResult.assigneeId]).catch(() => undefined);
   }
 
-  const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName };
+  const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName, priority: "Medium" };
   await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId);
 
   // RE-01/02: run the department's automation rules on the inbound-email ticket.

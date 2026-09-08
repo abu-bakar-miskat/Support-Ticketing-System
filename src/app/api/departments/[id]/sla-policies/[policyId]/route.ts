@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
+import { conditionsForPriority } from "@/lib/sla-priority-conditions"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { TicketPriority } from "@/generated/prisma/client"
 import { parseAssigneeIds, shapePolicy } from "../route"
@@ -128,6 +129,13 @@ export async function PATCH(
       return NextResponse.json({ error: "priority is not a valid value" }, { status: 400 })
     }
     data.priority = (v === null ? null : v) as TicketPriority | null
+    // Keep match conditions in sync with the priority goal (Jira-style) unless
+    // the client explicitly sent conditions in the same request.
+    if (body.conditions === undefined) {
+      data.conditions = conditionsForPriority(
+        data.priority === null ? null : (data.priority as string),
+      )
+    }
   }
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 })

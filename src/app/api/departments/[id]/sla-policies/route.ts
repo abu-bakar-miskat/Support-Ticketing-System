@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import { evaluateConditionGroup, type ConditionGroup } from "@/lib/rules-engine"
+import { conditionsForPriority } from "@/lib/sla-priority-conditions"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { TicketPriority } from "@/generated/prisma/client"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
@@ -130,12 +131,17 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}))
   const name = (body.name as string | undefined)?.trim()
-  const conditions = body.conditions ?? { combinator: "AND", conditions: [] }
   const firstResponseMins = Number(body.firstResponseMins)
   const resolutionMins = Number(body.resolutionMins)
   const formConfigId = optionalId(body.formConfigId)
   const assigneeIds = parseAssigneeIds(body.assigneeIds)
   const priority = optionalId(body.priority)
+  // Jira-style: priority field drives match conditions. Explicit conditions in
+  // the body still win when provided and valid; otherwise sync from priority.
+  const conditions =
+    body.conditions !== undefined && isConditionGroup(body.conditions)
+      ? body.conditions
+      : conditionsForPriority(priority)
 
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 })
   if (!isConditionGroup(conditions)) {

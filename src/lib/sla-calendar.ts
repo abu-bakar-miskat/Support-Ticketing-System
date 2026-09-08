@@ -97,3 +97,34 @@ export function elapsedWorkingMs(from: Date, to: Date, calendar: WorkingHoursCal
 
   return total;
 }
+
+/** Inclusive pause windows (e.g. waiting-for-customer) subtracted from countable SLA time. */
+export type SlaPauseInterval = { from: Date; to: Date };
+
+/**
+ * Working milliseconds that count against an SLA between `from` and `to`,
+ * excluding any overlap with `pauseIntervals`. Business-hours calendars and
+ * waiting-for-customer pauses compose: each pause window is measured with the
+ * same calendar, then subtracted from the gross working elapsed.
+ */
+export function elapsedCountableMs(
+  from: Date,
+  to: Date,
+  calendar: WorkingHoursCalendar | null,
+  pauseIntervals: readonly SlaPauseInterval[] = [],
+): number {
+  const gross = elapsedWorkingMs(from, to, calendar);
+  if (gross === 0 || pauseIntervals.length === 0) return gross;
+
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
+  let paused = 0;
+  for (const pause of pauseIntervals) {
+    const pauseStart = Math.max(fromMs, pause.from.getTime());
+    const pauseEnd = Math.min(toMs, pause.to.getTime());
+    if (pauseEnd > pauseStart) {
+      paused += elapsedWorkingMs(new Date(pauseStart), new Date(pauseEnd), calendar);
+    }
+  }
+  return Math.max(0, gross - paused);
+}

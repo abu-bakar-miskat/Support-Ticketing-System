@@ -61,7 +61,11 @@ function toMember(p: RawPerson): Person {
   };
 }
 
-type SlaConfig = { pauseOutsideHours: boolean; atRiskPct: number };
+type SlaConfig = {
+  pauseOutsideHours: boolean;
+  pauseWhenWaitingForCustomer: boolean;
+  atRiskPct: number;
+};
 type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: string; workEndTime: string };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -197,7 +201,6 @@ export function SlaSettingsPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: input.name,
-            conditions: { combinator: "AND", conditions: [] },
             firstResponseMins: input.firstResponseMins,
             resolutionMins: input.resolutionMins,
             formConfigId: input.formConfigId,
@@ -409,6 +412,16 @@ export function SlaSettingsPage({
               Pause SLA timers outside working hours
             </label>
 
+            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
+              <Switch
+                checked={slaConfig.pauseWhenWaitingForCustomer}
+                onCheckedChange={(v) =>
+                  setSlaConfig({ ...slaConfig, pauseWhenWaitingForCustomer: v })
+                }
+              />
+              Pause resolution SLA while waiting for customer
+            </label>
+
             <label className="flex items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
               At-risk threshold (%)
               <input
@@ -557,10 +570,10 @@ function PolicyGroup({
             <thead>
               <tr className="border-b border-sts-card-border text-left font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
                 <th className="px-2 py-2 font-medium">Issue</th>
-                <th className="px-2 py-2 font-medium">Priority</th>
+                <th className="px-2 py-2 font-medium">Priority goal</th>
                 <th className="px-2 py-2 font-medium">Assign to</th>
-                <th className="px-2 py-2 font-medium">First response</th>
-                <th className="px-2 py-2 font-medium">Resolution</th>
+                <th className="px-2 py-2 font-medium">Time to first response</th>
+                <th className="px-2 py-2 font-medium">Time to resolution</th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
@@ -683,7 +696,7 @@ function PolicyRow({
             searchable={false}
             leadingDot
             size="sm"
-            aria-label="Priority"
+            aria-label="Priority goal"
           />
         </div>
       </td>
@@ -853,7 +866,8 @@ function NewPolicyModal({
                 </span>
               </>
             ) : null}
-            . Name the issue this policy covers, then set its priority and assignee.
+            . Name the issue this policy covers, then set its priority goal
+            (targets apply when the ticket priority matches) and assignee.
           </p>
 
           <div className="space-y-1.5">
@@ -871,7 +885,7 @@ function NewPolicyModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="sts-text-label flex items-center gap-1.5">
-                <Flag className="size-3" /> Priority
+                <Flag className="size-3" /> Priority goal
               </label>
               <SearchableSelect
                 value={priority}
@@ -881,11 +895,11 @@ function NewPolicyModal({
                   label: p,
                   color: UI_PRIORITY_DOT_HEX[p.toLowerCase() as UiPriority],
                 }))}
-                placeholder="No priority"
+                placeholder="Any priority (catch-all)"
                 searchable={false}
                 leadingDot
                 size="md"
-                aria-label="Priority"
+                aria-label="Priority goal"
               />
             </div>
             <div className="space-y-1.5">
@@ -908,7 +922,7 @@ function NewPolicyModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="sts-text-label flex items-center gap-1.5">
-                <Timer className="size-3" /> First response (mins)
+                <Timer className="size-3" /> Time to first response (mins)
               </label>
               <input
                 type="number"
@@ -921,7 +935,7 @@ function NewPolicyModal({
             </div>
             <div className="space-y-1.5">
               <label className="sts-text-label flex items-center gap-1.5">
-                <Clock className="size-3" /> Resolution (mins)
+                <Clock className="size-3" /> Time to resolution (mins)
               </label>
               <input
                 type="number"

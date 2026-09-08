@@ -37,19 +37,16 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
     label: "WORKSPACE",
     items: [
-      {
-        label: "Members",
-        href: "/settings/members",
-        managerOnly: true,
-        deptSpecific: true,
-        templateFeatureKey: "members",
-      },
-      {
-        label: "Sub-departments",
-        href: "/settings/sub-departments",
-        managerOnly: true,
-        deptSpecific: true,
-      },
+      // Members management now lives on the department page (/department).
+      // Hidden from settings nav; route/component/API retained (settings-members-page
+      // still exports AddMemberModal + MemberRow used elsewhere).
+      // {
+      //   label: "Members",
+      //   href: "/settings/members",
+      //   managerOnly: true,
+      //   deptSpecific: true,
+      //   templateFeatureKey: "members",
+      // },
       {
         label: "Departments",
         href: "/settings/departments",

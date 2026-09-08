@@ -22,7 +22,7 @@ export default async function DepartmentRoute() {
   const activeDeptId = profileScope?.activeDeptId ?? null;
   if (!activeDeptId) redirect("/departments");
 
-  const [dept, managers, memberships, accessGrants, availableSubDepartments, allUsers, pendingInvites] =
+  const [dept, managers, memberships, accessGrants, availableSubDepartments, allUsers, pendingInvites, joinRequests] =
     await Promise.all([
       prisma.department.findUnique({
         where: { id: activeDeptId },
@@ -45,7 +45,7 @@ export default async function DepartmentRoute() {
           userId: true,
           doNotAssign: true,
           subDepartment: { select: { id: true, name: true } },
-          user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true } },
+          user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true, isActive: true } },
         },
       }),
       prisma.departmentAccess.findMany({
@@ -82,6 +82,30 @@ export default async function DepartmentRoute() {
         },
         orderBy: { createdAt: "desc" },
       }),
+      // Pending join requests targeting this department directly OR any of its
+      // sub-departments (onboarding creates sub-department requests). `joinRequest`
+      // isn't tenant-scoped, and the caller is already an admin/manager of this
+      // department, so this listing is safe.
+      prisma.joinRequest.findMany({
+        where: {
+          status: "pending",
+          OR: [
+            { departmentId: activeDeptId },
+            { subDepartment: { departmentId: activeDeptId } },
+          ],
+        },
+        orderBy: { requestedAt: "asc" },
+        select: {
+          id: true,
+          requestedAt: true,
+          departmentId: true,
+          subDepartmentId: true,
+          message: true,
+          user: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          subDepartment: { select: { id: true, name: true } },
+          department: { select: { id: true, name: true } },
+        },
+      }),
     ]);
 
   if (!dept) redirect("/departments");
@@ -115,6 +139,7 @@ export default async function DepartmentRoute() {
     subDepartmentId: string | null;
     location: string | null;
     timezone: string | null;
+    isActive: boolean;
   }>();
   for (const m of memberships) {
     if (managerUserIds.has(m.userId)) continue;
@@ -123,6 +148,7 @@ export default async function DepartmentRoute() {
       avatarUrl: m.user.avatarUrl ?? null,
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,
+      isActive: m.user.isActive ?? true,
     });
   }
 
@@ -168,6 +194,7 @@ export default async function DepartmentRoute() {
       source: "native" as const,
       location: p.location,
       timezone: p.timezone,
+      isActive: p.isActive,
       subDepartmentMemberships: subDepartmentMembershipsByUser.get(p.id) ?? [],
     })),
     accessGrants: accessGrants
@@ -194,6 +221,24 @@ export default async function DepartmentRoute() {
       subDepartment: inv.subDepartment,
       inviter: inv.inviter,
     })),
+    joinRequests: joinRequests.map((r) => {
+      const isSub = r.subDepartmentId != null;
+      return {
+        id: r.id,
+        kind: isSub ? ("sub" as const) : ("dept" as const),
+        // Approval targets the sub-department for a team request, else the department.
+        targetId: isSub ? r.subDepartmentId! : (r.departmentId ?? dept.id),
+        targetName: isSub ? (r.subDepartment?.name ?? "—") : (r.department?.name ?? dept.name),
+        message: r.message,
+        requestedAt: r.requestedAt.toISOString(),
+        user: {
+          id: r.user.id,
+          name: r.user.name,
+          email: r.user.email,
+          avatarUrl: r.user.avatarUrl ?? null,
+        },
+      };
+    }),
   };
 
   return <DepartmentDetailPage data={data} />;

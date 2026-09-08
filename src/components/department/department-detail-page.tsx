@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
 import {
   Users,
+  UserPlus,
   Shield,
   FolderKanban,
   Plus,
@@ -16,7 +17,9 @@ import {
   Loader2,
   Settings2,
   Activity,
+  BanIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -54,11 +57,13 @@ import {
   updateDepartmentAccess,
   updateAdminUser,
   addAdminSubDepartmentMember,
+  removeAdminSubDepartmentMember,
   revokeDepartmentInvite,
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
+import { AddMemberModal } from "@/components/settings/settings-members-page";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +82,20 @@ type MemberRow = {
   source: "native";
   location?: string | null;
   timezone?: string | null;
+  isActive?: boolean;
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
+};
+
+export type JoinRequestRow = {
+  id: string;
+  /** "sub" = wants a specific sub-department (joins as agent); "dept" = department-level. */
+  kind: "sub" | "dept";
+  /** Sub-department id (kind "sub") or department id (kind "dept"). */
+  targetId: string;
+  targetName: string;
+  message: string | null;
+  requestedAt: string;
+  user: { id: string; name: string; email: string; avatarUrl: string | null };
 };
 
 export type DepartmentDetailData = {
@@ -98,6 +116,7 @@ export type DepartmentDetailData = {
   members: MemberRow[];
   accessGrants: AccessGrant[];
   pendingInvites: DepartmentInviteRow[];
+  joinRequests: JoinRequestRow[];
 };
 
 const ROLE_OPTIONS_ADMIN = [
@@ -339,6 +358,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
@@ -349,12 +381,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   const [members, setMembers] = useState<MemberRow[]>(data.members);
   const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(data.accessGrants);
   const [pendingInvites, setPendingInvites] = useState<DepartmentInviteRow[]>(data.pendingInvites);
+  // Requests resolved in this session are hidden immediately; a router.refresh()
+  // then drops them from `data.joinRequests` too. Deriving avoids mirroring props
+  // into state via an effect.
+  const [resolvedReqIds, setResolvedReqIds] = useState<Set<string>>(new Set());
+  const joinRequests = data.joinRequests.filter((r) => !resolvedReqIds.has(r.id));
+  // For a department-level request, the approver must choose which sub-department
+  // (team) to place the new agent into. Keyed by request id; defaults to the first.
+  const [joinReqTeam, setJoinReqTeam] = useState<Record<string, string>>({});
+  const [processingReq, setProcessingReq] = useState<string | null>(null);
   const [localRoles, setLocalRoles] = useState<Record<string, string>>({});
-  const [localSubDepartmentIds, setLocalSubDepartmentIds] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [editingGrant, setEditingGrant] = useState<AccessGrant | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<MemberRow | null>(null);
   const [configMember, setConfigMember] = useState<MemberConfigTarget | null>(null);
@@ -362,6 +403,53 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   useEffect(() => {
     setPendingInvites(data.pendingInvites);
   }, [data.pendingInvites]);
+
+  async function resolveJoinRequest(reqRow: JoinRequestRow, action: "approve" | "reject") {
+    // A team request approves directly (agent) via the sub-department endpoint; a
+    // department-level request needs a chosen team, routed via the department endpoint.
+    let url: string;
+    let body: Record<string, unknown>;
+    if (reqRow.kind === "sub") {
+      url = `/api/sub-departments/${reqRow.targetId}/join-requests/${reqRow.id}`;
+      body = { action };
+    } else {
+      const teamId = joinReqTeam[reqRow.id] ?? data.availableSubDepartments[0]?.id;
+      if (action === "approve" && !teamId) {
+        toast.error("Add a sub-department first — a new member joins a team as an agent.");
+        return;
+      }
+      url = `/api/departments/${data.id}/join-requests/${reqRow.id}`;
+      body = action === "approve" ? { action, subDepartmentId: teamId, role: "agent" } : { action };
+    }
+
+    setProcessingReq(reqRow.id);
+    try {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const msg =
+          res.status === 403
+            ? "You don't have permission to resolve this request."
+            : "Couldn't update the request. Please try again.";
+        toast.error(msg);
+        return;
+      }
+      setResolvedReqIds((prev) => new Set(prev).add(reqRow.id));
+      toast.success(
+        action === "approve"
+          ? `${reqRow.user.name} added to ${reqRow.targetName}.`
+          : `Request from ${reqRow.user.name} declined.`,
+      );
+      startTransition(() => router.refresh());
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setProcessingReq(null);
+    }
+  }
 
   useEffect(() => {
     setMembers(data.members);
@@ -447,16 +535,47 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     }
   }
 
-  async function handleSubDepartmentChange(memberId: string, newSubDepartmentId: string) {
-    if (!newSubDepartmentId) return;
-    setLocalSubDepartmentIds((prev) => ({ ...prev, [memberId]: newSubDepartmentId }));
-    setSaving(memberId);
+  async function handleAddToSubDepartment(member: MemberRow, subDepartmentId: string) {
+    setSaving(member.userId);
     try {
-      // Additive: agents/sub-managers may belong to multiple sub-departments.
-      await addAdminSubDepartmentMember(newSubDepartmentId, memberId);
+      await addAdminSubDepartmentMember(subDepartmentId, member.userId, currentRole(member));
       refresh();
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function handleRemoveMembership(member: MemberRow, subDepartmentId: string) {
+    setSaving(member.userId);
+    try {
+      await removeAdminSubDepartmentMember(subDepartmentId, member.userId);
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.userId === member.userId
+            ? { ...m, subDepartmentMemberships: m.subDepartmentMemberships?.filter((s) => s.subDepartmentId !== subDepartmentId) }
+            : m,
+        ),
+      );
+      refresh();
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleToggleActive(member: MemberRow) {
+    const next = !(member.isActive ?? true);
+    // Optimistic update
+    setMembers((prev) => prev.map((m) => (m.userId === member.userId ? { ...m, isActive: next } : m)));
+    try {
+      await fetch(`/api/admin/users/${member.userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: next }),
+      });
+      refresh();
+    } catch {
+      // Revert on failure
+      setMembers((prev) => prev.map((m) => (m.userId === member.userId ? { ...m, isActive: !next } : m)));
     }
   }
 
@@ -474,9 +593,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
 
   function currentRole(m: MemberRow) {
     return localRoles[m.userId] ?? m.role;
-  }
-  function currentSubDepartmentId(m: MemberRow) {
-    return localSubDepartmentIds[m.userId] ?? m.subDepartmentId ?? "";
   }
 
   return (
@@ -523,6 +639,85 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           <Activity className="size-3.5 shrink-0" /> Activity
         </Link>
       </div>
+
+      {/* Join requests */}
+      {joinRequests.length > 0 && (
+        <Section icon={UserPlus} title="Join requests" count={joinRequests.length}>
+          <div className="overflow-hidden rounded-[6px] border border-sts-accent/30 bg-sts-accent/[0.04] px-[22px] pt-4 pb-2">
+            <Table className="min-w-[560px]">
+              <TableHeader>
+                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                  <TableHead className="h-8 w-[34%]"><SectionLabel>Name</SectionLabel></TableHead>
+                  <TableHead className="h-8"><SectionLabel>Wants to join</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[14%]"><SectionLabel>Requested</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[170px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {joinRequests.map((r) => {
+                  const processing = processingReq === r.id;
+                  const noTeams = r.kind === "dept" && data.availableSubDepartments.length === 0;
+                  return (
+                    <TableRow key={r.id} className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                      <TableCell className="py-0">
+                        <div className="flex h-[58px] items-center gap-2.5">
+                          <UserAvatar name={r.user.name} avatarUrl={r.user.avatarUrl} userId={r.user.id} size={28} />
+                          <div className="min-w-0">
+                            <div className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{r.user.name}</div>
+                            <div className="truncate font-sans text-[11px] text-sts-subtle">{r.user.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-0">
+                        {r.kind === "sub" ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-sts-accent/10 px-2 py-[3px] font-sans text-[11.5px] font-medium text-sts-accent">
+                            <Users className="size-3" /> {r.targetName}
+                          </span>
+                        ) : noTeams ? (
+                          <span className="font-sans text-[11.5px] text-sts-muted">Add a sub-department first</span>
+                        ) : (
+                          <select
+                            value={joinReqTeam[r.id] ?? data.availableSubDepartments[0]?.id ?? ""}
+                            onChange={(e) => setJoinReqTeam((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                            className="max-w-[200px] rounded-md border border-sts-card-border bg-sts-card px-2 py-1 font-sans text-[11.5px] text-sts-foreground focus-visible:border-sts-accent/50 focus-visible:outline-none"
+                          >
+                            {data.availableSubDepartments.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-0">
+                        <span className="font-sans text-[11.5px] text-sts-subtle">{timeAgo(r.requestedAt)}</span>
+                      </TableCell>
+                      <TableCell className="py-0 text-right">
+                        <div className="flex h-[58px] items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => resolveJoinRequest(r, "reject")}
+                            disabled={processing}
+                            className="inline-flex items-center gap-1 rounded-md border border-sts-card-border px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-60 dark:hover:bg-red-900/20"
+                          >
+                            <X className="size-3" /> Reject
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => resolveJoinRequest(r, "approve")}
+                            disabled={processing || noTeams}
+                            className="inline-flex items-center gap-1 rounded-md bg-sts-button px-2.5 py-1.5 font-sans text-[11.5px] font-semibold text-sts-button-fg transition-colors hover:bg-sts-button/90 disabled:opacity-60"
+                          >
+                            {processing ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Approve
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Section>
+      )}
 
       {/* Managers */}
       <Section
@@ -603,32 +798,44 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         title="Sub-department members"
         count={members.length}
         action={
-          <button
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-            disabled={data.availableSubDepartments.length === 0}
-            title={data.availableSubDepartments.length === 0 ? "Create a sub-department before inviting" : undefined}
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus className="size-3" /> Invite to sub-department
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddMemberModal(true)}
+              disabled={data.availableSubDepartments.length === 0}
+              title={data.availableSubDepartments.length === 0 ? "Create a sub-department before adding members" : undefined}
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <UserPlus className="size-3" /> Add member
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              disabled={data.availableSubDepartments.length === 0}
+              title={data.availableSubDepartments.length === 0 ? "Create a sub-department before inviting" : undefined}
+              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Plus className="size-3" /> Invite to sub-department
+            </button>
+          </div>
         }
       >
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-          <Table className="min-w-[640px]">
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                <TableHead className="h-8 w-[30%]"><SectionLabel>Name</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[22%]"><SectionLabel>Email</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[16%]"><SectionLabel>Role</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>SubDepartment</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[26%]"><SectionLabel>Name</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
+                <TableHead className="h-8"><SectionLabel>SubDepartments</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
                 <TableHead className="h-8 w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={5} className="py-0">
+                  <TableCell colSpan={6} className="py-0">
                     <div className="flex h-[54px] items-center">
                       <span className="font-sans text-[11.5px] text-sts-muted">No sub-department members yet. Invite people into a sub-department.</span>
                     </div>
@@ -637,13 +844,21 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               ) : (
                 members.map((m) => {
                   const role = currentRole(m);
-                  const subDepartmentId = currentSubDepartmentId(m);
+                  const memberships = m.subDepartmentMemberships ?? [];
                   return (
                     <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                       <TableCell className="py-0">
                         <div className="flex h-[54px] items-center gap-2.5">
                           <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={28} />
-                          <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
+                            {m.isActive === false && (
+                              <span title="Excluded from assignment" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                <BanIcon className="size-2.5" />
+                                No assign
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="py-0">
@@ -658,12 +873,48 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                         />
                       </TableCell>
                       <TableCell className="py-0">
-                        <SubDepartmentDropdown
-                          subDepartmentId={subDepartmentId}
-                          subDepartments={data.availableSubDepartments}
-                          saving={saving === m.userId}
-                          onChange={(v) => handleSubDepartmentChange(m.userId, v)}
-                        />
+                        <div className="flex h-[54px] items-center gap-1 flex-wrap">
+                          <SubDepartmentAddDropdown
+                            subDepartments={data.availableSubDepartments.filter((s) => !memberships.some((ms) => ms.subDepartmentId === s.id))}
+                            saving={saving === m.userId}
+                            onAdd={(v) => handleAddToSubDepartment(m, v)}
+                          />
+                          {memberships.length === 0 ? (
+                            <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
+                          ) : (
+                            memberships.map((s) => (
+                              <span key={s.subDepartmentId} className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
+                                {s.subDepartmentName}
+                                <button
+                                  type="button"
+                                  title={`Remove from ${s.subDepartmentName}`}
+                                  disabled={saving === m.userId}
+                                  onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
+                                  className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-0">
+                        <div className="flex h-[54px] items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(m)}
+                            className={cn(
+                              "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium transition-colors",
+                              m.isActive !== false
+                                ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
+                                : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400",
+                            )}
+                          >
+                            <span className={cn("size-1.5 rounded-full", m.isActive !== false ? "bg-green-500" : "bg-red-500")} />
+                            {m.isActive !== false ? "Active" : "Inactive"}
+                          </button>
+                        </div>
                       </TableCell>
                       <TableCell className="py-0 text-right">
                         <div className="flex h-[54px] items-center justify-end gap-0.5">
@@ -879,6 +1130,17 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         />
       )}
 
+      {showAddMemberModal && (
+        <AddMemberModal
+          departmentId={data.id}
+          availableSubDepartments={data.availableSubDepartments}
+          availableDepartments={[]}
+          isAdmin={data.isAdmin}
+          isManager={!data.isAdmin}
+          onClose={() => setShowAddMemberModal(false)}
+        />
+      )}
+
       {editingGrant && (
         <EditAccessModal
           deptId={data.id}
@@ -893,6 +1155,13 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         <MemberConfigPanel
           member={configMember}
           onClose={() => setConfigMember(null)}
+          reassignContext={{
+            departmentId: data.id,
+            subDepartments: data.availableSubDepartments,
+            agents: members
+              .filter((m) => m.userId !== configMember.id)
+              .map((m) => ({ id: m.userId, name: m.name })),
+          }}
         />
       )}
 
@@ -962,46 +1231,39 @@ function RoleDropdown({
   );
 }
 
-function SubDepartmentDropdown({
-  subDepartmentId,
+// Adds an agent/sub-manager to another sub-department. Membership is additive, so
+// this only lists sub-departments they aren't already in; existing memberships are
+// shown as removable chips beside it.
+function SubDepartmentAddDropdown({
   subDepartments,
   saving,
-  onChange,
+  onAdd,
 }: {
-  subDepartmentId: string;
   subDepartments: { id: string; name: string }[];
   saving: boolean;
-  onChange: (v: string) => void;
+  onAdd: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const current = subDepartments.find((t) => t.id === subDepartmentId)?.name ?? "No subDepartment";
+  if (subDepartments.length === 0) return null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         disabled={saving}
-        className="inline-flex h-[26px] items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface pl-2.5 pr-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
+        className="inline-flex h-[26px] items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2 font-sans text-[11.5px] text-sts-muted outline-none transition-opacity disabled:opacity-60 hover:border-sts-blue/50 hover:text-sts-foreground"
       >
-        <span className="max-w-[120px] truncate">{current}</span>
-        {saving ? <Loader2 className="size-3 animate-spin opacity-70" /> : <ChevronDown className="size-3 opacity-60" />}
+        {saving ? <Loader2 className="size-3 animate-spin opacity-70" /> : <Plus className="size-3" />} Add
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={4}
         className="w-auto min-w-[150px] gap-0 rounded-lg border border-sts-card-border bg-sts-bg p-1 shadow-lg"
       >
-        <button
-          type="button"
-          onClick={() => { onChange(""); setOpen(false); }}
-          className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", !subDepartmentId && "font-semibold")}
-        >
-          <span className="inline-flex rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-medium text-sts-subtle">No sub department</span>
-        </button>
         {subDepartments.map((t) => (
           <button
             key={t.id}
             type="button"
-            onClick={() => { onChange(t.id); setOpen(false); }}
-            className={cn("flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface", subDepartmentId === t.id && "font-semibold")}
+            onClick={() => { onAdd(t.id); setOpen(false); }}
+            className="flex w-full items-center rounded-md px-2 py-1.5 text-left hover:bg-sts-surface"
           >
             <span className="inline-flex rounded-full bg-sts-blue/10 px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-blue">{t.name}</span>
           </button>

@@ -278,30 +278,50 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
               const isOpen = q !== "" || openTenants.has(tenant.id)
               return (
                 <section key={tenant.id} className="flex flex-col gap-3">
-                  {/* Workspace header — toggles the departments open/closed */}
+                  {/* Workspace header — a branded card that toggles its departments */}
                   <button
                     type="button"
                     onClick={() => toggleTenant(tenant.id)}
                     aria-expanded={isOpen}
-                    className="sts-pressable -mx-1.5 flex w-full items-center gap-3 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-sts-surface/60"
+                    className={cn(
+                      "sts-pressable group relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl border p-3 text-left transition-colors",
+                      isOpen
+                        ? "border-sts-accent/40 bg-sts-accent/5 shadow-sts-card"
+                        : "border-sts-card-border bg-sts-card/50 hover:border-sts-accent/30 hover:bg-sts-accent/5",
+                    )}
                   >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-sts-accent/20 bg-sts-accent/10 font-display text-[16px] leading-none text-sts-accent">
+                    {/* Brand rail — lights up on hover, solid when open */}
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-1 bg-sts-accent transition-opacity",
+                        isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-50",
+                      )}
+                    />
+                    {/* Brand monogram */}
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-sts-accent/25 bg-sts-accent/10 font-display text-[17px] leading-none text-sts-accent shadow-sm">
                       {monogram(tenant.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h2 className="truncate font-sans text-[14px] font-semibold text-sts-foreground">
+                      <h2 className="truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
                         {tenant.name}
                       </h2>
-                      <p className="font-sans text-[11.5px] text-sts-subtle">
+                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-sts-accent/10 px-2 py-[3px] font-sans text-[10.5px] font-medium text-sts-accent">
+                        <span className="size-1 rounded-full bg-sts-accent" aria-hidden />
                         {tenant.departments.length} {tenant.departments.length === 1 ? "department" : "departments"}
-                      </p>
+                      </span>
                     </div>
-                    <ChevronDown
+                    {/* Chevron control */}
+                    <span
                       className={cn(
-                        "size-4 shrink-0 text-sts-subtle transition-transform",
-                        isOpen && "rotate-180",
+                        "flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors",
+                        isOpen
+                          ? "border-sts-accent/30 bg-sts-accent/10 text-sts-accent"
+                          : "border-sts-card-border bg-sts-surface/60 text-sts-subtle group-hover:border-sts-accent/25 group-hover:text-sts-accent",
                       )}
-                    />
+                    >
+                      <ChevronDown className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
+                    </span>
                   </button>
 
                   {/* Departments */}

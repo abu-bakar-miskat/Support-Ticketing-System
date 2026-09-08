@@ -94,7 +94,7 @@ type Candidate = {
   role: string;
 };
 
-function AddMemberModal({
+export function AddMemberModal({
   departmentId,
   availableSubDepartments,
   availableDepartments,

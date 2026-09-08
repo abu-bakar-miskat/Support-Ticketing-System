@@ -11,6 +11,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import { TIMEZONES } from "@/lib/timezones";
 import { toast } from "sonner";
+import { toastResponseError } from "@/lib/toast-error";
 import { useAvailabilityRefresh } from "@/components/providers/availability-provider";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -127,7 +128,10 @@ export function MemberConfigPanel({
         }),
       ]);
       if (!scheduleRes.ok || !profileRes.ok) {
-        toast.error("Failed to save member settings");
+        await toastResponseError(
+          scheduleRes.ok ? profileRes : scheduleRes,
+          "Failed to save member settings",
+        );
         return;
       }
       toast.success(`Updated availability for ${member.name}`);
@@ -162,7 +166,7 @@ export function MemberConfigPanel({
         setNewHolidayReason("");
         refreshAvailability();
       } else {
-        toast.error("Failed to add holiday");
+        await toastResponseError(res, "Failed to add holiday");
       }
     } finally {
       setAddingHoliday(false);

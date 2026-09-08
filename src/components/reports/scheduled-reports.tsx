@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Download, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
+import { toastResponseError } from "@/lib/toast-error";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +123,7 @@ export function ScheduledReports() {
     });
     if (!res.ok) {
       setSchedules((prev) => prev.map((x) => (x.id === s.id ? { ...x, enabled: s.enabled } : x)));
-      toast.error("Could not update schedule");
+      await toastResponseError(res, "Could not update schedule");
     }
   }
 
@@ -130,7 +131,7 @@ export function ScheduledReports() {
     setSchedules((prev) => prev.filter((x) => x.id !== id));
     const res = await fetch(`/api/reports/schedules/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error("Could not delete schedule");
+      await toastResponseError(res, "Could not delete schedule");
       load();
     }
   }

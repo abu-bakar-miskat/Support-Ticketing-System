@@ -29,7 +29,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { updateTicket } from "@/lib/api/tickets";
 import { patchTicketDetailDatesInCache } from "@/lib/ticket-detail-cache";
 import { canEditTicket } from "@/lib/ticket-date-permissions";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import {
   type BoardCardData,
   type SubDepartmentBoardGroup,
@@ -760,14 +760,14 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
           startDate: toIso(pending.range.start),
           dueDate: toIso(pending.range.end),
         });
-      } catch {
+      } catch (err) {
         setLocalRanges((prev) => {
           const next = new Map(prev);
           next.set(taskId, pending.rollback);
           return next;
         });
         syncTicketDetailDates(taskId, pending.rollback);
-        toast.error("Failed to update dates");
+        toastError("Failed to update dates", err);
       }
     },
     [syncTicketDetailDates],

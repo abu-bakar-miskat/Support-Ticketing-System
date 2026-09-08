@@ -20,7 +20,7 @@ import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-sta
 import { ProjectAvatar } from "@/components/projects/project-avatar";
 import { useSubDepartmentMembers } from "@/hooks/queries/use-board";
 import { moveTicket, updateTicket } from "@/lib/api/tickets";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
 import { ModuleCell } from "@/components/board/module-label";
 import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_MODULE, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
@@ -64,9 +64,9 @@ export function TaskListRow({
     setLiveStatus(newStatus);
     try {
       await moveTicket(task.dbId, { status: newStatus, chosenLabel });
-    } catch {
+    } catch (err) {
       setLiveStatus(prev);
-      toast.error("Failed to update status");
+      toastError("Failed to update status", err);
     }
   }
 
@@ -83,11 +83,11 @@ export function TaskListRow({
     setLiveAssigneeAvatarUrl(member?.avatarUrl ?? null);
     try {
       await updateTicket(task.dbId, { assigneeId: member?.id ?? null });
-    } catch {
+    } catch (err) {
       setLiveAssigneeId(pId);
       setLiveAssigneeName(pName);
       setLiveAssigneeAvatarUrl(pUrl);
-      toast.error("Failed to update assignee");
+      toastError("Failed to update assignee", err);
     }
   }
 

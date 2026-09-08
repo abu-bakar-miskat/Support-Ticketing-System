@@ -10,6 +10,7 @@ import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-li
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { addCoAssignee, removeCoAssignee } from "@/lib/api/tickets";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 
 type Member = UserListPerson;
 
@@ -144,7 +145,7 @@ export function CoAssigneeSelect({
                       const newList = coAssignees.filter((c) => c.id !== m.id);
                       removeCoAssignee(ticketId, m.id)
                         .then(() => { onCoAssigneesChange?.(newList); router.refresh(); })
-                        .catch(() => toast.error("Failed to remove co-assignee"));
+                        .catch((e) => toastError("Failed to remove co-assignee", e));
                     }}
                     className="ml-0.5 text-sts-subtle hover:text-sts-red"
                   >

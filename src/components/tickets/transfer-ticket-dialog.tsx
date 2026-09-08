@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { Loader2, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select";
@@ -42,7 +43,7 @@ export function TransferTicketDialog({
     fetch("/api/transfer-destinations")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load destinations"))))
       .then((rows: Destination[]) => setDestinations(rows.filter((d) => d.id !== currentSubDepartmentId)))
-      .catch(() => toast.error("Could not load transfer destinations"))
+      .catch((e) => toastError("Could not load transfer destinations", e))
       .finally(() => setLoadingDest(false));
   }, [open, currentSubDepartmentId]);
 

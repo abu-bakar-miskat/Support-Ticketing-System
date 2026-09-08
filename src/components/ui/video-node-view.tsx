@@ -3,6 +3,7 @@
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { Download, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { useState } from "react";
 import { downloadFile } from "@/lib/download-file";
 
@@ -37,7 +38,7 @@ export function VideoNodeView(props: NodeViewProps) {
       toast.success("Video deleted");
     } catch (err) {
       console.error("Delete failed:", err);
-      toast.error("Failed to delete video");
+      toastError("Failed to delete video", err);
     } finally {
       setIsDeleting(false);
     }

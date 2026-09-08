@@ -3,6 +3,7 @@
 import { NodeViewWrapper } from "@tiptap/react";
 import { File, FileText, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { useState } from "react";
 import { downloadFile } from "@/lib/download-file";
 
@@ -40,7 +41,7 @@ export function FileNodeView(props: any) {
       toast.success("File deleted");
     } catch (err) {
       console.error("Delete failed:", err);
-      toast.error("Failed to delete file");
+      toastError("Failed to delete file", err);
     } finally {
       setIsDeleting(false);
     }

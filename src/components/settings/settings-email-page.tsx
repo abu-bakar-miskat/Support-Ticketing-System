@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { updateWorkspace } from "@/lib/api/workspace";
 import {
   fetchEmailNotifications,
@@ -115,7 +116,7 @@ function EmailNotificationsCard({
         data.forEach((n) => { map[n.key as NotifyKey] = n.override; });
         setOverrides(map);
       })
-      .catch(() => toast.error("Failed to load department notification settings"))
+      .catch((e) => toastError("Failed to load department notification settings", e))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [departmentId, subDepartmentId]);
@@ -129,8 +130,8 @@ function EmailNotificationsCard({
     setOverrides((prev) => ({ ...prev, [key]: checked }));
     try {
       await setEmailNotificationOverride(key, checked, departmentId, subDepartmentId);
-    } catch {
-      toast.error("Failed to save override");
+    } catch (err) {
+      toastError("Failed to save override", err);
       setOverrides((prev) => ({ ...prev, [key]: previous }));
     }
   }
@@ -387,7 +388,7 @@ function EmailBrandingCard({
         setSaved(effective);
         setHasOverride(data.hasOverride);
       })
-      .catch(() => toast.error("Failed to load department branding"))
+      .catch((e) => toastError("Failed to load department branding", e))
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -455,8 +456,8 @@ function EmailBrandingCard({
       setSaved(defaults);
       setHasOverride(false);
       toast.success("Reset to workspace branding");
-    } catch {
-      toast.error("Failed to reset branding");
+    } catch (err) {
+      toastError("Failed to reset branding", err);
     } finally {
       setResetting(false);
     }
@@ -714,8 +715,8 @@ export function SettingsEmailPage({
   function onWorkspaceSwitchChange(id: NotifyKey, checked: boolean) {
     const next = { ...switches, [id]: checked };
     setSwitches(next);
-    void updateWorkspace({ emailConfig: next }).catch(() =>
-      toast.error("Failed to save email settings"),
+    void updateWorkspace({ emailConfig: next }).catch((e) =>
+      toastError("Failed to save email settings", e),
     );
   }
 

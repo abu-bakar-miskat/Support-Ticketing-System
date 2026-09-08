@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { getErrorMessage } from "@/lib/toast-error"
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches"
 import { normalizeStatus, statusDotColor, type SubDepartmentStatusConfig } from "@/components/board/board-types"
 import {
@@ -134,7 +135,7 @@ export function StatusSelect({
         setOptimisticStatus(null)
         onStatusChange?.(previous)
         toast.error("Failed to update status", {
-          description: "Check your connection and try again.",
+          description: getErrorMessage(e, "Check your connection and try again."),
         })
       }
     })()

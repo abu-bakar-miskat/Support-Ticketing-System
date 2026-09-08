@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { UserAvatar } from "@/components/ui/user-avatar"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { toastResponseError } from "@/lib/toast-error"
 
 function SignOutButton() {
   async function handleSignOut() {
@@ -112,7 +113,7 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
         setPending((prev) => new Set(prev).add(key))
         if (res.ok) toast.success("Request sent! Waiting for approval…")
       } else {
-        toast.error("Failed to send request")
+        await toastResponseError(res, "Failed to send request")
       }
     } catch {
       toast.error("Something went wrong")

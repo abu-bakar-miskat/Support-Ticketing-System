@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { StatusFilterButton, StatusPill } from "@/components/board/status-pill";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import type { ProjectListRow } from "@/lib/projects-list-data";
 import { formatDateTime } from "@/lib/format";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
@@ -146,8 +147,8 @@ function ProjectMenu({
       toast.success(
         `Status updated to ${statusOptions.find((s) => s.key === status)?.label ?? status}`,
       );
-    } catch {
-      toast.error("Failed to update status");
+    } catch (err) {
+      toastError("Failed to update status", err);
     } finally {
       setSaving(false);
       setOpen(false);

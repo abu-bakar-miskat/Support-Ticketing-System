@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { BellOff } from "lucide-react";
 import {
   type EmailTemplateInfo,
@@ -61,8 +62,8 @@ function TemplateEditor({
     try {
       const result = await previewEmailTemplate(template.key, next, departmentId, subDepartmentId);
       setPreview(result);
-    } catch {
-      toast.error("Failed to render preview");
+    } catch (err) {
+      toastError("Failed to render preview", err);
     } finally {
       setLoadingPreview(false);
     }
@@ -98,8 +99,8 @@ function TemplateEditor({
       await runPreview(template.default);
       toast.success(`${template.label} template reset to default`);
       onSaved();
-    } catch {
-      toast.error("Failed to reset template");
+    } catch (err) {
+      toastError("Failed to reset template", err);
     } finally {
       setSaving(false);
     }
@@ -257,8 +258,8 @@ export function SettingsEmailTemplatesPage({
     try {
       const data = await fetchEmailTemplates(departmentId, subDepartmentId);
       setTemplates(data);
-    } catch {
-      toast.error("Failed to load email templates");
+    } catch (err) {
+      toastError("Failed to load email templates", err);
     }
   }
 

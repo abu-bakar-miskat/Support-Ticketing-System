@@ -54,6 +54,7 @@ import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useTimerStore } from "@/store";
 import { moveTicket, MoveTicketError, type TicketDetailProps } from "@/lib/api/tickets";
 import { toast } from "sonner";
+import { toastError, getErrorMessage } from "@/lib/toast-error";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { BoardFilterBar } from "@/components/board/board-filter-bar";
 import {
@@ -179,8 +180,8 @@ function BoardCard({
         title: initialCard.title,
       });
       toast.success(`Timer started on ${initialCard.humanId}`);
-    } catch {
-      toast.error("Failed to start timer");
+    } catch (err) {
+      toastError("Failed to start timer", err);
     } finally {
       setStartingTimer(false);
     }
@@ -194,8 +195,8 @@ function BoardCard({
     try {
       await stopTimer(timerEntryId);
       toast.success(`Timer paused on ${initialCard.humanId}`);
-    } catch {
-      toast.error("Failed to pause timer");
+    } catch (err) {
+      toastError("Failed to pause timer", err);
     } finally {
       setStoppingTimer(false);
     }
@@ -921,7 +922,7 @@ export function BoardPage({
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ticketKeys.detail(dbId) });
       })
-      .catch(() => {
+      .catch((err) => {
         setLocalCards((prev) =>
           prev.map((c) =>
             c.dbId === dbId && c.status === toStatus
@@ -936,7 +937,7 @@ export function BoardPage({
           );
         }
         toast.error("Failed to move ticket", {
-          description: "The card has been moved back.",
+          description: getErrorMessage(err, "The card has been moved back."),
         });
       })
       .finally(() => {

@@ -26,6 +26,7 @@ import {
   type SavedViewFilters,
 } from "@/lib/api/saved-views";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -446,8 +447,8 @@ export function AllTasksPage({
       const views = await deleteSavedView(id);
       queryClient.setQueryData(["saved-views"], views);
       if (selectedViewId === id) setSelectedViewId(null);
-    } catch {
-      toast.error("Failed to delete view");
+    } catch (err) {
+      toastError("Failed to delete view", err);
     }
   }
 

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Search, UserPlus, Trash2, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
 
 import { UserListItem } from "@/components/ui/user-list-item";
@@ -35,7 +36,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
         setMembers(data.members ?? []);
         setAvailable(data.availableUsers ?? []);
       })
-      .catch(() => toast.error("Failed to load members"))
+      .catch((e) => toastError("Failed to load members", e))
       .finally(() => setLoading(false));
   }, [projectId]);
 
@@ -69,8 +70,8 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
       setSearch("");
       toast.success(`${user.name} added to project`);
       onChanged?.();
-    } catch {
-      toast.error("Failed to add member");
+    } catch (err) {
+      toastError("Failed to add member", err);
     } finally {
       setSaving(null);
     }
@@ -85,8 +86,8 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
       setAvailable((prev) => [...prev, user].sort((a, b) => a.name.localeCompare(b.name)));
       toast.success(`${user.name} removed from project`);
       onChanged?.();
-    } catch {
-      toast.error("Failed to remove member");
+    } catch (err) {
+      toastError("Failed to remove member", err);
     } finally {
       setSaving(null);
     }

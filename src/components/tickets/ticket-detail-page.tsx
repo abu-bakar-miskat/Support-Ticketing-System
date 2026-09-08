@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { useQueryClient } from "@tanstack/react-query";
 import { ticketKeys } from "@/hooks/queries/keys";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
@@ -4508,8 +4509,8 @@ function TimeTrackingSection({
       if (activeTimerId) clearRunning();
       setEntries((prev) => prev.filter((e) => e.userId !== currentUserId));
       router.refresh();
-    } catch {
-      toast.error("Could not reset timer");
+    } catch (err) {
+      toastError("Could not reset timer", err);
     } finally {
       setResetting(false);
     }

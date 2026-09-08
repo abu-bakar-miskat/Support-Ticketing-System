@@ -58,6 +58,7 @@ import { useTimerStore } from "@/store";
 import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { InlineStatusPicker, InlineAssigneePicker } from "@/components/ui/inline-pickers";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
@@ -149,8 +150,8 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
     try {
       await startTimer({ ticketDbId: task.dbId, humanId: task.humanId, title: task.title });
       toast.success(`Timer started on ${task.humanId}`);
-    } catch {
-      toast.error("Failed to start timer");
+    } catch (err) {
+      toastError("Failed to start timer", err);
     } finally {
       setStartingTimer(false);
     }
@@ -164,8 +165,8 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
     try {
       await stopTimer(timerEntryId);
       toast.success(`Timer paused on ${task.humanId}`);
-    } catch {
-      toast.error("Failed to pause timer");
+    } catch (err) {
+      toastError("Failed to pause timer", err);
     } finally {
       setStoppingTimer(false);
     }
@@ -397,9 +398,9 @@ function ReviewTaskRow({ task, colorMap, statuses }: { task: BoardCardData; colo
     try {
       await moveTicket(task.dbId, { status: newStatus, chosenLabel });
       invalidateTaskCaches(queryClient);
-    } catch {
+    } catch (err) {
       setLiveStatus(prev);
-      toast.error("Failed to update status");
+      toastError("Failed to update status", err);
     }
   }
 
@@ -497,9 +498,9 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
     try {
       await moveTicket(task.dbId, { status: newStatus, chosenLabel });
       invalidateTaskCaches(queryClient);
-    } catch {
+    } catch (err) {
       setLiveStatus(prev);
-      toast.error("Failed to update status");
+      toastError("Failed to update status", err);
     }
   }
 
@@ -511,11 +512,11 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
     try {
       await updateTicket(task.dbId, { assigneeId: member?.id ?? null });
       invalidateTaskCaches(queryClient);
-    } catch {
+    } catch (err) {
       setLiveAssigneeId(pId);
       setLiveAssigneeName(pName);
       setLiveAssigneeAvatarUrl(pUrl);
-      toast.error("Failed to update assignee");
+      toastError("Failed to update assignee", err);
     }
   }
 
@@ -663,9 +664,9 @@ function SubtaskListRow({ task, colorMap, statuses }: { task: AssignedSubtask; c
     try {
       await moveTicket(task.dbId, { status: newStatus, chosenLabel });
       invalidateTaskCaches(queryClient);
-    } catch {
+    } catch (err) {
       setLiveStatus(prev);
-      toast.error("Failed to update status");
+      toastError("Failed to update status", err);
     }
   }
 

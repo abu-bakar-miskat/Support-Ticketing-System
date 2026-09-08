@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, X, FileText, Table2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type ReportField = {
@@ -41,7 +42,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
     fetch("/api/reports/fields")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load fields"))))
       .then((d: { fields: ReportField[] }) => setFields(d.fields))
-      .catch(() => toast.error("Could not load form fields"))
+      .catch((e) => toastError("Could not load form fields", e))
       .finally(() => setFieldsLoading(false));
   }, []);
 

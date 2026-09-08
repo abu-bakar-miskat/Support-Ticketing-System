@@ -3,6 +3,7 @@
 import { NodeViewWrapper } from "@tiptap/react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 
 export function ImageNodeView(props: any) {
   const { node, deleteNode, selected } = props;
@@ -14,7 +15,7 @@ export function ImageNodeView(props: any) {
       toast.success("Image deleted");
     } catch (err) {
       console.error("Delete failed:", err);
-      toast.error("Failed to delete image");
+      toastError("Failed to delete image", err);
     }
   };
 

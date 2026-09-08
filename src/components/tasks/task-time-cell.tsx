@@ -8,6 +8,7 @@ import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useAuthStore, useTimerStore } from "@/store";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 
 type Props = {
   ticketDbId: string;
@@ -56,8 +57,8 @@ export function TaskTimeCell({
     try {
       await startTimer({ ticketDbId, humanId, title });
       toast.success(`Timer started on ${humanId}`);
-    } catch {
-      toast.error("Failed to start timer");
+    } catch (err) {
+      toastError("Failed to start timer", err);
     } finally {
       setStartingTimer(false);
     }
@@ -71,8 +72,8 @@ export function TaskTimeCell({
     try {
       await stopTimer(timerEntryId);
       toast.success(`Timer paused on ${humanId}`);
-    } catch {
-      toast.error("Failed to pause timer");
+    } catch (err) {
+      toastError("Failed to pause timer", err);
     } finally {
       setStoppingTimer(false);
     }

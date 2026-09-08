@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { Trash2, Tag, SquareArrowOutUpRight, Link2, ArrowUpRight } from "lucide-react";
 import {
   ContextMenu,
@@ -65,8 +66,8 @@ export function BoardCardContextMenu({
     try {
       await action;
       refresh();
-    } catch {
-      toast.error(errorMsg);
+    } catch (err) {
+      toastError(errorMsg, err);
     }
   }
 

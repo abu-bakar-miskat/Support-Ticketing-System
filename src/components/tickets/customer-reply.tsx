@@ -15,6 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -454,8 +455,8 @@ function MessageNotes({
       });
       setDraft("");
       setComposing(false);
-    } catch {
-      toast.error("Failed to add note");
+    } catch (err) {
+      toastError("Failed to add note", err);
     } finally {
       setSaving(false);
     }
@@ -473,8 +474,8 @@ function MessageNotes({
       if (!res.ok) throw new Error();
       onChanged(noteId, body, new Date().toISOString());
       setEditingId(null);
-    } catch {
-      toast.error("Failed to save note");
+    } catch (err) {
+      toastError("Failed to save note", err);
     }
   }
 
@@ -483,8 +484,8 @@ function MessageNotes({
       const res = await fetch(`/api/comments/${noteId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       onRemoved(noteId);
-    } catch {
-      toast.error("Failed to delete note");
+    } catch (err) {
+      toastError("Failed to delete note", err);
     }
   }
 

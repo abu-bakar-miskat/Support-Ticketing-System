@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { updateNotificationPrefs } from "@/lib/api/profile";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -182,8 +182,8 @@ export function SettingsNotificationsPage({
   function handlePreferenceChange(id: string, checked: boolean) {
     const next = { ...preferences, [id]: checked };
     setPreferences(next);
-    void updateNotificationPrefs({ notificationPrefs: next } as never).catch(() =>
-      toast.error("Failed to save notification preferences"),
+    void updateNotificationPrefs({ notificationPrefs: next } as never).catch((e) =>
+      toastError("Failed to save notification preferences", e),
     );
   }
 

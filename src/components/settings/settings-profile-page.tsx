@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/api/profile";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { Lock, Camera, Loader2, Check, Plus, Trash2, Pencil, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -327,8 +328,8 @@ export function SettingsProfilePage({
       ]);
       toast.success("Profile updated");
       router.refresh();
-    } catch {
-      toast.error("Failed to save profile");
+    } catch (err) {
+      toastError("Failed to save profile", err);
     } finally {
       setSaving(false);
     }
@@ -715,8 +716,8 @@ export function SettingsProfilePage({
                 a.click();
                 URL.revokeObjectURL(url);
                 toast.success("Download started");
-              } catch {
-                toast.error("Could not export your data");
+              } catch (err) {
+                toastError("Could not export your data", err);
               }
             }}
           >

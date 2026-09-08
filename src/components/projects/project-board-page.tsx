@@ -47,6 +47,7 @@ import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useTimerStore, useAuthStore } from "@/store";
 import { toast } from "sonner";
+import { toastError, getErrorMessage } from "@/lib/toast-error";
 import { SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { ListCreatedCell, ListDueCell } from "@/components/tasks/task-list-cells";
 import { sortCards } from "@/lib/sort-cards";
@@ -167,8 +168,8 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
         title: initialCard.title,
       });
       toast.success(`Timer started on ${initialCard.humanId}`);
-    } catch {
-      toast.error("Failed to start timer");
+    } catch (err) {
+      toastError("Failed to start timer", err);
     } finally {
       setStartingTimer(false);
     }
@@ -182,8 +183,8 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
     try {
       await stopTimer(timerEntryId);
       toast.success(`Timer paused on ${initialCard.humanId}`);
-    } catch {
-      toast.error("Failed to pause timer");
+    } catch (err) {
+      toastError("Failed to pause timer", err);
     } finally {
       setStoppingTimer(false);
     }
@@ -566,8 +567,8 @@ function ListRow({
         title: card.title,
       });
       toast.success(`Timer started on ${card.humanId}`);
-    } catch {
-      toast.error("Failed to start timer");
+    } catch (err) {
+      toastError("Failed to start timer", err);
     } finally {
       setStartingTimer(false);
     }
@@ -581,8 +582,8 @@ function ListRow({
     try {
       await stopTimer(timerEntryId);
       toast.success(`Timer paused on ${card.humanId}`);
-    } catch {
-      toast.error("Failed to pause timer");
+    } catch (err) {
+      toastError("Failed to pause timer", err);
     } finally {
       setStoppingTimer(false);
     }
@@ -593,9 +594,9 @@ function ListRow({
     setLiveStatus(newStatus);
     try {
       await moveTicket(card.dbId, { status: newStatus, chosenLabel });
-    } catch {
+    } catch (err) {
       setLiveStatus(prev);
-      toast.error("Failed to update status");
+      toastError("Failed to update status", err);
     }
   }
 
@@ -608,11 +609,11 @@ function ListRow({
     setLiveAssigneeAvatarUrl(member?.avatarUrl ?? null);
     try {
       await updateTicket(card.dbId, { assigneeId: member?.id ?? null });
-    } catch {
+    } catch (err) {
       setLiveAssigneeId(prevId);
       setLiveAssigneeName(prevName);
       setLiveAssigneeAvatarUrl(prevUrl);
-      toast.error("Failed to update assignee");
+      toastError("Failed to update assignee", err);
     }
   }
 
@@ -1108,12 +1109,12 @@ export function ProjectBoardPage({
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ticketKeys.detail(dbId) });
         })
-        .catch(() => {
+        .catch((err) => {
           setLocalCards(prev);
           if (prevDetail !== undefined) {
             queryClient.setQueryData(ticketKeys.detail(dbId), prevDetail);
           }
-          toast.error("Failed to move ticket", { description: "The card has been moved back." });
+          toast.error("Failed to move ticket", { description: getErrorMessage(err, "The card has been moved back.") });
         });
       return prev.map((c) =>
         c.dbId === dbId ? { ...c, status: toStatus } : c,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import {
   fetchEmailIdentity,
   setEmailSenders,
@@ -83,7 +84,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
         setDefaults({ fromName: data.defaultFromName, fromEmail: data.defaultFromEmail });
         setSenders(sendersFromIdentity(data));
       })
-      .catch(() => toast.error(`Failed to load email identity for ${department.name}`))
+      .catch((e) => toastError(`Failed to load email identity for ${department.name}`, e))
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [department.id, department.name, department.subDepartmentId]);

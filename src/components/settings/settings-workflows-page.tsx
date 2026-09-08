@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Check, X, GripVertical, CheckCircle2, Loader2, Tag } from "lucide-react";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -108,10 +108,10 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, {
         allowedLabels: updated.allowedLabels,
       });
-    } catch {
+    } catch (err) {
       setStatuses((prev) => prev.map((s) => (s.id === id ? { ...s, allowedLabels: current } : s)));
       patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, { allowedLabels: current });
-      toast.error("Failed to update linked labels");
+      toastError("Failed to update linked labels", err);
     }
   }
 

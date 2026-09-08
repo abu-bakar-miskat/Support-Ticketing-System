@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toastError } from "@/lib/toast-error";
 import { updateWorkspace } from "@/lib/api/workspace";
 import { Input } from "@/components/ui/input";
 import {
@@ -413,8 +413,8 @@ function SettingsTimeTrackingView({
     nextInputs: Record<string, string>,
   ) {
     const config = { ...nextInputs, ...nextSelects, ...nextSwitches };
-    void updateWorkspace({ [configKey]: config }).catch(() =>
-      toast.error("Failed to save settings"),
+    void updateWorkspace({ [configKey]: config }).catch((e) =>
+      toastError("Failed to save settings", e),
     );
   }
 

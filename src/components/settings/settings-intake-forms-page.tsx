@@ -181,6 +181,9 @@ export type IntakeFormRow = {
   departmentName: string;
   intakeSubDepartmentId: string;
   intakeSubDepartmentName: string;
+  /** Relative public form path (/support/<tenant>/<dept>/<subdept>/<id>),
+   *  built server-side from stored slugs. Prefix with origin to share. */
+  publicPath: string;
   workloadThreshold: number;
   intakeCount: number;
   createdAt: string;
@@ -205,13 +208,6 @@ export type DeptOption = {
   subDepartments: SubDepartmentOption[];
   members: MemberOption[];
 };
-
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -2465,8 +2461,7 @@ export function SettingsIntakeFormsPage({
             </TableHeader>
             <TableBody>
               {initialForms.map((form) => {
-                const deptSlug = slugify(form.departmentName);
-                const shareUrl = `${origin}/support/${deptSlug}/${form.id}`;
+                const shareUrl = `${origin}${form.publicPath}`;
                 return (
                   <TableRow
                     key={form.id}

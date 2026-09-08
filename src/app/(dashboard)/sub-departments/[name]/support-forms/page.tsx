@@ -5,6 +5,7 @@ import { fetchProjectDepartmentPeople } from "@/lib/project-department-people"
 import { resolveIntakeDefaultFields } from "@/lib/intake-default-fields"
 import { readFormBranding, type FormBrandingDefaults } from "@/lib/form-branding"
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
+import { supportFormPath } from "@/lib/support-form-path"
 import { prisma } from "@/lib/db"
 import {
   SettingsIntakeFormsPage,
@@ -35,8 +36,16 @@ export default async function Page({
     where: { intakeSubDepartmentId: subDepartment.id },
     orderBy: { createdAt: "desc" },
     include: {
-      department: { select: { id: true, name: true, assignmentMethod: true } },
-      intakeSubDepartment: { select: { id: true, name: true, workloadThreshold: true, assignmentMethod: true } },
+      department: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          assignmentMethod: true,
+          tenant: { select: { name: true, slug: true } },
+        },
+      },
+      intakeSubDepartment: { select: { id: true, name: true, slug: true, workloadThreshold: true, assignmentMethod: true } },
       _count: { select: { intakes: true } },
     },
   })
@@ -63,6 +72,12 @@ export default async function Page({
     departmentName: f.department.name,
     intakeSubDepartmentId: f.intakeSubDepartment.id,
     intakeSubDepartmentName: f.intakeSubDepartment.name,
+    publicPath: supportFormPath({
+      tenant: { slug: f.department.tenant.slug, name: f.department.tenant.name },
+      department: { slug: f.department.slug, name: f.department.name },
+      subDepartment: { slug: f.intakeSubDepartment.slug, name: f.intakeSubDepartment.name },
+      formId: f.id,
+    }),
     workloadThreshold: f.intakeSubDepartment.workloadThreshold,
     intakeCount: f._count.intakes,
     createdAt: f.createdAt.toISOString(),

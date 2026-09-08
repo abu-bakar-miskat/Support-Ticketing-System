@@ -5,26 +5,32 @@ import { IntakeChat } from "@/components/support/intake-chat"
 import { resolveIntakeDefaultFields } from "@/lib/intake-default-fields"
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
 import { resolveFormBranding } from "@/lib/form-branding"
+import { segmentSlug } from "@/lib/support-form-path"
+import { runAsSystem } from "@/lib/request-scope"
 
 export const dynamic = "force-dynamic"
 
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+type RouteParams = {
+  tenant: string
+  department: string
+  subDepartment: string
+  id: string
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ "dept-slug": string; uuid: string }>
+  params: Promise<RouteParams>
 }) {
-  const { uuid } = await params
-  const form = await prisma.intakeFormConfig.findUnique({
-    where: { id: uuid },
-    select: { name: true, department: { select: { name: true } } },
-  })
+  const { id } = await params
+  // Public page: no authenticated caller, so read config under system scope
+  // (the tenant extension otherwise fails closed — see lib/prisma-scope).
+  const form = await runAsSystem(() =>
+    prisma.intakeFormConfig.findUnique({
+      where: { id },
+      select: { name: true, department: { select: { name: true } } },
+    }),
+  )
   if (!form) return { title: "Form unavailable" }
   return { title: `${form.name} — ${form.department.name}` }
 }
@@ -32,24 +38,39 @@ export async function generateMetadata({
 export default async function PublicIntakeFormPage({
   params,
 }: {
-  params: Promise<{ "dept-slug": string; uuid: string }>
+  params: Promise<RouteParams>
 }) {
-  const { "dept-slug": deptSlug, uuid } = await params
+  const { tenant, department, subDepartment, id } = await params
 
-  const form = await prisma.intakeFormConfig.findUnique({
-    where: { id: uuid },
-    include: {
-      department: { select: { id: true, name: true } },
-      intakeSubDepartment: { select: { name: true } },
-      fields: { orderBy: { order: "asc" } },
-    },
-  })
+  // This is a fully public page (anonymous requester). Every DB read below runs
+  // under system scope via runAsSystem — a logged-out visitor has no caller
+  // scope, so the tenant extension would otherwise throw (see lib/prisma-scope).
+  const form = await runAsSystem(() =>
+    prisma.intakeFormConfig.findUnique({
+      where: { id },
+      include: {
+        department: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            tenant: { select: { name: true, slug: true } },
+          },
+        },
+        intakeSubDepartment: { select: { name: true, slug: true } },
+        fields: { orderBy: { order: "asc" } },
+      },
+    }),
+  )
 
-  // UUID not found → 404
+  // Form id not found → 404. The id is the real access token; the tenant/dept/
+  // sub-dept slugs are readable, canonical prefixes we validate below so a stale
+  // or hand-edited URL can't resolve a form under the wrong path.
   if (!form) notFound()
 
-  // Dept-slug mismatch → 404
-  if (slugify(form.department.name) !== deptSlug) notFound()
+  if (segmentSlug({ slug: form.department.tenant.slug, name: form.department.tenant.name }) !== tenant) notFound()
+  if (segmentSlug({ slug: form.department.slug, name: form.department.name }) !== department) notFound()
+  if (segmentSlug({ slug: form.intakeSubDepartment.slug, name: form.intakeSubDepartment.name }) !== subDepartment) notFound()
 
   // Form inactive → unavailable message
   if (!form.isActive) {
@@ -72,11 +93,13 @@ export default async function PublicIntakeFormPage({
   // The form's selectable "issues" are now its enabled SLA policies — each
   // policy carries the name, priority, assignee pool and SLA targets a ticket
   // inherits when the requester picks it (see lib/intake-finalize).
-  const issues = await prisma.slaPolicy.findMany({
-    where: { formConfigId: uuid, enabled: true },
-    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true },
-  })
+  const issues = await runAsSystem(() =>
+    prisma.slaPolicy.findMany({
+      where: { formConfigId: id, enabled: true },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true },
+    }),
+  )
 
   const defaultFields = resolveIntakeDefaultFields(form.intakeDefaultFields)
 
@@ -86,7 +109,7 @@ export default async function PublicIntakeFormPage({
   // override (most specific) and the workspace/tenant default (least specific)
   // — passing departmentId here is what makes a department's logo/colors
   // actually reach this customer-facing form when the form hasn't set its own.
-  const ws = brandingFrom(await getEmailConfig(form.department.id))
+  const ws = brandingFrom(await runAsSystem(() => getEmailConfig(form.department.id)))
   const brand = resolveFormBranding(form.branding, {
     logoUrl: ws.logoUrl,
     headerColor: ws.headerColor,

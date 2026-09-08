@@ -9,6 +9,7 @@ import {
   isDeptScopedPath,
   isSubDeptScopedPath,
 } from "@/lib/tenant-path";
+import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
 
 /** Copy any refreshed Supabase auth cookies from `from` onto `to`. */
 function carryCookies(from: NextResponse, to: NextResponse): NextResponse {
@@ -75,7 +76,8 @@ export async function proxy(request: NextRequest) {
     pathname === "/login" ||
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/invite/") || // department invite links — page sends users to login with ?next=
-    pathname.startsWith("/support/") || // public intake forms, form id is the access token
+    PUBLIC_INTAKE_FORM_RE.test(pathname) || // public intake form: /<tenant>/<dept>/<subdept>/<form-uuid>
+    pathname.startsWith("/support/") || // public intake support pages (e.g. /support/verify/<token>)
     pathname.startsWith("/api/support/") || // public intake submissions
     pathname === "/api/intake/upload" || // attachments on public intake forms
     pathname.startsWith("/screen/") || // candidate video screening — the invite token is the auth

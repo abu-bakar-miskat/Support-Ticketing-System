@@ -16,6 +16,7 @@ import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/
 import { canCrossAccessGuestViewTicket, buildTicketEditContext, isLimitedCrossAccessToDept } from "@/lib/cross-access";
 import { isDueOverdue, isBlockedStatus } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
+import { supportFormPath } from "@/lib/support-form-path";
 import type { UiPriority } from "@/components/board/board-types";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
@@ -58,8 +59,15 @@ export default async function TicketPage({
           id: true,
           prefix: true,
           name: true,
+          slug: true,
           departmentId: true,
-          department: { select: { name: true } },
+          department: {
+            select: {
+              name: true,
+              slug: true,
+              tenant: { select: { name: true, slug: true } },
+            },
+          },
         },
       },
       project: {
@@ -566,14 +574,20 @@ export default async function TicketPage({
         intake={
           ticket.intake
             ? (() => {
-                const deptName = ticket.subDepartment.department?.name ?? "";
-                const deptSlug = deptName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                const dept = ticket.subDepartment.department;
                 return {
                 submitterName: ticket.intake.submitterName,
                 submitterEmail: ticket.intake.submitterEmail,
                 submittedAt: ticket.intake.createdAt.toISOString(),
                 formName: ticket.intake.formConfig.name,
-                portalUrl: deptSlug ? `/support/${deptSlug}/${ticket.intake.formConfig.id}` : null,
+                portalUrl: dept
+                  ? supportFormPath({
+                      tenant: { slug: dept.tenant.slug, name: dept.tenant.name },
+                      department: { slug: dept.slug, name: dept.name },
+                      subDepartment: { slug: ticket.subDepartment.slug, name: ticket.subDepartment.name },
+                      formId: ticket.intake.formConfig.id,
+                    })
+                  : null,
                 responses: (
                   ticket.intake.responses as Array<{
                     fieldId?: string;

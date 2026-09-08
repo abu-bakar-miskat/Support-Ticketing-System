@@ -37,6 +37,7 @@
   --sts-subtle: #9ca3af;
   --sts-surface: #f4f5f7;
   --sts-blue: #0a76b9;
+  --sts-blue-fg: #ffffff;
   --sts-blue-tint: #e8f2fb;
   --sts-id: #0a76b9;
   --sts-red: #dc2626;
@@ -80,6 +81,7 @@
   --shadow-sts-card: var(--sts-card-shadow);
   /* Semantic action tokens */
   --color-sts-blue: var(--sts-blue);
+  --color-sts-blue-fg: var(--sts-blue-fg);
   --color-sts-blue-tint: var(--sts-blue-tint);
   --color-sts-surface: var(--sts-surface);
   --color-sts-settings-subnav: var(--sts-settings-subnav);
@@ -173,6 +175,7 @@
     --sts-accent: #0a76b9;
     --sts-card-shadow: none;
     --sts-blue: #0a76b9;
+    --sts-blue-fg: #ffffff;
     --sts-blue-tint: #eaf3fb;
     --sts-surface: #f4f5f6;
     --sts-settings-subnav: #f7f7f6;
@@ -246,6 +249,8 @@
     --sts-card-shadow: none;
     /* Action / semantic tokens — dark overrides */
     --sts-blue: oklch(0.7729 0.1535 163.2231);
+    /* Bright cyan/teal fills need dark ink — white-on-sky fails contrast */
+    --sts-blue-fg: #111827;
     --sts-blue-tint: rgba(44, 58, 68, 0.55);
     --sts-surface: rgb(40, 48, 58);
     --sts-settings-subnav: rgba(36, 42, 52, 0.78);
@@ -313,6 +318,7 @@
     --sts-accent: #00d4ff;
     --sts-card-shadow: none;
     --sts-blue: #00d4ff;
+    --sts-blue-fg: #000000;
     --sts-blue-tint: rgba(0, 60, 80, 0.45);
     --sts-surface: rgb(12, 12, 12);
     --sts-settings-subnav: rgba(6, 6, 6, 0.85);
@@ -377,6 +383,7 @@
     --sts-accent: #df6830;
     --sts-card-shadow: none;
     --sts-blue: #df6830;
+    --sts-blue-fg: #ffffff;
     --sts-blue-tint: #fdece2;
     --sts-surface: #f1f2f5;
     --sts-settings-subnav: #f4f5f7;
@@ -595,6 +602,15 @@
 }
 
 @layer utilities {
+  /*
+   * Solid sts-blue fills use a bright cyan in dark/AMOLED. `text-white` on those
+   * surfaces fails contrast — force the theme's on-blue ink (beats `.text-white`
+   * via higher specificity: html.dark + class).
+   */
+  html.dark .bg-sts-blue {
+    color: var(--sts-blue-fg);
+  }
+
   .sts-page-pad {
     padding: 1rem;
   }

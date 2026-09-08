@@ -110,9 +110,11 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
               ? ("review" as const)
               : n.type === "intake_manager_alert"
                 ? ("intake" as const)
-                : n.message === "closed"
-                  ? ("closed" as const)
-                  : ("moved" as const);
+                : n.type === "ticket_transferred"
+                  ? ("transferred" as const)
+                  : n.message === "closed"
+                    ? ("closed" as const)
+                    : ("moved" as const);
 
     const action =
       type === "mention"
@@ -127,7 +129,9 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
               ? "requested your review"
               : type === "intake"
                 ? "auto-created from support form"
-                : (n.message ?? "updated status");
+                : type === "transferred"
+                  ? `transferred this ticket ${n.message ?? ""}`.trim()
+                  : (n.message ?? "updated status");
 
     const preview =
       type === "mention" || type === "comment"

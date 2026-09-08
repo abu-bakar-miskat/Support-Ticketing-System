@@ -173,6 +173,8 @@ export function subCardToBoardCard(
     hasIntake: false,
     isComplete: false,
     lastMessageDirection: null,
+    transferredFromName: null,
+    transferredByName: null,
   };
 }
 

@@ -190,6 +190,11 @@ async function buildAndBroadcast(
       body  = message ?? null
       break
 
+    case "ticket_transferred":
+      title = `${actorName} transferred ${ticketLabel}${projectSuffix}`
+      body  = message ?? null
+      break
+
     case "customer_reply":
       title = `Submitter replied to ${ticketLabel}${projectSuffix}`
       body  = message ?? null

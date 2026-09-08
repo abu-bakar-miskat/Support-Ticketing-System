@@ -25,6 +25,7 @@ export type EmailConfig = {
   notifyTicketCompleted: boolean;
   notifyAssignmentFailed: boolean;
   notifyStatusChanged: boolean;
+  notifyTicketTransferred: boolean;
 } & EmailBranding;
 
 /** Whether a Resend API key is present in the environment. */
@@ -64,6 +65,7 @@ export function emailConfigDefaults(): EmailConfig {
     notifyTicketCompleted: true,
     notifyAssignmentFailed: true,
     notifyStatusChanged: true,
+    notifyTicketTransferred: true,
     brandColor: BRAND,
     headerColor: HEADER_BG,
     logoUrl: LOGO_URL,
@@ -125,6 +127,7 @@ export const EMAIL_NOTIFY_KEYS = [
   "notifyTicketCompleted",
   "notifyAssignmentFailed",
   "notifyStatusChanged",
+  "notifyTicketTransferred",
 ] as const;
 
 export type EmailNotifyKey = (typeof EMAIL_NOTIFY_KEYS)[number];

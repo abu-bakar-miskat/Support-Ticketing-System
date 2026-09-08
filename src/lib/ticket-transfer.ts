@@ -10,7 +10,21 @@
 import { prisma } from "@/lib/db";
 
 export type TransferResult =
-  | { ok: true; ticketId: string; fromTeamId: string; toTeamId: string; newTicketNumber: number }
+  | {
+      ok: true;
+      ticketId: string;
+      fromTeamId: string;
+      toTeamId: string;
+      newTicketNumber: number;
+      ticketTitle: string;
+      /** Source sub-department's parent department — for manager notifications. */
+      fromDepartmentId: string;
+      fromSubDepartmentName: string;
+      toDepartmentId: string;
+      toPrefix: string;
+      toSubDepartmentName: string;
+      actorName: string;
+    }
   | { ok: false; error: string };
 
 /**
@@ -27,11 +41,12 @@ export async function transferTicket(params: {
 }): Promise<TransferResult> {
   const { ticketId, targetTeamId, actorId } = params;
 
-  const [ticket, targetSubDepartment] = await Promise.all([
+  const [ticket, targetSubDepartment, actor] = await Promise.all([
     prisma.ticket.findUnique({
       where: { id: ticketId },
       select: {
         id: true,
+        title: true,
         subDepartmentId: true,
         assigneeId: true,
         deletedAt: true,
@@ -40,8 +55,9 @@ export async function transferTicket(params: {
     }),
     prisma.subDepartment.findUnique({
       where: { id: targetTeamId },
-      select: { id: true, name: true, departmentId: true, tenantId: true },
+      select: { id: true, name: true, prefix: true, departmentId: true, tenantId: true },
     }),
+    prisma.profile.findUnique({ where: { id: actorId }, select: { name: true } }),
   ]);
 
   if (!ticket || ticket.deletedAt) return { ok: false, error: "Ticket not found" };
@@ -60,6 +76,7 @@ export async function transferTicket(params: {
       })
     : null;
   const nextAssigneeId = assigneeMembership?.isActive ? ticket.assigneeId : null;
+  const actorName = actor?.name ?? "Someone";
 
   const newTicketNumber = await prisma.$transaction(async (tx) => {
     const counter = await tx.subDepartmentTicketCounter.upsert({
@@ -74,6 +91,11 @@ export async function transferTicket(params: {
         subDepartmentId: targetSubDepartment.id,
         ticketNumber: counter.lastNumber,
         assigneeId: nextAssigneeId,
+        transferredFromSubDepartmentId: ticket.subDepartmentId,
+        transferredFromName: ticket.subDepartment.name,
+        transferredById: actorId,
+        transferredByName: actorName,
+        transferredAt: new Date(),
       },
     });
 
@@ -102,5 +124,18 @@ export async function transferTicket(params: {
     return counter.lastNumber;
   });
 
-  return { ok: true, ticketId, fromTeamId: ticket.subDepartmentId, toTeamId: targetSubDepartment.id, newTicketNumber };
+  return {
+    ok: true,
+    ticketId,
+    fromTeamId: ticket.subDepartmentId,
+    toTeamId: targetSubDepartment.id,
+    newTicketNumber,
+    ticketTitle: ticket.title,
+    fromDepartmentId: ticket.subDepartment.departmentId,
+    fromSubDepartmentName: ticket.subDepartment.name,
+    toDepartmentId: targetSubDepartment.departmentId,
+    toPrefix: targetSubDepartment.prefix,
+    toSubDepartmentName: targetSubDepartment.name,
+    actorName,
+  };
 }

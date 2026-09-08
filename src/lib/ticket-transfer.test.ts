@@ -12,6 +12,7 @@ vi.mock("@/lib/db", () => ({
     ticket: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
     subDepartmentMembership: { findUnique: vi.fn() },
+    profile: { findUnique: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   },
 }))
@@ -22,9 +23,11 @@ import { transferTicket } from "./ticket-transfer"
 const mockTicketFind = vi.mocked(prisma.ticket.findUnique)
 const mockSubDepartmentFind = vi.mocked(prisma.subDepartment.findUnique)
 const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
+const mockProfileFind = vi.mocked(prisma.profile.findUnique)
 
 const baseTicket = {
   id: "ticket-1",
+  title: "Fix the login bug",
   subDepartmentId: "team-source",
   assigneeId: "agent-1",
   deletedAt: null,
@@ -34,6 +37,7 @@ const baseTicket = {
 const baseTargetSubDepartment = {
   id: "team-target",
   name: "Onboarding",
+  prefix: "ONB",
   departmentId: "dept-B",
   tenantId: "tenant-1",
 }
@@ -43,6 +47,7 @@ beforeEach(() => {
   mockTicketFind.mockResolvedValue(baseTicket as never)
   mockSubDepartmentFind.mockResolvedValue(baseTargetSubDepartment as never)
   mockMembershipFind.mockResolvedValue(null as never)
+  mockProfileFind.mockResolvedValue({ name: "Alice" } as never)
   mockTx.subDepartmentTicketCounter.upsert.mockResolvedValue({ subDepartmentId: "team-target", lastNumber: 7 } as never)
 })
 
@@ -56,6 +61,13 @@ describe("transferTicket", () => {
       fromTeamId: "team-source",
       toTeamId: "team-target",
       newTicketNumber: 7,
+      ticketTitle: "Fix the login bug",
+      fromDepartmentId: "dept-A",
+      fromSubDepartmentName: "Billing",
+      toDepartmentId: "dept-B",
+      toPrefix: "ONB",
+      toSubDepartmentName: "Onboarding",
+      actorName: "Alice",
     })
     expect(mockTx.ticket.update).toHaveBeenCalledWith({
       where: { id: "ticket-1" },
@@ -63,6 +75,11 @@ describe("transferTicket", () => {
         subDepartmentId: "team-target",
         ticketNumber: 7,
         assigneeId: null,
+        transferredFromSubDepartmentId: "team-source",
+        transferredFromName: "Billing",
+        transferredById: "actor-1",
+        transferredByName: "Alice",
+        transferredAt: expect.any(Date),
       },
     })
   })

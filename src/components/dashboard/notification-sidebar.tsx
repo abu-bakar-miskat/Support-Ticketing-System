@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell, Check, CheckCheck, X, AtSign, MessageCircle,
-  MoveRight, UserCheck, Eye, GitPullRequest, Users, Loader2, Inbox, AlertTriangle,
+  MoveRight, UserCheck, Eye, GitPullRequest, Users, Loader2, Inbox, AlertTriangle, ArrowLeftRight,
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   pr:             { icon: GitPullRequest, color: "#7c3aed", label: "pull request"        },
   closed:         { icon: Check,          color: "#059669", label: "closed"              },
   status_change:  { icon: MoveRight,      color: "#0a76b9", label: "updated status"      },
+  ticket_transferred: { icon: ArrowLeftRight, color: "#d97706", label: "transferred a ticket" },
   review_request: { icon: Eye,            color: "#dc2626", label: "requested review"    },
   join_request:   { icon: Users,          color: "#059669", label: "join request"        },
   intake_manager_alert: { icon: Inbox,    color: "#0a76b9", label: "new support ticket"   },

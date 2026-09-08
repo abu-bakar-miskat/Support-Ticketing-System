@@ -12,6 +12,7 @@ import {
   Inbox,
   MessageCircle,
   MoveRight,
+  ArrowLeftRight,
   UserCheck,
   Eye,
   ArrowRight,
@@ -47,7 +48,8 @@ type NotificationType =
   | "closed"
   | "moved"
   | "review"
-  | "intake";
+  | "intake"
+  | "transferred";
 
 export type InboxItem = {
   id: string;
@@ -107,6 +109,7 @@ const TYPE_META: Record<
   moved:    { icon: MoveRight,      color: "#0a76b9", bg: "#0a76b9", label: "Status changed"   },
   review:   { icon: Eye,            color: "#dc2626", bg: "#dc2626", label: "Review requested" },
   intake:   { icon: Inbox,          color: "#0a76b9", bg: "#0a76b9", label: "New support ticket" },
+  transferred: { icon: ArrowLeftRight, color: "#d97706", bg: "#d97706", label: "Transferred" },
 };
 
 const PRIORITY_COLOR: Record<string, string> = {

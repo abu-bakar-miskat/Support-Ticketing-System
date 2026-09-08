@@ -27,12 +27,8 @@ export default async function SubDepartmentSubmissionsRoute({
     include: { department: { select: { id: true, name: true } } },
   })
 
-  // Only this sub-department's own forms are managed here — mirror the list page.
-  if (
-    !form ||
-    form.intakeSubDepartmentId !== subDepartment.id ||
-    form.scope !== "SUB_DEPARTMENT"
-  ) {
+  // Any form routed to this sub-department (department- or sub-department-scoped).
+  if (!form || form.intakeSubDepartmentId !== subDepartment.id) {
     notFound()
   }
 

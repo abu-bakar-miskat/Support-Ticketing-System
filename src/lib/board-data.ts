@@ -38,6 +38,7 @@ const ticketSelect = {
   id: true, title: true, ticketNumber: true, priority: true, status: true,
   moduleId: true, labels: true, estimatedTime: true, startDate: true,
   dueDate: true, createdAt: true,
+  transferredFromName: true, transferredByName: true,
   subDepartment: { select: { id: true, prefix: true, name: true } },
   project: { select: { id: true, name: true, slug: true, color: true, avatarUrl: true, kind: true } },
   module: { select: { id: true, name: true } },
@@ -143,6 +144,8 @@ export function toBoardCard(
     hasIntake: !!t.intake,
     isComplete: isStatusComplete,
     lastMessageDirection: (t.messages[0]?.direction as "inbound" | "outbound") ?? null,
+    transferredFromName: t.transferredFromName ?? null,
+    transferredByName: t.transferredByName ?? null,
   }
 }
 

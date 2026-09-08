@@ -256,6 +256,8 @@ export type BoardCardData = {
   hasIntake: boolean
   isComplete: boolean
   lastMessageDirection: "inbound" | "outbound" | null
+  transferredFromName: string | null
+  transferredByName: string | null
 }
 
 export type SubDepartmentBoardGroup = {

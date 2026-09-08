@@ -13,6 +13,7 @@ import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
 import { renderStatusChanged } from "./email-templates/status-changed";
 import { renderTicketCompleted } from "./email-templates/ticket-completed";
+import { renderTicketTransferred } from "./email-templates/ticket-transferred";
 import { renderSignatureHtml, renderSignatureText } from "./email-templates/signature";
 import { normalizeSignaturePrefs } from "./signature-prefs";
 import { prisma } from "./db";
@@ -361,6 +362,42 @@ export async function sendTicketCompletedEmail(args: {
   });
   logIfRejected(
     "ticket completed",
+    await resend.emails.send({
+      from: fromHeader(config),
+      to,
+      subject,
+      html,
+      text,
+      replyTo: config.replyTo || undefined,
+    }),
+  );
+}
+
+export async function sendTicketTransferredEmail(args: {
+  to: string;
+  recipientId: string;
+  recipientName: string;
+  ticketId: string;
+  humanId: string;
+  ticketTitle: string;
+  fromSubDepartmentName: string;
+  toSubDepartmentName: string;
+  transferredByName: string;
+  departmentId?: string | null;
+  subDepartmentId?: string | null;
+}) {
+  if (!resend) return;
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
+  if (!config.notifyTicketTransferred) return;
+  if (!await isEmailPrefEnabled(args.recipientId, "emailOnTicketTransfer")) return;
+
+  const { to, recipientId, departmentId, subDepartmentId, ...rest } = args;
+  const { subject, html, text } = renderTicketTransferred({
+    ...rest,
+    branding: brandingFrom(config),
+  });
+  logIfRejected(
+    "ticket transferred",
     await resend.emails.send({
       from: fromHeader(config),
       to,

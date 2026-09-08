@@ -29,11 +29,10 @@ export default async function Page({
   const subDepartment = await resolveSubDepartmentByName(decodeURIComponent(name), profile)
   if (!subDepartment) notFound()
 
-  // Only the forms routed to this sub-department are managed here.
-  // A sub-department's page shows only its OWN forms (SUB_DEPARTMENT scope);
-  // department-wide forms that merely route here stay on the department page.
+  // Any form that routes tickets into this sub-department — including
+  // department-scoped forms that use it as the intake target.
   const forms = await prisma.intakeFormConfig.findMany({
-    where: { intakeSubDepartmentId: subDepartment.id, scope: "SUB_DEPARTMENT" },
+    where: { intakeSubDepartmentId: subDepartment.id },
     orderBy: { createdAt: "desc" },
     include: {
       department: { select: { id: true, name: true, assignmentMethod: true } },

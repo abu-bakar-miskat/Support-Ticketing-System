@@ -503,6 +503,9 @@ export async function getTicketDetailPayload(
         })
       : null,
     closedAtIso: ticket.closedAt ? ticket.closedAt.toISOString() : null,
+    transferredFromName: ticket.transferredFromName ?? null,
+    transferredByName: ticket.transferredByName ?? null,
+    transferredAtIso: ticket.transferredAt ? ticket.transferredAt.toISOString() : null,
     dueOverdue,
     canEditDates: canEdit,
     canChangeStatus: canEdit,

@@ -79,9 +79,11 @@ export async function GET(
           ? "comment"
           : n.type === "review_request"
             ? "review"
-            : n.message === "closed"
-              ? "closed"
-              : "moved";
+            : n.type === "ticket_transferred"
+              ? "transferred"
+              : n.message === "closed"
+                ? "closed"
+                : "moved";
 
   const action =
     type === "mention"
@@ -92,7 +94,9 @@ export async function GET(
           ? "commented"
           : type === "review"
             ? "requested your review"
-            : (n.message ?? "updated status");
+            : type === "transferred"
+              ? `transferred this ticket ${n.message ?? ""}`.trim()
+              : (n.message ?? "updated status");
 
   const item = {
     id: n.id,

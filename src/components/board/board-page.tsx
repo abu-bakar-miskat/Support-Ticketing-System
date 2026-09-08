@@ -25,6 +25,7 @@ import {
   Play,
   Pause,
   SquareKanban,
+  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { avatarColorFor } from "@/lib/avatar";
@@ -385,6 +386,22 @@ function BoardCard({
                 {initialCard.lastMessageDirection === "outbound" ? "Waiting for customer" : "Waiting for assignee"}
               </span>
             )}
+          </div>
+        )}
+
+        {initialCard.transferredFromName && (
+          <div className="flex">
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-[2px] font-sans text-[9.5px] font-medium text-amber-600 dark:text-amber-500"
+              title={
+                initialCard.transferredByName
+                  ? `Transferred from ${initialCard.transferredFromName} by ${initialCard.transferredByName}`
+                  : `Transferred from ${initialCard.transferredFromName}`
+              }
+            >
+              <ArrowLeftRight className="size-2.5 shrink-0" />
+              From {initialCard.transferredFromName}
+            </span>
           </div>
         )}
 
@@ -885,6 +902,8 @@ export function BoardPage({
         hasIntake: false,
         isComplete: false,
         lastMessageDirection: null,
+        transferredFromName: null,
+        transferredByName: null,
       };
       setLocalCards((prev) => [...prev, newCard]);
       setCreateForStatus(null);

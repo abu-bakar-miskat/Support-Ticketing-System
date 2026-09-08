@@ -21,15 +21,11 @@ export default async function SubDepartmentSubmissionDetailRoute({
 
   const form = await prisma.intakeFormConfig.findUnique({
     where: { id: formId },
-    select: { id: true, name: true, intakeSubDepartmentId: true, scope: true },
+    select: { id: true, name: true, intakeSubDepartmentId: true },
   })
 
-  // Only this sub-department's own forms are managed here — mirror the list page.
-  if (
-    !form ||
-    form.intakeSubDepartmentId !== subDepartment.id ||
-    form.scope !== "SUB_DEPARTMENT"
-  ) {
+  // Any form routed to this sub-department (department- or sub-department-scoped).
+  if (!form || form.intakeSubDepartmentId !== subDepartment.id) {
     notFound()
   }
 

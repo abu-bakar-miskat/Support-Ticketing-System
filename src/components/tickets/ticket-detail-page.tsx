@@ -45,6 +45,7 @@ import {
   Timer,
   CalendarDays,
   Pencil,
+  ArrowLeftRight,
   Check,
   Loader2,
   Link2,
@@ -667,6 +668,9 @@ export type TicketDetailProps = {
   dueDateIso: string | null;
   dueDate: string | null;
   closedAtIso: string | null;
+  transferredFromName?: string | null;
+  transferredByName?: string | null;
+  transferredAtIso?: string | null;
   dueOverdue: boolean;
   canEditDates: boolean;
   canChangeStatus?: boolean;
@@ -755,6 +759,8 @@ export function TicketDetailPage({
   dueDateIso,
   dueDate,
   closedAtIso,
+  transferredFromName = null,
+  transferredByName = null,
   dueOverdue,
   canEditDates,
   canChangeStatus = true,
@@ -2359,6 +2365,21 @@ export function TicketDetailPage({
               />
 
               <SlaIndicatorBadge ticketId={dbId} size="md" />
+
+              {transferredFromName && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-sans text-[11.5px] font-medium text-amber-600 dark:text-amber-500"
+                  title={
+                    transferredByName
+                      ? `Transferred from ${transferredFromName} by ${transferredByName}`
+                      : `Transferred from ${transferredFromName}`
+                  }
+                >
+                  <ArrowLeftRight className="size-3 shrink-0" />
+                  Transferred from {transferredFromName}
+                  {transferredByName ? ` by ${transferredByName}` : ""}
+                </span>
+              )}
 
               {/* Label pills */}
               {liveLabels.map((lbl) => (

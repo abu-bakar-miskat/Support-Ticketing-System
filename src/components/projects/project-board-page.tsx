@@ -1056,6 +1056,8 @@ export function ProjectBoardPage({
       hasIntake: false,
       isComplete: false,
       lastMessageDirection: null,
+      transferredFromName: null,
+      transferredByName: null,
     };
     setLocalCards((prev) => [...prev, newCard]);
   }, [name, color]);

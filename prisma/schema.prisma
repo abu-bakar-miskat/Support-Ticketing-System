@@ -147,6 +147,7 @@ enum NotificationType {
   agreement_expiring
   template_request_submitted
   template_request_reviewed
+  ticket_transferred
 }
 
 enum JoinRequestStatus {
@@ -833,6 +834,16 @@ model Ticket {
   deletedAt    DateTime?
   /** Personal draft — visible only to creator (and admins in dept-scoped lists). */
   isDraft      Boolean        @default(false)
+
+  // ── Transfer mark (ASG-06) ── set when a ticket is moved to another
+  // sub-department. Names are snapshotted at transfer time so a
+  // "Transferred from X by Y" badge renders on cards and the detail page
+  // without any extra join.
+  transferredFromSubDepartmentId String?   @db.Uuid
+  transferredFromName            String?
+  transferredById                String?   @db.Uuid
+  transferredByName              String?
+  transferredAt                  DateTime?
 
   assignee      Profile?       @relation("TicketAssignee", fields: [assigneeId], references: [id])
   creator       Profile        @relation("TicketCreator", fields: [creatorId], references: [id])

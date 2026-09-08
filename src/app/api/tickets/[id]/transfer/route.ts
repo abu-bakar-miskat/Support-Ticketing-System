@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
+import { after } from "next/server"
 import { requireAuth, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { transferTicket } from "@/lib/ticket-transfer"
+import { notifyTicketTransfer } from "@/lib/ticket-transfer-notify"
 
 // ASG-06: move a ticket to another department/sub-department (SubDepartment). Any
 // agent with edit access to the ticket may transfer it — not just
@@ -47,6 +49,24 @@ export async function POST(
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }
+
+  // Notify the source dept manager(s), source sub-manager(s), and destination
+  // sub-manager(s) — best-effort, off the response path.
+  after(() =>
+    notifyTicketTransfer({
+      ticketId: id,
+      ticketTitle: result.ticketTitle,
+      humanId: `${result.toPrefix}-${result.newTicketNumber}`,
+      actorId: profile!.id,
+      actorName: result.actorName,
+      fromDepartmentId: result.fromDepartmentId,
+      fromSubDepartmentId: result.fromTeamId,
+      fromSubDepartmentName: result.fromSubDepartmentName,
+      toDepartmentId: result.toDepartmentId,
+      toSubDepartmentId: result.toTeamId,
+      toSubDepartmentName: result.toSubDepartmentName,
+    }).catch(() => undefined),
+  )
 
   return NextResponse.json(result)
 }

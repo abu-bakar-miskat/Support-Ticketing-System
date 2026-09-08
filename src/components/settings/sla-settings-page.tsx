@@ -460,7 +460,7 @@ export function SlaSettingsPage({
                     className={cn(
                       "rounded-md px-2 py-1 font-sans text-[11px] font-medium",
                       businessHours.workingDays.includes(day)
-                        ? "bg-sts-blue text-white"
+                        ? "bg-sts-blue text-sts-blue-fg"
                         : "bg-sts-surface text-sts-muted",
                     )}
                   >
@@ -474,7 +474,7 @@ export function SlaSettingsPage({
               type="button"
               onClick={saveSettings}
               disabled={saving}
-              className="w-fit rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
+              className="w-fit rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg hover:bg-sts-blue/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save working-hours settings"}
             </button>

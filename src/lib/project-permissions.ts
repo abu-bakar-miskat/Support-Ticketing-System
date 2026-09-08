@@ -14,7 +14,7 @@ export function isProjectLead(profile: ProjectPermissionProfile): boolean {
 }
 
 export function canManageProjectBoards(profile: ProjectPermissionProfile): boolean {
-  return profile.role === "admin" || profile.role === "manager";
+  return profile.role === "admin" || profile.role === "manager" || !!profile.isSuperAdmin;
 }
 
 /**
@@ -22,14 +22,15 @@ export function canManageProjectBoards(profile: ProjectPermissionProfile): boole
  * Staff and leads only see the current selected stage (read-only).
  */
 export function canManageProjectLifecycle(profile: ProjectPermissionProfile): boolean {
-  return profile.role === "admin" || profile.role === "manager";
+  return profile.role === "admin" || profile.role === "manager" || !!profile.isSuperAdmin;
 }
 
 export function canManageProjects(profile: ProjectPermissionProfile): boolean {
   return (
     profile.role === "admin" ||
     profile.role === "manager" ||
-    isProjectLead(profile)
+    isProjectLead(profile) ||
+    !!profile.isSuperAdmin
   );
 }
 

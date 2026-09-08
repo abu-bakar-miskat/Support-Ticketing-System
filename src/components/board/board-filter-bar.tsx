@@ -199,14 +199,14 @@ const DATE_FILTER_COPY: Record<
   due: {
     icon: CalendarDays,
     aria: "Filter by due date",
-    allLabel: "Any due date",
+    allLabel: "Due date",
     rangeFallback: "Due range",
     statusHeading: "Due status",
     withinHeading: "Due within",
     customHeading: "Custom due range",
     applyLabel: "Apply due range",
     options: [
-      { value: "all", label: "Any due date" },
+      { value: "all", label: "Due date" },
       { value: "overdue", label: "Overdue" },
       { value: "today", label: "Due today" },
       { value: "week", label: "Due this week" },
@@ -216,14 +216,14 @@ const DATE_FILTER_COPY: Record<
   target: {
     icon: CalendarClock,
     aria: "Filter by target date",
-    allLabel: "Any target date",
+    allLabel: "Target date",
     rangeFallback: "Target range",
     statusHeading: "Target status",
     withinHeading: "Target within",
     customHeading: "Custom target range",
     applyLabel: "Apply target range",
     options: [
-      { value: "all", label: "Any target date" },
+      { value: "all", label: "Target date" },
       { value: "overdue", label: "Past target" },
       { value: "today", label: "Target today" },
       { value: "week", label: "Target this week" },
@@ -441,7 +441,7 @@ function HybridDueDateFilter({
 }
 
 const INTAKE_OPTIONS: { value: IntakeFilter; label: string }[] = [
-  { value: "all", label: "Any source" },
+  { value: "all", label: "Source" },
   { value: "intake", label: "From support form" },
   { value: "non_intake", label: "Not from support" },
 ];

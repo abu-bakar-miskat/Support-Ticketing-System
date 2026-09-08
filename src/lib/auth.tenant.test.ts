@@ -47,13 +47,13 @@ describe("canAccessTicket — tenant gate", () => {
     ).toBe(false)
   })
 
-  it("gates super-admins by their active tenant too", () => {
+  it("lets super-admins reach tickets in any tenant, regardless of active tenant", () => {
     expect(
       canAccessTicket(
         profile({ role: "admin", isSuperAdmin: true }),
         { ...baseTicket, assigneeId: null, creatorId: "x", tenantId: "tenant-B" },
       ),
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it("skips the gate when there is no active tenant context", () => {

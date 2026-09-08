@@ -163,7 +163,7 @@ export async function DELETE(_req: Request, { params }: Params) {
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  if (profile.role !== "admin" && profile.role !== "manager") {
+  if (profile.role !== "admin" && profile.role !== "manager" && !profile.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

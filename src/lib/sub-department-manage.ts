@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { subDepartmentInScope } from "@/lib/dept-scope"
 
 export async function canManageSubDepartment(profile: AuthProfile, subDepartmentId: string): Promise<boolean> {
+  if (profile.isSuperAdmin) return true
   if (!(await subDepartmentInScope(profile, subDepartmentId))) return false
   if (profile.role === "admin") return true
   if (profile.role === "manager") {

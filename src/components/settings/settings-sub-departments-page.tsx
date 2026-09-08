@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -1381,6 +1382,7 @@ function SubDepartmentCard({
 }) {
   const [managersExpanded, setManagersExpanded] = useState(false);
   const [membersExpanded, setMembersExpanded] = useState(false);
+  const [entering, setEntering] = useState(false);
 
   const memberCount =
     (subDepartment.members?.length ?? 0) + subDepartment.extraMembers;
@@ -1527,10 +1529,24 @@ function SubDepartmentCard({
         <Link
           href={`/sub-departments/${encodeURIComponent(subDepartment.name)}`}
           title="Enter sub-department"
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90"
+          onClick={() => setEntering(true)}
+          aria-disabled={entering}
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90",
+            entering && "pointer-events-none opacity-80",
+          )}
         >
-          Enter
-          <ArrowRight className="size-4" />
+          {entering ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Entering…
+            </>
+          ) : (
+            <>
+              Enter
+              <ArrowRight className="size-4" />
+            </>
+          )}
         </Link>
       </div>
     </div>

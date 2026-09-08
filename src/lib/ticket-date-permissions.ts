@@ -1,6 +1,7 @@
 type ProfileLike = {
   id: string;
   role: string;
+  isSuperAdmin?: boolean;
   subDepartmentId?: string | null;
   subDepartmentIds?: string[];
   memberships?: { subDepartmentId: string; role: string }[];
@@ -50,6 +51,7 @@ export function canEditTicket(
   profile: ProfileLike,
   ticket: TicketLike,
 ): boolean {
+  if (profile.isSuperAdmin) return true;
   if (profile.role === "admin" || profile.role === "manager") return true;
   if (ticket.assigneeId === profile.id) return true;
   if (ticket.creatorId === profile.id) return true;
@@ -114,6 +116,7 @@ export function canDeleteTicket(
   profile: ProfileLike,
   ticket: Pick<TicketLike, "creatorId">,
 ): boolean {
+  if (profile.isSuperAdmin) return true;
   if (profile.role === "admin" || profile.role === "manager") return true;
   return ticket.creatorId === profile.id;
 }

@@ -10,7 +10,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (error) return error
   const { id, userId } = await params
 
-  if (profile!.role !== "admin") {
+  if (profile!.role !== "admin" && !profile!.isSuperAdmin) {
     if (!(profile!.managedDepartmentIds ?? []).includes(id)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -21,7 +21,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     select: { role: true },
   })
   const callerIsDeptAdmin =
-    profile!.role === "admin" || (profile!.departmentAdminIds ?? []).includes(id)
+    profile!.role === "admin" || profile!.isSuperAdmin || (profile!.departmentAdminIds ?? []).includes(id)
   if (target?.role === "admin" && !callerIsDeptAdmin) {
     return NextResponse.json({ error: "Only an admin of this department can remove an admin." }, { status: 403 })
   }

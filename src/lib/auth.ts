@@ -22,9 +22,8 @@ export async function requireAdmin(message = "Only admins can do this.") {
   if (!profile) {
     return { profile: null, error: unauthorized() };
   }
-  // Super Admin (isSuperAdmin) is not a tenant/department Admin. Tenant-scoped
-  // admin is role === "admin" from a TENANT admin assignment.
-  if (profile.role !== "admin") {
+  // Platform super-admins supersede tenant/department admins everywhere.
+  if (profile.role !== "admin" && !profile.isSuperAdmin) {
     return { profile: null, error: forbidden(message) };
   }
   return { profile, error: null };
@@ -37,10 +36,10 @@ export async function requireAdminOrManager(
   if (!profile) {
     return { profile: null, isAdmin: false, error: unauthorized() };
   }
-  if (profile.role !== "admin" && profile.role !== "manager") {
+  if (profile.role !== "admin" && profile.role !== "manager" && !profile.isSuperAdmin) {
     return { profile: null, isAdmin: false, error: forbidden(message) };
   }
-  return { profile, isAdmin: profile.role === "admin", error: null };
+  return { profile, isAdmin: profile.role === "admin" || profile.isSuperAdmin, error: null };
 }
 
 /** Platform super-admin gate (all-tenant control). */
@@ -83,6 +82,7 @@ export function assertDepartmentAdmin(
   if (!departmentId) {
     return NextResponse.json({ error: "departmentId is required" }, { status: 400 });
   }
+  if (profile.isSuperAdmin) return null;
   const scope = departmentAdminScope(profile);
   if (scope && !scope.has(departmentId)) {
     return forbidden(message);
@@ -241,6 +241,9 @@ export function canAccessTicket(
   ticket: TicketAccessFields,
   deptScope?: DeptScope,
 ): boolean {
+  // Platform super-admins can reach any ticket in any tenant.
+  if (profile.isSuperAdmin) return true;
+
   // Tenant is the outermost boundary — reject cross-tenant tickets before any
   // other rule, including direct participation.
   if (ticketOutsideActiveTenant(profile, ticket)) return false;
@@ -327,6 +330,9 @@ export async function assertTicketAccess(
   ticket: TicketAccessFields,
   { forWrite = false }: { forWrite?: boolean } = {},
 ): Promise<NextResponse | null> {
+  // Platform super-admins bypass all tenant/department/draft gates.
+  if (profile.isSuperAdmin) return null;
+
   // Tenant gate first — no project/full-access fallback below may re-admit a
   // ticket from another tenant.
   if (ticketOutsideActiveTenant(profile, ticket)) {

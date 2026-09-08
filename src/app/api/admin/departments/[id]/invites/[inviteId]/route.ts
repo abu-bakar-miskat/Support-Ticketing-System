@@ -5,9 +5,10 @@ import { requireAuth } from "@/lib/auth";
 type Params = { params: Promise<{ id: string; inviteId: string }> };
 
 async function canManageDept(
-  profile: { role: string; managedDepartmentIds?: string[] },
+  profile: { role: string; isSuperAdmin?: boolean; managedDepartmentIds?: string[] },
   deptId: string,
 ): Promise<boolean> {
+  if (profile.isSuperAdmin) return true;
   if (profile.role === "admin") return true;
   if (profile.role === "manager") {
     return (profile.managedDepartmentIds ?? []).includes(deptId);

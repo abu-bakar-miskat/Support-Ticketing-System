@@ -59,7 +59,6 @@ const FALLBACK_STATUSES: StatusOption[] = [
 ];
 
 const PRIORITIES = ["Urgent", "Critical", "High", "Medium", "Low"] as const;
-const STORY_POINT_PRESETS = [1, 2, 3, 5, 8, 13] as const;
 
 function isMiscProjectName(name: string) {
   return name.toLowerCase() === "miscellaneous";
@@ -161,7 +160,6 @@ export function NewTicketModal({
   defaultBoardSubDepartmentId,
   boardSubDepartments,
   subDepartments,
-  departmentName,
   lockSubDepartmentId = false,
   lockProject,
   statuses,
@@ -305,7 +303,6 @@ export function NewTicketModal({
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string>("Low");
-  const [storyPoints, setStoryPoints] = useState<number | null>(null);
   const [estInput, setEstInput] = useState("");
   const [labels, setLabels] = useState<string[]>([]);
   const [assetLinks, setAssetLinks] = useState<{ label: string; url: string }[]>([]);
@@ -455,7 +452,6 @@ export function NewTicketModal({
       assetLinks,
       subDepartmentId: activeSubDepartmentId || defaultSubDepartmentId || undefined,
       parentId: parentId || undefined,
-      storyPoints: storyPoints ?? undefined,
       estimatedTime: parseTimeInput(estInput) ?? undefined,
       ...(asDraft ? { isDraft: true } : {}),
       ...(templateData ? { templateData } : {}),
@@ -945,11 +941,6 @@ export function NewTicketModal({
 
                 {!metaLoading && showSubDepartmentPicker && (
                   <>
-                    {departmentName ? (
-                      <FormField label="Department">
-                        <div className={READONLY_CLASS}>{departmentName}</div>
-                      </FormField>
-                    ) : null}
                     <StyledSelect
                       label="Sub-department"
                       id="subDepartmentId-trigger"
@@ -1022,15 +1013,10 @@ export function NewTicketModal({
                   />
                 )}
 
-                <AssetLinksField
-                  assetLinks={assetLinks}
-                  setAssetLinks={setAssetLinks}
-                  addingAsset={addingAsset}
-                  setAddingAsset={setAddingAsset}
-                  newAssetUrl={newAssetUrl}
-                  setNewAssetUrl={setNewAssetUrl}
-                  newAssetLabel={newAssetLabel}
-                  setNewAssetLabel={setNewAssetLabel}
+                <EstimatedTimeField
+                  estInput={estInput}
+                  setEstInput={setEstInput}
+                  parseTimeInput={parseTimeInput}
                 />
                 <LabelsField labels={labels} setLabels={setLabels} />
 
@@ -1041,15 +1027,16 @@ export function NewTicketModal({
                   setEndTime={setEndTime}
                 />
 
-                {/* Estimated time + Story points always share one row */}
-                <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:col-span-2 sm:grid-cols-2">
-                  <EstimatedTimeField
-                    estInput={estInput}
-                    setEstInput={setEstInput}
-                    parseTimeInput={parseTimeInput}
-                  />
-                  <StoryPointsField storyPoints={storyPoints} setStoryPoints={setStoryPoints} />
-                </div>
+                <AssetLinksField
+                  assetLinks={assetLinks}
+                  setAssetLinks={setAssetLinks}
+                  addingAsset={addingAsset}
+                  setAddingAsset={setAddingAsset}
+                  newAssetUrl={newAssetUrl}
+                  setNewAssetUrl={setNewAssetUrl}
+                  newAssetLabel={newAssetLabel}
+                  setNewAssetLabel={setNewAssetLabel}
+                />
 
                 {hasSprints && (
                   <SprintField projectSprints={projectSprints} selectedProjectId={selectedProjectId} />
@@ -1339,36 +1326,6 @@ function EstimatedTimeField({
         placeholder="e.g. 2h 30m or 1.5h"
         className={INPUT_CLASS}
       />
-    </FormField>
-  );
-}
-
-function StoryPointsField({
-  storyPoints,
-  setStoryPoints,
-}: {
-  storyPoints: number | null;
-  setStoryPoints: (value: number | null) => void;
-}) {
-  return (
-    <FormField label="Story points">
-      <div className="flex h-10 items-center gap-1">
-        {STORY_POINT_PRESETS.map((pt) => (
-          <button
-            key={pt}
-            type="button"
-            onClick={() => setStoryPoints(storyPoints === pt ? null : pt)}
-            className={cn(
-              "flex size-8 items-center justify-center rounded-[5px] border font-sans text-[12px] font-semibold transition-colors",
-              storyPoints === pt
-                ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
-                : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
-            )}
-          >
-            {pt}
-          </button>
-        ))}
-      </div>
     </FormField>
   );
 }

@@ -382,6 +382,7 @@ export async function resolveSprintListWhere(profile: ProfileLike) {
 
 /** Returns true when a sprint is visible in the caller's current department scope. */
 export async function sprintInScope(profile: ProfileLike, sprintId: string) {
+  if (profile.isSuperAdmin) return true;
   const where = await resolveSprintListWhere(profile);
   const count = await prisma.sprint.count({
     where: { id: sprintId, AND: [where] },
@@ -401,6 +402,7 @@ export async function moduleInScope(profile: ProfileLike, moduleId: string) {
 
 /** Returns true when a project belongs to the active department scope OR the user is an explicit member. */
 export async function projectInScope(profile: ProfileLike, projectId: string) {
+  if (profile.isSuperAdmin) return true;
   const projectRow = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
@@ -520,6 +522,7 @@ export async function ticketsInScope(
 
 /** Returns true when a subDepartment belongs to the active department scope. */
 export async function subDepartmentInScope(profile: ProfileLike, subDepartmentId: string) {
+  if (profile.isSuperAdmin) return true;
   const deptScope = await getProfileDeptScope(profile);
   if (!deptScope) return profile.role === "admin";
   return deptScope.subDepartmentIds.includes(subDepartmentId);
@@ -807,6 +810,7 @@ export function canManageDeptCalendar(
   profile: ProfileLike,
   departmentId: string,
 ): boolean {
+  if (profile.isSuperAdmin) return true;
   if (profile.role === "admin") return true;
   return (profile.managedDepartmentIds ?? []).includes(departmentId);
 }

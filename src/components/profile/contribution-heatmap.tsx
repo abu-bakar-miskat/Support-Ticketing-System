@@ -287,7 +287,7 @@ function ContributionRow({ item }: { item: ContributionItem }) {
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-sts-card"
+      className="group flex items-start gap-2 rounded-full px-1.5 py-1 hover:bg-sts-card"
     >
       <Icon className={cn("mt-[1px] size-3.5 shrink-0", iconColor)} />
       <span className="min-w-0 font-sans text-[12px] text-sts-foreground">

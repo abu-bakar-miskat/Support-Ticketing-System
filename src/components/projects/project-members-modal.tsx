@@ -122,7 +122,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -168,7 +168,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                           onClick={() => removeMember(m)}
                           disabled={saving === m.id}
                           title="Remove from project"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
                         >
                           {saving === m.id
                             ? <Loader2 className="size-3.5 animate-spin" />
@@ -214,7 +214,7 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                           disabled={saving === u.id}
                           title="Add to project"
                           className={cn(
-                            "flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors disabled:cursor-wait",
+                            "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-wait",
                             "text-sts-subtle hover:bg-sts-blue hover:text-white",
                           )}
                         >

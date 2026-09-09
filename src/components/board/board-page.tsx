@@ -633,7 +633,7 @@ function BoardColumn({
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
+            className="flex w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
           >
             <Plus className="size-3 shrink-0" />
             <span className="font-sans text-[11.5px]">Add task</span>
@@ -1179,7 +1179,7 @@ export function BoardPage({
                 onChange={(v) => setSortKey(v as SortKey)}
               />
 
-              <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+              <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() =>

@@ -220,7 +220,7 @@ function GenerateKeyModal({
           <h2 className="sts-text-modal-title">Generate API key</h2>
           <button
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -343,7 +343,7 @@ function KeyRevealModal({
             </code>
             <button
               onClick={copy}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
               title="Copy key"
             >
               {copied ? (
@@ -447,7 +447,7 @@ export function SettingsApiKeysPage({
           </div>
           <Button
             onClick={() => setShowGenerate(true)}
-            className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]"
+            className="h-[34px] w-full shrink-0 gap-1.5 rounded-full bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
             Generate key

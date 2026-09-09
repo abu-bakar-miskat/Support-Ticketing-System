@@ -217,7 +217,7 @@ export function AddMemberModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -322,7 +322,7 @@ export function AddMemberModal({
                   type="button"
                   onClick={() => setAccessType("full")}
                   className={cn(
-                    "flex-1 h-9 rounded-[6px] border font-sans text-[12.5px] font-medium transition-colors",
+                    "flex-1 h-9 rounded-full border font-sans text-[12.5px] font-medium transition-colors",
                     accessType === "full"
                       ? "border-sts-blue bg-sts-blue text-white"
                       : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
@@ -334,7 +334,7 @@ export function AddMemberModal({
                   type="button"
                   onClick={() => setAccessType("guest")}
                   className={cn(
-                    "flex-1 h-9 rounded-[6px] border font-sans text-[12.5px] font-medium transition-colors",
+                    "flex-1 h-9 rounded-full border font-sans text-[12.5px] font-medium transition-colors",
                     accessType === "guest"
                       ? "border-sts-blue bg-sts-blue text-white"
                       : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
@@ -401,7 +401,7 @@ export function AddMemberModal({
                     <span className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                       Access duration
                     </span>
-                    <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border">
+                    <div className="flex h-8 overflow-hidden rounded-full border border-sts-card-border">
                       <button
                         type="button"
                         onClick={() => setGuestPermanent(true)}
@@ -447,7 +447,7 @@ export function AddMemberModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-[7px] border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              className="h-9 rounded-full border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -455,7 +455,7 @@ export function AddMemberModal({
               type="button"
               disabled={!selected || submitting}
               onClick={handleSubmit}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50"
             >
               {submitting && <Loader2 className="size-3.5 animate-spin" />}
               Add member
@@ -778,7 +778,7 @@ export function SettingsMembersPage({
                 onClick={() => setInviteOpen(true)}
                 disabled={availableSubDepartments.length === 0}
                 title={availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
-                className="inline-flex h-9 items-center gap-1.5 rounded-[7px] border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus className="size-3.5" />
                 Invite by email
@@ -787,7 +787,7 @@ export function SettingsMembersPage({
             <button
               type="button"
               onClick={() => setAddMemberOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 rounded-[7px] bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
+              className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
             >
               <Plus className="size-3.5" />
               Add member
@@ -1113,7 +1113,7 @@ export function SettingsMembersPage({
                             type="button"
                             title="Configure availability"
                             onClick={() => setConfigMember(member)}
-                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                           >
                             <Settings2 className="size-3.5" />
                           </button>
@@ -1122,7 +1122,7 @@ export function SettingsMembersPage({
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               type="button"
-                              className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                             >
                               <MoreHorizontal className="size-3.5" />
                             </DropdownMenuTrigger>

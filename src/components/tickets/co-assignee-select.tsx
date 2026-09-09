@@ -162,7 +162,7 @@ export function CoAssigneeSelect({
           ref={triggerRef}
           type="button"
           onClick={() => open ? setOpen(false) : openDropdown()}
-          className="flex items-center gap-1.5 rounded-md border border-dashed border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
+          className="flex items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
         >
           <Plus className="size-3" />
           {coAssignees.length > 0 ? "Edit co-assignees" : "Add co-assignee"}
@@ -224,7 +224,7 @@ export function CoAssigneeSelect({
             <button
               type="button"
               onClick={cancel}
-              className="h-6 rounded-md px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="h-6 rounded-full px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -232,7 +232,7 @@ export function CoAssigneeSelect({
               type="button"
               onClick={save}
               disabled={!hasChanges || saving}
-              className="h-6 rounded-md bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
+              className="h-6 rounded-full bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save"}
             </button>

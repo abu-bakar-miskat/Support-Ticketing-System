@@ -30,7 +30,7 @@ export function FilterDropdown({
     <Popover onOpenChange={(open) => { if (!open) setQuery(""); }}>
       <PopoverTrigger
         className={cn(
-          "flex shrink-0 items-center gap-1.5 rounded-lg border font-sans transition-colors",
+          "flex shrink-0 items-center gap-1.5 rounded-full border font-sans transition-colors",
           compact ? "h-7 px-2.5 text-[11.5px]" : "h-8 px-3 text-[12px]",
           count > 0
             ? "border-sts-blue bg-sts-blue-tint font-semibold text-sts-id"
@@ -138,7 +138,7 @@ export function SortDropdown({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <ArrowUpDown className="size-3 shrink-0" />
         {label}
         <ChevronDown className="size-3 shrink-0" />

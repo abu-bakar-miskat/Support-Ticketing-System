@@ -461,7 +461,7 @@ export function RulesSettingsPage({
                 setNewRuleForm(null);
                 setShowNewRule(true);
               }}
-              className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
             >
               <Plus className="size-3.5" /> New rule
             </button>
@@ -486,7 +486,7 @@ export function RulesSettingsPage({
                   setNewRuleForm(null);
                   setShowNewRule(true);
                 }}
-                className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+                className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
               >
                 <Plus className="size-3.5" /> New rule
               </button>
@@ -543,7 +543,7 @@ export function RulesSettingsPage({
               <button
                 type="button"
                 onClick={() => setTestFields((prev) => prev.filter((_, xi) => xi !== i))}
-                className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
+                className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -553,7 +553,7 @@ export function RulesSettingsPage({
             <button
               type="button"
               onClick={() => setTestFields((prev) => [...prev, { key: "", value: "" }])}
-              className="inline-flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="inline-flex items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" /> Add field
             </button>
@@ -561,7 +561,7 @@ export function RulesSettingsPage({
               type="button"
               onClick={runTest}
               disabled={testing}
-              className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-3 py-1 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-3 py-1 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
             >
               {testing ? "Running…" : "Run test"}
             </button>
@@ -656,7 +656,7 @@ function FormRulesTable({
     <section className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10 text-sts-blue">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue/10 text-sts-blue">
             <FileText className="size-4" />
           </span>
           <div className="min-w-0">
@@ -672,7 +672,7 @@ function FormRulesTable({
         <button
           type="button"
           onClick={onNewRule}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
         >
           <Plus className="size-3.5" /> New rule
         </button>
@@ -788,7 +788,7 @@ function RuleTableRows({
               type="button"
               onClick={() => onMove(-1)}
               disabled={index === 0}
-              className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
               title="Move up"
             >
               <ArrowUp className="size-3.5" />
@@ -797,7 +797,7 @@ function RuleTableRows({
               type="button"
               onClick={() => onMove(1)}
               disabled={index === total - 1}
-              className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
               title="Move down"
             >
               <ArrowDown className="size-3.5" />
@@ -808,7 +808,7 @@ function RuleTableRows({
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             title="Delete rule"
           >
             <Trash2 className="size-3.5" />
@@ -871,7 +871,7 @@ function NewRuleModal({
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -921,7 +921,7 @@ function NewRuleModal({
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
+            className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
           >
             Cancel
           </button>
@@ -929,7 +929,7 @@ function NewRuleModal({
             type="button"
             onClick={() => onCreate({ name: name.trim(), enabled, stopProcessing })}
             disabled={!canSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creating ? "Creating…" : "Create rule"}
           </button>
@@ -974,7 +974,7 @@ function RuleCard({
           type="button"
           onClick={() => onMove(-1)}
           disabled={index === 0}
-          className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+          className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
           title="Move up"
         >
           <ArrowUp className="size-3.5" />
@@ -983,7 +983,7 @@ function RuleCard({
           type="button"
           onClick={() => onMove(1)}
           disabled={index === total - 1}
-          className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+          className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
           title="Move down"
         >
           <ArrowDown className="size-3.5" />
@@ -991,7 +991,7 @@ function RuleCard({
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+          className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
           title="Delete rule"
         >
           <Trash2 className="size-3.5" />
@@ -1021,7 +1021,7 @@ function RuleCard({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
+          className="rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save rule"}
         </button>
@@ -1064,7 +1064,7 @@ function RuleEditor({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
+          className="rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-60"
         >
           {saving ? "Saving…" : "Save rule"}
         </button>
@@ -1145,7 +1145,7 @@ function ConditionsEditor({
               onClick={() =>
                 onChange({ ...conditions, conditions: conditions.conditions.filter((_, xi) => xi !== ci) })
               }
-              className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
+              className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -1159,7 +1159,7 @@ function ConditionsEditor({
               conditions: [...conditions.conditions, { fieldId: "", operator: "equals", value: "" }],
             })
           }
-          className="inline-flex w-fit items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
+          className="inline-flex w-fit items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
         >
           <Plus className="size-3" /> Add condition
         </button>
@@ -1208,7 +1208,7 @@ function ActionsEditor({
             <button
               type="button"
               onClick={() => onChange(actions.filter((_, xi) => xi !== ai))}
-              className="rounded-md p-1.5 text-sts-subtle hover:text-red-500"
+              className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -1217,7 +1217,7 @@ function ActionsEditor({
         <button
           type="button"
           onClick={() => onChange([...actions, { type: "set_priority", params: {} }])}
-          className="inline-flex w-fit items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
+          className="inline-flex w-fit items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
         >
           <Plus className="size-3" /> Add action
         </button>

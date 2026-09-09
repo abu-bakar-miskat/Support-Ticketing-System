@@ -20,11 +20,11 @@ export function PlatformTopBar({ onNotifClick }: { onNotifClick: () => void }) {
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <FontSizeZoomControls />
-        <ThemeToggle className="size-7 rounded-lg" />
+        <ThemeToggle className="size-7 rounded-full" />
         <button
           type="button"
           onClick={onNotifClick}
-          className="relative flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
+          className="relative flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
           aria-label="Notifications"
         >
           <Bell className="size-4" />

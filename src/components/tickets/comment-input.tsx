@@ -393,7 +393,7 @@ export function CommentInput({
             type="button"
             disabled={submitting || uploading}
             onClick={doSubmit}
-            className="flex items-center gap-[6px] rounded-[6px] bg-sts-blue px-[12px] py-[5px] font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50 dark:text-gray-900"
+            className="flex items-center gap-[6px] rounded-full bg-sts-blue px-[12px] py-[5px] font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50 dark:text-gray-900"
           >
             {submitting || uploading ? (
               <>

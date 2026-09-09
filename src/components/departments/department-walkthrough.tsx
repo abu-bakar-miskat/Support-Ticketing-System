@@ -77,7 +77,7 @@ export function DepartmentWalkthroughModal({
         <button
           type="button"
           onClick={dismiss}
-          className="absolute right-3 top-3 rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+          className="absolute right-3 top-3 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           aria-label="Close walkthrough"
         >
           <X className="size-4" />
@@ -98,7 +98,7 @@ export function DepartmentWalkthroughModal({
                   onClick={dismiss}
                   className="flex items-start gap-3 rounded-xl border border-sts-card-border bg-sts-surface px-3 py-2.5 hover:border-sts-id/40"
                 >
-                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10 text-sts-blue">
+                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-sts-blue/10 text-sts-blue">
                     <Icon className="size-3.5" />
                   </span>
                   <span className="min-w-0 flex-1">
@@ -120,7 +120,7 @@ export function DepartmentWalkthroughModal({
             disabled={busy}
             onClick={dismiss}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12px] font-semibold text-white hover:bg-sts-blue/90 disabled:opacity-60 dark:text-gray-900",
+              "flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-semibold text-white hover:bg-sts-blue/90 disabled:opacity-60 dark:text-gray-900",
             )}
           >
             <Check className="size-3.5" />

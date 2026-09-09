@@ -317,7 +317,7 @@ function ModuleTicketsPanel({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -329,7 +329,7 @@ function ModuleTicketsPanel({
             type="button"
             onClick={() => setStatus(null)}
             className={cn(
-              "rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
+              "rounded-full border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
               status === null
                 ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
                 : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
@@ -343,7 +343,7 @@ function ModuleTicketsPanel({
               type="button"
               onClick={() => setStatus((prev) => (prev === s.label ? null : s.label))}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                 status === s.label
                   ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
                   : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
@@ -367,7 +367,7 @@ function ModuleTicketsPanel({
                 type="button"
                 onClick={() => setPriority((prev) => (prev === p.priority ? null : p.priority))}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                   priority === p.priority
                     ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
                     : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
@@ -392,7 +392,7 @@ function ModuleTicketsPanel({
                 type="button"
                 onClick={() => setLabel((prev) => (prev === l ? null : l))}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[12.5px] transition-colors",
                   label === l
                     ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
                     : "border-sts-card-border bg-sts-bg text-sts-muted hover:text-sts-foreground",
@@ -536,7 +536,7 @@ function ModuleCard({
               <DropdownMenuTrigger
                 type="button"
                 onClick={(e) => e.stopPropagation()}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                className="flex size-6 shrink-0 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
@@ -630,7 +630,7 @@ function ModuleCard({
                 onShowTickets(statusLabel);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-bg px-2.5 py-1.5 font-sans text-[12.5px] transition-colors hover:border-sts-subtle/60 hover:text-sts-foreground",
+                "inline-flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-1.5 font-sans text-[12.5px] transition-colors hover:border-sts-subtle/60 hover:text-sts-foreground",
                 count === 0 ? "text-sts-subtle/70" : "text-sts-muted",
               )}
             >
@@ -851,7 +851,7 @@ function ModulesBody({
             type="button"
             onClick={() => setSelectedProjectId(p.id)}
             className={cn(
-              "flex items-center gap-2 rounded-lg border px-3 py-1.5 font-sans text-[12.5px] transition-colors",
+              "flex items-center gap-2 rounded-full border px-3 py-1.5 font-sans text-[12.5px] transition-colors",
               p.id === selectedProjectId
                 ? "border-sts-blue/50 bg-sts-blue-tint text-sts-foreground"
                 : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
@@ -1043,7 +1043,7 @@ export function ModulesPage({
           description="Ticket overview per module — counts reflect current state; the date range changes the created/resolved figures."
           actions={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border bg-sts-surface">
+            <div className="flex h-8 overflow-hidden rounded-full border border-sts-card-border bg-sts-surface">
               {RANGES.map((r) => (
                 <button
                   key={r.key}
@@ -1076,7 +1076,7 @@ export function ModulesPage({
                     })
                   }
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[12px] transition-colors",
+                    "flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[12px] transition-colors",
                     priorityFilter.has(p)
                       ? "bg-sts-card font-semibold text-sts-foreground shadow-sm"
                       : "text-sts-muted hover:text-sts-foreground",
@@ -1095,7 +1095,7 @@ export function ModulesPage({
               type="button"
               onClick={() => setUrgentOnly((v) => !v)}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-lg border px-3 font-sans text-[12px] font-medium transition-colors",
+                "flex h-8 items-center gap-1.5 rounded-full border px-3 font-sans text-[12px] font-medium transition-colors",
                 urgentOnly
                   ? "border-[#ff4500]/50 bg-[#ff4500]/10 text-[#dd3300] dark:text-[#ff9466]"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",

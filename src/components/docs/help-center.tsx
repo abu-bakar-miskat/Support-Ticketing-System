@@ -113,7 +113,7 @@ function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agen
 function SectionHeader({ id, icon: Icon, title }: { id: string; icon: LucideIcon; title: string }) {
   return (
     <div className="mb-5 flex items-center gap-3" id={id}>
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
         <Icon className="size-[18px] text-sts-blue" />
       </div>
       <h2 className="font-sans text-[22px] font-bold tracking-tight text-sts-foreground">{title}</h2>
@@ -164,7 +164,7 @@ function FeatureCard({
   return (
     <div className="rounded-xl border border-sts-card-border bg-sts-surface p-4 transition-colors hover:border-sts-blue/30">
       <div className="flex items-start gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
           <Icon className="size-4 text-sts-blue" />
         </div>
         <div className="min-w-0 flex-1">

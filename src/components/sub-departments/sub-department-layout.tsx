@@ -39,10 +39,10 @@ function SubDepartmentNavLink({
     <Link
       href={item.href}
       className={cn(
-        "flex h-7 items-center gap-[7px] rounded-[5px] px-[9px] font-sans text-[13px] transition-colors",
+        "flex h-7 items-center gap-[7px] rounded-full px-[9px] font-sans text-[13px] transition-colors",
         active
-          ? "border border-sts-card-border bg-sts-settings-subnav-active font-semibold text-sts-foreground"
-          : "font-normal text-sts-muted hover:text-sts-foreground",
+          ? "bg-sts-blue/10 font-semibold text-sts-blue"
+          : "font-normal text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
       )}
     >
       <span className="truncate">{item.label}</span>
@@ -125,7 +125,7 @@ function SubDepartmentMobileNav({
       <Link
         href="/sub-departments"
         aria-label="Back to sub-departments"
-        className="flex size-9 shrink-0 items-center justify-center rounded-md border border-sts-card-border text-sts-muted hover:text-sts-foreground"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-sts-card-border text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-4" />
       </Link>

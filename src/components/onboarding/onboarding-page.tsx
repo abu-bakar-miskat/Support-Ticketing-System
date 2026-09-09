@@ -20,7 +20,7 @@ function SignOutButton() {
     <button
       type="button"
       onClick={() => void handleSignOut()}
-      className="sts-pressable flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+      className="sts-pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
     >
       <LogOut className="size-3.5" />
       Sign out
@@ -186,7 +186,7 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
     <main className="sts-ambient-bg relative flex min-h-svh flex-col font-sans">
       {/* Top bar */}
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-sts-card-border/60 bg-sts-bg/70 px-5 backdrop-blur sm:px-8">
-        <BrandIcon className="h-7" />
+        <BrandIcon className="h-12" />
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           <SignOutButton />
@@ -236,7 +236,7 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
         {(pendingCount > 0 || rejectedCount > 0) && (
           <div className="sts-page-enter flex flex-col gap-2">
             {pendingCount > 0 && (
-              <div className="flex items-center gap-2.5 rounded-xl border border-sts-blue/25 bg-sts-blue-tint px-3.5 py-2.5">
+              <div className="flex items-center gap-2.5 rounded-full border border-sts-blue/25 bg-sts-blue-tint px-3.5 py-2.5">
                 <Clock className="size-3.5 shrink-0 text-sts-id" />
                 <p className="font-sans text-[12px] text-sts-id">
                   <span className="font-semibold">
@@ -247,7 +247,7 @@ export function OnboardingPage({ tenants, pendingKeys, userId, userName }: Props
               </div>
             )}
             {rejectedCount > 0 && (
-              <div className="flex items-center gap-2.5 rounded-xl border border-sts-red/20 bg-sts-red-tint px-3.5 py-2.5">
+              <div className="flex items-center gap-2.5 rounded-full border border-sts-red/20 bg-sts-red-tint px-3.5 py-2.5">
                 <XCircle className="size-3.5 shrink-0 text-sts-red" />
                 <p className="font-sans text-[12px] text-sts-red/90">
                   <span className="font-semibold">
@@ -455,7 +455,7 @@ function DepartmentCard({
           No sub-departments to join yet
         </div>
       ) : pendingSub ? (
-        <div className="flex items-center justify-center gap-1.5 rounded-xl border border-sts-blue/25 bg-sts-blue-tint py-2 font-sans text-[12px] font-semibold text-sts-id">
+        <div className="flex items-center justify-center gap-1.5 rounded-full border border-sts-blue/25 bg-sts-blue-tint py-2 font-sans text-[12px] font-semibold text-sts-id">
           <Clock className="size-3.5" />
           Pending review
         </div>
@@ -465,7 +465,7 @@ function DepartmentCard({
           onClick={() => onRequest(selectedHere)}
           disabled={isRequesting}
           className={cn(
-            "sts-pressable flex items-center justify-center gap-1.5 rounded-xl py-2 font-sans text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 disabled:opacity-60",
+            "sts-pressable flex items-center justify-center gap-1.5 rounded-full py-2 font-sans text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 disabled:opacity-60",
             rejected.has(selectedHere)
               ? "border border-sts-card-border text-sts-foreground hover:border-sts-accent/40 hover:bg-sts-surface"
               : "bg-sts-button text-sts-button-fg hover:bg-sts-button/90",
@@ -517,7 +517,7 @@ function Chip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "sts-pressable rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/40",
+        "sts-pressable rounded-full border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/40",
         active
           ? "border-sts-accent/50 bg-sts-accent/10 text-sts-foreground"
           : "border-sts-card-border bg-sts-surface/60 text-sts-muted hover:border-sts-accent/30 hover:text-sts-foreground",

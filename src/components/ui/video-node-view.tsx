@@ -68,7 +68,7 @@ export function VideoNodeView(props: NodeViewProps) {
               type="button"
               onClick={handleDownload}
               disabled={isDownloading}
-              className="p-2 text-sts-blue hover:bg-sts-surface rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
               title={`Download ${fileName}`}
             >
               {isDownloading ? (
@@ -81,7 +81,7 @@ export function VideoNodeView(props: NodeViewProps) {
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Delete video"
             >
               {isDeleting ? (

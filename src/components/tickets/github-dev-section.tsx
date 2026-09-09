@@ -84,7 +84,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
           href={commit.url}
           target="_blank"
           rel="noreferrer"
-          className="group relative flex items-center gap-2 rounded-md py-1.5 pl-6 pr-2 transition-colors hover:bg-sts-blue-tint/30"
+          className="group relative flex items-center gap-2 rounded-full py-1.5 pl-6 pr-2 transition-colors hover:bg-sts-blue-tint/30"
         >
           <span className="absolute left-2 top-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-sts-bg text-sts-subtle transition-colors group-hover:text-sts-blue">
             <GitCommitHorizontal className="h-3.5 w-3.5" />
@@ -117,7 +117,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
               href={pr.url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-start gap-2.5 rounded-lg border border-sts-card-border bg-sts-bg px-3 py-2.5 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
+              className="flex items-start gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-3 py-2.5 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
             >
               <span
                 className={`mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${STATE_ICON_STYLES[pr.state]}`}
@@ -186,7 +186,7 @@ export function GitHubDevSection({ data }: { data: GitHubDevData }) {
                 type="button"
                 onClick={() => setCommitsOpen((open) => !open)}
                 aria-expanded={commitsOpen}
-                className="flex items-center gap-1 self-start rounded-md py-1 pl-1.5 pr-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
+                className="flex items-center gap-1 self-start rounded-full py-1 pl-1.5 pr-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <ChevronRight
                   className={`h-3.5 w-3.5 transition-transform ${commitsOpen ? "rotate-90" : ""}`}

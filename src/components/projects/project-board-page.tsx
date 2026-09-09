@@ -503,7 +503,7 @@ function ProjectColumn({
           <button
             type="button"
             onClick={() => onAdd(status.label)}
-            className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
+            className="flex w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
           >
             <Plus className="size-3 shrink-0" />
             <span className="font-sans text-[11.5px]">Add task</span>
@@ -1241,7 +1241,7 @@ export function ProjectBoardPage({
 
         {externalView === undefined && (
           <div className={cn("flex shrink-0 items-center gap-2 px-4 sm:px-6 xl:px-8", view === "board" ? "mb-3 sm:mb-4" : "mb-0 border-b border-sts-card-border pb-2 pt-2")}>
-            <div className="flex h-7 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+            <div className="flex h-7 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               {(["board", "list"] as const).map((v) => (
                 <button
                   key={v}
@@ -1251,7 +1251,7 @@ export function ProjectBoardPage({
                   className={cn(
                     "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                     view === v
-                      ? "rounded-md bg-sts-blue-tint font-semibold text-sts-id"
+                      ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                       : "text-sts-muted hover:text-sts-foreground",
                   )}
                 >
@@ -1366,7 +1366,7 @@ export function ProjectBoardPage({
                       <button
                         type="button"
                         onClick={openCreateTask}
-                        className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
+                        className="flex w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
                       >
                         <Plus className="size-3 shrink-0" />
                         <span className="font-sans text-[11.5px]">Add task</span>

@@ -124,7 +124,7 @@ function TenantCard({
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={`More actions for ${tenant.name}`}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle outline-none transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle outline-none transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
@@ -176,7 +176,7 @@ function TenantCard({
           disabled={busy || locked}
           onClick={onEnter}
           className={cn(
-            "ml-auto flex items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900",
+            "ml-auto flex items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900",
             !canManage && "w-full",
           )}
         >

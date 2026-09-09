@@ -189,7 +189,7 @@ function FieldEditor({
               type="button"
               onClick={() => setState((s) => ({ ...s, type: t.value, options: [], childOptions: {} }))}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                 state.type === t.value
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
@@ -231,10 +231,10 @@ function FieldEditor({
                           }}
                           className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
+                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
                           <Check className="size-3" />
                         </button>
-                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                           <X className="size-3" />
                         </button>
                       </>
@@ -291,10 +291,10 @@ function FieldEditor({
                                   }}
                                   className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white">
+                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
                                   <Check className="size-2.5" />
                                 </button>
-                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
                                   <X className="size-2.5" />
                                 </button>
                               </div>
@@ -333,7 +333,7 @@ function FieldEditor({
                         <button
                           type="button"
                           onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
+                          className="flex h-6 items-center gap-1 rounded-full border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
                         >
                           <Plus className="size-2.5" />
                           Add
@@ -360,7 +360,7 @@ function FieldEditor({
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-7 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" />
               Add
@@ -386,7 +386,7 @@ function FieldEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+          className="flex h-7 items-center gap-1 rounded-full px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           Cancel
         </button>
@@ -394,7 +394,7 @@ function FieldEditor({
           type="button"
           onClick={() => onSave(state)}
           disabled={saving}
-          className="flex h-7 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
+          className="flex h-7 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
         >
           <Check className="size-3" />
           {saving ? "Saving…" : "Save field"}
@@ -555,7 +555,7 @@ export function SettingsFieldBuilderPage({
               setEditingId(null)
               setEditorError(null)
             }}
-            className="h-[34px] shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
+            className="h-[34px] shrink-0 gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
             Add field
@@ -639,14 +639,14 @@ export function SettingsFieldBuilderPage({
                     setAddingField(false)
                     setEditorError(null)
                   }}
-                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                  className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <Pencil className="size-3" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(field)}
-                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                  className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                 >
                   <Trash2 className="size-3" />
                 </button>

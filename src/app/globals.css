@@ -173,6 +173,8 @@
     --sts-secondary-bg: #f4f5f6;
     --sts-secondary-fg: #1f2430;
     --sts-accent: #0a76b9;
+    /* Default: no gradient, primary buttons stay solid. Themes may override. */
+    --sts-primary-gradient: linear-gradient(var(--primary), var(--primary));
     --sts-card-shadow: none;
     --sts-blue: #0a76b9;
     --sts-blue-fg: #ffffff;
@@ -308,22 +310,24 @@
     --sts-glass-highlight: transparent;
     --sts-card: #0a0a0a;
     --sts-card-border: #1a1a1a;
-    --sts-foreground: #f0f0f0;
-    --sts-muted: #a0a0a0;
-    --sts-subtle: #909090;
-    --sts-button: #00b8d9;
-    --sts-button-fg: #000000;
+    --sts-foreground: #f5f5f6;
+    --sts-muted: #bfbfc2;
+    --sts-subtle: #a6a6a9;
+    --sts-button: #ff5c30;
+    --sts-button-fg: #ffffff;
     --sts-secondary-bg: #0e0e0e;
     --sts-secondary-fg: #f0f0f0;
-    --sts-accent: #00d4ff;
+    --sts-accent: #ff5c30;
+    /* Brave-style red → orange gradient for primary buttons. */
+    --sts-primary-gradient: linear-gradient(120deg, #f5401f 0%, #fb542b 100%);
     --sts-card-shadow: none;
-    --sts-blue: #00d4ff;
-    --sts-blue-fg: #000000;
-    --sts-blue-tint: rgba(0, 60, 80, 0.45);
+    --sts-blue: #ff5c30;
+    --sts-blue-fg: #ffffff;
+    --sts-blue-tint: rgba(90, 35, 18, 0.5);
     --sts-surface: rgb(12, 12, 12);
     --sts-settings-subnav: rgba(6, 6, 6, 0.85);
     --sts-settings-subnav-active: rgba(16, 16, 16, 0.98);
-    --sts-id: #00d4ff;
+    --sts-id: #ff5c30;
     --sts-red: #ff6b6b;
     --sts-red-tint: #280a0a;
     --sts-green: #00e676;
@@ -333,27 +337,28 @@
     /* Super-AMOLED: true pure black, no background glows to lift the black. */
     --sts-bg-gradient: #000000;
     --background: oklch(0 0 0);
-    --foreground: oklch(0.96 0 0);
+    --foreground: oklch(0.98 0 0);
     --card: rgba(12, 12, 12, 0.96);
-    --card-foreground: oklch(0.96 0 0);
+    --card-foreground: oklch(0.98 0 0);
     --popover: rgba(8, 8, 8, 0.98);
     --popover-foreground: oklch(0.96 0 0);
-    --primary: oklch(0.75 0.18 200);
-    --primary-foreground: oklch(0.05 0 0);
+    --primary: oklch(0.68 0.19 38);
+    /* White ink for contrast on the red → orange primary-button gradient. */
+    --primary-foreground: oklch(0.99 0 0);
     --secondary: oklch(0.14 0 0);
     --secondary-foreground: oklch(0.96 0 0);
     --muted: oklch(0.14 0 0);
-    --muted-foreground: oklch(0.62 0 0);
+    --muted-foreground: oklch(0.75 0 0);
     --accent: oklch(0.14 0 0);
     --accent-foreground: oklch(0.96 0 0);
     --destructive: oklch(0.7 0.22 22);
     --border: oklch(0.2 0 0);
     --input: oklch(0.2 0 0);
-    --ring: oklch(0.75 0.18 200);
+    --ring: oklch(0.68 0.19 38);
     --sidebar: oklch(0.08 0 0);
     --sidebar-foreground: oklch(0.96 0 0);
-    --sidebar-primary: oklch(0.75 0.18 200);
-    --sidebar-primary-foreground: oklch(0.05 0 0);
+    --sidebar-primary: oklch(0.68 0.19 38);
+    --sidebar-primary-foreground: oklch(0.99 0 0);
     --sidebar-accent: oklch(0.14 0 0);
     --sidebar-accent-foreground: oklch(0.96 0 0);
     --sidebar-border: oklch(1 0 0 / 6%);
@@ -376,19 +381,21 @@
     --sts-foreground: #2c2f36;
     --sts-muted: #5b6472;
     --sts-subtle: #8a909c;
-    --sts-button: #df6830;
+    --sts-button: #ef4b23;
     --sts-button-fg: #ffffff;
     --sts-secondary-bg: #f1f2f5;
     --sts-secondary-fg: #2c2f36;
-    --sts-accent: #df6830;
+    --sts-accent: #ef4b23;
+    /* Brave-style red → orange gradient for primary buttons. */
+    --sts-primary-gradient: linear-gradient(120deg, #f5401f 0%, #fb542b 100%);
     --sts-card-shadow: none;
-    --sts-blue: #df6830;
+    --sts-blue: #ef4b23;
     --sts-blue-fg: #ffffff;
-    --sts-blue-tint: #fdece2;
+    --sts-blue-tint: #fdeae3;
     --sts-surface: #f1f2f5;
     --sts-settings-subnav: #f4f5f7;
     --sts-settings-subnav-active: #ffffff;
-    --sts-id: #df6830;
+    --sts-id: #ef4b23;
     --sts-red: #d84040;
     --sts-red-tint: #fff0ee;
     --sts-green: #2e9e5c;
@@ -402,7 +409,7 @@
     --card-foreground: oklch(0.3211 0 0);
     --popover: oklch(1.0000 0 0);
     --popover-foreground: oklch(0.3211 0 0);
-    --primary: oklch(0.6397 0.1720 36.4421);
+    --primary: oklch(0.62 0.19 33);
     --primary-foreground: oklch(1.0000 0 0);
     --secondary: oklch(0.9670 0.0029 264.5419);
     --secondary-foreground: oklch(0.4461 0.0263 256.8018);
@@ -413,7 +420,7 @@
     --destructive: oklch(0.6368 0.2078 25.3313);
     --border: oklch(0.9022 0.0052 247.8822);
     --input: oklch(0.82 0.008 264.5420);
-    --ring: oklch(0.6397 0.1720 36.4421);
+    --ring: oklch(0.62 0.19 33);
     --chart-1: oklch(0.7156 0.0605 248.6845);
     --chart-2: oklch(0.7875 0.0917 35.9616);
     --chart-3: oklch(0.5778 0.0759 254.1573);
@@ -421,12 +428,29 @@
     --chart-5: oklch(0.4241 0.0952 264.0306);
     --sidebar: oklch(0.9030 0.0046 258.3257);
     --sidebar-foreground: oklch(0.3211 0 0);
-    --sidebar-primary: oklch(0.6397 0.1720 36.4421);
+    --sidebar-primary: oklch(0.62 0.19 33);
     --sidebar-primary-foreground: oklch(1.0000 0 0);
     --sidebar-accent: oklch(0.9119 0.0222 243.8174);
     --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
     --sidebar-border: oklch(0.9276 0.0058 264.5313);
-    --sidebar-ring: oklch(0.6397 0.1720 36.4421);
+    --sidebar-ring: oklch(0.62 0.19 33);
+  }
+
+  /* Brave-style red → orange gradient on the accent CTA buttons/links.
+     These use the --sts-blue token (orange in tangerine, sky-blue in amoled)
+     as a background-color, so we layer the gradient image on top. Scoped to
+     real controls to avoid tinting icon chips, badges, etc. */
+  :root[data-theme="tangerine"] :is(button, a, [role="button"]).bg-sts-blue,
+  :root[data-theme="tangerine"] :is(button, a, [role="button"]).bg-sts-blue\/90,
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue,
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90 {
+    background-image: var(--sts-primary-gradient);
+  }
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue,
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90,
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue *,
+  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90 * {
+    color: #fff;
   }
 
   * {

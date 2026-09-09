@@ -189,7 +189,7 @@ export function DepartmentMailboxPage({
                         disabled={busyId === m.id}
                         onClick={() => act(m, "accept")}
                         title="Accept — mark trusted"
-                        className="inline-flex size-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-900/20"
+                        className="inline-flex size-7 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-900/20"
                       >
                         <Check className="size-3.5" />
                       </button>
@@ -198,7 +198,7 @@ export function DepartmentMailboxPage({
                         disabled={busyId === m.id}
                         onClick={() => act(m, "reject")}
                         title="Reject — discard this message"
-                        className="inline-flex size-7 items-center justify-center rounded-md text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
+                        className="inline-flex size-7 items-center justify-center rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
                       >
                         <X className="size-3.5" />
                       </button>

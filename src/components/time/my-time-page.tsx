@@ -185,7 +185,7 @@ function TodayTaskCard({
             size="lg"
             disabled={stopping}
             onClick={onStop}
-            className="h-11 gap-1.5 rounded-lg bg-sts-red px-4 font-sans text-[13px] font-medium text-white hover:bg-sts-red/90"
+            className="h-11 gap-1.5 rounded-full bg-sts-red px-4 font-sans text-[13px] font-medium text-white hover:bg-sts-red/90"
           >
             <Pause className="size-3.5 fill-current" />
             {stopping ? "Pausing…" : "Pause"}

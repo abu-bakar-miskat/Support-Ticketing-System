@@ -85,7 +85,7 @@ function LabelMultiSelect({
       <PopoverTrigger
         aria-label="Filter by label"
         className={cn(
-          "flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 font-sans text-[11.5px] transition-colors",
+          "flex h-7 shrink-0 items-center gap-1 rounded-full border px-2 font-sans text-[11.5px] transition-colors",
           active
             ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
             : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
@@ -314,7 +314,7 @@ function HybridDueDateFilter({
       <PopoverTrigger
         aria-label={copy.aria}
         className={cn(
-          "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 font-sans text-[12px] transition-colors",
+          "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 font-sans text-[12px] transition-colors",
           active
             ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
             : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
@@ -395,7 +395,7 @@ function HybridDueDateFilter({
                   type="button"
                   onClick={() => applyDuePreset(p.days)}
                   className={cn(
-                    "rounded-md border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
+                    "rounded-full border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                     selected
                       ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
                       : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-id hover:text-sts-foreground dark:bg-white/5",
@@ -430,7 +430,7 @@ function HybridDueDateFilter({
           <button
             type="button"
             onClick={applyCustom}
-            className="mt-3 w-full rounded-lg bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+            className="mt-3 w-full rounded-full bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             {copy.applyLabel}
           </button>
@@ -575,7 +575,7 @@ export function BoardFilterBar({
           className="w-auto max-w-[11rem] shrink-0"
         />
       ) : (
-        <div className="flex h-7 items-center gap-1 rounded-md border border-sts-blue/30 bg-sts-blue-tint px-2 font-sans text-[11.5px] text-sts-foreground">
+        <div className="flex h-7 items-center gap-1 rounded-full border border-sts-blue/30 bg-sts-blue-tint px-2 font-sans text-[11.5px] text-sts-foreground">
           <UserAvatar
             name={currentUserName || "Me"}
             size={16}
@@ -693,7 +693,7 @@ export function BoardFilterBar({
         <button
           type="button"
           onClick={onClearFilters}
-          className="flex h-7 items-center gap-1 rounded-md px-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+          className="flex h-7 items-center gap-1 rounded-full px-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
         >
           <X className="size-3.5" />
           Clear

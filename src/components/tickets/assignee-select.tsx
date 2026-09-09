@@ -154,7 +154,7 @@ export function AssigneeSelect({
                 type="button"
                 onClick={() => selectMember(null)}
                 className={cn(
-                  "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                  "sts-field-dropdown-item rounded-full px-2 py-1.5 font-sans text-[12px]",
                   userListPickerButtonClass,
                   !assigneeId && "bg-sts-surface ",
                 )}
@@ -180,7 +180,7 @@ export function AssigneeSelect({
                       type="button"
                       onClick={() => selectMember(member.id)}
                       className={cn(
-                        "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                        "sts-field-dropdown-item rounded-full px-2 py-1.5 font-sans text-[12px]",
                         userListPickerButtonClass,
                         selected && "bg-sts-surface ",
                       )}

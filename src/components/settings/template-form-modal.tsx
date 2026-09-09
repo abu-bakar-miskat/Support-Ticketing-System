@@ -74,7 +74,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -103,7 +103,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
               <button
                 type="button"
                 onClick={handleAddCustomField}
-                className="inline-flex items-center gap-1 rounded-md bg-sts-blue/10 px-2 py-1 text-xs font-medium text-sts-blue hover:bg-sts-blue/20"
+                className="inline-flex items-center gap-1 rounded-full bg-sts-blue/10 px-2 py-1 text-xs font-medium text-sts-blue hover:bg-sts-blue/20"
               >
                 <Plus className="size-3" />
                 Add Field
@@ -192,7 +192,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                                 const newOptions = (field.options ?? []).filter((_: any, i: number) => i !== optIndex);
                                 updateCustomField(index, "options", newOptions);
                               }}
-                              className="inline-flex items-center justify-center size-6 rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                              className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                             >
                               <X className="size-3" />
                             </button>
@@ -226,7 +226,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                         }
                       }}
                       disabled={index === 0}
-                      className="inline-flex items-center justify-center size-6 rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
+                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
                       title="Move up"
                     >
                       <span className="text-lg">↑</span>
@@ -243,7 +243,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                         }
                       }}
                       disabled={index === customFields.length - 1}
-                      className="inline-flex items-center justify-center size-6 rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
+                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
                       title="Move down"
                     >
                       <span className="text-lg">↓</span>
@@ -251,7 +251,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                     <button
                       type="button"
                       onClick={() => handleRemoveCustomField(index)}
-                      className="inline-flex items-center justify-center size-6 rounded-md text-sts-subtle hover:bg-sts-red/20 hover:text-sts-red"
+                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-red/20 hover:text-sts-red"
                       title="Delete field"
                     >
                       <Trash2 className="size-3.5" />
@@ -270,7 +270,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
+            className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
           >
             Cancel
           </button>
@@ -278,7 +278,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving…" : template ? "Update" : "Create"}
           </button>

@@ -316,7 +316,7 @@ export function JoinRequestDetailPane({
                 type="button"
                 onClick={() => void handleAction("approve")}
                 disabled={submitting !== null}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sts-green px-4 py-2 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-sts-green px-4 py-2 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
               >
                 {submitting === "approve" ? (
                   <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -329,7 +329,7 @@ export function JoinRequestDetailPane({
                 type="button"
                 onClick={() => void handleAction("reject")}
                 disabled={submitting !== null}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-4 py-2 font-sans text-[12.5px] font-semibold text-sts-foreground hover:bg-sts-bg disabled:opacity-60"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-4 py-2 font-sans text-[12.5px] font-semibold text-sts-foreground hover:bg-sts-bg disabled:opacity-60"
               >
                 {submitting === "reject" ? (
                   <span className="size-3.5 animate-spin rounded-full border-2 border-sts-foreground border-t-transparent" />

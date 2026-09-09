@@ -46,7 +46,7 @@ export function InstallAppButton({
         disabled={installing}
         title={collapsed ? "Install app" : undefined}
         className={cn(
-          "flex w-full items-center rounded-lg border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+          "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
           "hover:border-sts-blue/40 hover:bg-sts-blue/15 disabled:opacity-60",
           collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
           className,
@@ -66,7 +66,7 @@ export function InstallAppButton({
         type="button"
         title={collapsed ? "Install app" : undefined}
         className={cn(
-          "flex w-full items-center rounded-lg border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+          "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
           "hover:border-sts-blue/40 hover:bg-sts-blue/15",
           collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
           className,
@@ -83,7 +83,7 @@ export function InstallAppButton({
       >
         <div className="flex items-start justify-between gap-2 border-b border-sts-card-border px-3.5 py-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue/10">
+            <span className="flex size-7 items-center justify-center rounded-full bg-sts-blue/10">
               <MonitorSmartphone className="size-3.5 text-sts-blue" />
             </span>
             <div>

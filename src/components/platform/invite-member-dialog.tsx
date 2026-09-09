@@ -101,7 +101,7 @@ export function InviteMemberDialog({
           setOpen(true)
         }}
         className={cn(
-          "flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground",
+          "flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground",
           triggerClassName,
         )}
       >
@@ -123,7 +123,7 @@ export function InviteMemberDialog({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1 text-sts-muted hover:text-sts-foreground"
+                className="rounded-full p-1 text-sts-muted hover:text-sts-foreground"
                 aria-label="Close"
               >
                 <X className="size-4" />

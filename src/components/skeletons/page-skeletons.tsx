@@ -656,14 +656,14 @@ export function TasksPageSkeleton() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-1 border-b border-sts-card-border bg-sts-card px-4 py-1.5 sm:px-6 xl:px-8">
-        <span className="flex h-8 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white dark:text-gray-900">
+        <span className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white dark:text-gray-900">
           My Tasks
         </span>
-        <span className="flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium text-sts-muted">
+        <span className="flex h-8 items-center gap-1.5 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted">
           All Tasks
         </span>
         <span className="flex-1" />
-        <span className="flex h-8 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white opacity-50 dark:text-gray-900">
+        <span className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white opacity-50 dark:text-gray-900">
           New Task
         </span>
       </div>
@@ -724,10 +724,10 @@ export function ProjectsPageSkeleton() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center gap-1 border-b border-sts-card-border bg-sts-card px-4 py-1.5 sm:px-6 xl:px-8">
-        <span className="flex h-8 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white dark:text-gray-900">
+        <span className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white dark:text-gray-900">
           My Projects
         </span>
-        <span className="flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium text-sts-muted">
+        <span className="flex h-8 items-center gap-1.5 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted">
           All Projects
         </span>
       </div>
@@ -1365,7 +1365,7 @@ export function ModulesPageSkeleton() {
           description="Ticket overview per module — counts reflect current state; the date range changes the created/resolved figures."
           actions={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex h-8 overflow-hidden rounded-lg border border-sts-card-border bg-sts-surface">
+            <div className="flex h-8 overflow-hidden rounded-full border border-sts-card-border bg-sts-surface">
               {["All time", "Today", "7 days", "30 days", "90 days"].map((label, i) => (
                 <span
                   key={label}
@@ -1386,7 +1386,7 @@ export function ModulesPageSkeleton() {
                 </span>
               ))}
             </div>
-            <span className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-muted">
+            <span className="flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-muted">
               Urgent only
             </span>
           </div>

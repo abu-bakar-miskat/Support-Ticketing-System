@@ -129,7 +129,7 @@ function AttachmentList({ attachments }: { attachments: CommentAttachment[] }) {
           type="button"
           onClick={() => downloadFile(a.storageUrl, a.fileName)}
           title={`Download ${a.fileName}`}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+          className="flex cursor-pointer items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
         >
           <FileDown className="size-3.5 shrink-0 text-sts-blue" />
           <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
@@ -421,7 +421,7 @@ function InlineReplyBox({
             type="button"
             onClick={submit}
             disabled={submitting || uploading}
-            className="flex h-6 items-center gap-1.5 rounded-lg bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="flex h-6 items-center gap-1.5 rounded-full bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {submitting || uploading ? <LoadingSpinner className="size-3" /> : <SendHorizonal className="size-[11px]" />}
             {uploading ? "Uploading…" : submitting ? "Posting…" : "Reply"}
@@ -444,7 +444,7 @@ function InlineReplyBox({
             type="button"
             onClick={() => fileRef.current?.click()}
             title="Attach files"
-            className="flex h-6 items-center gap-1 rounded-lg px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
+            className="flex h-6 items-center gap-1 rounded-full px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
           >
             <Paperclip className="size-[11px]" />
             Attach
@@ -693,11 +693,11 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
           {isAuthor && !isDeleted && mode === "view" && (
             <div className="ml-auto flex shrink-0 items-center gap-0.5 transition-opacity">
               <button onClick={beginEditing}
-                className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Edit">
+                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Edit">
                 <Pencil className="size-[11px]" />
               </button>
               <button onClick={() => setConfirmingDelete(true)}
-                className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red" title="Delete">
+                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red" title="Delete">
                 <Trash2 className="size-[11px]" />
               </button>
             </div>
@@ -778,12 +778,12 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
               </AnchoredDropdown>
               <div className="flex gap-2">
                 <button onClick={saveEdit} disabled={saving}
-                  className="flex h-7 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+                  className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
                   {saving && <LoadingSpinner className="size-3" />}
                   {saving ? "Saving…" : "Save"}
                 </button>
                 <button onClick={cancelEditing}
-                  className="h-7 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:bg-sts-surface">
+                  className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:bg-sts-surface">
                   Cancel
                 </button>
               </div>
@@ -850,7 +850,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
               type="button"
               disabled={deleting}
               onClick={() => setConfirmingDelete(false)}
-              className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface disabled:opacity-50"
+              className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface disabled:opacity-50"
             >
               Cancel
             </button>
@@ -858,7 +858,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
               type="button"
               disabled={deleting}
               onClick={softDelete}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-red-500 px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-red-500 px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               {deleting ? <LoadingSpinner className="size-3" /> : null}
               {deleting ? "Deleting…" : "Delete"}

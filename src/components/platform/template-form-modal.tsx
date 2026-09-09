@@ -150,7 +150,7 @@ export function TemplateFormModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>

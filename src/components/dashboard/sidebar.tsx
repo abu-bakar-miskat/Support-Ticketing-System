@@ -166,8 +166,8 @@ function SidebarNavLink({
           // instant transitions (fresh for staleTimes.dynamic seconds).
           prefetch={true}
           className={cn(
-            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
-            active && "bg-sts-surface font-semibold text-sts-foreground",
+            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
+            active && "bg-sts-blue/10 font-semibold text-sts-blue",
           )}
           style={{ height: "28px" }}
         >
@@ -204,9 +204,9 @@ function SidebarNavLink({
       prefetch={true}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "sts-nav-link relative flex h-7 items-center rounded-md font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+        "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
         collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "bg-sts-surface font-semibold text-sts-foreground",
+        active && "bg-sts-blue/10 font-semibold text-sts-blue",
       )}
     >
       <span className="relative shrink-0">
@@ -267,7 +267,7 @@ function DeptContextIcon({
 }) {
   const Icon = getDepartmentIcon(name, id);
   return (
-    <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-sts-blue/10">
+    <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
       <SidebarNavIcon icon={Icon} size="sm" className="text-sts-blue" />
     </span>
   );
@@ -492,7 +492,7 @@ export function Sidebar({
         {/* Logo row */}
         <div
           className={cn(
-            "flex h-12 items-center",
+            "flex h-14 items-center",
             isCollapsed ? "justify-center" : "pl-1",
           )}
         >
@@ -500,7 +500,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-surface"
+              className="flex size-10 items-center justify-center rounded-full hover:bg-sts-surface"
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
@@ -508,17 +508,17 @@ export function Sidebar({
               <img
                 src="/images/support-icon.png"
                 alt="Support Ticketing System"
-                width={24}
-                height={24}
-                className="size-6 dark:hidden"
+                width={40}
+                height={40}
+                className="size-10 dark:hidden"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/support-icon-white.png"
                 alt=""
-                width={24}
-                height={24}
-                className="hidden size-6 dark:block"
+                width={40}
+                height={40}
+                className="hidden size-10 dark:block"
               />
             </button>
           ) : brandingLogoUrl ? (
@@ -554,15 +554,15 @@ export function Sidebar({
               <img
                 src="/images/support-logo-horizontal.png"
                 alt="Support Ticketing System"
-                height={36}
-                className="h-9 w-auto max-w-[150px] object-contain dark:hidden"
+                height={56}
+                className="h-14 w-auto max-w-[150px] object-contain dark:hidden"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/support-logo-horizontal-white.png"
                 alt=""
-                height={36}
-                className="hidden h-9 w-auto max-w-[150px] object-contain dark:block"
+                height={56}
+                className="hidden h-14 w-auto max-w-[150px] object-contain dark:block"
               />
             </>
           )}
@@ -607,7 +607,7 @@ export function Sidebar({
                   });
                   window.location.href = "/departments";
                 }}
-                className="flex h-7 w-full items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                className="flex h-7 w-full items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
               >
                 <ArrowLeft className="size-3.5" />
               </button>
@@ -624,7 +624,7 @@ export function Sidebar({
                   });
                   window.location.href = "/departments";
                 }}
-                className="flex h-6 items-center gap-1.5 rounded-md px-1.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                className="flex h-6 items-center gap-1.5 rounded-full px-1.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
               >
                 <ArrowLeft className="size-3 shrink-0" />
                 All Departments
@@ -677,7 +677,7 @@ export function Sidebar({
                         key={dept.id}
                         onClick={() => switchDept(dept.id)}
                       >
-                        <span className="flex size-5 items-center justify-center rounded-md bg-sts-blue/10">
+                        <span className="flex size-5 items-center justify-center rounded-full bg-sts-blue/10">
                           <SidebarNavIcon
                             icon={DeptItemIcon}
                             size="sm"
@@ -724,7 +724,7 @@ export function Sidebar({
             href="/platform"
             title={isCollapsed ? "Platform" : undefined}
             className={cn(
-              "flex items-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
+              "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
             )}
           >
@@ -868,7 +868,7 @@ export function Sidebar({
                           key={p.id}
                           href={p.href}
                           className={cn(
-                            "group sts-nav-link flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+                            "group sts-nav-link flex h-7 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
                             pathname === p.href &&
                               "bg-sts-surface font-semibold text-sts-foreground",
                           )}

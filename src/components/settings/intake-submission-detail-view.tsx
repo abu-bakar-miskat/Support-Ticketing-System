@@ -179,7 +179,7 @@ export async function IntakeSubmissionDetailView({
           {ticket ? (
             <Link
               href={`/tickets/${ticket.id}`}
-              className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-foreground hover:border-sts-id hover:text-sts-id transition-colors"
             >
               <ExternalLink className="size-3.5" />
               Ticket #{ticket.ticketNumber}
@@ -217,7 +217,7 @@ export async function IntakeSubmissionDetailView({
             {/* Card header */}
             <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
+                <span className="flex size-7 items-center justify-center rounded-full bg-sts-blue-tint text-sts-id">
                   <TicketIcon className="size-3.5" />
                 </span>
                 <div>

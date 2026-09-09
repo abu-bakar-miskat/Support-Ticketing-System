@@ -802,7 +802,7 @@ function BoardColumn({
         <button
           type="button"
           onClick={() => onAdd(status.label)}
-          className="flex w-full items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
+          className="flex w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-sts-subtle transition-colors hover:bg-sts-card-border/50 hover:text-sts-foreground"
         >
           <Plus className="size-3 shrink-0" />
           <span className="font-sans text-[11.5px]">Add task</span>
@@ -1278,7 +1278,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
             <SortDropdown value={sortKey} onChange={(v) => setSortKey(v as SortKey)} />
 
             {view === "board" && (
-              <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+              <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => boardScrollRef.current?.scrollBy({ left: -320, behavior: "smooth" })}
@@ -1299,7 +1299,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               </div>
             )}
 
-            <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+            <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               <button
                 type="button"
                 onClick={() => setView("list")}
@@ -1307,7 +1307,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                   view === "list"
-                    ? "rounded-md bg-sts-blue-tint font-semibold text-sts-id"
+                    ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
               >
@@ -1321,7 +1321,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
                   view === "board"
-                    ? "rounded-md bg-sts-blue-tint font-semibold text-sts-id"
+                    ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
               >
@@ -1370,7 +1370,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="size-3.5" />
                   </button>
@@ -1390,7 +1390,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                           type="button"
                           onClick={() => setPage(p as number)}
                           className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded-md font-sans text-[11.5px] font-medium transition-colors",
+                            "flex h-7 w-7 items-center justify-center rounded-full font-sans text-[11.5px] font-medium transition-colors",
                             page === p
                               ? "bg-sts-blue text-white"
                               : "border border-sts-card-border text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
@@ -1404,7 +1404,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="size-3.5" />
                   </button>

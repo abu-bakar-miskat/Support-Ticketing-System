@@ -106,7 +106,7 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
             title={c.name}
             onClick={() => apply(c.value)}
             className={cn(
-              "flex size-5 items-center justify-center rounded-md border font-sans text-[12px] font-bold transition-transform hover:scale-110",
+              "flex size-5 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
               editor.isActive("textStyle", { color: c.value })
                 ? "border-sts-id ring-1 ring-sts-id"
                 : "border-sts-card-border",
@@ -121,7 +121,7 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
         type="button"
         onClick={remove}
         disabled={!isActive}
-        className="flex h-7 w-full items-center justify-center gap-1.5 rounded-lg border border-sts-card-border font-sans text-[11px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
+        className="flex h-7 w-full items-center justify-center gap-1.5 rounded-full border border-sts-card-border font-sans text-[11px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
       >
         <Ban className="size-3" /> Default color
       </button>

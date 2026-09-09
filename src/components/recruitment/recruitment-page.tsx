@@ -580,7 +580,7 @@ export function RecruitmentPage({
             type="button"
             onClick={() => setView("overview")}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm",
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-sm",
               view === "overview" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60",
             )}
           >
@@ -588,7 +588,7 @@ export function RecruitmentPage({
           </button>
           <Link
             href="/recruitment/screening"
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted/60"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted/60"
           >
             <Video className="size-3.5" /> Screening
           </Link>
@@ -598,7 +598,7 @@ export function RecruitmentPage({
               type="button"
               onClick={() => { setView("board"); void switchBoard(b.id) }}
               className={cn(
-                "shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm",
+                "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-sm",
                 view === "board" && b.id === board?.id
                   ? "bg-muted font-medium text-foreground"
                   : "text-muted-foreground hover:bg-muted/60",
@@ -618,7 +618,7 @@ export function RecruitmentPage({
           </Button>
           {archivedBoards.length > 0 && (
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-muted/60">
+              <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-muted/60">
                 <History className="size-3.5" /> History
                 <span className="text-xs">{archivedBoards.length}</span>
               </DropdownMenuTrigger>
@@ -696,7 +696,7 @@ export function RecruitmentPage({
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label="Board options"
-                className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
+                className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>

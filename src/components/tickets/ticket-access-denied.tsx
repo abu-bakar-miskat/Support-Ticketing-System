@@ -79,7 +79,7 @@ export function TicketAccessDenied({
 
         <Link
           href="/"
-          className="mt-2 inline-flex h-9 items-center gap-2 rounded-xl bg-sts-blue px-5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+          className="mt-2 inline-flex h-9 items-center gap-2 rounded-full bg-sts-blue px-5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
         >
           Go to dashboard
         </Link>

@@ -253,7 +253,7 @@ export function SprintDetailDialog({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="ml-1 rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                    className="ml-1 rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
                   >
                     <X className="size-4" />
                   </button>

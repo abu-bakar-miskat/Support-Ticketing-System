@@ -240,7 +240,7 @@ function TicketSlideOver({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -323,7 +323,7 @@ function MetricButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 rounded-lg border px-3 py-3 text-center transition-colors",
+        "flex flex-1 flex-col items-center gap-0.5 rounded-full border px-3 py-3 text-center transition-colors",
         active
           ? "border-sts-blue bg-sts-blue-tint"
           : "border-sts-card-border bg-sts-card hover:border-sts-blue/30",

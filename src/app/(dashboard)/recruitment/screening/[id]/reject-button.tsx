@@ -128,7 +128,7 @@ export function RejectButton({
     <>
       {rejected ? (
         <>
-          <span className="bg-destructive/15 text-destructive inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium">
+          <span className="bg-destructive/15 text-destructive inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium">
             <UserX className="size-4" />
             Rejected
           </span>

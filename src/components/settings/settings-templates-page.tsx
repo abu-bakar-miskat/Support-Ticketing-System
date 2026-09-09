@@ -107,7 +107,7 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
             setEditingTemplate(null);
             setShowModal(true);
           }}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-full bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
         >
           <Plus className="size-[13px]" strokeWidth={2.5} />
           New template
@@ -155,7 +155,7 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                     <button
                       type="button"
                       onClick={() => startEdit(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
                       title="Edit template"
                     >
                       <Edit2 className="size-3.5" />
@@ -164,7 +164,7 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                     <button
                       type="button"
                       onClick={() => setDeletingTemplate(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
                       title="Delete template"
                     >
                       <Trash2 className="size-3.5" />

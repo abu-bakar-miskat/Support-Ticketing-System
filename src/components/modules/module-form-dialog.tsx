@@ -143,7 +143,7 @@ export function ModuleFormDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="shrink-0 rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+              className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -175,7 +175,7 @@ export function ModuleFormDialog({
                 >
                   <SelectTrigger
                     className={cn(
-                      "h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground",
+                      "h-9 w-full rounded-full border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground",
                     )}
                   >
                     <SelectValue placeholder="Select a project">

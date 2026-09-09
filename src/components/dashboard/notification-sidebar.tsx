@@ -211,7 +211,7 @@ export function NotificationSidebar({
               type="button"
               onClick={markAllRead}
               title="Mark all read"
-              className="flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <CheckCheck className="size-3.5" />
             </button>
@@ -220,7 +220,7 @@ export function NotificationSidebar({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -256,7 +256,7 @@ export function NotificationSidebar({
           <Link
             href="/inbox"
             onClick={onClose}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-sts-card-border py-2 font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface"
+            className="flex w-full items-center justify-center gap-1.5 rounded-full border border-sts-card-border py-2 font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface"
           >
             See all notifications
             <MoveRight className="size-3.5" />

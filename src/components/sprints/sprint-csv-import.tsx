@@ -103,7 +103,7 @@ export function SprintCSVImport({
               type="button"
               onClick={() => handleOpenChange(false)}
               disabled={isLoading}
-              className="rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+              className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -209,7 +209,7 @@ export function SprintCSVImport({
                   </div>
                 )}
                 {hasErrors && (
-                  <div className="max-h-[180px] overflow-y-auto rounded-lg border border-sts-red/30 bg-sts-red/5 px-3 py-2.5">
+                  <div className="max-h-[180px] overflow-y-auto rounded-full border border-sts-red/30 bg-sts-red/5 px-3 py-2.5">
                     <div className="mb-2 flex items-center gap-2">
                       <AlertCircle className="size-4 shrink-0 text-sts-red" />
                       <p className="font-sans text-[12.5px] font-semibold text-sts-foreground">

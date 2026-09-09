@@ -266,7 +266,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           ) : (
             <Link
               href={`/tickets/${item.ticket.id}`}
-              className="inline-flex items-center gap-1 rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue-tint"
+              className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue-tint"
             >
               {item.ticket.humanId}
             </Link>
@@ -569,7 +569,7 @@ export function ActivityPage({
                 disabled={isPending}
                 onClick={() => onPresetChange(p.id)}
                 className={cn(
-                  "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
+                  "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
                   currentPreset === p.id
                     ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
                     : "text-sts-muted hover:text-sts-foreground",
@@ -600,7 +600,7 @@ export function ActivityPage({
                 type="button"
                 onClick={applyCustomRange}
                 disabled={!customFrom || !customTo || isPending}
-                className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+                className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
               >
                 Apply
               </button>
@@ -690,7 +690,7 @@ export function ActivityPage({
             type="button"
             onClick={clearFilters}
             disabled={isPending}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
           >
             <X className="size-3" /> Clear
           </button>
@@ -727,7 +727,7 @@ export function ActivityPage({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <X className="size-3" /> Clear filters
               </button>
@@ -760,7 +760,7 @@ export function ActivityPage({
                   type="button"
                   onClick={loadMore}
                   disabled={loadingMore || isPending}
-                  className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground disabled:opacity-50"
                 >
                   {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : <Clock className="size-3.5" />}
                   {loadingMore ? "Loading…" : "Load more activity"}

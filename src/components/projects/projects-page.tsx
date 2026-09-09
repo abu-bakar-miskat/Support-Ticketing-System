@@ -43,7 +43,7 @@ export function ProjectsPage({
             type="button"
             onClick={() => setScope(s)}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
+              "flex h-8 items-center gap-1.5 rounded-full px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
               scope === s
                 ? "bg-sts-blue text-white dark:text-gray-900"
                 : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",

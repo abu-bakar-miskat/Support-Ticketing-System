@@ -90,7 +90,7 @@ function MenuIconButton({
       disabled={item.disabled}
       onClick={onSelect}
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
+        "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
         item.active
           ? "bg-sts-blue-tint text-sts-id"
           : item.destructive

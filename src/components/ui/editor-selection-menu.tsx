@@ -81,7 +81,7 @@ function FormatButton({
       onMouseDown={(e) => e.preventDefault()}
       onClick={item.onSelect}
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
+        "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
         item.active
           ? "bg-sts-blue-tint text-sts-id"
           : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
@@ -302,7 +302,7 @@ export function EditorSelectionMenu({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => editor.chain().focus().setColor(c.value).run()}
               className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-md border font-sans text-[12px] font-bold transition-transform hover:scale-110",
+                "flex size-5 shrink-0 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
                 editor.isActive("textStyle", { color: c.value })
                   ? "border-sts-id ring-1 ring-sts-id"
                   : "border-sts-card-border",
@@ -318,7 +318,7 @@ export function EditorSelectionMenu({
             aria-label="Default color"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().unsetColor().run()}
-            className="flex size-8 shrink-0 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <Ban className="size-4" strokeWidth={2} />
           </button>

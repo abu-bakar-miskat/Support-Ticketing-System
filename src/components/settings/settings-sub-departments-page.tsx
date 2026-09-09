@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   ArrowRight,
+  Building2,
   Check,
   ChevronDown,
   ChevronUp,
@@ -86,9 +87,16 @@ export type PendingRequest = {
 type Department = { id: string; name: string };
 
 const PRESET_COLORS = [
-  "#0a76b9", "#7c3aed", "#059669", "#dc2626",
+  "#ef4b23", "#7c3aed", "#059669", "#dc2626",
   "#d97706", "#db2777", "#0891b2", "#65a30d",
 ];
+
+/** Legacy default was a blue that clashes with the accent — render it as the
+ *  theme accent so existing sub-departments stay on-brand without a DB write. */
+const LEGACY_DEFAULT_COLOR = "#0a76b9";
+function avatarBg(color: string) {
+  return color === LEGACY_DEFAULT_COLOR ? "var(--sts-blue)" : color;
+}
 
 function initials(name: string) {
   return name
@@ -128,7 +136,7 @@ function SubManagersList({
               type="button"
               onClick={() => onRemove(lead.userId)}
               title="Remove sub-manager"
-              className="shrink-0 rounded-md p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             >
               <X className="size-3.5" />
             </button>
@@ -167,8 +175,12 @@ function MemberStack({ members, extra }: { members?: { name: string; avatarUrl: 
 
 function ProjectPill({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
-      {label}
+    <span
+      title={label}
+      aria-label={label}
+      className="inline-flex items-center rounded-full bg-sts-surface p-1 text-sts-muted"
+    >
+      <Building2 className="size-3 shrink-0" />
     </span>
   );
 }
@@ -247,7 +259,7 @@ function SubDepartmentModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -337,14 +349,14 @@ function SubDepartmentModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
+              className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
+              className="h-8 rounded-full bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : isEdit ? "Save changes" : "Create sub-department"}
             </button>
@@ -493,7 +505,7 @@ function SubDepartmentMembersModal({
         <div className="flex shrink-0 items-center gap-3 border-b border-sts-card-border px-6 py-4">
           <div
             className="size-3 shrink-0 rounded-[3px]"
-            style={{ backgroundColor: subDepartment.color }}
+            style={{ backgroundColor: avatarBg(subDepartment.color) }}
           />
           <div className="min-w-0 flex-1">
             <h2 className="sts-text-modal-title">
@@ -509,7 +521,7 @@ function SubDepartmentMembersModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -632,7 +644,7 @@ function SubDepartmentMembersModal({
                         type="button"
                         onClick={() => handleSave(m.userId)}
                         disabled={saving}
-                        className="flex items-center gap-1.5 rounded-lg bg-sts-id px-4 py-1.5 font-sans text-[12px] font-medium text-white disabled:opacity-60"
+                        className="flex items-center gap-1.5 rounded-full bg-sts-id px-4 py-1.5 font-sans text-[12px] font-medium text-white disabled:opacity-60"
                       >
                         {saving ? (
                           <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -644,7 +656,7 @@ function SubDepartmentMembersModal({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="rounded-lg border border-sts-card-border px-4 py-1.5 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
+                        className="rounded-full border border-sts-card-border px-4 py-1.5 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
                       >
                         Cancel
                       </button>
@@ -704,7 +716,7 @@ function SubDepartmentMembersModal({
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           type="button"
-                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                          className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <MoreHorizontal className="size-3.5" />
                         </DropdownMenuTrigger>
@@ -854,7 +866,7 @@ function AssignMemberModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -973,14 +985,14 @@ function AssignMemberModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
+                className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12px] text-sts-foreground hover:bg-sts-surface"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving || selectedIds.size === 0}
-                className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
+                className="h-8 rounded-full bg-sts-id px-4 font-sans text-[12px] font-medium text-white hover:bg-sts-id/90 disabled:opacity-60"
               >
                 {saving
                   ? "Adding…"
@@ -1261,7 +1273,7 @@ function JoinRequestsSection({
                     <div className="mt-3 flex flex-col gap-3">
                       <div>
                         <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-subtle">Access duration</label>
-                        <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
+                        <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
                           <button
                             type="button"
                             onClick={() => setCrossPermanent(true)}
@@ -1326,7 +1338,7 @@ function JoinRequestsSection({
                     type="button"
                     onClick={() => handleAction(req, "approve")}
                     disabled={submitting === req.id}
-                    className="flex h-9 items-center gap-2 rounded-lg bg-sts-green px-5 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-green/90 disabled:opacity-60 dark:text-gray-900"
+                    className="flex h-9 items-center gap-2 rounded-full bg-sts-green px-5 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-green/90 disabled:opacity-60 dark:text-gray-900"
                   >
                     {submitting === req.id
                       ? <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1337,7 +1349,7 @@ function JoinRequestsSection({
                     type="button"
                     onClick={() => handleAction(req, "reject")}
                     disabled={submitting === req.id}
-                    className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border px-5 font-sans text-[12.5px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-60"
+                    className="flex h-9 items-center gap-2 rounded-full border border-sts-card-border px-5 font-sans text-[12.5px] font-semibold text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-60"
                   >
                     <X className="size-3.5" />
                     Reject
@@ -1393,7 +1405,7 @@ function SubDepartmentCard({
       <div className="flex items-start gap-3 p-4">
         <span
           className="flex size-10 shrink-0 items-center justify-center rounded-xl font-mono text-[11px] font-semibold text-white"
-          style={{ backgroundColor: subDepartment.color }}
+          style={{ backgroundColor: avatarBg(subDepartment.color) }}
         >
           {initials(subDepartment.name)}
         </span>
@@ -1424,7 +1436,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onInvite}
               title="Invite by email"
-              className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <UserPlus className="size-3.5" />
             </button>
@@ -1432,7 +1444,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onEdit}
               title="Edit sub-department"
-              className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <Pencil className="size-3.5" />
             </button>
@@ -1440,7 +1452,7 @@ function SubDepartmentCard({
               type="button"
               onClick={onDelete}
               title="Delete sub-department"
-              className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -1532,7 +1544,7 @@ function SubDepartmentCard({
           onClick={() => setEntering(true)}
           aria-disabled={entering}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90",
+            "flex w-full items-center justify-center gap-2 rounded-full bg-sts-blue py-2.5 font-sans text-[13px] font-semibold text-white dark:text-gray-900 transition-opacity hover:opacity-90",
             entering && "pointer-events-none opacity-80",
           )}
         >
@@ -1653,7 +1665,7 @@ export function SettingsSubDepartmentsPage({
             <Button
               onClick={() => setModal({ type: "create" })}
               disabled={isPending}
-              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-[7px] bg-sts-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-auto"
+              className="h-[34px] w-full shrink-0 gap-1.5 whitespace-nowrap rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-auto"
             >
               <Plus className="size-[13px]" strokeWidth={2.5} />
               New sub-department

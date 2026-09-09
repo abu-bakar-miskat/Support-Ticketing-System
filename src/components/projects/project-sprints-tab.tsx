@@ -167,7 +167,7 @@ function SprintRowMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         type="button"
-        className="inline-flex size-7 items-center justify-center rounded-md text-sts-muted outline-none hover:bg-sts-surface hover:text-sts-foreground"
+        className="inline-flex size-7 items-center justify-center rounded-full text-sts-muted outline-none hover:bg-sts-surface hover:text-sts-foreground"
         aria-label="Sprint actions"
       >
         <MoreHorizontal className="size-3.5" />
@@ -463,7 +463,7 @@ export function ProjectSprintsTab({
                 <button
                   type="button"
                   onClick={() => setCreateOpen(true)}
-                  className="mt-2 flex items-center gap-1.5 rounded-lg bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+                  className="mt-2 flex items-center gap-1.5 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
                 >
                   <Plus className="size-3" /> New sprint
                 </button>

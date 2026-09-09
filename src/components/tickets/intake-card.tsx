@@ -55,7 +55,7 @@ function EmailValue({ email }: { email: string }) {
           });
         }}
         title={copied ? "Copied" : "Copy email"}
-        className="flex size-5 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+        className="flex size-5 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
       >
         {copied ? (
           <Check className="size-3 text-sts-green" />
@@ -83,7 +83,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-id">
             <Inbox className="size-3.5" />
           </span>
           <p className="min-w-0 font-sans text-[12.5px] text-sts-foreground">

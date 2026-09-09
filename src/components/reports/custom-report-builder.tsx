@@ -185,7 +185,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
                 <button
                   type="button"
                   onClick={() => setFilters((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle hover:text-red-500"
+                  className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle hover:text-red-500"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -195,7 +195,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
           <button
             type="button"
             onClick={() => setFilters((prev) => [...prev, { fieldId: "", value: "" }])}
-            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground"
+            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground"
           >
             <Plus className="size-3.5" />
             Add filter
@@ -208,7 +208,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || running}
             onClick={runPreview}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
           >
             {running ? <Loader2 className="size-3.5 animate-spin" /> : <Table2 className="size-3.5" />}
             Run preview
@@ -217,7 +217,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || exporting !== null}
             onClick={() => exportReport("CSV")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
           >
             {exporting === "CSV" ? <Loader2 className="size-3.5 animate-spin" /> : <Table2 className="size-3.5" />}
             Export CSV
@@ -226,7 +226,7 @@ export function CustomReportBuilder({ from, to }: { from: string; to: string }) 
             type="button"
             disabled={!groupByFieldId || exporting !== null}
             onClick={() => exportReport("PDF")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-foreground hover:bg-sts-bg disabled:opacity-50"
           >
             {exporting === "PDF" ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
             Export PDF

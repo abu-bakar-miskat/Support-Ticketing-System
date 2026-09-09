@@ -389,7 +389,7 @@ export function CustomerReplyComposer({
           type="button"
           onClick={() => void submit()}
           disabled={!canSend}
-          className="flex items-center gap-1.5 rounded-lg bg-sts-blue px-3.5 py-1.5 font-sans text-[12px] font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-45 disabled:shadow-none dark:text-gray-900"
+          className="flex items-center gap-1.5 rounded-full bg-sts-blue px-3.5 py-1.5 font-sans text-[12px] font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-45 disabled:shadow-none dark:text-gray-900"
         >
           {submitting ? (
             <LoadingSpinner className="size-[13px]" />
@@ -551,14 +551,14 @@ function MessageNotes({
                   <button
                     type="button"
                     onClick={() => saveEdit(n.id)}
-                    className="h-6 rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
+                    className="h-6 rounded-full bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
-                    className="h-6 rounded-md border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted"
+                    className="h-6 rounded-full border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted"
                   >
                     Cancel
                   </button>
@@ -594,7 +594,7 @@ function MessageNotes({
               type="button"
               onClick={() => void addNote()}
               disabled={saving || !draft.trim()}
-              className="flex h-6 items-center gap-1 rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="flex h-6 items-center gap-1 rounded-full bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? <LoadingSpinner className="size-3" /> : null}
               Add comment
@@ -605,7 +605,7 @@ function MessageNotes({
                 setComposing(false);
                 setDraft("");
               }}
-              className="h-6 rounded-md px-2 font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
+              className="h-6 rounded-full px-2 font-sans text-[11px] text-sts-subtle hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -615,7 +615,7 @@ function MessageNotes({
         <button
           type="button"
           onClick={() => setComposing(true)}
-          className="flex w-fit items-center gap-1 rounded-md px-1 py-0.5 font-sans text-[11px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
+          className="flex w-fit items-center gap-1 rounded-full px-1 py-0.5 font-sans text-[11px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
         >
           <Plus className="size-3" />
           Add internal comment
@@ -773,7 +773,7 @@ export function CustomerMessageItem({
                   type="button"
                   onClick={() => setShowQuote((v) => !v)}
                   title={showQuote ? "Hide quoted text" : "Show quoted text"}
-                  className="inline-flex items-center gap-1 rounded-md bg-sts-bg px-1.5 py-0.5 font-sans text-[11px] text-sts-subtle transition-colors hover:text-sts-foreground"
+                  className="inline-flex items-center gap-1 rounded-full bg-sts-bg px-1.5 py-0.5 font-sans text-[11px] text-sts-subtle transition-colors hover:text-sts-foreground"
                 >
                   <span className="tracking-widest leading-none">•••</span>
                   <ChevronDown
@@ -822,7 +822,7 @@ export function CustomerMessageItem({
                     type="button"
                     onClick={() => downloadFile(a.storageUrl, a.fileName)}
                     title={`Download ${a.fileName}`}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
                   >
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
                       <FileText className="size-4 text-sts-blue" />

@@ -33,7 +33,7 @@ export function IntakeSubmissionDeleteButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex w-fit items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-muted hover:border-sts-red hover:text-sts-red transition-colors"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-muted hover:border-sts-red hover:text-sts-red transition-colors"
         title="Delete submission"
       >
         <Trash2 className="size-3.5" />

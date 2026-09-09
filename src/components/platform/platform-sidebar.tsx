@@ -36,19 +36,19 @@ export function PlatformSidebar() {
       )}
     >
       {/* Logo row */}
-      <div className={cn("flex h-12 items-center", isCollapsed ? "justify-center" : "pl-1")}>
+      <div className={cn("flex h-14 items-center", isCollapsed ? "justify-center" : "pl-1")}>
         {isCollapsed ? (
           <button
             type="button"
             onClick={toggle}
-            className="flex size-8 items-center justify-center rounded-lg hover:bg-sts-blue-tint"
+            className="flex size-10 items-center justify-center rounded-full hover:bg-sts-blue-tint"
             aria-label="Expand sidebar"
             title="Expand sidebar"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/support-icon.png" alt="Support Ticketing System" width={24} height={24} className="size-6 dark:hidden" />
+            <img src="/images/support-icon.png" alt="Support Ticketing System" width={40} height={40} className="size-10 dark:hidden" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/support-icon-white.png" alt="" width={24} height={24} className="hidden size-6 dark:block" />
+            <img src="/images/support-icon-white.png" alt="" width={40} height={40} className="hidden size-10 dark:block" />
           </button>
         ) : (
           <>
@@ -56,15 +56,15 @@ export function PlatformSidebar() {
             <img
               src="/images/support-logo-horizontal.png"
               alt="Support Ticketing System"
-              height={36}
-              className="h-9 w-auto max-w-[150px] object-contain dark:hidden"
+              height={56}
+              className="h-14 w-auto max-w-[150px] object-contain dark:hidden"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/support-logo-horizontal-white.png"
               alt=""
-              height={36}
-              className="hidden h-9 w-auto max-w-[150px] object-contain dark:block"
+              height={56}
+              className="hidden h-14 w-auto max-w-[150px] object-contain dark:block"
             />
             <button
               type="button"

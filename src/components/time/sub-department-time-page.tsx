@@ -496,7 +496,7 @@ export function SubDepartmentTimePage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               type="button"
-              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
+              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 {selectedPerson && (
@@ -533,7 +533,7 @@ export function SubDepartmentTimePage() {
           <DropdownMenu>
             <DropdownMenuTrigger
               type="button"
-              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
+              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
             >
               <span className="truncate">{selectedProjectName}</span>
               <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
@@ -562,7 +562,7 @@ export function SubDepartmentTimePage() {
           {/* Date range filter */}
           <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
             <PopoverTrigger
-              className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg"
+              className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg"
             >
               <span className="truncate">{selectedLabel}</span>
               <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
@@ -610,7 +610,7 @@ export function SubDepartmentTimePage() {
                     });
                     setRangeOpen(false);
                   }}
-                  className="mt-2 h-8 w-full rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                  className="mt-2 h-8 w-full rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
                 >
                   Apply custom range
                 </button>

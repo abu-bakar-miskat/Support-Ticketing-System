@@ -2105,7 +2105,7 @@ export function TicketDetailPage({
                     type="button"
                     disabled={publishingDraft}
                     onClick={() => void publishDraft()}
-                    className="flex h-7 items-center rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                    className="flex h-7 items-center rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
                   >
                     {publishingDraft ? "Publishing…" : "Publish draft"}
                   </button>
@@ -2118,7 +2118,7 @@ export function TicketDetailPage({
                 {backHref && (
                   <Link
                     href={backHref}
-                    className="mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                    className="mr-1 flex size-6 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                     aria-label="Go back"
                   >
                     <ArrowLeft className="size-3.5" strokeWidth={2} />
@@ -2219,7 +2219,7 @@ export function TicketDetailPage({
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   title="Delete ticket"
-                  className="flex size-6 items-center justify-center rounded-md text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -2233,7 +2233,7 @@ export function TicketDetailPage({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex items-center gap-1.5 rounded-md bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+                    className="flex items-center gap-1.5 rounded-full bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
                   >
                     <ChevronRight className="size-3 shrink-0 rotate-180" />
                     <span className="font-mono font-semibold text-sts-id">
@@ -2246,7 +2246,7 @@ export function TicketDetailPage({
                 ) : (
                   <Link
                     href={`/tickets/${parentTicket.dbId}`}
-                    className="flex items-center gap-1.5 rounded-md bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+                    className="flex items-center gap-1.5 rounded-full bg-sts-surface px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
                   >
                     <ChevronRight className="size-3 shrink-0 rotate-180" />
                     <span className="font-mono font-semibold text-sts-id">
@@ -2306,7 +2306,7 @@ export function TicketDetailPage({
                       onClick={saveTitle}
                       disabled={titleSaving}
                       title="Save"
-                      className="flex size-6 items-center justify-center rounded-md bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                      className="flex size-6 items-center justify-center rounded-full bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
                       {titleSaving ? (
                         <Loader2 className="size-3 animate-spin" />
@@ -2322,7 +2322,7 @@ export function TicketDetailPage({
                       }}
                       disabled={titleSaving}
                       title="Cancel"
-                      className="flex size-6 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
+                      className="flex size-6 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
                     >
                       <X className="size-3" />
                     </button>
@@ -2340,7 +2340,7 @@ export function TicketDetailPage({
                         setTitleValue(title);
                         setTitleEditing(true);
                       }}
-                      className="mt-1 shrink-0 rounded-md p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
+                      className="mt-1 shrink-0 rounded-full p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
                       title="Edit title"
                     >
                       <Pencil className="size-3.5" />
@@ -2644,7 +2644,7 @@ export function TicketDetailPage({
                             <button
                               type="button"
                               onClick={cancelDescription}
-                              className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
+                              className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
                             >
                               Cancel
                             </button>
@@ -2652,7 +2652,7 @@ export function TicketDetailPage({
                               type="button"
                               disabled={descSaving}
                               onClick={saveDescription}
-                              className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                              className="h-7 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
                             >
                               {descSaving ? "Saving…" : "Save"}
                             </button>
@@ -2689,7 +2689,7 @@ export function TicketDetailPage({
               <div className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card">
                 <div className="flex items-center justify-between border-b border-sts-card-border px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-id">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-sts-blue-tint text-sts-id">
                       <LayoutTemplate className="size-3.5" />
                     </span>
                     <SectionLabel>Template Fields</SectionLabel>
@@ -2772,7 +2772,7 @@ export function TicketDetailPage({
                       <button
                         type="button"
                         onClick={cancelTemplateFields}
-                        className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
+                        className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
                       >
                         Cancel
                       </button>
@@ -2780,7 +2780,7 @@ export function TicketDetailPage({
                         type="button"
                         disabled={templateSaving}
                         onClick={saveTemplateFields}
-                        className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                        className="h-7 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
                       >
                         {templateSaving ? "Saving…" : "Save"}
                       </button>
@@ -2822,7 +2822,7 @@ export function TicketDetailPage({
                                     href={file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="group relative block overflow-hidden rounded-lg border border-sts-card-border bg-sts-bg"
+                                    className="group relative block overflow-hidden rounded-full border border-sts-card-border bg-sts-bg"
                                     title={file.fileName}
                                   >
                                     <img
@@ -2853,10 +2853,10 @@ export function TicketDetailPage({
                                     href={file.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-bg px-3 py-2 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
+                                    className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-bg px-3 py-2 transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/30"
                                     title={file.fileName}
                                   >
-                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-blue-tint text-sts-id">
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-id">
                                       <Download className="size-3.5" />
                                     </span>
                                     <span className="max-w-48 truncate font-sans text-[12px] font-medium text-sts-foreground">
@@ -2999,7 +2999,7 @@ export function TicketDetailPage({
                                   }
                                 : undefined
                             }
-                            className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-md px-2 py-1 transition-colors hover:bg-sts-surface"
+                            className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-full px-2 py-1 transition-colors hover:bg-sts-surface"
                           >
                             {/* Completion checkbox (reflects status.isComplete) */}
                             {st.done ? (
@@ -3306,7 +3306,7 @@ export function TicketDetailPage({
                     }}
                     disabled={refreshingMessages}
                     title="Refresh messages"
-                    className="mb-0.5 flex items-center justify-center rounded-md p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                    className="mb-0.5 flex items-center justify-center rounded-full p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
                   >
                     <RefreshCw
                       className={cn(
@@ -3466,7 +3466,7 @@ export function TicketDetailPage({
                   <button
                     type="button"
                     onClick={() => setActivityLimit((n) => n + 10)}
-                    className="mt-1 w-full rounded-md py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                    className="mt-1 w-full rounded-full py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                   >
                     See more ({liveActivity.length - activityLimit} remaining)
                   </button>
@@ -3558,7 +3558,7 @@ export function TicketDetailPage({
                       toast.error(e instanceof Error ? e.message : "Failed to escalate");
                     }
                   }}
-                  className="mt-1 inline-flex h-7 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
+                  className="mt-1 inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
                 >
                   <ArrowUpRight className="size-3.5" />
                   Escalate
@@ -3834,7 +3834,7 @@ function AssetLinksEditor({
               type="button"
               onClick={handleAdd}
               disabled={saving || !newUrl.trim()}
-              className="flex h-7 items-center rounded-md bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+              className="flex h-7 items-center rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
             >
               Save
             </button>
@@ -3845,7 +3845,7 @@ function AssetLinksEditor({
                 setNewUrl("");
                 setNewLabel("");
               }}
-              className="flex h-7 items-center rounded-md border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-7 items-center rounded-full border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -3918,7 +3918,7 @@ function StoryPointsEditor({
             type="button"
             onClick={save}
             disabled={saving}
-            className="h-6 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="h-6 rounded-full bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {saving ? "…" : "Save"}
           </button>
@@ -3946,7 +3946,7 @@ function StoryPointsEditor({
           }
           disabled={!canEdit}
           className={cn(
-            "flex h-6 min-w-11 items-center justify-center rounded-md px-2.5 font-sans text-[11.5px] font-semibold transition-colors",
+            "flex h-6 min-w-11 items-center justify-center rounded-full px-2.5 font-sans text-[11.5px] font-semibold transition-colors",
             sp != null
               ? "bg-sts-blue/10 text-sts-blue hover:bg-sts-blue/15"
               : canEdit
@@ -3982,7 +3982,7 @@ function TimerToggleButton({
       onClick={onToggle}
       disabled={starting || stopping}
       className={cn(
-        "flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-[6px] font-sans text-[11.5px] font-medium transition-all disabled:opacity-50",
+        "flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-[6px] font-sans text-[11.5px] font-medium transition-all disabled:opacity-50",
         running
           ? "bg-sts-red/10 text-sts-red ring-1 ring-sts-red/20 hover:bg-sts-red/15"
           : idleClassName,
@@ -4252,14 +4252,14 @@ function PersonalEstimateRow({
               type="button"
               onClick={save}
               disabled={saving}
-              className="h-6 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="h-6 rounded-full bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? "…" : "Save"}
             </button>
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="h-6 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle hover:text-sts-muted"
+              className="h-6 rounded-full px-2 font-sans text-[11.5px] text-sts-subtle hover:text-sts-muted"
             >
               Cancel
             </button>
@@ -4268,7 +4268,7 @@ function PersonalEstimateRow({
                 type="button"
                 onClick={clear}
                 disabled={saving}
-                className="ml-auto h-6 rounded-md px-2 font-sans text-[11.5px] text-sts-red/80 hover:text-sts-red disabled:opacity-50"
+                className="ml-auto h-6 rounded-full px-2 font-sans text-[11.5px] text-sts-red/80 hover:text-sts-red disabled:opacity-50"
               >
                 Clear
               </button>
@@ -4769,7 +4769,7 @@ function TimeTrackingSection({
                 type="button"
                 onClick={saveEstimate}
                 disabled={savingEst}
-                className="h-6 shrink-0 rounded-md bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-6 shrink-0 rounded-full bg-sts-blue px-2 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {savingEst ? "…" : "Save"}
               </button>
@@ -4842,7 +4842,7 @@ function TimeTrackingSection({
               onClick={resetMyTime}
               disabled={resetting}
               title="Reset your time on this ticket to 0"
-              className="flex shrink-0 items-center justify-center gap-1 rounded-[7px] px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-[11px]" />
               {resetting ? "…" : "Reset"}
@@ -4863,7 +4863,7 @@ function TimeTrackingSection({
               type="button"
               onClick={resetMyTime}
               disabled={resetting}
-              className="flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-[11px]" />
               {resetting ? "Resetting…" : "Reset my time to 0"}

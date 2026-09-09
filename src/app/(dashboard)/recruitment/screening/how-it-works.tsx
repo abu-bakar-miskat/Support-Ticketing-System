@@ -59,7 +59,7 @@ export function HowItWorks() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-sts-muted hover:bg-sts-surface hover:text-sts-foreground rounded-md p-1"
+              className="text-sts-muted hover:bg-sts-surface hover:text-sts-foreground rounded-full p-1"
             >
               <X className="size-4" />
             </button>

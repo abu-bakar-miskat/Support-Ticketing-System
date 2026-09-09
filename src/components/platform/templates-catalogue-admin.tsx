@@ -405,7 +405,7 @@ export function TemplatesCatalogueAdmin({
 function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card p-3.5 shadow-sts-card">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-blue">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
@@ -433,7 +433,7 @@ function SegmentedControl<T extends string>({
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
-            "rounded-md px-2.5 py-1 font-sans text-[12px] font-medium transition-colors",
+            "rounded-full px-2.5 py-1 font-sans text-[12px] font-medium transition-colors",
             value === opt.value
               ? "bg-sts-blue-tint text-sts-blue"
               : "text-sts-muted hover:text-sts-foreground",
@@ -552,7 +552,7 @@ function TemplateCard({
                 type="button"
                 aria-label="Edit template"
                 onClick={onEdit}
-                className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <Pencil className="size-3.5" />
               </button>
@@ -570,7 +570,7 @@ function TemplateCard({
                   aria-label="Delete template"
                   disabled={busy}
                   onClick={onDelete}
-                  className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -582,7 +582,7 @@ function TemplateCard({
               aria-label="Restore template"
               disabled={busy}
               onClick={onRestore}
-              className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-3.5" />
             </button>

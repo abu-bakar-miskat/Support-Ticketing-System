@@ -281,7 +281,7 @@ export function MemberConfigPanel({
           <button
             type="button"
             onClick={onClose}
-            className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -335,7 +335,7 @@ export function MemberConfigPanel({
                       type="button"
                       onClick={() => toggleDay(i)}
                       className={cn(
-                        "h-8 w-11 rounded-[6px] border font-sans text-[12px] font-medium transition-colors",
+                        "h-8 w-11 rounded-full border font-sans text-[12px] font-medium transition-colors",
                         schedule.workingDays.includes(i)
                           ? "border-sts-blue bg-sts-blue text-white"
                           : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground"
@@ -481,7 +481,7 @@ export function MemberConfigPanel({
                     type="button"
                     disabled={!newHolidayRange?.from || addingHoliday}
                     onClick={addHoliday}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
                   >
                     {addingHoliday ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
                     Add holiday
@@ -512,7 +512,7 @@ export function MemberConfigPanel({
                           type="button"
                           onClick={() => { setReassignType(val); setReassignResult(null); }}
                           className={cn(
-                            "h-8 rounded-[6px] border font-sans text-[12px] font-medium transition-colors",
+                            "h-8 rounded-full border font-sans text-[12px] font-medium transition-colors",
                             reassignType === val
                               ? "border-sts-blue bg-sts-blue text-white"
                               : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
@@ -554,7 +554,7 @@ export function MemberConfigPanel({
                         (reassignType === "GROUP" && !reassignTeamId)
                       }
                       onClick={handleReassign}
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
                     >
                       {reassigning ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowRightLeft className="size-3.5" />}
                       Reassign tickets
@@ -575,7 +575,7 @@ export function MemberConfigPanel({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-[7px] border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              className="h-9 rounded-full border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -583,7 +583,7 @@ export function MemberConfigPanel({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-60"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Save

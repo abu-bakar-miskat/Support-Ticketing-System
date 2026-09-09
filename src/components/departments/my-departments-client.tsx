@@ -50,7 +50,7 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
     <div className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card transition-colors hover:border-sts-blue/30">
       {/* Header */}
       <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
           <DepartmentIconVisual
             name={dept.name}
             id={dept.id}
@@ -98,7 +98,7 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
           type="button"
           onClick={enter}
           disabled={entering}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60"
         >
           {entering ? "Entering…" : "Enter workspace"}
           {!entering && <ArrowRight className="size-3.5" />}

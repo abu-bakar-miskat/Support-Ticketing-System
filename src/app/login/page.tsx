@@ -131,7 +131,7 @@ export default async function LoginPage({
           className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-sts-accent/45 to-transparent"
         />
 
-        <div className="rounded-2xl bg-sts-surface/80 px-5 py-2.5 ring-1 ring-sts-card-border/70 [&_img]:h-[4.5rem]">
+        <div className="rounded-2xl bg-sts-surface/80 px-5 py-3.5 ring-1 ring-sts-card-border/70 [&_img]:h-28">
           <PenLogo />
         </div>
 

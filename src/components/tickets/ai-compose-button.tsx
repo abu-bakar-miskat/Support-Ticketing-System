@@ -100,7 +100,7 @@ export function AiComposeButton({
         title={tooltip}
         aria-label={tooltip}
         className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-md text-sts-blue transition-colors hover:bg-sts-blue-tint disabled:opacity-50",
+          "flex size-7 shrink-0 items-center justify-center rounded-full text-sts-blue transition-colors hover:bg-sts-blue-tint disabled:opacity-50",
           className,
         )}
       >
@@ -116,7 +116,7 @@ export function AiComposeButton({
       disabled={loading}
       title={tooltip}
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded-md border border-sts-blue/40 bg-sts-blue-tint px-2.5 font-sans text-[12px] font-medium text-sts-blue transition-colors hover:bg-sts-blue/15 disabled:opacity-50",
+        "flex h-7 items-center gap-1.5 rounded-full border border-sts-blue/40 bg-sts-blue-tint px-2.5 font-sans text-[12px] font-medium text-sts-blue transition-colors hover:bg-sts-blue/15 disabled:opacity-50",
         className,
       )}
     >

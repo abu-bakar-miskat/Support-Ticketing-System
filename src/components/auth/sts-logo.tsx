@@ -11,12 +11,12 @@ export function PenLogo({ className }: { className?: string }) {
       role="img"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/support-logo.png" alt="" className="h-24 w-auto dark:hidden" />
+      <img src="/images/support-logo.png" alt="" className="h-36 w-auto dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/support-logo-white.png"
         alt=""
-        className="hidden h-24 w-auto dark:block"
+        className="hidden h-36 w-auto dark:block"
       />
     </span>
   );

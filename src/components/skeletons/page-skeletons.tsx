@@ -1697,7 +1697,7 @@ export function ActivityPageSkeleton() {
       <div className="mb-4 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-sans text-[11.5px] font-medium text-sts-muted">Range</span>
-          <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+          <div className="flex gap-0.5 rounded-full border border-sts-card-border bg-sts-surface p-0.5">
             {["Today", "Yesterday", "Last 7 days", "Last 30 days", "Custom"].map((label) => (
               <span
                 key={label}

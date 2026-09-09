@@ -343,7 +343,7 @@ export function PlatformAdministrators({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+            <div className="flex gap-0.5 rounded-full border border-sts-card-border bg-sts-surface p-0.5">
               {ROLE_FILTERS.map((f) => (
                 <button
                   key={f.id}

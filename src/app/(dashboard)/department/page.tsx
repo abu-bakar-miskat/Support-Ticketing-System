@@ -43,6 +43,7 @@ export default async function DepartmentRoute() {
         where: { isActive: true, subDepartment: { departmentId: activeDeptId } },
         select: {
           userId: true,
+          role: true,
           doNotAssign: true,
           subDepartment: { select: { id: true, name: true } },
           user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true, isActive: true } },
@@ -116,12 +117,21 @@ export default async function DepartmentRoute() {
   // team-change dropdown's "current" value.
   const subDepartmentNamesByUser = new Map<string, string[]>();
   const subDepartmentIdByUser = new Map<string, string>();
+  // Source-of-truth role per member: their SubDepartmentMembership.role within this
+  // department. Role changes write here (see changeRoles / synchronizeLegacyRoleAssignments),
+  // whereas Profile.role is a stale legacy column never updated on a role change — reading
+  // it would make an edit appear to vanish on reload. sub_manager outranks agent when a
+  // member belongs to multiple sub-departments in this department.
+  const subDepartmentRoleByUser = new Map<string, string>();
   const subDepartmentMembershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
   for (const m of memberships) {
     const list = subDepartmentNamesByUser.get(m.userId) ?? [];
     list.push(m.subDepartment.name);
     subDepartmentNamesByUser.set(m.userId, list);
     if (!subDepartmentIdByUser.has(m.userId)) subDepartmentIdByUser.set(m.userId, m.subDepartment.id);
+    if (m.role === "sub_manager" || !subDepartmentRoleByUser.has(m.userId)) {
+      subDepartmentRoleByUser.set(m.userId, m.role);
+    }
     const dna = subDepartmentMembershipsByUser.get(m.userId) ?? [];
     dna.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
     subDepartmentMembershipsByUser.set(m.userId, dna);
@@ -145,6 +155,9 @@ export default async function DepartmentRoute() {
     if (managerUserIds.has(m.userId)) continue;
     memberProfilesById.set(m.userId, {
       ...m.user,
+      // Display the sub-department membership role (source of truth), not the
+      // stale Profile.role column — see subDepartmentRoleByUser above.
+      role: subDepartmentRoleByUser.get(m.userId) ?? m.user.role,
       avatarUrl: m.user.avatarUrl ?? null,
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,

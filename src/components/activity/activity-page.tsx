@@ -561,7 +561,7 @@ export function ActivityPage({
           </div>
 
           {/* Preset pills */}
-          <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+          <div className="flex gap-0.5 rounded-full border border-sts-card-border bg-sts-surface p-0.5">
             {RANGE_PRESETS.map((p) => (
               <button
                 key={p.id}

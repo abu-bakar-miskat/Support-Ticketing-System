@@ -497,7 +497,7 @@ export function InboxPage({
       {/* Tabs */}
       <div className="mb-5 flex items-center gap-2">
         <Filter className="size-3.5 shrink-0 text-sts-subtle" />
-        <div className="flex gap-0.5 self-start rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+        <div className="flex gap-0.5 self-start rounded-full border border-sts-card-border bg-sts-surface p-0.5">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const tabCount =

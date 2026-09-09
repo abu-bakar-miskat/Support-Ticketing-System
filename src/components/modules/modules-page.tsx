@@ -1061,7 +1061,7 @@ export function ModulesPage({
               ))}
             </div>
 
-            <div className="flex h-8 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-1.5">
+            <div className="flex h-8 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-1.5">
               {PRIORITY_OPTIONS.map((p) => (
                 <button
                   key={p}

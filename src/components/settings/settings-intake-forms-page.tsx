@@ -2105,7 +2105,7 @@ function FormDesignModal({
 
         {/* Edit / Preview toggle */}
         <div className="flex items-center gap-1 border-b border-sts-card-border px-6 py-3">
-          <div className="inline-flex rounded-lg border border-sts-card-border bg-sts-surface p-0.5">
+          <div className="inline-flex rounded-full border border-sts-card-border bg-sts-surface p-0.5">
             <button
               type="button"
               onClick={() => setView("edit")}

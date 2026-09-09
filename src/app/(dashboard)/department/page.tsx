@@ -40,11 +40,14 @@ export default async function DepartmentRoute() {
         orderBy: { assignedAt: "asc" },
       }),
       prisma.subDepartmentMembership.findMany({
-        where: { isActive: true, subDepartment: { departmentId: activeDeptId } },
+        // Include inactive memberships too — a member whose invite hasn't been
+        // accepted (isActive: false) still belongs in the table, shown as "Pending".
+        where: { subDepartment: { departmentId: activeDeptId } },
         select: {
           userId: true,
           role: true,
           doNotAssign: true,
+          isActive: true,
           subDepartment: { select: { id: true, name: true } },
           user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true, subDepartmentId: true, location: true, timezone: true, isActive: true } },
         },
@@ -123,7 +126,7 @@ export default async function DepartmentRoute() {
   // it would make an edit appear to vanish on reload. sub_manager outranks agent when a
   // member belongs to multiple sub-departments in this department.
   const subDepartmentRoleByUser = new Map<string, string>();
-  const subDepartmentMembershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[]>();
+  const subDepartmentMembershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted: boolean }[]>();
   for (const m of memberships) {
     const list = subDepartmentNamesByUser.get(m.userId) ?? [];
     list.push(m.subDepartment.name);
@@ -133,7 +136,7 @@ export default async function DepartmentRoute() {
       subDepartmentRoleByUser.set(m.userId, m.role);
     }
     const dna = subDepartmentMembershipsByUser.get(m.userId) ?? [];
-    dna.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false });
+    dna.push({ subDepartmentId: m.subDepartment.id, subDepartmentName: m.subDepartment.name, doNotAssign: m.doNotAssign ?? false, accepted: m.isActive ?? true });
     subDepartmentMembershipsByUser.set(m.userId, dna);
   }
 

@@ -68,7 +68,7 @@ import { AddMemberModal } from "@/components/settings/settings-members-page";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type DeptRole = "admin" | "manager";
-type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; deptRole?: DeptRole; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[] };
+type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; deptRole?: DeptRole; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[] };
 
 type MemberRow = {
   userId: string;
@@ -83,7 +83,7 @@ type MemberRow = {
   location?: string | null;
   timezone?: string | null;
   isActive?: boolean;
-  subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
+  subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[];
 };
 
 export type JoinRequestRow = {
@@ -828,6 +828,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                 <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
                 <TableHead className="h-8"><SectionLabel>SubDepartments</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[110px]"><SectionLabel>Invite</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
                 <TableHead className="h-8 w-10" />
               </TableRow>
@@ -835,7 +836,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             <TableBody>
               {members.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={6} className="py-0">
+                  <TableCell colSpan={7} className="py-0">
                     <div className="flex h-[54px] items-center">
                       <span className="font-sans text-[11.5px] text-sts-muted">No sub-department members yet. Invite people into a sub-department.</span>
                     </div>
@@ -897,6 +898,31 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                               </span>
                             ))
                           )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-0">
+                        <div className="flex h-[54px] items-center">
+                          {(() => {
+                            // Invite is "accepted" only when the member has at least one
+                            // sub-department membership and every one is active (isActive).
+                            // A pending (isActive: false) membership means they haven't
+                            // accepted yet — this is what login/ticket-creation require.
+                            const accepted = memberships.length > 0 && memberships.every((s) => s.accepted !== false);
+                            return (
+                              <span
+                                title={accepted ? "Invite accepted" : "Invite pending — member hasn't accepted yet"}
+                                className={cn(
+                                  "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
+                                  accepted
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                                )}
+                              >
+                                <span className={cn("size-1.5 rounded-full", accepted ? "bg-green-500" : "bg-amber-500")} />
+                                {accepted ? "Accepted" : "Pending"}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="py-0">

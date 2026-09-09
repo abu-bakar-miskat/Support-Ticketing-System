@@ -399,15 +399,21 @@ export function Sidebar({
   const isManager = userRole === "manager";
   const isAgent = userRole === "agent";
   const activeDept = allDepts.find((d) => d.id === activeDeptId);
-  // For staff/lead — department name comes from their subDepartment membership
+  // Agent / sub_manager belong to a sub-department only — show the sub-department
+  // name in the header (not the parent department).
   const staffDeptName =
     !isAdmin && !isManager
-      ? (activeSubDepartment?.departmentName ?? subDepartments[0]?.departmentName ?? null)
+      ? (activeSubDepartment?.name ?? subDepartments[0]?.name ?? null)
       : null;
   const staffDeptId =
     !isAdmin && !isManager
-      ? (activeSubDepartment?.departmentId ?? subDepartments[0]?.departmentId ?? null)
+      ? (activeSubDepartment?.id ?? subDepartments[0]?.id ?? null)
       : null;
+  // Header badge follows the user's scope: sub-department for agent/sub_manager,
+  // department for managers/admins. (staffDept* is null for admin/manager.)
+  // `?? ""` only guards the type — this block renders solely when activeDept is set.
+  const deptHeaderName = staffDeptName ?? activeDept?.name ?? "";
+  const deptHeaderId = staffDeptId ?? activeDept?.id ?? "";
   // Admin with no dept selected = on the dept overview page, not in a workspace
   const isAdminGlobalView = isAdmin && !activeDeptId;
   const isCollapsed = collapsed && !isDrawer;
@@ -638,7 +644,7 @@ export function Sidebar({
                   disabled={switchingDept}
                   title={
                     isCollapsed
-                      ? `${isCrossAccessDept ? "Guest access · " : ""}${activeDept.name}`
+                      ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
                       : undefined
                   }
                   className={cn(
@@ -647,11 +653,11 @@ export function Sidebar({
                     isCollapsed ? "justify-center p-2" : "items-center gap-2 px-2.5 py-2",
                   )}
                 >
-                  <DeptContextIcon name={activeDept.name} id={activeDept.id} />
+                  <DeptContextIcon name={deptHeaderName} id={deptHeaderId} />
                   {!isCollapsed && (
                     <>
                       <DeptContextLabel
-                        name={activeDept.name}
+                        name={deptHeaderName}
                         isCrossAccess={isCrossAccessDept}
                       />
                       <ChevronDown className="size-3 shrink-0 self-center text-sts-subtle" />
@@ -704,14 +710,14 @@ export function Sidebar({
                 )}
                 title={
                   isCollapsed
-                    ? `${isCrossAccessDept ? "Guest access · " : ""}${activeDept.name}`
+                    ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
                     : undefined
                 }
               >
-                <DeptContextIcon name={activeDept.name} id={activeDept.id} />
+                <DeptContextIcon name={deptHeaderName} id={deptHeaderId} />
                 {!isCollapsed && (
                   <DeptContextLabel
-                    name={activeDept.name}
+                    name={deptHeaderName}
                     isCrossAccess={isCrossAccessDept}
                   />
                 )}

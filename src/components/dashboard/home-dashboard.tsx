@@ -7,7 +7,10 @@ import {
   CalendarClock,
   CheckCircle2,
   FolderKanban,
+  Inbox,
   ListTodo,
+  Ticket,
+  Users,
   Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +45,35 @@ export type MyProject = {
   openCount: number;
 };
 
+export type LedSubDepartmentMember = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  role: string;
+};
+
+export type LedSubDepartment = {
+  id: string;
+  name: string;
+  prefix: string;
+  memberCount: number;
+  openCount: number;
+  unassignedCount: number;
+  overdueCount: number;
+  members: LedSubDepartmentMember[];
+};
+
+export type SubDeptTicket = {
+  id: string;
+  ref: string;
+  title: string;
+  priority: TaskPriority;
+  status: string;
+  subDepartmentName: string;
+  assignee: string | null;
+  createdLabel: string;
+};
+
 export type ActivityItem = {
   id: string;
   actor: string;
@@ -66,6 +98,8 @@ export type HomeDashboardData = {
   attention: AttentionTask[];
   projects: MyProject[];
   activity: ActivityItem[];
+  ledSubDepartments: LedSubDepartment[];
+  subDepartmentTickets: SubDeptTicket[];
 };
 
 // ── Style maps ────────────────────────────────────────────────────────────────
@@ -209,6 +243,134 @@ function MyActivityRail({ activity }: { activity: ActivityItem[] }) {
   );
 }
 
+// ── Teams you lead (sub-manager) ──────────────────────────────────────────────
+
+function TeamStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div
+      className="flex flex-col gap-0.5 rounded-lg border border-sts-card-border/70 px-2.5 py-2"
+      style={{ backgroundColor: `${color}0d` }}
+    >
+      <span className="font-mono text-[16px] font-semibold leading-none tabular-nums" style={{ color }}>
+        {value}
+      </span>
+      <span className="font-sans text-[10.5px] text-sts-muted">{label}</span>
+    </div>
+  );
+}
+
+function TeamRow({ team }: { team: LedSubDepartment }) {
+  const shown = team.members.slice(0, 8);
+  const extra = team.members.length - shown.length;
+  return (
+    <div className="px-4 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10.5px] font-semibold text-sts-muted">
+          {team.prefix}
+        </span>
+        <Link
+          href="/board"
+          className="min-w-0 flex-1 truncate font-sans text-[13px] font-semibold text-sts-foreground hover:text-sts-blue"
+        >
+          {team.name}
+        </Link>
+        <span className="shrink-0 font-sans text-[11px] text-sts-subtle">
+          {team.memberCount} member{team.memberCount === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="mt-2.5 grid grid-cols-3 gap-2">
+        <TeamStat label="Open" value={team.openCount} color="#0a76b9" />
+        <TeamStat label="Unassigned" value={team.unassignedCount} color="#f59e0b" />
+        <TeamStat label="Overdue" value={team.overdueCount} color="#ef4444" />
+      </div>
+      {shown.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {shown.map((m) => (
+            <span
+              key={m.id}
+              title={m.role === "sub_manager" ? `${m.name} · Lead` : m.name}
+              className="inline-flex"
+            >
+              <UserAvatar name={m.name} avatarUrl={m.avatarUrl ?? undefined} size={22} />
+            </span>
+          ))}
+          {extra > 0 && (
+            <span className="font-sans text-[11px] text-sts-subtle">+{extra}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeamsYouLeadCard({ teams }: { teams: LedSubDepartment[] }) {
+  if (teams.length === 0) return null;
+  return (
+    <section className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sts-card">
+      <div className="flex items-center gap-2.5 border-b border-sts-card-border px-4 py-3">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: "#0a76b918" }}>
+          <Users className="size-3.5" style={{ color: "#0a76b9" }} />
+        </span>
+        <span className="sts-text-card-title">Teams you lead</span>
+        <span className="ml-auto rounded-full bg-sts-surface px-2 py-0.5 font-mono text-[11px] tabular-nums text-sts-muted">
+          {teams.length}
+        </span>
+      </div>
+      <div className="divide-y divide-sts-card-border/60">
+        {teams.map((team) => (
+          <TeamRow key={team.id} team={team} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SubDeptTicketsCard({ tickets }: { tickets: SubDeptTicket[] }) {
+  if (tickets.length === 0) return null;
+  return (
+    <section className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sts-card">
+      <div className="flex items-center gap-2.5 border-b border-sts-card-border px-4 py-3">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: "#7c3aed18" }}>
+          <Ticket className="size-3.5" style={{ color: "#7c3aed" }} />
+        </span>
+        <span className="sts-text-card-title">Latest in your teams</span>
+      </div>
+      <div>
+        {tickets.map((t) => (
+          <DrawerLink
+            key={t.id}
+            ticketId={t.id}
+            href={`/tickets/${t.id}`}
+            className="group flex items-center gap-3 border-b border-sts-card-border/40 px-4 py-3 transition-colors last:border-b-0 hover:bg-sts-surface/60"
+          >
+            <span
+              className="block size-[8px] shrink-0 rounded-full"
+              style={{ backgroundColor: PRIORITY_COLOR[t.priority] }}
+              title={t.priority}
+            />
+            <span className="shrink-0 font-mono text-[11.5px] font-semibold text-sts-id group-hover:text-sts-blue">
+              {t.ref}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground group-hover:text-sts-blue">
+              {t.title}
+            </span>
+            <span className="hidden shrink-0 items-center gap-1 font-sans text-[10.5px] text-sts-muted sm:flex">
+              {t.assignee ? (
+                t.assignee
+              ) : (
+                <>
+                  <Inbox className="size-3" /> Unassigned
+                </>
+              )}
+            </span>
+            <span className="shrink-0 font-sans text-[10.5px] text-sts-subtle">{t.createdLabel}</span>
+          </DrawerLink>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData }) {
@@ -279,7 +441,9 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
         ) : data ? (
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-7">
             <div className="flex min-w-0 flex-col gap-6">
+              <TeamsYouLeadCard teams={data.ledSubDepartments} />
               <AttentionCard attention={data.attention} />
+              <SubDeptTicketsCard tickets={data.subDepartmentTickets} />
             </div>
             <div className="flex min-w-0 flex-col gap-5 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)] xl:overflow-y-auto xl:pb-1">
               <MyProjectsRail projects={data.projects} />

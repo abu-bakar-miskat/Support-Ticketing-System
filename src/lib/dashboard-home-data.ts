@@ -3,7 +3,13 @@ import { prisma } from "@/lib/db";
 import { getProfileDeptScope, buildProjectDeptWhere } from "@/lib/dept-scope";
 import { timeAgo, formatDuration } from "@/lib/format";
 import { normalizeStatus } from "@/components/board/board-types";
-import type { HomeDashboardData, AttentionTask, MyProject } from "@/components/dashboard/home-dashboard";
+import type {
+  HomeDashboardData,
+  AttentionTask,
+  MyProject,
+  LedSubDepartment,
+  SubDeptTicket,
+} from "@/components/dashboard/home-dashboard";
 import type { getProfile } from "@/lib/profile";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
@@ -37,6 +43,22 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
   endOfWeek.setDate(endOfWeek.getDate() + 7);
 
   const deptScope = await getProfileDeptScope(profile);
+
+  // Sub-departments this user *leads* (holds the sub_manager role in). A
+  // sub-manager lands on this personal Home rather than /manager, so we surface
+  // a lightweight overview of the team(s) they run alongside their own work.
+  // Scoped to the active department when one is set, so switching departments
+  // doesn't leak teams from another.
+  let ledSubDepartmentIds = (profile.memberships ?? [])
+    .filter((m) => m.role === "sub_manager")
+    .map((m) => m.subDepartmentId);
+  if (deptScope) {
+    ledSubDepartmentIds = ledSubDepartmentIds.filter((id) =>
+      deptScope.subDepartmentIds.includes(id),
+    );
+  }
+  ledSubDepartmentIds = [...new Set(ledSubDepartmentIds)];
+
   const ticketWhere = {
     assigneeId: profile.id,
     deletedAt: null,
@@ -129,11 +151,18 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     const dayIdx = (e.startedAt.getDay() + 6) % 7;
     secsByDay[dayIdx] += entryDuration(e, now);
   }
-  const subDepartmentIds = [...new Set(ticketGroups.map((t) => t.subDepartmentId))];
+  // Status labels are needed both for the caller's own ticket sub-departments
+  // and for any teams they lead (whose open/overdue counts we compute below).
+  const statusSubDepartmentIds = [
+    ...new Set([
+      ...ticketGroups.map((t) => t.subDepartmentId),
+      ...ledSubDepartmentIds,
+    ]),
+  ];
   const allSubDepartmentStatuses =
-    subDepartmentIds.length > 0
+    statusSubDepartmentIds.length > 0
       ? await prisma.subDepartmentStatus.findMany({
-          where: { subDepartmentId: { in: subDepartmentIds } },
+          where: { subDepartmentId: { in: statusSubDepartmentIds } },
           select: { subDepartmentId: true, label: true, isComplete: true },
           orderBy: { order: "asc" },
         })
@@ -170,6 +199,110 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
       normalizeStatus(t.status) === "In Progress" ||
       normalizeStatus(t.status) === "Pull Request" ||
       normalizeStatus(t.status) === "Blocked");
+
+  // ── Teams I lead (sub-manager overview) ───────────────────────────────────
+  // Aggregate stats, roster, and a recent-ticket feed for each sub-department
+  // the caller leads. All counts come from groupBy so we never pull whole
+  // ticket sets. Only runs when the user actually leads a team.
+  const [ledOpenGroups, ledUnassignedGroups, ledOverdueGroups, ledMemberRows, ledSubDeptRows, recentLedTicketRows] =
+    ledSubDepartmentIds.length > 0
+      ? await Promise.all([
+          prisma.ticket.groupBy({
+            by: ["subDepartmentId", "status"],
+            where: { subDepartmentId: { in: ledSubDepartmentIds }, deletedAt: null },
+            _count: { _all: true },
+          }),
+          prisma.ticket.groupBy({
+            by: ["subDepartmentId", "status"],
+            where: { subDepartmentId: { in: ledSubDepartmentIds }, deletedAt: null, assigneeId: null },
+            _count: { _all: true },
+          }),
+          prisma.ticket.groupBy({
+            by: ["subDepartmentId", "status"],
+            where: { subDepartmentId: { in: ledSubDepartmentIds }, deletedAt: null, dueDate: { lt: startOfToday } },
+            _count: { _all: true },
+          }),
+          prisma.subDepartmentMembership.findMany({
+            where: { subDepartmentId: { in: ledSubDepartmentIds }, isActive: true },
+            select: {
+              subDepartmentId: true,
+              role: true,
+              user: { select: { id: true, name: true, avatarUrl: true } },
+            },
+          }),
+          prisma.subDepartment.findMany({
+            where: { id: { in: ledSubDepartmentIds } },
+            select: { id: true, name: true, prefix: true },
+          }),
+          prisma.ticket.findMany({
+            where: { subDepartmentId: { in: ledSubDepartmentIds }, deletedAt: null },
+            orderBy: { createdAt: "desc" },
+            take: 6,
+            select: {
+              id: true,
+              title: true,
+              ticketNumber: true,
+              status: true,
+              priority: true,
+              createdAt: true,
+              subDepartment: { select: { prefix: true, name: true } },
+              assignee: { select: { name: true } },
+            },
+          }),
+        ])
+      : [[], [], [], [], [], []];
+
+  const countOpenBySub = (
+    groups: { subDepartmentId: string; status: string; _count: { _all: number } }[],
+  ) => {
+    const m = new Map<string, number>();
+    for (const g of groups) {
+      if (isTicketComplete(g)) continue;
+      m.set(g.subDepartmentId, (m.get(g.subDepartmentId) ?? 0) + g._count._all);
+    }
+    return m;
+  };
+  const openBySub = countOpenBySub(ledOpenGroups);
+  const unassignedBySub = countOpenBySub(ledUnassignedGroups);
+  const overdueBySub = countOpenBySub(ledOverdueGroups);
+
+  const membersBySub = new Map<
+    string,
+    { id: string; name: string; avatarUrl: string | null; role: string }[]
+  >();
+  for (const m of ledMemberRows) {
+    const list = membersBySub.get(m.subDepartmentId) ?? [];
+    list.push({ id: m.user.id, name: m.user.name, avatarUrl: m.user.avatarUrl, role: m.role });
+    membersBySub.set(m.subDepartmentId, list);
+  }
+
+  const ledSubDepartments: LedSubDepartment[] = ledSubDeptRows
+    .map((sd) => ({
+      id: sd.id,
+      name: sd.name,
+      prefix: sd.prefix,
+      memberCount: membersBySub.get(sd.id)?.length ?? 0,
+      openCount: openBySub.get(sd.id) ?? 0,
+      unassignedCount: unassignedBySub.get(sd.id) ?? 0,
+      overdueCount: overdueBySub.get(sd.id) ?? 0,
+      members: (membersBySub.get(sd.id) ?? []).sort(
+        (a, b) =>
+          (a.role === "sub_manager" ? 0 : 1) - (b.role === "sub_manager" ? 0 : 1) ||
+          a.name.localeCompare(b.name),
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const subDepartmentTickets: SubDeptTicket[] = recentLedTicketRows.map((t) => ({
+    id: t.id,
+    ref: `${t.subDepartment.prefix}-${t.ticketNumber}`,
+    title: t.title,
+    priority: (PRIORITY_TO_UI[t.priority] ?? "medium") as SubDeptTicket["priority"],
+    status: t.status,
+    subDepartmentName: t.subDepartment.name,
+    assignee: t.assignee?.name?.split(" ")[0] ?? null,
+    createdLabel: timeAgo(t.createdAt, now),
+  }));
 
   const sum = (groups: { _count: { _all: number } }[]) => groups.reduce((n, g) => n + g._count._all, 0);
   const openGroups = ticketGroups.filter((t) => !isTicketComplete(t));
@@ -325,5 +458,7 @@ export async function getHomeDashboardData(profile: Profile): Promise<HomeDashbo
     attention,
     projects,
     activity,
+    ledSubDepartments,
+    subDepartmentTickets,
   };
 }

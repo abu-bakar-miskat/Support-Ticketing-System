@@ -92,7 +92,7 @@ export function InviteByEmailModal({
               placeholder={subDepartments.length === 0 ? "No sub departments available" : "Select a sub department…"}
               searchPlaceholder="Search sub departments…"
               emptyLabel="No sub departments available"
-              className="bg-sts-surface"
+              className="w-full bg-sts-surface"
             />
           </div>
           <div>

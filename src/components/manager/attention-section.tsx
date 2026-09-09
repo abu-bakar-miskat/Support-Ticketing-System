@@ -20,13 +20,14 @@ export type SimpleTicket = {
   requester: { name: string; avatarUrl: string | null } | null;
 };
 
-export type OverdueGroup = {
-  key: string; name: string; color: string; worstDaysLate: number; tickets: SimpleTicket[];
+// A set of tickets grouped under one sub-department.
+export type SubDeptGroup = {
+  key: string; name: string; color: string; tickets: SimpleTicket[];
 };
 
-export type ReviewGroup = {
-  key: string; name: string; avatarUrl: string | null; tickets: SimpleTicket[];
-};
+export type OverdueGroup = SubDeptGroup & { worstDaysLate: number };
+
+export type ReviewGroup = SubDeptGroup;
 
 export type JoinRequest = {
   id: string; message: string; requestedAt: string;
@@ -282,11 +283,11 @@ function AttentionTabs({
 }
 
 export function AttentionSection({
-  overdueGroups, unassignedTickets, reviewGroups, joinRequests: initialJoinRequests,
+  overdueGroups, unassignedGroups, reviewGroups, joinRequests: initialJoinRequests,
   defaultTab = "overdue",
 }: {
   overdueGroups: OverdueGroup[];
-  unassignedTickets: SimpleTicket[];
+  unassignedGroups: SubDeptGroup[];
   reviewGroups: ReviewGroup[];
   joinRequests: JoinRequest[];
   defaultTab?: AttentionTab;
@@ -300,6 +301,9 @@ export function AttentionSection({
     });
     return initial;
   });
+  const [openUnassigned, setOpenUnassigned] = useState<Set<string>>(
+    () => new Set(unassignedGroups.length === 1 ? [unassignedGroups[0].key] : []),
+  );
   const [openReview, setOpenReview] = useState<Set<string>>(
     () => new Set(reviewGroups.length === 1 ? [reviewGroups[0].key] : []),
   );
@@ -325,16 +329,17 @@ export function AttentionSection({
     });
 
   const overdueTotal = overdueGroups.reduce((s, g) => s + g.tickets.length, 0);
+  const unassignedTotal = unassignedGroups.reduce((s, g) => s + g.tickets.length, 0);
   const reviewTotal = reviewGroups.reduce((s, g) => s + g.tickets.length, 0);
 
   const availableTabs: { id: AttentionTab; count: number }[] = [];
   if (overdueGroups.length > 0) availableTabs.push({ id: "overdue", count: overdueTotal });
-  if (unassignedTickets.length > 0) availableTabs.push({ id: "unassigned", count: unassignedTickets.length });
+  if (unassignedGroups.length > 0) availableTabs.push({ id: "unassigned", count: unassignedTotal });
   if (reviewGroups.length > 0) availableTabs.push({ id: "review", count: reviewTotal });
   if (joinRequests.length > 0) availableTabs.push({ id: "requests", count: joinRequests.length });
 
   const showOverdue = activeTab === "overdue" && overdueGroups.length > 0;
-  const showUnassigned = activeTab === "unassigned" && unassignedTickets.length > 0;
+  const showUnassigned = activeTab === "unassigned" && unassignedGroups.length > 0;
   const showReview = activeTab === "review" && reviewGroups.length > 0;
   const showRequests = activeTab === "requests" && joinRequests.length > 0;
 
@@ -342,13 +347,13 @@ export function AttentionSection({
   useEffect(() => {
     const ids = [
       ...(overdueGroups.length > 0 ? ["overdue" as const] : []),
-      ...(unassignedTickets.length > 0 ? ["unassigned" as const] : []),
+      ...(unassignedGroups.length > 0 ? ["unassigned" as const] : []),
       ...(reviewGroups.length > 0 ? ["review" as const] : []),
       ...(joinRequests.length > 0 ? ["requests" as const] : []),
     ];
     if (ids.length === 0) return;
     if (!ids.includes(activeTab)) setActiveTab(ids[0]);
-  }, [activeTab, overdueGroups.length, unassignedTickets.length, reviewGroups.length, joinRequests.length]);
+  }, [activeTab, overdueGroups.length, unassignedGroups.length, reviewGroups.length, joinRequests.length]);
 
   const allOverdueOpen = overdueGroups.length > 0 && overdueGroups.every((g) => openOverdue.has(g.key));
   const toggleAllOverdue = () => {
@@ -360,7 +365,7 @@ export function AttentionSection({
   };
 
   const allClear =
-    overdueGroups.length === 0 && unassignedTickets.length === 0 &&
+    overdueGroups.length === 0 && unassignedGroups.length === 0 &&
     reviewGroups.length === 0 && joinRequests.length === 0;
 
   if (allClear) {
@@ -398,7 +403,7 @@ export function AttentionSection({
                 >
                   {allOverdueOpen ? "Collapse all" : "Expand all"}
                 </button>
-                <span>grouped by project</span>
+                <span>grouped by sub-department</span>
               </span>
             }
           />
@@ -438,23 +443,35 @@ export function AttentionSection({
         </>
       )}
 
-      {/* Unassigned — needs triage */}
+      {/* Unassigned — grouped by sub-department */}
       {showUnassigned && (
         <>
-          <CardTitle icon={UserX} accent="#f59e0b" title="Unassigned" count={unassignedTickets.length} aside="waiting for triage" />
+          <CardTitle icon={UserX} accent="#f59e0b" title="Unassigned" count={unassignedTotal} aside="grouped by sub-department" />
           <div className="max-h-[min(480px,60vh)] overflow-y-auto">
             <TableHead last="Status" />
-            {unassignedTickets.map((t) => (
-              <TicketRow key={t.id} t={t} last={<StatusPill status={t.status} />} />
-            ))}
+            {unassignedGroups.map((g) => {
+              const open = openUnassigned.has(g.key);
+              return (
+                <div key={g.key}>
+                  <GroupRow open={open} onToggle={() => toggle(setOpenUnassigned, g.key)}>
+                    <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
+                    <span className="font-sans text-[12px] font-semibold text-sts-foreground">{g.name}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-sts-subtle">{g.tickets.length}</span>
+                  </GroupRow>
+                  {open && g.tickets.map((t) => (
+                    <TicketRow key={t.id} t={t} last={<StatusPill status={t.status} />} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
 
-      {/* Needs review — grouped by assignee */}
+      {/* Needs review — grouped by sub-department */}
       {showReview && (
         <>
-          <CardTitle icon={Eye} accent="#7c3aed" title="Needs review" count={reviewTotal} aside="grouped by assignee" />
+          <CardTitle icon={Eye} accent="#7c3aed" title="Needs review" count={reviewTotal} aside="grouped by sub-department" />
           <div className="max-h-[min(560px,70vh)] overflow-y-auto">
             <TableHead last="Updated" />
             {reviewGroups.map((g) => {
@@ -462,7 +479,7 @@ export function AttentionSection({
               return (
                 <div key={g.key}>
                   <GroupRow open={open} onToggle={() => toggle(setOpenReview, g.key)}>
-                    <UserAvatar name={g.name} avatarUrl={g.avatarUrl} size={20} />
+                    <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
                     <span className="font-sans text-[12px] font-semibold text-sts-foreground">{g.name}</span>
                     <span className="font-mono text-[11px] tabular-nums text-sts-subtle">{g.tickets.length}</span>
                     <span className="ml-auto flex items-center gap-1.5">

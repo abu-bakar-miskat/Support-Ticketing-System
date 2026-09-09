@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 import {
   AttentionSection,
   type AttentionTab,
-  type OverdueGroup, type ReviewGroup, type SimpleTicket, type JoinRequest,
+  type OverdueGroup, type ReviewGroup, type SubDeptGroup, type JoinRequest,
 } from "./attention-section";
 import { SubDepartmentTodaySection } from "./sub-department-today-section";
+import { SubDepartmentsSection, type SubDepartmentSummary } from "./sub-departments-section";
 import { ProjectsSection } from "./projects-section";
 import { ActivityTodaySection, type ActivityItem } from "./activity-today-section";
 import type { Distribution, MemberWorkload, ProjectHealth } from "./aggregate";
@@ -79,8 +80,8 @@ function StateOfPlay({ d }: { d: Distribution }) {
 
 export function ManagerDashboard({
   managerName, departmentName, digest, stats, distribution,
-  overdueGroups, unassignedTickets, reviewGroups, joinRequests,
-  members, projects, activity, activityTotal, noSubDepartments,
+  overdueGroups, unassignedGroups, reviewGroups, joinRequests,
+  members, projects, subDepartments, activity, activityTotal, noSubDepartments,
 }: {
   managerName: string;
   departmentName?: string | null;
@@ -88,11 +89,12 @@ export function ManagerDashboard({
   stats: Stats;
   distribution: Distribution;
   overdueGroups: OverdueGroup[];
-  unassignedTickets: SimpleTicket[];
+  unassignedGroups: SubDeptGroup[];
   reviewGroups: ReviewGroup[];
   joinRequests: JoinRequest[];
   members: MemberWorkload[];
   projects: ProjectHealth[];
+  subDepartments: SubDepartmentSummary[];
   activity: ActivityItem[];
   activityTotal: number;
   noSubDepartments: boolean;
@@ -183,7 +185,7 @@ export function ManagerDashboard({
           {/* Left: the work queue */}
           <AttentionSection
             overdueGroups={overdueGroups}
-            unassignedTickets={unassignedTickets}
+            unassignedGroups={unassignedGroups}
             reviewGroups={reviewGroups}
             joinRequests={joinRequests}
             defaultTab={defaultTab}
@@ -191,6 +193,7 @@ export function ManagerDashboard({
 
           {/* Right rail — each card scrolls internally; avoid clipping headers */}
           <div className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-5 xl:self-start">
+            <SubDepartmentsSection subDepartments={subDepartments} />
             <SubDepartmentTodaySection members={members} />
             <ProjectsSection projects={projects} />
             <ActivityTodaySection items={activity} total={activityTotal} />

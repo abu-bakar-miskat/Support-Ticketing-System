@@ -44,7 +44,7 @@ async function ManagerData() {
 
   const FINISHED_STATUSES = ["Live", "Done", "Completed", "Closed"];
 
-  const [openTickets, allScopedTickets, subDepartmentMembers, todayActivity, pendingJoinRequests] = await Promise.all([
+  const [openTickets, allScopedTickets, subDepartmentMembers, todayActivity, pendingJoinRequests, subDepartmentRows] = await Promise.all([
     // Every non-finished ticket in scope — feeds overdue groups, unassigned,
     // review groups, and member workloads in one query.
     prisma.ticket.findMany({
@@ -55,7 +55,7 @@ async function ManagerData() {
         dueDate: true, updatedAt: true, assigneeId: true,
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         creator: { select: { id: true, name: true, avatarUrl: true } },
-        subDepartment: { select: { prefix: true } },
+        subDepartment: { select: { id: true, name: true, prefix: true, color: true } },
         project: { select: { id: true, name: true, color: true } },
         _count: { select: { comments: true } },
       },
@@ -115,6 +115,17 @@ async function ManagerData() {
         department: { select: { id: true, name: true } },
       },
     }),
+
+    // Every sub-department in scope (even those with no open tickets), with
+    // its active member count — feeds the Sub-departments overview card.
+    prisma.subDepartment.findMany({
+      where: { id: { in: subDepartmentIds } },
+      orderBy: { name: "asc" },
+      select: {
+        id: true, name: true, prefix: true, color: true,
+        _count: { select: { memberships: { where: { isActive: true } } } },
+      },
+    }),
   ]);
 
   const toRow = (t: (typeof openTickets)[number]): OpenTicketRow => ({
@@ -151,41 +162,56 @@ async function ManagerData() {
     requester: { name: t.creator.name, avatarUrl: t.creator.avatarUrl ?? null },
   });
 
-  // Overdue grouped by project, count desc
-  const overdueByProject = new Map<string, { key: string; name: string; color: string; tickets: typeof overdueRows }>();
-  for (const t of overdueRows) {
-    const key = t.project?.id ?? "__none__";
-    const g = overdueByProject.get(key) ?? {
-      key, name: t.project?.name ?? "No project", color: t.project?.color ?? "#64748b", tickets: [],
-    };
-    g.tickets.push(t);
-    overdueByProject.set(key, g);
-  }
+  // Group any set of scoped tickets by their sub-department, most tickets first.
+  const groupBySubDept = (list: typeof openTickets) => {
+    const map = new Map<string, { key: string; name: string; color: string; tickets: typeof openTickets }>();
+    for (const t of list) {
+      const g = map.get(t.subDepartment.id) ?? {
+        key: t.subDepartment.id, name: t.subDepartment.name, color: t.subDepartment.color ?? "#64748b", tickets: [],
+      };
+      g.tickets.push(t);
+      map.set(t.subDepartment.id, g);
+    }
+    return [...map.values()].sort((a, b) => b.tickets.length - a.tickets.length);
+  };
+
   const daysLateOf = (t: (typeof overdueRows)[number]) =>
     Math.floor((startOfToday.getTime() - t.dueDate!.getTime()) / 86_400_000) + 1;
-  const overdueGroups = [...overdueByProject.values()]
-    .sort((a, b) => b.tickets.length - a.tickets.length)
-    .map((g) => ({
-      key: g.key, name: g.name, color: g.color,
-      worstDaysLate: Math.max(...g.tickets.map(daysLateOf)),
-      tickets: g.tickets
-        .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
-        .map(toSimple),
-    }));
 
-  // Review grouped by assignee, count desc
-  const reviewByAssignee = new Map<string, { key: string; name: string; avatarUrl: string | null; tickets: typeof reviewRows }>();
-  for (const t of reviewRows) {
-    const key = t.assignee?.id ?? "__none__";
-    const g = reviewByAssignee.get(key) ?? {
-      key, name: t.assignee?.name ?? "Unassigned", avatarUrl: t.assignee?.avatarUrl ?? null, tickets: [],
-    };
-    g.tickets.push(t);
-    reviewByAssignee.set(key, g);
+  // Overdue grouped by sub-department, count desc
+  const overdueGroups = groupBySubDept(overdueRows).map((g) => ({
+    key: g.key, name: g.name, color: g.color,
+    worstDaysLate: Math.max(...g.tickets.map(daysLateOf)),
+    tickets: g.tickets
+      .sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
+      .map(toSimple),
+  }));
+
+  // Unassigned grouped by sub-department, count desc
+  const unassignedGroups = groupBySubDept(unassignedRows).map((g) => ({
+    key: g.key, name: g.name, color: g.color, tickets: g.tickets.map(toSimple),
+  }));
+
+  // Needs-review grouped by sub-department, count desc
+  const reviewGroups = groupBySubDept(reviewRows).map((g) => ({
+    key: g.key, name: g.name, color: g.color, tickets: g.tickets.map(toSimple),
+  }));
+
+  // Open (non-finished) and overdue ticket counts per sub-department.
+  const openCountBySubDept = new Map<string, number>();
+  for (const t of openTickets) {
+    openCountBySubDept.set(t.subDepartment.id, (openCountBySubDept.get(t.subDepartment.id) ?? 0) + 1);
   }
-  const reviewGroups = [...reviewByAssignee.values()]
-    .sort((a, b) => b.tickets.length - a.tickets.length)
-    .map((g) => ({ key: g.key, name: g.name, avatarUrl: g.avatarUrl, tickets: g.tickets.map(toSimple) }));
+  const overdueCountBySubDept = new Map<string, number>();
+  for (const t of overdueRows) {
+    overdueCountBySubDept.set(t.subDepartment.id, (overdueCountBySubDept.get(t.subDepartment.id) ?? 0) + 1);
+  }
+  const subDepartments = subDepartmentRows.map((sd) => ({
+    id: sd.id, name: sd.name, prefix: sd.prefix, color: sd.color ?? "#64748b",
+    members: sd._count.memberships,
+    open: openCountBySubDept.get(sd.id) ?? 0,
+    overdue: overdueCountBySubDept.get(sd.id) ?? 0,
+  }));
 
   const lastActivityByActor: Record<string, string> = {};
   for (const a of todayActivity) {
@@ -238,7 +264,7 @@ async function ManagerData() {
       }}
       distribution={bucketDistribution(projectRows, startOfToday)}
       overdueGroups={overdueGroups}
-      unassignedTickets={unassignedRows.map(toSimple)}
+      unassignedGroups={unassignedGroups}
       reviewGroups={reviewGroups}
       joinRequests={pendingJoinRequests.map((r) => ({
         id: r.id,
@@ -251,6 +277,7 @@ async function ManagerData() {
       }))}
       members={members}
       projects={projects}
+      subDepartments={subDepartments}
       activity={todayActivity.slice(0, 30).map((a) => ({
         id: a.id,
         action: a.action,

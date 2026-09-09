@@ -354,8 +354,8 @@ export function AddMemberModal({
 
               {/* Full member fields */}
               {accessType === "full" && (
-                <div className="flex gap-3">
-                  <div className="flex-1 flex flex-col gap-1">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
                     <label className="font-sans text-[11.5px] text-sts-subtle">SubDepartment</label>
                     <SearchableSelect
                       value={subDepartmentId}
@@ -367,7 +367,7 @@ export function AddMemberModal({
                     />
                   </div>
 
-                  <div className="w-[130px] flex flex-col gap-1">
+                  <div className="flex flex-col gap-1">
                     <label className="font-sans text-[11.5px] text-sts-subtle">Role</label>
                     <SearchableSelect
                       value={role}
@@ -844,6 +844,18 @@ export function SettingsMembersPage({
               const subDepartmentEntries = member.memberships?.length
                 ? member.memberships.map((membership) => ({ id: membership.subDepartmentId, name: membership.subDepartmentName }))
                 : member.subDepartments.map((name) => ({ id: name, name }));
+              // Sub-departments offered in the "Add" dropdown: exclude ones the member
+              // already belongs to, and — when a department is assigned — scope to only
+              // that department's sub-departments (all of them, if the member is in several).
+              const memberDeptIds = new Set(departmentEntries.map((d) => d.id));
+              const hasDeptTags = availableSubDepartments.some((sd) => sd.departmentId != null);
+              const addableSubDepartments = availableSubDepartments.filter((subDepartment) => {
+                if (member.memberships?.some((membership) => membership.subDepartmentId === subDepartment.id)) return false;
+                if (hasDeptTags && memberDeptIds.size > 0) {
+                  return subDepartment.departmentId != null && memberDeptIds.has(subDepartment.departmentId);
+                }
+                return true;
+              });
               return (
                 <TableRow
                   key={member.id}
@@ -936,7 +948,10 @@ export function SettingsMembersPage({
                       inside a specific department and for guests */}
                   <TableCell className="py-0">
                     <div className="flex h-[54px] items-center">
-                      {canEditDepartment && !member.isCrossAccess ? (
+                      {/* Editable single-select "move" dropdown only when the member is in
+                          0–1 departments. Members in multiple departments fall through to the
+                          chip list below so every department they belong to is visible. */}
+                      {canEditDepartment && !member.isCrossAccess && departmentEntries.length <= 1 ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             disabled={saving === member.id}
@@ -1007,7 +1022,9 @@ export function SettingsMembersPage({
                             <Plus className="size-3" /> Add
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="min-w-[150px]">
-                            {availableSubDepartments.filter((subDepartment) => !member.memberships?.some((membership) => membership.subDepartmentId === subDepartment.id)).map((subDepartment) => (
+                            {addableSubDepartments.length === 0 ? (
+                              <div className="px-2 py-1.5 font-sans text-[11.5px] text-sts-subtle">No sub departments</div>
+                            ) : addableSubDepartments.map((subDepartment) => (
                               <DropdownMenuItem key={subDepartment.id} onClick={() => handleAddToSubDepartment(member, subDepartment.id)} className="gap-2 font-sans text-[12px]">
                                 <span className="inline-flex rounded-full bg-sts-blue/10 px-2 py-0.5 text-[11.5px] font-semibold text-sts-blue">{subDepartment.name}</span>
                               </DropdownMenuItem>

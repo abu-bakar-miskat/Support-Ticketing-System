@@ -279,6 +279,9 @@ model TenantInvite {
   // Departments to assign on accept (manager → DepartmentManager, lead/staff →
   // DepartmentMember). Empty/null for tenant-wide admins. See lib/tenant-membership.
   departmentIds Json?
+  // Sub-department to join on accept for sub_manager/agent invites (they join at
+  // sub-department level, never department level). Null for admins/managers.
+  subDepartmentId String?
   message    String?
   invitedBy  String    @db.Uuid
   createdAt  DateTime  @default(now())

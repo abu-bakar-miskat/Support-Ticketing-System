@@ -30,7 +30,7 @@ export function InviteMemberDialog({
   triggerLabel = "Invite member",
 }: {
   tenantId: string
-  departments: { id: string; name: string }[]
+  departments: { id: string; name: string; subDepartments?: { id: string; name: string }[] }[]
   triggerClassName?: string
   /** Departments pre-selected when the dialog opens — e.g. inviting from a specific department card. */
   initialDeptIds?: string[]
@@ -41,17 +41,27 @@ export function InviteMemberDialog({
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<string>("agent")
+  // Managers can manage several departments (multi-select pills).
   const [selectedDepts, setSelectedDepts] = useState<string[]>(initialDeptIds ?? [])
+  // Sub-managers/agents join a single sub-department: pick a department, then a
+  // sub-department under it.
+  const [deptId, setDeptId] = useState<string>(initialDeptIds?.[0] ?? "")
+  const [subDeptId, setSubDeptId] = useState<string>("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
 
   const needsDepartments = role !== "admin"
+  // sub_manager/agent join at sub-department level, never the department itself.
+  const needsSubDepartment = role === "sub_manager" || role === "agent"
+  const subDeptOptions = departments.find((d) => d.id === deptId)?.subDepartments ?? []
 
   function reset() {
     setEmail("")
     setRole("agent")
     setSelectedDepts(initialDeptIds ?? [])
+    setDeptId(initialDeptIds?.[0] ?? "")
+    setSubDeptId("")
     setError(null)
     setInviteLink(null)
   }
@@ -60,21 +70,45 @@ export function InviteMemberDialog({
     setSelectedDepts((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
 
+  // Switching the department invalidates any sub-department picked under the old one.
+  function chooseDept(id: string) {
+    setDeptId(id)
+    setSubDeptId("")
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const value = email.trim()
     if (!value) return
-    if (needsDepartments && selectedDepts.length === 0) {
-      setError("Select at least one department for a manager, sub-manager, or agent.")
-      return
+
+    let departmentIds: string[] = []
+    let subDepartmentId: string | null = null
+    if (needsSubDepartment) {
+      if (!deptId) {
+        setError("Select a department.")
+        return
+      }
+      if (!subDeptId) {
+        setError("Select a sub-department.")
+        return
+      }
+      departmentIds = [deptId]
+      subDepartmentId = subDeptId
+    } else if (needsDepartments) {
+      if (selectedDepts.length === 0) {
+        setError("Select at least one department for a manager.")
+        return
+      }
+      departmentIds = selectedDepts
     }
+
     setBusy(true)
     setError(null)
     setInviteLink(null)
     const res = await fetch(`/api/admin/tenants/${tenantId}/members`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: value, role, departmentIds: needsDepartments ? selectedDepts : [] }),
+      body: JSON.stringify({ email: value, role, departmentIds, subDepartmentId }),
     })
     const body = await res.json().catch(() => ({}))
     setBusy(false)
@@ -165,10 +199,11 @@ export function InviteMemberDialog({
                 </Select>
               </div>
 
-              {needsDepartments && (
+              {/* Manager: manages one or more whole departments (multi-select). */}
+              {needsDepartments && !needsSubDepartment && (
                 <div>
                   <label className="block font-sans text-[12px] font-medium text-sts-foreground">
-                    {role === "manager" ? "Manages department(s)" : "Member of department(s)"}
+                    Manages department(s)
                     <span className="ml-1 font-normal text-sts-subtle">— pick one or more</span>
                   </label>
                   {departments.length === 0 ? (
@@ -196,6 +231,60 @@ export function InviteMemberDialog({
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Sub-manager / agent: pick a department, then a sub-department under it. */}
+              {needsSubDepartment && (
+                <>
+                  <div>
+                    <label className="block font-sans text-[12px] font-medium text-sts-foreground">Department</label>
+                    {departments.length === 0 ? (
+                      <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">No departments yet.</p>
+                    ) : (
+                      <Select value={deptId} onValueChange={(v) => chooseDept(v ?? "")}>
+                        <SelectTrigger className="mt-1 h-9 w-full">
+                          <span className="font-sans text-[12.5px]">
+                            {departments.find((d) => d.id === deptId)?.name ?? "Select a department"}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((d) => (
+                            <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-sans text-[12px] font-medium text-sts-foreground">Sub-department</label>
+                    <Select
+                      value={subDeptId}
+                      onValueChange={(v) => setSubDeptId(v ?? "")}
+                      disabled={!deptId || subDeptOptions.length === 0}
+                    >
+                      <SelectTrigger className="mt-1 h-9 w-full">
+                        <span className="font-sans text-[12.5px]">
+                          {subDeptOptions.find((s) => s.id === subDeptId)?.name ??
+                            (!deptId
+                              ? "Select a department first"
+                              : subDeptOptions.length === 0
+                                ? "No sub-departments"
+                                : "Select a sub-department")}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subDeptOptions.map((s) => (
+                          <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
 
               {inviteLink ? (

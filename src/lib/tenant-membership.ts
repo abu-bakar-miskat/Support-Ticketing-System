@@ -15,10 +15,11 @@ export type MembershipRole = "admin" | "manager" | "sub_manager" | "agent";
  * - Sets `Profile.role` so the existing dept-scope logic treats them correctly.
  * - `admin`: tenant-wide — no department records.
  * - `manager`: a `DepartmentManager` for each selected department.
- * - `sub_manager`/`agent`: no department-level membership — they must be added
- *   to a sub-department separately (members are never department-scoped).
+ * - `sub_manager`/`agent`: join a single sub-department (via `subDepartmentId`) —
+ *   they are never department-scoped. Ignored for admin/manager.
  *
- * Department ids are filtered to those that actually belong to `tenantId`.
+ * Department ids are filtered to those that actually belong to `tenantId`, and
+ * `subDepartmentId` is only honoured when it belongs to `tenantId`.
  */
 export async function applyTenantMembership(
   db: Db,
@@ -27,6 +28,7 @@ export async function applyTenantMembership(
     userId: string;
     role: MembershipRole;
     departmentIds?: string[];
+    subDepartmentId?: string | null;
     actorId: string;
   },
 ): Promise<{ departmentIds: string[] }> {
@@ -58,6 +60,26 @@ export async function applyTenantMembership(
         where: { departmentId_userId: { departmentId, userId } },
         update: {},
         create: { departmentId, userId, assignedBy: actorId },
+      });
+    }
+  }
+
+  // sub_manager/agent join a single sub-department (validated against the tenant).
+  if ((role === "sub_manager" || role === "agent") && opts.subDepartmentId) {
+    const sub = await db.subDepartment.findFirst({
+      where: { id: opts.subDepartmentId, tenantId },
+      select: { id: true },
+    });
+    if (sub) {
+      await (db.subDepartmentMembership as any).upsert({
+        where: { userId_subDepartmentId: { userId, subDepartmentId: sub.id } },
+        update: { isActive: true, role: role as Role },
+        create: { userId, subDepartmentId: sub.id, role: role as Role, isActive: true },
+      });
+      // Keep the legacy primary-membership pointer populated when unset.
+      await db.profile.updateMany({
+        where: { id: userId, subDepartmentId: null },
+        data: { subDepartmentId: sub.id },
       });
     }
   }

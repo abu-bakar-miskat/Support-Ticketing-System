@@ -272,7 +272,7 @@ export function SettingsIntakeSubmissionsPage({
             type="button"
             onClick={() => { setFilter(tab.value); setSelected(new Set()); }}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
               filter === tab.value
                 ? "bg-sts-blue text-white dark:text-gray-900 shadow-sm"
                 : "text-sts-muted hover:text-sts-foreground hover:bg-sts-surface",
@@ -300,7 +300,7 @@ export function SettingsIntakeSubmissionsPage({
             <button
               type="button"
               onClick={() => setAssignModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-semibold text-white dark:text-gray-900 hover:bg-sts-blue/90 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-semibold text-white dark:text-gray-900 hover:bg-sts-blue/90 transition-colors"
             >
               <Users className="size-3.5" />
               Assign {selectedWithTicket.length} ticket{selectedWithTicket.length !== 1 ? "s" : ""}
@@ -309,7 +309,7 @@ export function SettingsIntakeSubmissionsPage({
           <button
             type="button"
             onClick={() => setBulkConfirm(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sts-red/40 bg-red-50 px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-red hover:bg-red-100 transition-colors dark:bg-red-950/30 dark:hover:bg-red-950/50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-sts-red/40 bg-red-50 px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-red hover:bg-red-100 transition-colors dark:bg-red-950/30 dark:hover:bg-red-950/50"
           >
             <Trash2 className="size-3.5" />
             Delete
@@ -317,7 +317,7 @@ export function SettingsIntakeSubmissionsPage({
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="rounded-md p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
+            className="rounded-full p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
             title="Clear selection"
           >
             <X className="size-3.5" />
@@ -404,7 +404,7 @@ export function SettingsIntakeSubmissionsPage({
                           onSelect={(member) => handleAssign(s, member)}
                         >
                           {({ ref, onClick }) => (
-                            <button ref={ref} type="button" onClick={onClick} className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-sts-surface max-w-[160px]">
+                            <button ref={ref} type="button" onClick={onClick} className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-sts-surface max-w-[160px]">
                               {getAssignee(s).name ? (
                                 <>
                                   <AvatarVisual name={getAssignee(s).name!} avatarUrl={getAssignee(s).avatarUrl} size={20} />
@@ -445,14 +445,14 @@ export function SettingsIntakeSubmissionsPage({
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(s)}
-                        className="cursor-pointer rounded-md p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
+                        className="cursor-pointer rounded-full p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
                         title="Delete submission"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
                       <Link
                         href={`${formsBasePath}/${formId}/submissions/${s.id}`}
-                        className="flex items-center gap-1 rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
+                        className="flex items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"
                         title="View submission details"
                       >
                         <Eye className="size-3.5" />

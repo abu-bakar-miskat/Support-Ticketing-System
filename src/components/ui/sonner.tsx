@@ -75,7 +75,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: [
-            "font-sans !rounded-xl !border !border-sts-card-border",
+            "font-sans !rounded-full !border !border-sts-card-border",
             "!bg-sts-card backdrop-blur-[var(--sts-glass-blur)] saturate-[var(--sts-glass-saturate)]",
             "!text-sts-foreground",
             "!px-5 !py-4 !gap-3.5 !items-center",
@@ -89,9 +89,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "hover:!bg-sts-secondary-bg hover:!text-sts-foreground",
           ].join(" "),
           actionButton:
-            "!bg-sts-button !text-sts-button-fg !font-sans !text-xs !rounded-md !font-medium",
+            "!bg-sts-button !text-sts-button-fg !font-sans !text-xs !rounded-full !font-medium",
           cancelButton:
-            "!bg-sts-surface !text-sts-muted !font-sans !text-xs !rounded-md",
+            "!bg-sts-surface !text-sts-muted !font-sans !text-xs !rounded-full",
         },
       }}
       {...props}

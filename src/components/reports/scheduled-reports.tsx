@@ -187,7 +187,7 @@ export function ScheduledReports() {
               type="button"
               disabled={creating}
               onClick={createSchedule}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white disabled:opacity-50"
             >
               {creating ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
               Add schedule
@@ -219,7 +219,7 @@ export function ScheduledReports() {
                 <button
                   type="button"
                   onClick={() => remove(s.id)}
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:text-red-500"
+                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:text-red-500"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -250,7 +250,7 @@ export function ScheduledReports() {
                       href={e.resultUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-foreground hover:bg-sts-bg"
+                      className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-foreground hover:bg-sts-bg"
                     >
                       <Download className="size-3.5" />
                       Download

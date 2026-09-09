@@ -45,7 +45,7 @@ export default async function TenantInvitePage({
             )}
             <a
               href={`/api/tenant-invites/${token}/accept`}
-              className="mt-5 inline-block rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+              className="mt-5 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white"
             >
               Accept invitation
             </a>

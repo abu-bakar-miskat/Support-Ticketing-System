@@ -489,9 +489,9 @@ export function ScreeningFlow(props: Props) {
   const card = "rounded-[7px] border p-6 sm:p-8"
   const cardStyle = { background: COLORS.card, borderColor: COLORS.border }
   const primaryBtn =
-    "inline-flex items-center justify-center rounded-[8px] px-5 py-2.5 text-[15px] font-semibold text-[#030A2E] transition-opacity hover:opacity-90 disabled:opacity-50"
+    "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-[15px] font-semibold text-[#030A2E] transition-opacity hover:opacity-90 disabled:opacity-50"
   const ghostBtn =
-    "inline-flex items-center justify-center rounded-[8px] border px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-white/5"
+    "inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-[15px] font-medium transition-colors hover:bg-white/5"
 
   const progress = (
     <div className="mb-6 flex items-center gap-2">
@@ -599,7 +599,7 @@ export function ScreeningFlow(props: Props) {
               Question {idx + 1} of {questions.length}
             </span>
             <span
-              className="rounded-[8px] px-3 py-1 text-sm font-semibold tabular-nums"
+              className="rounded-full px-3 py-1 text-sm font-semibold tabular-nums"
               style={{
                 background: recording ? "rgba(255,92,92,0.15)" : "rgba(235,236,243,0.08)",
                 color: recording ? COLORS.error : countdown <= 5 ? COLORS.warning : COLORS.text,
@@ -642,7 +642,7 @@ export function ScreeningFlow(props: Props) {
                 >
                   <p className="font-medium">{cameraError}</p>
                   <button
-                    className="mt-2 rounded-[8px] px-4 py-2 text-sm font-semibold"
+                    className="mt-2 rounded-full px-4 py-2 text-sm font-semibold"
                     style={{ background: COLORS.error, color: "#fff" }}
                     onClick={requestCamera}
                   >

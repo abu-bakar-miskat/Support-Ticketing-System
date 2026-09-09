@@ -47,7 +47,17 @@ export function useTenantHref(): (internalPath: string) => string {
     let base = `/${tenantSlug}`;
     if (deptSlug && isDeptScopedPath(internalPath)) {
       base += `/${deptSlug}`;
-      if (subDeptSlug && isSubDeptScopedPath(internalPath)) base += `/${subDeptSlug}`;
+      // Omit the sub-dept slug when it collides with the tenant/dept slug — it
+      // would otherwise read like the tenant name repeating in the URL. The
+      // slug is cosmetic (data scope comes from the active-team cookie), so the
+      // middleware still rewrites the collapsed URL to the right page.
+      if (
+        subDeptSlug &&
+        subDeptSlug !== tenantSlug &&
+        subDeptSlug !== deptSlug &&
+        isSubDeptScopedPath(internalPath)
+      )
+        base += `/${subDeptSlug}`;
     }
     return internalPath === "/" ? base : `${base}${internalPath}`;
   };

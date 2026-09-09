@@ -159,7 +159,7 @@ export function LifecycleStepper({
             className="bg-sts-surface"
           />
         ) : (
-          <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3">
+          <div className="flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3">
             <span
               className="size-2 shrink-0 rounded-full"
               style={{ backgroundColor: activeStage?.color ?? "#94a3b8" }}
@@ -291,7 +291,7 @@ export function LifecycleStepper({
                             onClick={() => onMoveStage(i, -1)}
                             disabled={i === 0}
                             aria-label="Move up"
-                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-card hover:text-sts-foreground disabled:opacity-30"
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-card hover:text-sts-foreground disabled:opacity-30"
                           >
                             <ArrowUp className="size-3.5" />
                           </button>
@@ -300,7 +300,7 @@ export function LifecycleStepper({
                             onClick={() => onMoveStage(i, 1)}
                             disabled={i === stages.length - 1}
                             aria-label="Move down"
-                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-card hover:text-sts-foreground disabled:opacity-30"
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-card hover:text-sts-foreground disabled:opacity-30"
                           >
                             <ArrowDown className="size-3.5" />
                           </button>
@@ -308,7 +308,7 @@ export function LifecycleStepper({
                             type="button"
                             onClick={() => onDeleteStage(stage.id)}
                             aria-label="Delete stage"
-                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-red/10 hover:text-sts-red"
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-red/10 hover:text-sts-red"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
@@ -429,7 +429,7 @@ export function LifecycleStepper({
                       <button
                         type="button"
                         onClick={cancelAddForm}
-                        className="h-7 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-foreground"
+                        className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-foreground"
                       >
                         Cancel
                       </button>
@@ -437,7 +437,7 @@ export function LifecycleStepper({
                         type="button"
                         onClick={saveAddForm}
                         disabled={!draftLabel.trim() || savingDraft}
-                        className="flex h-7 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+                        className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
                       >
                         {savingDraft ? (
                           <Loader2 className="size-3 animate-spin" />
@@ -458,7 +458,7 @@ export function LifecycleStepper({
           <button
             type="button"
             onClick={openAddForm}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-2 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-dashed border-sts-card-border py-2 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
           >
             <Plus className="size-3.5" /> Add stage
           </button>

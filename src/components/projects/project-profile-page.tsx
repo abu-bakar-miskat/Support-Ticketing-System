@@ -441,7 +441,7 @@ function ProjectMembersSection({
         <button
           type="button"
           onClick={openAdding}
-          className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id"
+          className="flex items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id"
         >
           <UserPlus className="size-3" />
           Add
@@ -527,7 +527,7 @@ function ProjectMembersSection({
                       onClick={() => toggleUser(u.id)}
                       className={cn(
                         userListPickerButtonClass,
-                        "gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+                        "gap-2.5 rounded-full px-2 py-1.5 transition-colors",
                         selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                       )}
                     >
@@ -558,7 +558,7 @@ function ProjectMembersSection({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
+                className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
               >
                 Cancel
               </button>
@@ -566,7 +566,7 @@ function ProjectMembersSection({
                 type="button"
                 disabled={selectedIds.size === 0 || saving}
                 onClick={addMembers}
-                className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-7 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {saving
                   ? "Adding…"
@@ -860,7 +860,7 @@ function TicketList({
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-id px-3 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-id px-3 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90"
             >
               <Plus className="size-3.5" />
               Create task
@@ -1393,7 +1393,7 @@ function OverviewTab({
           <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-sts-blue/10">
+                <div className="flex size-6 items-center justify-center rounded-full bg-sts-blue/10">
                   <Timer className="size-3.5 text-sts-blue" strokeWidth={2} />
                 </div>
                 <p className="sts-text-section-label">Dev time logged</p>
@@ -1454,7 +1454,7 @@ function OverviewTab({
                       type="button"
                       onClick={() => { setActivityFilter(f.id); setActivityLimit(10); }}
                       className={cn(
-                        "h-6 rounded-md px-2 font-sans text-[11px] transition-colors",
+                        "h-6 rounded-full px-2 font-sans text-[11px] transition-colors",
                         activityFilter === f.id
                           ? "bg-sts-blue text-white dark:text-gray-900"
                           : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
@@ -1648,7 +1648,7 @@ function AddBoardButton({
         onClick={toggleOpen}
         disabled={adding}
         title="Add board — department sub departments or sub departments of assigned members"
-        className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
+        className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
       >
         {adding ? (
           <Loader2 className="size-3.5 animate-spin text-sts-id" />
@@ -1978,7 +1978,7 @@ function HeaderMemberAvatars({
                       onClick={() => toggleUser(u.id)}
                       className={cn(
                         userListPickerButtonClass,
-                        "gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+                        "gap-2.5 rounded-full px-2 py-1.5 transition-colors",
                         selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                       )}
                     >
@@ -2009,7 +2009,7 @@ function HeaderMemberAvatars({
               <button
                 type="button"
                 onClick={() => setAdding(false)}
-                className="h-7 rounded-md border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
+                className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[12px] text-sts-muted hover:bg-sts-surface"
               >
                 Cancel
               </button>
@@ -2017,7 +2017,7 @@ function HeaderMemberAvatars({
                 type="button"
                 disabled={selectedIds.size === 0 || saving}
                 onClick={confirm}
-                className="h-7 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+                className="h-7 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
               >
                 {saving
                   ? "Adding…"
@@ -2723,7 +2723,7 @@ function ProjectProfilePageInner({
                         setFilterModule(new Set());
                       }}
                       title="Clear filters"
-                      className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-sts-card-border px-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
+                      className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-sts-card-border px-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
                     >
                       <X className="size-3 shrink-0" />
                       <span className="hidden sm:inline">Clear</span>
@@ -2734,7 +2734,7 @@ function ProjectProfilePageInner({
             )}
             {tab.startsWith("subDepartment:") && (
               <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+                <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                   {(["board", "list"] as const).map((v) => (
                     <button
                       key={v}
@@ -2760,7 +2760,7 @@ function ProjectProfilePageInner({
                   ))}
                 </div>
                 {boardView === "board" && (
-                  <div className="flex h-7 overflow-hidden rounded-md border border-sts-card-border bg-sts-card">
+                  <div className="flex h-7 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                     <button
                       type="button"
                       onClick={() =>

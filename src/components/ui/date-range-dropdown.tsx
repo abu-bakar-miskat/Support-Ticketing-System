@@ -101,7 +101,7 @@ export function DateRangeDropdown({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={cn(
-          "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 font-sans text-[12px] transition-colors",
+          "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 font-sans text-[12px] transition-colors",
           hasValue
             ? "border-sts-blue bg-sts-blue-tint font-semibold text-sts-id"
             : "border-sts-card-border bg-transparent text-sts-muted hover:border-sts-id hover:text-sts-foreground",
@@ -144,7 +144,7 @@ export function DateRangeDropdown({
                 type="button"
                 onClick={() => applyPreset(p)}
                 className={cn(
-                  "rounded-md border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
+                  "rounded-full border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                   activePreset === p.id
                     ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
                     : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-id hover:text-sts-foreground dark:bg-white/5",
@@ -178,7 +178,7 @@ export function DateRangeDropdown({
           <button
             type="button"
             onClick={applyCustom}
-            className="mt-3 w-full rounded-lg bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+            className="mt-3 w-full rounded-full bg-sts-blue py-2 font-sans text-[12px] font-semibold text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             Apply range
           </button>

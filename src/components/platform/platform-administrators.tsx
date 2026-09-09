@@ -350,7 +350,7 @@ export function PlatformAdministrators({
                   type="button"
                   onClick={() => setRoleFilter(f.id)}
                   className={cn(
-                    "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium transition-colors",
+                    "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium transition-colors",
                     roleFilter === f.id
                       ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
                       : "text-sts-muted hover:text-sts-foreground",

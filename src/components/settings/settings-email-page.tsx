@@ -150,7 +150,7 @@ function EmailNotificationsCard({
         <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
           <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select scope"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -321,7 +321,7 @@ function ConnectionCard({
             onClick={sendTest}
             disabled={sending || !resendConfigured}
             className={cn(
-              "inline-flex h-8 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white",
+              "inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
@@ -479,7 +479,7 @@ function EmailBrandingCard({
         <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
           <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>
@@ -638,7 +638,7 @@ function EmailBrandingCard({
                 ticket.
               </p>
               <span
-                className="mt-3 inline-block rounded-md px-3 py-1.5 font-sans text-[11px] font-semibold text-white"
+                className="mt-3 inline-block rounded-full px-3 py-1.5 font-sans text-[11px] font-semibold text-white"
                 style={{ background: validColor ? brandColor : "#0a76b9" }}
               >
                 View ticket
@@ -656,7 +656,7 @@ function EmailBrandingCard({
           type="button"
           onClick={save}
           disabled={saving || loading || !dirty || !validColor || !validHeader}
-          className="inline-flex h-8 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save branding"}
         </button>
@@ -665,7 +665,7 @@ function EmailBrandingCard({
             type="button"
             onClick={resetToSaved}
             disabled={saving || resetting}
-            className="inline-flex h-8 items-center rounded-md border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-full border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
           >
             Discard changes
           </button>
@@ -675,7 +675,7 @@ function EmailBrandingCard({
             type="button"
             onClick={clearOverride}
             disabled={saving || resetting || loading}
-            className="inline-flex h-8 items-center rounded-md border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-full border border-sts-card-border px-3.5 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
           >
             {resetting ? "Resetting…" : "Use workspace default"}
           </button>

@@ -1051,7 +1051,7 @@ export function TimelineViewPage({ cards, subDepartmentBoardGroups }: Props) {
               <button
                 type="button"
                 onClick={scrollToToday}
-                className="flex h-9 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3.5 font-sans text-[13px] font-semibold text-sts-foreground transition-colors hover:border-sts-blue hover:text-sts-id"
+                className="flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3.5 font-sans text-[13px] font-semibold text-sts-foreground transition-colors hover:border-sts-blue hover:text-sts-id"
               >
                 Today
               </button>

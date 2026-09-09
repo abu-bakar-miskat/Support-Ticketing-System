@@ -64,7 +64,7 @@ export function SettingsAppearancePage({
               aria-label={`${label} font size`}
               onClick={() => setFontSize(id)}
               className={cn(
-                "flex min-w-[88px] flex-col items-center gap-1.5 rounded-md border px-3 py-2.5 transition-all",
+                "flex min-w-[88px] flex-col items-center gap-1.5 rounded-full border px-3 py-2.5 transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent focus-visible:ring-offset-1",
                 fontSizeReady && fontSize === id
                   ? "border-sts-blue bg-sts-blue-tint ring-2 ring-sts-accent ring-offset-1 ring-offset-sts-bg"

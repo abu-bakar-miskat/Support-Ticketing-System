@@ -98,7 +98,7 @@ function PageSizeSelector({
     <div className="flex items-center gap-1.5">
       <span className="font-sans text-[11.5px] text-sts-subtle">Per page</span>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
+        <PopoverTrigger className="flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
           {value}
           <ChevronDown className="size-3 shrink-0" />
         </PopoverTrigger>
@@ -116,7 +116,7 @@ function PageSizeSelector({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center rounded-md px-3 py-1.5 font-sans text-[12px] transition-colors",
+                "flex w-full items-center rounded-full px-3 py-1.5 font-sans text-[12px] transition-colors",
                 size === value
                   ? "bg-sts-blue-tint font-semibold text-sts-id"
                   : "text-sts-foreground hover:bg-sts-surface",
@@ -172,7 +172,7 @@ function SavedViewsMenu({
         }
       }}
     >
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <Bookmark className="size-3.5" />
         <span className="hidden sm:inline">Views</span>
         {views.length > 0 && (
@@ -245,7 +245,7 @@ function SavedViewsMenu({
               type="button"
               onClick={submitNew}
               disabled={!name.trim()}
-              className="flex h-8 shrink-0 items-center rounded-md bg-sts-blue px-2.5 font-sans text-[12px] font-semibold text-white disabled:opacity-40"
+              className="flex h-8 shrink-0 items-center rounded-full bg-sts-blue px-2.5 font-sans text-[12px] font-semibold text-white disabled:opacity-40"
             >
               Save
             </button>
@@ -255,7 +255,7 @@ function SavedViewsMenu({
             type="button"
             onClick={() => setNaming(true)}
             disabled={!hasFilters}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 font-sans text-[12px] text-sts-id transition-colors hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:text-sts-subtle disabled:hover:bg-transparent"
+            className="flex w-full items-center gap-2 rounded-full px-3 py-1.5 font-sans text-[12px] text-sts-id transition-colors hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:text-sts-subtle disabled:hover:bg-transparent"
           >
             <Plus className="size-3.5" />
             {hasFilters ? "Save current filters as view" : "Set filters to save a view"}
@@ -290,7 +290,7 @@ function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
+      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
         <Download className="size-3.5" />
         <span className="hidden sm:inline">Export</span>
         <ChevronDown className="size-3 shrink-0" />
@@ -857,7 +857,7 @@ export function AllTasksPage({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
+                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
                 >
                   <X className="size-3" />
                   <span className="hidden sm:inline">Clear all</span>

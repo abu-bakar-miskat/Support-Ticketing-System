@@ -55,14 +55,14 @@ export default function NotFound() {
         <div className="flex w-full flex-col gap-3">
           <Link
             href="/"
-            className="flex h-10 w-full items-center justify-center rounded-lg bg-[#0a76b9] font-sans text-[13.5px] font-medium text-white transition-colors hover:bg-[#0967a0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a76b9]/60"
+            className="flex h-10 w-full items-center justify-center rounded-full bg-[#0a76b9] font-sans text-[13.5px] font-medium text-white transition-colors hover:bg-[#0967a0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a76b9]/60"
           >
             Back to dashboard
           </Link>
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex h-10 w-full items-center justify-center rounded-lg border border-sts-card-border bg-sts-bg font-sans text-[13.5px] font-medium text-sts-muted transition-colors hover:border-sts-muted hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-card-border"
+            className="flex h-10 w-full items-center justify-center rounded-full border border-sts-card-border bg-sts-bg font-sans text-[13.5px] font-medium text-sts-muted transition-colors hover:border-sts-muted hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-card-border"
           >
             ← Go back
           </button>

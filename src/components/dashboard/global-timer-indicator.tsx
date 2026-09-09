@@ -35,7 +35,7 @@ export function GlobalTimerIndicator() {
       href={taskHref}
       title={tooltip}
       className={cn(
-        "flex h-7 max-w-[220px] items-center gap-1.5 rounded-md border px-2",
+        "flex h-7 max-w-[220px] items-center gap-1.5 rounded-full border px-2",
         "transition-colors sm:max-w-[260px]",
         "border-sts-green/35 bg-sts-green/10 hover:border-sts-green/50 hover:bg-sts-green/15",
       )}

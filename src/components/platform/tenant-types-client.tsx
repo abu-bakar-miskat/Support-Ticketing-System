@@ -84,7 +84,7 @@ export function TenantTypesClient({
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         aria-label={`More actions for ${t.label}`}
-                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                       >
                         <MoreHorizontal className="size-4" />
                       </DropdownMenuTrigger>

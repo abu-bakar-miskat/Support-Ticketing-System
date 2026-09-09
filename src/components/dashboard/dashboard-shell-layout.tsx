@@ -62,7 +62,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- A hard reload retries the failed database connection. */}
             <a
               href="/"
-              className="mt-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="mt-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Try again
             </a>

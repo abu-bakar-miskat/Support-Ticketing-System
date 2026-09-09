@@ -336,7 +336,7 @@ export function IntakeForm({
         disabled={submitting}
         style={accentColor ? { backgroundColor: accentColor } : undefined}
         className={cn(
-          "flex h-12 items-center justify-center gap-2 rounded-xl font-poppins text-[14px] font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
+          "flex h-12 items-center justify-center gap-2 rounded-full font-poppins text-[14px] font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
           !accentColor && "bg-sts-blue",
         )}
       >
@@ -614,7 +614,7 @@ function DynamicField({
     if (upload?.url) {
       return (
         <div className="flex items-center gap-2.5 rounded-xl border border-sts-card-border bg-sts-surface px-3.5 py-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint">
             <Paperclip className="size-3.5 text-sts-id" />
           </div>
           <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] font-medium text-sts-foreground">

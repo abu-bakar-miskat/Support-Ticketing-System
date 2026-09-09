@@ -147,7 +147,7 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
         </div>
         <Button
           onClick={() => { setCreating(true); setEditingId(null); }}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-full bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[140px]"
         >
           <Plus className="size-[13px]" strokeWidth={2.5} />
           New label
@@ -188,10 +188,10 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                 <TableCell />
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[54px] items-center justify-end gap-1">
-                    <button type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
+                    <button type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
                       <Check className="size-3.5" />
                     </button>
-                    <button type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
+                    <button type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
                       <X className="size-3.5" />
                     </button>
                   </div>
@@ -244,16 +244,16 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                   <div className="flex h-[46px] items-center justify-end gap-1">
                     {editingId === label.id ? (
                       <>
-                        <button type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-md bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
+                        <button type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
                           <Check className="size-3.5" />
                         </button>
-                        <button type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
+                        <button type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
                           <X className="size-3.5" />
                         </button>
                       </>
                     ) : (
                       <DropdownMenu>
-                        <DropdownMenuTrigger type="button" className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground" aria-label={`Actions for ${label.name}`}>
+                        <DropdownMenuTrigger type="button" className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground" aria-label={`Actions for ${label.name}`}>
                           <MoreHorizontal className="size-3.5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-36">

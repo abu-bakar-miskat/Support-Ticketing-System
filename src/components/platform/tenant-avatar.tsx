@@ -37,7 +37,7 @@ export function TenantAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg bg-sts-blue font-sans font-semibold text-white",
+        "flex shrink-0 items-center justify-center rounded-full bg-sts-blue font-sans font-semibold text-white",
         className,
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}

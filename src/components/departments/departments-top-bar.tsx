@@ -57,7 +57,7 @@ export function DepartmentsTopBar({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="flex size-7 items-center justify-center rounded-md border border-sts-card-border bg-sts-surface text-sts-subtle transition-colors hover:text-sts-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
+          className="flex size-7 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-subtle transition-colors hover:text-sts-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
           aria-label="Open command palette"
         >
           <Search className="size-3.5" />
@@ -65,7 +65,7 @@ export function DepartmentsTopBar({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="hidden h-7 w-36 items-center gap-2 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-subtle transition-colors hover:text-sts-foreground sm:flex md:w-44 lg:w-48 dark:border-white/10 dark:bg-white/5 dark:text-sts-subtle dark:hover:border-white/20 dark:hover:text-sts-foreground"
+          className="hidden h-7 w-36 items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-2 text-sts-subtle transition-colors hover:text-sts-foreground sm:flex md:w-44 lg:w-48 dark:border-white/10 dark:bg-white/5 dark:text-sts-subtle dark:hover:border-white/20 dark:hover:text-sts-foreground"
           aria-label="Open command palette"
         >
           <Search className="size-3.5 shrink-0" />
@@ -76,12 +76,12 @@ export function DepartmentsTopBar({
         </button>
 
         <FontSizeZoomControls />
-        <ThemeToggle className="size-7 rounded-lg" />
+        <ThemeToggle className="size-7 rounded-full" />
 
         <button
           type="button"
           onClick={onNotifClick}
-          className="relative flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
+          className="relative flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
           aria-label="Notifications"
         >
           <Bell className="size-4" />

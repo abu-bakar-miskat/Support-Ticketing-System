@@ -46,7 +46,7 @@ function TicketPanel({
               type="button"
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1.5 rounded-lg bg-sts-blue px-4 py-2 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-full bg-sts-blue px-4 py-2 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-60"
             >
               <RefreshCw
                 className={cn("size-3.5", isFetching && "animate-spin")}
@@ -56,7 +56,7 @@ function TicketPanel({
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1.5 rounded-lg border border-sts-card-border px-4 py-2 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-surface"
+              className="flex items-center gap-1.5 rounded-full border border-sts-card-border px-4 py-2 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-surface"
             >
               <X className="size-3.5" />
               Close

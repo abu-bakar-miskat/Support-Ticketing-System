@@ -52,7 +52,7 @@ export function ReportsExportMenu({
         type="button"
         disabled={!ready || busy}
         title="Export reports"
-        className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none transition-colors hover:bg-sts-bg disabled:opacity-50"
+        className="flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none transition-colors hover:bg-sts-bg disabled:opacity-50"
       >
         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
         <span>Export</span>

@@ -248,7 +248,7 @@ function ProjectMenu({
         type="button"
         onClick={openMenu}
         className={cn(
-          "flex size-7 items-center justify-center rounded-md transition-colors",
+          "flex size-7 items-center justify-center rounded-full transition-colors",
           open
             ? "bg-sts-surface text-sts-foreground"
             : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
@@ -485,7 +485,7 @@ function ProjectListRow({
             onClick={onTogglePin}
             title={isPinned ? "Unpin project" : "Pin project"}
             className={cn(
-              "flex size-7 items-center justify-center rounded-md transition-colors",
+              "flex size-7 items-center justify-center rounded-full transition-colors",
               isPinned
                 ? "text-sts-blue hover:bg-sts-blue/10"
                 : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
@@ -568,7 +568,7 @@ function ProjectCard({
             onClick={onTogglePin}
             title={isPinned ? "Unpin project" : "Pin project"}
             className={cn(
-              "flex size-7 items-center justify-center rounded-md transition-colors",
+              "flex size-7 items-center justify-center rounded-full transition-colors",
               isPinned
                 ? "text-sts-blue hover:bg-sts-blue/10"
                 : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
@@ -849,7 +849,7 @@ export function ProjectsListPage({
                 <Button
                   type="button"
                   onClick={() => setCreateOpen(true)}
-                  className="ml-auto h-8 shrink-0 gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
+                  className="ml-auto h-8 shrink-0 gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
                 >
                   <Plus className="size-3.5" strokeWidth={2.5} />
                   New project
@@ -857,7 +857,7 @@ export function ProjectsListPage({
               )}
 
               <div className={cn(
-                "flex h-8 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-card",
+                "flex h-8 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card",
                 isCrossAccess && "ml-auto",
               )}>
                 <button

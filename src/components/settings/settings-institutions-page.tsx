@@ -38,7 +38,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function InfoBanner() {
   return (
-    <div className="flex items-center gap-[9px] rounded-lg bg-sts-blue-tint px-3.5 py-2.5">
+    <div className="flex items-center gap-[9px] rounded-full bg-sts-blue-tint px-3.5 py-2.5">
       <span
         className="size-[7px] shrink-0 rounded-full bg-sts-blue"
         aria-hidden
@@ -86,7 +86,7 @@ export function SettingsInstitutionsPage({
             Tenants in the PEN Group network.
           </p>
         </div>
-        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-[7px] bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]">
+        <Button className="h-[34px] w-full shrink-0 gap-1.5 rounded-full bg-sts-blue px-0 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 sm:w-[150px]">
           <Plus className="size-[13px]" strokeWidth={2.5} />
           Add institution
         </Button>

@@ -72,7 +72,7 @@ export function ExpandableDescriptionEditor({
     <button
       type="button"
       onClick={() => onExpandedChange(true)}
-      className="flex size-7 items-center justify-center rounded-md border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground"
+      className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground"
       aria-label="Expand description editor"
       title="Expand"
     >
@@ -143,7 +143,7 @@ export function ExpandableDescriptionEditor({
                 <button
                   type="button"
                   onClick={() => onExpandedChange(false)}
-                  className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <Minimize2 className="size-3.5" strokeWidth={2} />
                   Collapse
@@ -152,7 +152,7 @@ export function ExpandableDescriptionEditor({
                   type="button"
                   onClick={() => onExpandedChange(false)}
                   aria-label="Close"
-                  className="flex size-8 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                  className="flex size-8 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <X size={16} strokeWidth={2} />
                 </button>

@@ -200,7 +200,7 @@ export function SubDepartmentMailboxManager({
           <button
             type="button"
             onClick={() => { setShowConnect((v) => !v); setFormError(null); }}
-            className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-[7px] bg-sts-blue px-3.5 font-sans text-xs font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+            className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
             Connect mailbox
@@ -227,7 +227,7 @@ export function SubDepartmentMailboxManager({
                 type="button"
                 onClick={connect}
                 disabled={saving || !address.trim()}
-                className="flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+                className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
               >
                 {saving && <Loader2 className="size-3.5 animate-spin" />}
                 Connect
@@ -235,7 +235,7 @@ export function SubDepartmentMailboxManager({
               <button
                 type="button"
                 onClick={() => { setShowConnect(false); setFormError(null); }}
-                className="h-9 rounded-lg px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+                className="h-9 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
               >
                 Cancel
               </button>
@@ -268,7 +268,7 @@ export function SubDepartmentMailboxManager({
             <button
               type="button"
               onClick={() => setShowConnect(true)}
-              className="mt-1 flex items-center gap-1.5 rounded-lg bg-sts-blue px-3.5 py-2 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
+              className="mt-1 flex items-center gap-1.5 rounded-full bg-sts-blue px-3.5 py-2 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
             >
               <Plus className="size-3.5" />
               Connect mailbox
@@ -297,10 +297,10 @@ export function SubDepartmentMailboxManager({
                           onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
                           className="min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-surface px-2 py-1 font-sans text-[13px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} title="Save" className="rounded-md p-1 text-sts-green hover:bg-sts-green/10">
+                        <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} title="Save" className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
                           <Check className="size-4" />
                         </button>
-                        <button type="button" onClick={() => setEditingId(null)} title="Cancel" className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground">
+                        <button type="button" onClick={() => setEditingId(null)} title="Cancel" className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
                           <X className="size-4" />
                         </button>
                       </div>
@@ -313,7 +313,7 @@ export function SubDepartmentMailboxManager({
                           type="button"
                           onClick={() => copyAddress(c)}
                           title="Copy address"
-                          className="shrink-0 rounded-md p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                          className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
                         </button>
@@ -344,7 +344,7 @@ export function SubDepartmentMailboxManager({
                           onClick={() => recheck(c.id)}
                           disabled={busy}
                           title="Test connection"
-                          className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
                         >
                           <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                         </button>
@@ -352,7 +352,7 @@ export function SubDepartmentMailboxManager({
                           type="button"
                           onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
                           title="Edit address"
-                          className="rounded-md p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <Pencil className="size-3.5" />
                         </button>
@@ -360,7 +360,7 @@ export function SubDepartmentMailboxManager({
                           type="button"
                           onClick={() => setConfirmDisconnect(c)}
                           title="Disconnect"
-                          className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                         >
                           <Trash2 className="size-3.5" />
                         </button>

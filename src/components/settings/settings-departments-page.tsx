@@ -171,7 +171,7 @@ export function UserPickerDropdown({
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
       <PopoverTrigger
         type="button"
-        className="flex h-7 items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:border-sts-id hover:text-sts-foreground"
+        className="flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:border-sts-id hover:text-sts-foreground"
       >
         <UserPlus className="size-3 shrink-0" />
         {label}
@@ -198,7 +198,7 @@ export function UserPickerDropdown({
               key={u.id}
               type="button"
               onClick={() => { onSelect(u); setOpen(false); setSearch(""); }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 hover:bg-sts-blue-tint"
+              className="flex w-full items-center gap-2 rounded-full px-2.5 py-2 hover:bg-sts-blue-tint"
             >
               <Avatar name={u.name} size={22} avatarUrl={u.avatarUrl ?? null} />
               <div className="min-w-0 flex-1 text-left">
@@ -253,7 +253,7 @@ export function ProjectAccessPicker({
   return (
     <div>
       <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Project access</label>
-      <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
+      <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
         <button
           type="button"
           onClick={() => onFullAccessChange(false)}
@@ -417,7 +417,7 @@ export function GrantAccessModal({
           </div>
           <div>
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
-            <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
+            <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
               <button
                 type="button"
                 onClick={() => setPermanent(true)}
@@ -462,8 +462,8 @@ export function GrantAccessModal({
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
-          <button type="button" disabled={!canSubmit || saving} onClick={submit} className="h-8 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+          <button type="button" onClick={onClose} className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
+          <button type="button" disabled={!canSubmit || saving} onClick={submit} className="h-8 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
             {saving ? "Granting…" : "Grant access"}
           </button>
         </div>
@@ -646,12 +646,12 @@ function NewDepartmentModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-sts-blue/10">
+            <div className="flex size-8 items-center justify-center rounded-full bg-sts-blue/10">
               <DepartmentIcon className="size-4 text-sts-blue" />
             </div>
             <p className="font-sans text-[14px] font-semibold text-sts-foreground">New department</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground">
+          <button type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
             <X className="size-4" />
           </button>
         </div>
@@ -769,7 +769,7 @@ function NewDepartmentModal({
                 type="button"
                 onClick={addSubDepartment}
                 disabled={!subDepartmentInput.trim()}
-                className="flex h-8 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-40"
+                className="flex h-8 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-40"
               >
                 <Plus className="size-3.5" /> Add
               </button>
@@ -794,14 +794,14 @@ function NewDepartmentModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">
+          <button type="button" onClick={onClose} className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">
             Cancel
           </button>
           <button
             type="button"
             disabled={!canCreate}
             onClick={handleSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
           >
             {saving ? (
               <span className="flex items-center gap-1.5">
@@ -906,7 +906,7 @@ function DepartmentCard({
       >
         {/* Identity */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
             <DepartmentIconVisual
               name={dept.name}
               id={dept.id}
@@ -928,8 +928,8 @@ function DepartmentCard({
                   }}
                   className="min-w-0 flex-1 rounded-lg border border-sts-blue/50 bg-sts-surface px-3 py-1 font-sans text-[14px] font-semibold text-sts-foreground outline-none"
                 />
-                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-md p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
-                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-md p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button>
+                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-full p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
+                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-full p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
@@ -970,7 +970,7 @@ function DepartmentCard({
           {isAdmin && !editing && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className="rounded-md p-1.5 text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                className="rounded-full p-1.5 text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                 aria-label="Department actions"
               >
                 <MoreHorizontal className="size-4" />
@@ -1136,7 +1136,7 @@ function DepartmentCard({
                 type="button"
                 disabled={entering}
                 onClick={() => { setEntering(true); onEnterWorkspace(dept.id); }}
-                className="ml-auto flex items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
+                className="ml-auto flex items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
               >
                 {entering ? (
                   <>
@@ -1156,7 +1156,7 @@ function DepartmentCard({
               type="button"
               disabled={managing}
               onClick={managePeople}
-              className="ml-auto flex w-full items-center justify-center gap-2 rounded-xl bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
+              className="ml-auto flex w-full items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-80 dark:text-gray-900"
             >
               {managing ? "Opening…" : (
                 <>
@@ -1259,7 +1259,7 @@ export function SettingsDepartmentsPage({
           <button
             type="button"
             onClick={() => setShowNewModal(true)}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12px] font-medium text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12px] font-medium text-white dark:text-gray-900 hover:opacity-90 transition-opacity"
           >
             <Plus className="size-3.5" strokeWidth={2.5} />
             New department

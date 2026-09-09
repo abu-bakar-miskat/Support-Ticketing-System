@@ -381,7 +381,7 @@ export function PlatformSettingsAdmin({
                         disabled={statusBusy}
                         onClick={() => setTenantStatus(s)}
                         className={cn(
-                          "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium capitalize transition-colors disabled:opacity-50",
+                          "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium capitalize transition-colors disabled:opacity-50",
                           selectedTenant?.status === s
                             ? s === "suspended"
                               ? "bg-destructive text-white"
@@ -404,7 +404,7 @@ export function PlatformSettingsAdmin({
                         type="button"
                         disabled={loadingFlags || !flags}
                         onClick={() => setAllFlags(true)}
-                        className="rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
+                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
                       >
                         Enable all
                       </button>
@@ -412,7 +412,7 @@ export function PlatformSettingsAdmin({
                         type="button"
                         disabled={loadingFlags || !flags}
                         onClick={() => setAllFlags(false)}
-                        className="rounded-md border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
+                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
                       >
                         Disable all
                       </button>

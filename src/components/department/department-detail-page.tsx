@@ -260,7 +260,7 @@ function EditAccessModal({
           <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
             <div>
               <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
-              <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
+              <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
                 <button
                   type="button"
                   onClick={() => setPermanent(true)}
@@ -310,8 +310,8 @@ function EditAccessModal({
           </div>
         )}
         <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
-          <button type="button" disabled={!canSubmit || saving || loading} onClick={submit} className="h-8 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
+          <button type="button" onClick={onClose} className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
+          <button type="button" disabled={!canSubmit || saving || loading} onClick={submit} className="h-8 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
@@ -599,7 +599,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-6 py-8 sm:px-10 lg:px-12">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sts-blue/10">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
           <DepartmentIconVisual
             name={data.name}
             id={data.id}
@@ -634,7 +634,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
         <Link
           href="/department/activity"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg"
         >
           <Activity className="size-3.5 shrink-0" /> Activity
         </Link>
@@ -696,7 +696,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             onClick={() => resolveJoinRequest(r, "reject")}
                             disabled={processing}
-                            className="inline-flex items-center gap-1 rounded-md border border-sts-card-border px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-60 dark:hover:bg-red-900/20"
+                            className="inline-flex items-center gap-1 rounded-full border border-sts-card-border px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-60 dark:hover:bg-red-900/20"
                           >
                             <X className="size-3" /> Reject
                           </button>
@@ -704,7 +704,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             onClick={() => resolveJoinRequest(r, "approve")}
                             disabled={processing || noTeams}
-                            className="inline-flex items-center gap-1 rounded-md bg-sts-button px-2.5 py-1.5 font-sans text-[11.5px] font-semibold text-sts-button-fg transition-colors hover:bg-sts-button/90 disabled:opacity-60"
+                            className="inline-flex items-center gap-1 rounded-full bg-sts-button px-2.5 py-1.5 font-sans text-[11.5px] font-semibold text-sts-button-fg transition-colors hover:bg-sts-button/90 disabled:opacity-60"
                           >
                             {processing ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Approve
                           </button>
@@ -770,7 +770,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           type="button"
                           title="Configure availability"
                           onClick={() => setConfigMember(toConfigTarget(m))}
-                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                          className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           <Settings2 className="size-3.5" />
                         </button>
@@ -778,7 +778,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           type="button"
                           onClick={() => removeManager(m.userId)}
                           title="Remove manager"
-                          className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                         >
                           <X className="size-3.5" />
                         </button>
@@ -804,7 +804,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               onClick={() => setShowAddMemberModal(true)}
               disabled={data.availableSubDepartments.length === 0}
               title={data.availableSubDepartments.length === 0 ? "Create a sub-department before adding members" : undefined}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               <UserPlus className="size-3" /> Add member
             </button>
@@ -813,7 +813,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               onClick={() => setShowInviteModal(true)}
               disabled={data.availableSubDepartments.length === 0}
               title={data.availableSubDepartments.length === 0 ? "Create a sub-department before inviting" : undefined}
-              className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus className="size-3" /> Invite to sub-department
             </button>
@@ -948,7 +948,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             title="Configure availability"
                             onClick={() => setConfigMember(toConfigTarget(m))}
-                            className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
                           >
                             <Settings2 className="size-3.5" />
                           </button>
@@ -956,7 +956,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             type="button"
                             onClick={() => setConfirmRemoveMember(m)}
                             title="Remove from department"
-                            className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                            className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                           >
                             <X className="size-3.5" />
                           </button>
@@ -1015,7 +1015,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           await revokeDepartmentInvite(data.id, inv.id).catch(() => null);
                           setPendingInvites((prev) => prev.filter((p) => p.id !== inv.id));
                         }}
-                        className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                       >
                         <X className="size-3.5" />
                       </button>
@@ -1052,7 +1052,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           <button
             type="button"
             onClick={() => setShowGrantModal(true)}
-            className="flex h-7 items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
+            className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
           >
             <Plus className="size-3" /> Grant access
           </button>
@@ -1120,7 +1120,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           <button type="button" onClick={() => setEditingGrant(g)} title="Edit access" className="font-sans text-[11.5px] font-medium text-sts-id hover:underline">
                             Edit
                           </button>
-                          <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="rounded-md border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
+                          <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
                             <X className="size-3.5" />
                           </button>
                         </div>

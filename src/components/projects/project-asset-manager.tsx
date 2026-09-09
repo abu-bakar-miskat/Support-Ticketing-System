@@ -152,7 +152,7 @@ function AssetDownloadButton({
         downloadAsset(node);
       }}
       className={cn(
-        "flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground",
+        "flex items-center gap-1 rounded-full bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground",
         className,
       )}
       title={`Download ${node.name}`}
@@ -245,7 +245,7 @@ function PreviewModal({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
+                className="flex items-center gap-1 rounded-full bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 <Edit3 className="size-3" /> Edit
               </button>
@@ -254,7 +254,7 @@ function PreviewModal({
               <button
                 type="button"
                 onClick={save}
-                className="flex items-center gap-1 rounded-lg bg-sts-blue px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900"
+                className="flex items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900"
               >
                 <Check className="size-3" /> Save
               </button>
@@ -266,7 +266,7 @@ function PreviewModal({
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-lg bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
+                  className="flex items-center gap-1 rounded-full bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
                 >
                   <ExternalLink className="size-3" /> Open
                 </Link>
@@ -278,7 +278,7 @@ function PreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <X className="size-4" />
             </button>
@@ -346,7 +346,7 @@ function PreviewModal({
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
+                  className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
                 >
                   <ExternalLink className="size-4" /> Open file
                 </Link>
@@ -367,7 +367,7 @@ function PreviewModal({
                   href={node.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
+                  className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-4 py-2 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:border-sts-id/40"
                 >
                   <ExternalLink className="size-4" /> Open link
                 </Link>
@@ -472,7 +472,7 @@ function AddPanel({
         <button
           type="button"
           onClick={onClose}
-          className="flex size-6 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+          className="flex size-6 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
         >
           <X className="size-3.5" />
         </button>
@@ -553,7 +553,7 @@ function AddPanel({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="h-9 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               {mode === "link" && addedCount > 0 ? "Done" : "Cancel"}
             </button>
@@ -561,7 +561,7 @@ function AddPanel({
               type="button"
               onClick={submit}
               disabled={!name.trim() || ((mode === "link" || mode === "video") && !url.trim())}
-              className="flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
             >
               <Plus className="size-3.5" />
               {mode === "folder" ? "Create folder" : mode === "markdown" ? "Create doc" : mode === "link" ? "Add link" : "Add"}
@@ -709,7 +709,7 @@ export function ProjectAssetManager({
           <button
             type="button"
             onClick={() => setCurrentFolderId(null)}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
+            className="flex items-center gap-1 rounded-full px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
           >
             <Home className="size-3.5" />
           </button>
@@ -719,7 +719,7 @@ export function ProjectAssetManager({
               <button
                 type="button"
                 onClick={() => setCurrentFolderId(b.id)}
-                className="max-w-[120px] truncate rounded-md px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
+                className="max-w-[120px] truncate rounded-full px-1.5 py-0.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground"
               >
                 {b.name}
               </button>
@@ -734,7 +734,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => setAddMode(addMode === "folder" ? null : "folder")}
               className={cn(
-                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "folder"
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
@@ -746,7 +746,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => !uploading && fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50 dark:bg-white/5"
+              className="flex items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50 dark:bg-white/5"
             >
               {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
               Upload
@@ -755,7 +755,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => setAddMode(addMode === "video" ? null : "video")}
               className={cn(
-                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "video"
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
@@ -767,7 +767,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => setAddMode(addMode === "markdown" ? null : "markdown")}
               className={cn(
-                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "markdown"
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",
@@ -779,7 +779,7 @@ export function ProjectAssetManager({
               type="button"
               onClick={() => setAddMode(addMode === "link" ? null : "link")}
               className={cn(
-                "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
+                "flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-sans text-[11.5px] transition-colors",
                 addMode === "link"
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground dark:bg-white/5",

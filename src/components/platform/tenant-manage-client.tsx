@@ -91,7 +91,7 @@ function DepartmentMultiSelect({
         <PopoverTrigger
           title={label}
           className={cn(
-            "flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
+            "flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
             compact ? "min-w-[190px]" : "mt-1.5 w-full",
           )}
         >
@@ -680,7 +680,7 @@ export function TenantManageClient({
               </p>
 
               {deleted ? (
-                <div className="mt-3 flex flex-col gap-2 rounded-lg border border-sts-red/30 bg-sts-red/5 p-3">
+                <div className="mt-3 flex flex-col gap-2 rounded-full border border-sts-red/30 bg-sts-red/5 p-3">
                   <p className="font-sans text-[12px] text-sts-foreground">
                     This tenant is soft-deleted. Members cannot sign in.
                   </p>
@@ -722,7 +722,7 @@ export function TenantManageClient({
                     </Button>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-sts-red/25 bg-sts-red/5 p-3">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-full border border-sts-red/25 bg-sts-red/5 p-3">
                     <div>
                       <p className="font-sans text-[12.5px] font-medium text-sts-red">
                         Soft-delete tenant
@@ -762,7 +762,7 @@ export function TenantManageClient({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative min-w-[220px] flex-1">
                   {pickedUser ? (
-                    <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5">
+                    <div className="flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-2.5">
                       <UserAvatar
                         name={pickedUser.name}
                         avatarUrl={pickedUser.avatarUrl}

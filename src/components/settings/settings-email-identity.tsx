@@ -251,7 +251,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
                   type="button"
                   onClick={() => removeSender(sender.localId)}
                   disabled={loading || senders.length <= 1}
-                  className="h-9 rounded-md px-2 font-sans text-[12px] text-sts-subtle hover:text-sts-foreground disabled:opacity-40"
+                  className="h-9 rounded-full px-2 font-sans text-[12px] text-sts-subtle hover:text-sts-foreground disabled:opacity-40"
                 >
                   Remove
                 </button>
@@ -266,7 +266,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
           type="button"
           onClick={() => setSenders((prev) => [...prev, newSenderDraft()])}
           disabled={loading}
-          className="inline-flex h-8 items-center rounded-md border border-sts-card-border px-3 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-full border border-sts-card-border px-3 font-sans text-xs font-medium text-sts-muted hover:text-sts-foreground disabled:opacity-50"
         >
           Add sender
         </button>
@@ -275,7 +275,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
           onClick={save}
           disabled={saving || loading || !saveAllowed}
           title={unverified ? "Each address must be on a verified Resend domain" : undefined}
-          className="inline-flex h-8 items-center rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save senders"}
         </button>
@@ -312,7 +312,7 @@ export function EmailIdentityCard({ departments }: { departments: DeptOption[] }
         <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
           <label className="sts-text-label">Filter by department</label>
           <Select value={filterId} onValueChange={(v) => setFilterId(v ?? departments[0]?.id ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((d) => d.id === filterId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>

@@ -320,7 +320,7 @@ export function ProjectProfileTab({
           <button
             type="button"
             onClick={cancelDescription}
-            className="h-7 rounded-lg border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="h-7 rounded-full border border-sts-card-border px-3 font-sans text-[11.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             Cancel
           </button>
@@ -328,7 +328,7 @@ export function ProjectProfileTab({
             type="button"
             onClick={saveDescription}
             disabled={descSaving}
-            className="flex h-7 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+            className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
           >
             {descSaving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
             Save
@@ -553,7 +553,7 @@ function GitHubCard({
                 type="button"
                 onClick={saveGithub}
                 disabled={githubSaving || githubLoading}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
               >
                 {(githubSaving || githubLoading) ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 {githubData ? "Update" : "Connect"}
@@ -616,7 +616,7 @@ function GitHubCard({
                   href={pr.html_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-sts-surface"
+                  className="flex items-center gap-2.5 rounded-full px-2 py-1.5 transition-colors hover:bg-sts-surface"
                 >
                   <GitPullRequest
                     className={cn(
@@ -692,7 +692,7 @@ function LiveSiteCard({
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900"
               >
                 {saving ? <Loader2 className="size-3.5 animate-spin" /> : saved ? <Check className="size-3.5" /> : null}
                 {saved ? "Saved" : "Save"}
@@ -784,7 +784,7 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-sts-card-border bg-sts-card px-4 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-id/60 hover:text-sts-foreground"
+        className="flex h-9 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border bg-sts-card px-4 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-id/60 hover:text-sts-foreground"
       >
         <Plus className="size-3.5 shrink-0" />
         Add analytics dashboard
@@ -819,7 +819,7 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="h-9 rounded-xl border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="h-9 rounded-full border border-sts-card-border px-4 font-sans text-[12px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             Cancel
           </button>
@@ -827,7 +827,7 @@ function AddAnalyticsInline({ onAdd }: { onAdd: (link: AnalyticalLink) => Promis
             type="button"
             onClick={handleAdd}
             disabled={saving || !name.trim() || !addUrl.trim()}
-            className="flex h-9 items-center gap-1.5 rounded-xl bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-gray-900"
           >
             {saving ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
             {saving ? "Adding…" : "Add"}

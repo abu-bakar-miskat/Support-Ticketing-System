@@ -155,7 +155,7 @@ export function BulkAssignModal({
       <div className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="sts-text-modal-title">Assign {count} ticket{count !== 1 ? "s" : ""}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground">
+          <button type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
             <X className="size-4" />
           </button>
         </div>
@@ -219,7 +219,7 @@ export function BulkAssignModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-surface"
+            className="h-8 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-surface"
           >
             Cancel
           </button>
@@ -227,7 +227,7 @@ export function BulkAssignModal({
             type="button"
             onClick={handleSubmit}
             disabled={assigning}
-            className="h-8 min-w-[100px] rounded-md bg-sts-blue px-3 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
+            className="h-8 min-w-[100px] rounded-full bg-sts-blue px-3 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
           >
             {assigning ? "Assigning…" : `Assign ${count} ticket${count !== 1 ? "s" : ""}`}
           </button>

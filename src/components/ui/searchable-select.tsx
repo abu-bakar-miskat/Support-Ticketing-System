@@ -82,7 +82,7 @@ export function SearchableSelect({
           aria-label={ariaLabel}
           disabled={disabled}
           className={cn(
-            "relative flex items-center gap-1.5 rounded-lg border px-2.5 font-sans transition-colors outline-none disabled:cursor-not-allowed disabled:opacity-50",
+            "relative flex items-center gap-1.5 rounded-full border px-2.5 font-sans transition-colors outline-none disabled:cursor-not-allowed disabled:opacity-50",
             SIZE_CLASS[size],
             active
               ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"

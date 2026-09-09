@@ -56,7 +56,7 @@ export function TasksPage({
             type="button"
             onClick={() => setScope(s)}
             className={cn(
-              "flex h-8 items-center gap-1.5 rounded-md px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
+              "flex h-8 items-center gap-1.5 rounded-full px-3 font-sans text-[12.5px] font-medium leading-none transition-colors",
               effectiveScope === s
                 ? "bg-sts-blue text-white dark:text-gray-900"
                 : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
@@ -93,7 +93,7 @@ export function TasksPage({
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 dark:text-gray-900"
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 dark:text-gray-900"
         >
           <Plus className="size-3.5 shrink-0" />
           New Task

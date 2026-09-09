@@ -21,7 +21,7 @@ export function FontSizeZoomControls({ className }: Props) {
   return (
     <div
       className={cn(
-        "flex h-7 shrink-0 overflow-hidden rounded-md border border-sts-card-border bg-sts-surface dark:border-white/10 dark:bg-white/5",
+        "flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-surface dark:border-white/10 dark:bg-white/5",
         className,
       )}
     >

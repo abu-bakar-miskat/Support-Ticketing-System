@@ -419,7 +419,7 @@ export function SettingsProfilePage({
                 value={timezone}
                 onValueChange={(v) => v && setTimezone(v)}
               >
-                <SelectTrigger className="h-9 w-full rounded-md border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none">
+                <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -462,7 +462,7 @@ export function SettingsProfilePage({
                           : [...prev, d.value],
                       )
                     }
-                    className={`h-8 min-w-[44px] rounded-md border px-3 font-sans text-[12px] font-medium transition-colors ${
+                    className={`h-8 min-w-[44px] rounded-full border px-3 font-sans text-[12px] font-medium transition-colors ${
                       active
                         ? "border-sts-blue bg-sts-blue text-white dark:text-gray-900"
                         : "border-sts-card-border bg-sts-bg text-sts-muted hover:border-sts-blue/50 hover:text-sts-foreground"
@@ -563,7 +563,7 @@ export function SettingsProfilePage({
                         type="button"
                         onClick={() => openEditSigForm(entry)}
                         title="Edit signature"
-                        className="shrink-0 rounded-md p-1.5 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
+                        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
                       >
                         <Pencil className="size-3.5" />
                       </button>
@@ -571,7 +571,7 @@ export function SettingsProfilePage({
                         type="button"
                         onClick={() => handleDeleteSignature(entry.id)}
                         title="Delete signature"
-                        className="shrink-0 rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -627,14 +627,14 @@ export function SettingsProfilePage({
                   type="button"
                   variant="outline"
                   onClick={closeAddSigForm}
-                  className="h-8 rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+                  className="h-8 rounded-full border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="button"
                   onClick={handleSaveSignature}
-                  className="h-8 rounded-md bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
+                  className="h-8 rounded-full bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90"
                 >
                   {editingSigId ? "Save changes" : "Add signature"}
                 </Button>
@@ -645,7 +645,7 @@ export function SettingsProfilePage({
               type="button"
               variant="outline"
               onClick={openAddSigForm}
-              className="h-8 w-fit gap-1.5 rounded-md border-sts-card-border bg-transparent px-2.5 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+              className="h-8 w-fit gap-1.5 rounded-full border-sts-card-border bg-transparent px-2.5 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
             >
               <Plus className="size-3.5" />
               Add signature
@@ -659,7 +659,7 @@ export function SettingsProfilePage({
                 type="button"
                 onClick={() => setShowSigPreview((v) => !v)}
                 disabled={!activeSignature}
-                className="h-7 rounded-md border border-sts-card-border bg-transparent px-2.5 font-sans text-[11.5px] font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-7 rounded-full border border-sts-card-border bg-transparent px-2.5 font-sans text-[11.5px] font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {showSigPreview ? "Hide preview" : "Show preview"}
               </button>
@@ -703,7 +703,7 @@ export function SettingsProfilePage({
           <Button
             type="button"
             variant="outline"
-            className="h-8 w-fit rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+            className="h-8 w-fit rounded-full border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
             onClick={async () => {
               try {
                 const res = await fetch("/api/me/data-export");
@@ -737,7 +737,7 @@ export function SettingsProfilePage({
               type="button"
               variant="outline"
               onClick={handleDiscard}
-              className="h-8 min-w-[78px] rounded-md border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+              className="h-8 min-w-[78px] rounded-full border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
             >
               Discard
             </Button>
@@ -745,7 +745,7 @@ export function SettingsProfilePage({
               type="button"
               onClick={handleSave}
               disabled={saving || !isDirty}
-              className="h-8 min-w-[72px] rounded-md bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
+              className="h-8 min-w-[72px] rounded-full bg-sts-blue font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </Button>

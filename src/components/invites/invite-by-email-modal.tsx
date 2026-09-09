@@ -99,7 +99,7 @@ export function InviteByEmailModal({
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               Role
             </label>
-            <div className="flex h-9 overflow-hidden rounded-lg border border-sts-card-border">
+            <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
               {(["agent", "sub_manager"] as const).map((r) => (
                 <button
                   key={r}
@@ -140,14 +140,14 @@ export function InviteByEmailModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              className="h-8 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !subDepartmentId}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Send invite

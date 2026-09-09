@@ -69,7 +69,7 @@ export function DepartmentsSidebar({
         className,
       )}
     >
-      <div className="flex h-12 items-center pl-1">
+      <div className="flex h-14 items-center pl-1">
         {brandingLogoUrl ? (
           <div className="flex min-w-0 items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -103,15 +103,15 @@ export function DepartmentsSidebar({
             <img
               src="/images/support-logo-horizontal.png"
               alt="Support Ticketing System"
-              height={36}
-              className="h-9 w-auto max-w-[150px] object-contain dark:hidden"
+              height={56}
+              className="h-14 w-auto max-w-[150px] object-contain dark:hidden"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/support-logo-horizontal-white.png"
               alt=""
-              height={36}
-              className="hidden h-9 w-auto max-w-[150px] object-contain dark:block"
+              height={56}
+              className="hidden h-14 w-auto max-w-[150px] object-contain dark:block"
             />
           </>
         )}
@@ -130,7 +130,7 @@ export function DepartmentsSidebar({
       {isSuperAdmin && (
         <Link
           href="/platform"
-          className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+          className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
         >
           <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
           <span className="font-sans text-[11.5px] font-medium">Platform</span>
@@ -158,7 +158,7 @@ export function DepartmentsSidebar({
             href={href(item.href)}
             prefetch={true}
             className={cn(
-              "sts-nav-link relative flex h-7 items-center gap-2 rounded-md px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+              "sts-nav-link relative flex h-7 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
               active && "bg-sts-surface font-semibold text-sts-foreground",
             )}
           >

@@ -116,7 +116,7 @@ export function DepartmentsClient({
                 )}
                 <Link
                   href="/settings"
-                  className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
+                  className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
                 >
                   <Settings className="size-3.5" />
                   Settings

@@ -214,7 +214,7 @@ export function SprintFormDialog({
                 type="button"
                 onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="rounded-md p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <X className="size-4" />
               </button>

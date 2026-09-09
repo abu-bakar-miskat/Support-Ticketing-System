@@ -263,7 +263,7 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
               type="button"
               onClick={() => setFilter(t.key)}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-sans text-[12px] font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 font-sans text-[12px] font-medium transition-colors",
                 filter === t.key
                   ? "bg-sts-blue-tint text-sts-id"
                   : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",

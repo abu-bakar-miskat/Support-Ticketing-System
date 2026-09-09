@@ -260,7 +260,7 @@ function NotificationCard({
               onMarkDone(item.id);
             }}
             title="Mark as read"
-            className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
+            className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
           >
             <Check className="size-3" strokeWidth={2.5} />
           </button>
@@ -485,7 +485,7 @@ export function InboxPage({
             <button
               type="button"
               onClick={markAllRead}
-              className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-2 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground"
+              className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 py-2 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground"
             >
               <CheckCheck className="size-3.5" />
               Mark all read
@@ -517,7 +517,7 @@ export function InboxPage({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 font-sans text-[12px] font-medium transition-colors",
                   activeTab === tab.id
                     ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
                     : "text-sts-muted hover:text-sts-foreground",

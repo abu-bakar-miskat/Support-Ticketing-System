@@ -216,13 +216,13 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
       <span className="shrink-0 font-sans text-[11px] text-sts-subtle">{timeAgo(req.requestedAt)}</span>
       <button
         type="button" disabled={!!loading} onClick={() => handle("approve")}
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
+        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
       >
         <Check className="size-3.5" strokeWidth={2.5} />
       </button>
       <button
         type="button" disabled={!!loading} onClick={() => handle("reject")}
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
+        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
       >
         <X className="size-3.5" strokeWidth={2.5} />
       </button>

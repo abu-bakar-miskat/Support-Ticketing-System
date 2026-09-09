@@ -561,7 +561,7 @@ export function NewTicketModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -573,7 +573,7 @@ export function NewTicketModal({
             {error && (
               <p
                 role="alert"
-                className="mb-4 rounded-md bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
+                className="mb-4 rounded-lg bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
               >
                 {error}
               </p>
@@ -582,7 +582,7 @@ export function NewTicketModal({
             {metaError && (
               <p
                 role="alert"
-                className="mb-4 flex items-center gap-3 rounded-md bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
+                className="mb-4 flex items-center gap-3 rounded-lg bg-sts-red/10 px-3 py-2 font-sans text-sm text-sts-red"
               >
                 Could not load task options.
                 {onRetryMeta && (
@@ -1054,7 +1054,7 @@ export function NewTicketModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border"
+              className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border"
             >
               Cancel
             </button>
@@ -1063,7 +1063,7 @@ export function NewTicketModal({
                 type="button"
                 disabled={submitting !== null || metaLoading}
                 onClick={() => void createTicket(true)}
-                className="flex h-8 items-center gap-1.5 rounded-[6px] border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-50"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface disabled:opacity-50"
               >
                 {submitting === "draft" ? "Saving…" : "Save draft"}
               </button>
@@ -1071,7 +1071,7 @@ export function NewTicketModal({
             <button
               type="submit"
               disabled={submitting !== null || metaLoading}
-              className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {submitting === "create" && <LoadingSpinner className="size-3.5" />}
               {submitting === "create" ? "Creating…" : "Create ticket"}
@@ -1405,7 +1405,7 @@ function AssetLinksField({
           <button
             type="button"
             onClick={() => setAddingAsset(true)}
-            className="flex h-6 shrink-0 items-center gap-1 rounded-md bg-sts-blue/10 px-2 font-sans text-[10.5px] font-semibold text-sts-blue transition-colors hover:bg-sts-blue/20"
+            className="flex h-6 shrink-0 items-center gap-1 rounded-full bg-sts-blue/10 px-2 font-sans text-[10.5px] font-semibold text-sts-blue transition-colors hover:bg-sts-blue/20"
           >
             <Plus className="size-3" /> Add
           </button>
@@ -1415,7 +1415,7 @@ function AssetLinksField({
       {assetLinks.length > 0 ? (
         <div className="flex max-h-20 flex-col gap-1 overflow-y-auto rounded-[6px] border border-sts-blue/20 bg-sts-blue/4 p-1.5">
           {assetLinks.map((link, i) => (
-            <div key={i} className="group flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-sts-blue/6">
+            <div key={i} className="group flex items-center gap-2 rounded-full px-1 py-0.5 hover:bg-sts-blue/6">
               <Link2 className="size-3 shrink-0 text-sts-blue" />
               <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] font-medium text-sts-blue">
                 {link.label || link.url}
@@ -1453,14 +1453,14 @@ function AssetLinksField({
                 setAssetLinks((prev) => [...prev, { url: newAssetUrl.trim(), label: newAssetLabel.trim() }]);
                 setNewAssetUrl(""); setNewAssetLabel(""); setAddingAsset(false);
               }}
-              className="flex h-6 items-center rounded-md bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
+              className="flex h-6 items-center rounded-full bg-sts-blue px-2.5 font-sans text-[11px] font-medium text-white dark:text-gray-900"
             >
               Add
             </button>
             <button
               type="button"
               onClick={() => { setAddingAsset(false); setNewAssetUrl(""); setNewAssetLabel(""); }}
-              className="flex h-6 items-center rounded-md border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-6 items-center rounded-full border border-sts-card-border px-2.5 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -1854,7 +1854,7 @@ function AssigneePicker({
                         )}
                         className={cn(
                           userListPickerButtonClass,
-                          "rounded-md px-2 py-1.5 transition-colors",
+                          "rounded-full px-2 py-1.5 transition-colors",
                           selected ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                         )}
                       >

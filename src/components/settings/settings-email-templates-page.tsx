@@ -214,7 +214,7 @@ function TemplateEditor({
           type="button"
           onClick={() => runPreview(draft)}
           disabled={loadingPreview}
-          className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:opacity-50"
+          className="h-8 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:opacity-50"
         >
           {loadingPreview ? "Rendering…" : "Refresh preview"}
         </button>
@@ -222,7 +222,7 @@ function TemplateEditor({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="h-8 rounded-md bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:opacity-50"
+          className="h-8 rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -231,7 +231,7 @@ function TemplateEditor({
             type="button"
             onClick={handleReset}
             disabled={saving}
-            className="h-8 rounded-md border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-muted hover:bg-sts-blue-tint disabled:opacity-50"
+            className="h-8 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-xs font-semibold text-sts-muted hover:bg-sts-blue-tint disabled:opacity-50"
           >
             Reset to default
           </button>
@@ -305,7 +305,7 @@ export function SettingsEmailTemplatesPage({
         <div className="flex max-w-[1040px] flex-col gap-1.5">
           <label className="sts-text-label">Applies to</label>
           <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-md border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
               <span>{departments.find((o) => o.id === departmentId)?.name ?? "Select department"}</span>
             </SelectTrigger>
             <SelectContent>

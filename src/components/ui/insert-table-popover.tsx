@@ -137,7 +137,7 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
       <button
         type="button"
         onClick={() => insert()}
-        className="h-8 w-full rounded-lg bg-sts-blue font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
+        className="h-8 w-full rounded-full bg-sts-blue font-sans text-[12px] font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
       >
         Insert {hover.rows}×{hover.cols}
       </button>

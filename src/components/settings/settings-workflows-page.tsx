@@ -250,10 +250,10 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
             onKeyDown={(e) => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditingId(null); }}
             className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
           />
-          <button type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-green hover:bg-sts-surface">
+          <button type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
             <Check className="size-3.5" />
           </button>
-          <button type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
+          <button type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
             <X className="size-3.5" />
           </button>
         </div>
@@ -362,10 +362,10 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
           </button>
         )}
         <div className="flex items-center gap-0.5 transition-opacity">
-          <button type="button" onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
+          <button type="button" onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
             <Pencil className="size-3" />
           </button>
-          <button type="button" onClick={() => deleteStatus(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
+          <button type="button" onClick={() => deleteStatus(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
             <Trash2 className="size-3" />
           </button>
         </div>
@@ -470,10 +470,10 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                 onKeyDown={(e) => { if (e.key === "Enter") addStatus(); if (e.key === "Escape") setAdding(false); }}
                 className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
               />
-              <button type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-green hover:bg-sts-surface">
+              <button type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
                 <Check className="size-3.5" />
               </button>
-              <button type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface">
+              <button type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
                 <X className="size-3.5" />
               </button>
             </div>

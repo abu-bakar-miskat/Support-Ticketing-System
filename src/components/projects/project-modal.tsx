@@ -545,7 +545,7 @@ export function ProjectModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -587,7 +587,7 @@ export function ProjectModal({
               <div className="flex flex-col gap-[5px]">
                 <label className="sts-text-label">Department</label>
                 {lockedDepartment ? (
-                  <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface/60 px-3">
+                  <div className="flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface/60 px-3">
                     <Building2 className="size-3.5 shrink-0 text-sts-subtle" />
                     <span className="truncate font-sans text-[13px] text-sts-foreground">
                       {lockedDepartment.name || "—"}
@@ -628,7 +628,7 @@ export function ProjectModal({
             {/* Module system */}
             <div className="flex items-center justify-between gap-4 rounded-xl border border-sts-card-border bg-sts-surface/35 px-3.5 py-3">
               <div className="flex min-w-0 items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue/10 text-sts-blue">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue/10 text-sts-blue">
                   <Layers className="size-4" strokeWidth={2} />
                 </div>
                 <div className="min-w-0">
@@ -661,7 +661,7 @@ export function ProjectModal({
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
                       disabled={avatarUploading}
-                      className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[10.5px] text-sts-foreground transition-colors hover:bg-sts-card disabled:opacity-50"
+                      className="flex items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[10.5px] text-sts-foreground transition-colors hover:bg-sts-card disabled:opacity-50"
                     >
                       <ImagePlus className="size-3" strokeWidth={2} />
                       {avatarUploading ? "…" : "Upload"}
@@ -671,7 +671,7 @@ export function ProjectModal({
                         type="button"
                         onClick={handleRemoveAvatar}
                         title="Remove photo"
-                        className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-red"
+                        className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-red"
                       >
                         <Trash2 className="size-3" strokeWidth={2} />
                       </button>
@@ -763,7 +763,7 @@ export function ProjectModal({
             </div>
 
             {error && (
-              <p role="alert" className="rounded-md bg-sts-red/10 px-3 py-2 font-sans text-[12px] text-sts-red">
+              <p role="alert" className="rounded-lg bg-sts-red/10 px-3 py-2 font-sans text-[12px] text-sts-red">
                 {error}
               </p>
             )}
@@ -774,7 +774,7 @@ export function ProjectModal({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-sts-red/30 px-3 font-sans text-[12.5px] font-medium text-sts-red transition-colors hover:bg-sts-red/10"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-sts-red/30 px-3 font-sans text-[12.5px] font-medium text-sts-red transition-colors hover:bg-sts-red/10"
               >
                 <Trash2 className="size-3.5" strokeWidth={2} />
                 Delete project
@@ -784,14 +784,14 @@ export function ProjectModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-8 rounded-lg px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              className="h-8 rounded-full px-4 font-sans text-[12.5px] text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !name.trim()}
-              className="h-8 rounded-lg bg-sts-id px-4 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-id/90 disabled:opacity-60"
+              className="h-8 rounded-full bg-sts-id px-4 font-sans text-[12.5px] font-medium text-white transition-colors hover:bg-sts-id/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : isEdit ? "Save changes" : "Create project"}
             </button>

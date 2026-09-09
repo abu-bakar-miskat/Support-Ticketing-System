@@ -71,7 +71,7 @@ export function LabelChoiceModal({
                   type="button"
                   onClick={() => onChoose(name)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-xl border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
+                    "flex items-center gap-1.5 rounded-full border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
                     !active && "border-sts-card-border text-sts-muted hover:brightness-105",
                   )}
                   style={
@@ -99,7 +99,7 @@ export function LabelChoiceModal({
               type="button"
               onClick={() => onChoose(NO_LINKED_LABEL_CHOICE)}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
+                "flex items-center gap-1.5 rounded-full border px-3.5 py-2 font-sans text-[13px] font-semibold transition-all",
                 !noLabelActive && "border-sts-card-border text-sts-muted hover:brightness-105",
                 noLabelActive && "border-sts-card-border bg-sts-surface text-sts-foreground",
               )}
@@ -116,7 +116,7 @@ export function LabelChoiceModal({
               type="button"
               disabled={saving}
               onClick={onCancel}
-              className="rounded-lg border border-sts-card-border px-4 py-1.5 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-card-border disabled:opacity-50"
+              className="rounded-full border border-sts-card-border px-4 py-1.5 font-sans text-[13px] text-sts-muted transition-colors hover:bg-sts-card-border disabled:opacity-50"
             >
               Cancel
             </button>
@@ -124,7 +124,7 @@ export function LabelChoiceModal({
               type="button"
               disabled={saving || !hasLinkedLabelSelection(chosen)}
               onClick={onConfirm}
-              className="rounded-lg bg-sts-blue px-4 py-1.5 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
+              className="rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[13px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               {saving ? "Saving…" : "Confirm"}
             </button>

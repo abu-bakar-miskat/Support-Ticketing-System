@@ -162,7 +162,7 @@ export function TenantTemplates({
       }}>
         <PopoverTrigger
           className={cn(
-            "mt-2 flex h-9 w-full items-center gap-2 rounded-lg border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
+            "mt-2 flex h-9 w-full items-center gap-2 rounded-full border bg-sts-card px-2.5 text-left font-sans text-[12.5px] text-sts-foreground transition-colors hover:border-sts-muted",
             isDirty ? "border-sts-blue/60" : "border-sts-card-border",
           )}
         >
@@ -188,7 +188,7 @@ export function TenantTemplates({
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                  className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <X className="size-3" />
                 </button>

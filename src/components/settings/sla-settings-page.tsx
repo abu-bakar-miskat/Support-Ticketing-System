@@ -471,7 +471,7 @@ export function SlaSettingsPage({
                     type="button"
                     onClick={() => toggleWorkingDay(day)}
                     className={cn(
-                      "rounded-md px-2 py-1 font-sans text-[11px] font-medium",
+                      "rounded-full px-2 py-1 font-sans text-[11px] font-medium",
                       businessHours.workingDays.includes(day)
                         ? "bg-sts-blue text-sts-blue-fg"
                         : "bg-sts-surface text-sts-muted",
@@ -487,7 +487,7 @@ export function SlaSettingsPage({
               type="button"
               onClick={saveSettings}
               disabled={saving}
-              className="w-fit rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg hover:bg-sts-blue/90 disabled:opacity-60"
+              className="w-fit rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg hover:bg-sts-blue/90 disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save working-hours settings"}
             </button>
@@ -551,7 +551,7 @@ function PolicyGroup({
           <button
             type="button"
             onClick={onNewPolicy}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
           >
             <Plus className="size-3.5" /> New policy
           </button>
@@ -744,7 +744,7 @@ function PolicyRow({
             type="button"
             onClick={save}
             disabled={!canSave}
-            className="inline-flex items-center gap-1 rounded-md bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
             title="Save changes"
           >
             <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
@@ -752,7 +752,7 @@ function PolicyRow({
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
-            className="rounded-md p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
             title="Delete policy"
           >
             <Trash2 className="size-3.5" />
@@ -848,7 +848,7 @@ function NewPolicyModal({
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -955,7 +955,7 @@ function NewPolicyModal({
             type="button"
             onClick={onCancel}
             disabled={creating}
-            className="flex h-8 w-[78px] items-center justify-center rounded-[6px] border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
+            className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border disabled:opacity-50"
           >
             Cancel
           </button>
@@ -963,7 +963,7 @@ function NewPolicyModal({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="flex h-8 items-center gap-1.5 rounded-[6px] bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white dark:text-gray-900 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creating ? "Creating…" : "Create policy"}
           </button>

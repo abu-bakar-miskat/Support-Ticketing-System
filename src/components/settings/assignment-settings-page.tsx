@@ -446,7 +446,7 @@ export function AssignmentSettingsPage({
       {error && (
         <div
           role="alert"
-          className="mt-5 flex items-start gap-2 rounded-lg border border-sts-red/30 bg-sts-red-tint px-3 py-2.5 font-sans text-[12.5px] text-sts-red"
+          className="mt-5 flex items-start gap-2 rounded-full border border-sts-red/30 bg-sts-red-tint px-3 py-2.5 font-sans text-[12.5px] text-sts-red"
         >
           <AlertTriangle className="mt-px size-4 shrink-0" />
           <span>{error}</span>
@@ -481,7 +481,7 @@ export function AssignmentSettingsPage({
                   className="rounded-2xl border border-sts-card-border bg-sts-card p-5 shadow-[var(--sts-card-shadow)]"
                 >
                   <div className="mb-4 flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-blue">
                       <FileText className="size-4" />
                     </span>
                     <div className="min-w-0">
@@ -530,7 +530,7 @@ export function AssignmentSettingsPage({
                       type="button"
                       onClick={() => saveFormMethod(form)}
                       disabled={!isDirty(form) || savingFormId === form.id}
-                      className="sts-pressable inline-flex items-center gap-1.5 rounded-md bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="sts-pressable inline-flex items-center gap-1.5 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {savingFormId === form.id && <Loader2 className="size-3.5 animate-spin" />}
                       Save
@@ -606,7 +606,7 @@ export function AssignmentSettingsPage({
               <button
                 type="button"
                 onClick={addRule}
-                className="sts-pressable inline-flex items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
+                className="sts-pressable inline-flex items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
               >
                 <Plus className="size-3.5" /> Add rule
               </button>
@@ -648,7 +648,7 @@ export function AssignmentSettingsPage({
                         type="button"
                         onClick={() => deleteRule(rule.id)}
                         aria-label="Delete rule"
-                        className="sts-pressable rounded-md p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
+                        className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -710,7 +710,7 @@ function FormRulesTable({
         <button
           type="button"
           onClick={onAdd}
-          className="sts-pressable inline-flex shrink-0 items-center gap-1 rounded-md bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
+          className="sts-pressable inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
         >
           <Plus className="size-3.5" /> Add rule
         </button>
@@ -783,7 +783,7 @@ function FormRulesTable({
                       type="button"
                       onClick={() => onDelete(rule.id)}
                       aria-label="Delete rule"
-                      className="sts-pressable rounded-md p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
+                      className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
                     >
                       <Trash2 className="size-3.5" />
                     </button>

@@ -284,7 +284,7 @@ function Stat({
 }) {
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-sts-card-border bg-sts-card p-4">
-      <span className="flex size-8 items-center justify-center rounded-lg bg-sts-blue/10 text-sts-blue">
+      <span className="flex size-8 items-center justify-center rounded-full bg-sts-blue/10 text-sts-blue">
         {icon}
       </span>
       <div>

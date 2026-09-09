@@ -36,7 +36,7 @@ function CopyButton({ text }: { text: string }) {
         toast.success("Copied to clipboard");
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="flex items-center gap-1 rounded-md border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground"
+      className="flex items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground"
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
       {copied ? "Copied" : "Copy"}
@@ -98,7 +98,7 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
                 disabled={loading !== null}
                 onClick={() => run(a.id)}
                 className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground disabled:opacity-50",
+                  "flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground disabled:opacity-50",
                   isLoading && "border-sts-id text-sts-foreground",
                 )}
               >
@@ -161,10 +161,10 @@ export function TicketAssistPanel({ dbId, isIntake }: { dbId: string; isIntake: 
       {result?.action === "triage" && (
         <div className="mt-3 space-y-2 rounded-lg bg-sts-surface p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
+            <span className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
               Type: {result.data.type}
             </span>
-            <span className="rounded-md bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
+            <span className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
               Priority: {result.data.priority}
             </span>
             {result.data.labels?.map((l) => (

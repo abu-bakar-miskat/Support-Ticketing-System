@@ -130,7 +130,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-md text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
           >
             <X size={17} strokeWidth={2} />
           </button>
@@ -179,7 +179,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
             <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Add tenant admin</label>
             <div className="relative">
               {pickedUser ? (
-                <div className="flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5">
+                <div className="flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-2.5">
                   <UserAvatar name={pickedUser.name} avatarUrl={pickedUser.avatarUrl} size={20} />
                   <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
                     {pickedUser.name || pickedUser.email}

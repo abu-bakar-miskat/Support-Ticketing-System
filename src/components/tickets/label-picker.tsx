@@ -56,7 +56,7 @@ export function LabelPicker({ current, onChange, allowedLabels }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        className="flex h-[26px] items-center gap-1 rounded-md border border-dashed border-sts-card-border px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-blue/40 hover:text-sts-blue"
+        className="flex h-[26px] items-center gap-1 rounded-full border border-dashed border-sts-card-border px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-blue/40 hover:text-sts-blue"
       >
         <Tag className="size-3 shrink-0" />
         Add label

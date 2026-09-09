@@ -141,7 +141,7 @@ export function RecruitmentDashboard({
             type="button"
             onClick={() => setScope(b.id)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm",
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-sm",
               scope === b.id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60",
             )}
           >
@@ -155,7 +155,7 @@ export function RecruitmentDashboard({
         )}
         {past.length > 0 && (
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-muted/60">
+            <DropdownMenuTrigger className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-muted/60">
               <History className="size-3.5" /> History
               <span className="text-xs">{past.length}</span>
             </DropdownMenuTrigger>

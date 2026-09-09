@@ -213,7 +213,7 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
               <button
                 type="button"
                 onClick={() => setExpanded((e) => !e)}
-                className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
               >
                 <ChevronDown className={cn("size-3 transition-transform", expanded && "rotate-180")} />
                 {expanded ? "Hide changes" : "View changes"}
@@ -451,7 +451,7 @@ export function PlatformActivityLog({
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
             disabled={loading}
-            className="ml-auto flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
+            className="ml-auto flex h-8 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
           >
             <RotateCw className={cn("size-3.5", loading && "animate-spin")} />
             Refresh
@@ -473,7 +473,7 @@ export function PlatformActivityLog({
                 disabled={loading}
                 onClick={() => setPreset(p.id)}
                 className={cn(
-                  "rounded-md px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
+                  "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed",
                   preset === p.id
                     ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
                     : "text-sts-muted hover:text-sts-foreground",
@@ -531,7 +531,7 @@ export function PlatformActivityLog({
             <button
               type="button"
               onClick={clearFilters}
-              className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
+              className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:text-sts-foreground"
             >
               Clear filters
             </button>
@@ -562,7 +562,7 @@ export function PlatformActivityLog({
                 type="button"
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-5 py-2.5 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-id/30 hover:text-sts-foreground disabled:opacity-50"
               >
                 {loadingMore ? <Loader2 className="size-3.5 animate-spin" /> : <History className="size-3.5" />}
                 {loadingMore ? "Loading…" : "Load more activity"}

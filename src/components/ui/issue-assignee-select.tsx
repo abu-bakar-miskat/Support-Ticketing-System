@@ -55,7 +55,7 @@ export function IssueAssigneeSelect({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         className={cn(
-          "flex h-9 items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 text-left transition-colors hover:border-sts-id focus:border-sts-id focus:outline-none",
+          "flex h-9 items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-2.5 text-left transition-colors hover:border-sts-id focus:border-sts-id focus:outline-none",
           className,
         )}
       >
@@ -114,7 +114,7 @@ export function IssueAssigneeSelect({
                     type="button"
                     onClick={() => toggle(member.id)}
                     className={cn(
-                      "sts-field-dropdown-item rounded-md px-2 py-1.5 font-sans text-[12px]",
+                      "sts-field-dropdown-item rounded-full px-2 py-1.5 font-sans text-[12px]",
                       userListPickerButtonClass,
                       isSelected && "bg-sts-surface",
                     )}

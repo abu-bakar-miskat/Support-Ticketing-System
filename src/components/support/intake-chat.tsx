@@ -586,7 +586,7 @@ function ChatInputDock({
         <div className="flex items-center gap-2">
           <label
             className={cn(
-              "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
+              "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
               upload?.uploading && "pointer-events-none opacity-60",
             )}
           >
@@ -692,7 +692,7 @@ function ChatInputDock({
       <div className="flex items-center gap-2 border-t border-sts-card-border p-3">
         <label
           className={cn(
-            "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
+            "flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-dashed border-sts-card-border font-poppins text-[13px] text-sts-muted transition-colors hover:bg-sts-surface",
             upload?.uploading && "pointer-events-none opacity-60",
           )}
         >
@@ -782,7 +782,7 @@ function ChatInputDock({
         type="button"
         onClick={send}
         title="Send"
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sts-blue text-white transition-colors hover:bg-sts-blue/90"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sts-blue text-white transition-colors hover:bg-sts-blue/90"
       >
         <Send className="size-4" />
       </button>
@@ -801,7 +801,7 @@ function AttachButton({
     <label
       title="Attach files"
       className={cn(
-        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id",
+        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id",
         uploading && "pointer-events-none opacity-60",
       )}
     >
@@ -922,7 +922,7 @@ function SummaryCard({
                 type="button"
                 onClick={() => onEdit(r.key)}
                 title={`Edit ${r.label}`}
-                className="shrink-0 rounded-md p-1 text-sts-subtle transition-colors hover:text-sts-id"
+                className="shrink-0 rounded-full p-1 text-sts-subtle transition-colors hover:text-sts-id"
               >
                 <Pencil className="size-3.5" />
               </button>
@@ -934,7 +934,7 @@ function SummaryCard({
         type="button"
         onClick={onSend}
         disabled={submitting}
-        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sts-blue font-poppins text-[13.5px] font-semibold text-white shadow-sm transition-all hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-sts-blue font-poppins text-[13.5px] font-semibold text-white shadow-sm transition-all hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting && <Loader2 className="size-4 animate-spin" />}
         {submitting ? "Sending…" : "Send ticket"}

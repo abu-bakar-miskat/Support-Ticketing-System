@@ -63,7 +63,7 @@ export function LogoUploadButton({
         onClick={() => inputRef.current?.click()}
         className={
           className ??
-          "inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg disabled:opacity-50"
+          "inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg disabled:opacity-50"
         }
       >
         {uploading ? "Uploading…" : label}

@@ -230,7 +230,7 @@ function CopyLinkButton({ url }: { url: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+      className="flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
       title={url}
     >
       {copied ? (
@@ -377,7 +377,7 @@ function IntakeFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -414,7 +414,7 @@ function IntakeFormModal({
                   setIntakeSubDepartmentId("");
                 }}
               >
-                <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
+                <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                   <span
                     className={
                       departmentId ? "text-sts-foreground" : "text-sts-subtle"
@@ -451,7 +451,7 @@ function IntakeFormModal({
                 onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
                 disabled={!departmentId && !isEdit}
               >
-                <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
+                <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                   <span
                     className={
                       intakeSubDepartmentId
@@ -503,7 +503,7 @@ function IntakeFormModal({
                   type="button"
                   onClick={() => setDisplayMode(opt.value)}
                   className={cn(
-                    "flex h-9 items-center justify-center gap-1.5 rounded-lg border font-sans text-[12.5px] font-medium transition-colors",
+                    "flex h-9 items-center justify-center gap-1.5 rounded-full border font-sans text-[12.5px] font-medium transition-colors",
                     displayMode === opt.value
                       ? "border-sts-id bg-sts-blue-tint text-sts-id"
                       : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
@@ -532,7 +532,7 @@ function IntakeFormModal({
                 )
               }
             >
-              <SelectTrigger className="h-9 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
+              <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                 <span className="text-sts-foreground">
                   {assignmentMethod === null
                     ? "Inherit from sub-department"
@@ -899,7 +899,7 @@ function FieldEditor({
                 }))
               }
               className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
                 state.type === t.value
                   ? "border-sts-id bg-sts-blue-tint font-semibold text-sts-id"
                   : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
@@ -952,14 +952,14 @@ function FieldEditor({
                         <button
                           type="button"
                           onClick={confirmEditOption}
-                          className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white"
+                          className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
                         >
                           <Check className="size-3" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingOption(null)}
-                          className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                          className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
                         >
                           <X className="size-3" />
                         </button>
@@ -1043,14 +1043,14 @@ function FieldEditor({
                                 <button
                                   type="button"
                                   onClick={confirmEditChild}
-                                  className="flex h-6 items-center justify-center rounded-md bg-sts-blue px-2 text-white"
+                                  className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
                                 >
                                   <Check className="size-2.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setEditingChild(null)}
-                                  className="flex h-6 items-center justify-center rounded-md border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                                  className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
                                 >
                                   <X className="size-2.5" />
                                 </button>
@@ -1104,7 +1104,7 @@ function FieldEditor({
                         <button
                           type="button"
                           onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
+                          className="flex h-6 items-center gap-1 rounded-full border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
                         >
                           <Plus className="size-2.5" />
                           Add
@@ -1133,7 +1133,7 @@ function FieldEditor({
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-7 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
             >
               <Plus className="size-3" />
               Add
@@ -1409,7 +1409,7 @@ function FieldEditor({
         <button
           type="button"
           onClick={onCancel}
-          className="flex h-7 items-center gap-1 rounded-lg px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+          className="flex h-7 items-center gap-1 rounded-full px-3 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           Cancel
         </button>
@@ -1417,7 +1417,7 @@ function FieldEditor({
           type="button"
           onClick={() => onSave(state)}
           disabled={saving}
-          className="flex h-7 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
+          className="flex h-7 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
         >
           <Check className="size-3" />
           {saving ? "Saving…" : "Save field"}
@@ -1634,7 +1634,7 @@ function FieldBuilderModal({
                 setEditorError(null);
               }}
               disabled={loadingFields}
-              className="flex items-center gap-1.5 rounded-[7px] bg-sts-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
+              className="flex items-center gap-1.5 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               <Plus className="size-3.5" strokeWidth={2.5} />
               Add field
@@ -1642,7 +1642,7 @@ function FieldBuilderModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
             >
               <X className="size-3.5" />
             </button>
@@ -1698,7 +1698,7 @@ function FieldBuilderModal({
                     type="button"
                     onClick={saveDefaults}
                     disabled={!defaultsDirty || savingDefaults}
-                    className="flex h-7 shrink-0 items-center gap-1 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
+                    className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
                   >
                     {savingDefaults ? (
                       <Loader2 className="size-3 animate-spin" />
@@ -1885,14 +1885,14 @@ function FieldBuilderModal({
                           setAddingField(false);
                           setEditorError(null);
                         }}
-                        className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                       >
                         <Pencil className="size-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(field)}
-                        className="flex size-7 items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                       >
                         <Trash2 className="size-3" />
                       </button>
@@ -2097,7 +2097,7 @@ function FormDesignModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-sts-subtle hover:text-sts-foreground"
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
           >
             <X className="size-4" />
           </button>
@@ -2109,7 +2109,7 @@ function FormDesignModal({
             <button
               type="button"
               onClick={() => setView("edit")}
-              className={`inline-flex h-7 items-center rounded-md px-3 font-sans text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-7 items-center rounded-full px-3 font-sans text-[12px] font-semibold transition-colors ${
                 view === "edit"
                   ? "bg-sts-blue text-white dark:text-gray-900"
                   : "text-sts-muted hover:text-sts-foreground"
@@ -2120,7 +2120,7 @@ function FormDesignModal({
             <button
               type="button"
               onClick={() => setView("preview")}
-              className={`inline-flex h-7 items-center rounded-md px-3 font-sans text-[12px] font-semibold transition-colors ${
+              className={`inline-flex h-7 items-center rounded-full px-3 font-sans text-[12px] font-semibold transition-colors ${
                 view === "preview"
                   ? "bg-sts-blue text-white dark:text-gray-900"
                   : "text-sts-muted hover:text-sts-foreground"
@@ -2275,7 +2275,7 @@ function FormDesignModal({
                   <div className="mt-3 h-10 rounded-md bg-gray-100" />
                 </div>
                 <span
-                  className="mt-5 inline-flex h-11 items-center rounded-lg px-6 font-sans text-[14px] font-semibold text-white"
+                  className="mt-5 inline-flex h-11 items-center rounded-full px-6 font-sans text-[14px] font-semibold text-white"
                   style={{ background: previewAccent }}
                 >
                   Submit request
@@ -2291,7 +2291,7 @@ function FormDesignModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 items-center rounded-lg border border-sts-card-border px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              className="inline-flex h-9 items-center rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -2299,7 +2299,7 @@ function FormDesignModal({
               type="button"
               onClick={handleSave}
               disabled={saving || !colorsValid}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-900"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-900"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               {saving ? "Saving…" : "Save design"}
@@ -2407,7 +2407,7 @@ export function SettingsIntakeFormsPage({
         </div>
         <Button
           onClick={() => setModal({ type: "create" })}
-          className="h-[34px] w-full shrink-0 gap-1.5 rounded-lg bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm hover:bg-sts-blue/90 sm:w-auto dark:text-gray-900"
+          className="h-[34px] w-full shrink-0 gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-white shadow-sm hover:bg-sts-blue/90 sm:w-auto dark:text-gray-900"
         >
           <Plus className="size-3.5" strokeWidth={2.5} />
           New form
@@ -2597,7 +2597,7 @@ export function SettingsIntakeFormsPage({
                           <button
                             type="button"
                             onClick={() => setFieldModal(form)}
-                            className="flex items-center gap-1.5 rounded-lg border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
+                            className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
                             title="Add or edit the fields shown on this form"
                           >
                             <Settings2 className="size-3.5" />
@@ -2607,7 +2607,7 @@ export function SettingsIntakeFormsPage({
                         <button
                           type="button"
                           onClick={() => setDesignModal(form)}
-                          className="flex items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
+                          className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
                           title="Customize the public form's logo and colors"
                         >
                           <Palette className="size-3.5" />
@@ -2616,7 +2616,7 @@ export function SettingsIntakeFormsPage({
                         <button
                           type="button"
                           onClick={() => setModal({ type: "edit", form })}
-                          className="cursor-pointer rounded-lg p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
                           title="Edit form settings"
                         >
                           <Pencil className="size-3.5" />
@@ -2624,7 +2624,7 @@ export function SettingsIntakeFormsPage({
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(form)}
-                          className="cursor-pointer rounded-lg p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
+                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
                           title="Delete this form"
                         >
                           <Trash2 className="size-3.5" />

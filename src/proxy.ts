@@ -130,7 +130,18 @@ export async function proxy(request: NextRequest) {
         if (isDeptScopedPath(internal)) {
           if (dSlug) prefix += `/${dSlug}`;
           // Sub-dept segment only for board-like routes — not settings, etc.
-          if (dSlug && sSlug && isSubDeptScopedPath(internal)) prefix += `/${sSlug}`;
+          // Skip it when the sub-dept slug collides with the tenant/dept slug,
+          // otherwise the URL reads like the tenant name repeating
+          // (e.g. /vcad/ui-ux/vcad/modules). The slug is cosmetic — data scope
+          // comes from the active-team cookie — so omitting it is safe.
+          if (
+            dSlug &&
+            sSlug &&
+            sSlug !== tSlug &&
+            sSlug !== dSlug &&
+            isSubDeptScopedPath(internal)
+          )
+            prefix += `/${sSlug}`;
         }
         const target = internal === "/" ? prefix : `${prefix}${internal}`;
 

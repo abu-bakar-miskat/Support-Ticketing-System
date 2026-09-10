@@ -42,17 +42,19 @@ type SummaryRow = {
   tenantId: string;
   tenantName: string;
   tenantStatus: string;
+  tenantCreatedAt: string;
   agreementEndDate: string | null;
   renewalStatus: RenewalStatus | null;
   departmentCount: number;
   activeUserCount: number;
 };
 
-type SortField = "tenantName" | "tenantStatus" | "agreementEndDate" | "renewalStatus" | "departmentCount" | "activeUserCount";
+type SortField = "tenantName" | "tenantStatus" | "tenantCreatedAt" | "agreementEndDate" | "renewalStatus" | "departmentCount" | "activeUserCount";
 
 const COLUMNS: { key: SortField; label: string }[] = [
   { key: "tenantName", label: "Tenant" },
   { key: "tenantStatus", label: "Status" },
+  { key: "tenantCreatedAt", label: "Created" },
   { key: "agreementEndDate", label: "Agreement ends" },
   { key: "renewalStatus", label: "Renewal" },
   { key: "departmentCount", label: "Departments" },
@@ -207,6 +209,9 @@ export function TenantStatusSummary() {
                     >
                       {r.tenantStatus === "suspended" ? "Suspended" : "Active"}
                     </span>
+                  </TableCell>
+                  <TableCell className="font-sans text-[12.5px] text-sts-muted">
+                    {new Date(r.tenantCreatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     {r.agreementEndDate ? new Date(r.agreementEndDate).toLocaleDateString() : "—"}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { badRequest } from "@/lib/api-response"
-import { createAgreement, listAgreementsForTenant } from "@/lib/agreements"
+import { createAgreement, hasOverlappingAgreement, listAgreementsForTenant } from "@/lib/agreements"
 import type { AgreementRenewalStatus } from "@/generated/prisma/enums"
 
 const RENEWAL_STATUSES: AgreementRenewalStatus[] = [
@@ -46,6 +46,10 @@ export async function POST(request: Request, { params }: Params) {
   }
   if (endDate <= startDate) {
     return badRequest("endDate must be after startDate")
+  }
+
+  if (await hasOverlappingAgreement({ tenantId: id, startDate, endDate })) {
+    return badRequest("This date range overlaps an existing agreement for this tenant.")
   }
 
   let renewalStatus: AgreementRenewalStatus | undefined

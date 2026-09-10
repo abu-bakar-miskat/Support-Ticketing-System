@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { uploadAgreementDocument } from "@/lib/storage"
 import { addAgreementDocument } from "@/lib/agreements"
+import { validateAgreementDocFile } from "@/lib/agreement-doc-file"
 
 type Params = { params: Promise<{ id: string; agreementId: string }> }
 
@@ -17,8 +18,9 @@ export async function POST(request: Request, { params }: Params) {
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 })
   }
-  if (file.size === 0) {
-    return NextResponse.json({ error: "File is empty" }, { status: 400 })
+  const validationError = validateAgreementDocFile(file)
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 })
   }
 
   try {

@@ -16,6 +16,7 @@ const rows = [
     tenantId: "t1",
     tenantName: "Acme",
     tenantStatus: "active",
+    tenantCreatedAt: new Date("2025-01-15"),
     agreementEndDate: new Date("2026-12-31"),
     renewalStatus: "ACTIVE",
     departmentCount: 3,
@@ -25,6 +26,7 @@ const rows = [
     tenantId: "t2",
     tenantName: "Beta",
     tenantStatus: "active",
+    tenantCreatedAt: new Date("2024-06-01"),
     agreementEndDate: new Date("2026-09-01"),
     renewalStatus: "EXPIRED",
     departmentCount: 1,
@@ -67,6 +69,12 @@ describe("GET /api/admin/tenants/agreement-summary — SA-05", () => {
 
   it("sorts ascending by agreementEndDate", async () => {
     const res = await GET(makeRequest("sortBy=agreementEndDate"))
+    const body = await res.json()
+    expect(body.map((r: { tenantId: string }) => r.tenantId)).toEqual(["t2", "t1"])
+  })
+
+  it("sorts ascending by tenantCreatedAt", async () => {
+    const res = await GET(makeRequest("sortBy=tenantCreatedAt"))
     const body = await res.json()
     expect(body.map((r: { tenantId: string }) => r.tenantId)).toEqual(["t2", "t1"])
   })

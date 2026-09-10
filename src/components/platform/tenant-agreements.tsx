@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, FileText, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +12,12 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  AGREEMENT_DOC_ACCEPT,
+  AGREEMENT_DOC_MAX_LABEL,
+  AGREEMENT_DOC_TYPES_LABEL,
+  validateAgreementDocFile,
+} from "@/lib/agreement-doc-file";
 
 const RENEWAL_STATUSES = ["ACTIVE", "PENDING_RENEWAL", "RENEWED", "EXPIRED", "CANCELLED"] as const;
 type RenewalStatus = (typeof RENEWAL_STATUSES)[number];
@@ -75,9 +82,32 @@ export function TenantAgreements({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function overlapsExisting(startISO: string, endISO: string, excludeId?: string) {
+    const s = new Date(startISO).getTime();
+    const e = new Date(endISO).getTime();
+    return agreements.some((a) => {
+      if (a.id === excludeId) return false;
+      const as = new Date(a.startDate).getTime();
+      const ae = new Date(a.endDate).getTime();
+      return s <= ae && as <= e;
+    });
+  }
+
   async function createAgreement(e: React.FormEvent) {
     e.preventDefault();
     if (!startDate || !endDate) return;
+    if (new Date(endDate) <= new Date(startDate)) {
+      const msg = "End date must be after the start date.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (overlapsExisting(startDate, endDate)) {
+      const msg = "This date range overlaps an existing agreement for this tenant.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     setCreating(true);
     setError(null);
     const res = await fetch(`/api/admin/tenants/${tenantId}/agreements`, {
@@ -88,7 +118,9 @@ export function TenantAgreements({
     setCreating(false);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to create agreement");
+      const msg = body.error ?? "Failed to create agreement";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const agreement = await res.json();
@@ -96,6 +128,7 @@ export function TenantAgreements({
     setStartDate("");
     setEndDate("");
     setRenewalStatus("ACTIVE");
+    toast.success("Agreement recorded.");
   }
 
   async function updateStatus(agreementId: string, next: RenewalStatus) {
@@ -116,6 +149,12 @@ export function TenantAgreements({
   }
 
   async function uploadDocument(agreementId: string, file: File) {
+    const invalid = validateAgreementDocFile(file);
+    if (invalid) {
+      setError(invalid);
+      toast.error(invalid);
+      return;
+    }
     setBusyId(agreementId);
     setError(null);
     const form = new FormData();
@@ -127,13 +166,16 @@ export function TenantAgreements({
     setBusyId(null);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to upload document");
+      const msg = body.error ?? "Failed to upload document";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     const document = await res.json();
     setAgreements((prev) =>
       prev.map((a) => (a.id === agreementId ? { ...a, documents: [document, ...a.documents] } : a)),
     );
+    toast.success(`"${file.name}" uploaded.`);
   }
 
   async function removeDocument(agreementId: string, documentId: string) {
@@ -263,9 +305,10 @@ export function TenantAgreements({
               ))}
               <Button variant="outline" size="sm" className="relative" disabled={busyId === a.id}>
                 <Upload className="size-3.5" />
-                Add document
+                {busyId === a.id ? "Uploading…" : "Add document"}
                 <input
                   type="file"
+                  accept={AGREEMENT_DOC_ACCEPT}
                   className="absolute inset-0 cursor-pointer opacity-0"
                   disabled={busyId === a.id}
                   onChange={(e) => {
@@ -276,6 +319,9 @@ export function TenantAgreements({
                 />
               </Button>
             </div>
+            <p className="mt-1.5 font-sans text-[10.5px] text-sts-subtle">
+              Supported: {AGREEMENT_DOC_TYPES_LABEL}. Max {AGREEMENT_DOC_MAX_LABEL}.
+            </p>
           </li>
         ))}
         {agreements.length === 0 && (

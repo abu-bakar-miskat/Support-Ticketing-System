@@ -389,7 +389,7 @@ export function MemberConfigPanel({
                           onClick={() => toggleDoNotAssign(tm.subDepartmentId, tm.doNotAssign)}
                           className={cn(
                             "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                            tm.doNotAssign ? "bg-red-500" : "bg-sts-blue"
+                            tm.doNotAssign ? "bg-sts-muted/40" : "bg-sts-blue"
                           )}
                           role="switch"
                           aria-checked={!tm.doNotAssign}
@@ -397,7 +397,7 @@ export function MemberConfigPanel({
                           <span
                             className={cn(
                               "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform",
-                              tm.doNotAssign ? "translate-x-4" : "translate-x-0"
+                              tm.doNotAssign ? "translate-x-0" : "translate-x-4"
                             )}
                           />
                         </button>

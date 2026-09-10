@@ -53,6 +53,29 @@ export function getCurrentAgreement(tenantId: string) {
   });
 }
 
+/**
+ * True if the given date range overlaps an existing agreement for the tenant.
+ * Two ranges overlap when each starts on or before the other ends. `excludeId`
+ * skips a row (used when editing an existing agreement).
+ */
+export async function hasOverlappingAgreement(params: {
+  tenantId: string;
+  startDate: Date;
+  endDate: Date;
+  excludeId?: string;
+}): Promise<boolean> {
+  const conflict = await prisma.agreement.findFirst({
+    where: {
+      tenantId: params.tenantId,
+      ...(params.excludeId ? { id: { not: params.excludeId } } : {}),
+      startDate: { lte: params.endDate },
+      endDate: { gte: params.startDate },
+    },
+    select: { id: true },
+  });
+  return conflict !== null;
+}
+
 export async function createAgreement(params: {
   tenantId: string;
   startDate: Date;
@@ -206,6 +229,7 @@ export type TenantAgreementSummaryRow = {
   tenantId: string;
   tenantName: string;
   tenantStatus: string;
+  tenantCreatedAt: Date;
   agreementEndDate: Date | null;
   renewalStatus: AgreementRenewalStatus | null;
   departmentCount: number;
@@ -220,6 +244,7 @@ export async function listTenantAgreementSummaries(): Promise<TenantAgreementSum
         id: true,
         name: true,
         status: true,
+        createdAt: true,
         _count: { select: { departments: true } },
         agreements: {
           select: { endDate: true, renewalStatus: true },
@@ -256,6 +281,7 @@ export async function listTenantAgreementSummaries(): Promise<TenantAgreementSum
       tenantId: tenant.id,
       tenantName: tenant.name,
       tenantStatus: tenant.status,
+      tenantCreatedAt: tenant.createdAt,
       agreementEndDate: current?.endDate ?? null,
       renewalStatus: current?.renewalStatus ?? null,
       departmentCount: tenant._count.departments,

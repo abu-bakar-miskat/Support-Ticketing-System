@@ -278,7 +278,15 @@ export function PlatformActivityLog({
 
   // "custom" only takes effect once both ends are set; otherwise it applies no
   // bound (same as "all"), so the feed never blanks while a date is half-typed.
-  const { from, to } = resolveRange(preset, customFrom, customTo);
+  //
+  // Memoized so the relative presets ("today"/"7d"/"30d") don't produce a fresh
+  // `to = now.toISOString()` on every render — an unstable value there re-fires
+  // the load effect in a loop, which flickers the feed. `refreshKey` lets a
+  // manual Refresh recompute the window against the current time.
+  const { from, to } = useMemo(
+    () => resolveRange(preset, customFrom, customTo),
+    [preset, customFrom, customTo, refreshKey],
+  );
 
   async function fetchPage(after: string | null) {
     const params = new URLSearchParams({ take: "50" });

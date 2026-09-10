@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
+import { prisma } from "@/lib/db"
 import { badRequest } from "@/lib/api-response"
-import { updateAgreement } from "@/lib/agreements"
+import { hasOverlappingAgreement, updateAgreement } from "@/lib/agreements"
 import type { AgreementRenewalStatus } from "@/generated/prisma/enums"
 
 const RENEWAL_STATUSES: AgreementRenewalStatus[] = [
@@ -60,6 +61,31 @@ export async function PATCH(request: Request, { params }: Params) {
     reminderDaysBefore === undefined
   ) {
     return badRequest("Nothing to update")
+  }
+
+  // A date change must not push this term into another term's range.
+  if (startDate !== undefined || endDate !== undefined) {
+    const existing = await prisma.agreement.findFirst({
+      where: { id: agreementId, tenantId: id },
+      select: { startDate: true, endDate: true },
+    })
+    if (!existing) return NextResponse.json({ error: "Agreement not found" }, { status: 404 })
+
+    const effectiveStart = startDate ?? existing.startDate
+    const effectiveEnd = endDate ?? existing.endDate
+    if (effectiveEnd <= effectiveStart) {
+      return badRequest("endDate must be after startDate")
+    }
+    if (
+      await hasOverlappingAgreement({
+        tenantId: id,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        excludeId: agreementId,
+      })
+    ) {
+      return badRequest("This date range overlaps an existing agreement for this tenant.")
+    }
   }
 
   const updated = await updateAgreement({

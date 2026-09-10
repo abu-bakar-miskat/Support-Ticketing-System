@@ -5,6 +5,7 @@ import { listTenantAgreementSummaries } from "@/lib/agreements"
 const SORTABLE_FIELDS = new Set([
   "tenantName",
   "tenantStatus",
+  "tenantCreatedAt",
   "agreementEndDate",
   "renewalStatus",
   "departmentCount",

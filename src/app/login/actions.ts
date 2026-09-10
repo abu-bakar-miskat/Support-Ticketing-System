@@ -92,11 +92,14 @@ export async function verifyOtpCode(formData: FormData) {
   let effectiveToken = token;
   let verificationType: "signup" | "magiclink" =
     requestedType === "signup" ? "signup" : "magiclink";
-  if (isDevBypassEnabled && token === DEV_BYPASS_CODE) {
-    // Role-based test accounts (agent@gmail.com, manager@gmail.com, …) are
-    // provisioned on the fly with their mapped role so the bypass logs them in
-    // with the right permissions — no email is ever sent.
-    if (isDevTestAccount(email)) {
+  // The bypass code is honoured when EITHER the dev bypass is enabled (any email,
+  // non-prod only) OR the email is one of the fixed role-based test accounts. The
+  // latter works in every environment — including production deployments — but is
+  // strictly limited to the whitelisted test emails, so a real user can never use
+  // the fixed code. Test accounts are seeded on the fly with their mapped role.
+  const isTestAccount = isDevTestAccount(email);
+  if (token === DEV_BYPASS_CODE && (isDevBypassEnabled || isTestAccount)) {
+    if (isTestAccount) {
       await ensureDevTestAccount(email);
     }
     const result = await resolveDevBypassToken(email);

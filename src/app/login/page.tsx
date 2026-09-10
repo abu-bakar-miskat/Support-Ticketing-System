@@ -9,6 +9,7 @@ import { safeNextPath } from "@/lib/auth-redirect";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { sendLoginCode } from "@/lib/auth/send-login-code";
+import { isDevTestAccount } from "@/lib/auth/dev-test-accounts";
 
 /**
  * Super-admins land on the platform console on login (mirrors /auth/callback).
@@ -44,6 +45,16 @@ async function requestLoginCode(formData: FormData) {
   if (!email) {
     redirect(
       `/login?error=${encodeURIComponent("Enter your email address")}${nextQuery}`,
+    );
+  }
+
+  // Fixed test accounts sign in with the bypass code (12345678), so there is no
+  // real code to email. Skip the send entirely and jump straight to code entry —
+  // otherwise a bounced/rate-limited email to a fake test address would strand
+  // the request step with an error.
+  if (isDevTestAccount(email)) {
+    redirect(
+      `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=magiclink${nextQuery}`,
     );
   }
 

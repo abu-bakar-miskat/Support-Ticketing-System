@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { UserPlus, X } from "lucide-react"
+import { Check, Copy, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
@@ -50,6 +50,22 @@ export function InviteMemberDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const fullInviteLink =
+    inviteLink && typeof window !== "undefined" ? `${window.location.origin}${inviteLink}` : inviteLink ?? ""
+
+  const copyInviteLink = async () => {
+    if (!fullInviteLink) return
+    try {
+      await navigator.clipboard.writeText(fullInviteLink)
+      setCopied(true)
+      toast.success("Invite link copied")
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Couldn't copy — copy it manually")
+    }
+  }
 
   const needsDepartments = role !== "admin"
   // sub_manager/agent join at sub-department level, never the department itself.
@@ -290,10 +306,21 @@ export function InviteMemberDialog({
               {inviteLink ? (
                 <div className="rounded-lg border border-sts-card-border bg-sts-surface p-2.5">
                   <p className="font-sans text-[11px] text-sts-muted">Invitation link (share with the invitee):</p>
-                  <code className="mt-1 block truncate font-mono text-[11.5px] text-sts-foreground">
-                    {typeof window !== "undefined" ? window.location.origin : ""}
-                    {inviteLink}
-                  </code>
+                  <div className="mt-1 flex items-start gap-2">
+                    <code className="min-w-0 flex-1 break-all font-mono text-[11.5px] text-sts-foreground">
+                      {fullInviteLink}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={copyInviteLink}
+                      className="shrink-0 gap-1.5"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copied ? "Copied" : "Copy link"}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex justify-end gap-2 pt-1">

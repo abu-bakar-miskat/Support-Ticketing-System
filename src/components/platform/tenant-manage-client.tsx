@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ChevronDown, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -196,6 +196,7 @@ export function TenantManageClient({
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [addingMember, setAddingMember] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const [pickedUser, setPickedUser] = useState<UserResult | null>(null);
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -895,10 +896,29 @@ export function TenantManageClient({
                 <p className="font-sans text-[11px] text-sts-muted">
                   Invitation link (share with the invitee):
                 </p>
-                <code className="mt-1 block truncate font-mono text-[11.5px] text-sts-foreground">
-                  {typeof window !== "undefined" ? window.location.origin : ""}
-                  {inviteLink}
-                </code>
+                <div className="mt-1 flex items-start gap-2">
+                  <code className="min-w-0 flex-1 break-all font-mono text-[11.5px] text-sts-foreground">
+                    {typeof window !== "undefined" ? window.location.origin : ""}
+                    {inviteLink}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const full = `${typeof window !== "undefined" ? window.location.origin : ""}${inviteLink}`;
+                      try {
+                        await navigator.clipboard.writeText(full);
+                        setCopiedInvite(true);
+                        setTimeout(() => setCopiedInvite(false), 2000);
+                      } catch {
+                        /* clipboard unavailable */
+                      }
+                    }}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-sts-card-border bg-sts-card px-2 py-1 font-sans text-[11px] text-sts-foreground transition-colors hover:bg-sts-surface"
+                  >
+                    {copiedInvite ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedInvite ? "Copied" : "Copy link"}
+                  </button>
+                </div>
               </div>
             )}
 

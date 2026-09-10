@@ -1520,6 +1520,10 @@ model FeatureFlag {
 model AuditEvent {
   id         String   @id @default(cuid())
   tenantId   String
+  // Department this event belongs to, when the action is scoped to one (e.g.
+  // member restriction/role change within a department). Null for tenant-wide
+  // events. Lets the same trail be read at both tenant and department level.
+  departmentId String?
   actorId    String   @db.Uuid
   action     String
   targetType String
@@ -1531,6 +1535,7 @@ model AuditEvent {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([departmentId])
   @@index([targetType, targetId])
   @@index([createdAt])
 }

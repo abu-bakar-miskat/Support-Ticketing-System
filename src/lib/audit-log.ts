@@ -13,6 +13,12 @@ type AuditWriteClient = Pick<typeof prisma, "auditEvent"> | Prisma.TransactionCl
  */
 export async function recordAuditEvent(params: {
   tenantId: string;
+  /**
+   * Department the event is scoped to, when the action happened within one
+   * (member restriction, role change, department move). Null/omitted for
+   * tenant-wide events. Lets the trail be read at both tenant and dept level.
+   */
+  departmentId?: string | null;
   actorId: string;
   action: string;
   targetType: string;
@@ -26,6 +32,7 @@ export async function recordAuditEvent(params: {
   await db.auditEvent.create({
     data: {
       tenantId: params.tenantId,
+      departmentId: params.departmentId ?? null,
       actorId: params.actorId,
       action: params.action,
       targetType: params.targetType,

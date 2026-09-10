@@ -189,7 +189,24 @@
     --sts-green-tint: #edf9f1;
     --sts-purple: #7c3aed;
     --sts-purple-tint: #f0ebff;
-    --sts-bg-gradient: var(--sts-bg);
+    /* Soft primary wash over the page canvas (body + .sts-ambient-bg). */
+    --sts-bg-gradient:
+      radial-gradient(
+        78% 52% at 50% -8%,
+        color-mix(in srgb, var(--primary) 11%, transparent) 0%,
+        transparent 68%
+      ),
+      radial-gradient(
+        48% 42% at 100% 100%,
+        color-mix(in srgb, var(--primary) 7%, transparent) 0%,
+        transparent 72%
+      ),
+      radial-gradient(
+        40% 36% at 0% 85%,
+        color-mix(in srgb, var(--primary) 5%, transparent) 0%,
+        transparent 70%
+      ),
+      var(--sts-bg);
     --background: oklch(0.978 0.005 75);
     --foreground: oklch(0.18 0.04 230);
     --card: rgba(253, 251, 246, 0.9);
@@ -265,7 +282,24 @@
     --sts-green-tint: #1a3028;
     --sts-purple: #b69cf0;
     --sts-purple-tint: #352f44;
-    --sts-bg-gradient: var(--sts-bg);
+    /* Quieter wash in dark — primary is near-white, so keep opacity low. */
+    --sts-bg-gradient:
+      radial-gradient(
+        78% 52% at 50% -8%,
+        color-mix(in srgb, var(--primary) 6%, transparent) 0%,
+        transparent 68%
+      ),
+      radial-gradient(
+        48% 42% at 100% 100%,
+        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
+        transparent 72%
+      ),
+      radial-gradient(
+        40% 36% at 0% 85%,
+        color-mix(in srgb, var(--primary) 3%, transparent) 0%,
+        transparent 70%
+      ),
+      var(--sts-bg);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: rgba(32, 38, 48, 0.92);
@@ -402,7 +436,24 @@
     --sts-green-tint: #edf7f2;
     --sts-purple: #6858c0;
     --sts-purple-tint: #eeecf8;
-    --sts-bg-gradient: var(--sts-bg);
+    /* Same ambient structure as light; tangerine primary tints the wash orange. */
+    --sts-bg-gradient:
+      radial-gradient(
+        78% 52% at 50% -8%,
+        color-mix(in srgb, var(--primary) 10%, transparent) 0%,
+        transparent 68%
+      ),
+      radial-gradient(
+        48% 42% at 100% 100%,
+        color-mix(in srgb, var(--primary) 6%, transparent) 0%,
+        transparent 72%
+      ),
+      radial-gradient(
+        40% 36% at 0% 85%,
+        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
+        transparent 70%
+      ),
+      var(--sts-bg);
     --background: oklch(0.9383 0.0042 236.4993);
     --foreground: oklch(0.3211 0 0);
     --card: oklch(1.0000 0 0);

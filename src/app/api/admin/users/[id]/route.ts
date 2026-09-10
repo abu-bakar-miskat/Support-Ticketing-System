@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { Role } from "@/generated/prisma/enums"
-import { managerCanManageUser, subDepartmentInScope } from "@/lib/dept-scope"
+import { managerCanManageUser, subDepartmentInScope, resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 import {
@@ -26,18 +26,7 @@ async function resolveRoleChangeDepartmentId(
   bodyDepartmentId?: string | null,
 ): Promise<string | null> {
   if (typeof bodyDepartmentId === "string" && bodyDepartmentId.length > 0) return bodyDepartmentId
-  if (!tenantId) return null
-  const [manager, subDepartmentMembership] = await Promise.all([
-    prisma.departmentManager.findFirst({
-      where: { userId, department: { tenantId } },
-      select: { departmentId: true },
-    }),
-    prisma.subDepartmentMembership.findFirst({
-      where: { userId, isActive: true, subDepartment: { tenantId } },
-      select: { subDepartment: { select: { departmentId: true } } },
-    }),
-  ])
-  return manager?.departmentId ?? subDepartmentMembership?.subDepartment.departmentId ?? null
+  return resolveUserPrimaryDepartmentId(userId, tenantId)
 }
 
 export async function PATCH(
@@ -209,16 +198,50 @@ export async function PATCH(
 
   // NFR-09/DAT-05 (slice 20): user changes are audited with actor + before/after
   // state. Role mutations are audited inside changeRoles; profile metadata here.
+  // Every event carries the target's department so it surfaces at both tenant
+  // and department level (the move case uses the new home department).
   if (profile!.activeTenantId && Object.keys(data).length > 0) {
-    await recordAuditEvent({
-      tenantId: profile!.activeTenantId,
-      actorId: profile!.id,
-      action: "USER_UPDATED",
-      targetType: "Profile",
-      targetId: id,
-      before: profileBefore,
-      after: data,
-    })
+    const auditDepartmentId =
+      moveToDepartmentId ??
+      (await resolveUserPrimaryDepartmentId(id, profile!.activeTenantId))
+
+    const isActiveChanged =
+      "isActive" in data && data.isActive !== profileBefore?.isActive
+
+    // A restriction / reactivation is a distinct, security-relevant action —
+    // audit it under its own action rather than burying it in USER_UPDATED, so
+    // it is greppable regardless of which endpoint performed it (the tenant
+    // members endpoint already logs USER_RESTRICTED/USER_REENABLED).
+    if (isActiveChanged) {
+      await recordAuditEvent({
+        tenantId: profile!.activeTenantId,
+        departmentId: auditDepartmentId,
+        actorId: profile!.id,
+        action: data.isActive ? "USER_REENABLED" : "USER_RESTRICTED",
+        targetType: "Profile",
+        targetId: id,
+        before: { isActive: profileBefore?.isActive },
+        after: { isActive: data.isActive },
+      })
+    }
+
+    // Non-restriction profile metadata (location, timezone, department move) is
+    // audited separately from the restriction action above.
+    const metadataKeys = Object.keys(data).filter((k) => k !== "isActive")
+    if (metadataKeys.length > 0) {
+      const pick = (source: Record<string, unknown>) =>
+        Object.fromEntries(metadataKeys.map((k) => [k, source[k]]))
+      await recordAuditEvent({
+        tenantId: profile!.activeTenantId,
+        departmentId: auditDepartmentId,
+        actorId: profile!.id,
+        action: "USER_UPDATED",
+        targetType: "Profile",
+        targetId: id,
+        before: profileBefore ? pick(profileBefore as Record<string, unknown>) : profileBefore,
+        after: pick(data as Record<string, unknown>),
+      })
+    }
   }
 
   // SA-03: an individual user restriction (isActive: false) needs the same
@@ -285,6 +308,10 @@ export async function DELETE(
   if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 })
   if (target.deletedAt) return NextResponse.json({ error: "User already deleted" }, { status: 409 })
 
+  // Resolve the target's department BEFORE the transaction below drops their
+  // memberships, so the deletion audit can still be attributed to a department.
+  const deletedDepartmentId = await resolveUserPrimaryDepartmentId(id, profile!.activeTenantId)
+
   // Pre-fetch pending join requests + their notification recipients BEFORE the
   // transaction wipes them — needed to broadcast resolutions afterwards.
   const pendingJoinRequests = await prisma.joinRequest.findMany({
@@ -338,6 +365,7 @@ export async function DELETE(
   if (profile!.activeTenantId) {
     await recordAuditEvent({
       tenantId: profile!.activeTenantId,
+      departmentId: deletedDepartmentId,
       actorId: profile!.id,
       action: "USER_DELETED",
       targetType: "Profile",

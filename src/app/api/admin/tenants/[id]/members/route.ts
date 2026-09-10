@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth"
 import { badRequest, forbidden, notFound } from "@/lib/api-response"
 import { applyTenantMembership } from "@/lib/tenant-membership"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
 import type { Role } from "@/generated/prisma/enums"
 
@@ -184,8 +185,12 @@ export async function PATCH(request: Request, { params }: Params) {
     select: { id: true, isActive: true },
   })
 
+  // Attribute the restriction to the member's department too, so it appears in
+  // that department's audit view — not only the tenant-wide one.
+  const departmentId = await resolveUserPrimaryDepartmentId(userId, tenantId)
   await recordAuditEvent({
     tenantId,
+    departmentId,
     actorId: profile.id,
     action: isActive ? "USER_REENABLED" : "USER_RESTRICTED",
     targetType: "Profile",

@@ -264,7 +264,10 @@ export async function changeRoles(params: { userId: string; actor: RoleChangeAct
     }
     for (const change of params.changes) await applyChange(tx, params.userId, params.actor.id, change);
     await synchronizeLegacyRoleAssignments(tx, params.userId);
-    await recordAuditEvent({ client: tx, tenantId: infos[0].tenantId, actorId: params.actor.id, action: "ROLE_ASSIGNMENTS_CHANGED", targetType: "Profile", targetId: params.userId, before, after: params.changes });
+    // Attribute to a department when any changed scope is department-bound, so
+    // the change is visible in that department's audit view as well as the tenant's.
+    const auditDepartmentId = infos.find((info) => info.departmentId)?.departmentId ?? null;
+    await recordAuditEvent({ client: tx, tenantId: infos[0].tenantId, departmentId: auditDepartmentId, actorId: params.actor.id, action: "ROLE_ASSIGNMENTS_CHANGED", targetType: "Profile", targetId: params.userId, before, after: params.changes });
     return { ...previewRoleChanges(before, params.changes), before, after: params.changes, tenantId: infos[0].tenantId };
   });
 }

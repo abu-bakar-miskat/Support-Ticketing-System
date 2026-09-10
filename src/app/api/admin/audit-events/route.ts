@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
 
   const targetType = sp.get("targetType")
   const actorId = sp.get("actorId")
+  const departmentId = sp.get("departmentId")
   const take = Math.min(Number(sp.get("take")) || 50, MAX_TAKE)
   const cursor = sp.get("cursor")
 
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
       ...(tenantFilter ? { tenantId: tenantFilter } : {}),
       ...(targetType ? { targetType } : {}),
       ...(actorId ? { actorId } : {}),
+      ...(departmentId ? { departmentId } : {}),
       ...(createdAtFilter.gte || createdAtFilter.lte ? { createdAt: createdAtFilter } : {}),
     },
     orderBy: { createdAt: "desc" },

@@ -837,6 +837,34 @@ export function canAdminDeptSettings(
 }
 
 /**
+ * Best-effort "home" department for a user within a tenant, used to attribute
+ * member-management audit events (restrict, role change, move, deletion) to a
+ * department. Prefers a department they manage, else their active
+ * sub-department's department. Null when they belong to no department yet.
+ */
+export async function resolveUserPrimaryDepartmentId(
+  userId: string,
+  tenantId: string | null | undefined,
+): Promise<string | null> {
+  if (!tenantId) return null;
+  const [manager, subDepartmentMembership] = await Promise.all([
+    prisma.departmentManager.findFirst({
+      where: { userId, department: { tenantId } },
+      select: { departmentId: true },
+    }),
+    prisma.subDepartmentMembership.findFirst({
+      where: { userId, isActive: true, subDepartment: { tenantId } },
+      select: { subDepartment: { select: { departmentId: true } } },
+    }),
+  ]);
+  return (
+    manager?.departmentId ??
+    subDepartmentMembership?.subDepartment.departmentId ??
+    null
+  );
+}
+
+/**
  * Whether an admin/manager may edit a target member (role, schedule, holidays, etc.).
  * Admins: always. Managers: target must be on a sub-department in their active dept scope.
  */

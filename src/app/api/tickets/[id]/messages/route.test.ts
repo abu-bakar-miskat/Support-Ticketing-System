@@ -81,7 +81,10 @@ beforeEach(() => {
   mockAssertAccess.mockResolvedValue(null)
   mockFindUnique.mockResolvedValue(intakeTicket as never)
   mockFindFirst.mockResolvedValue(null as never)
-  mockSend.mockResolvedValue("provider-msg-id")
+  mockSend.mockResolvedValue({
+    providerMessageId: "provider-msg-id",
+    providerEmailId: "resend-email-id",
+  })
   mockFindAttachments.mockResolvedValue([] as never)
   mockUpdateAttachments.mockResolvedValue({ count: 0 } as never)
   mockSubDepartmentStatusFindFirst.mockResolvedValue(null as never)

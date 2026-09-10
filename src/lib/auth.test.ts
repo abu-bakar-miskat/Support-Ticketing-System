@@ -6,6 +6,7 @@ vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
 vi.mock("@/lib/db", () => ({ prisma: {} }))
 
 import { departmentAdminScope, assertDepartmentAdmin, type AuthProfile } from "./auth"
+import { canAdminDeptSettings } from "./dept-scope"
 
 function profile(p: Partial<AuthProfile>): AuthProfile {
   return { role: "agent", departmentAdminIds: [], ...p } as AuthProfile
@@ -25,6 +26,30 @@ describe("departmentAdminScope", () => {
   it("a plain manager (operational only) has an empty admin scope", () => {
     const s = departmentAdminScope(profile({ role: "manager", departmentAdminIds: [] }))
     expect([...(s as Set<string>)]).toEqual([])
+  })
+})
+
+describe("canAdminDeptSettings", () => {
+  it("allows tenant admins for any department", () => {
+    expect(canAdminDeptSettings(profile({ role: "admin" }), "d1")).toBe(true)
+  })
+
+  it("allows department-scoped admins for their departments", () => {
+    expect(
+      canAdminDeptSettings(profile({ role: "manager", departmentAdminIds: ["d1"] }), "d1"),
+    ).toBe(true)
+  })
+
+  it("denies department-scoped admins outside their departments", () => {
+    expect(
+      canAdminDeptSettings(profile({ role: "manager", departmentAdminIds: ["d1"] }), "d2"),
+    ).toBe(false)
+  })
+
+  it("denies plain managers", () => {
+    expect(
+      canAdminDeptSettings(profile({ role: "manager", departmentAdminIds: [] }), "d1"),
+    ).toBe(false)
   })
 })
 

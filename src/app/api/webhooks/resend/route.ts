@@ -1,8 +1,8 @@
-import { after } from "next/server"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { getResendClient, processInboundEmail } from "@/lib/process-inbound-email"
 import { withSystemScope } from "@/lib/request-scope"
+import { messageIdLookupVariants, normalizeMessageId } from "@/lib/inbound-email"
 
 type ReceivedEmailEventData = {
   email_id: string
@@ -54,9 +54,9 @@ async function handlePost(request: Request) {
   const data = event.data as ReceivedEmailEventData
   const { email_id: emailId, message_id: messageId } = data
 
-  // Idempotency: skip immediately if already stored
+  // Idempotency: skip immediately if already stored (normalized + legacy forms)
   const existing = await prisma.ticketMessage.findFirst({
-    where: { providerMessageId: messageId },
+    where: { providerMessageId: { in: messageIdLookupVariants(messageId) } },
     select: { id: true },
   })
   if (existing) {
@@ -65,23 +65,34 @@ async function handlePost(request: Request) {
 
   console.log("[inbound] event received — email_id:", emailId, "message_id:", messageId, "to:", data.to)
 
-  after(async () => {
-    try {
-      await processInboundEmail(emailId, messageId, data.to)
-    } catch (err) {
-      console.error("[inbound] processInboundEmail failed:", err)
-    }
-  })
-
-  return NextResponse.json({ ok: true })
+  // Process inline so a failure returns 5xx and Resend retries. Using after()
+  // previously ack'd 200 and then silently dropped transient failures.
+  try {
+    const stored = await processInboundEmail(emailId, messageId, data.to)
+    return NextResponse.json({ ok: true, stored })
+  } catch (err) {
+    console.error("[inbound] processInboundEmail failed:", err)
+    return NextResponse.json({ error: "Processing failed" }, { status: 500 })
+  }
 }
 
 async function recordDeliveryFailure(eventType: string, data: Record<string, unknown>) {
   const emailId = typeof data.email_id === "string" ? data.email_id : null
-  if (!emailId) return
+  const rfcMessageId =
+    typeof data.message_id === "string" ? normalizeMessageId(data.message_id) : null
+  if (!emailId && !rfcMessageId) return
+
+  const idVariants = messageIdLookupVariants(emailId, rfcMessageId)
 
   const message = await prisma.ticketMessage.findFirst({
-    where: { providerMessageId: emailId },
+    where: {
+      OR: [
+        ...(idVariants.length > 0 ? [{ providerMessageId: { in: idVariants } }] : []),
+        ...(emailId
+          ? [{ rawPayload: { path: ["providerEmailId"], equals: emailId } }]
+          : []),
+      ],
+    },
     select: { id: true, ticketId: true, ticket: { select: { creatorId: true } } },
   })
   if (!message) return

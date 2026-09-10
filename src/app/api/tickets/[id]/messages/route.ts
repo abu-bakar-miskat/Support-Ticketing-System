@@ -227,9 +227,9 @@ export async function POST(
     )
   ).filter((a): a is { content: Buffer; filename: string } => a !== null)
 
-  let providerMessageId: string | null = null
+  let sent: Awaited<ReturnType<typeof sendCustomerReplyEmail>> | null = null
   try {
-    providerMessageId = await sendCustomerReplyEmail({
+    sent = await sendCustomerReplyEmail({
       to: submitterEmail,
       submitterName: submitterName ?? submitterEmail,
       agentName: profile.name,
@@ -257,7 +257,10 @@ export async function POST(
       fromName: profile.name,
       fromEmail: config.fromEmail,
       bodyHtml: messageHtml,
-      providerMessageId,
+      providerMessageId: sent?.providerMessageId ?? null,
+      rawPayload: sent?.providerEmailId
+        ? { providerEmailId: sent.providerEmailId }
+        : undefined,
     },
     include: { author: { select: { id: true, name: true, avatarUrl: true } } },
   })

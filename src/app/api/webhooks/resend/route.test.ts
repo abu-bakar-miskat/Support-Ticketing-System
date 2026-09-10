@@ -4,22 +4,6 @@ vi.mock("server-only", () => ({}))
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-// Collect after() callbacks so tests can flush them explicitly
-const afterCallbacks: Array<() => Promise<unknown>> = []
-async function flushAfter() {
-  await Promise.all(afterCallbacks.splice(0).map((cb) => cb()))
-}
-
-vi.mock("next/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("next/server")>()
-  return {
-    ...actual,
-    after: vi.fn((cb: () => Promise<unknown>) => {
-      afterCallbacks.push(cb)
-    }),
-  }
-})
-
 vi.mock("resend", () => {
   const verify = vi.fn()
   const receivingGet = vi.fn()
@@ -62,6 +46,15 @@ vi.mock("@/lib/customer-reopen", () => ({
 
 vi.mock("@/lib/inbound-rate-limit", () => ({
   isOverRateLimit: vi.fn().mockResolvedValue(false),
+}))
+
+vi.mock("@/lib/mailbox-connection", () => ({
+  findMailboxRouteForRecipients: vi.fn().mockResolvedValue(null),
+  logMailSuppression: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/mailbox-ticket-creation", () => ({
+  createTicketFromInboundEmail: vi.fn(),
 }))
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
@@ -155,7 +148,6 @@ function makeRequest(body: unknown, headers: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  afterCallbacks.length = 0
   // Default: valid signature that returns receivedEventPayload
   mockVerify.mockReturnValue(receivedEventPayload)
   // Default: no duplicate
@@ -243,17 +235,18 @@ describe("POST /api/webhooks/resend", () => {
     expect(mockCreateMsg).not.toHaveBeenCalled()
   })
 
-  it("returns 200 immediately for a valid new event", async () => {
+  it("processes a valid new event inline and returns stored", async () => {
     const res = await POST(makeRequest(receivedEventPayload))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.ok).toBe(true)
+    expect(json.stored).toBe(true)
     expect(json.duplicate).toBeUndefined()
+    expect(mockCreateMsg).toHaveBeenCalled()
   })
 
   it("routes a token-matched reply to the correct ticket and creates inbound TicketMessage", async () => {
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockFindIntake).toHaveBeenCalledWith(
       expect.objectContaining({ where: { replyToken: TOKEN } }),
@@ -267,7 +260,7 @@ describe("POST /api/webhooks/resend", () => {
           authorProfileId: null,
           fromName: "Jane Customer",
           fromEmail: "jane@example.com",
-          providerMessageId: "<test-message-id@example.com>",
+          providerMessageId: "test-message-id@example.com",
         }),
       }),
     )
@@ -275,7 +268,6 @@ describe("POST /api/webhooks/resend", () => {
 
   it("fires a customer_reply notification after persisting", async () => {
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
     expect(mockNotify).toHaveBeenCalledWith(
       expect.objectContaining({ ticketId: "ticket-1" }),
     )
@@ -323,7 +315,6 @@ describe("POST /api/webhooks/resend", () => {
     })
 
     await POST(makeRequest(noTokenEvent))
-    await flushAfter()
 
     expect(mockCreateMsg).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -349,7 +340,6 @@ describe("POST /api/webhooks/resend", () => {
     } as never)
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockCreateMsg).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -372,7 +362,6 @@ describe("POST /api/webhooks/resend", () => {
     } as never)
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockCreateMsg).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -385,7 +374,6 @@ describe("POST /api/webhooks/resend", () => {
 
   it("calls maybeReopenTicket for trusted inbound messages", async () => {
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockMaybeReopen).toHaveBeenCalledWith(
       "ticket-1",
@@ -401,7 +389,6 @@ describe("POST /api/webhooks/resend", () => {
     } as never)
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockMaybeReopen).not.toHaveBeenCalled()
   })
@@ -410,7 +397,6 @@ describe("POST /api/webhooks/resend", () => {
     mockMaybeReopen.mockResolvedValue(true) // simulate reopen happened
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockNotify).toHaveBeenCalledWith(
       expect.objectContaining({ ticketId: "ticket-1" }),
@@ -421,7 +407,6 @@ describe("POST /api/webhooks/resend", () => {
     mockIsOverRateLimit.mockResolvedValue(true)
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockCreateMsg).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -436,7 +421,6 @@ describe("POST /api/webhooks/resend", () => {
     mockIsOverRateLimit.mockResolvedValue(false)
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockCreateMsg).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -453,7 +437,6 @@ describe("POST /api/webhooks/resend", () => {
     })
 
     await POST(makeRequest(receivedEventPayload))
-    await flushAfter()
 
     expect(mockIsOverRateLimit).not.toHaveBeenCalled()
     expect(mockNotify).not.toHaveBeenCalled()
@@ -474,7 +457,6 @@ describe("POST /api/webhooks/resend", () => {
     })
 
     await POST(makeRequest(noMatchEvent))
-    await flushAfter()
 
     expect(mockCreateMsg).not.toHaveBeenCalled()
     expect(mockNotify).not.toHaveBeenCalled()

@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, XCircle } from "lucide-react"
 import { finalizePendingIntake } from "@/lib/intake-finalize"
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
+import { runAsSystem } from "@/lib/request-scope"
 
 export const dynamic = "force-dynamic"
 
@@ -12,9 +13,14 @@ export default async function VerifyIntakePage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
-  const result = await finalizePendingIntake(token)
+  // Anonymous visitor — same system-scope requirement as the public form page
+  // and /api/support submit. Without this, finalizePendingIntake hits the
+  // fail-closed tenant extension and external double-opt-in never creates tickets.
+  const result = await runAsSystem(() => finalizePendingIntake(token))
   // DS-01: department branding for this customer-facing confirmation page.
-  const brand = brandingFrom(await getEmailConfig(result.departmentId))
+  const brand = brandingFrom(
+    await runAsSystem(() => getEmailConfig(result.departmentId)),
+  )
 
   const success = result.status === "created" || result.status === "already"
   const humanId = success ? result.humanId : null
@@ -28,7 +34,7 @@ export default async function VerifyIntakePage({
         : "Something went wrong"
 
   const message = success
-    ? "Your request is confirmed — someone from the PEN sub department will be in touch."
+    ? "Your request is confirmed — someone from the team will be in touch."
     : result.status === "expired"
       ? "Confirmation links are valid for 24 hours. Please submit your request again to get a fresh link."
       : result.status === "notfound"

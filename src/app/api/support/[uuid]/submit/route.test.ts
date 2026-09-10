@@ -118,6 +118,7 @@ beforeEach(() => {
   } as never)
   mockSendConfirmation.mockResolvedValue({
     providerMessageId: "provider-confirm-id",
+    providerEmailId: "resend-confirm-id",
     bodyText: "Hi Jane, we got your request.",
   } as never)
   mockCreateMessage.mockResolvedValue({ id: "msg-1" } as never)
@@ -169,6 +170,7 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
   it("does not create a TicketMessage when the send returns no providerMessageId", async () => {
     mockSendConfirmation.mockResolvedValue({
       providerMessageId: null,
+      providerEmailId: null,
       bodyText: "",
     } as never)
     await POST(makeRequest(validBody), { params })

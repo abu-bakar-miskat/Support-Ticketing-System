@@ -21,32 +21,29 @@ export default async function SettingsIntakeFormsRoute() {
   if (!profile) redirect("/login")
 
   const isAdmin = profile.role === "admin"
-  const isManager = profile.role === "manager"
-  // Managers may view/create support forms for the sub-departments of the
-  // departments they manage; the queries below scope them to managedDeptIds.
-  if (!isAdmin && !isManager) redirect("/")
+  const departmentAdminIds = profile.departmentAdminIds ?? []
+  // Intake forms are admin-only (role-hierarchy.md). Department-scoped admins
+  // surface as role "manager" but hold power via departmentAdminIds.
+  if (!isAdmin && departmentAdminIds.length === 0) redirect("/")
 
   const profileScope = await getProfileDeptScope(profile)
   const activeDeptId = profileScope?.activeDeptId ?? null
+
+  if (activeDeptId && !isAdmin && !departmentAdminIds.includes(activeDeptId)) {
+    redirect("/")
+  }
 
   // This is the department-level Support Forms page: show every form for the
   // department(s), labelled by scope/owner. Sub-department-specific scoping is
   // handled by the dedicated /sub-departments/[name]/support-forms route, so we
   // must NOT filter by the persistent pen_active_team cookie here — doing so hid
   // every form except the last-viewed sub-department's.
-  const managedDeptIds = [
-    ...new Set([
-      ...(profile.managedDepartmentIds ?? []),
-      ...(profile.grantedAccessDeptIds ?? []),
-    ]),
-  ]
-
   const tenantId = profile.activeTenantId ?? "__no_tenant__"
   const deptWhere = activeDeptId
     ? { id: activeDeptId }
     : isAdmin
       ? { tenantId }
-      : { id: { in: managedDeptIds } }
+      : { id: { in: departmentAdminIds } }
 
   const [forms, departments] = await Promise.all([
     prisma.intakeFormConfig.findMany({

@@ -167,11 +167,65 @@ export function parseFromAddress(from: string): { name: string; email: string } 
   return { name: bare, email: bare.toLowerCase() }
 }
 
+// ── Header / Message-ID normalisation ────────────────────────────────────────
+
+/** Lowercase header names so lookups work regardless of Resend casing. */
+export function normalizeHeaderKeys(
+  headers: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(headers)) {
+    out[k.toLowerCase()] = v
+  }
+  return out
+}
+
+/**
+ * Strip surrounding angle brackets and trim. Use this for every value stored
+ * in `TicketMessage.providerMessageId` and for every header-based lookup so
+ * inbound `<id@host>` matches outbound `id@host` (and legacy Resend email ids).
+ */
+export function normalizeMessageId(id: string | null | undefined): string {
+  if (!id) return ""
+  return id.trim().replace(/^<|>$/g, "").trim()
+}
+
+/** Angle-bracket form for outbound `In-Reply-To` / `References` / `Message-ID`. */
+export function formatMessageIdHeader(id: string | null | undefined): string | null {
+  const n = normalizeMessageId(id)
+  if (!n) return null
+  return `<${n}>`
+}
+
+/**
+ * All forms of a message-id that may exist in the DB (normalized + bracketed +
+ * legacy bare Resend email ids). Use with Prisma `{ in: ... }` lookups.
+ */
+export function messageIdLookupVariants(
+  ...ids: Array<string | null | undefined>
+): string[] {
+  const out = new Set<string>()
+  for (const id of ids) {
+    const n = normalizeMessageId(id)
+    if (!n) continue
+    out.add(n)
+    out.add(`<${n}>`)
+    // Legacy outbound rows stored the Resend send API id (no @host).
+    const local = n.includes("@") ? n.slice(0, n.indexOf("@")) : n
+    if (local && local !== n) {
+      out.add(local)
+      out.add(`<${local}>`)
+    }
+  }
+  return [...out]
+}
+
 // ── Header-fallback matching ─────────────────────────────────────────────────
 
 /**
  * Extract all RFC message-IDs referenced in `In-Reply-To` and `References`
- * headers. Returns a deduplicated list for querying stored providerMessageIds.
+ * headers. Returns a deduplicated list of **normalized** ids (no angle brackets)
+ * for querying stored providerMessageIds.
  */
 export function extractReferencedIds(
   inReplyTo: string | null,
@@ -181,11 +235,15 @@ export function extractReferencedIds(
   for (const raw of [inReplyTo, references]) {
     if (!raw) continue
     // IDs wrapped in angle brackets: <local@domain>
-    for (const m of raw.matchAll(/<([^>]+)>/g)) ids.add(m[1])
+    for (const m of raw.matchAll(/<([^>]+)>/g)) {
+      const n = normalizeMessageId(m[1])
+      if (n) ids.add(n)
+    }
     // Also accept bare IDs (no angle brackets in header)
     if (!raw.includes("<")) {
       for (const part of raw.trim().split(/\s+/)) {
-        if (part) ids.add(part)
+        const n = normalizeMessageId(part)
+        if (n) ids.add(n)
       }
     }
   }

@@ -23,6 +23,8 @@ export type DashboardContextValue = {
   crossAccessDeptIds: string[];
   isFullAccessDept: boolean;
   isManagerOfActiveDept: boolean;
+  /** True when the caller may manage admin-only settings for the active department. */
+  canAdminActiveDeptSettings: boolean;
   canAccessModules: boolean;
   userRole: string;
   isSuperAdmin: boolean;

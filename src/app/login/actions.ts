@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/auth-redirect";
 import { completeLogin } from "@/lib/auth/complete-login";
+import { ensureDevTestAccount, isDevTestAccount } from "@/lib/auth/dev-test-accounts";
 
 /**
  * Fixed code that logs any existing user in on non-production builds only.
@@ -92,6 +93,12 @@ export async function verifyOtpCode(formData: FormData) {
   let verificationType: "signup" | "magiclink" =
     requestedType === "signup" ? "signup" : "magiclink";
   if (isDevBypassEnabled && token === DEV_BYPASS_CODE) {
+    // Role-based test accounts (agent@gmail.com, manager@gmail.com, …) are
+    // provisioned on the fly with their mapped role so the bypass logs them in
+    // with the right permissions — no email is ever sent.
+    if (isDevTestAccount(email)) {
+      await ensureDevTestAccount(email);
+    }
     const result = await resolveDevBypassToken(email);
     if ("error" in result) {
       console.error("[verifyOtpCode] dev bypass:", result.error);

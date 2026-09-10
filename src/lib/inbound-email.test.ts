@@ -11,6 +11,9 @@ import {
   parseFromAddress,
   extractReferencedIds,
   extractTicketReferenceFromSubject,
+  normalizeMessageId,
+  messageIdLookupVariants,
+  normalizeHeaderKeys,
 } from "./inbound-email"
 
 // ── sanitizeInboundHtml ───────────────────────────────────────────────────────
@@ -248,6 +251,28 @@ describe("extractReferencedIds", () => {
 
   it("returns an empty array when both headers are null", () => {
     expect(extractReferencedIds(null, null)).toEqual([])
+  })
+})
+
+describe("normalizeMessageId / messageIdLookupVariants", () => {
+  it("strips angle brackets", () => {
+    expect(normalizeMessageId("<abc@x.com>")).toBe("abc@x.com")
+  })
+
+  it("includes bracketed and local-part variants for lookup", () => {
+    const variants = messageIdLookupVariants("<abc@resend.dev>")
+    expect(variants).toEqual(
+      expect.arrayContaining(["abc@resend.dev", "<abc@resend.dev>", "abc", "<abc>"]),
+    )
+  })
+})
+
+describe("normalizeHeaderKeys", () => {
+  it("lowercases header names", () => {
+    expect(normalizeHeaderKeys({ "In-Reply-To": "<a@b.com>", References: "<c@d.com>" })).toEqual({
+      "in-reply-to": "<a@b.com>",
+      references: "<c@d.com>",
+    })
   })
 })
 

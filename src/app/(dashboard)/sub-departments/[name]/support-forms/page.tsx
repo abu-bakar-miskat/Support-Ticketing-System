@@ -22,13 +22,16 @@ export default async function Page({
 }) {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  if (profile.role !== "manager" && profile.role !== "admin") redirect("/")
-
-  const isAdmin = profile.role === "admin"
 
   const { name } = await params
   const subDepartment = await resolveSubDepartmentByName(decodeURIComponent(name), profile)
   if (!subDepartment) notFound()
+
+  // Intake forms are admin-only (tenant admin or department-scoped admin).
+  const isAdmin = profile.role === "admin"
+  const canManage =
+    isAdmin || (profile.departmentAdminIds ?? []).includes(subDepartment.departmentId)
+  if (!canManage) redirect("/")
 
   // Any form that routes tickets into this sub-department — including
   // department-scoped forms that use it as the intake target.

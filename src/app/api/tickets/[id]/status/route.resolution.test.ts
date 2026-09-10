@@ -95,7 +95,10 @@ beforeEach(() => {
     completionStatus,
   ] as never)
   mockFindLastMessage.mockResolvedValue(null as never)
-  mockSendReply.mockResolvedValue("provider-resolution-id")
+  mockSendReply.mockResolvedValue({
+    providerMessageId: "provider-resolution-id",
+    providerEmailId: "resend-resolution-id",
+  })
   mockCreateMessage.mockResolvedValue({ id: "msg-res" } as never)
   mockTransaction.mockImplementation(
     (async (fn: (tx: unknown) => unknown) => {

@@ -193,7 +193,7 @@ export async function createTicketFromPayload(
     subDepartmentId: prep.intakeSubDepartmentId,
   }).catch((err) => {
     console.error("[intake] confirmation email failed:", err)
-    return { providerMessageId: null, bodyText: "" }
+    return { providerMessageId: null, providerEmailId: null, bodyText: "" }
   })
 
   // Persist so inbound replies thread and MAIL-03 bounce events can attach to this ticket.
@@ -209,6 +209,9 @@ export async function createTicketFromPayload(
         fromEmail: config.fromEmail,
         bodyHtml: sent.bodyText,
         providerMessageId: sent.providerMessageId,
+        rawPayload: sent.providerEmailId
+          ? { providerEmailId: sent.providerEmailId }
+          : undefined,
       },
     }).catch((err) => console.error("[intake] confirmation message persist failed:", err))
   }

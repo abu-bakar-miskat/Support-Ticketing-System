@@ -105,13 +105,15 @@ type NavItem = {
   templateFeatureKey?: TemplateFeatureKey;
   /** Hidden from the "agent" role (visible to sub_manager, manager, admin). */
   hideForAgent?: boolean;
+  /** Only shown when the caller can admin settings for the active department. */
+  requiresDeptAdmin?: boolean;
 };
 
 const navViews: NavItem[] = [
   { label: "Board", href: "/board", icon: Columns3, templateFeatureKey: "board" },
   { label: "Timeline", href: "/timeline", icon: GanttChart, hideForSupport: true, templateFeatureKey: "timeline" },
   { label: "Modules", href: "/modules", icon: Blocks, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
-  { label: "Support forms", href: "/support-forms", icon: ClipboardList, supportOnly: true, templateFeatureKey: "supportForm" },
+  { label: "Support forms", href: "/support-forms", icon: ClipboardList, supportOnly: true, templateFeatureKey: "supportForm", requiresDeptAdmin: true },
   { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports", hideForAgent: true },
   { label: "Calendar", href: "/calendar", icon: CalendarDays, templateFeatureKey: "calendar" },
   { label: "My Profile", href: "/profile", icon: UserRound },
@@ -310,6 +312,7 @@ export function Sidebar({
     crossAccessDeptIds,
     isFullAccessDept,
     isManagerOfActiveDept,
+    canAdminActiveDeptSettings,
     canAccessModules,
     userRole,
     isSuperAdmin,
@@ -947,6 +950,7 @@ export function Sidebar({
               if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys)) return false;
               if (!isPathEnabledByFlags(item.href, platformFlags)) return false;
               if (item.hideForAgent && isAgent) return false;
+              if (item.requiresDeptAdmin && !canAdminActiveDeptSettings) return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
               // Per-department-type interface: support departments hide dev-planning
               // views (Timeline, Modules) and surface Support forms; other types

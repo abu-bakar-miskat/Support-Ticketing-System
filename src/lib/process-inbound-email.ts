@@ -8,6 +8,9 @@ import {
   parseFromAddress,
   extractReferencedIds,
   extractTicketReferenceFromSubject,
+  normalizeHeaderKeys,
+  normalizeMessageId,
+  messageIdLookupVariants,
 } from "@/lib/inbound-email"
 import { notifyCustomerReply } from "@/lib/notify-customer-reply"
 import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
@@ -149,9 +152,12 @@ export async function processInboundEmail(
   messageId: string,
   recipients: string[],
 ): Promise<boolean> {
-  // Idempotency check
+  const normalizedMessageId = normalizeMessageId(messageId) || messageId
+  const idVariants = messageIdLookupVariants(messageId)
+
+  // Idempotency check (normalized + legacy bracketed / bare forms)
   const existing = await prisma.ticketMessage.findFirst({
-    where: { providerMessageId: messageId },
+    where: { providerMessageId: { in: idVariants } },
     select: { id: true },
   })
   if (existing) return false
@@ -172,7 +178,7 @@ export async function processInboundEmail(
 
   console.log("[inbound] email fetched — from:", email.from, "subject:", email.subject)
 
-  const headers = email.headers
+  const headers = normalizeHeaderKeys(email.headers)
   const isSystem = isAutoReply(headers)
   const { name: fromName, email: fromEmail } = parseFromAddress(email.from)
 
@@ -206,9 +212,10 @@ export async function processInboundEmail(
       headers["in-reply-to"] ?? null,
       headers["references"] ?? null,
     )
-    if (refIds.length > 0) {
+    const lookupIds = messageIdLookupVariants(...refIds)
+    if (lookupIds.length > 0) {
       const prior = await prisma.ticketMessage.findFirst({
-        where: { providerMessageId: { in: refIds } },
+        where: { providerMessageId: { in: lookupIds } },
         select: {
           ticket: {
             select: {
@@ -266,7 +273,7 @@ export async function processInboundEmail(
       await logMailSuppression({
         tenantId: route.tenantId,
         mailboxConnectionId: route.id,
-        providerMessageId: messageId,
+        providerMessageId: normalizedMessageId,
         fromEmail,
         toAddress: route.address,
         subject: email.subject,
@@ -325,8 +332,9 @@ export async function processInboundEmail(
       rawPayload: {
         from: email.from, to: email.to, subject: email.subject,
         text: email.text, html: email.html, headers, quotedText: quoted,
+        resendEmailId: emailId,
       },
-      providerMessageId: messageId,
+      providerMessageId: normalizedMessageId,
       inReplyTo: headers["in-reply-to"] ?? null,
     },
     select: { id: true, direction: true, status: true, bodyHtml: true, fromName: true, fromEmail: true, createdAt: true, throttled: true },

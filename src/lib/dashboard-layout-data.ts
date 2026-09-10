@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { buildProjectDeptWhere, getProfileDeptScope } from "@/lib/dept-scope";
+import { buildProjectDeptWhere, getProfileDeptScope, canAdminDeptSettings } from "@/lib/dept-scope";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { canAccessModulesArea } from "@/lib/module-permissions";
@@ -89,6 +89,9 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
   // A manager visiting a dept they're a member of (not managing) should get the member experience.
   const isManagerOfActiveDept =
     isManager && activeDeptId !== null && managedDeptIds.includes(activeDeptId);
+
+  const canAdminActiveDeptSettings =
+    activeDeptId !== null && canAdminDeptSettings(profile, activeDeptId);
 
   const [allDeptsRaw, deptSubDepartmentsRaw] = await Promise.all([
     isDeptLevel
@@ -369,6 +372,7 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     // members for read-only surfaces such as Reports.
     isFullAccessDept: isCrossAccessDept && deptScope?.isCrossAccessOnly !== true,
     isManagerOfActiveDept,
+    canAdminActiveDeptSettings,
     canAccessModules: canAccessModulesArea(profile, activeDeptId),
     recentTickets,
     projectNames,

@@ -27,6 +27,7 @@ const EMPTY: LayoutData = {
   crossAccessDeptIds: [],
   isFullAccessDept: false,
   isManagerOfActiveDept: false,
+  canAdminActiveDeptSettings: false,
   canAccessModules: false,
   recentTickets: [],
   projectNames: {},
@@ -94,6 +95,8 @@ export function DepartmentsLayout({
         isFullAccessDept: data.isFullAccessDept ?? EMPTY.isFullAccessDept,
         isManagerOfActiveDept:
           data.isManagerOfActiveDept ?? EMPTY.isManagerOfActiveDept,
+        canAdminActiveDeptSettings:
+          data.canAdminActiveDeptSettings ?? EMPTY.canAdminActiveDeptSettings,
         canAccessModules: data.canAccessModules ?? EMPTY.canAccessModules,
         userRole: data.userRole ?? EMPTY.userRole,
         isSuperAdmin: data.isSuperAdmin ?? EMPTY.isSuperAdmin,

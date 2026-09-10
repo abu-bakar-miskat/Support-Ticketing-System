@@ -38,6 +38,12 @@ export type ProfileLike = {
   grantedAccessDeptIds?: string[];
   /** Subset of grantedAccessDeptIds where the DepartmentAccess grant has fullAccess: true */
   fullAccessGrantedDeptIds?: string[];
+  /**
+   * Departments where the caller holds a DEPARTMENT-scoped Admin assignment.
+   * Effective role may still be `manager` (see deriveEffectiveRole); use this
+   * for admin-only settings, not `role === "admin"` alone.
+   */
+  departmentAdminIds?: string[];
   directMemberDeptIds?: string[];
   isHubMember?: boolean;
   /** Platform super-admin — transcends tenant scope. */
@@ -817,15 +823,17 @@ export function canManageDeptCalendar(
 
 /**
  * Admin-only department settings (branding, SLA, rules, intake forms, mailbox,
- * notification templates). Super Admin is not sufficient unless they also
- * hold a tenant-admin assignment (role === "admin").
+ * notification templates). Tenant admins (`role === "admin"`) pass for any
+ * department; department-scoped Admins pass only for depts in
+ * `departmentAdminIds`. Plain managers do not — operational power is separate
+ * (role-hierarchy.md). Super Admin needs an entered-tenant admin assignment.
  */
 export function canAdminDeptSettings(
   profile: ProfileLike,
-  _departmentId: string,
+  departmentId: string,
 ): boolean {
-  if (profile.role !== "admin") return false;
-  return true;
+  if (profile.role === "admin") return true;
+  return (profile.departmentAdminIds ?? []).includes(departmentId);
 }
 
 /**

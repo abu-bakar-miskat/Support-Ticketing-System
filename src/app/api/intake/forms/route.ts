@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
-import { requireAuth, managerDeptScope } from "@/lib/auth"
+import { requireAuth, departmentAdminScope, assertDepartmentAdmin } from "@/lib/auth"
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 import { AssignmentMethod } from "@/generated/prisma/enums"
 
@@ -18,7 +18,13 @@ export async function GET() {
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const deptScope = managerDeptScope(profile!)
+  // Intake forms are admin-only settings (role-hierarchy.md) — same scope as
+  // PATCH/fields, not managerDeptScope (which also includes cross-access grants).
+  const deptScope = departmentAdminScope(profile!)
+  if (deptScope && deptScope.size === 0) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   const forms = await prisma.intakeFormConfig.findMany({
     where: deptScope
       ? { departmentId: { in: [...deptScope] } }
@@ -61,13 +67,8 @@ export async function POST(request: Request) {
     )
   }
 
-  const deptScope = managerDeptScope(profile!)
-  if (deptScope && !deptScope.has(departmentId)) {
-    return NextResponse.json(
-      { error: "Forbidden: department is outside your scope" },
-      { status: 403 },
-    )
-  }
+  const adminError = assertDepartmentAdmin(profile!, departmentId)
+  if (adminError) return adminError
 
   // Verify the intake subDepartment belongs to the department
   const subDepartment = await prisma.subDepartment.findUnique({

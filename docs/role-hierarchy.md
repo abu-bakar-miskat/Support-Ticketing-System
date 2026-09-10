@@ -113,8 +113,6 @@ Normal staff.
 
 ## Implementation notes (current gaps)
 
-- `deriveEffectiveRole` maps a **department-scoped admin** to `manager`, so Admin and Manager collapse.
-- `departmentAdminIds` treats admin and manager as the same.
-- Many routes authorize with global `profile.role === "admin"` instead of “admin assignment on this tenant/department”.
+- `deriveEffectiveRole` maps a **department-scoped admin** to `manager`, so Admin and Manager collapse globally; use `departmentAdminIds` (and helpers like `canAdminDeptSettings` / `assertDepartmentAdmin`) for admin-only settings.
 - Tenant admin currently has unrestricted ticket access; that stays **in-scope full power** (this hierarchy), not reporting-only.
 - Platform layout currently lets tenant admins into `/platform`; template write must stay Super Admin.

@@ -16,11 +16,18 @@ import { renderTicketCompleted } from "./email-templates/ticket-completed";
 import { renderTicketTransferred } from "./email-templates/ticket-transferred";
 import { renderSignatureHtml, renderSignatureText } from "./email-templates/signature";
 import { normalizeSignaturePrefs } from "./signature-prefs";
+import { formatMessageIdHeader, normalizeMessageId } from "./inbound-email";
 import { prisma } from "./db";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
+
+/** Threading id (RFC Message-ID) + Resend send id (bounce/delivery webhooks). */
+export type SentEmailIds = {
+  providerMessageId: string | null;
+  providerEmailId: string | null;
+};
 
 /** Resend returns 200 with an `error` field on rejection (bad domain, invalid recipient, etc.) — it
  * does not throw. Without checking this, a rejected send looks identical to a successful one. */
@@ -29,6 +36,31 @@ function logIfRejected(kind: string, result: { data: { id: string } | null; erro
     console.error(`[email] ${kind} rejected by Resend:`, result.error.message);
   }
   return result;
+}
+
+/**
+ * After a successful send, prefer the RFC `message_id` (for In-Reply-To matching)
+ * and keep the Resend `email_id` for delivery webhooks. Falls back to the email
+ * id alone when retrieve is unavailable.
+ */
+async function resolveSentMessageIds(emailId: string | null | undefined): Promise<SentEmailIds> {
+  if (!emailId) return { providerMessageId: null, providerEmailId: null };
+  if (!resend) {
+    return { providerMessageId: normalizeMessageId(emailId) || null, providerEmailId: emailId };
+  }
+  let rfc: string | null = null;
+  try {
+    const { data } = await resend.emails.get(emailId);
+    if (data && typeof (data as { message_id?: unknown }).message_id === "string") {
+      rfc = (data as { message_id: string }).message_id;
+    }
+  } catch (err) {
+    console.warn("[email] failed to retrieve message_id for", emailId, err);
+  }
+  return {
+    providerMessageId: normalizeMessageId(rfc ?? emailId) || null,
+    providerEmailId: emailId,
+  };
 }
 
 async function isEmailPrefEnabled(userId: string, prefKey: string): Promise<boolean> {
@@ -113,10 +145,10 @@ export async function sendIntakeConfirmationEmail(args: {
   replyToken?: string | null;
   departmentId?: string | null;
   subDepartmentId?: string | null;
-}): Promise<{ providerMessageId: string | null; bodyText: string }> {
-  if (!resend) return { providerMessageId: null, bodyText: "" };
+}): Promise<{ providerMessageId: string | null; providerEmailId: string | null; bodyText: string }> {
+  if (!resend) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyIntakeConfirmation) return { providerMessageId: null, bodyText: "" };
+  if (!config.notifyIntakeConfirmation) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
   const { subject, html, text } = renderIntakeConfirmation({
     submitterName: args.submitterName,
@@ -141,7 +173,8 @@ export async function sendIntakeConfirmationEmail(args: {
         : (config.replyTo || undefined),
     }),
   );
-  return { providerMessageId: data?.id ?? null, bodyText: text };
+  const ids = await resolveSentMessageIds(data?.id ?? null);
+  return { ...ids, bodyText: text };
 }
 
 /** Double opt-in verification email. `skipped` = sending is unavailable (no provider or the dept
@@ -428,10 +461,10 @@ export async function sendCustomerReplyEmail(args: {
   attachments?: Array<{ content: Buffer; filename: string }>;
   departmentId?: string | null;
   subDepartmentId?: string | null;
-}): Promise<string | null> {
-  if (!resend) return null;
+}): Promise<SentEmailIds> {
+  if (!resend) return { providerMessageId: null, providerEmailId: null };
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyCustomerReply) return null;
+  if (!config.notifyCustomerReply) return { providerMessageId: null, providerEmailId: null };
   const signature = await getUserSignature(args.agentId);
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
 
@@ -447,8 +480,9 @@ export async function sendCustomerReplyEmail(args: {
 
   const from = `${args.agentName} (${config.fromName}) <${config.fromEmail}>`;
   const subject = `Re: [${args.humanId}] ${args.ticketTitle}`;
-  const headers = args.inReplyTo
-    ? { "In-Reply-To": args.inReplyTo, References: args.inReplyTo }
+  const inReplyToHeader = formatMessageIdHeader(args.inReplyTo);
+  const headers = inReplyToHeader
+    ? { "In-Reply-To": inReplyToHeader, References: inReplyToHeader }
     : undefined;
 
   const { data } = logIfRejected(
@@ -466,7 +500,7 @@ export async function sendCustomerReplyEmail(args: {
       attachments: args.attachments?.map((a) => ({ content: a.content, filename: a.filename })),
     }),
   );
-  return data?.id ?? null;
+  return resolveSentMessageIds(data?.id ?? null);
 }
 
 export async function sendInviteEmail(args: {

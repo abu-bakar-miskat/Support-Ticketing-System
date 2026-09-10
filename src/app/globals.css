@@ -368,8 +368,24 @@
     --sts-green-tint: #002a14;
     --sts-purple: #e040fb;
     --sts-purple-tint: #20003a;
-    /* Super-AMOLED: true pure black, no background glows to lift the black. */
-    --sts-bg-gradient: #000000;
+    /* Soft primary wash on true black — keep opacity low so black stays deep. */
+    --sts-bg-gradient:
+      radial-gradient(
+        78% 52% at 50% -8%,
+        color-mix(in srgb, var(--primary) 9%, transparent) 0%,
+        transparent 68%
+      ),
+      radial-gradient(
+        48% 42% at 100% 100%,
+        color-mix(in srgb, var(--primary) 5%, transparent) 0%,
+        transparent 72%
+      ),
+      radial-gradient(
+        40% 36% at 0% 85%,
+        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
+        transparent 70%
+      ),
+      var(--sts-bg);
     --background: oklch(0 0 0);
     --foreground: oklch(0.98 0 0);
     --card: rgba(12, 12, 12, 0.96);

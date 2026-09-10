@@ -85,11 +85,26 @@ export async function POST(request: Request, { params }: Params) {
   const departmentIds = Array.isArray(body.departmentIds)
     ? (body.departmentIds as unknown[]).filter((d): d is string => typeof d === "string")
     : []
+  const subDepartmentId =
+    typeof body.subDepartmentId === "string" && body.subDepartmentId ? body.subDepartmentId : null
+
+  const needsSubDepartment = role === "sub_manager" || role === "agent"
 
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return badRequest("A valid email is required")
   if (!VALID_ROLES.includes(role)) return badRequest("Invalid role")
   if (role !== "admin" && departmentIds.length === 0) {
     return badRequest("Select at least one department for a manager, sub-manager, or agent")
+  }
+  if (needsSubDepartment && !subDepartmentId) {
+    return badRequest("Select a sub-department for a sub-manager or agent")
+  }
+  // The chosen sub-department must belong to this tenant and to a picked department.
+  if (needsSubDepartment && subDepartmentId) {
+    const sub = await prisma.subDepartment.findFirst({
+      where: { id: subDepartmentId, tenantId, departmentId: { in: departmentIds } },
+      select: { id: true },
+    })
+    if (!sub) return badRequest("The selected sub-department is not part of the chosen department")
   }
 
   const existing = await prisma.profile.findUnique({
@@ -103,6 +118,7 @@ export async function POST(request: Request, { params }: Params) {
       userId: existing.id,
       role: role as "admin" | "manager" | "sub_manager" | "agent",
       departmentIds,
+      subDepartmentId: needsSubDepartment ? subDepartmentId : null,
       actorId: profile.id,
     })
     return NextResponse.json({ added: true, member: { ...existing, role } })
@@ -123,6 +139,7 @@ export async function POST(request: Request, { params }: Params) {
       tenantId,
       role,
       departmentIds: role === "admin" ? undefined : departmentIds,
+      subDepartmentId: needsSubDepartment ? subDepartmentId : null,
       invitedBy: profile.id,
       expiresAt: new Date(Date.now() + INVITE_TTL_MS),
     },

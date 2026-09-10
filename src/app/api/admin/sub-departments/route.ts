@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
 import { departmentTenantId } from "@/lib/tenant-scope"
-import { ensureDefaultSupportForm } from "@/lib/support-template"
 import { seedSubDepartmentStatuses } from "@/lib/board-columns"
 
 /** URL-safe slug from a name (mirrors scripts/backfill-subdepartment-slugs.ts). */
@@ -111,12 +110,8 @@ export async function POST(request: Request) {
     await seedSubDepartmentStatuses(prisma, subDepartment.id).catch((e) =>
       console.error("[POST /api/admin/sub-departments] default statuses seed failed:", e),
     )
-    // Support template: create the department's default "Support" intake form
-    // now that it has a sub-department to file tickets into. Idempotent + best-
-    // effort so it never fails sub-department creation.
-    await ensureDefaultSupportForm(prisma, departmentId, subDepartment.id).catch((e) =>
-      console.error("[POST /api/admin/sub-departments] default support form failed:", e),
-    )
+    // Note: support intake forms are no longer auto-created here. Admins/managers
+    // create them explicitly via the support forms UI.
     return NextResponse.json(subDepartment, { status: 201 })
   } catch (e) {
     if (isUniqueViolation(e)) {

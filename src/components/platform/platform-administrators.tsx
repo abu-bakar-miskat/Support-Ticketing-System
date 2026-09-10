@@ -29,13 +29,14 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 // Role filter buckets. "Super Admin" is the isSuperAdmin boolean (not a Role
-// enum value); "Manager" folds in sub_manager (Lead) so no user is hidden.
-type RoleFilter = "all" | "super_admin" | "admin" | "manager" | "agent";
+// enum value); "Sub Manager" (the sub_manager / Lead role) is its own bucket.
+type RoleFilter = "all" | "super_admin" | "admin" | "manager" | "sub_manager" | "agent";
 const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "super_admin", label: "Super Admin" },
   { id: "admin", label: "Admin" },
   { id: "manager", label: "Manager" },
+  { id: "sub_manager", label: "Sub Manager" },
   { id: "agent", label: "Agent" },
 ];
 
@@ -44,7 +45,8 @@ function matchesRoleFilter(u: AdminRow, f: RoleFilter): boolean {
     case "all": return true;
     case "super_admin": return !!u.isSuperAdmin;
     case "admin": return u.role === "admin";
-    case "manager": return u.role === "manager" || u.role === "sub_manager";
+    case "manager": return u.role === "manager";
+    case "sub_manager": return u.role === "sub_manager";
     case "agent": return u.role === "agent";
   }
 }
@@ -125,10 +127,11 @@ export function PlatformAdministrators({
       super_admin: 0,
       admin: 0,
       manager: 0,
+      sub_manager: 0,
       agent: 0,
     };
     for (const u of allUsers) {
-      for (const f of ["super_admin", "admin", "manager", "agent"] as RoleFilter[]) {
+      for (const f of ["super_admin", "admin", "manager", "sub_manager", "agent"] as RoleFilter[]) {
         if (matchesRoleFilter(u, f)) counts[f] += 1;
       }
     }

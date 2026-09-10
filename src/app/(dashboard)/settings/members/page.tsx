@@ -45,6 +45,7 @@ export default async function SettingsMembersRoute() {
           select: {
             userId: true,
             doNotAssign: true,
+            role: true,
             subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
           },
         })
@@ -62,6 +63,7 @@ export default async function SettingsMembersRoute() {
           select: {
             userId: true,
             doNotAssign: true,
+            role: true,
             subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
           },
         })
@@ -96,6 +98,7 @@ export default async function SettingsMembersRoute() {
         select: {
           userId: true,
           doNotAssign: true,
+          role: true,
           subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
         },
       })
@@ -119,7 +122,7 @@ export default async function SettingsMembersRoute() {
     allMemberships = leadSubDepartmentIds.length
       ? await (prisma.subDepartmentMembership as any).findMany({
           where: { isActive: true, subDepartmentId: { in: leadSubDepartmentIds } },
-          select: { userId: true, doNotAssign: true, subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } } },
+          select: { userId: true, doNotAssign: true, role: true, subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } } },
         }).catch((e: unknown) => { console.error("[members/page] lead subDepartmentMembership query failed:", e); return [] as any[]; })
       : [];
     const memberUserIds = [...new Set(allMemberships.map((m: any) => m.userId))];
@@ -137,6 +140,7 @@ export default async function SettingsMembersRoute() {
       select: {
         userId: true,
         doNotAssign: true,
+        role: true,
         subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
       },
     }).catch((e: unknown) => { console.error("[members/page] admin membership detail query failed:", e); return [] as any[]; });
@@ -181,6 +185,13 @@ export default async function SettingsMembersRoute() {
       })
     : [];
 
+  // Role precedence — the Role column shows a user's *effective* role, i.e. the
+  // highest role they hold anywhere. A sub-department "sub_manager" grant lives on
+  // SubDepartmentMembership.role, not Profile.role, so without this the column would
+  // keep showing "agent" after promoting someone to sub-manager of a sub-department.
+  const ROLE_RANK: Record<string, number> = { admin: 4, manager: 3, sub_manager: 2, agent: 1 };
+  const membershipRoleByUser = new Map<string, string>();
+
   const subDepartmentsByUser = new Map<string, string[]>();
   const departmentsByUser = new Map<string, { id: string; name: string }[]>();
   const membershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[]>();
@@ -207,6 +218,13 @@ export default async function SettingsMembersRoute() {
       deptIdByUser.set(m.userId, m.subDepartment.department.id);
     }
     nativeUserIds.add(m.userId);
+    // Track the highest sub-department role for the effective-role display.
+    if (m.role) {
+      const prev = membershipRoleByUser.get(m.userId);
+      if (!prev || (ROLE_RANK[m.role] ?? 0) > (ROLE_RANK[prev] ?? 0)) {
+        membershipRoleByUser.set(m.userId, m.role);
+      }
+    }
     // Build doNotAssign map per user → list of subDepartment memberships
     if (m.subDepartment?.id) {
       const existing = doNotAssignMap.get(m.userId) ?? [];
@@ -260,13 +278,21 @@ export default async function SettingsMembersRoute() {
     : null;
 
   const members: MemberRow[] = [
-    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null }) => ({
+    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null }) => {
+      // Effective role = the higher of the global Profile.role and their highest
+      // sub-department membership role (see ROLE_RANK note above).
+      const membershipRole = membershipRoleByUser.get(p.id);
+      const effectiveRole =
+        membershipRole && (ROLE_RANK[membershipRole] ?? 0) > (ROLE_RANK[p.role] ?? 0)
+          ? membershipRole
+          : p.role;
+      return {
       id: p.id,
       name: p.name,
       email: p.email,
       color: avatarColorFor(p.name),
       avatarUrl: p.avatarUrl ?? null,
-      role: p.role as MemberRow["role"],
+      role: effectiveRole as MemberRow["role"],
       location: p.location ?? null,
       timezone: p.timezone ?? null,
       isActive: p.isActive ?? true,
@@ -278,7 +304,8 @@ export default async function SettingsMembersRoute() {
       subDepartmentMemberships: doNotAssignMap.get(p.id) ?? [],
       departments: departmentsByUser.get(p.id) ?? [],
       memberships: membershipsByUser.get(p.id) ?? [],
-    })),
+      };
+    }),
     ...crossAccessRows,
   ];
 

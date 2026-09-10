@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { X, Search, ChevronDown, Loader2, Users, ListTodo, Bookmark, Trash2, Plus, Check, Download, CalendarClock } from "lucide-react";
 import { FilterDropdown, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
@@ -45,6 +46,8 @@ const SOURCE_OPTIONS = [
   { id: "intake", label: "Support Ticket" },
   { id: "manual", label: "Manual Ticket" },
 ];
+
+const ALL_SUB_DEPARTMENTS_VALUE = "__all_sub_departments__";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -340,6 +343,8 @@ type Props = {
   }[];
   /** Sub-departments the caller can access — shown as a filter when more than one. */
   availableSubDepartments?: { id: string; name: string }[];
+  /** Managers and admins can narrow the department-wide task list by sub-department. */
+  canFilterBySubDepartment?: boolean;
   hideTitleBar?: boolean;
   unassignedOnly?: boolean;
   /** Show draft tickets (own drafts for staff; dept-scoped drafts for admins). */
@@ -352,6 +357,7 @@ export function AllTasksPage({
   availableModules,
   availableMembers,
   availableSubDepartments = [],
+  canFilterBySubDepartment = false,
   hideTitleBar = false,
   unassignedOnly = false,
   draftsOnly = false,
@@ -418,7 +424,10 @@ export function AllTasksPage({
     setSelStatus(new Set(f.status ?? []));
     setSelPriority(new Set(f.priority ?? []));
     setSelProject(new Set(f.projectId ?? []));
-    setSelSubDepartment(new Set(f.subDepartmentId ?? []));
+    // The All Tasks picker is single-select. Older saved views may contain
+    // multiple sub-departments from the previous multi-select UI, so retain
+    // the first selection when restoring one.
+    setSelSubDepartment(new Set(f.subDepartmentId?.slice(0, 1) ?? []));
     setSelPeople(new Set(f.assigneeId ?? []));
     setSelModule(new Set(f.moduleId ?? []));
     setSelLabels(new Set(f.labels ?? []));
@@ -551,6 +560,9 @@ export function AllTasksPage({
     id: p.id,
     label: p.name,
   }));
+  const selectedSubDepartment = availableSubDepartments.find(
+    (subDepartment) => subDepartment.id === [...selSubDepartment][0],
+  );
   const peopleOptions = availableMembers.map((m) => ({
     id: m.id,
     label: m.name,
@@ -776,14 +788,37 @@ export function AllTasksPage({
                 onToggle={(id) => setSelProject(toggle(selProject, id))}
                 onClear={() => setSelProject(new Set())}
               />
-              {availableSubDepartments.length > 1 && (
-                <FilterDropdown
-                  label="Sub-department"
-                  options={availableSubDepartments.map((s) => ({ id: s.id, label: s.name }))}
-                  selected={selSubDepartment}
-                  onToggle={(id) => setSelSubDepartment(toggle(selSubDepartment, id))}
-                  onClear={() => setSelSubDepartment(new Set())}
-                />
+              {canFilterBySubDepartment && availableSubDepartments.length > 1 && (
+                <Select
+                  value={selectedSubDepartment?.id ?? ALL_SUB_DEPARTMENTS_VALUE}
+                  onValueChange={(value) =>
+                    setSelSubDepartment(
+                      value && value !== ALL_SUB_DEPARTMENTS_VALUE ? new Set([value]) : new Set(),
+                    )
+                  }
+                >
+                  <SelectTrigger
+                    aria-label="Filter by sub-department"
+                    className={cn(
+                      "h-8 max-w-52 rounded-full border-sts-card-border bg-transparent px-3 font-sans text-[12px] text-sts-muted hover:border-sts-id hover:bg-transparent hover:text-sts-foreground",
+                      selectedSubDepartment && "border-sts-blue bg-sts-blue-tint font-semibold text-sts-id hover:bg-sts-blue-tint",
+                    )}
+                  >
+                    <span className="truncate">
+                      {selectedSubDepartment?.name ?? "All sub-departments"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-52 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl">
+                    <SelectItem value={ALL_SUB_DEPARTMENTS_VALUE} className="font-sans text-[12px]">
+                      All sub-departments
+                    </SelectItem>
+                    {availableSubDepartments.map((subDepartment) => (
+                      <SelectItem key={subDepartment.id} value={subDepartment.id} className="font-sans text-[12px]">
+                        {subDepartment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               {!unassignedOnly && (
                 <FilterDropdown

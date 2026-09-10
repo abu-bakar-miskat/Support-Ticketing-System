@@ -61,6 +61,7 @@ export async function acceptTenantInvite(
       userId: profile.id,
       role: invite.role as "admin" | "manager" | "sub_manager" | "agent",
       departmentIds,
+      subDepartmentId: invite.subDepartmentId ?? null,
       actorId: invite.invitedBy,
     });
     await tx.tenantInvite.update({

@@ -111,7 +111,11 @@ export function DepartmentsClient({
                 {tenantId && (
                   <InviteMemberDialog
                     tenantId={tenantId}
-                    departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+                    departments={departments.map((d) => ({
+                      id: d.id,
+                      name: d.name,
+                      subDepartments: d.subDepartments ?? [],
+                    }))}
                   />
                 )}
                 <Link

@@ -98,7 +98,7 @@ export function PlatformSidebar() {
               href={item.href}
               title={isCollapsed ? item.label : undefined}
               className={cn(
-                "flex h-8 items-center gap-[9px] rounded-[6px] font-sans text-[13px] transition-colors",
+                "flex h-8 items-center gap-[9px] rounded-full font-sans text-[13px] transition-colors",
                 isCollapsed ? "justify-center px-0" : "px-[9px]",
                 active
                   ? "bg-sts-blue-tint font-semibold text-sts-foreground"

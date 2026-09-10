@@ -57,9 +57,9 @@ export function applyFontSize(size: FontSize) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (size === "default") {
-    delete root.dataset.penFontSize;
+    delete root.dataset.stsFontSize;
   } else {
-    root.dataset.penFontSize = size;
+    root.dataset.stsFontSize = size;
   }
 }
 

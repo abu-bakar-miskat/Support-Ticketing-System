@@ -9,6 +9,8 @@ import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
+import { runWithScope } from "@/lib/request-scope";
+import { resolveProfileTicketScope } from "@/lib/prisma-scope";
 
 async function DeferredBadges({ profile, activeDeptId }: { profile: AuthProfile; activeDeptId: string | null }) {
   const badges = await getDashboardBadgesData(profile).catch((error) => {
@@ -90,10 +92,34 @@ export async function DashboardShellLayout({ children }: { children: React.React
     redirect("/onboarding");
   }
 
-  const [layoutData, branding] = await Promise.all([
-    getDashboardLayoutData(profile, true),
-    profile.activeTenantId ? getTenantBranding(profile.activeTenantId) : Promise.resolve(null),
-  ]);
+  const ticketScope = await resolveProfileTicketScope({
+    id: profile.id,
+    isSuperAdmin: profile.isSuperAdmin,
+    tenantIds: profile.tenantIds,
+  });
+  const ambient =
+    ticketScope.kind === "platform"
+      ? { isPlatformAdmin: true as const, tenantIds: profile.tenantIds }
+      : ticketScope.kind === "tenant"
+        ? {
+            tenantIds: ticketScope.tenantIds,
+            ...(ticketScope.subDepartmentTeamIds
+              ? { subDepartmentTeamIds: ticketScope.subDepartmentTeamIds }
+              : {}),
+            ...(ticketScope.grantedTicketIds
+              ? { grantedTicketIds: ticketScope.grantedTicketIds }
+              : {}),
+          }
+        : { tenantIds: profile.tenantIds };
+
+  const [layoutData, branding] = await runWithScope(ambient, () =>
+    Promise.all([
+      getDashboardLayoutData(profile, true),
+      profile.activeTenantId
+        ? getTenantBranding(profile.activeTenantId)
+        : Promise.resolve(null),
+    ]),
+  );
 
   return (
     <>

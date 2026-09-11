@@ -89,20 +89,24 @@ export default async function LoginPage({
     verificationType: verificationTypeParam,
   } = await searchParams;
   const next = safeNextPath(nextParam);
+  const sentEmail = (emailParam ?? "").trim();
+  const verificationType = verificationTypeParam === "signup" ? "signup" : "magiclink";
+  const sentStep = step === "sent" && sentEmail.length > 0;
 
-  // Redirect already-authenticated users to the dashboard (or invite next)
+  // Redirect already-authenticated users to the dashboard (or invite next).
+  // Skip this on the OTP step: verifyOtpCode has just set the session and
+  // returned { redirectTo }, and the client hard-navigates there. Re-running
+  // this RSC after the action would redirect(next) back to the invite page,
+  // which races that navigation and leaves the invitee on "Accepting…" while
+  // a second accept request hangs behind the dashboard they never reach.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) {
+  if (user && !sentStep) {
     await redirectSuperAdminToPlatform(user.id, next);
     redirect(next);
   }
-
-  const sentEmail = (emailParam ?? "").trim();
-  const verificationType = verificationTypeParam === "signup" ? "signup" : "magiclink";
-  const sentStep = step === "sent" && sentEmail.length > 0;
 
   return (
     <main className="sts-ambient-bg relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-20 font-sans sm:px-8">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   InputOTP,
   InputOTPGroup,
@@ -23,25 +23,22 @@ export function OtpVerifyForm({
 }) {
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
-  const [, startTransition] = useTransition();
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (pending) return;
     setPending(true);
     const formData = new FormData(e.currentTarget);
-    startTransition(async () => {
-      try {
-        const { redirectTo } = await verifyOtpCode(formData);
-        // Hard navigate so "Verifying…" ends when the action finishes. A soft
-        // server-action redirect keeps the button pending until the destination
-        // page RSC completes — which can hang for minutes on a busy DB pool.
-        window.location.assign(redirectTo);
-      } catch (err) {
-        console.error("[OtpVerifyForm] verify failed:", err);
-        setPending(false);
-      }
-    });
+    try {
+      const { redirectTo } = await verifyOtpCode(formData);
+      // Full navigation (not a React transition). Wrapping this in
+      // startTransition kept "Verifying…" pending until the dashboard RSC
+      // finished — which is exactly the stuck spinner after an invite login.
+      window.location.replace(redirectTo);
+    } catch (err) {
+      console.error("[OtpVerifyForm] verify failed:", err);
+      setPending(false);
+    }
   }
 
   return (

@@ -1,11 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { applyTenantMembership } from "@/lib/tenant-membership";
+import { synchronizeLegacyRoleAssignments } from "@/lib/role-assignment";
 import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
 import type { LoginCookie } from "@/lib/auth/complete-login";
-import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope";
-import { DEPT_SLUG_COOKIE, SUBDEPT_SLUG_COOKIE, TENANT_SLUG_COOKIE } from "@/lib/tenant-path";
+import { inviteLandingCookies, inviteLandingPath } from "@/lib/invites/invite-landing";
 
 export type AcceptTenantInviteResult =
   | {
@@ -27,73 +27,18 @@ export type AcceptTenantInviteResult =
       signedInEmail?: string;
     };
 
-const DEPT_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
-
 /** Dashboard path for an accepted tenant-invite role. */
-export function tenantInviteLandingPath(role: Role): string {
-  if (role === "admin") return "/departments";
-  if (role === "manager") return "/manager";
-  return "/";
+export function tenantInviteLandingPath(
+  result: Extract<AcceptTenantInviteResult, { ok: true }>,
+): string {
+  return inviteLandingPath(result.role, result);
 }
 
 /** Cookies that activate the invited tenant / department / sub-department. */
 export function tenantInviteLandingCookies(
   result: Extract<AcceptTenantInviteResult, { ok: true }>,
 ): LoginCookie[] {
-  const cookies: LoginCookie[] = [
-    {
-      name: ACTIVE_TENANT_COOKIE,
-      value: result.tenantId,
-      options: {
-        httpOnly: true,
-        path: "/",
-        maxAge: TENANT_COOKIE_MAX_AGE,
-        sameSite: "lax",
-      },
-    },
-  ];
-  if (result.tenantSlug) {
-    cookies.push({
-      name: TENANT_SLUG_COOKIE,
-      value: result.tenantSlug,
-      options: { path: "/", maxAge: TENANT_COOKIE_MAX_AGE, sameSite: "lax" },
-    });
-  }
-  if (result.departmentId) {
-    cookies.push({
-      name: "pen_active_dept",
-      value: result.departmentId,
-      options: {
-        httpOnly: true,
-        path: "/",
-        maxAge: DEPT_COOKIE_MAX_AGE,
-        sameSite: "lax",
-      },
-    });
-    cookies.push({
-      name: DEPT_SLUG_COOKIE,
-      value: result.departmentSlug ?? "",
-      options: { path: "/", maxAge: DEPT_COOKIE_MAX_AGE, sameSite: "lax" },
-    });
-  }
-  if (result.subDepartmentId) {
-    cookies.push({
-      name: "pen_active_team",
-      value: result.subDepartmentId,
-      options: {
-        httpOnly: true,
-        path: "/",
-        maxAge: DEPT_COOKIE_MAX_AGE,
-        sameSite: "lax",
-      },
-    });
-    cookies.push({
-      name: SUBDEPT_SLUG_COOKIE,
-      value: result.subDepartmentSlug ?? "",
-      options: { path: "/", maxAge: DEPT_COOKIE_MAX_AGE, sameSite: "lax" },
-    });
-  }
-  return cookies;
+  return inviteLandingCookies(result);
 }
 
 type InviteRow = {
@@ -218,19 +163,40 @@ export async function acceptTenantInvite(
       return successFrom(invite, scope);
     }
 
-    await applyTenantMembership(prisma, {
-      tenantId: invite.tenantId,
-      userId: profile.id,
-      role: invite.role as "admin" | "manager" | "sub_manager" | "agent",
-      departmentIds: scope.departmentIds,
-      subDepartmentId: scope.subDepartmentId,
-      actorId: invite.invitedBy,
-      syncRoles: false,
-    });
+    // One transaction = one connection checkout for the whole accept. As
+    // separate top-level calls, each of the ~8 writes below re-queued for a free
+    // connection, so two or three concurrent dashboard renders were enough to
+    // stretch accept past two minutes and stall OTP verify behind it.
+    //
+    // Syncing RoleAssignment in here (instead of leaving it to a follow-up
+    // syncUserRoleAssignments) also means every entry point — the login callback
+    // and /api/tenant-invites/[token]/accept alike — leaves the invitee with
+    // populated scope rows, and costs no extra FOR UPDATE transaction.
+    await prisma.$transaction(async (tx) => {
+      // Serialize against a concurrent resolveUserScope rebuild for this user;
+      // it deletes and recreates these same rows, which races to P2002.
+      await tx.$executeRaw`SELECT "id" FROM "Profile" WHERE "id" = ${profile.id} FOR UPDATE`;
 
-    await prisma.tenantInvite.update({
-      where: { id: invite.id },
-      data: { acceptedAt: new Date() },
+      await applyTenantMembership(tx, {
+        tenantId: invite.tenantId,
+        userId: profile.id,
+        role: invite.role as "admin" | "manager" | "sub_manager" | "agent",
+        departmentIds: scope.departmentIds,
+        subDepartmentId: scope.subDepartmentId,
+        actorId: invite.invitedBy,
+        // Sync explicitly below rather than letting applyTenantMembership pick a
+        // strategy from `"$connect" in db` — on a transaction client that guess
+        // must land on the in-transaction variant, because the alternative opens
+        // a second transaction needing a second connection while this one is
+        // pinned, which is the deadlock this whole function exists to avoid.
+        syncRoles: false,
+      });
+      await synchronizeLegacyRoleAssignments(tx, profile.id);
+
+      await tx.tenantInvite.update({
+        where: { id: invite.id },
+        data: { acceptedAt: new Date() },
+      });
     });
 
     return successFrom(invite, scope);

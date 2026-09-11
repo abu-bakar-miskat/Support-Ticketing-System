@@ -1,8 +1,8 @@
-import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
 import { getTenantInvitePreview } from "@/lib/invites/accept-tenant-invite"
 import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button"
+import { AutoAcceptTenantInvite } from "@/components/auth/auto-accept-tenant-invite"
 
 export const dynamic = "force-dynamic"
 
@@ -37,16 +37,16 @@ export default async function TenantInvitePage({
       })
       signedInEmail = (profile?.email ?? user.email ?? "").toLowerCase() || null
 
-      // Matching session → accept via the Route Handler (may set cookies).
-      // Never cookies().set() in this Server Component — that throws in prod:
-      // "Cookies can only be modified in a Server Action or Route Handler."
+      // Matching session → paint an accepting UI, then hard-navigate to the
+      // Route Handler (sets cookies + 303). Do NOT server-redirect here: Next
+      // waits on that API inside the RSC flight and leaves a blank page.
       if (
         profile &&
         signedInEmail &&
         signedInEmail === invite.email.toLowerCase() &&
         error !== "email_mismatch"
       ) {
-        redirect(`/api/tenant-invites/${encodeURIComponent(token)}/accept`)
+        return <AutoAcceptTenantInvite token={token} />
       }
     }
   }

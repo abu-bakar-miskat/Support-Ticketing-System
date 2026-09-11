@@ -53,5 +53,8 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
 
   if (!result.ok) return { error: result.error };
   lastSentAt.set(email, now);
+  if (result.via === "mailpit") {
+    console.info(`[auth] OTP for ${email} delivered via Mailpit (${result.id ?? "no-id"})`);
+  }
   return { error: null, verificationType };
 }

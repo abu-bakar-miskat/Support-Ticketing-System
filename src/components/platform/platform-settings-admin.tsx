@@ -77,6 +77,7 @@ export function PlatformSettingsAdmin({
   const [platformName, setPlatformName] = useState(initialSettings.platformName);
   const [supportEmail, setSupportEmail] = useState(initialSettings.supportEmail);
   const [devMode, setDevMode] = useState(initialSettings.devMode);
+  const [savingDevMode, setSavingDevMode] = useState(false);
   const [tenantDefaults, setTenantDefaults] = useState<Record<FeatureKey, boolean>>(
     initialSettings.newTenantFeatureDefaults,
   );
@@ -85,7 +86,6 @@ export function PlatformSettingsAdmin({
   const generalDirty =
     platformName !== baseline.platformName ||
     supportEmail !== baseline.supportEmail ||
-    devMode !== baseline.devMode ||
     JSON.stringify(tenantDefaults) !== JSON.stringify(baseline.newTenantFeatureDefaults);
 
   async function saveGeneral() {
@@ -99,7 +99,6 @@ export function PlatformSettingsAdmin({
         body: JSON.stringify({
           platformName,
           supportEmail,
-          devMode,
           newTenantFeatureDefaults: tenantDefaults,
         }),
       });
@@ -117,6 +116,40 @@ export function PlatformSettingsAdmin({
       setStatus("Platform settings saved");
     } finally {
       setSavingGeneral(false);
+    }
+  }
+
+  /** Email mode applies immediately — waiting for "Save changes" left OTP on Resend. */
+  async function setEmailDevMode(next: boolean) {
+    const prev = devMode;
+    setDevMode(next);
+    setSavingDevMode(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/platform-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ devMode: next }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDevMode(prev);
+        setError(body.error ?? "Failed to update email delivery mode");
+        return;
+      }
+      setDevMode(Boolean(body.devMode));
+      setBaseline((b) => ({ ...b, devMode: Boolean(body.devMode) }));
+      setStatus(
+        body.devMode
+          ? "Dev mode on — OTP / invite emails go to Mailpit"
+          : "Production mode on — OTP / invite emails go via Resend",
+      );
+    } catch {
+      setDevMode(prev);
+      setError("Failed to update email delivery mode");
+    } finally {
+      setSavingDevMode(false);
     }
   }
 
@@ -317,6 +350,9 @@ export function PlatformSettingsAdmin({
                       ? "Dev mode: OTP, invite, and authentication emails go to Mailpit. Any email address can be invited or signed in."
                       : "Production mode: OTP, invite, and authentication emails are sent via Resend to real inboxes."}
                   </p>
+                  <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">
+                    Applies immediately — no need to click Save changes.
+                  </p>
                   {devMode && mailpitUiBase && (
                     <a
                       href={mailpitUiBase}
@@ -336,9 +372,15 @@ export function PlatformSettingsAdmin({
                       devMode ? "bg-amber-500/15 text-amber-700" : "bg-sts-green/15 text-sts-green",
                     )}
                   >
-                    {devMode ? "Dev" : "Production"}
+                    {savingDevMode ? "Saving…" : devMode ? "Dev" : "Production"}
                   </span>
-                  <Switch checked={devMode} onCheckedChange={setDevMode} size="sm" aria-label="Toggle email dev mode" />
+                  <Switch
+                    checked={devMode}
+                    onCheckedChange={setEmailDevMode}
+                    disabled={savingDevMode}
+                    size="sm"
+                    aria-label="Toggle email dev mode"
+                  />
                 </div>
               </div>
             </div>

@@ -268,6 +268,10 @@ export async function finalizePendingIntake(token: string): Promise<FinalizeResu
       pending.payload as unknown as PendingPayload,
     )
     await prisma.pendingIntake.update({ where: { token }, data: { ticketId } })
+    // Remember this address so future submissions skip the double opt-in link.
+    await prisma.verifiedEmail
+      .upsert({ where: { email: pending.email }, create: { email: pending.email }, update: {} })
+      .catch(() => undefined)
     return { status: "created", humanId, departmentId }
   } catch (err) {
     console.error("[intake verify] ticket creation failed:", err)

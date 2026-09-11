@@ -126,14 +126,34 @@ async function handlePost(
     idempotencyKey,
   }
 
-  // ── Always require email confirmation before a ticket exists ─────────────────
-  // Every submission is stored as a PendingIntake and a verification link is
-  // emailed; the ticket is only created when the requester clicks that link (via
-  // finalizePendingIntake). No submission — even from a known account or a
-  // previously-verified address — becomes a ticket before that click. The lone
-  // exception is when confirmation email is unavailable/disabled for the
-  // department (`res.skipped` below), where there is no confirmation step to wait
-  // on.
+  // ── Skip verification for already-trusted addresses ──────────────────────────
+  // An active account has already proven ownership of its email at sign-in. An
+  // external address that completed the double opt-in once is trusted too. Do
+  // not route either through the email gate: that would report success while
+  // leaving the ticket, intake record, assignment alerts, and confirmation email
+  // waiting on another click.
+  const [account, verified] = await Promise.all([
+    prisma.profile.findFirst({
+      where: {
+        email: { equals: submitterEmail, mode: "insensitive" },
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    }),
+    prisma.verifiedEmail.findUnique({ where: { email: submitterEmail } }),
+  ])
+
+  if (account || verified) {
+    try {
+      const { ticketId, humanId } = await createTicketFromPayload(uuid, payload)
+      return NextResponse.json({ pending: false, ticketId, humanId }, { status: 201 })
+    } catch (err) {
+      console.error("[intake submit] direct creation failed:", err)
+      return NextResponse.json({ error: "Failed to create submission" }, { status: 500 })
+    }
+  }
+
   const verify = async (token: string) =>
     sendIntakeVerificationEmail({
       to: submitterEmail,

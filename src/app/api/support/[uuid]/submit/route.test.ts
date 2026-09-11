@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 vi.mock("@/lib/db", () => ({
   prisma: {
     intakeFormConfig: { findUnique: vi.fn() },
+    profile: { findFirst: vi.fn() },
+    verifiedEmail: { findUnique: vi.fn() },
     $queryRaw: vi.fn().mockResolvedValue([]),
     $transaction: vi.fn(),
     subDepartment: { findUnique: vi.fn() },
@@ -56,6 +58,8 @@ const mockCreateMessage = vi.mocked(prisma.ticketMessage.create)
 const mockPendingCreate = vi.mocked(prisma.pendingIntake.create)
 const mockFindSubDept = vi.mocked(prisma.subDepartment.findUnique)
 const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
+const mockFindAccount = vi.mocked(prisma.profile.findFirst)
+const mockFindVerifiedEmail = vi.mocked(prisma.verifiedEmail.findUnique)
 
 const form = {
   id: "form-1",
@@ -105,6 +109,8 @@ const validBody = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockFindForm.mockResolvedValue(form as never)
+  mockFindAccount.mockResolvedValue(null)
+  mockFindVerifiedEmail.mockResolvedValue(null)
   mockPrepare.mockResolvedValue(prep as never)
   mockTransaction.mockImplementation(
     (async (fn: (tx: unknown) => unknown) => fn({})) as never,
@@ -155,6 +161,35 @@ describe("POST /api/support/[uuid]/submit — email confirmation gate", () => {
     expect(res.status).toBe(400)
     expect(mockRun).not.toHaveBeenCalled()
     expect(prisma.pendingIntake.delete).toHaveBeenCalled()
+  })
+})
+
+describe("POST /api/support/[uuid]/submit — trusted submitters", () => {
+  it("creates the ticket immediately for an active account", async () => {
+    mockFindAccount.mockResolvedValue({ id: "profile-1" } as never)
+
+    const res = await POST(makeRequest(validBody), { params })
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json).toEqual({ pending: false, ticketId: "ticket-1", humanId: "IT-1" })
+    expect(mockRun).toHaveBeenCalledOnce()
+    expect(mockPendingCreate).not.toHaveBeenCalled()
+    expect(mockSendVerification).not.toHaveBeenCalled()
+    expect(mockSendConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "jane@example.com" }),
+    )
+  })
+
+  it("creates the ticket immediately for a previously verified external email", async () => {
+    mockFindVerifiedEmail.mockResolvedValue({ email: "jane@example.com" } as never)
+
+    const res = await POST(makeRequest(validBody), { params })
+
+    expect(res.status).toBe(201)
+    expect(mockRun).toHaveBeenCalledOnce()
+    expect(mockPendingCreate).not.toHaveBeenCalled()
+    expect(mockSendVerification).not.toHaveBeenCalled()
   })
 })
 

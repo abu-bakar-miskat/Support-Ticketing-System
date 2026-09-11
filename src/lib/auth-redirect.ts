@@ -7,5 +7,7 @@ export function safeNextPath(next: string | null | undefined, fallback = "/"): s
   }
   // Block scheme-like paths such as /javascript:...
   if (/^\/[a-z][a-z0-9+.-]*:/i.test(trimmed)) return fallback;
-  return trimmed;
+  // Drop query/hash — invite deep links must not carry ?error= through OTP verify.
+  const pathOnly = trimmed.split(/[?#]/, 1)[0] || fallback;
+  return pathOnly || fallback;
 }

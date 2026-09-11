@@ -74,10 +74,19 @@ export async function DashboardShellLayout({ children }: { children: React.React
 
   if (!profile) redirect("/login");
 
+  // Dashboard layout sends agents/sub_managers with zero sub-department
+  // memberships to /onboarding. Tenant membership alone is enough to stay in
+  // the app after a tenant invite (dept/sub-dept cookies handle scope).
   const memberships = profile.memberships ?? [];
+  const hasTenantMembership = (profile.tenantMemberships ?? []).length > 0;
   if (profile.isSuperAdmin) {
     // Super Admin is not a tenant member; they use the platform console.
-  } else if (profile.role !== "admin" && profile.role !== "manager" && memberships.length === 0) {
+  } else if (
+    profile.role !== "admin" &&
+    profile.role !== "manager" &&
+    memberships.length === 0 &&
+    !hasTenantMembership
+  ) {
     redirect("/onboarding");
   }
 

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
-import { acceptTenantInvite } from "@/lib/invites/accept-tenant-invite"
-import { ACTIVE_TENANT_COOKIE, TENANT_COOKIE_MAX_AGE } from "@/lib/tenant-scope"
+import {
+  acceptTenantInvite,
+  tenantInviteLandingCookies,
+  tenantInviteLandingPath,
+} from "@/lib/invites/accept-tenant-invite"
 
 type Params = { params: Promise<{ token: string }> }
 
@@ -33,32 +36,31 @@ async function acceptAndRespond(request: NextRequest, token: string, asJson: boo
     return NextResponse.redirect(url)
   }
 
-  // Accepting makes the new tenant active. Reset the active department cookie so
-  // it never points into the previous tenant.
-  const setCookies = (res: NextResponse) => {
-    res.cookies.set(ACTIVE_TENANT_COOKIE, result.tenantId, {
-      httpOnly: true,
-      path: "/",
-      maxAge: TENANT_COOKIE_MAX_AGE,
-      sameSite: "lax",
+  const destination = tenantInviteLandingPath(result.role)
+
+  if (asJson) {
+    const res = NextResponse.json({
+      ok: true,
+      tenantId: result.tenantId,
+      tenantName: result.tenantName,
+      role: result.role,
+      departmentId: result.departmentId,
+      subDepartmentId: result.subDepartmentId,
+      redirectPath: destination,
     })
-    res.cookies.set("pen_active_dept", "", { path: "/", maxAge: 0 })
+    for (const c of tenantInviteLandingCookies(result)) {
+      res.cookies.set(c.name, c.value, c.options)
+    }
     return res
   }
 
-  if (asJson) {
-    return setCookies(
-      NextResponse.json({ ok: true, tenantId: result.tenantId, tenantName: result.tenantName, role: result.role }),
-    )
+  // 303 so refresh doesn't re-POST; never leave the browser on this API URL
+  // (blank white page while the handler runs).
+  const res = NextResponse.redirect(new URL(destination, request.url), 303)
+  for (const c of tenantInviteLandingCookies(result)) {
+    res.cookies.set(c.name, c.value, c.options)
   }
-
-  // Redirect straight to the role's landing page instead of "/", which would
-  // only re-redirect there itself — each hop is a full request that re-runs
-  // getProfile()'s role-assignment resync, so skipping it noticeably speeds up
-  // the post-accept load. Mirrors the routing in app/(dashboard)/(home)/page.tsx.
-  const destination =
-    result.role === "admin" ? "/departments" : result.role === "manager" ? "/manager" : "/"
-  return setCookies(NextResponse.redirect(new URL(destination, request.url)))
+  return res
 }
 
 export async function GET(req: NextRequest, { params }: Params) {

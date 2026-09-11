@@ -78,34 +78,39 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     }
   }
 
-  const [tenantMembership, managedDepts, memberships, deptAccess] = await Promise.all([
-    prisma.tenantMembership.findFirst({
-      where: { userId, isActive: true },
-      orderBy: { createdAt: "asc" },
-      select: { role: true },
-    }),
-    prisma.departmentManager.findMany({
-      where: { userId },
-      select: { departmentId: true, role: true },
-      orderBy: { assignedAt: "asc" },
-    }),
-    prisma.subDepartmentMembership.findMany({
-      where: { userId, isActive: true },
-      select: {
-        subDepartmentId: true,
-        subDepartment: { select: { departmentId: true, slug: true } },
-      },
-      orderBy: { joinedAt: "asc" },
-    }),
-    prisma.departmentAccess.findMany({
-      where: {
-        userId,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      select: { departmentId: true },
-      orderBy: { grantedAt: "asc" },
-    }),
-  ])
+  // Scoped models — run as system so login landing doesn't recurse into
+  // getProfile → RoleAssignment sync (hangs on the shared pooler).
+  const { runAsSystem } = await import("@/lib/request-scope")
+  const [tenantMembership, managedDepts, memberships, deptAccess] = await runAsSystem(() =>
+    Promise.all([
+      prisma.tenantMembership.findFirst({
+        where: { userId, isActive: true },
+        orderBy: { createdAt: "asc" },
+        select: { role: true },
+      }),
+      prisma.departmentManager.findMany({
+        where: { userId },
+        select: { departmentId: true, role: true },
+        orderBy: { assignedAt: "asc" },
+      }),
+      prisma.subDepartmentMembership.findMany({
+        where: { userId, isActive: true },
+        select: {
+          subDepartmentId: true,
+          subDepartment: { select: { departmentId: true, slug: true } },
+        },
+        orderBy: { joinedAt: "asc" },
+      }),
+      prisma.departmentAccess.findMany({
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { departmentId: true },
+        orderBy: { grantedAt: "asc" },
+      }),
+    ]),
+  )
 
   if (tenantMembership?.role === "admin") {
     return { redirectPath: "/departments", cookies: [] }

@@ -166,10 +166,16 @@ export async function loginBlockReason(userId: string): Promise<string | null> {
   }
   if (profile.isSuperAdmin) return null; // transcends tenant scope
 
-  const memberships = await prisma.tenantMembership.findMany({
-    where: { userId, isActive: true },
-    select: { tenant: { select: { status: true, deletedAt: true } } },
-  });
+  // TenantMembership is tenant-scoped — without runAsSystem this triggers
+  // getProfile → RoleAssignment sync (interactive $transaction) and can hang
+  // the OTP verify path for minutes on the Supabase pooler.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  const memberships = await runAsSystem(() =>
+    prisma.tenantMembership.findMany({
+      where: { userId, isActive: true },
+      select: { tenant: { select: { status: true, deletedAt: true } } },
+    }),
+  );
   if (memberships.length === 0) return null; // no tenant to be blocked from
   const allBlocked = memberships.every((m) => tenantBlocksLogin(m.tenant));
   if (!allBlocked) return null;

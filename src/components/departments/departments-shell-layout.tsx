@@ -11,7 +11,13 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
   if (!profile) redirect("/login");
 
   const memberships = profile.memberships ?? [];
-  if (profile.role !== "admin" && profile.role !== "manager" && memberships.length === 0) {
+  const hasTenantMembership = (profile.tenantMemberships ?? []).length > 0;
+  if (
+    profile.role !== "admin" &&
+    profile.role !== "manager" &&
+    memberships.length === 0 &&
+    !hasTenantMembership
+  ) {
     redirect("/onboarding");
   }
 

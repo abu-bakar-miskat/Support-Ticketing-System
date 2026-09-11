@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/auth-redirect";
@@ -59,6 +58,8 @@ async function resolveDevBypassToken(
   return { token: otp, verificationType };
 }
 
+export type VerifyOtpResult = { redirectTo: string };
+
 /**
  * Verify the 6-digit code Supabase emailed alongside the magic link.
  *
@@ -66,8 +67,15 @@ async function resolveDevBypassToken(
  * (Safe Links, corporate mail gateways) and works across browsers/devices — so
  * it sidesteps the "invalid or has expired" failures the single-use link hits
  * when a work-mail gateway prefetches and consumes the token.
+ *
+ * Returns `{ redirectTo }` instead of calling `redirect()` so the client can
+ * hard-navigate (`window.location`). A server-action soft redirect keeps the
+ * form pending until the destination RSC finishes — and the dashboard's first
+ * paint can hang for minutes on a contended DB pool, which looks like verify
+ * itself is stuck.
  */
-export async function verifyOtpCode(formData: FormData) {
+export async function verifyOtpCode(formData: FormData): Promise<VerifyOtpResult> {
+  const started = Date.now();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const token = String(formData.get("token") ?? "").replace(/\D/g, "");
   const next = safeNextPath(String(formData.get("next") ?? ""));
@@ -79,9 +87,9 @@ export async function verifyOtpCode(formData: FormData) {
     (next !== "/" ? `&next=${encodeURIComponent(next)}` : "");
 
   if (!email || token.length < 6) {
-    redirect(
-      `/login?step=sent&error=${encodeURIComponent("Enter the code from your email")}${backQuery}`,
-    );
+    return {
+      redirectTo: `/login?step=sent&error=${encodeURIComponent("Enter the code from your email")}${backQuery}`,
+    };
   }
 
   // Dev-only shortcut: the fixed code is swapped for a real magic-link OTP so
@@ -105,37 +113,43 @@ export async function verifyOtpCode(formData: FormData) {
     const result = await resolveDevBypassToken(email);
     if ("error" in result) {
       console.error("[verifyOtpCode] dev bypass:", result.error);
-      redirect(
-        `/login?step=sent&error=${encodeURIComponent(result.error)}${backQuery}`,
-      );
+      return {
+        redirectTo: `/login?step=sent&error=${encodeURIComponent(result.error)}${backQuery}`,
+      };
     }
     effectiveToken = result.token;
     verificationType = result.verificationType;
   }
 
   const supabase = await createClient();
+  const verifyStarted = Date.now();
   const { data, error } = await supabase.auth.verifyOtp({
     email,
     token: effectiveToken,
     type: verificationType,
   });
+  console.info(`[verifyOtpCode] supabase.verifyOtp ${Date.now() - verifyStarted}ms`);
 
   if (error || !data.user) {
-    redirect(
-      `/login?step=sent&error=${encodeURIComponent(error?.message ?? "That code is invalid or has expired")}${backQuery}`,
-    );
+    return {
+      redirectTo: `/login?step=sent&error=${encodeURIComponent(error?.message ?? "That code is invalid or has expired")}${backQuery}`,
+    };
   }
 
+  const loginStarted = Date.now();
   const { redirectPath, cookies: loginCookies } = await completeLogin({
     supabase,
     user: data.user,
     next,
   });
+  console.info(
+    `[verifyOtpCode] completeLogin ${Date.now() - loginStarted}ms → ${redirectPath} (total ${Date.now() - started}ms)`,
+  );
 
   const cookieStore = await cookies();
   for (const c of loginCookies) {
     cookieStore.set(c.name, c.value, c.options);
   }
 
-  redirect(redirectPath);
+  return { redirectTo: redirectPath };
 }

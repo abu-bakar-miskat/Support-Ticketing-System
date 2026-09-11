@@ -65,7 +65,12 @@ async function acceptAndRespond(
     return res;
   }
 
-  const res = NextResponse.redirect(new URL("/", request.url));
+  // Redirect straight to the role's landing page rather than "/", which only
+  // re-redirects there itself — skipping that hop avoids a full extra request
+  // (each re-runs getProfile's role-assignment resync). Mirrors the routing in
+  // app/(dashboard)/(home)/page.tsx.
+  const destination = result.role === "manager" ? "/manager" : "/";
+  const res = NextResponse.redirect(new URL(destination, request.url));
   res.cookies.set("pen_active_dept", result.departmentId, {
     httpOnly: true,
     path: "/",

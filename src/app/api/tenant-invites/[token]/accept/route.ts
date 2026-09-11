@@ -51,7 +51,14 @@ async function acceptAndRespond(request: NextRequest, token: string, asJson: boo
       NextResponse.json({ ok: true, tenantId: result.tenantId, tenantName: result.tenantName, role: result.role }),
     )
   }
-  return setCookies(NextResponse.redirect(new URL("/", request.url)))
+
+  // Redirect straight to the role's landing page instead of "/", which would
+  // only re-redirect there itself — each hop is a full request that re-runs
+  // getProfile()'s role-assignment resync, so skipping it noticeably speeds up
+  // the post-accept load. Mirrors the routing in app/(dashboard)/(home)/page.tsx.
+  const destination =
+    result.role === "admin" ? "/departments" : result.role === "manager" ? "/manager" : "/"
+  return setCookies(NextResponse.redirect(new URL(destination, request.url)))
 }
 
 export async function GET(req: NextRequest, { params }: Params) {

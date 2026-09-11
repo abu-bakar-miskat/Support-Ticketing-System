@@ -24,8 +24,8 @@ export async function PATCH(
   const joinRequest = await prisma.joinRequest.findFirst({
     where: { id: requestId, departmentId },
     include: {
-      user: { select: { name: true } },
-      department: { select: { name: true } },
+      user: { select: { name: true, role: true } },
+      department: { select: { name: true, tenantId: true } },
     },
   })
   if (!joinRequest) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -49,6 +49,16 @@ export async function PATCH(
   const effectiveRole: Role = (isCrossAccess ? "agent" : (role ?? "agent")) as Role
   const trimmedName = nickname?.trim() || null
   const deptName = joinRequest.department?.name ?? "the department"
+  // Approving a join request grants privileged access — every branch records an
+  // audit row in the same transaction as the grant it approves.
+  const auditTenantId = joinRequest.department?.tenantId ?? null
+  const auditBase = {
+    tenantId: auditTenantId,
+    departmentId,
+    actorId: profile.id,
+    targetType: "Profile",
+    targetId: joinRequest.userId,
+  }
 
   if (action === "approve") {
     if (isCrossAccess) {
@@ -89,6 +99,9 @@ export async function PATCH(
             message: `approved: Your request to join ${deptName} was approved. You've been granted cross-department access.`,
           },
         }),
+        prisma.auditEvent.create({
+          data: { ...auditBase, action: "DEPARTMENT_ACCESS_GRANTED", before: undefined, after: { fullAccess: isFullAccess, via: "join_request" } },
+        }),
       ])
 
       if (!isFullAccess && Array.isArray(projectIds) && projectIds.length > 0) {
@@ -126,6 +139,9 @@ export async function PATCH(
             message: `approved: Your request to join ${deptName} was approved. You've been granted Admin access.`,
           },
         }),
+        prisma.auditEvent.create({
+          data: { ...auditBase, action: "USER_ROLE_CHANGED", before: { role: joinRequest.user?.role }, after: { role: "admin", via: "join_request" } },
+        }),
       ])
     } else if (effectiveRole === "manager") {
       // Assign as department manager — no subDepartment assignment needed
@@ -152,6 +168,9 @@ export async function PATCH(
             joinRequestId: requestId,
             message: `approved: Your request to join ${deptName} was approved. You've been assigned as Manager.`,
           },
+        }),
+        prisma.auditEvent.create({
+          data: { ...auditBase, action: "DEPARTMENT_MANAGER_GRANTED", before: undefined, after: { role: "manager", via: "join_request" } },
         }),
       ])
     } else {
@@ -189,6 +208,9 @@ export async function PATCH(
             joinRequestId: requestId,
             message: `approved: Your request to join ${deptName} was approved. You've been added to ${subDepartment.name}.`,
           },
+        }),
+        prisma.auditEvent.create({
+          data: { ...auditBase, action: "SUB_DEPARTMENT_MEMBER_ADDED", before: undefined, after: { role: memberRole, subDepartmentId, via: "join_request" } },
         }),
       ])
     }

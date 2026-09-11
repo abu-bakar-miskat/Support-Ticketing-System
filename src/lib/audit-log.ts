@@ -12,7 +12,8 @@ type AuditWriteClient = Pick<typeof prisma, "auditEvent"> | Prisma.TransactionCl
  * `ActivityLog`.
  */
 export async function recordAuditEvent(params: {
-  tenantId: string;
+  /** Null for PLATFORM-level events that belong to no tenant (e.g. super-admin grant/revoke). */
+  tenantId: string | null;
   /**
    * Department the event is scoped to, when the action happened within one
    * (member restriction, role change, department move). Null/omitted for

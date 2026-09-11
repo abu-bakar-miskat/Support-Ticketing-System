@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import type { AuthProfile } from "@/lib/auth"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 async function assertDeptScope(deptId: string, caller: AuthProfile): Promise<NextResponse | null> {
   if (caller.role === "admin") return null
@@ -27,7 +28,13 @@ export async function DELETE(
   const { userId } = await req.json()
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 })
 
-  // Find all subDepartments in this department
+  // Find the department (for the audit tenant scope) and its subDepartments.
+  const department = await prisma.department.findUnique({
+    where: { id: deptId },
+    select: { tenantId: true },
+  })
+  if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
+
   const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId: deptId },
     select: { id: true },
@@ -36,6 +43,11 @@ export async function DELETE(
 
   // Use an interactive transaction so we can find the remaining subDepartment after deletion
   await prisma.$transaction(async (tx) => {
+    const removedMemberships = await tx.subDepartmentMembership.findMany({
+      where: { userId, subDepartmentId: { in: subDepartmentIds } },
+      select: { subDepartmentId: true, role: true },
+    })
+
     // 1. Remove only memberships for this department's subDepartments
     await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId: { in: subDepartmentIds } } })
 
@@ -54,6 +66,18 @@ export async function DELETE(
     await tx.profile.updateMany({
       where: { id: userId, subDepartmentId: { in: subDepartmentIds } },
       data: { subDepartmentId: remaining?.subDepartmentId ?? null },
+    })
+
+    await recordAuditEvent({
+      tenantId: department.tenantId,
+      departmentId: deptId,
+      actorId: caller!.id,
+      action: "DEPARTMENT_MEMBER_REMOVED",
+      targetType: "Profile",
+      targetId: userId,
+      before: { subDepartments: removedMemberships },
+      after: null,
+      client: tx,
     })
   })
 

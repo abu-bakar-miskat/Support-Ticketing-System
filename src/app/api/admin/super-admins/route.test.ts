@@ -1,0 +1,86 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+
+vi.mock("server-only", () => ({}))
+vi.mock("@/lib/db", () => {
+  const profile = { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() }
+  return {
+    prisma: {
+      profile,
+      // Interactive transaction: run the callback with a tx that shares the profile mock.
+      $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn({ profile })),
+    },
+  }
+})
+vi.mock("@/lib/auth", () => ({ requireSuperAdmin: vi.fn() }))
+vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn() }))
+
+import { POST, DELETE } from "./route"
+import { prisma } from "@/lib/db"
+import { requireSuperAdmin } from "@/lib/auth"
+import { recordAuditEvent } from "@/lib/audit-log"
+
+const mockRequire = vi.mocked(requireSuperAdmin)
+const mockAudit = vi.mocked(recordAuditEvent)
+const mockFind = vi.mocked(prisma.profile.findUnique)
+const mockUpdate = vi.mocked(prisma.profile.update)
+const mockCount = vi.mocked(prisma.profile.count)
+
+function req(body: unknown) {
+  return new Request("http://localhost/api/admin/super-admins", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as never
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockRequire.mockResolvedValue({ profile: { id: "actor-1" }, error: null } as never)
+})
+
+describe("POST /api/admin/super-admins — grant audit", () => {
+  it("records a SUPER_ADMIN_GRANTED audit event (platform-level, null tenant)", async () => {
+    mockFind.mockResolvedValue({ id: "u2", deletedAt: null, isSuperAdmin: false } as never)
+    mockUpdate.mockResolvedValue({ id: "u2", name: "U", email: "u@x.com", avatarUrl: null } as never)
+
+    const res = await POST(req({ userId: "u2" }))
+    expect(res.status).toBe(200)
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: null,
+        actorId: "actor-1",
+        action: "SUPER_ADMIN_GRANTED",
+        targetType: "Profile",
+        targetId: "u2",
+        after: { isSuperAdmin: true },
+      }),
+    )
+  })
+})
+
+describe("DELETE /api/admin/super-admins — revoke audit", () => {
+  it("records a SUPER_ADMIN_REVOKED audit event", async () => {
+    mockCount.mockResolvedValue(2 as never)
+    mockUpdate.mockResolvedValue({ id: "u2" } as never)
+
+    const res = await DELETE(req({ userId: "u2" }))
+    expect(res.status).toBe(200)
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: null,
+        actorId: "actor-1",
+        action: "SUPER_ADMIN_REVOKED",
+        targetType: "Profile",
+        targetId: "u2",
+      }),
+    )
+  })
+
+  it("refuses to remove the last super-admin (no audit, no update)", async () => {
+    mockCount.mockResolvedValue(1 as never)
+    const res = await DELETE(req({ userId: "u2" }))
+    expect(res.status).toBe(400)
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockAudit).not.toHaveBeenCalled()
+  })
+})

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import type { AuthProfile } from "@/lib/auth"
 import { isValidSubDepartmentRole } from "@/lib/role-management"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 async function assertSubDepartmentScope(subDepartmentId: string, caller: AuthProfile): Promise<NextResponse | null> {
   if (caller.role === "admin") return null
@@ -54,17 +55,30 @@ export async function POST(
 
   const trimmedName = nickname?.trim() || null
 
-  await prisma.$transaction([
-    (prisma.subDepartmentMembership as any).upsert({
+  const membership = await prisma.$transaction(async (tx) => {
+    const before = await (tx.subDepartmentMembership as any).findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
+      select: { role: true, isActive: true, nickname: true },
+    })
+    const saved = await (tx.subDepartmentMembership as any).upsert({
       where: { userId_subDepartmentId: { userId, subDepartmentId } },
       create: { userId, subDepartmentId, role: (role as any) ?? "agent", nickname: trimmedName, isActive: isActive ?? true },
       update: { nickname: trimmedName, isActive: isActive ?? true, ...(role ? { role: role as any } : {}) },
-    }),
-    prisma.profile.updateMany({ where: { id: userId, subDepartmentId: null }, data: { subDepartmentId } }),
-  ])
+    })
+    await tx.profile.updateMany({ where: { id: userId, subDepartmentId: null }, data: { subDepartmentId } })
 
-  const membership = await (prisma.subDepartmentMembership as any).findUnique({
-    where: { userId_subDepartmentId: { userId, subDepartmentId } },
+    await recordAuditEvent({
+      tenantId: subDepartment.tenantId,
+      departmentId: subDepartment.departmentId,
+      actorId: caller!.id,
+      action: before ? "SUB_DEPARTMENT_MEMBER_UPDATED" : "SUB_DEPARTMENT_MEMBER_ADDED",
+      targetType: "Profile",
+      targetId: userId,
+      before: before ?? null,
+      after: { role: saved.role, isActive: saved.isActive, nickname: saved.nickname },
+      client: tx,
+    })
+    return saved
   })
 
   return NextResponse.json(membership, { status: 201 })
@@ -126,9 +140,33 @@ export async function PATCH(
   if (doNotAssign !== undefined) data.doNotAssign = doNotAssign
   if (role) data.role = role
 
-  const updated = await (prisma.subDepartmentMembership as any).update({
-    where: { userId_subDepartmentId: { userId, subDepartmentId } },
-    data,
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: subDepartmentId },
+    select: { tenantId: true, departmentId: true },
+  })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const before = await (tx.subDepartmentMembership as any).findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
+      select: { role: true, isActive: true, doNotAssign: true },
+    })
+    const saved = await (tx.subDepartmentMembership as any).update({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
+      data,
+    })
+    await recordAuditEvent({
+      tenantId: subDepartment.tenantId,
+      departmentId: subDepartment.departmentId,
+      actorId: caller!.id,
+      action: "SUB_DEPARTMENT_MEMBER_UPDATED",
+      targetType: "Profile",
+      targetId: userId,
+      before,
+      after: { role: saved.role, isActive: saved.isActive, doNotAssign: saved.doNotAssign },
+      client: tx,
+    })
+    return saved
   })
 
   return NextResponse.json(updated)
@@ -148,7 +186,17 @@ export async function DELETE(
 
   const { userId } = await req.json()
 
+  const subDepartment = await prisma.subDepartment.findUnique({
+    where: { id: subDepartmentId },
+    select: { tenantId: true, departmentId: true },
+  })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
+
   await prisma.$transaction(async (tx) => {
+    const before = await tx.subDepartmentMembership.findUnique({
+      where: { userId_subDepartmentId: { userId, subDepartmentId } },
+      select: { role: true, isActive: true },
+    })
     await tx.subDepartmentMembership.deleteMany({ where: { userId, subDepartmentId } })
 
     // Profile.teamId is a legacy primary membership pointer. Keep it valid when the
@@ -161,6 +209,18 @@ export async function DELETE(
     await tx.profile.updateMany({
       where: { id: userId, subDepartmentId },
       data: { subDepartmentId: remaining?.subDepartmentId ?? null },
+    })
+
+    await recordAuditEvent({
+      tenantId: subDepartment.tenantId,
+      departmentId: subDepartment.departmentId,
+      actorId: caller!.id,
+      action: "SUB_DEPARTMENT_MEMBER_REMOVED",
+      targetType: "Profile",
+      targetId: userId,
+      before: before ?? null,
+      after: null,
+      client: tx,
     })
   })
 

@@ -5,17 +5,19 @@ vi.mock("@/lib/db", () => ({ prisma: { tenant: { findUnique: vi.fn() } } }))
 vi.mock("@/lib/agreements", () => ({
   listAgreementsForTenant: vi.fn(),
   createAgreement: vi.fn(),
+  hasOverlappingAgreement: vi.fn(),
 }))
 
 import { requireSuperAdmin } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { listAgreementsForTenant, createAgreement } from "@/lib/agreements"
+import { listAgreementsForTenant, createAgreement, hasOverlappingAgreement } from "@/lib/agreements"
 import { GET, POST } from "./route"
 
 const mockRequireSuperAdmin = vi.mocked(requireSuperAdmin)
 const mockTenantFindUnique = vi.mocked(prisma.tenant.findUnique)
 const mockList = vi.mocked(listAgreementsForTenant)
 const mockCreate = vi.mocked(createAgreement)
+const mockHasOverlap = vi.mocked(hasOverlappingAgreement)
 
 function params(id = "t1") {
   return { params: Promise.resolve({ id }) }
@@ -24,6 +26,7 @@ function params(id = "t1") {
 beforeEach(() => {
   vi.clearAllMocks()
   mockRequireSuperAdmin.mockResolvedValue({ profile: { id: "sa1" }, error: null } as never)
+  mockHasOverlap.mockResolvedValue(false)
 })
 
 describe("GET /api/admin/tenants/:id/agreements", () => {

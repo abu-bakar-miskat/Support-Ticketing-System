@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { createNotification } from "@/lib/notify"
+import { recordAuditEvent } from "@/lib/audit-log"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 import {
   DEPARTMENT_ACCESS_ELIGIBILITY_ERROR,
@@ -75,51 +76,66 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Check if this is a new grant (not an update) to avoid duplicate notifications
   const existing = await prisma.departmentAccess.findUnique({
     where: { departmentId_userId: { departmentId: id, userId } },
-    select: { userId: true },
+    select: { fullAccess: true, expiresAt: true, reason: true },
   })
   const isNew = !existing
   const isFullAccess = fullAccess === true
 
-  const grant = await prisma.departmentAccess.upsert({
-    where: { departmentId_userId: { departmentId: id, userId } },
-    create: {
-      departmentId: id,
-      userId,
-      grantedBy: profile!.id,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      reason: reason?.trim() || null,
-      fullAccess: isFullAccess,
-    },
-    update: {
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      reason: reason?.trim() || null,
-      grantedAt: new Date(),
-      grantedBy: profile!.id,
-      fullAccess: isFullAccess,
-    },
-    include: {
-      user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
-      grantor: { select: { id: true, name: true } },
-    },
-  })
-
-  // Specific-projects mode: assign the grantee to the chosen projects so the
-  // restricted (non-fullAccess) scope in dept-scope.ts picks them up. Additive only.
-  if (!isFullAccess && Array.isArray(projectIds) && projectIds.length > 0) {
-    const validProjects = await prisma.project.findMany({
-      where: {
-        id: { in: projectIds },
-        OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
+  const grant = await prisma.$transaction(async (tx) => {
+    const saved = await tx.departmentAccess.upsert({
+      where: { departmentId_userId: { departmentId: id, userId } },
+      create: {
+        departmentId: id,
+        userId,
+        grantedBy: profile!.id,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        reason: reason?.trim() || null,
+        fullAccess: isFullAccess,
       },
-      select: { id: true },
+      update: {
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        reason: reason?.trim() || null,
+        grantedAt: new Date(),
+        grantedBy: profile!.id,
+        fullAccess: isFullAccess,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+        grantor: { select: { id: true, name: true } },
+      },
     })
-    if (validProjects.length > 0) {
-      await prisma.projectMember.createMany({
-        data: validProjects.map((p) => ({ projectId: p.id, userId })),
-        skipDuplicates: true,
+
+    // Specific-projects mode: assign the grantee to the chosen projects so the
+    // restricted (non-fullAccess) scope in dept-scope.ts picks them up. Additive only.
+    if (!isFullAccess && Array.isArray(projectIds) && projectIds.length > 0) {
+      const validProjects = await tx.project.findMany({
+        where: {
+          id: { in: projectIds },
+          OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
+        },
+        select: { id: true },
       })
+      if (validProjects.length > 0) {
+        await tx.projectMember.createMany({
+          data: validProjects.map((p) => ({ projectId: p.id, userId })),
+          skipDuplicates: true,
+        })
+      }
     }
-  }
+
+    await recordAuditEvent({
+      tenantId: dept.tenantId,
+      departmentId: id,
+      actorId: profile!.id,
+      action: isNew ? "DEPARTMENT_ACCESS_GRANTED" : "DEPARTMENT_ACCESS_UPDATED",
+      targetType: "Profile",
+      targetId: userId,
+      before: existing ?? null,
+      after: { fullAccess: isFullAccess, expiresAt: saved.expiresAt, reason: saved.reason },
+      client: tx,
+    })
+    return saved
+  })
 
   if (isNew) {
     createNotification({

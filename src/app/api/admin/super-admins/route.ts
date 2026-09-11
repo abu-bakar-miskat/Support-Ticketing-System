@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireSuperAdmin } from "@/lib/auth"
+import { recordAuditEvent } from "@/lib/audit-log"
 
 /**
  * Platform Settings > Administrators — manage who carries Profile.isSuperAdmin
@@ -21,7 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const { error } = await requireSuperAdmin()
+  const { profile, error } = await requireSuperAdmin()
   if (error) return error
 
   const body = await request.json().catch(() => ({}))
@@ -32,16 +33,31 @@ export async function POST(request: NextRequest) {
 
   const user = await prisma.profile.findUnique({
     where: { id: userId },
-    select: { id: true, deletedAt: true },
+    select: { id: true, deletedAt: true, isSuperAdmin: true },
   })
   if (!user || user.deletedAt) {
     return NextResponse.json({ error: "User not found" }, { status: 404 })
   }
 
-  const admin = await prisma.profile.update({
-    where: { id: userId },
-    data: { isSuperAdmin: true },
-    select: { id: true, name: true, email: true, avatarUrl: true },
+  // Privileged-access change + its audit record are written together: if the
+  // audit write fails, the grant is rolled back (accountability guarantee).
+  const admin = await prisma.$transaction(async (tx) => {
+    const updated = await tx.profile.update({
+      where: { id: userId },
+      data: { isSuperAdmin: true },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    })
+    await recordAuditEvent({
+      tenantId: null, // platform-level role
+      actorId: profile!.id,
+      action: "SUPER_ADMIN_GRANTED",
+      targetType: "Profile",
+      targetId: userId,
+      before: { isSuperAdmin: user.isSuperAdmin },
+      after: { isSuperAdmin: true },
+      client: tx,
+    })
+    return updated
   })
   return NextResponse.json({ admin })
 }
@@ -64,6 +80,18 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "At least one super-admin must remain" }, { status: 400 })
   }
 
-  await prisma.profile.update({ where: { id: userId }, data: { isSuperAdmin: false } })
+  await prisma.$transaction(async (tx) => {
+    await tx.profile.update({ where: { id: userId }, data: { isSuperAdmin: false } })
+    await recordAuditEvent({
+      tenantId: null, // platform-level role
+      actorId: profile!.id,
+      action: "SUPER_ADMIN_REVOKED",
+      targetType: "Profile",
+      targetId: userId,
+      before: { isSuperAdmin: true },
+      after: { isSuperAdmin: false },
+      client: tx,
+    })
+  })
   return NextResponse.json({ ok: true })
 }

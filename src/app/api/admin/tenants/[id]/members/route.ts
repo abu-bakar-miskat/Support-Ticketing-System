@@ -220,6 +220,26 @@ export async function DELETE(request: Request, { params }: Params) {
   const userId = (body.userId as string | undefined)?.trim()
   if (!userId) return badRequest("userId is required")
 
-  await prisma.tenantMembership.deleteMany({ where: { tenantId, userId } })
+  const membership = await prisma.tenantMembership.findUnique({
+    where: { tenantId_userId: { tenantId, userId } },
+    select: { role: true },
+  })
+  if (!membership) return NextResponse.json({ ok: true })
+
+  // Removing a tenant member is a privileged access change — record it in the
+  // same transaction so the removal never lands without an audit trail.
+  await prisma.$transaction(async (tx) => {
+    await tx.tenantMembership.deleteMany({ where: { tenantId, userId } })
+    await recordAuditEvent({
+      tenantId,
+      actorId: profile.id,
+      action: "TENANT_MEMBER_REMOVED",
+      targetType: "Profile",
+      targetId: userId,
+      before: { role: membership.role },
+      after: null,
+      client: tx,
+    })
+  })
   return NextResponse.json({ ok: true })
 }

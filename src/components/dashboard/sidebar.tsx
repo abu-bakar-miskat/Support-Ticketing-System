@@ -532,18 +532,14 @@ export function Sidebar({
             </button>
           ) : brandingLogoUrl ? (
             <div className="flex min-w-0 items-center gap-2">
+              {/* Logo stands on its own — the name is not shown alongside it. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={brandingLogoUrl}
-                alt=""
+                alt={brandingName ?? ""}
                 height={36}
-                className="h-9 w-auto max-w-[72px] shrink-0 object-contain"
+                className="h-9 w-auto max-w-[140px] shrink-0 object-contain"
               />
-              {brandingName && (
-                <span className="truncate text-[15px] font-semibold text-sts-foreground">
-                  {brandingName}
-                </span>
-              )}
             </div>
           ) : brandingName ? (
             <div className="flex min-w-0 items-center gap-2">

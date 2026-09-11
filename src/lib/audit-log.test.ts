@@ -26,6 +26,7 @@ describe("recordAuditEvent", () => {
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
         tenantId: "t1",
+        departmentId: null,
         actorId: "u1",
         action: "FEATURE_FLAG_DISABLED",
         targetType: "FeatureFlag",
@@ -33,6 +34,21 @@ describe("recordAuditEvent", () => {
         before: { enabled: true },
         after: { enabled: false },
       },
+    })
+  })
+
+  it("writes a platform-level event with a null tenantId (super-admin grant/revoke)", async () => {
+    await recordAuditEvent({
+      tenantId: null,
+      actorId: "sa1",
+      action: "SUPER_ADMIN_GRANTED",
+      targetType: "Profile",
+      targetId: "u9",
+      before: { isSuperAdmin: false },
+      after: { isSuperAdmin: true },
+    })
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ tenantId: null, action: "SUPER_ADMIN_GRANTED", targetId: "u9" }),
     })
   })
 

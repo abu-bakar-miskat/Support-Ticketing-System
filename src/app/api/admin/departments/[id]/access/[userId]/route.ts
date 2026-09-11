@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { recordAuditEvent } from "@/lib/audit-log"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 type Params = { params: Promise<{ id: string; userId: string }> }
@@ -74,60 +75,75 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
   const isFullAccess = fullAccess === true
 
+  const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
+  if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
   const existing = await prisma.departmentAccess.findUnique({
     where: { departmentId_userId: { departmentId: id, userId } },
+    select: { fullAccess: true, expiresAt: true, reason: true },
   })
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const grant = await prisma.departmentAccess.update({
-    where: { departmentId_userId: { departmentId: id, userId } },
-    data: {
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      reason: reason?.trim() || null,
-      fullAccess: isFullAccess,
-    },
-    include: {
-      user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
-      grantor: { select: { id: true, name: true } },
-    },
+  const grant = await prisma.$transaction(async (tx) => {
+    const saved = await tx.departmentAccess.update({
+      where: { departmentId_userId: { departmentId: id, userId } },
+      data: {
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        reason: reason?.trim() || null,
+        fullAccess: isFullAccess,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true, role: true } },
+        grantor: { select: { id: true, name: true } },
+      },
+    })
+
+    if (!isFullAccess && Array.isArray(projectIds)) {
+      const validProjects = await tx.project.findMany({
+        where: {
+          id: { in: projectIds },
+          OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
+        },
+        select: { id: true },
+      })
+      const validIds = new Set(validProjects.map((p) => p.id))
+
+      const current = await tx.projectMember.findMany({
+        where: {
+          userId,
+          project: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
+        },
+        select: { projectId: true },
+      })
+      const currentIds = new Set(current.map((c) => c.projectId))
+
+      const toAdd = [...validIds].filter((pid) => !currentIds.has(pid))
+      const toRemove = [...currentIds].filter((pid) => !validIds.has(pid))
+
+      if (toAdd.length > 0) {
+        await tx.projectMember.createMany({
+          data: toAdd.map((pid) => ({ projectId: pid, userId })),
+          skipDuplicates: true,
+        })
+      }
+      if (toRemove.length > 0) {
+        await tx.projectMember.deleteMany({ where: { userId, projectId: { in: toRemove } } })
+      }
+    }
+
+    await recordAuditEvent({
+      tenantId: dept.tenantId,
+      departmentId: id,
+      actorId: profile!.id,
+      action: "DEPARTMENT_ACCESS_UPDATED",
+      targetType: "Profile",
+      targetId: userId,
+      before: existing,
+      after: { fullAccess: saved.fullAccess, expiresAt: saved.expiresAt, reason: saved.reason },
+      client: tx,
+    })
+    return saved
   })
-
-  if (!isFullAccess && Array.isArray(projectIds)) {
-    const validProjects = await prisma.project.findMany({
-      where: {
-        id: { in: projectIds },
-        OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }],
-      },
-      select: { id: true },
-    })
-    const validIds = new Set(validProjects.map((p) => p.id))
-
-    const current = await prisma.projectMember.findMany({
-      where: {
-        userId,
-        project: { OR: [{ departmentId: id }, { subDepartment: { departmentId: id } }] },
-      },
-      select: { projectId: true },
-    })
-    const currentIds = new Set(current.map((c) => c.projectId))
-
-    const toAdd = [...validIds].filter((pid) => !currentIds.has(pid))
-    const toRemove = [...currentIds].filter((pid) => !validIds.has(pid))
-
-    await prisma.$transaction([
-      ...(toAdd.length > 0
-        ? [prisma.projectMember.createMany({
-            data: toAdd.map((pid) => ({ projectId: pid, userId })),
-            skipDuplicates: true,
-          })]
-        : []),
-      ...(toRemove.length > 0
-        ? [prisma.projectMember.deleteMany({
-            where: { userId, projectId: { in: toRemove } },
-          })]
-        : []),
-    ])
-  }
 
   return NextResponse.json(grant)
 }
@@ -143,6 +159,28 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!(profile!.managedDepartmentIds ?? []).includes(id)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  await prisma.departmentAccess.deleteMany({ where: { departmentId: id, userId } })
+  const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
+  if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  const existing = await prisma.departmentAccess.findUnique({
+    where: { departmentId_userId: { departmentId: id, userId } },
+    select: { fullAccess: true, expiresAt: true, reason: true },
+  })
+  if (!existing) return new NextResponse(null, { status: 204 })
+
+  await prisma.$transaction(async (tx) => {
+    await tx.departmentAccess.deleteMany({ where: { departmentId: id, userId } })
+    await recordAuditEvent({
+      tenantId: dept.tenantId,
+      departmentId: id,
+      actorId: profile!.id,
+      action: "DEPARTMENT_ACCESS_REVOKED",
+      targetType: "Profile",
+      targetId: userId,
+      before: existing,
+      after: null,
+      client: tx,
+    })
+  })
   return new NextResponse(null, { status: 204 })
 }

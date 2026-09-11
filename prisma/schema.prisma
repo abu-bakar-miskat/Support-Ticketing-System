@@ -1519,7 +1519,9 @@ model FeatureFlag {
 // `ActivityLog`, which only ever concerns one ticket.
 model AuditEvent {
   id         String   @id @default(cuid())
-  tenantId   String
+  // Null for PLATFORM-level events that belong to no tenant (e.g. granting or
+  // revoking Profile.isSuperAdmin). Tenant-scoped events still carry the tenant.
+  tenantId   String?
   // Department this event belongs to, when the action is scoped to one (e.g.
   // member restriction/role change within a department). Null for tenant-wide
   // events. Lets the same trail be read at both tenant and department level.
@@ -1532,7 +1534,7 @@ model AuditEvent {
   after      Json?
   createdAt  DateTime @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([departmentId])

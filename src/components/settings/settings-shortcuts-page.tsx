@@ -1,5 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
+
+// Placeholder for the platform command/control modifier — resolved per-OS at
+// render time (⌘ on macOS, Ctrl on Windows/Linux).
+const MOD = "$mod";
 
 type Shortcut = {
   label: string;
@@ -15,7 +22,7 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
   {
     title: "General",
     shortcuts: [
-      { label: "Open command palette", keys: ["⌘", "K"] },
+      { label: "Open command palette", keys: [MOD, "K"] },
     ],
   },
   {
@@ -26,7 +33,24 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
   },
 ];
 
-function ShortcutRow({ label, keys }: Shortcut) {
+/**
+ * The command/control modifier for the current OS. Defaults to ⌘ so the server
+ * and first client render match (no hydration mismatch); corrected to "Ctrl" on
+ * Windows/Linux right after mount.
+ */
+function useModifierKey(): string {
+  const [mod, setMod] = useState("⌘");
+  useEffect(() => {
+    const platform =
+      (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ||
+      navigator.platform ||
+      navigator.userAgent;
+    setMod(/mac|iphone|ipad|ipod/i.test(platform) ? "⌘" : "Ctrl");
+  }, []);
+  return mod;
+}
+
+function ShortcutRow({ label, keys, modKey }: Shortcut & { modKey: string }) {
   return (
     <div className="flex items-center gap-4 border-t border-sts-surface py-2.5">
       <span className="min-w-0 font-sans text-[12.5px] text-sts-foreground">
@@ -35,14 +59,14 @@ function ShortcutRow({ label, keys }: Shortcut) {
       <div className="min-w-0 flex-1" aria-hidden />
       <KbdGroup>
         {keys.map((key) => (
-          <Kbd key={key}>{key}</Kbd>
+          <Kbd key={key}>{key === MOD ? modKey : key}</Kbd>
         ))}
       </KbdGroup>
     </div>
   );
 }
 
-function ShortcutCard({ title, shortcuts }: ShortcutSection) {
+function ShortcutCard({ title, shortcuts, modKey }: ShortcutSection & { modKey: string }) {
   return (
     <section
       className={cn(
@@ -55,7 +79,7 @@ function ShortcutCard({ title, shortcuts }: ShortcutSection) {
       </h2>
       <div className="flex flex-col">
         {shortcuts.map((shortcut) => (
-          <ShortcutRow key={shortcut.label} {...shortcut} />
+          <ShortcutRow key={shortcut.label} {...shortcut} modKey={modKey} />
         ))}
       </div>
     </section>
@@ -63,6 +87,7 @@ function ShortcutCard({ title, shortcuts }: ShortcutSection) {
 }
 
 export function SettingsShortcutsPage() {
+  const modKey = useModifierKey();
   return (
     <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-[3px]">
@@ -75,7 +100,7 @@ export function SettingsShortcutsPage() {
       </header>
 
       {SHORTCUT_SECTIONS.map((section) => (
-        <ShortcutCard key={section.title} {...section} />
+        <ShortcutCard key={section.title} {...section} modKey={modKey} />
       ))}
     </div>
   );

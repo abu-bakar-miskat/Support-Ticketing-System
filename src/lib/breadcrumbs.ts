@@ -25,7 +25,8 @@ const ROUTE_META: Record<string, { label: string; parent?: string }> = {
   "/activity": { label: "Activity", parent: "/" },
   "/profile": { label: "My Profile", parent: "/" },
   "/projects": { label: "Projects", parent: "/" },
-  "/departments": { label: "Departments", parent: "/" },
+  // Tenant/departments context has no Home dashboard, so no "Home" parent crumb.
+  "/departments": { label: "Departments" },
   "/department": { label: "Department", parent: "/" },
   "/docs": { label: "User manual", parent: "/" },
   "/reports": { label: "SubDepartment time", parent: "/" },

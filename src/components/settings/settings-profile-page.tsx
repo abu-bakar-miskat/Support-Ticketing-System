@@ -737,7 +737,8 @@ export function SettingsProfilePage({
               type="button"
               variant="outline"
               onClick={handleDiscard}
-              className="h-8 min-w-[78px] rounded-full border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint"
+              disabled={saving || !isDirty}
+              className="h-8 min-w-[78px] rounded-full border-sts-card-border bg-transparent font-sans text-xs font-semibold text-sts-foreground hover:bg-sts-blue-tint disabled:opacity-50"
             >
               Discard
             </Button>

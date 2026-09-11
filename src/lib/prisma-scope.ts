@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { getRequestScope, type RequestScope } from "@/lib/request-scope";
+import { getRequestScope, runAsSystem, type RequestScope } from "@/lib/request-scope";
 
 /**
  * Non-bypassable tenant scoping for every model that carries a `tenantId`
@@ -191,17 +191,38 @@ export function rowGrantedTicketAccess(
 }
 
 /**
- * ASG-06: a caller's explicit ticket-access grants, React-cached per request
- * (mirrors `getProfile`'s caching) so repeated scope resolutions within one
- * request cost a single query, not one per ticket-scoped operation.
+ * The per-ticket read exceptions that override the SD-06 sub-department
+ * allowlist for this caller — the union of:
+ *   - ASG-06 explicit grants (`TicketAccessGrant`, e.g. from a ticket transfer), and
+ *   - tickets assigned to them (primary assignee or co-assignee).
+ *
+ * Assignment must grant read access on its own: otherwise an agent assigned a
+ * ticket outside their own sub-department can neither open it (findUnique
+ * post-filters to null → "not found") nor see it on the board, even though the
+ * app-level access check already treats an assignee as authorized.
+ *
+ * React-cached per request (mirrors `getProfile`) so repeated scope resolutions
+ * cost a single pair of queries, not one per ticket-scoped operation. The
+ * assigned-ticket read runs under `runAsSystem` because `ticket` is itself a
+ * scoped model — resolving its scope here would re-enter `resolveTicketScope` →
+ * unbounded recursion; the `where` restricts to the caller's own assignments, so
+ * the unscoped read leaks nothing. Both reads share one `db` import.
  */
-const getGrantedTicketIds = cache(async (userId: string): Promise<string[]> => {
+const getExceptionTicketIds = cache(async (userId: string): Promise<string[]> => {
   const { prisma } = await import("@/lib/db");
-  const rows = await prisma.ticketAccessGrant.findMany({
-    where: { userId },
-    select: { ticketId: true },
-  });
-  return rows.map((r) => r.ticketId);
+  const [grants, assigned] = await Promise.all([
+    prisma.ticketAccessGrant.findMany({ where: { userId }, select: { ticketId: true } }),
+    runAsSystem(() =>
+      prisma.ticket.findMany({
+        where: {
+          deletedAt: null,
+          OR: [{ assigneeId: userId }, { assignees: { some: { userId } } }],
+        },
+        select: { id: true },
+      }),
+    ),
+  ]);
+  return [...new Set([...grants.map((g) => g.ticketId), ...assigned.map((t) => t.id)])];
 });
 
 /**
@@ -263,15 +284,15 @@ export async function resolveProfileTicketScope(profile: {
 }): Promise<TicketScope> {
   if (profile.isSuperAdmin) return { kind: "platform" };
 
-  const [subDepartmentTeamIds, grantedTicketIds] = await Promise.all([
+  const [subDepartmentTeamIds, exceptionTicketIds] = await Promise.all([
     getSubDepartmentTeamIds(profile.id),
-    getGrantedTicketIds(profile.id),
+    getExceptionTicketIds(profile.id),
   ]);
   return {
     kind: "tenant",
     tenantIds: profile.tenantIds,
     ...(subDepartmentTeamIds != null ? { subDepartmentTeamIds } : {}),
-    ...(grantedTicketIds.length > 0 ? { grantedTicketIds } : {}),
+    ...(exceptionTicketIds.length > 0 ? { grantedTicketIds: exceptionTicketIds } : {}),
   };
 }
 

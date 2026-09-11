@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { TicketDetailPage } from "@/components/tickets/ticket-detail-page";
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar";
 import { ActiveDeptSync } from "@/components/tickets/active-dept-sync";
@@ -153,7 +154,58 @@ export default async function TicketPage({
     },
   });
 
-  if (!ticket || ticket.deletedAt) notFound();
+  if (!ticket || ticket.deletedAt) {
+    // A scoped read returns null both for a ticket that truly doesn't exist and
+    // for one that exists but sits outside the caller's sub-department scope.
+    // Re-check existence unscoped so an access issue shows a clear permission
+    // message (with the human ref) rather than "may have been deleted" — but only
+    // ever for a ticket in the caller's own tenant, never disclosing cross-tenant.
+    const existing = await runAsSystem(() =>
+      prisma.ticket.findUnique({
+        where: { id },
+        select: {
+          tenantId: true,
+          deletedAt: true,
+          ticketNumber: true,
+          subDepartment: {
+            select: {
+              prefix: true,
+              name: true,
+              departmentId: true,
+              department: { select: { name: true } },
+            },
+          },
+        },
+      }),
+    );
+    if (!existing || existing.deletedAt || !profile.tenantIds.includes(existing.tenantId)) {
+      notFound();
+    }
+
+    const deniedRef = `${existing.subDepartment.prefix}-${existing.ticketNumber}`;
+    const deniedReason =
+      profile.role === "manager"
+        ? "no_dept_access"
+        : existing.subDepartment.departmentId
+          ? "cross_access_needed"
+          : "no_team_access";
+    return (
+      <>
+        <BreadcrumbRegistrar
+          crumbs={[
+            { label: "My Tasks", href: "/tasks" },
+            { label: deniedRef, href: `/tasks/${id}` },
+          ]}
+        />
+        <TicketAccessDenied
+          reason={deniedReason}
+          ticketRef={deniedRef}
+          deptName={existing.subDepartment.department?.name ?? null}
+          subDepartmentName={existing.subDepartment.name}
+        />
+      </>
+    );
+  }
 
   // Drafts: only the creator or an admin may open them (managers/peers cannot).
   if (ticket.isDraft) {

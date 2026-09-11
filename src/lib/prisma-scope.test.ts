@@ -122,7 +122,10 @@ describe("resolveTicketScope — ambient resolution", () => {
       resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(["subDepartmentA"]),
     }));
     vi.doMock("@/lib/db", () => ({
-      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) } },
+      prisma: {
+        ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) },
+        ticket: { findMany: vi.fn().mockResolvedValue([]) },
+      },
     }));
 
     await expect(resolveTicketScope()).resolves.toEqual({
@@ -137,6 +140,34 @@ describe("resolveTicketScope — ambient resolution", () => {
     vi.doUnmock("@/lib/db");
   });
 
+  it("folds tickets assigned to the caller into the grant exception (assignee read-scope)", async () => {
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({ id: "user-live-assignee", tenantIds: ["tenant-A"], isSuperAdmin: false }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({
+      resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(["subDepartmentA"]),
+    }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: {
+        ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) },
+        ticket: { findMany: vi.fn().mockResolvedValue([{ id: "t-assigned" }, { id: "t-granted" }]) },
+      },
+    }));
+
+    const scope = await resolveTicketScope();
+    expect(scope).toMatchObject({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      subDepartmentTeamIds: ["subDepartmentA"],
+    });
+    // Assigned + granted ids merged and de-duplicated.
+    expect((scope as { grantedTicketIds: string[] }).grantedTicketIds.sort()).toEqual(["t-assigned", "t-granted"]);
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
   it("omits subDepartmentTeamIds for a live caller with no SD-06 restriction (null)", async () => {
     vi.doMock("@/lib/profile", () => ({
       getProfile: vi.fn().mockResolvedValue({ id: "user-live-2", tenantIds: ["tenant-A"], isSuperAdmin: false }),
@@ -145,7 +176,10 @@ describe("resolveTicketScope — ambient resolution", () => {
       resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue(null),
     }));
     vi.doMock("@/lib/db", () => ({
-      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) } },
+      prisma: {
+        ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) },
+        ticket: { findMany: vi.fn().mockResolvedValue([]) },
+      },
     }));
 
     await expect(resolveTicketScope()).resolves.toEqual({ kind: "tenant", tenantIds: ["tenant-A"] });
@@ -163,7 +197,10 @@ describe("resolveTicketScope — ambient resolution", () => {
       resolveSubDepartmentTeamIds: vi.fn().mockResolvedValue([]),
     }));
     vi.doMock("@/lib/db", () => ({
-      prisma: { ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) } },
+      prisma: {
+        ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) },
+        ticket: { findMany: vi.fn().mockResolvedValue([]) },
+      },
     }));
 
     await expect(resolveTicketScope()).resolves.toEqual({

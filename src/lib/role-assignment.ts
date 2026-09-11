@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
@@ -350,14 +351,25 @@ export async function syncUserRoleAssignments(userId: string): Promise<void> {
 }
 
 /** Resolve a user's effective scope, reading RoleAssignment (kept fresh). */
-export async function resolveUserScope(userId: string): Promise<UserScope> {
+export const resolveUserScope = cache(async function resolveUserScope(
+  userId: string,
+): Promise<UserScope> {
+  const existing = await prisma.roleAssignment.findMany({
+    where: { userId },
+    select: { role: true, scopeType: true, scopeId: true },
+  });
+  // Invite accept (and other write paths) already rebuild these rows. Syncing
+  // again on every dashboard query opens a FOR UPDATE transaction that queues
+  // behind the shared pooler and leaves OTP verify stuck on "Verifying…".
+  if (existing.length > 0) return shapeScope(existing as ScopeRow[]);
+
   await syncUserRoleAssignments(userId);
   const rows = await prisma.roleAssignment.findMany({
     where: { userId },
     select: { role: true, scopeType: true, scopeId: true },
   });
   return shapeScope(rows as ScopeRow[]);
-}
+});
 
 /** Whether a user may enter/see a department (first consumer of the resolver). */
 export async function canAccessDepartment(userId: string, departmentId: string): Promise<boolean> {

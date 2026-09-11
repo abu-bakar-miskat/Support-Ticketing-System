@@ -5,6 +5,8 @@ import { getDashboardLayoutData } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
 import { DepartmentsLayout } from "@/components/departments/departments-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
+import { runWithScope } from "@/lib/request-scope";
+import { resolveProfileTicketScope } from "@/lib/prisma-scope";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -21,10 +23,34 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
     redirect("/onboarding");
   }
 
-  const [layoutData, tenantBranding] = await Promise.all([
-    getDashboardLayoutData(profile),
-    profile.activeTenantId ? getTenantBranding(profile.activeTenantId) : Promise.resolve(null),
-  ]);
+  const ticketScope = await resolveProfileTicketScope({
+    id: profile.id,
+    isSuperAdmin: profile.isSuperAdmin,
+    tenantIds: profile.tenantIds,
+  });
+  const ambient =
+    ticketScope.kind === "platform"
+      ? { isPlatformAdmin: true as const, tenantIds: profile.tenantIds }
+      : ticketScope.kind === "tenant"
+        ? {
+            tenantIds: ticketScope.tenantIds,
+            ...(ticketScope.subDepartmentTeamIds
+              ? { subDepartmentTeamIds: ticketScope.subDepartmentTeamIds }
+              : {}),
+            ...(ticketScope.grantedTicketIds
+              ? { grantedTicketIds: ticketScope.grantedTicketIds }
+              : {}),
+          }
+        : { tenantIds: profile.tenantIds };
+
+  const [layoutData, tenantBranding] = await runWithScope(ambient, () =>
+    Promise.all([
+      getDashboardLayoutData(profile),
+      profile.activeTenantId
+        ? getTenantBranding(profile.activeTenantId)
+        : Promise.resolve(null),
+    ]),
+  );
 
   return (
     <>

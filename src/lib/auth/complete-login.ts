@@ -7,7 +7,7 @@ import {
   ACTIVE_TENANT_COOKIE,
   TENANT_COOKIE_MAX_AGE,
 } from "@/lib/tenant-scope";
-import { TENANT_SLUG_COOKIE, DEPT_SLUG_COOKIE } from "@/lib/tenant-path";
+import { TENANT_SLUG_COOKIE } from "@/lib/tenant-path";
 import { loginBlockReason } from "@/lib/tenant-lifecycle";
 import { resolvePostLoginLanding } from "@/lib/auth/post-login-redirect";
 
@@ -160,55 +160,10 @@ export async function completeLogin(args: {
     };
   }
 
-  const tTenant = Date.now();
-  const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin);
-  console.info(`[completeLogin] resolveLoginTenantId ${Date.now() - tTenant}ms`);
-
-  if (inviteToken) {
-    const { runAsSystem } = await import("@/lib/request-scope");
-    const result = await runAsSystem(() =>
-      acceptDepartmentInvite(inviteToken, {
-        id: profile.id,
-        email: profile.email,
-      }),
-    );
-    if (result.ok) {
-      const invitedDept = await runAsSystem(() =>
-        prisma.department.findUnique({
-          where: { id: result.departmentId },
-          select: { slug: true },
-        }),
-      );
-      return {
-        redirectPath: "/",
-        cookies: [
-          clearNextCookie,
-          ...(await tenantCookie(tenantId)),
-          {
-            name: "pen_active_dept",
-            value: result.departmentId,
-            options: {
-              httpOnly: true,
-              path: "/",
-              maxAge: 60 * 60 * 24 * 30,
-              sameSite: "lax",
-            },
-          },
-          {
-            name: DEPT_SLUG_COOKIE,
-            value: invitedDept?.slug ?? "",
-            options: { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" },
-          },
-        ],
-      };
-    }
-    // Surface the accept error on the invite page instead of dumping into onboarding
-    return {
-      redirectPath: `/invite/${encodeURIComponent(inviteToken)}?error=${encodeURIComponent(result.code)}`,
-      cookies: [clearNextCookie],
-    };
-  }
-
+  // Accepting a tenant invite resolves the tenant itself and emits its own
+  // tenant cookies, so it runs before resolveLoginTenantId — that lookup would
+  // only be thrown away here, and every query skipped keeps this path off a
+  // contended pool.
   if (tenantInviteToken) {
     const tAccept = Date.now();
     const {
@@ -222,17 +177,11 @@ export async function completeLogin(args: {
     });
     console.info(`[completeLogin] acceptTenantInvite ${Date.now() - tAccept}ms`);
     if (result.ok) {
-      // Warm RoleAssignment before the dashboard's first getProfile → resolveUserScope
-      // so the soft-nav / hard-nav destination doesn't open a long interactive
-      // $transaction on a contended pooler.
-      const { syncUserRoleAssignments } = await import("@/lib/role-assignment");
-      const tSync = Date.now();
-      await syncUserRoleAssignments(profile.id).catch((err) => {
-        console.error("[completeLogin] role sync after tenant invite failed:", err);
-      });
-      console.info(`[completeLogin] syncUserRoleAssignments ${Date.now() - tSync}ms`);
+      // acceptTenantInvite rebuilds RoleAssignment inside its own transaction,
+      // so the destination's first getProfile → resolveUserScope already finds
+      // the invitee's scope rows.
       return {
-        redirectPath: tenantInviteLandingPath(result.role),
+        redirectPath: tenantInviteLandingPath(result),
         cookies: [clearNextCookie, ...tenantInviteLandingCookies(result)],
       };
     }
@@ -241,6 +190,38 @@ export async function completeLogin(args: {
       cookies: [clearNextCookie],
     };
   }
+
+  // Same ordering rationale as the tenant invite above: accepting the invite is
+  // what creates this user's first membership, so resolveLoginTenantId would
+  // resolve null for a brand-new invitee anyway — and the accept result names
+  // the tenant directly.
+  if (inviteToken) {
+    const tAccept = Date.now();
+    const {
+      departmentInviteLandingCookies,
+      departmentInviteLandingPath,
+    } = await import("@/lib/invites/accept-department-invite");
+    const result = await acceptDepartmentInvite(inviteToken, {
+      id: profile.id,
+      email: profile.email,
+    });
+    console.info(`[completeLogin] acceptDepartmentInvite ${Date.now() - tAccept}ms`);
+    if (result.ok) {
+      return {
+        redirectPath: departmentInviteLandingPath(result),
+        cookies: [clearNextCookie, ...departmentInviteLandingCookies(result)],
+      };
+    }
+    // Surface the accept error on the invite page instead of dumping into onboarding
+    return {
+      redirectPath: `/invite/${encodeURIComponent(inviteToken)}?error=${encodeURIComponent(result.code)}`,
+      cookies: [clearNextCookie],
+    };
+  }
+
+  const tTenant = Date.now();
+  const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin);
+  console.info(`[completeLogin] resolveLoginTenantId ${Date.now() - tTenant}ms`);
 
   // No explicit /invite/<token> deep link: still consume any pending invite
   // addressed to this email so an invited user becomes a member however they

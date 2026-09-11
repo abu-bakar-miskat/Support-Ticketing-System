@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
-import { acceptDepartmentInvite } from "@/lib/invites/accept-department-invite";
+import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db";
+import {
+  acceptDepartmentInvite,
+  departmentInviteLandingCookies,
+  departmentInviteLandingPath,
+} from "@/lib/invites/accept-department-invite";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -9,17 +14,31 @@ async function acceptAndRespond(
   token: string,
   asJson: boolean,
 ) {
-  const { profile, error } = await requireAuth();
-  if (error) {
-    if (asJson) return error;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    if (asJson) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", `/invite/${token}`);
+    return NextResponse.redirect(login);
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: user.id },
+    select: { id: true, email: true },
+  });
+  if (!profile) {
+    if (asJson) return NextResponse.json({ error: "Profile not found" }, { status: 401 });
     const login = new URL("/login", request.url);
     login.searchParams.set("next", `/invite/${token}`);
     return NextResponse.redirect(login);
   }
 
   const result = await acceptDepartmentInvite(token, {
-    id: profile!.id,
-    email: profile!.email,
+    id: profile.id,
+    email: profile.email,
   });
 
   if (!result.ok) {
@@ -55,13 +74,11 @@ async function acceptAndRespond(
       subDepartmentId: result.subDepartmentId,
       subDepartmentName: result.subDepartmentName,
       role: result.role,
+      redirectPath: departmentInviteLandingPath(result),
     });
-    res.cookies.set("pen_active_dept", result.departmentId, {
-      httpOnly: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-      sameSite: "lax",
-    });
+    for (const c of departmentInviteLandingCookies(result)) {
+      res.cookies.set(c.name, c.value, c.options);
+    }
     return res;
   }
 
@@ -69,14 +86,12 @@ async function acceptAndRespond(
   // re-redirects there itself — skipping that hop avoids a full extra request
   // (each re-runs getProfile's role-assignment resync). Mirrors the routing in
   // app/(dashboard)/(home)/page.tsx.
-  const destination = result.role === "manager" ? "/manager" : "/";
-  const res = NextResponse.redirect(new URL(destination, request.url));
-  res.cookies.set("pen_active_dept", result.departmentId, {
-    httpOnly: true,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-    sameSite: "lax",
-  });
+  const res = NextResponse.redirect(
+    new URL(departmentInviteLandingPath(result), request.url),
+  );
+  for (const c of departmentInviteLandingCookies(result)) {
+    res.cookies.set(c.name, c.value, c.options);
+  }
   return res;
 }
 

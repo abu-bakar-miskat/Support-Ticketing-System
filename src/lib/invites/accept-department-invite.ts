@@ -1,14 +1,22 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { synchronizeLegacyRoleAssignments } from "@/lib/role-assignment";
+import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
+import type { LoginCookie } from "@/lib/auth/complete-login";
+import { inviteLandingCookies, inviteLandingPath } from "@/lib/invites/invite-landing";
 
 export type AcceptInviteResult =
   | {
       ok: true;
+      tenantId: string;
+      tenantSlug: string | null;
       departmentId: string;
       departmentName: string;
+      departmentSlug: string | null;
       subDepartmentId: string;
       subDepartmentName: string;
+      subDepartmentSlug: string | null;
       role: Role;
     }
   | {
@@ -24,15 +32,54 @@ export type AcceptInviteResult =
       signedInEmail?: string;
     };
 
+/**
+ * Dashboard path for an accepted department-invite role. Department invites only
+ * carry `agent` / `sub_manager`, both of which land on the home dashboard — it
+ * dispatches by role using the active department/sub-department cookies below.
+ */
+export function departmentInviteLandingPath(
+  result: Extract<AcceptInviteResult, { ok: true }>,
+): string {
+  return inviteLandingPath(result.role, result);
+}
+
+/** Cookies that activate the invited tenant / department / sub-department. */
+export function departmentInviteLandingCookies(
+  result: Extract<AcceptInviteResult, { ok: true }>,
+): LoginCookie[] {
+  return inviteLandingCookies(result);
+}
+
 export async function acceptDepartmentInvite(
+  token: string,
+  profile: { id: string; email: string },
+): Promise<AcceptInviteResult> {
+  // Self-scoping (rather than trusting each caller to wrap the call) so the
+  // route handler and the login callback behave identically: without a system
+  // scope the reads below would resolve scope via getProfile, whose
+  // RoleAssignment rebuild contends for the same small connection pool.
+  return runAsSystem(() => acceptDepartmentInviteInner(token, profile));
+}
+
+async function acceptDepartmentInviteInner(
   token: string,
   profile: { id: string; email: string },
 ): Promise<AcceptInviteResult> {
   const invite = await prisma.departmentInvite.findUnique({
     where: { token },
     include: {
-      department: { select: { id: true, name: true, tenantId: true } },
-      subDepartment: { select: { id: true, name: true, departmentId: true } },
+      department: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          tenantId: true,
+          tenant: { select: { slug: true } },
+        },
+      },
+      subDepartment: {
+        select: { id: true, name: true, slug: true, departmentId: true },
+      },
     },
   });
 
@@ -70,6 +117,11 @@ export async function acceptDepartmentInvite(
   }
 
   await prisma.$transaction(async (tx) => {
+    // Take the per-user Profile lock up front, the same order
+    // rebuildUserRoleAssignments uses, so this transaction and a concurrent
+    // scope rebuild can never grab these rows in opposite orders.
+    await tx.$executeRaw`SELECT "id" FROM "Profile" WHERE "id" = ${profile.id} FOR UPDATE`;
+
     // Scope the user to the department's tenant so activeTenantId resolves and
     // every tenant-scoped query returns their data. Baseline role is `agent`;
     // their real power comes from the department/sub-department scope below.
@@ -121,14 +173,24 @@ export async function acceptDepartmentInvite(
         processedBy: invite.invitedBy,
       },
     });
+
+    // Rebuild the invitee's canonical scope rows from the memberships just
+    // written, in this same transaction. Left to the first dashboard render it
+    // runs as its own interactive transaction (via resolveUserScope) that has to
+    // win a second connection from an already-contended pool.
+    await synchronizeLegacyRoleAssignments(tx, profile.id);
   });
 
   return {
     ok: true,
+    tenantId: invite.department.tenantId,
+    tenantSlug: invite.department.tenant.slug,
     departmentId: invite.department.id,
     departmentName: invite.department.name,
+    departmentSlug: invite.department.slug,
     subDepartmentId: invite.subDepartment.id,
     subDepartmentName: invite.subDepartment.name,
+    subDepartmentSlug: invite.subDepartment.slug,
     role: invite.role,
   };
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getInvitePreview } from "@/lib/invites/accept-department-invite";
 import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { AutoAcceptInvite } from "@/components/auth/auto-accept-tenant-invite";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Invitation — Support Ticketing System" };
@@ -142,6 +143,11 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
     redirect(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
   }
 
-  // Authenticated + valid invite → accept via route handler (sets cookie + redirects home)
-  redirect(`/api/invites/${encodeURIComponent(token)}/accept`);
+  return (
+    <InviteShell>
+      <AutoAcceptInvite
+        acceptUrl={`/api/invites/${encodeURIComponent(token)}/accept`}
+      />
+    </InviteShell>
+  );
 }

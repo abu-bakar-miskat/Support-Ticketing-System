@@ -206,14 +206,18 @@ export function TenantsClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<{ action: "suspend" | "delete"; tenant: TenantRow } | null>(
     null,
   );
 
+  const liveTenants = tenants.filter((t) => !t.deleted);
+  const deletedTenants = tenants.filter((t) => t.deleted);
+
   const activeCount = tenants.filter((t) => !t.deleted && t.status !== "suspended").length;
   const suspendedCount = tenants.filter((t) => !t.deleted && t.status === "suspended").length;
-  const memberTotal = tenants.reduce((sum, t) => sum + t.members, 0);
-  const deptTotal = tenants.reduce((sum, t) => sum + t.departments, 0);
+  const memberTotal = liveTenants.reduce((sum, t) => sum + t.members, 0);
+  const deptTotal = liveTenants.reduce((sum, t) => sum + t.departments, 0);
 
   async function enterTenant(tenantId: string) {
     setBusy(`enter-${tenantId}`);
@@ -283,10 +287,10 @@ export function TenantsClient({
         />
 
         {/* Overview band */}
-        {tenants.length > 0 && (
+        {liveTenants.length > 0 && (
           <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-4 sm:divide-y-0">
             {[
-              { label: "Tenants", value: tenants.length },
+              { label: "Tenants", value: liveTenants.length },
               { label: "Active", value: activeCount },
               { label: "Departments", value: deptTotal },
               { label: "Members", value: memberTotal },
@@ -313,10 +317,14 @@ export function TenantsClient({
           </div>
         )}
 
-        {tenants.length === 0 ? (
+        {liveTenants.length === 0 ? (
           <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-sts-card-border py-16 text-center">
             <Building2 className="size-8 text-sts-subtle" strokeWidth={1.2} />
-            <p className="font-sans text-[13px] text-sts-muted">No tenants yet. Create one to get started.</p>
+            <p className="font-sans text-[13px] text-sts-muted">
+              {deletedTenants.length > 0
+                ? "No active tenants. Deleted tenants are hidden below."
+                : "No tenants yet. Create one to get started."}
+            </p>
             {canManage && (
               <Button onClick={() => setShowCreateModal(true)}>
                 <Plus className="size-4" />
@@ -326,7 +334,7 @@ export function TenantsClient({
           </div>
         ) : (
           <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {tenants.map((t, i) => (
+            {liveTenants.map((t, i) => (
               <TenantCard
                 key={t.id}
                 tenant={t}
@@ -342,6 +350,39 @@ export function TenantsClient({
               />
             ))}
           </ul>
+        )}
+
+        {deletedTenants.length > 0 && (
+          <div className="mt-8">
+            <button
+              type="button"
+              onClick={() => setShowDeleted((v) => !v)}
+              className="flex items-center gap-2 rounded-full border border-sts-card-border bg-sts-card px-3.5 py-2 font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:border-sts-red/30 hover:text-sts-red"
+            >
+              <Trash2 className="size-3.5" />
+              {showDeleted ? "Hide" : "Show"} deleted tenant{deletedTenants.length === 1 ? "" : "s"} ({deletedTenants.length})
+            </button>
+
+            {showDeleted && (
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {deletedTenants.map((t, i) => (
+                  <TenantCard
+                    key={t.id}
+                    tenant={t}
+                    canManage={canManage}
+                    busy={busy === `enter-${t.id}`}
+                    index={i}
+                    onEnter={() => enterTenant(t.id)}
+                    onManage={() => router.push(`/platform/${t.id}`)}
+                    onSuspend={() => setConfirmTarget({ action: "suspend", tenant: t })}
+                    onReactivate={() => setTenantStatus(t.id, "active")}
+                    onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
+                    onRestore={() => restoreTenant(t.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         {canManage && tenants.length > 0 && <TenantStatusSummary />}

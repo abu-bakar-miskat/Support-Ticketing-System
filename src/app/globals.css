@@ -154,16 +154,17 @@
     --font-serif: "Lora Variable", ui-serif, Georgia, serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
     --font-display: "Fraunces Variable", "Lora Variable", ui-serif, Georgia, serif;
-    /* Clean & flat light theme: neutral surfaces, thin dividers, no heavy
-       shadows or gradients (Notion/Linear-like). */
+    /* Clean light theme with soft frosted panels over the ambient wash. */
     --sts-bg: #fbfbfa;
     --sts-card-solid: #ffffff;
     --sts-bg-tint: rgba(0, 0, 0, 0.02);
-    --sts-glass-blur: 0px;
-    --sts-glass-saturate: 1;
-    --sts-glass-shadow: none;
-    --sts-glass-highlight: transparent;
-    --sts-card: #ffffff;
+    --sts-glass-blur: 16px;
+    --sts-glass-saturate: 1.18;
+    --sts-glass-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      0 8px 28px rgba(16, 35, 52, 0.04);
+    --sts-glass-highlight: rgba(255, 255, 255, 0.5);
+    --sts-card: rgba(255, 255, 255, 0.72);
     --sts-card-border: #ececec;
     --sts-foreground: #1f2430;
     --sts-muted: #5b6472;
@@ -189,22 +190,23 @@
     --sts-green-tint: #edf9f1;
     --sts-purple: #7c3aed;
     --sts-purple-tint: #f0ebff;
-    /* Soft primary wash over the page canvas (body + .sts-ambient-bg). */
+    /* Quiet frosted diagonal wash (body + .sts-ambient-bg). */
     --sts-bg-gradient:
-      radial-gradient(
-        78% 52% at 50% -8%,
-        color-mix(in srgb, var(--primary) 11%, transparent) 0%,
-        transparent 68%
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
+        color-mix(in srgb, #ffffff 42%, transparent) 45%,
+        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
       ),
       radial-gradient(
-        48% 42% at 100% 100%,
-        color-mix(in srgb, var(--primary) 7%, transparent) 0%,
+        70% 60% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
-        40% 36% at 0% 85%,
-        color-mix(in srgb, var(--primary) 5%, transparent) 0%,
-        transparent 70%
+        64% 56% at 100% 100%,
+        color-mix(in srgb, var(--sts-blue) 4%, transparent) 0%,
+        transparent 74%
       ),
       var(--sts-bg);
     --background: oklch(0.978 0.005 75);
@@ -251,11 +253,13 @@
     --sts-card-solid: #202630;
     --sts-bg: oklch(0.2077 0.0398 265.7549);
     --sts-bg-tint: rgba(255, 255, 255, 0.02);
-    --sts-glass-blur: 0px;
-    --sts-glass-saturate: 1;
-    --sts-glass-shadow: none;
-    --sts-glass-highlight: transparent;
-    --sts-card: #212734;
+    --sts-glass-blur: 18px;
+    --sts-glass-saturate: 1.22;
+    --sts-glass-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 10px 32px rgba(0, 0, 0, 0.28);
+    --sts-glass-highlight: rgba(255, 255, 255, 0.08);
+    --sts-card: rgba(33, 39, 52, 0.68);
     --sts-card-border: #2c313c;
     --sts-foreground: #f0eee6;
     --sts-muted: #b7b4a9;
@@ -282,22 +286,23 @@
     --sts-green-tint: #1a3028;
     --sts-purple: #b69cf0;
     --sts-purple-tint: #352f44;
-    /* Quieter wash in dark — primary is near-white, so keep opacity low. */
+    /* Quiet frosted diagonal in dark — accent stays soft so glass can read. */
     --sts-bg-gradient:
-      radial-gradient(
-        78% 52% at 50% -8%,
-        color-mix(in srgb, var(--primary) 6%, transparent) 0%,
-        transparent 68%
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sts-accent) 7%, transparent) 0%,
+        color-mix(in srgb, #ffffff 4%, transparent) 45%,
+        color-mix(in srgb, var(--sts-blue) 5%, transparent) 100%
       ),
       radial-gradient(
-        48% 42% at 100% 100%,
-        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
+        70% 60% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
-        40% 36% at 0% 85%,
-        color-mix(in srgb, var(--primary) 3%, transparent) 0%,
-        transparent 70%
+        64% 56% at 100% 100%,
+        color-mix(in srgb, var(--sts-blue) 5%, transparent) 0%,
+        transparent 74%
       ),
       var(--sts-bg);
     --background: oklch(0.145 0 0);
@@ -338,11 +343,13 @@
     --sts-bg: #000000;
     --sts-card-solid: #000000;
     --sts-bg-tint: rgba(8, 8, 8, 0.4);
-    --sts-glass-blur: 0px;
-    --sts-glass-saturate: 1;
-    --sts-glass-shadow: none;
-    --sts-glass-highlight: transparent;
-    --sts-card: #0a0a0a;
+    --sts-glass-blur: 18px;
+    --sts-glass-saturate: 1.2;
+    --sts-glass-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 10px 32px rgba(0, 0, 0, 0.45);
+    --sts-glass-highlight: rgba(255, 255, 255, 0.06);
+    --sts-card: rgba(10, 10, 10, 0.72);
     --sts-card-border: #1a1a1a;
     --sts-foreground: #f5f5f6;
     --sts-muted: #bfbfc2;
@@ -368,22 +375,23 @@
     --sts-green-tint: #002a14;
     --sts-purple: #e040fb;
     --sts-purple-tint: #20003a;
-    /* Soft primary wash on true black — keep opacity low so black stays deep. */
+    /* Quiet frosted diagonal on true black. */
     --sts-bg-gradient:
-      radial-gradient(
-        78% 52% at 50% -8%,
-        color-mix(in srgb, var(--primary) 9%, transparent) 0%,
-        transparent 68%
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%,
+        color-mix(in srgb, #ffffff 3%, transparent) 45%,
+        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
       ),
       radial-gradient(
-        48% 42% at 100% 100%,
-        color-mix(in srgb, var(--primary) 5%, transparent) 0%,
+        70% 60% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
-        40% 36% at 0% 85%,
-        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
-        transparent 70%
+        64% 56% at 100% 100%,
+        color-mix(in srgb, var(--sts-blue) 4%, transparent) 0%,
+        transparent 74%
       ),
       var(--sts-bg);
     --background: oklch(0 0 0);
@@ -417,16 +425,17 @@
 
   /* ── Tangerine — cool grey-blue base, warm orange accent (tweakcn) ── */
   :root[data-theme="tangerine"] {
-    /* Clean & flat: solid white cards, thin neutral borders, no shadow or
-       gradient. Tangerine orange kept as the accent. */
+    /* Soft frosted panels; tangerine orange kept as the accent. */
     --sts-bg: #f6f7f9;
     --sts-card-solid: #ffffff;
     --sts-bg-tint: rgba(0, 0, 0, 0.02);
-    --sts-glass-blur: 0px;
-    --sts-glass-saturate: 1;
-    --sts-glass-shadow: none;
-    --sts-glass-highlight: transparent;
-    --sts-card: #ffffff;
+    --sts-glass-blur: 16px;
+    --sts-glass-saturate: 1.18;
+    --sts-glass-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      0 8px 28px rgba(16, 35, 52, 0.04);
+    --sts-glass-highlight: rgba(255, 255, 255, 0.5);
+    --sts-card: rgba(255, 255, 255, 0.72);
     --sts-card-border: #e8e9ec;
     --sts-foreground: #2c2f36;
     --sts-muted: #5b6472;
@@ -452,22 +461,23 @@
     --sts-green-tint: #edf7f2;
     --sts-purple: #6858c0;
     --sts-purple-tint: #eeecf8;
-    /* Same ambient structure as light; tangerine primary tints the wash orange. */
+    /* Quiet frosted diagonal; tangerine accent stays whisper-soft. */
     --sts-bg-gradient:
-      radial-gradient(
-        78% 52% at 50% -8%,
-        color-mix(in srgb, var(--primary) 10%, transparent) 0%,
-        transparent 68%
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
+        color-mix(in srgb, #ffffff 42%, transparent) 45%,
+        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
       ),
       radial-gradient(
-        48% 42% at 100% 100%,
-        color-mix(in srgb, var(--primary) 6%, transparent) 0%,
+        70% 60% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 4%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
-        40% 36% at 0% 85%,
-        color-mix(in srgb, var(--primary) 4%, transparent) 0%,
-        transparent 70%
+        64% 56% at 100% 100%,
+        color-mix(in srgb, var(--sts-blue) 3%, transparent) 0%,
+        transparent 74%
       ),
       var(--sts-bg);
     --background: oklch(0.9383 0.0042 236.4993);

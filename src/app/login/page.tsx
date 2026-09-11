@@ -112,7 +112,7 @@ export default async function LoginPage({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--primary) 16%, transparent) 0%, transparent 72%), radial-gradient(42% 38% at 8% 92%, color-mix(in srgb, var(--primary) 9%, transparent) 0%, transparent 78%)",
+            "linear-gradient(135deg, color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%, color-mix(in srgb, var(--sts-card) 55%, transparent) 45%, color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%), radial-gradient(70% 60% at 0% 0%, color-mix(in srgb, var(--sts-accent) 4%, transparent) 0%, transparent 72%), radial-gradient(64% 56% at 100% 100%, color-mix(in srgb, var(--sts-blue) 3%, transparent) 0%, transparent 74%)",
         }}
       />
       <div

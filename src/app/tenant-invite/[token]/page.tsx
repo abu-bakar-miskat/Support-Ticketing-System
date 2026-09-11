@@ -1,13 +1,7 @@
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
-import {
-  acceptTenantInvite,
-  getTenantInvitePreview,
-  tenantInviteLandingCookies,
-  tenantInviteLandingPath,
-} from "@/lib/invites/accept-tenant-invite"
+import { getTenantInvitePreview } from "@/lib/invites/accept-tenant-invite"
 import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button"
 
 export const dynamic = "force-dynamic"
@@ -43,37 +37,16 @@ export default async function TenantInvitePage({
       })
       signedInEmail = (profile?.email ?? user.email ?? "").toLowerCase() || null
 
-      // Matching session → accept here and go straight to the role dashboard
-      // (never navigate to the blank /api/.../accept URL).
+      // Matching session → accept via the Route Handler (may set cookies).
+      // Never cookies().set() in this Server Component — that throws in prod:
+      // "Cookies can only be modified in a Server Action or Route Handler."
       if (
         profile &&
         signedInEmail &&
         signedInEmail === invite.email.toLowerCase() &&
         error !== "email_mismatch"
       ) {
-        const result = await acceptTenantInvite(token, {
-          id: profile.id,
-          email: profile.email,
-        })
-        if (result.ok) {
-          const jar = await cookies()
-          for (const c of tenantInviteLandingCookies(result)) {
-            jar.set(c.name, c.value, c.options)
-          }
-          redirect(tenantInviteLandingPath(result.role))
-        }
-        if (result.code === "email_mismatch") {
-          // Fall through to mismatch UI below.
-        } else if (result.code !== "already_accepted") {
-          return (
-            <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-              <div className="rounded-lg border p-6 shadow-sm">
-                <h1 className="text-xl font-semibold">Tenant invitation</h1>
-                <p className="mt-3 text-sm text-red-600">{result.message}</p>
-              </div>
-            </div>
-          )
-        }
+        redirect(`/api/tenant-invites/${encodeURIComponent(token)}/accept`)
       }
     }
   }

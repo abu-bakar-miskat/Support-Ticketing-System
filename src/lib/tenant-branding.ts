@@ -9,11 +9,17 @@ export type TenantBranding = {
   displayName?: string;
   /** Logo image URL for the sidebar (absolute or root-relative). */
   logoUrl?: string;
+  /** Hide the logo in the shell; the display name then fills the width. */
+  hideLogo?: boolean;
+  /** Hide the display name in the shell; the logo then fills the width. */
+  hideDisplayName?: boolean;
 };
 
 export type ResolvedTenantBranding = {
   displayName: string | null;
   logoUrl: string | null;
+  hideLogo: boolean;
+  hideDisplayName: boolean;
 };
 
 const MAX_URL = 2048;
@@ -39,6 +45,9 @@ export function sanitizeTenantBranding(input: unknown): TenantBranding | null {
     if (name) out.displayName = name;
   }
   if (isUsableUrl(raw.logoUrl)) out.logoUrl = raw.logoUrl;
+  // At most one may be hidden — hiding both would leave the shell blank.
+  if (raw.hideLogo === true) out.hideLogo = true;
+  else if (raw.hideDisplayName === true) out.hideDisplayName = true;
 
   return Object.keys(out).length > 0 ? out : null;
 }
@@ -58,5 +67,7 @@ export function resolveTenantBranding(stored: unknown): ResolvedTenantBranding {
   return {
     displayName: b.displayName ?? null,
     logoUrl: b.logoUrl ?? null,
+    hideLogo: b.hideLogo ?? false,
+    hideDisplayName: b.hideDisplayName ?? false,
   };
 }

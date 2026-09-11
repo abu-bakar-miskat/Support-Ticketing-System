@@ -141,6 +141,10 @@ type SidebarProps = {
   /** Active tenant branding — overrides the default PEN logo/name when set. */
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  /** Hide the branded logo; the display name fills the width. */
+  brandingHideLogo?: boolean;
+  /** Hide the display name; the branded logo fills the width. */
+  brandingHideDisplayName?: boolean;
 };
 
 function SidebarNavLink({
@@ -298,6 +302,8 @@ export function Sidebar({
   isDrawer = false,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingHideLogo = false,
+  brandingHideDisplayName = false,
 }: SidebarProps) {
   const {
     projects,
@@ -530,28 +536,33 @@ export function Sidebar({
                 className="hidden size-10 dark:block"
               />
             </button>
-          ) : brandingLogoUrl ? (
+          ) : brandingLogoUrl || brandingName ? (
             <div className="flex min-w-0 items-center gap-2">
-              {/* Logo stands on its own — the name is not shown alongside it. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={brandingLogoUrl}
-                alt={brandingName ?? ""}
-                height={36}
-                className="h-9 w-auto max-w-[140px] shrink-0 object-contain"
-              />
-            </div>
-          ) : brandingName ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
-              >
-                {brandingName.charAt(0)}
-              </span>
-              <span className="truncate text-[15px] font-semibold text-sts-foreground">
-                {brandingName}
-              </span>
+              {!brandingHideLogo &&
+                (brandingLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={brandingLogoUrl}
+                    alt=""
+                    height={36}
+                    className={cn(
+                      "w-auto shrink-0 object-contain",
+                      brandingHideDisplayName ? "h-11 max-w-[150px]" : "h-9 max-w-[72px]",
+                    )}
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+                  >
+                    {brandingName?.charAt(0)}
+                  </span>
+                ))}
+              {brandingName && !brandingHideDisplayName && (
+                <span className="truncate text-[15px] font-semibold text-sts-foreground">
+                  {brandingName}
+                </span>
+              )}
             </div>
           ) : (
             <>

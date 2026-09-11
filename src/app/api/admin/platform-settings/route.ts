@@ -38,6 +38,13 @@ export async function PUT(request: Request) {
     patch.supportEmail = trimmed
   }
 
+  if (body.devMode !== undefined) {
+    if (typeof body.devMode !== "boolean") {
+      return NextResponse.json({ error: "devMode must be a boolean" }, { status: 400 })
+    }
+    patch.devMode = body.devMode
+  }
+
   if (body.newTenantFeatureDefaults !== undefined) {
     if (typeof body.newTenantFeatureDefaults !== "object" || body.newTenantFeatureDefaults === null) {
       return NextResponse.json({ error: "newTenantFeatureDefaults must be an object" }, { status: 400 })

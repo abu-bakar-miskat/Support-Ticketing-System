@@ -18,6 +18,7 @@ import { renderSignatureHtml, renderSignatureText } from "./email-templates/sign
 import { normalizeSignaturePrefs } from "./signature-prefs";
 import { formatMessageIdHeader, normalizeMessageId } from "./inbound-email";
 import { prisma } from "./db";
+import { isAuthEmailConfigured, sendAuthEmail } from "./email-transport";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -514,7 +515,7 @@ export async function sendInviteEmail(args: {
   message?: string | null;
   inviteToken: string;
 }) {
-  if (!resend) return;
+  if (!(await isAuthEmailConfigured())) return;
   const config = await getEmailConfig(args.departmentId);
   const signature = await getUserSignature(args.inviterId);
   const overrides = await getEmailTemplateOverrides(args.departmentId);
@@ -530,17 +531,18 @@ export async function sendInviteEmail(args: {
     branding: brandingFrom(config),
     override: overrides.invite,
   });
-  logIfRejected(
-    "invite",
-    await resend.emails.send({
-      from: fromHeader(config),
-      to: args.to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  const result = await sendAuthEmail({
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+  if (!result.ok) {
+    console.error("[email] invite rejected:", result.error);
+    throw new Error(result.error);
+  }
 }
 
 export async function sendMentionEmail(args: {

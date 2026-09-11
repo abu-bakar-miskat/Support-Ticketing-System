@@ -15,6 +15,12 @@ export type PlatformSettings = {
   /** Support contact address surfaced to tenant admins. "" = unset. */
   supportEmail: string;
   /**
+   * When true, OTP / invite / authentication emails are delivered to Mailpit
+   * instead of Resend. Any address can be invited or signed in — codes land in
+   * the shared Mailpit inbox. Production traffic should leave this off.
+   */
+  devMode: boolean;
+  /**
    * Feature defaults applied when a NEW tenant is created. A key set to false
    * seeds a disabled FeatureFlag row for that tenant at creation time (existing
    * tenants are untouched — feature flags are fail-open, see lib/feature-flags).
@@ -35,6 +41,7 @@ function defaultNewTenantFeatureDefaults(): Record<FeatureKey, boolean> {
 export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   platformName: "Support Platform",
   supportEmail: "",
+  devMode: false,
   newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
 };
 
@@ -55,10 +62,12 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 
   const platformName = byKey.get("platformName");
   const supportEmail = byKey.get("supportEmail");
+  const devMode = byKey.get("devMode");
 
   return {
     platformName: typeof platformName === "string" && platformName.trim() ? platformName : PLATFORM_SETTINGS_DEFAULTS.platformName,
     supportEmail: typeof supportEmail === "string" ? supportEmail : PLATFORM_SETTINGS_DEFAULTS.supportEmail,
+    devMode: typeof devMode === "boolean" ? devMode : PLATFORM_SETTINGS_DEFAULTS.devMode,
     newTenantFeatureDefaults: parseFeatureDefaults(byKey.get("newTenantFeatureDefaults")),
   };
 }
@@ -74,6 +83,7 @@ export async function setPlatformSettings(
   const writes: { key: string; value: unknown }[] = [];
   if (patch.platformName !== undefined) writes.push({ key: "platformName", value: patch.platformName.trim() });
   if (patch.supportEmail !== undefined) writes.push({ key: "supportEmail", value: patch.supportEmail.trim() });
+  if (patch.devMode !== undefined) writes.push({ key: "devMode", value: patch.devMode });
   if (patch.newTenantFeatureDefaults !== undefined) {
     writes.push({ key: "newTenantFeatureDefaults", value: parseFeatureDefaults(patch.newTenantFeatureDefaults) });
   }

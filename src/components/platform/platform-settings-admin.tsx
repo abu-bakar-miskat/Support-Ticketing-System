@@ -10,6 +10,8 @@ import {
   Loader2,
   Save,
   Power,
+  FlaskConical,
+  ExternalLink,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
@@ -47,6 +49,7 @@ type Overview = {
 type PlatformSettings = {
   platformName: string;
   supportEmail: string;
+  devMode: boolean;
   newTenantFeatureDefaults: Record<FeatureKey, boolean>;
 };
 
@@ -54,10 +57,13 @@ export function PlatformSettingsAdmin({
   tenants: initialTenants,
   settings: initialSettings,
   overview,
+  mailpitUiBase,
 }: {
   tenants: TenantOption[];
   settings: PlatformSettings;
   overview: Overview;
+  /** Public Mailpit inbox URL (no credentials in the URL). */
+  mailpitUiBase: string;
 }) {
   const [tenants, setTenants] = useState<TenantOption[]>(initialTenants);
 
@@ -70,6 +76,7 @@ export function PlatformSettingsAdmin({
   const [baseline, setBaseline] = useState<PlatformSettings>(initialSettings);
   const [platformName, setPlatformName] = useState(initialSettings.platformName);
   const [supportEmail, setSupportEmail] = useState(initialSettings.supportEmail);
+  const [devMode, setDevMode] = useState(initialSettings.devMode);
   const [tenantDefaults, setTenantDefaults] = useState<Record<FeatureKey, boolean>>(
     initialSettings.newTenantFeatureDefaults,
   );
@@ -78,6 +85,7 @@ export function PlatformSettingsAdmin({
   const generalDirty =
     platformName !== baseline.platformName ||
     supportEmail !== baseline.supportEmail ||
+    devMode !== baseline.devMode ||
     JSON.stringify(tenantDefaults) !== JSON.stringify(baseline.newTenantFeatureDefaults);
 
   async function saveGeneral() {
@@ -88,7 +96,12 @@ export function PlatformSettingsAdmin({
       const res = await fetch("/api/admin/platform-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platformName, supportEmail, newTenantFeatureDefaults: tenantDefaults }),
+        body: JSON.stringify({
+          platformName,
+          supportEmail,
+          devMode,
+          newTenantFeatureDefaults: tenantDefaults,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -98,6 +111,7 @@ export function PlatformSettingsAdmin({
       // Sync from the server's canonical merged result and reset the baseline.
       setPlatformName(body.platformName);
       setSupportEmail(body.supportEmail);
+      setDevMode(Boolean(body.devMode));
       setTenantDefaults(body.newTenantFeatureDefaults);
       setBaseline(body as PlatformSettings);
       setStatus("Platform settings saved");
@@ -287,6 +301,45 @@ export function PlatformSettingsAdmin({
                   className="mt-1 h-9 w-full"
                   placeholder="support@example.com"
                 />
+              </div>
+            </div>
+
+            {/* Email delivery mode */}
+            <div className="border-t border-sts-card-border px-[22px] py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="size-3.5 text-sts-blue" />
+                    <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Email delivery mode</h3>
+                  </div>
+                  <p className="mt-1 font-sans text-[12px] text-sts-muted">
+                    {devMode
+                      ? "Dev mode: OTP, invite, and authentication emails go to Mailpit. Any email address can be invited or signed in."
+                      : "Production mode: OTP, invite, and authentication emails are sent via Resend to real inboxes."}
+                  </p>
+                  {devMode && mailpitUiBase && (
+                    <a
+                      href={mailpitUiBase}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 font-sans text-[12px] font-medium text-sts-blue hover:underline"
+                    >
+                      Open Mailpit inbox
+                      <ExternalLink className="size-3" />
+                    </a>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide",
+                      devMode ? "bg-amber-500/15 text-amber-700" : "bg-sts-green/15 text-sts-green",
+                    )}
+                  >
+                    {devMode ? "Dev" : "Production"}
+                  </span>
+                  <Switch checked={devMode} onCheckedChange={setDevMode} size="sm" aria-label="Toggle email dev mode" />
+                </div>
               </div>
             </div>
 

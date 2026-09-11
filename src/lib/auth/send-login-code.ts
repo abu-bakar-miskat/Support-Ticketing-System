@@ -1,8 +1,8 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getResendClient } from "@/lib/resend-client";
 import { escapeHtml } from "@/lib/email-templates/_shared";
+import { isAuthEmailConfigured, sendAuthEmail } from "@/lib/email-transport";
 
 const DEFAULT_FROM = "PEN Support <onboarding@mail.pengroup.com>";
 const RESEND_WINDOW_MS = 60_000;
@@ -14,7 +14,8 @@ export type SendLoginCodeResult =
 
 /**
  * Mint a Supabase email OTP without asking Supabase to render/send its hosted
- * Magic Link template, then deliver only the numeric code through Resend.
+ * Magic Link template, then deliver only the numeric code through the auth
+ * email transport (Resend in production, Mailpit when platform dev mode is on).
  */
 export async function sendLoginCode(email: string): Promise<SendLoginCodeResult> {
   const now = Date.now();
@@ -23,8 +24,7 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
     return { error: "Please wait a minute before requesting another code." };
   }
 
-  const resend = getResendClient();
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !resend) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !(await isAuthEmailConfigured())) {
     return { error: "Email sign-in is not configured. Please contact support." };
   }
 
@@ -43,7 +43,7 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
   }
 
   const safeCode = escapeHtml(code);
-  const result = await resend.emails.send({
+  const result = await sendAuthEmail({
     from: process.env.RESEND_FROM_EMAIL || DEFAULT_FROM,
     to: email,
     subject: "Your PEN Support sign-in code",
@@ -51,7 +51,7 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
     text: `Your PEN Support sign-in code is: ${code}\n\nThe code expires in a few minutes. If you did not request it, you can ignore this email.`,
   });
 
-  if (result.error) return { error: result.error.message };
+  if (!result.ok) return { error: result.error };
   lastSentAt.set(email, now);
   return { error: null, verificationType };
 }

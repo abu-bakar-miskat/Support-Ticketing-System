@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { getPlatformSettings } from "@/lib/platform-settings"
+import { getMailpitUiBase } from "@/lib/email-transport"
 import { PlatformSettingsAdmin } from "@/components/platform/platform-settings-admin"
 
 export const dynamic = "force-dynamic"
@@ -34,5 +35,12 @@ export default async function PlatformSettingsPage() {
     disabledFlags: flagOverrides,
   }
 
-  return <PlatformSettingsAdmin tenants={tenants} settings={settings} overview={overview} />
+  return (
+    <PlatformSettingsAdmin
+      tenants={tenants}
+      settings={settings}
+      overview={overview}
+      mailpitUiBase={getMailpitUiBase()}
+    />
+  )
 }

@@ -20,6 +20,8 @@ export function SettingsBrandingPage({
 }) {
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
+  const [hideLogo, setHideLogo] = useState(initialBranding.hideLogo ?? false)
+  const [hideDisplayName, setHideDisplayName] = useState(initialBranding.hideDisplayName ?? false)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +37,8 @@ export function SettingsBrandingPage({
       body: JSON.stringify({
         displayName: displayName.trim() || undefined,
         logoUrl: logoUrl.trim() || undefined,
+        hideLogo,
+        hideDisplayName,
       }),
     })
     setSaving(false)
@@ -101,10 +105,10 @@ export function SettingsBrandingPage({
                 <img
                   src={logoUrl}
                   alt="Logo preview"
-                  className="h-10 w-10 shrink-0 rounded-md border border-sts-card-border object-contain bg-sts-surface"
+                  className="h-20 w-40 shrink-0 rounded-md border border-sts-card-border object-contain bg-sts-surface p-2"
                 />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-[10px] text-sts-muted">
+                <div className="flex h-20 w-40 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-[11px] text-sts-muted">
                   Logo
                 </div>
               )}
@@ -138,6 +142,39 @@ export function SettingsBrandingPage({
             <p className="font-sans text-[11px] text-sts-muted">
               PNG, JPG, GIF, WebP, or SVG · up to 5 MB.
             </p>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-sts-card-border pt-4">
+            <label className="flex items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={hideLogo}
+                onChange={(e) => {
+                  setHideLogo(e.target.checked)
+                  if (e.target.checked) setHideDisplayName(false)
+                }}
+                className="size-4 shrink-0 accent-sts-green"
+              />
+              <span className="font-sans text-[13px] text-sts-foreground">
+                Hide logo{" "}
+                <span className="text-sts-muted">— the display name fills the width.</span>
+              </span>
+            </label>
+            <label className="flex items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={hideDisplayName}
+                onChange={(e) => {
+                  setHideDisplayName(e.target.checked)
+                  if (e.target.checked) setHideLogo(false)
+                }}
+                className="size-4 shrink-0 accent-sts-green"
+              />
+              <span className="font-sans text-[13px] text-sts-foreground">
+                Hide display name{" "}
+                <span className="text-sts-muted">— the logo fills the width.</span>
+              </span>
+            </label>
           </div>
 
           <Button type="submit" size="lg" disabled={saving} className="w-fit">

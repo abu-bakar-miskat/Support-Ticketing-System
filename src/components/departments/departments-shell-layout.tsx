@@ -40,6 +40,8 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
         initialLayoutData={layoutData}
         brandingName={tenantBranding?.displayName ?? null}
         brandingLogoUrl={tenantBranding?.logoUrl ?? null}
+        brandingHideLogo={tenantBranding?.hideLogo ?? false}
+        brandingHideDisplayName={tenantBranding?.hideDisplayName ?? false}
       >
         {children}
       </DepartmentsLayout>

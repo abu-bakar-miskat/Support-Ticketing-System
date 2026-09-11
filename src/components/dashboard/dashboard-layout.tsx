@@ -92,11 +92,15 @@ export function DashboardLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingHideLogo = false,
+  brandingHideDisplayName = false,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingHideLogo?: boolean;
+  brandingHideDisplayName?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -204,6 +208,8 @@ export function DashboardLayout({
           onCreateTask={openCreateTask}
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingHideLogo={brandingHideLogo}
+          brandingHideDisplayName={brandingHideDisplayName}
         />
 
         {/* Sidebar — mobile & tablet portrait drawer */}
@@ -225,6 +231,8 @@ export function DashboardLayout({
                 onCreateTask={openCreateTask}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingHideLogo={brandingHideLogo}
+                brandingHideDisplayName={brandingHideDisplayName}
               />
             </div>
           </>

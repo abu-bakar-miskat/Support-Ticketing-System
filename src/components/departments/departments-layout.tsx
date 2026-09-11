@@ -48,11 +48,15 @@ export function DepartmentsLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingHideLogo = false,
+  brandingHideDisplayName = false,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingHideLogo?: boolean;
+  brandingHideDisplayName?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -116,6 +120,8 @@ export function DepartmentsLayout({
           className="hidden lg:flex"
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingHideLogo={brandingHideLogo}
+          brandingHideDisplayName={brandingHideDisplayName}
         />
 
         {sidebarOpen && (
@@ -130,6 +136,8 @@ export function DepartmentsLayout({
                 onClose={() => setSidebarOpen(false)}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingHideLogo={brandingHideLogo}
+                brandingHideDisplayName={brandingHideDisplayName}
               />
             </div>
           </>

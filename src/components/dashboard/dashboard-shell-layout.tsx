@@ -108,6 +108,8 @@ export async function DashboardShellLayout({ children }: { children: React.React
         initialLayoutData={layoutData}
         brandingName={branding?.displayName ?? null}
         brandingLogoUrl={branding?.logoUrl ?? null}
+        brandingHideLogo={branding?.hideLogo ?? false}
+        brandingHideDisplayName={branding?.hideDisplayName ?? false}
       >
         {children}
         <Suspense fallback={null}>

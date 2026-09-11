@@ -33,6 +33,8 @@ type DepartmentsSidebarProps = {
   className?: string;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingHideLogo?: boolean;
+  brandingHideDisplayName?: boolean;
 };
 
 export function DepartmentsSidebar({
@@ -40,6 +42,8 @@ export function DepartmentsSidebar({
   className,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingHideLogo = false,
+  brandingHideDisplayName = false,
 }: DepartmentsSidebarProps) {
   const { isSuperAdmin, inboxCount } = useDashboardContext();
   const pathname = useAppPathname();
@@ -70,32 +74,33 @@ export function DepartmentsSidebar({
       )}
     >
       <div className="flex h-14 items-center pl-1">
-        {brandingLogoUrl ? (
+        {brandingLogoUrl || brandingName ? (
           <div className="flex min-w-0 items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={brandingLogoUrl}
-              alt=""
-              height={36}
-              className="h-9 w-auto max-w-[72px] shrink-0 object-contain"
-            />
-            {brandingName && (
+            {!brandingHideLogo &&
+              (brandingLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={brandingLogoUrl}
+                  alt=""
+                  height={36}
+                  className={cn(
+                    "w-auto shrink-0 object-contain",
+                    brandingHideDisplayName ? "h-11 max-w-[150px]" : "h-9 max-w-[72px]",
+                  )}
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+                >
+                  {brandingName?.charAt(0)}
+                </span>
+              ))}
+            {brandingName && !brandingHideDisplayName && (
               <span className="truncate text-[15px] font-semibold text-sts-foreground">
                 {brandingName}
               </span>
             )}
-          </div>
-        ) : brandingName ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
-            >
-              {brandingName.charAt(0)}
-            </span>
-            <span className="truncate text-[15px] font-semibold text-sts-foreground">
-              {brandingName}
-            </span>
           </div>
         ) : (
           <>

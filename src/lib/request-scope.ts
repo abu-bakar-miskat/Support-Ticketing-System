@@ -35,7 +35,20 @@ export type RequestScope = {
   grantedTicketIds?: string[];
 };
 
-const store = new AsyncLocalStorage<RequestScope>();
+// Pinned to globalThis so every module copy shares ONE AsyncLocalStorage. The
+// Prisma client (and its scope extension, which reads this store via
+// getRequestScope) is cached on globalThis in lib/db and survives HMR/bundle
+// reloads; a plain module-const store would be re-created on reload, leaving
+// the cached extension reading a stale instance. That desync made `runAsSystem`
+// (e.g. the inbound-email webhook) set context on one store while the extension
+// checked another — the query then saw no scope and threw "ran without a caller
+// scope" on the first tenant-scoped model it touched.
+const globalForScope = globalThis as unknown as {
+  __requestScopeStore?: AsyncLocalStorage<RequestScope>;
+};
+const store =
+  globalForScope.__requestScopeStore ??
+  (globalForScope.__requestScopeStore = new AsyncLocalStorage<RequestScope>());
 
 /** The active caller scope, or null when none has been established. */
 export function getRequestScope(): RequestScope | null {

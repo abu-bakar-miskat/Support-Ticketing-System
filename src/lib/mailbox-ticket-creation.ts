@@ -9,7 +9,7 @@ import { startSlaTimers } from "@/lib/sla-engine";
 import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
-import { assertDepartmentOperational } from "@/lib/department-setup";
+import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
 
 /**
  * EM-01/02/03: creates a brand-new ticket from an inbound email that matched
@@ -39,7 +39,7 @@ export async function createTicketFromInboundEmail(params: {
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
   const setupCheck = await assertDepartmentOperational(departmentId);
-  if (!setupCheck.ok) throw new Error(setupCheck.error);
+  if (!setupCheck.ok) throw new DepartmentNotOperationalError(setupCheck.error);
 
   const [subDepartment, statuses, projectId, creatorId, managerRow] = await Promise.all([
     prisma.subDepartment.findUniqueOrThrow({ where: { id: teamId }, select: { tenantId: true, prefix: true } }),
@@ -95,8 +95,15 @@ export async function createTicketFromInboundEmail(params: {
     await ensureProjectMembers(projectId, [assignResult.assigneeId]).catch(() => undefined);
   }
 
+  // The ticket is already committed above, so these follow-up steps are
+  // best-effort: a throw here must not bubble out of this function, or the
+  // inbound webhook would treat a fully-created ticket as a failure and (post
+  // the retry-on-error change in process-inbound-email) retry it — creating a
+  // duplicate ticket, since the message row that gates idempotency isn't stored
+  // until after this returns. Log and move on instead.
   const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName, priority: "Medium" };
-  await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId);
+  await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId)
+    .catch((err) => console.error("[inbound] startSlaTimers failed for", ticket.id, err));
 
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
@@ -108,37 +115,44 @@ export async function createTicketFromInboundEmail(params: {
       assigneeId: assignResult.assigneeId,
     },
     ruleFormValues,
-  );
+  ).catch((err) => console.error("[inbound] applyRulesToTicket failed for", ticket.id, err));
 
   const humanId = `${subDepartment.prefix}-${ticket.ticketNumber}`;
 
-  if (assignResult.failed) {
-    await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId, teamId);
-  } else if (assignResult.assigneeId) {
-    const assignee = await prisma.profile.findUnique({
-      where: { id: assignResult.assigneeId },
-      select: { id: true, name: true, email: true },
-    });
-    if (assignee) {
-      createNotification({
-        recipientId: assignee.id,
-        type: "assignment",
-        ticketId: ticket.id,
-        message: title,
-      }).catch(() => undefined);
-      sendAssignmentEmail({
-        to: assignee.email,
-        assigneeName: assignee.name,
-        assigneeId: assignee.id,
-        ticketId: ticket.id,
-        humanId,
-        ticketTitle: title,
-        assignedByName: "System",
-        assignedById: creatorId,
-        departmentId,
-        subDepartmentId: teamId,
-      }).catch(() => undefined);
+  // Also post-commit and therefore best-effort (see the note above): the
+  // assignment notification must never surface as a failure of the whole
+  // creation and trigger a retry/duplicate.
+  try {
+    if (assignResult.failed) {
+      await recordAssignmentFailure(ticket.id, departmentId, creatorId, title, humanId, teamId);
+    } else if (assignResult.assigneeId) {
+      const assignee = await prisma.profile.findUnique({
+        where: { id: assignResult.assigneeId },
+        select: { id: true, name: true, email: true },
+      });
+      if (assignee) {
+        createNotification({
+          recipientId: assignee.id,
+          type: "assignment",
+          ticketId: ticket.id,
+          message: title,
+        }).catch(() => undefined);
+        sendAssignmentEmail({
+          to: assignee.email,
+          assigneeName: assignee.name,
+          assigneeId: assignee.id,
+          ticketId: ticket.id,
+          humanId,
+          ticketTitle: title,
+          assignedByName: "System",
+          assignedById: creatorId,
+          departmentId,
+          subDepartmentId: teamId,
+        }).catch(() => undefined);
+      }
     }
+  } catch (err) {
+    console.error("[inbound] assignment notification failed for", ticket.id, err);
   }
 
   return {

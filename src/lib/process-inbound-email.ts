@@ -20,6 +20,7 @@ import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
 import { findMailboxRouteForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
 import { createTicketFromInboundEmail } from "@/lib/mailbox-ticket-creation"
+import { DepartmentNotOperationalError } from "@/lib/department-setup"
 
 // Re-exported for existing call sites (webhook route, reconcile route) — the
 // implementation lives in lib/resend-client.ts so lib/mail-providers/resend-provider.ts
@@ -297,8 +298,17 @@ export async function processInboundEmail(
       // rather than fail the whole webhook. Not logged as a suppression
       // (that's specifically for auto-generated mail, EM-06); this is just
       // "not accepting tickets yet".
-      console.log("[inbound] mailbox route's department isn't operational, dropping:", messageId, err)
-      return false
+      if (err instanceof DepartmentNotOperationalError) {
+        console.log("[inbound] mailbox route's department isn't operational yet, dropping:", messageId)
+        return false
+      }
+      // Any other failure is unexpected — do NOT silently drop the customer's
+      // email. Re-throw so the webhook returns 500 and Resend retries, and the
+      // error is visible in logs. createTicketFromInboundEmail only throws
+      // before it commits the ticket (all post-commit work is best-effort), so
+      // a retry re-runs cleanly without duplicating a ticket.
+      console.error("[inbound] createTicketFromInboundEmail failed unexpectedly, will retry:", messageId, err)
+      throw err
     }
     ticket = {
       id: createdTicket.id,

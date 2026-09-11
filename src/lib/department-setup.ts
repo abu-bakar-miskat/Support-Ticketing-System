@@ -19,6 +19,19 @@ import { prisma } from "@/lib/db";
 
 export type DepartmentOperationalCheck = { ok: true } | { ok: false; error: string };
 
+/**
+ * Thrown by ticket-creation paths when DS-08 blocks a department that hasn't
+ * completed setup. Distinct type so callers (e.g. the inbound-email webhook)
+ * can swallow *this specific* expected condition while letting genuine,
+ * unexpected failures propagate instead of silently dropping the message.
+ */
+export class DepartmentNotOperationalError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DepartmentNotOperationalError";
+  }
+}
+
 /** DS-08: whether a department may accept new tickets on any creation path. */
 export async function isDepartmentOperational(departmentId: string): Promise<boolean> {
   const department = await prisma.department.findUnique({

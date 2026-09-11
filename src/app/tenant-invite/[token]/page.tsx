@@ -1,4 +1,14 @@
-import { getTenantInvitePreview } from "@/lib/invites/accept-tenant-invite"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
+import { prisma } from "@/lib/db"
+import {
+  acceptTenantInvite,
+  getTenantInvitePreview,
+  tenantInviteLandingCookies,
+  tenantInviteLandingPath,
+} from "@/lib/invites/accept-tenant-invite"
+import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +28,60 @@ export default async function TenantInvitePage({
   const { token } = await params
   const { error } = await searchParams
   const invite = await getTenantInvitePreview(token)
+  const loginHref = `/login?next=${encodeURIComponent(`/tenant-invite/${token}`)}`
+
+  let signedInEmail: string | null = null
+  if (invite && (invite.status === "valid" || invite.status === "already_accepted")) {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const profile = await prisma.profile.findUnique({
+        where: { id: user.id },
+        select: { id: true, email: true },
+      })
+      signedInEmail = (profile?.email ?? user.email ?? "").toLowerCase() || null
+
+      // Matching session → accept here and go straight to the role dashboard
+      // (never navigate to the blank /api/.../accept URL).
+      if (
+        profile &&
+        signedInEmail &&
+        signedInEmail === invite.email.toLowerCase() &&
+        error !== "email_mismatch"
+      ) {
+        const result = await acceptTenantInvite(token, {
+          id: profile.id,
+          email: profile.email,
+        })
+        if (result.ok) {
+          const jar = await cookies()
+          for (const c of tenantInviteLandingCookies(result)) {
+            jar.set(c.name, c.value, c.options)
+          }
+          redirect(tenantInviteLandingPath(result.role))
+        }
+        if (result.code === "email_mismatch") {
+          // Fall through to mismatch UI below.
+        } else if (result.code !== "already_accepted") {
+          return (
+            <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
+              <div className="rounded-lg border p-6 shadow-sm">
+                <h1 className="text-xl font-semibold">Tenant invitation</h1>
+                <p className="mt-3 text-sm text-red-600">{result.message}</p>
+              </div>
+            </div>
+          )
+        }
+      }
+    }
+  }
+
+  const emailMismatch =
+    Boolean(invite) &&
+    Boolean(signedInEmail) &&
+    signedInEmail !== invite!.email.toLowerCase()
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
@@ -26,7 +90,7 @@ export default async function TenantInvitePage({
 
         {!invite ? (
           <p className="mt-3 text-sm text-red-600">This invitation link is invalid.</p>
-        ) : invite.status !== "valid" ? (
+        ) : invite.status === "revoked" || invite.status === "expired" ? (
           <p className="mt-3 text-sm text-red-600">{STATUS_MESSAGE[invite.status]}</p>
         ) : (
           <>
@@ -38,17 +102,25 @@ export default async function TenantInvitePage({
             <p className="mt-1 text-xs text-muted-foreground">
               Invitation sent to {invite.email}. Sign in with that address to accept.
             </p>
-            {error === "email_mismatch" && (
+            {(emailMismatch || error === "email_mismatch") && (
               <p className="mt-3 text-sm text-red-600">
-                You&apos;re signed in with a different email than this invitation was sent to.
+                You&apos;re signed in as {signedInEmail ?? "a different account"}. This
+                invitation is for {invite.email}. Sign out first, then continue.
               </p>
             )}
-            <a
-              href={`/api/tenant-invites/${token}/accept`}
-              className="mt-5 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white"
-            >
-              Accept invitation
-            </a>
+            {emailMismatch || error === "email_mismatch" ? (
+              <SignOutToAcceptButton
+                invitedEmail={invite.email}
+                loginHref={loginHref}
+              />
+            ) : (
+              <a
+                href={loginHref}
+                className="mt-5 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Sign in to accept
+              </a>
+            )}
           </>
         )}
       </div>

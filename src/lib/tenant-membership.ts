@@ -30,6 +30,13 @@ export async function applyTenantMembership(
     departmentIds?: string[];
     subDepartmentId?: string | null;
     actorId: string;
+    /**
+     * When false, skip RoleAssignment rebuild (caller will sync after its own
+     * transaction commits). Default true. Never sync via a nested
+     * `$transaction` while `db` is already an interactive transaction client —
+     * that deadlocks the pool and makes invite/login verify hang.
+     */
+    syncRoles?: boolean;
   },
 ): Promise<{ departmentIds: string[] }> {
   const { tenantId, userId, role, actorId } = opts;
@@ -81,6 +88,18 @@ export async function applyTenantMembership(
         where: { id: userId, subDepartmentId: null },
         data: { subDepartmentId: sub.id },
       });
+    }
+  }
+
+  if (opts.syncRoles !== false) {
+    // Root PrismaClient has $connect; interactive transaction clients do not.
+    // Only the root client may open syncUserRoleAssignments' own transaction.
+    if ("$connect" in db) {
+      const { syncUserRoleAssignments } = await import("@/lib/role-assignment");
+      await syncUserRoleAssignments(userId);
+    } else {
+      const { synchronizeLegacyRoleAssignments } = await import("@/lib/role-assignment");
+      await synchronizeLegacyRoleAssignments(db, userId);
     }
   }
 

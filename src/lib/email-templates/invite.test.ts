@@ -45,6 +45,11 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/invite/abc")).toBe("/invite/abc");
   });
 
+  it("strips query and hash from deep links", () => {
+    expect(safeNextPath("/tenant-invite/abc?error=email_mismatch")).toBe("/tenant-invite/abc");
+    expect(safeNextPath("/invite/abc#section")).toBe("/invite/abc");
+  });
+
   it("rejects open redirects", () => {
     expect(safeNextPath("https://evil.com")).toBe("/");
     expect(safeNextPath("//evil.com")).toBe("/");

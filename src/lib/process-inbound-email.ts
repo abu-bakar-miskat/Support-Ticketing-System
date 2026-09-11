@@ -328,7 +328,10 @@ export async function processInboundEmail(
   // lock wouldn't survive the transaction pooler), and the re-check inside the
   // lock skips the insert when a concurrent run already committed it.
   const created = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${normalizedMessageId}))`
+    // $executeRaw (not $queryRaw): pg_advisory_xact_lock returns SQL `void`, which
+    // the driver adapter can't deserialize as a result column. We only need the
+    // lock's side effect, so execute without reading the result set.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${normalizedMessageId}))`
     const dup = await tx.ticketMessage.findFirst({
       where: { providerMessageId: { in: idVariants } },
       select: { id: true },

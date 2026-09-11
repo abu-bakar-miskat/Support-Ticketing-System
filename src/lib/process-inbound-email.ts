@@ -319,26 +319,49 @@ export async function processInboundEmail(
   const { bodyHtml, quoted } = pickBody(email.text, email.html)
   const throttled = !isSystem && !isNewTicket && await isOverRateLimit(ticket.id)
 
-  const created = await prisma.ticketMessage.create({
-    data: {
-      ticketId: ticket.id,
-      direction: "inbound",
-      status: messageStatus,
-      authorProfileId: null,
-      fromName,
-      fromEmail,
-      bodyHtml,
-      throttled,
-      rawPayload: {
-        from: email.from, to: email.to, subject: email.subject,
-        text: email.text, html: email.html, headers, quotedText: quoted,
-        resendEmailId: emailId,
+  // Create atomically under a per-message-id advisory lock. The top-of-function
+  // idempotency check is only a fast path — it is not atomic with the insert, so
+  // two runs of the same inbound email (Resend's at-least-once webhook delivery,
+  // or the webhook racing the on-open reconcile) can both pass it and both
+  // insert, surfacing the reply twice on the ticket. A transaction-scoped
+  // advisory lock serializes those runs across connections/instances (a session
+  // lock wouldn't survive the transaction pooler), and the re-check inside the
+  // lock skips the insert when a concurrent run already committed it.
+  const created = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${normalizedMessageId}))`
+    const dup = await tx.ticketMessage.findFirst({
+      where: { providerMessageId: { in: idVariants } },
+      select: { id: true },
+    })
+    if (dup) return null
+    return tx.ticketMessage.create({
+      data: {
+        ticketId: ticket.id,
+        direction: "inbound",
+        status: messageStatus,
+        authorProfileId: null,
+        fromName,
+        fromEmail,
+        bodyHtml,
+        throttled,
+        rawPayload: {
+          from: email.from, to: email.to, subject: email.subject,
+          text: email.text, html: email.html, headers, quotedText: quoted,
+          resendEmailId: emailId,
+        },
+        providerMessageId: normalizedMessageId,
+        inReplyTo: headers["in-reply-to"] ?? null,
       },
-      providerMessageId: normalizedMessageId,
-      inReplyTo: headers["in-reply-to"] ?? null,
-    },
-    select: { id: true, direction: true, status: true, bodyHtml: true, fromName: true, fromEmail: true, createdAt: true, throttled: true },
+      select: { id: true, direction: true, status: true, bodyHtml: true, fromName: true, fromEmail: true, createdAt: true, throttled: true },
+    })
   })
+
+  // A concurrent run already stored this email — don't double-store attachments,
+  // re-broadcast, or re-notify.
+  if (!created) {
+    console.log("[inbound] duplicate inbound email skipped at create:", normalizedMessageId)
+    return false
+  }
 
   // Store attachments before broadcasting so the realtime payload carries them —
   // the client appends the broadcast directly with no refetch, so an empty list

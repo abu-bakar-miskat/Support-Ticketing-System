@@ -23,14 +23,23 @@ vi.mock("@/lib/email-config", () => ({
   getEmailConfig: vi.fn(),
 }))
 
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    ticketMessage: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
-    ticket: { update: vi.fn(), findFirst: vi.fn() },
-    intake: { findUnique: vi.fn() },
-    activityLog: { create: vi.fn() },
-  },
-}))
+vi.mock("@/lib/db", () => {
+  // Shared so `tx.ticketMessage` inside $transaction is the same mock the tests
+  // drive via mockFindFirstMsg / mockCreateMsg.
+  const ticketMessage = { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() }
+  return {
+    prisma: {
+      ticketMessage,
+      ticket: { update: vi.fn(), findFirst: vi.fn() },
+      intake: { findUnique: vi.fn() },
+      activityLog: { create: vi.fn() },
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      $transaction: vi.fn(async (fn: (tx: unknown) => unknown) =>
+        fn({ $queryRaw: vi.fn().mockResolvedValue([]), ticketMessage }),
+      ),
+    },
+  }
+})
 
 vi.mock("@/lib/notify-customer-reply", () => ({
   notifyCustomerReply: vi.fn().mockResolvedValue(undefined),
@@ -245,6 +254,21 @@ describe("POST /api/webhooks/resend", () => {
     expect(mockCreateMsg).toHaveBeenCalled()
   })
 
+  it("does not create a duplicate when a concurrent run already stored the reply (race)", async () => {
+    // The route-level and top-of-function idempotency checks miss because the
+    // concurrent run's row isn't committed yet, but the re-check inside the
+    // advisory-locked transaction finds it — the insert must be skipped.
+    mockFindFirstMsg
+      .mockResolvedValueOnce(null as never) // route.ts idempotency
+      .mockResolvedValueOnce(null as never) // processInboundEmail idempotency
+      .mockResolvedValueOnce({ id: "already-there" } as never) // in-transaction re-check
+    const res = await POST(makeRequest(receivedEventPayload))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.stored).toBe(false)
+    expect(mockCreateMsg).not.toHaveBeenCalled()
+  })
+
   it("routes a token-matched reply to the correct ticket and creates inbound TicketMessage", async () => {
     await POST(makeRequest(receivedEventPayload))
 
@@ -297,8 +321,9 @@ describe("POST /api/webhooks/resend", () => {
         intake: { submitterEmail: "jane@example.com" },
       },
     }
-    // findFirst is called 3 times: route.ts idempotency check, processInboundEmail's
-    // own idempotency re-check, then the header-fallback match by In-Reply-To.
+    // findFirst order: route.ts idempotency check, processInboundEmail's own
+    // idempotency check, the header-fallback match by In-Reply-To (priorMsg),
+    // then the in-transaction dedup re-check (falls through to the null default).
     mockFindFirstMsg
       .mockResolvedValueOnce(null as never)
       .mockResolvedValueOnce(null as never)

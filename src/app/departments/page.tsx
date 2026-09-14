@@ -12,6 +12,7 @@ import { readTenantBranding } from "@/lib/tenant-branding";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { runAsSystem } from "@/lib/request-scope";
 
 // Tab title reflects the active tenant so multiple tenant tabs are
 // distinguishable (e.g. "Pen Global BD · Departments").
@@ -43,7 +44,10 @@ export default async function DepartmentsPage() {
   // Tenant admins and super admins who have switched into this tenant (their
   // profile.role resolves to "admin" via getProfile) get the org management view.
   if (profile.role === "admin") {
-    const [rawDepts, users, orgStats] = await Promise.all([
+    // Every query below is explicitly bound to the active tenantId, so run
+    // unscoped — the per-query scope waterfall would otherwise stall this
+    // page (the admin landing) for minutes on the shared pooler.
+    const [rawDepts, users, orgStats] = await runAsSystem(() => Promise.all([
       prisma.department.findMany({
         where: { tenantId },
         orderBy: { name: "asc" },
@@ -96,17 +100,19 @@ export default async function DepartmentsPage() {
           },
         }),
       ]),
-    ]);
+    ]));
 
     const [deptCount, subDepartmentCount, projectCount, openTickets, pendingRequests] = orgStats;
 
     // ── Per-department shared-mailbox usage (tenant-wide) ────────────────────
-    const mailboxGroups = await prisma.mailboxConnection.groupBy({
-      by: ["departmentId", "status"],
-      where: { tenantId },
-      _count: { _all: true },
-      _max: { lastCheckedAt: true },
-    });
+    const mailboxGroups = await runAsSystem(() =>
+      prisma.mailboxConnection.groupBy({
+        by: ["departmentId", "status"],
+        where: { tenantId },
+        _count: { _all: true },
+        _max: { lastCheckedAt: true },
+      }),
+    );
     const mailboxByDept = new Map<
       string,
       { total: number; active: number; issues: number; lastCheckedAt: Date | null }
@@ -125,7 +131,7 @@ export default async function DepartmentsPage() {
     }
 
     // ── Tenant-wide user list, grouped by department + sub-department ────────
-    const [tenantProfiles, tenantMemberships] = await Promise.all([
+    const [tenantProfiles, tenantMemberships] = await runAsSystem(() => Promise.all([
       prisma.profile.findMany({
         where: { deletedAt: null, tenantMemberships: { some: { tenantId, isActive: true } } },
         orderBy: { name: "asc" },
@@ -138,7 +144,7 @@ export default async function DepartmentsPage() {
           subDepartment: { select: { id: true, name: true, department: { select: { id: true, name: true } } } },
         },
       }),
-    ]);
+    ]));
 
     const subDepartmentsByUser = new Map<string, string[]>();
     const subDepartmentIdByUser = new Map<string, string>();
@@ -268,10 +274,10 @@ export default async function DepartmentsPage() {
 
     // Templates available to this tenant so the New Department modal can offer
     // them instead of the built-in department-type list (matches /settings/departments).
-    const [catalogue, showCrossDeptAccess] = await Promise.all([
+    const [catalogue, showCrossDeptAccess] = await runAsSystem(() => Promise.all([
       listCatalogueForTenant(tenantId),
       isFeatureEnabled(tenantId, "crossDepartmentAccess"),
-    ]);
+    ]));
     const templateOptions: TemplateOption[] = catalogue.map((t) => ({
       slug: t.slug,
       name: t.name,
@@ -309,18 +315,22 @@ export default async function DepartmentsPage() {
   // Only one (or zero) accessible department — no need for a picker page
   if (allIds.length <= 1) redirect("/");
 
-  const rawDepts = await prisma.department.findMany({
-    where: { id: { in: allIds }, tenantId },
-    orderBy: { name: "asc" },
-    include: {
-      _count: { select: { subDepartments: true, projects: true, managers: true } },
-      subDepartments: {
-        select: {
-          _count: { select: { memberships: { where: { isActive: true } } } },
+  // Explicitly bound to the caller's accessible dept ids + tenant; run
+  // unscoped to skip the per-query scope waterfall.
+  const rawDepts = await runAsSystem(() =>
+    prisma.department.findMany({
+      where: { id: { in: allIds }, tenantId },
+      orderBy: { name: "asc" },
+      include: {
+        _count: { select: { subDepartments: true, projects: true, managers: true } },
+        subDepartments: {
+          select: {
+            _count: { select: { memberships: { where: { isActive: true } } } },
+          },
         },
       },
-    },
-  });
+    }),
+  );
 
   const myDepts: MyDepartmentItem[] = rawDepts.map((d) => ({
     id: d.id,

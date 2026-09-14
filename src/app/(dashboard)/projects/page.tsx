@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { ProjectsPage } from "@/components/projects/projects-page";
 import { fetchProjectsList } from "@/lib/projects-list-data";
 import { canManageProjects, canManageProjectLifecycle } from "@/lib/project-permissions";
@@ -37,10 +38,12 @@ async function ProjectsData() {
     if (deptScope?.activeDeptId) {
       // Viewing a specific department: auto-assign it, matching the sidebar
       // create flow, so the new project lands in the active department.
-      const dept = await prisma.department.findUnique({
-        where: { id: deptScope.activeDeptId },
-        select: { id: true, name: true },
-      });
+      const dept = await runAsSystem(() =>
+        prisma.department.findUnique({
+          where: { id: deptScope.activeDeptId },
+          select: { id: true, name: true },
+        }),
+      );
       if (dept) {
         createDepartments = [dept];
         lockedDepartment = dept;
@@ -48,17 +51,21 @@ async function ProjectsData() {
     } else {
       // Global view (no active department): let the admin pick any department
       // in their tenant.
-      createDepartments = await prisma.department.findMany({
-        where: { tenantId: profile.activeTenantId ?? "__no_tenant__" },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      });
+      createDepartments = await runAsSystem(() =>
+        prisma.department.findMany({
+          where: { tenantId: profile.activeTenantId ?? "__no_tenant__" },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+      );
     }
   } else if (deptScope?.activeDeptId) {
-    const dept = await prisma.department.findUnique({
-      where: { id: deptScope.activeDeptId },
-      select: { id: true, name: true },
-    });
+    const dept = await runAsSystem(() =>
+      prisma.department.findUnique({
+        where: { id: deptScope.activeDeptId },
+        select: { id: true, name: true },
+      }),
+    );
     if (dept) {
       createDepartments = [dept];
       if (canManage) {

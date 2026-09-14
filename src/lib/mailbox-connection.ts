@@ -52,19 +52,27 @@ export type MailboxConnectionSafe = {
 };
 
 export async function listMailboxConnections(departmentId: string): Promise<MailboxConnectionSafe[]> {
-  return prisma.mailboxConnection.findMany({
-    where: { departmentId },
-    select: SAFE_SELECT,
-    orderBy: { createdAt: "asc" },
-  });
+  // Id-keyed read (callers verified dept access) — run unscoped to skip the
+  // per-query scope waterfall.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() =>
+    prisma.mailboxConnection.findMany({
+      where: { departmentId },
+      select: SAFE_SELECT,
+      orderBy: { createdAt: "asc" },
+    }),
+  );
 }
 
 export async function listMailboxConnectionsForSubDepartment(subDepartmentId: string): Promise<MailboxConnectionSafe[]> {
-  return prisma.mailboxConnection.findMany({
-    where: { subDepartmentId },
-    select: SAFE_SELECT,
-    orderBy: { createdAt: "asc" },
-  });
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() =>
+    prisma.mailboxConnection.findMany({
+      where: { subDepartmentId },
+      select: SAFE_SELECT,
+      orderBy: { createdAt: "asc" },
+    }),
+  );
 }
 
 export async function getMailboxConnectionSafe(id: string): Promise<MailboxConnectionSafe | null> {

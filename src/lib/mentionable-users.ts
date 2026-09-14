@@ -95,19 +95,26 @@ export async function getMentionableUsersForTicketDept(
     }))
   }
 
+  // Callers resolve ticket access before asking for the mention audience; the
+  // reads are keyed by explicit dept id — run unscoped to skip the waterfall.
+  const { runAsSystem } = await import("@/lib/request-scope")
   const departmentName =
     (
-      await prisma.department.findUnique({
-        where: { id: departmentId },
-        select: { name: true },
-      })
+      await runAsSystem(() =>
+        prisma.department.findUnique({
+          where: { id: departmentId },
+          select: { name: true },
+        }),
+      )
     )?.name ?? null
 
   const deptSubDepartmentIds = (
-    await prisma.subDepartment.findMany({
-      where: { departmentId },
-      select: { id: true },
-    })
+    await runAsSystem(() =>
+      prisma.subDepartment.findMany({
+        where: { departmentId },
+        select: { id: true },
+      }),
+    )
   ).map((t) => t.id)
 
   const [memberships, accessGrants, deptManagers, homeSubDepartmentProfiles] = await Promise.all([

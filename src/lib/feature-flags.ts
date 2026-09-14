@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { PLATFORM_FEATURE_KEYS, type FeatureKey } from "@/lib/feature-keys";
 
 /**
@@ -10,10 +11,14 @@ import { PLATFORM_FEATURE_KEYS, type FeatureKey } from "@/lib/feature-keys";
  */
 
 export async function isFeatureEnabled(tenantId: string, key: FeatureKey): Promise<boolean> {
-  const flag = await prisma.featureFlag.findUnique({
-    where: { tenantId_key: { tenantId, key } },
-    select: { enabled: true },
-  });
+  // Explicit tenantId — read unscoped so layout/page callers don't trigger
+  // the per-query scope waterfall on the shared pooler.
+  const flag = await runAsSystem(() =>
+    prisma.featureFlag.findUnique({
+      where: { tenantId_key: { tenantId, key } },
+      select: { enabled: true },
+    }),
+  );
   return flag?.enabled ?? true;
 }
 
@@ -34,10 +39,12 @@ export async function assertFeatureEnabled(tenantId: string, key: FeatureKey): P
 
 /** SA-04 UI half: the effective enabled/disabled state of every known feature for one tenant. */
 export async function listFeatureFlags(tenantId: string): Promise<Record<FeatureKey, boolean>> {
-  const rows = await prisma.featureFlag.findMany({
-    where: { tenantId },
-    select: { key: true, enabled: true },
-  });
+  const rows = await runAsSystem(() =>
+    prisma.featureFlag.findMany({
+      where: { tenantId },
+      select: { key: true, enabled: true },
+    }),
+  );
   const overrides = new Map(rows.map((r) => [r.key, r.enabled]));
   const result = {} as Record<FeatureKey, boolean>;
   for (const key of PLATFORM_FEATURE_KEYS) {

@@ -292,6 +292,7 @@ export async function processInboundEmail(
         fromEmail,
         fromName,
         subject: email.subject,
+        mailboxConnectionId: route.id,
       })
     } catch (err) {
       // DS-08: the department hasn't completed setup yet — drop the message

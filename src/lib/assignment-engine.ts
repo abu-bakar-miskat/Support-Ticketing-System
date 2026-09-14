@@ -68,21 +68,42 @@ export async function autoAssignTicket(params: {
    * when set. null/absent → resolve from subDepartment, then department.
    */
   formConfigId?: string | null;
+  /**
+   * The mailbox the inbound email arrived at, for email-created tickets. Its
+   * per-mailbox override (MailboxConnection.assignmentMethod) sits between the
+   * form and sub-department in precedence. null/absent → no mailbox override.
+   */
+  mailboxConnectionId?: string | null;
 }): Promise<AutoAssignResult> {
-  const { departmentId, teamId, formValues, excludeUserId, formConfigId } = params;
+  const { departmentId, teamId, formValues, excludeUserId, formConfigId, mailboxConnectionId } = params;
 
-  const [department, subDepartment, form] = await Promise.all([
+  const [department, subDepartment, form, mailbox] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
     prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true, manualAssigneeIds: true } }),
     formConfigId
       ? prisma.intakeFormConfig.findUnique({ where: { id: formConfigId }, select: { assignmentMethod: true } })
       : Promise.resolve(null),
+    mailboxConnectionId
+      ? prisma.mailboxConnection.findUnique({ where: { id: mailboxConnectionId }, select: { assignmentMethod: true, manualAssigneeIds: true } })
+      : Promise.resolve(null),
   ]);
-  // Precedence: per-form override → sub-department override → parent department
-  // → ROUND_ROBIN (preserves lib/rota.ts's historical default). Each level's
-  // null means "inherit from the next".
-  const method: AssignmentMethod =
-    form?.assignmentMethod ?? subDepartment?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
+  // Precedence: per-form override → per-mailbox override → sub-department override
+  // → parent department → ROUND_ROBIN (preserves lib/rota.ts's historical
+  // default). Each level's null means "inherit from the next". `manualAssigneeIds`
+  // is read from whichever scope supplied the resolved method so MANUAL_SELECT
+  // uses that scope's hand-picked roster.
+  let method: AssignmentMethod;
+  let manualAssigneeIds: string[];
+  if (form?.assignmentMethod) {
+    method = form.assignmentMethod;
+    manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
+  } else if (mailbox?.assignmentMethod) {
+    method = mailbox.assignmentMethod;
+    manualAssigneeIds = mailbox.manualAssigneeIds;
+  } else {
+    method = subDepartment?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
+    manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
+  }
 
   let result: AutoAssignResult;
 
@@ -124,7 +145,7 @@ export async function autoAssignTicket(params: {
     // Round-robin, but restricted to the hand-picked members configured on the
     // sub-department. A single selected member means every ticket lands on them.
     // Preserve getEligibleMembers' ordering so the shared rotaPointer stays stable.
-    const selected = new Set(subDepartment?.manualAssigneeIds ?? []);
+    const selected = new Set(manualAssigneeIds);
     const eligible = (await getEligibleMembers(teamId, excludeUserId)).filter((m) =>
       selected.has(m.userId),
     );

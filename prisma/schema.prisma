@@ -1081,6 +1081,11 @@ model MailboxConnection {
   address          String                  @unique
   authType         MailboxAuthType         @default(RESEND)
   credentialsRef   String?
+  // Per-mailbox ticket-assignment override. null = inherit the sub-department's
+  // method (which itself falls back to the department default). manualAssigneeIds
+  // is the hand-picked roster used when assignmentMethod is MANUAL_SELECT.
+  assignmentMethod  AssignmentMethod?
+  manualAssigneeIds String[]               @default([])
   status           MailboxConnectionStatus @default(ACTIVE)
   // EM-07 exponential-backoff bookkeeping for the health-check cron.
   failureCount     Int                     @default(0)

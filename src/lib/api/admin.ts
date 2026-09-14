@@ -429,6 +429,8 @@ export type MailboxConnection = {
   scopeType: "DEPARTMENT" | "SUB_DEPARTMENT"
   address: string
   authType: "RESEND" | "OAUTH_M365" | "OAUTH_GOOGLE" | "IMAP"
+  assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT" | null
+  manualAssigneeIds: string[]
   status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE"
   failureCount: number
   lastCheckedAt: string | null
@@ -477,7 +479,12 @@ export async function createSubDepartmentMailboxConnection(
 
 export async function updateMailboxConnection(
   connectionId: string,
-  body: { address?: string; plaintextCredentials?: string | null },
+  body: {
+    address?: string
+    plaintextCredentials?: string | null
+    assignmentMethod?: MailboxConnection["assignmentMethod"]
+    manualAssigneeIds?: string[]
+  },
 ): Promise<MailboxConnection> {
   const res = await fetch(`/api/admin/mailbox-connections/${connectionId}`, {
     method: "PATCH",

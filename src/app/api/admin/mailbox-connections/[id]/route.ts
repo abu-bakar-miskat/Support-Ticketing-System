@@ -4,6 +4,9 @@ import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
 import { checkDomainVerification } from "@/lib/resend-domains"
+import { AssignmentMethod } from "@/generated/prisma/enums"
+
+const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
 
 async function assertScope(caller: { role: string }, departmentId: string): Promise<NextResponse | null> {
   if (caller.role !== "manager") return null
@@ -22,7 +25,10 @@ export async function PATCH(
   if (error) return error
 
   const { id } = await params
-  const existing = await prisma.mailboxConnection.findUnique({ where: { id }, select: { departmentId: true } })
+  const existing = await prisma.mailboxConnection.findUnique({
+    where: { id },
+    select: { departmentId: true, subDepartmentId: true },
+  })
   if (!existing) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 })
   }
@@ -31,6 +37,8 @@ export async function PATCH(
 
   const body = await req.json().catch(() => ({}))
   const { address, plaintextCredentials } = body as { address?: string; plaintextCredentials?: string | null }
+  const assignmentMethod = body.assignmentMethod as unknown
+  const manualAssigneeIds = body.manualAssigneeIds as unknown
 
   if (address !== undefined) {
     const verification = await checkDomainVerification(address)
@@ -42,7 +50,57 @@ export async function PATCH(
     }
   }
 
-  const updated = await updateMailboxConnection(id, { address, plaintextCredentials })
+  // Per-mailbox assignment override. null = inherit the sub-department's method;
+  // otherwise one of the enum values. MANUAL_SELECT needs a validated member list.
+  const methodProvided = assignmentMethod !== undefined
+  let manualIds: string[] | undefined
+  if (methodProvided) {
+    const methodValid =
+      assignmentMethod === null ||
+      (typeof assignmentMethod === "string" && VALID_METHODS.has(assignmentMethod))
+    if (!methodValid) {
+      return NextResponse.json(
+        { error: `assignmentMethod must be null (inherit) or one of ${[...VALID_METHODS].join(", ")}` },
+        { status: 400 },
+      )
+    }
+    if (
+      manualAssigneeIds !== undefined &&
+      !(Array.isArray(manualAssigneeIds) && manualAssigneeIds.every((x) => typeof x === "string"))
+    ) {
+      return NextResponse.json({ error: "manualAssigneeIds must be an array of user IDs" }, { status: 400 })
+    }
+    if (assignmentMethod === "MANUAL_SELECT") {
+      if (!Array.isArray(manualAssigneeIds) || manualAssigneeIds.length === 0) {
+        return NextResponse.json(
+          { error: "Select at least one member for the Manual (selected members) method." },
+          { status: 400 },
+        )
+      }
+      const requested = [...new Set(manualAssigneeIds as string[])]
+      const validMembers = await prisma.subDepartmentMembership.findMany({
+        where: { subDepartmentId: existing.subDepartmentId, isActive: true, userId: { in: requested } },
+        select: { userId: true },
+      })
+      const validIds = new Set(validMembers.map((m) => m.userId))
+      if (requested.some((uid) => !validIds.has(uid))) {
+        return NextResponse.json(
+          { error: "Every selected member must be an active member of this sub-department." },
+          { status: 400 },
+        )
+      }
+      manualIds = requested
+    } else {
+      // Any other method clears the list so a stale selection can't re-activate.
+      manualIds = []
+    }
+  }
+
+  const updated = await updateMailboxConnection(id, {
+    address,
+    plaintextCredentials,
+    ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
+  })
   return NextResponse.json(updated)
 }
 

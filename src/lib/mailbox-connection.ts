@@ -4,7 +4,7 @@ import { encryptMailboxCredentials } from "@/lib/mailbox-credentials";
 import { getMailProvider } from "@/lib/mail-providers";
 import { createNotification } from "@/lib/notify";
 import { sendMailboxConnectionFailedAlertEmail } from "@/lib/email";
-import type { MailboxAuthType, MailboxScopeType } from "@/generated/prisma/enums";
+import type { AssignmentMethod, MailboxAuthType, MailboxScopeType } from "@/generated/prisma/enums";
 
 /**
  * MailboxConnection CRUD + routing + EM-07 health monitoring (slice 14).
@@ -23,6 +23,8 @@ const SAFE_SELECT = {
   scopeType: true,
   address: true,
   authType: true,
+  assignmentMethod: true,
+  manualAssigneeIds: true,
   status: true,
   failureCount: true,
   lastCheckedAt: true,
@@ -41,6 +43,8 @@ export type MailboxConnectionSafe = {
   scopeType: MailboxScopeType;
   address: string;
   authType: MailboxAuthType;
+  assignmentMethod: AssignmentMethod | null;
+  manualAssigneeIds: string[];
   status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE";
   failureCount: number;
   lastCheckedAt: Date | null;
@@ -101,7 +105,12 @@ export async function createMailboxConnection(params: {
 
 export async function updateMailboxConnection(
   id: string,
-  params: { address?: string; plaintextCredentials?: string | null },
+  params: {
+    address?: string;
+    plaintextCredentials?: string | null;
+    assignmentMethod?: AssignmentMethod | null;
+    manualAssigneeIds?: string[];
+  },
 ): Promise<MailboxConnectionSafe> {
   return prisma.mailboxConnection.update({
     where: { id },
@@ -110,6 +119,8 @@ export async function updateMailboxConnection(
       ...(params.plaintextCredentials !== undefined
         ? { credentialsRef: params.plaintextCredentials ? encryptMailboxCredentials(params.plaintextCredentials) : null }
         : {}),
+      ...(params.assignmentMethod !== undefined ? { assignmentMethod: params.assignmentMethod } : {}),
+      ...(params.manualAssigneeIds !== undefined ? { manualAssigneeIds: params.manualAssigneeIds } : {}),
     },
     select: SAFE_SELECT,
   });

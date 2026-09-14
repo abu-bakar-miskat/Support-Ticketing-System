@@ -32,10 +32,11 @@ vi.mock("@/lib/db", () => {
       ticketMessage,
       ticket: { update: vi.fn(), findFirst: vi.fn() },
       intake: { findUnique: vi.fn() },
+      subDepartment: { findUnique: vi.fn() },
       activityLog: { create: vi.fn() },
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $executeRaw: vi.fn().mockResolvedValue(undefined),
       $transaction: vi.fn(async (fn: (tx: unknown) => unknown) =>
-        fn({ $queryRaw: vi.fn().mockResolvedValue([]), ticketMessage }),
+        fn({ $executeRaw: vi.fn().mockResolvedValue(undefined), ticketMessage }),
       ),
     },
   }
@@ -74,6 +75,8 @@ import { notifyCustomerReply } from "@/lib/notify-customer-reply"
 import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
+import { findMailboxRouteForRecipients } from "@/lib/mailbox-connection"
+import { createTicketFromInboundEmail } from "@/lib/mailbox-ticket-creation"
 import * as resendMod from "resend"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,6 +93,8 @@ const mockNotify = vi.mocked(notifyCustomerReply)
 const mockNotifyQuarantine = vi.mocked(notifyQuarantinedReply)
 const mockMaybeReopen = vi.mocked(maybeReopenTicket)
 const mockIsOverRateLimit = vi.mocked(isOverRateLimit)
+const mockFindMailboxRoute = vi.mocked(findMailboxRouteForRecipients)
+const mockCreateTicketFromInboundEmail = vi.mocked(createTicketFromInboundEmail)
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
@@ -180,6 +185,9 @@ beforeEach(() => {
   mockActivityCreate.mockResolvedValue({} as never)
   vi.mocked(prisma.ticket.update).mockResolvedValue({} as never)
   vi.mocked(prisma.ticket.findFirst).mockResolvedValue(null as never)
+  vi.mocked(prisma.subDepartment.findUnique).mockResolvedValue(null as never)
+  mockFindMailboxRoute.mockResolvedValue(null)
+  mockCreateTicketFromInboundEmail.mockReset()
 
   // Patch INBOUND_DOMAIN for extractReplyToken to work
   vi.stubEnv("RESEND_INBOUND_DOMAIN", INBOUND_DOMAIN)
@@ -286,6 +294,54 @@ describe("POST /api/webhooks/resend", () => {
           fromEmail: "jane@example.com",
           providerMessageId: "test-message-id@example.com",
         }),
+      }),
+    )
+  })
+
+  it("uses the inbound email body as the description for a new mailbox ticket", async () => {
+    const mailboxEvent = {
+      ...receivedEventPayload,
+      data: {
+        ...receivedEventPayload.data,
+        to: ["support@pengroup.com"],
+        subject: "Cannot access my account",
+      },
+    }
+    mockVerify.mockReturnValue(mailboxEvent)
+    mockFindIntake.mockResolvedValue(null as never)
+    mockFindMailboxRoute.mockResolvedValue({
+      id: "mailbox-1",
+      address: "support@pengroup.com",
+      tenantId: "tenant-1",
+      departmentId: "department-1",
+      subDepartmentId: "team-1",
+    })
+    mockCreateTicketFromInboundEmail.mockResolvedValue({
+      id: "ticket-new",
+      ticketNumber: 8,
+      subDepartmentPrefix: "SUP",
+      creatorId: "creator-1",
+      assigneeId: null,
+    })
+    mockReceivingGet.mockResolvedValue({
+      data: {
+        ...fullEmail,
+        to: ["support@pengroup.com"],
+        subject: "Cannot access my account",
+        text: null,
+        html: "<p>I cannot sign in to my account.</p>",
+      },
+      error: null,
+    })
+
+    const res = await POST(makeRequest(mailboxEvent))
+
+    expect(res.status).toBe(200)
+    expect(mockCreateTicketFromInboundEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: "Cannot access my account",
+        description: "<p>I cannot sign in to my account.</p>",
+        mailboxConnectionId: "mailbox-1",
       }),
     )
   })

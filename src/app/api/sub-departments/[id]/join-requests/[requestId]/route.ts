@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
+import { ensureTenantMembership } from "@/lib/tenant-membership"
 
 // PATCH - approve or reject a join request
 export async function PATCH(
@@ -26,7 +27,7 @@ export async function PATCH(
     where: { id: requestId, subDepartmentId },
     include: {
       user: { select: { name: true } },
-      subDepartment: { select: { name: true, departmentId: true } },
+      subDepartment: { select: { name: true, departmentId: true, tenantId: true } },
     },
   })
   if (!joinRequest) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -42,13 +43,18 @@ export async function PATCH(
     crossAccess?: boolean
   }
 
+  // Sub-department membership implies membership in its tenant — without a
+  // TenantMembership there the tenant-scope extension hides every ticket in this
+  // sub-department from the user (cross-tenant joins otherwise 404 the ticket page).
+  const subTenantId = joinRequest.subDepartment?.tenantId ?? null
+
   if (action === "approve" && crossAccess) {
     // Agents/sub-managers get cross-sub-department access via membership in this
     // sub-department (keeping any existing home memberships). DepartmentAccess is
     // reserved for department managers.
     const trimmedName = nickname?.trim() || null
-    await prisma.$transaction([
-      (prisma.subDepartmentMembership as any).upsert({
+    await prisma.$transaction(async (tx) => {
+      await (tx.subDepartmentMembership as any).upsert({
         where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId } },
         create: {
           userId: joinRequest.userId,
@@ -61,16 +67,17 @@ export async function PATCH(
           nickname: trimmedName,
           isActive: isActive ?? true,
         },
-      }),
-      prisma.joinRequest.update({
+      })
+      await tx.joinRequest.update({
         where: { id: requestId },
         data: { status: "approved", processedAt: new Date(), processedBy: profile.id },
-      }),
-      prisma.profile.updateMany({
+      })
+      await tx.profile.updateMany({
         where: { id: joinRequest.userId, subDepartmentId: null },
         data: { subDepartmentId },
-      }),
-      prisma.notification.create({
+      })
+      if (subTenantId) await ensureTenantMembership(tx, subTenantId, joinRequest.userId)
+      await tx.notification.create({
         data: {
           recipientId: joinRequest.userId,
           actorId: profile.id,
@@ -78,16 +85,18 @@ export async function PATCH(
           joinRequestId: requestId,
           message: `approved: You've been granted access to the ${joinRequest.subDepartment?.name ?? "sub-department"} sub-department.`,
         },
-      }),
-    ])
+      })
+    })
+    const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+    await syncUserRoleAssignments(joinRequest.userId)
     return NextResponse.json({ ok: true })
   }
 
   if (action === "approve") {
     const trimmedName = nickname?.trim() || null
 
-    await prisma.$transaction([
-      (prisma.subDepartmentMembership as any).upsert({
+    await prisma.$transaction(async (tx) => {
+      await (tx.subDepartmentMembership as any).upsert({
         where: { userId_subDepartmentId: { userId: joinRequest.userId, subDepartmentId } },
         create: {
           userId: joinRequest.userId,
@@ -100,17 +109,18 @@ export async function PATCH(
           nickname: trimmedName,
           isActive: isActive ?? true,
         },
-      }),
-      prisma.joinRequest.update({
+      })
+      await tx.joinRequest.update({
         where: { id: requestId },
         data: { status: "approved", processedAt: new Date(), processedBy: profile.id },
-      }),
+      })
       // Set Profile.teamId if unset
-      prisma.profile.updateMany({
+      await tx.profile.updateMany({
         where: { id: joinRequest.userId, subDepartmentId: null },
         data: { subDepartmentId },
-      }),
-      prisma.notification.create({
+      })
+      if (subTenantId) await ensureTenantMembership(tx, subTenantId, joinRequest.userId)
+      await tx.notification.create({
         data: {
           recipientId: joinRequest.userId,
           actorId: profile.id,
@@ -118,8 +128,10 @@ export async function PATCH(
           joinRequestId: requestId,
           message: `approved: Your request to join ${joinRequest.subDepartment?.name ?? "the subDepartment"} was approved`,
         },
-      }),
-    ])
+      })
+    })
+    const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+    await syncUserRoleAssignments(joinRequest.userId)
   } else {
     await prisma.$transaction([
       prisma.joinRequest.update({

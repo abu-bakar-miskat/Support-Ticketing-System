@@ -8,6 +8,34 @@ type Db = Prisma.TransactionClient | typeof prisma;
 export type MembershipRole = "admin" | "manager" | "sub_manager" | "agent";
 
 /**
+ * Ensure the user has an *active* `TenantMembership` in `tenantId`.
+ *
+ * Sub-department membership implies membership in that sub-department's tenant:
+ * `getProfile` builds `profile.tenantIds` from `TenantMembership` rows, and the
+ * tenant-scope Prisma extension gates every ticket read on it. Adding a user to a
+ * sub-department in a tenant they don't already belong to — without this row —
+ * makes every ticket there invisible (scoped `findUnique` returns null → the
+ * ticket page 404s). Any path that grants a cross-tenant sub-department
+ * membership MUST call this so the tenant scope lets them read their own tickets.
+ *
+ * Creates a least-privilege `agent` membership; never downgrades an existing
+ * higher tenant role (sub-department power stays scoped via RoleAssignment).
+ * Reactivates a deactivated row. Idempotent.
+ */
+export async function ensureTenantMembership(
+  db: Db,
+  tenantId: string,
+  userId: string,
+  baselineRole: MembershipRole = "agent",
+): Promise<void> {
+  await db.tenantMembership.upsert({
+    where: { tenantId_userId: { tenantId, userId } },
+    update: { isActive: true },
+    create: { tenantId, userId, role: baselineRole as Role, isActive: true },
+  });
+}
+
+/**
  * Apply a member's tenant role + department scope. Used both when adding an
  * existing user directly and when a tenant invite is accepted.
  *

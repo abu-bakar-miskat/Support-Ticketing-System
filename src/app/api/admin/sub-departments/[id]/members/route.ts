@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import type { AuthProfile } from "@/lib/auth"
 import { isValidSubDepartmentRole } from "@/lib/role-management"
+import { ensureTenantMembership } from "@/lib/tenant-membership"
 import { recordAuditEvent } from "@/lib/audit-log"
 
 async function assertSubDepartmentScope(subDepartmentId: string, caller: AuthProfile): Promise<NextResponse | null> {
@@ -67,6 +68,11 @@ export async function POST(
     })
     await tx.profile.updateMany({ where: { id: userId, subDepartmentId: null }, data: { subDepartmentId } })
 
+    // Sub-department membership implies membership in its tenant. Without this the
+    // tenant-scope extension hides every ticket in this sub-department from the
+    // user when it lives in a tenant they don't already belong to.
+    await ensureTenantMembership(tx, subDepartment.tenantId, userId)
+
     await recordAuditEvent({
       tenantId: subDepartment.tenantId,
       departmentId: subDepartment.departmentId,
@@ -80,6 +86,12 @@ export async function POST(
     })
     return saved
   })
+
+  // Rebuild the canonical scope rows (SRS D-06) from the now-committed tenant +
+  // sub-department memberships. Runs on the root client after the interactive
+  // transaction commits — its own FOR UPDATE transaction must not nest.
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
 
   return NextResponse.json(membership, { status: 201 })
 }

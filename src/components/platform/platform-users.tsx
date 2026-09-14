@@ -5,13 +5,10 @@ import { Building2, Crown, Search, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
-<<<<<<< HEAD
-=======
 import {
   PlatformInviteMemberDialog,
   type InviteTenant,
 } from "@/components/platform/platform-invite-member-dialog";
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
 import { cn } from "@/lib/utils";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
@@ -21,10 +18,7 @@ type UserRow = {
   email: string;
   avatarUrl: string | null;
   role?: string;
-<<<<<<< HEAD
-=======
   isSuperAdmin?: boolean;
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
   tenants?: string[];
   departments?: DeptInfo[];
 };
@@ -36,11 +30,8 @@ const ROLE_LABELS: Record<string, string> = {
   agent: "Agent",
 };
 
-<<<<<<< HEAD
-=======
 // Super admins are excluded from this directory, so the role filter only covers
 // the tenant-scoped roles.
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
 type RoleFilter = "all" | "admin" | "manager" | "sub_manager" | "agent";
 const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -52,7 +43,6 @@ const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
 
 function matchesRoleFilter(u: UserRow, f: RoleFilter): boolean {
   switch (f) {
-<<<<<<< HEAD
     case "all":
       return true;
     case "admin":
@@ -66,17 +56,6 @@ function matchesRoleFilter(u: UserRow, f: RoleFilter): boolean {
   }
 }
 
-=======
-    case "all": return true;
-    case "admin": return u.role === "admin";
-    case "manager": return u.role === "manager";
-    case "sub_manager": return u.role === "sub_manager";
-    case "agent": return u.role === "agent";
-  }
-}
-
-/** Departments a user touches, as pills. */
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
 function DeptPills({ departments }: { departments?: DeptInfo[] }) {
   if (departments && departments.length > 0) {
     return (
@@ -111,17 +90,11 @@ function DeptPills({ departments }: { departments?: DeptInfo[] }) {
 
 export function PlatformUsers({
   users,
-<<<<<<< HEAD
-  currentUserId,
-}: {
-  users: UserRow[];
-=======
   tenants,
   currentUserId,
 }: {
   users: UserRow[];
   tenants: InviteTenant[];
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
   currentUserId: string;
 }) {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -160,14 +133,9 @@ export function PlatformUsers({
       <div className="w-full px-6 py-8 lg:px-10">
         <PageHeader
           icon={Users}
-<<<<<<< HEAD
           title="Platform users"
           description="All members across the platform, excluding super admins. Use Administrators to manage platform-level access."
-=======
-          title="Users"
-          description="Every user across all tenants and departments. Super admins are managed separately under Administrators."
           actions={<PlatformInviteMemberDialog tenants={tenants} />}
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
         />
 
         <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -205,44 +173,6 @@ export function PlatformUsers({
           </div>
         </div>
 
-<<<<<<< HEAD
-        <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
-          {filteredUsers.length === 0 ? (
-            <p className="px-2 py-6 text-center font-sans text-[12px] text-sts-subtle">
-              No users match this filter.
-            </p>
-          ) : (
-            filteredUsers.map((user) => {
-              const roleLabel = user.role ? ROLE_LABELS[user.role] ?? user.role : null;
-              const tenants = user.tenants ?? [];
-              return (
-                <div key={user.id} className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-sts-surface/50">
-                  <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={28} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                      <span className="truncate font-sans text-[13px] font-medium text-sts-foreground">
-                        {user.name || user.email}
-                      </span>
-                      {user.id === currentUserId && (
-                        <span className="font-sans text-[11px] text-sts-subtle">(you)</span>
-                      )}
-                      {roleLabel && (
-                        <span className="rounded-full bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
-                          {roleLabel}
-                        </span>
-                      )}
-                    </div>
-                    <div className="truncate font-sans text-[11.5px] text-sts-subtle">{user.email}</div>
-                    {tenants.length > 0 && (
-                      <div className="mt-1 font-sans text-[11px] text-sts-subtle">{tenants.join(", ")}</div>
-                    )}
-                    <DeptPills departments={user.departments} />
-                  </div>
-                </div>
-              );
-            })
-          )}
-=======
         <div className="mt-3">
           <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
             {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
@@ -255,7 +185,7 @@ export function PlatformUsers({
             ) : (
               filteredUsers.map((user) => {
                 const roleLabel = user.role ? ROLE_LABELS[user.role] ?? user.role : null;
-                const tenants = user.tenants ?? [];
+                const userTenants = user.tenants ?? [];
                 return (
                   <div key={user.id} className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-sts-surface/50">
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={28} />
@@ -274,8 +204,8 @@ export function PlatformUsers({
                         )}
                       </div>
                       <div className="truncate font-sans text-[11.5px] text-sts-subtle">{user.email}</div>
-                      {tenants.length > 0 && (
-                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">{tenants.join(", ")}</div>
+                      {userTenants.length > 0 && (
+                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">{userTenants.join(", ")}</div>
                       )}
                       <DeptPills departments={user.departments} />
                     </div>
@@ -284,7 +214,6 @@ export function PlatformUsers({
               })
             )}
           </div>
->>>>>>> 93793350d037b4d89b1ccd6ec00eeb5b85222a3e
         </div>
       </div>
     </div>

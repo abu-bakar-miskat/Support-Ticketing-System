@@ -5,6 +5,18 @@ import { getProfileDeptScope } from "@/lib/dept-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
+function mailboxConnectionIdsForRecipients(
+  rawPayload: unknown,
+  connections: { id: string; address: string }[],
+): string[] {
+  if (!rawPayload || typeof rawPayload !== "object" || !("to" in rawPayload)) return []
+  const to = (rawPayload as { to?: unknown }).to
+  const recipients = (Array.isArray(to) ? to : [to])
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => (value.match(/<([^>]+)>/)?.[1] ?? value).trim().toLowerCase())
+  return connections.filter((connection) => recipients.includes(connection.address.toLowerCase())).map((connection) => connection.id)
+}
+
 // GET /api/admin/departments/[id]/mailbox-mail
 // Every email the department's mailbox connection(s) received, aggregated across
 // all of its sub-departments: inbound TicketMessages filed against the
@@ -47,6 +59,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         fromEmail: true,
         bodyHtml: true,
         acceptedAt: true,
+        rawPayload: true,
         acceptedBy: { select: { id: true, name: true } },
         createdAt: true,
         ticket: {
@@ -81,6 +94,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       acceptedAt: m.acceptedAt,
       acceptedByName: m.acceptedBy?.name ?? null,
       subDepartmentId: m.ticket.subDepartmentId,
+      mailboxConnectionIds: mailboxConnectionIdsForRecipients(m.rawPayload, connections),
       ticket: {
         id: m.ticket.id,
         title: m.ticket.title,

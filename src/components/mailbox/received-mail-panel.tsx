@@ -15,6 +15,7 @@ type MailboxMessage = {
   acceptedAt: string | null;
   acceptedByName: string | null;
   subDepartmentId: string;
+  mailboxConnectionIds: string[];
   ticket: { id: string; title: string; humanId: string };
 };
 
@@ -97,13 +98,13 @@ export function ReceivedMailPanel({
 
   const activeMailbox = mailboxes.find((m) => m.id === selectedMailbox) ?? null;
 
-  // Filter by the chosen mailbox: messages route by the mailbox's sub-department
-  // (mail to an address opens tickets for the subDepartment it files into); suppressed
-  // mail is keyed directly to the connection.
+  // Filter by the actual recipient address recorded on each received email. Multiple
+  // mailbox addresses can file into one sub-department, so filtering by the ticket's
+  // sub-department would incorrectly show mail from every address.
   const shownMessages = useMemo(() => {
     if (!messages) return null;
     if (!activeMailbox) return messages;
-    return messages.filter((m) => m.subDepartmentId === activeMailbox.subDepartmentId);
+    return messages.filter((m) => m.mailboxConnectionIds.includes(activeMailbox.id));
   }, [messages, activeMailbox]);
 
   const shownSuppressed = useMemo(() => {

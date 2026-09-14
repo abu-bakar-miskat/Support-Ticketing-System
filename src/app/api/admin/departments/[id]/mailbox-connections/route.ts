@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 import { listMailboxConnections, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
+import { checkDomainVerification } from "@/lib/resend-domains"
 
 const AUTH_TYPES = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const
 const SCOPE_TYPES = ["DEPARTMENT", "SUB_DEPARTMENT"] as const
@@ -63,6 +64,14 @@ export async function POST(
   }
   if (!IMPLEMENTED_AUTH_TYPES.has(resolvedAuthType)) {
     return NextResponse.json({ error: `${resolvedAuthType} is not implemented yet` }, { status: 400 })
+  }
+
+  const verification = await checkDomainVerification(address)
+  if (verification.status !== "verified") {
+    return NextResponse.json(
+      { error: `The ${verification.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.` },
+      { status: 400 },
+    )
   }
 
   const [department, subDepartment] = await Promise.all([

@@ -68,15 +68,28 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+
+const ASSIGNMENT_METHOD_LABEL: Record<AssignmentMethod, string> = {
+  RULE_BASED: "Rule-based",
+  ROUND_ROBIN: "Round-robin",
+  WORKLOAD_BASED: "Workload-based",
+  MANUAL: "Manual",
+};
+
 export function SubDepartmentMailboxManager({
   subDepartmentId,
   subDepartmentName,
   prefix,
+  departmentId,
+  assignmentMethod,
   canManage,
 }: {
   subDepartmentId: string;
   subDepartmentName: string;
   prefix: string;
+  departmentId: string;
+  assignmentMethod: AssignmentMethod;
   canManage: boolean;
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
@@ -85,7 +98,15 @@ export function SubDepartmentMailboxManager({
   const [showConnect, setShowConnect] = useState(false);
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
+  const [checkingVerification, setCheckingVerification] = useState(false);
+  const [verifiedAddress, setVerifiedAddress] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [currentAssignmentMethod, setCurrentAssignmentMethod] = useState<AssignmentMethod>(assignmentMethod);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [draftAssignmentMethod, setDraftAssignmentMethod] = useState<AssignmentMethod>(assignmentMethod);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState("");
@@ -115,6 +136,10 @@ export function SubDepartmentMailboxManager({
       setFormError("That address is already connected.");
       return;
     }
+    if (verifiedAddress !== value.toLowerCase()) {
+      setFormError("Check that this email domain is verified in Resend before saving.");
+      return;
+    }
     setSaving(true);
     setFormError(null);
     try {
@@ -126,6 +151,52 @@ export function SubDepartmentMailboxManager({
       setFormError(e instanceof Error ? e.message : "Couldn't connect that mailbox.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function checkVerification() {
+    const value = address.trim();
+    if (!isValidEmail(value)) {
+      setFormError("Enter a valid email address.");
+      return;
+    }
+    setCheckingVerification(true);
+    setFormError(null);
+    try {
+      const res = await fetch(`/api/admin/email-identity/domain-status?email=${encodeURIComponent(value)}`);
+      const data = await res.json().catch(() => ({})) as { domain?: string | null; status?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Couldn't check Resend verification.");
+      if (data.status !== "verified") {
+        setVerifiedAddress(null);
+        setFormError(`The ${data.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.`);
+        return;
+      }
+      setVerifiedAddress(value.toLowerCase());
+    } catch (e) {
+      setVerifiedAddress(null);
+      setFormError(e instanceof Error ? e.message : "Couldn't check Resend verification.");
+    } finally {
+      setCheckingVerification(false);
+    }
+  }
+
+  async function saveAssignmentMethod() {
+    setSavingAssignment(true);
+    setAssignmentError(null);
+    try {
+      const res = await fetch(`/api/departments/${departmentId}/assignment-settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subDepartmentId, assignmentMethod: draftAssignmentMethod }),
+      });
+      const data = await res.json().catch(() => ({})) as { assignmentMethod?: AssignmentMethod; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Couldn't update the assignment method.");
+      setCurrentAssignmentMethod(data.assignmentMethod ?? draftAssignmentMethod);
+      setEditingAssignmentId(null);
+    } catch (e) {
+      setAssignmentError(e instanceof Error ? e.message : "Couldn't update the assignment method.");
+    } finally {
+      setSavingAssignment(false);
     }
   }
 
@@ -199,7 +270,7 @@ export function SubDepartmentMailboxManager({
         {canManage && (
           <button
             type="button"
-            onClick={() => { setShowConnect((v) => !v); setFormError(null); }}
+            onClick={() => { setShowConnect((v) => !v); setFormError(null); setVerifiedAddress(null); }}
             className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
           >
             <Plus className="size-[13px]" strokeWidth={2.5} />
@@ -217,24 +288,36 @@ export function SubDepartmentMailboxManager({
               autoFocus
               type="email"
               value={address}
-              onChange={(e) => { setAddress(e.target.value); setFormError(null); }}
-              onKeyDown={(e) => { if (e.key === "Enter") connect(); if (e.key === "Escape") setShowConnect(false); }}
+              onChange={(e) => { setAddress(e.target.value); setFormError(null); setVerifiedAddress(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { if (verifiedAddress === address.trim().toLowerCase()) connect(); else checkVerification(); } if (e.key === "Escape") setShowConnect(false); }}
               placeholder="support@yourcompany.com"
               className="h-9 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
             />
             <div className="flex items-center gap-2">
+              {verifiedAddress === address.trim().toLowerCase() ? (
+                <button
+                  type="button"
+                  onClick={connect}
+                  disabled={saving}
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+                >
+                  {saving && <Loader2 className="size-3.5 animate-spin" />}
+                  Save
+                </button>
+              ) : isValidEmail(address) ? (
+                <button
+                  type="button"
+                  onClick={checkVerification}
+                  disabled={checkingVerification}
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
+                >
+                  {checkingVerification ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                  Check
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={connect}
-                disabled={saving || !address.trim()}
-                className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
-              >
-                {saving && <Loader2 className="size-3.5 animate-spin" />}
-                Connect
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowConnect(false); setFormError(null); }}
+                onClick={() => { setShowConnect(false); setFormError(null); setVerifiedAddress(null); }}
                 className="h-9 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
               >
                 Cancel
@@ -280,6 +363,7 @@ export function SubDepartmentMailboxManager({
           {list.map((c) => {
             const meta = STATUS[c.status];
             const busy = !!rechecking[c.id];
+            const editingAssignment = editingAssignmentId === c.id;
             return (
               <li key={c.id} className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
                 <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
@@ -323,6 +407,54 @@ export function SubDepartmentMailboxManager({
                       <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
                         {c.authType}
                       </span>
+                      {editingAssignment ? (
+                        <span className="flex items-center gap-1.5">
+                          Assignment:
+                          <select
+                            value={draftAssignmentMethod}
+                            onChange={(e) => setDraftAssignmentMethod(e.target.value as AssignmentMethod)}
+                            disabled={savingAssignment}
+                            aria-label="Assignment method"
+                            className="h-6 rounded border border-sts-blue/40 bg-sts-surface px-1.5 text-[11px] text-sts-foreground outline-none focus:border-sts-blue"
+                          >
+                            {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={saveAssignmentMethod}
+                            disabled={savingAssignment}
+                            title="Save assignment method"
+                            className="rounded-full p-0.5 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
+                          >
+                            {savingAssignment ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingAssignmentId(null); setDraftAssignmentMethod(currentAssignmentMethod); setAssignmentError(null); }}
+                            disabled={savingAssignment}
+                            title="Cancel"
+                            className="rounded-full p-0.5 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          Assignment: <span className="font-medium text-sts-foreground">{ASSIGNMENT_METHOD_LABEL[currentAssignmentMethod]}</span>
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => { setDraftAssignmentMethod(currentAssignmentMethod); setEditingAssignmentId(c.id); setAssignmentError(null); }}
+                              title="Edit assignment method"
+                              className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          )}
+                        </span>
+                      )}
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
@@ -373,6 +505,11 @@ export function SubDepartmentMailboxManager({
                   <div className="flex items-start gap-2 border-t border-sts-card-border bg-red-50/50 px-4 py-2.5 dark:bg-red-900/10">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
                     <p className="font-sans text-[11.5px] text-red-600 dark:text-red-400">{c.lastErrorMessage}</p>
+                  </div>
+                )}
+                {assignmentError && editingAssignment && (
+                  <div className="border-t border-sts-card-border bg-red-50/50 px-4 py-2.5 font-sans text-[11.5px] text-red-600 dark:bg-red-900/10 dark:text-red-400">
+                    {assignmentError}
                   </div>
                 )}
               </li>

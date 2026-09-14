@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
+import { checkDomainVerification } from "@/lib/resend-domains"
 
 async function assertScope(caller: { role: string }, departmentId: string): Promise<NextResponse | null> {
   if (caller.role !== "manager") return null
@@ -30,6 +31,16 @@ export async function PATCH(
 
   const body = await req.json().catch(() => ({}))
   const { address, plaintextCredentials } = body as { address?: string; plaintextCredentials?: string | null }
+
+  if (address !== undefined) {
+    const verification = await checkDomainVerification(address)
+    if (verification.status !== "verified") {
+      return NextResponse.json(
+        { error: `The ${verification.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.` },
+        { status: 400 },
+      )
+    }
+  }
 
   const updated = await updateMailboxConnection(id, { address, plaintextCredentials })
   return NextResponse.json(updated)

@@ -14,6 +14,8 @@ export type SubDepartmentDetail = {
   departmentId: string;
   departmentName: string;
   memberCount: number;
+  /** Resolved for ticket creation: sub-department override, then department default. */
+  assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
 };
 
 export type SubDepartmentMemberInfo = {
@@ -76,7 +78,7 @@ export async function resolveSubDepartmentByName(
   const subDepartment = await prisma.subDepartment.findFirst({
     where: { ...where, name },
     include: {
-      department: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true, assignmentMethod: true } },
       memberships: { where: { isActive: true }, select: { id: true } },
     },
   });
@@ -91,6 +93,7 @@ export async function resolveSubDepartmentByName(
     departmentId: subDepartment.department.id,
     departmentName: subDepartment.department.name,
     memberCount: subDepartment.memberships.length,
+    assignmentMethod: subDepartment.assignmentMethod ?? subDepartment.department.assignmentMethod,
   };
 }
 

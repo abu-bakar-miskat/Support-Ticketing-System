@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ShieldCheck, X, Building2, Crown, Search, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import { ShieldCheck, X, Building2, Crown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,29 +27,6 @@ const ROLE_LABELS: Record<string, string> = {
   sub_manager: "Lead",
   agent: "Agent",
 };
-
-// Role filter buckets. "Super Admin" is the isSuperAdmin boolean (not a Role
-// enum value); "Sub Manager" (the sub_manager / Lead role) is its own bucket.
-type RoleFilter = "all" | "super_admin" | "admin" | "manager" | "sub_manager" | "agent";
-const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "super_admin", label: "Super Admin" },
-  { id: "admin", label: "Admin" },
-  { id: "manager", label: "Manager" },
-  { id: "sub_manager", label: "Sub Manager" },
-  { id: "agent", label: "Agent" },
-];
-
-function matchesRoleFilter(u: AdminRow, f: RoleFilter): boolean {
-  switch (f) {
-    case "all": return true;
-    case "super_admin": return !!u.isSuperAdmin;
-    case "admin": return u.role === "admin";
-    case "manager": return u.role === "manager";
-    case "sub_manager": return u.role === "sub_manager";
-    case "agent": return u.role === "agent";
-  }
-}
 
 /** Departments a user touches, as pills. Matches the admin-list rendering. */
 function DeptPills({ departments }: { departments?: DeptInfo[] }) {
@@ -86,11 +63,9 @@ function DeptPills({ departments }: { departments?: DeptInfo[] }) {
 
 export function PlatformAdministrators({
   admins: initialAdmins,
-  allUsers,
   currentUserId,
 }: {
   admins: AdminRow[];
-  allUsers: AdminRow[];
   currentUserId: string;
 }) {
   const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins);
@@ -104,39 +79,6 @@ export function PlatformAdministrators({
   const [searching, setSearching] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchSeq = useRef(0);
-
-  // "All users" directory: role filter + free-text search (client-side).
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
-  const [dirQuery, setDirQuery] = useState("");
-
-  const filteredUsers = useMemo(() => {
-    const q = dirQuery.trim().toLowerCase();
-    return allUsers.filter(
-      (u) =>
-        matchesRoleFilter(u, roleFilter) &&
-        (!q ||
-          (u.name ?? "").toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          (u.departments ?? []).some((d) => d.name.toLowerCase().includes(q))),
-    );
-  }, [allUsers, roleFilter, dirQuery]);
-
-  const roleCounts = useMemo(() => {
-    const counts: Record<RoleFilter, number> = {
-      all: allUsers.length,
-      super_admin: 0,
-      admin: 0,
-      manager: 0,
-      sub_manager: 0,
-      agent: 0,
-    };
-    for (const u of allUsers) {
-      for (const f of ["super_admin", "admin", "manager", "sub_manager", "agent"] as RoleFilter[]) {
-        if (matchesRoleFilter(u, f)) counts[f] += 1;
-      }
-    }
-    return counts;
-  }, [allUsers]);
 
   function onQueryChange(value: string) {
     setQuery(value);
@@ -333,100 +275,6 @@ export function PlatformAdministrators({
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* All users directory — filter by role, see each user's departments */}
-        <div className="mt-10">
-          <div className="flex items-center gap-2">
-            <Users className="size-4 text-sts-subtle" />
-            <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
-              All users ({filteredUsers.length})
-            </h2>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <div className="flex gap-0.5 rounded-full border border-sts-card-border bg-sts-surface p-0.5">
-              {ROLE_FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setRoleFilter(f.id)}
-                  className={cn(
-                    "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium transition-colors",
-                    roleFilter === f.id
-                      ? "bg-sts-blue text-white shadow-sm dark:text-gray-900"
-                      : "text-sts-muted hover:text-sts-foreground",
-                  )}
-                >
-                  {f.label}
-                  <span className={cn("ml-1.5", roleFilter === f.id ? "opacity-70" : "text-sts-subtle")}>
-                    {roleCounts[f.id]}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
-              <Input
-                type="text"
-                value={dirQuery}
-                onChange={(e) => setDirQuery(e.target.value)}
-                placeholder="Search name, email, department"
-                className="h-8 w-[240px] pl-8"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
-            {filteredUsers.length === 0 ? (
-              <p className="px-2 py-6 text-center font-sans text-[12px] text-sts-subtle">
-                No users match this filter.
-              </p>
-            ) : (
-              filteredUsers.map((user) => {
-                const roleLabel = user.isSuperAdmin
-                  ? "Super Admin"
-                  : user.role
-                    ? ROLE_LABELS[user.role] ?? user.role
-                    : null;
-                const tenants = user.tenants ?? [];
-                return (
-                  <div key={user.id} className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-sts-surface/50">
-                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={28} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                        <span className="truncate font-sans text-[13px] font-medium text-sts-foreground">
-                          {user.name || user.email}
-                        </span>
-                        {user.id === currentUserId && (
-                          <span className="font-sans text-[11px] text-sts-subtle">(you)</span>
-                        )}
-                        {roleLabel && (
-                          <span
-                            className={cn(
-                              "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-medium",
-                              user.isSuperAdmin
-                                ? "bg-sts-blue text-white dark:text-gray-900"
-                                : "bg-sts-blue-tint text-sts-blue",
-                            )}
-                          >
-                            {roleLabel}
-                          </span>
-                        )}
-                      </div>
-                      <div className="truncate font-sans text-[11.5px] text-sts-subtle">{user.email}</div>
-                      {tenants.length > 0 && (
-                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">{tenants.join(", ")}</div>
-                      )}
-                      <DeptPills departments={user.departments} />
-                    </div>
-                  </div>
-                );
-              })
-            )}
           </div>
         </div>
       </div>

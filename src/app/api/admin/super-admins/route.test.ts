@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => {
-  const profile = { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() }
+  const profile = { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), count: vi.fn() }
   return {
     prisma: {
       profile,
@@ -21,7 +21,7 @@ import { recordAuditEvent } from "@/lib/audit-log"
 
 const mockRequire = vi.mocked(requireSuperAdmin)
 const mockAudit = vi.mocked(recordAuditEvent)
-const mockFind = vi.mocked(prisma.profile.findUnique)
+const mockFind = vi.mocked(prisma.profile.findFirst)
 const mockUpdate = vi.mocked(prisma.profile.update)
 const mockCount = vi.mocked(prisma.profile.count)
 
@@ -55,6 +55,28 @@ describe("POST /api/admin/super-admins — grant audit", () => {
         after: { isSuperAdmin: true },
       }),
     )
+  })
+
+  it("grants by email to an existing account", async () => {
+    mockFind.mockResolvedValue({ id: "u3", deletedAt: null, isSuperAdmin: false } as never)
+    mockUpdate.mockResolvedValue({ id: "u3", name: "U3", email: "u3@x.com", avatarUrl: null } as never)
+
+    const res = await POST(req({ email: "U3@x.com" }))
+    expect(res.status).toBe(200)
+    expect(mockFind).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: "u3@x.com" } }),
+    )
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "SUPER_ADMIN_GRANTED", targetId: "u3" }),
+    )
+  })
+
+  it("returns 404 when no account exists for the email", async () => {
+    mockFind.mockResolvedValue(null as never)
+    const res = await POST(req({ email: "nobody@x.com" }))
+    expect(res.status).toBe(404)
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockAudit).not.toHaveBeenCalled()
   })
 })
 

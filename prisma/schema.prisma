@@ -108,6 +108,9 @@ enum AssignmentMethod {
   ROUND_ROBIN
   WORKLOAD_BASED
   MANUAL
+  // Round-robins across a hand-picked subset of members (SubDepartment.manualAssigneeIds).
+  // A single selected member means every ticket goes to that one person.
+  MANUAL_SELECT
 }
 
 enum TimeEntryKind {
@@ -503,6 +506,9 @@ model SubDepartment {
   // Per-sub-department ticket-assignment method. null = inherit from the parent
   // department's assignmentMethod (see lib/assignment-engine.ts).
   assignmentMethod  AssignmentMethod?
+  // Members eligible for assignment when assignmentMethod is MANUAL_SELECT: the
+  // ticket round-robins across just these user IDs (one ID = always that person).
+  manualAssigneeIds String[]           @default([])
   department        Department         @relation(fields: [departmentId], references: [id])
   profiles          Profile[]
   tickets           Ticket[]

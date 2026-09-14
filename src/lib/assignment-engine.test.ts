@@ -135,6 +135,35 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: null, method: "WORKLOAD_BASED", failed: true })
   })
 
+  it("MANUAL_SELECT: with one selected member, always assigns to that member", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "MANUAL_SELECT", manualAssigneeIds: ["b"] } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: "b", method: "MANUAL_SELECT", failed: false, nextRotaPointer: 0 })
+  })
+
+  it("MANUAL_SELECT: round-robins across the selected members via the pointer", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 1, assignmentMethod: "MANUAL_SELECT", manualAssigneeIds: ["a", "c"] } as never)
+    // Eligible order is a, b, c; selected is {a, c} → filtered pool is [a, c].
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    // pointer 1 into a 2-member pool → index 1 = "c", advancing to 0.
+    expect(result).toEqual({ assigneeId: "c", method: "MANUAL_SELECT", failed: false, nextRotaPointer: 0 })
+  })
+
+  it("MANUAL_SELECT: fails when no selected member is currently eligible", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "MANUAL_SELECT", manualAssigneeIds: ["z"] } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: null, method: "MANUAL_SELECT", failed: true })
+  })
+
   it("defaults to ROUND_ROBIN when the department can't be loaded", async () => {
     mockDeptFind.mockResolvedValue(null as never)
     mockGetEligible.mockResolvedValue([{ userId: "solo" }])

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import type { MemberOption } from "@/components/ui/issue-assignee-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
 
 type AssignmentRule = {
   id: string;
@@ -80,7 +80,10 @@ const METHODS: MethodMeta[] = [
 ];
 
 const methodLabel = (m: AssignmentMethod) =>
-  METHODS.find((x) => x.value === m)?.label ?? m;
+  // MANUAL_SELECT is configured on the sub-department mailbox page (member
+  // picker), so it's not one of the METHODS cards here — give it a readable
+  // fallback rather than showing the raw enum value.
+  METHODS.find((x) => x.value === m)?.label ?? (m === "MANUAL_SELECT" ? "Manual user" : m);
 
 async function jsonOrThrow(res: Response) {
   if (!res.ok) {

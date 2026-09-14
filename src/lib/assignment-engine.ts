@@ -73,7 +73,7 @@ export async function autoAssignTicket(params: {
 
   const [department, subDepartment, form] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
-    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true, manualAssigneeIds: true } }),
     formConfigId
       ? prisma.intakeFormConfig.findUnique({ where: { id: formConfigId }, select: { assignmentMethod: true } })
       : Promise.resolve(null),
@@ -116,6 +116,18 @@ export async function autoAssignTicket(params: {
       : { assigneeId: null, method, failed: true };
   } else if (method === "ROUND_ROBIN") {
     const eligible = await getEligibleMembers(teamId, excludeUserId);
+    const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
+    result = picked
+      ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
+      : { assigneeId: null, method, failed: true };
+  } else if (method === "MANUAL_SELECT") {
+    // Round-robin, but restricted to the hand-picked members configured on the
+    // sub-department. A single selected member means every ticket lands on them.
+    // Preserve getEligibleMembers' ordering so the shared rotaPointer stays stable.
+    const selected = new Set(subDepartment?.manualAssigneeIds ?? []);
+    const eligible = (await getEligibleMembers(teamId, excludeUserId)).filter((m) =>
+      selected.has(m.userId),
+    );
     const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
     result = picked
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }

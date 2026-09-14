@@ -15,7 +15,9 @@ export type SubDepartmentDetail = {
   departmentName: string;
   memberCount: number;
   /** Resolved for ticket creation: sub-department override, then department default. */
-  assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+  assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
+  /** User IDs the ticket round-robins across when assignmentMethod is MANUAL_SELECT. */
+  manualAssigneeIds: string[];
 };
 
 export type SubDepartmentMemberInfo = {
@@ -94,6 +96,7 @@ export async function resolveSubDepartmentByName(
     departmentName: subDepartment.department.name,
     memberCount: subDepartment.memberships.length,
     assignmentMethod: subDepartment.assignmentMethod ?? subDepartment.department.assignmentMethod,
+    manualAssigneeIds: subDepartment.manualAssigneeIds,
   };
 }
 
@@ -111,7 +114,7 @@ export async function getSubDepartmentAboutData(
   const subDepartment = await prisma.subDepartment.findFirst({
     where: { ...where, name },
     include: {
-      department: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true, assignmentMethod: true } },
       counter: { select: { lastNumber: true } },
       _count: { select: { projects: true } },
       memberships: {
@@ -156,6 +159,8 @@ export async function getSubDepartmentAboutData(
     workloadThreshold: subDepartment.workloadThreshold,
     ticketsKeyed: subDepartment.counter?.lastNumber ?? 0,
     projectCount: subDepartment._count.projects,
+    assignmentMethod: subDepartment.assignmentMethod ?? subDepartment.department.assignmentMethod,
+    manualAssigneeIds: subDepartment.manualAssigneeIds,
     subManagers,
     agents,
     mailboxes,

@@ -27,6 +27,7 @@ export default async function Page({
       prefix={subDepartment.prefix}
       departmentId={subDepartment.departmentId}
       assignmentMethod={subDepartment.assignmentMethod}
+      manualAssigneeIds={subDepartment.manualAssigneeIds}
       canManage={canManage}
     />
   );

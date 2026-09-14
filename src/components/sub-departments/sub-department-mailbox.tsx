@@ -75,13 +75,20 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL";
+type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
 
 const ASSIGNMENT_METHOD_LABEL: Record<AssignmentMethod, string> = {
   RULE_BASED: "Rule-based",
   ROUND_ROBIN: "Round-robin",
   WORKLOAD_BASED: "Workload-based",
   MANUAL: "Manual",
+  MANUAL_SELECT: "Manual user",
+};
+
+type SubDepartmentMember = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
 };
 
 export function SubDepartmentMailboxManager({
@@ -90,6 +97,7 @@ export function SubDepartmentMailboxManager({
   prefix,
   departmentId,
   assignmentMethod,
+  manualAssigneeIds,
   canManage,
 }: {
   subDepartmentId: string;
@@ -97,6 +105,7 @@ export function SubDepartmentMailboxManager({
   prefix: string;
   departmentId: string;
   assignmentMethod: AssignmentMethod;
+  manualAssigneeIds: string[];
   canManage: boolean;
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
@@ -110,10 +119,15 @@ export function SubDepartmentMailboxManager({
   const [formError, setFormError] = useState<string | null>(null);
 
   const [currentAssignmentMethod, setCurrentAssignmentMethod] = useState<AssignmentMethod>(assignmentMethod);
-  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [editingAssignment, setEditingAssignment] = useState(false);
   const [draftAssignmentMethod, setDraftAssignmentMethod] = useState<AssignmentMethod>(assignmentMethod);
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+
+  // Members chosen for the "Manual user" (MANUAL_SELECT) method.
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(manualAssigneeIds);
+  const [draftMemberIds, setDraftMemberIds] = useState<string[]>(manualAssigneeIds);
+  const [members, setMembers] = useState<SubDepartmentMember[] | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState("");
@@ -129,6 +143,16 @@ export function SubDepartmentMailboxManager({
         setLoadError(true);
       });
   }, [subDepartmentId]);
+
+  // Load the member roster the first time the admin opens the picker for the
+  // "Manual user" method — kept lazy so the mailbox view stays cheap otherwise.
+  useEffect(() => {
+    if (!editingAssignment || draftAssignmentMethod !== "MANUAL_SELECT" || members !== null) return;
+    fetch(`/api/sub-departments/${subDepartmentId}/members`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error())))
+      .then((rows: SubDepartmentMember[]) => setMembers(rows))
+      .catch(() => setMembers([]));
+  }, [editingAssignment, draftAssignmentMethod, members, subDepartmentId]);
 
   const list = connections ?? [];
   const loading = connections === null;
@@ -188,23 +212,42 @@ export function SubDepartmentMailboxManager({
   }
 
   async function saveAssignmentMethod() {
+    if (draftAssignmentMethod === "MANUAL_SELECT" && draftMemberIds.length === 0) {
+      setAssignmentError("Select at least one member for the Manual user method.");
+      return;
+    }
     setSavingAssignment(true);
     setAssignmentError(null);
     try {
       const res = await fetch(`/api/departments/${departmentId}/assignment-settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subDepartmentId, assignmentMethod: draftAssignmentMethod }),
+        body: JSON.stringify({
+          subDepartmentId,
+          assignmentMethod: draftAssignmentMethod,
+          manualAssigneeIds: draftAssignmentMethod === "MANUAL_SELECT" ? draftMemberIds : [],
+        }),
       });
-      const data = await res.json().catch(() => ({})) as { assignmentMethod?: AssignmentMethod; error?: string };
+      const data = await res.json().catch(() => ({})) as {
+        assignmentMethod?: AssignmentMethod;
+        manualAssigneeIds?: string[];
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Couldn't update the assignment method.");
       setCurrentAssignmentMethod(data.assignmentMethod ?? draftAssignmentMethod);
-      setEditingAssignmentId(null);
+      setSelectedMemberIds(data.manualAssigneeIds ?? (draftAssignmentMethod === "MANUAL_SELECT" ? draftMemberIds : []));
+      setEditingAssignment(false);
     } catch (e) {
       setAssignmentError(e instanceof Error ? e.message : "Couldn't update the assignment method.");
     } finally {
       setSavingAssignment(false);
     }
+  }
+
+  function toggleDraftMember(userId: string) {
+    setDraftMemberIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
   }
 
   async function saveEdit(id: string) {
@@ -339,6 +382,128 @@ export function SubDepartmentMailboxManager({
         </div>
       )}
 
+      {/* ── Assignment method (one setting for the whole sub-department, not per
+          mailbox — all connected inboxes route into the same sub-department) ── */}
+      {!loading && list.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-sans text-[12.5px] font-medium text-sts-foreground">Assignment method</p>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+                How tickets opened from these mailboxes are assigned to {subDepartmentName}.
+              </p>
+            </div>
+            {editingAssignment ? (
+              <span className="flex shrink-0 items-center gap-1.5 font-sans text-[12px] text-sts-subtle">
+                <Select
+                  value={draftAssignmentMethod}
+                  onValueChange={(v) => v && setDraftAssignmentMethod(v as AssignmentMethod)}
+                  disabled={savingAssignment}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    aria-label="Assignment method"
+                    className="h-7 border-sts-blue/40 bg-sts-surface px-2 text-[12px] text-sts-foreground"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
+                      <SelectItem key={value} value={value} className="text-[12px]">
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  onClick={saveAssignmentMethod}
+                  disabled={savingAssignment}
+                  title="Save assignment method"
+                  className="rounded-full p-1 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
+                >
+                  {savingAssignment ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingAssignment(false); setDraftAssignmentMethod(currentAssignmentMethod); setDraftMemberIds(selectedMemberIds); setAssignmentError(null); }}
+                  disabled={savingAssignment}
+                  title="Cancel"
+                  className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            ) : (
+              <span className="flex shrink-0 items-center gap-1.5 font-sans text-[12.5px]">
+                <span className="font-medium text-sts-foreground">
+                  {ASSIGNMENT_METHOD_LABEL[currentAssignmentMethod]}
+                  {currentAssignmentMethod === "MANUAL_SELECT" && (
+                    <span className="ml-1 font-normal text-sts-muted">
+                      · {selectedMemberIds.length} member{selectedMemberIds.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </span>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => { setDraftAssignmentMethod(currentAssignmentMethod); setDraftMemberIds(selectedMemberIds); setEditingAssignment(true); setAssignmentError(null); }}
+                    title="Edit assignment method"
+                    className="rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
+
+          {/* Member picker — only for the "Manual user" method. One picked member
+              means every ticket goes to them; multiple round-robin across them. */}
+          {editingAssignment && draftAssignmentMethod === "MANUAL_SELECT" && (
+            <div className="flex flex-col gap-2 border-t border-sts-card-border pt-3">
+              <p className="font-sans text-[11.5px] text-sts-muted">
+                Pick who receives these tickets. Choose one member to send every ticket to them, or
+                several to round-robin across them.
+              </p>
+              {members === null ? (
+                <div className="flex items-center gap-2 text-sts-subtle">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span className="font-sans text-[12px]">Loading members…</span>
+                </div>
+              ) : members.length === 0 ? (
+                <p className="font-sans text-[12px] text-sts-subtle">
+                  This sub-department has no active members yet.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {members.map((m) => {
+                    const checked = draftMemberIds.includes(m.id);
+                    return (
+                      <li key={m.id}>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sts-surface">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleDraftMember(m.id)}
+                            disabled={savingAssignment}
+                            className="size-3.5 accent-sts-blue"
+                          />
+                          <span className="font-sans text-[12.5px] text-sts-foreground">{m.name}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {assignmentError && (
+        <p className="font-sans text-[11.5px] text-red-500">{assignmentError}</p>
+      )}
+
       {/* ── Connection list ── */}
       {loading ? (
         <div className="flex items-center gap-2 rounded-2xl border border-sts-card-border bg-sts-card px-4 py-6 text-sts-subtle">
@@ -370,7 +535,6 @@ export function SubDepartmentMailboxManager({
           {list.map((c) => {
             const meta = STATUS[c.status];
             const busy = !!rechecking[c.id];
-            const editingAssignment = editingAssignmentId === c.id;
             return (
               <li key={c.id} className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card">
                 <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
@@ -414,63 +578,6 @@ export function SubDepartmentMailboxManager({
                       <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
                         {c.authType}
                       </span>
-                      {editingAssignment ? (
-                        <span className="flex items-center gap-1.5">
-                          Assignment:
-                          <Select
-                            value={draftAssignmentMethod}
-                            onValueChange={(v) => v && setDraftAssignmentMethod(v as AssignmentMethod)}
-                            disabled={savingAssignment}
-                          >
-                            <SelectTrigger
-                              size="sm"
-                              aria-label="Assignment method"
-                              className="h-6 border-sts-blue/40 bg-sts-surface px-1.5 text-[11px] text-sts-foreground"
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
-                                <SelectItem key={value} value={value} className="text-[11px]">
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <button
-                            type="button"
-                            onClick={saveAssignmentMethod}
-                            disabled={savingAssignment}
-                            title="Save assignment method"
-                            className="rounded-full p-0.5 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
-                          >
-                            {savingAssignment ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setEditingAssignmentId(null); setDraftAssignmentMethod(currentAssignmentMethod); setAssignmentError(null); }}
-                            disabled={savingAssignment}
-                            title="Cancel"
-                            className="rounded-full p-0.5 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          Assignment: <span className="font-medium text-sts-foreground">{ASSIGNMENT_METHOD_LABEL[currentAssignmentMethod]}</span>
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={() => { setDraftAssignmentMethod(currentAssignmentMethod); setEditingAssignmentId(c.id); setAssignmentError(null); }}
-                              title="Edit assignment method"
-                              className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                            >
-                              <Pencil className="size-3" />
-                            </button>
-                          )}
-                        </span>
-                      )}
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
@@ -521,11 +628,6 @@ export function SubDepartmentMailboxManager({
                   <div className="flex items-start gap-2 border-t border-sts-card-border bg-red-50/50 px-4 py-2.5 dark:bg-red-900/10">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
                     <p className="font-sans text-[11.5px] text-red-600 dark:text-red-400">{c.lastErrorMessage}</p>
-                  </div>
-                )}
-                {assignmentError && editingAssignment && (
-                  <div className="border-t border-sts-card-border bg-red-50/50 px-4 py-2.5 font-sans text-[11.5px] text-red-600 dark:bg-red-900/10 dark:text-red-400">
-                    {assignmentError}
                   </div>
                 )}
               </li>

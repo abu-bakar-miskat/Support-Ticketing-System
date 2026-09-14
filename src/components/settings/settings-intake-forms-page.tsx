@@ -143,12 +143,14 @@ export type AssignmentMethod =
   | "RULE_BASED"
   | "ROUND_ROBIN"
   | "WORKLOAD_BASED"
-  | "MANUAL";
+  | "MANUAL"
+  | "MANUAL_SELECT";
 
 export const ASSIGNMENT_METHOD_LABELS: Record<AssignmentMethod, string> = {
   RULE_BASED: "Rule-based",
   ROUND_ROBIN: "Round-robin",
   WORKLOAD_BASED: "Workload-based",
+  MANUAL_SELECT: "Manual user",
   MANUAL: "Manual",
 };
 
@@ -168,6 +170,10 @@ export const ASSIGNMENT_METHOD_STYLES: Record<
   MANUAL: {
     icon: UserCog,
     className: "text-emerald-600 dark:text-emerald-400",
+  },
+  MANUAL_SELECT: {
+    icon: UserCog,
+    className: "text-teal-600 dark:text-teal-400",
   },
 };
 

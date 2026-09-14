@@ -63,7 +63,7 @@ export function DepartmentsLayout({
   const { open, setOpen } = useCommandPalette();
   const { collapsed, ready } = useSidebarState();
 
-  const { data = initialLayoutData ?? EMPTY } = useQuery<LayoutData>({
+  const { data = EMPTY } = useQuery<LayoutData>({
     queryKey: ["dashboard", "layout"],
     queryFn: async () => {
       const r = await fetch("/api/dashboard/layout");
@@ -72,7 +72,7 @@ export function DepartmentsLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
-    initialDataUpdatedAt: initialLayoutData ? Date.now() : undefined,
+    placeholderData: EMPTY,
     refetchOnWindowFocus: false,
   });
 

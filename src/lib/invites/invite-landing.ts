@@ -20,9 +20,9 @@ export type InviteLandingScope = {
 };
 
 /**
- * Public URL for an accepted invite. Includes tenant/department slugs so the
- * first navigation is already canonical — `/` alone waits on the dashboard
- * layout while the invitee still sees "Verifying…".
+ * Public URL for an accepted invite. Tenant/department slugs make the first
+ * navigation canonical. Agents and sub-managers land on Home (`/`); admins
+ * and managers keep their consoles.
  */
 export function inviteLandingPath(
   role: string,

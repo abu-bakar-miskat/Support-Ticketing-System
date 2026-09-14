@@ -109,7 +109,7 @@ export function DashboardLayout({
   const { collapsed, toggle, ready } = useSidebarState();
   const heldKeys = useRef(new Set<string>());
 
-  const { data = initialLayoutData ?? EMPTY } = useQuery<LayoutData>({
+  const { data = EMPTY } = useQuery<LayoutData>({
     queryKey: ["dashboard", "layout"],
     queryFn: async () => {
       const r = await fetch("/api/dashboard/layout");
@@ -118,6 +118,7 @@ export function DashboardLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
+    placeholderData: EMPTY,
     refetchOnWindowFocus: false,
   });
 

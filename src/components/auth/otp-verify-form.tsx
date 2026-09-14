@@ -8,7 +8,6 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { verifyOtpCode } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 
 /** 8-digit code entry that verifies the emailed OTP (scanner/cross-device safe). */
@@ -23,20 +22,45 @@ export function OtpVerifyForm({
 }) {
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (pending) return;
     setPending(true);
-    const formData = new FormData(e.currentTarget);
+    setError(null);
     try {
-      const { redirectTo } = await verifyOtpCode(formData);
-      // Full navigation (not a React transition). Wrapping this in
-      // startTransition kept "Verifying…" pending until the dashboard RSC
-      // finished — which is exactly the stuck spinner after an invite login.
-      window.location.replace(redirectTo);
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        signal: AbortSignal.timeout(25_000),
+        body: JSON.stringify({
+          email,
+          token: code,
+          next,
+          verificationType,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        redirectTo?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.redirectTo) {
+        setError(data.error || "That code is invalid or has expired.");
+        setPending(false);
+        return;
+      }
+      window.location.replace(data.redirectTo);
     } catch (err) {
       console.error("[OtpVerifyForm] verify failed:", err);
+      const timedOut =
+        err instanceof DOMException && err.name === "TimeoutError";
+      setError(
+        timedOut
+          ? "Sign-in is taking too long. Request a new code and try again."
+          : "Could not verify that code. Try again.",
+      );
       setPending(false);
     }
   }
@@ -71,6 +95,12 @@ export function OtpVerifyForm({
 
       <div className="h-5" />
 
+      {error && (
+        <p role="alert" className="mb-4 w-full text-center text-[13px] text-destructive">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
         disabled={pending || code.replace(/\D/g, "").length < 6}
@@ -86,7 +116,7 @@ export function OtpVerifyForm({
         {pending ? (
           <>
             <LoadingSpinner className="size-4" />
-            Verifying…
+            Signing you in…
           </>
         ) : (
           "Verify code"

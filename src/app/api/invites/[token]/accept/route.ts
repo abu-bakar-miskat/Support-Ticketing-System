@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/db";
+import { getUnscopedPrisma } from "@/lib/db";
 import {
   acceptDepartmentInvite,
   departmentInviteLandingCookies,
@@ -25,7 +25,10 @@ async function acceptAndRespond(
     return NextResponse.redirect(login);
   }
 
-  const profile = await prisma.profile.findUnique({
+  // Auth pool, not the shared dashboard pool — the latter can pin every slot for
+  // 10–20s (see db.ts) and strand the invitee on the accept spinner. All other
+  // queries in this path already run on getUnscopedPrisma.
+  const profile = await getUnscopedPrisma().profile.findUnique({
     where: { id: user.id },
     select: { id: true, email: true },
   });

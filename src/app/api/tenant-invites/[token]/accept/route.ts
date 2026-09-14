@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { prisma } from "@/lib/db"
+import { getUnscopedPrisma } from "@/lib/db"
 import {
   acceptTenantInvite,
   tenantInviteLandingCookies,
@@ -26,7 +26,12 @@ async function acceptAndRespond(request: NextRequest, token: string, asJson: boo
     return NextResponse.redirect(login)
   }
 
-  const profile = await prisma.profile.findUnique({
+  // Use the dedicated auth pool, not the shared dashboard pool: the latter
+  // "routinely pins every slot for 10–20s" (see db.ts), which stalls this lookup
+  // and leaves the invitee on the "Accepting invitation…" spinner until the
+  // client's 20s timeout fires. Every other query in the accept path already
+  // runs on getUnscopedPrisma; this was the one that wasn't.
+  const profile = await getUnscopedPrisma().profile.findUnique({
     where: { id: user.id },
     select: { id: true, email: true },
   })

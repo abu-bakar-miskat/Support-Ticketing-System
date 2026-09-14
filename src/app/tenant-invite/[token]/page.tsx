@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { prisma } from "@/lib/db"
+import { getUnscopedPrisma } from "@/lib/db"
 import { getTenantInvitePreview } from "@/lib/invites/accept-tenant-invite"
 import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button"
 import { AutoAcceptTenantInvite } from "@/components/auth/auto-accept-tenant-invite"
@@ -31,7 +31,7 @@ export default async function TenantInvitePage({
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      const profile = await prisma.profile.findUnique({
+      const profile = await getUnscopedPrisma().profile.findUnique({
         where: { id: user.id },
         select: { id: true, email: true },
       })

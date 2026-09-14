@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db";
+import { prisma, getUnscopedPrisma } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { broadcastForceLogout } from "@/lib/realtime-broadcast";
 
@@ -156,7 +156,8 @@ export function tenantBlocksLogin(tenant: { status: string; deletedAt: Date | nu
  * is only for surfacing *why* right at sign-in.
  */
 export async function loginBlockReason(userId: string): Promise<string | null> {
-  const profile = await prisma.profile.findUnique({
+  const db = getUnscopedPrisma();
+  const profile = await db.profile.findUnique({
     where: { id: userId },
     select: { isActive: true, isSuperAdmin: true, deletedAt: true },
   });
@@ -166,16 +167,10 @@ export async function loginBlockReason(userId: string): Promise<string | null> {
   }
   if (profile.isSuperAdmin) return null; // transcends tenant scope
 
-  // TenantMembership is tenant-scoped — without runAsSystem this triggers
-  // getProfile → RoleAssignment sync (interactive $transaction) and can hang
-  // the OTP verify path for minutes on the Supabase pooler.
-  const { runAsSystem } = await import("@/lib/request-scope");
-  const memberships = await runAsSystem(() =>
-    prisma.tenantMembership.findMany({
-      where: { userId, isActive: true },
-      select: { tenant: { select: { status: true, deletedAt: true } } },
-    }),
-  );
+  const memberships = await db.tenantMembership.findMany({
+    where: { userId, isActive: true },
+    select: { tenant: { select: { status: true, deletedAt: true } } },
+  });
   if (memberships.length === 0) return null; // no tenant to be blocked from
   const allBlocked = memberships.every((m) => tenantBlocksLogin(m.tenant));
   if (!allBlocked) return null;

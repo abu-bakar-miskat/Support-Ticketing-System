@@ -1,6 +1,5 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { runAsSystem } from "@/lib/request-scope";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
 import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey, type TemplateFeatureKey } from "@/lib/template-features";
@@ -22,11 +21,9 @@ import type { TemplateRequestStatus } from "@/generated/prisma/enums";
 export async function getDepartmentActiveFeatureKeys(
   departmentId: string,
 ): Promise<Set<TemplateFeatureKey> | "ALL"> {
-  // Explicit departmentId — read unscoped so layout callers don't trigger
-  // the per-query scope waterfall on the shared pooler.
-  const dept = await runAsSystem(() =>
-    prisma.department.findUnique({ where: { id: departmentId }, select: { featureKeys: true } }),
-  ).catch(() => null);
+  const dept = await prisma.department
+    .findUnique({ where: { id: departmentId }, select: { featureKeys: true } })
+    .catch(() => null);
 
   const raw = dept?.featureKeys;
   if (raw == null) return "ALL";
@@ -49,12 +46,10 @@ export async function getDepartmentActiveFeatureKeys(
 export async function getTenantActiveFeatureKeys(
   tenantId: string,
 ): Promise<Set<TemplateFeatureKey> | "ALL"> {
-  const grants = await runAsSystem(() =>
-    prisma.tenantTemplate.findMany({
-      where: { tenantId, status: "ACTIVE" },
-      select: { template: { select: { features: { select: { key: true } } } } },
-    }),
-  );
+  const grants = await prisma.tenantTemplate.findMany({
+    where: { tenantId, status: "ACTIVE" },
+    select: { template: { select: { features: { select: { key: true } } } } },
+  });
   if (grants.length === 0) return "ALL";
 
   const keys = new Set<TemplateFeatureKey>();
@@ -88,7 +83,7 @@ export async function assertTemplateFeatureEnabled(
 }
 
 export async function listCatalogueForTenant(tenantId: string) {
-  const [templates, grants, requests] = await runAsSystem(() => Promise.all([
+  const [templates, grants, requests] = await Promise.all([
     prisma.template.findMany({
       where: { isActive: true },
       orderBy: { order: "asc" },
@@ -102,7 +97,7 @@ export async function listCatalogueForTenant(tenantId: string) {
       where: { tenantId, status: "PENDING" },
       select: { templateId: true },
     }),
-  ]));
+  ]);
 
   const activeTemplateIds = new Set(grants.map((g) => g.templateId));
   const pendingTemplateIds = new Set(requests.map((r) => r.templateId));

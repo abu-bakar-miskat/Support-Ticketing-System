@@ -1,6 +1,5 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { runAsSystem } from "@/lib/request-scope";
 import { getProfileDeptScope, projectInScope } from "@/lib/dept-scope";
 import { getBoardCards, getSubDepartmentStatuses, avatarColorFor } from "@/lib/board-data";
 import type { ProjectDetailsResponse, ProjectAsset } from "@/lib/api/projects";
@@ -100,9 +99,7 @@ export async function getProjectDetailsData(
   })();
   const defaultTab = projectTabPrefs[project.id] ?? null;
 
-  // Access to this project was decided above; the reads below are all bound to
-  // project.id — run unscoped to skip the per-query scope waterfall.
-  const [tickets, cards, cardSubDepartmentIds, recentActivity, projectTimeEntries, projectModules] = await runAsSystem(() => Promise.all([
+  const [tickets, cards, cardSubDepartmentIds, recentActivity, projectTimeEntries, projectModules] = await Promise.all([
     prisma.ticket.findMany({
       where: { projectId: project.id, deletedAt: null },
       orderBy: { updatedAt: "desc" },
@@ -148,7 +145,7 @@ export async function getProjectDetailsData(
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       select: { id: true, name: true, status: true },
     }),
-  ]));
+  ]);
 
   const projectTimeByUser = new Map<
     string,
@@ -186,13 +183,11 @@ export async function getProjectDetailsData(
   }
 
   const departmentSubDepartmentRows = projectDeptId
-    ? await runAsSystem(() =>
-        prisma.subDepartment.findMany({
-          where: { departmentId: projectDeptId },
-          select: { id: true, name: true },
-          orderBy: { name: "asc" },
-        }),
-      )
+    ? await prisma.subDepartment.findMany({
+        where: { departmentId: projectDeptId },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
     : [];
   const departmentSubDepartmentIds = departmentSubDepartmentRows.map((t) => t.id);
   const memberNamesBySubDepartment = memberNamesBySubDepartmentId(project.members);
@@ -206,13 +201,11 @@ export async function getProjectDetailsData(
   });
 
   const boardSubDepartments = enabledBoardSubDepartmentIds.length
-    ? await runAsSystem(() =>
-        prisma.subDepartment.findMany({
-          where: { id: { in: enabledBoardSubDepartmentIds } },
-          select: { id: true, name: true },
-          orderBy: { name: "asc" },
-        }),
-      )
+    ? await prisma.subDepartment.findMany({
+        where: { id: { in: enabledBoardSubDepartmentIds } },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
     : [];
 
   const addableSubDepartmentIdSet = new Set<string>();
@@ -223,13 +216,11 @@ export async function getProjectDetailsData(
 
   const addableBoardSubDepartments = addableSubDepartmentIdSet.size
     ? await (async () => {
-        const rows = await runAsSystem(() =>
-          prisma.subDepartment.findMany({
-            where: { id: { in: [...addableSubDepartmentIdSet] } },
-            select: { id: true, name: true },
-            orderBy: { name: "asc" },
-          }),
-        );
+        const rows = await prisma.subDepartment.findMany({
+          where: { id: { in: [...addableSubDepartmentIdSet] } },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        });
         const statusesBySubDepartment = await Promise.all(
           rows.map((subDepartment) => getSubDepartmentStatuses(subDepartment.id)),
         );

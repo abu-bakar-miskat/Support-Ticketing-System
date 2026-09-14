@@ -180,14 +180,6 @@ export async function getAssignedSubtasks(
   assigneeId: string,
   opts: { allowedDeptIds?: string[] } = {},
 ): Promise<AssignedSubtask[]> {
-  const { runAsSystem } = await import("@/lib/request-scope")
-  return runAsSystem(() => collectAssignedSubtasks(assigneeId, opts))
-}
-
-async function collectAssignedSubtasks(
-  assigneeId: string,
-  opts: { allowedDeptIds?: string[] } = {},
-): Promise<AssignedSubtask[]> {
   const subtasks = await prisma.ticket.findMany({
     where: {
       deletedAt: null,
@@ -560,11 +552,8 @@ export async function resolveBoardCardFilters<T extends BoardCardWhere>(where: T
 }
 
 export async function countBoardCards(where: Omit<BoardCardWhere, "skip" | "take" | "timeForUserId" | "sortKey"> = {}): Promise<number> {
-  const { runAsSystem } = await import("@/lib/request-scope")
-  return runAsSystem(async () => {
-    const resolved = await resolveBoardCardFilters(where)
-    return prisma.ticket.count({ where: buildTicketWhere(resolved) })
-  })
+  const resolved = await resolveBoardCardFilters(where)
+  return prisma.ticket.count({ where: buildTicketWhere(resolved) })
 }
 
 export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCardData[]> {
@@ -612,14 +601,6 @@ export async function getSubDepartmentReviewCards(
   forUserId?: string,
 ): Promise<BoardCardData[]> {
   if (subDepartmentIds.length === 0) return []
-  const { runAsSystem } = await import("@/lib/request-scope")
-  return runAsSystem(() => collectSubDepartmentReviewCards(subDepartmentIds, forUserId))
-}
-
-async function collectSubDepartmentReviewCards(
-  subDepartmentIds: string[],
-  forUserId?: string,
-): Promise<BoardCardData[]> {
   const tickets = await prisma.ticket.findMany({
     where: {
       deletedAt: null,
@@ -681,14 +662,6 @@ export async function getSubDepartmentStatusesForSubDepartmentIds(
 }
 
 export async function getSubDepartmentBoardGroups(
-  cards: BoardCardData[],
-  memberSubDepartmentIds: string[] = [],
-): Promise<SubDepartmentBoardGroup[]> {
-  const { runAsSystem } = await import("@/lib/request-scope")
-  return runAsSystem(() => collectSubDepartmentBoardGroups(cards, memberSubDepartmentIds))
-}
-
-async function collectSubDepartmentBoardGroups(
   cards: BoardCardData[],
   memberSubDepartmentIds: string[] = [],
 ): Promise<SubDepartmentBoardGroup[]> {

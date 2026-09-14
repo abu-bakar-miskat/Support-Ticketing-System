@@ -7,7 +7,6 @@ import { readFormBranding, type FormBrandingDefaults } from "@/lib/form-branding
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
 import { supportFormPath } from "@/lib/support-form-path"
 import { prisma } from "@/lib/db"
-import { runAsSystem } from "@/lib/request-scope"
 import {
   SettingsIntakeFormsPage,
   type IntakeFormRow,
@@ -46,9 +45,7 @@ export default async function SettingsIntakeFormsRoute() {
       ? { tenantId }
       : { id: { in: departmentAdminIds } }
 
-  // deptWhere is bound to the caller's admin dept ids / tenant — run unscoped
-  // to skip the per-query scope waterfall.
-  const [forms, departments] = await runAsSystem(() => Promise.all([
+  const [forms, departments] = await Promise.all([
     prisma.intakeFormConfig.findMany({
       where: { department: deptWhere },
       orderBy: { createdAt: "desc" },
@@ -73,19 +70,17 @@ export default async function SettingsIntakeFormsRoute() {
         subDepartments: { orderBy: { name: "asc" }, select: { id: true, name: true } },
       },
     }),
-  ]))
+  ])
 
   // Which of these forms have at least one enabled SLA policy — the same
   // condition that makes the public form render its issue-type field.
   const formsWithSla = new Set(
     (
-      await runAsSystem(() =>
-        prisma.slaPolicy.findMany({
-          where: { formConfigId: { in: forms.map((f) => f.id) }, enabled: true },
-          select: { formConfigId: true },
-          distinct: ["formConfigId"],
-        }),
-      )
+      await prisma.slaPolicy.findMany({
+        where: { formConfigId: { in: forms.map((f) => f.id) }, enabled: true },
+        select: { formConfigId: true },
+        distinct: ["formConfigId"],
+      })
     ).flatMap((p) => (p.formConfigId ? [p.formConfigId] : [])),
   )
 

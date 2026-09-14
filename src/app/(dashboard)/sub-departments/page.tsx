@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope } from "@/lib/dept-scope";
-import { runAsSystem } from "@/lib/request-scope";
 import { avatarColorFor } from "@/lib/board-data";
 import {
   SettingsSubDepartmentsPage,
@@ -46,9 +45,7 @@ export default async function SubDepartmentsPage() {
     }
   }
 
-  // Queries are bound to the caller's managed/active dept ids (admin: tenant)
-  // — run unscoped to skip the per-query scope waterfall.
-  const [subDepartmentsRaw, departments, joinRequests] = await runAsSystem(() => Promise.all([
+  const [subDepartmentsRaw, departments, joinRequests] = await Promise.all([
     prisma.subDepartment.findMany({
       where: isAdmin
         ? activeDeptId ? { departmentId: activeDeptId } : { tenantId }
@@ -94,7 +91,7 @@ export default async function SubDepartmentsPage() {
         },
       },
     }),
-  ]));
+  ]);
 
   const subDepartmentRows: SubDepartmentRow[] = subDepartmentsRaw.map((subDepartment) => {
     const explicitLeads = subDepartment.memberships

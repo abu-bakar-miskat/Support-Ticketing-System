@@ -1,6 +1,5 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { runAsSystem } from "@/lib/request-scope";
 import { avatarColorFor } from "@/lib/avatar";
 import { timeAgo } from "@/lib/format";
 import {
@@ -135,10 +134,8 @@ export async function buildActivityPageData(
         }
       : { tenantId };
 
-  // Every where clause above is built from the pre-resolved activity scope
-  // (sub-department / dept / tenant ids) — run unscoped to skip the waterfall.
   const [rows, memberRows, projectRows, actionCounts, uniqueActors, uniqueTickets, totalEvents] =
-    await runAsSystem(() => Promise.all([
+    await Promise.all([
       prisma.activityLog.findMany({
         where: activityWhere,
         orderBy: { createdAt: "desc" },
@@ -180,7 +177,7 @@ export async function buildActivityPageData(
         .findMany({ where: activityWhere, select: { ticketId: true }, distinct: ["ticketId"] })
         .then((r) => r.length),
       prisma.activityLog.count({ where: activityWhere }),
-    ]));
+    ]);
 
   const hasMore = rows.length > 50;
   const items = rows.slice(0, 50);

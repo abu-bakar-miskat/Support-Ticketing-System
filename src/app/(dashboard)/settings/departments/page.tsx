@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
-import { runAsSystem } from "@/lib/request-scope";
 import { listCatalogueForTenant } from "@/lib/template-catalogue";
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -35,9 +34,7 @@ export default async function SettingsDepartmentsRoute() {
       ? { tenantId }                                 // admin: all depts in this tenant
       : { id: { in: managedDeptIds } };             // manager: their own depts only
 
-  // deptWhere is bound to the caller's managed dept ids / tenant — run
-  // unscoped to skip the per-query scope waterfall.
-  const [departments, users] = await runAsSystem(() => Promise.all([
+  const [departments, users] = await Promise.all([
     prisma.department.findMany({
       where: deptWhere,
       orderBy: { name: "asc" },
@@ -71,7 +68,7 @@ export default async function SettingsDepartmentsRoute() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true, role: true, avatarUrl: true },
     }),
-  ]));
+  ]);
 
   // Fetch subDepartment memberships with user details for each department
   const deptIds = departments.map((d) => d.id);

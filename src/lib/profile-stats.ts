@@ -235,23 +235,6 @@ export async function fetchProfileStats(opts: {
   | { ok: true; data: ProfileStatsResult }
   | { ok: false; status: 403 | 404; error: string }
 > {
-  // Viewer permission is checked below before any data loads; the reads are
-  // all keyed by the target user id — run unscoped to skip the per-query
-  // scope waterfall on the shared pooler.
-  const { runAsSystem } = await import("@/lib/request-scope")
-  return runAsSystem(() => collectProfileStats(opts))
-}
-
-async function collectProfileStats(opts: {
-  viewer: ViewerProfile
-  targetId: string
-  fromDate: Date
-  toDate: Date
-  projectId?: string
-}): Promise<
-  | { ok: true; data: ProfileStatsResult }
-  | { ok: false; status: 403 | 404; error: string }
-> {
   const { viewer, targetId, fromDate, toDate, projectId } = opts
 
   if (targetId !== viewer.id) {

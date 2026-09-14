@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { getProfile } from "@/lib/profile";
 import { buildProjectDeptWhere, getProfileDeptScope } from "@/lib/dept-scope";
 import { canAccessModulesArea, canManageModules } from "@/lib/module-permissions";
-import { runAsSystem } from "@/lib/request-scope";
 import { ModulesPage } from "@/components/modules/modules-page";
 
 export const metadata = { title: "Modules — Support Ticketing System" };
@@ -33,10 +32,8 @@ export default async function Page() {
 
   // All in-scope projects (modules-off included) so create dialog can pick any
   // and auto-enable the module system. Don't await — chrome paints first.
-  // deptScope already resolved access; scopeWhere is explicit, so read unscoped
-  // to avoid re-triggering the per-query scope waterfall on the shared pooler.
-  const projectsPromise = runAsSystem(() =>
-    prisma.project.findMany({
+  const projectsPromise = prisma.project
+    .findMany({
       where: { AND: [scopeWhere] },
       orderBy: { name: "asc" },
       select: {
@@ -49,8 +46,7 @@ export default async function Page() {
         department: { select: { id: true, name: true } },
         subDepartment: { select: { department: { select: { id: true, name: true } } } },
       },
-    }),
-  )
+    })
     .then((rows) =>
       rows.map((p) => ({
         id: p.id,

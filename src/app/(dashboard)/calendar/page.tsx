@@ -2,7 +2,6 @@ import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { prisma } from "@/lib/db"
-import { runAsSystem } from "@/lib/request-scope"
 import { CalendarView } from "@/components/calendar/calendar-view"
 
 export const metadata = { title: "Calendar — Support Ticketing System" }
@@ -27,13 +26,10 @@ export default async function CalendarPage() {
     )
   }
 
-  // activeDeptId comes from the caller's resolved dept scope — run unscoped.
-  const department = await runAsSystem(() =>
-    prisma.department.findUnique({
-      where: { id: deptScope.activeDeptId },
-      select: { name: true },
-    }),
-  )
+  const department = await prisma.department.findUnique({
+    where: { id: deptScope.activeDeptId },
+    select: { name: true },
+  })
 
   return (
     <CalendarView deptId={deptScope.activeDeptId} deptName={department?.name ?? "Department"} />

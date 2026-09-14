@@ -2,16 +2,13 @@ import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope, getPersonalTaskDeptScope } from "@/lib/dept-scope";
-import { runAsSystem } from "@/lib/request-scope";
 import type { AuthProfile } from "@/lib/auth";
 
 export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
   const [deptScope, personalScope] = await Promise.all([getProfileDeptScope(profile), getPersonalTaskDeptScope(profile)]);
   const deptIds = deptScope?.subDepartmentIds;
   const personalIds = personalScope?.subDepartmentIds;
-  // Counts are bound to the caller's own id + resolved sub-department ids; run
-  // unscoped so the badge query (loaded on every page) skips the scope waterfall.
-  const [myTasksCount, mentionsCount, inboxCount] = await runAsSystem(() => Promise.all([
+  const [myTasksCount, mentionsCount, inboxCount] = await Promise.all([
     prisma.ticket.count({ where: {
       assigneeId: profile.id, deletedAt: null,
       status: { notIn: ["Live", "Done", "Completed", "Closed"] },
@@ -25,6 +22,6 @@ export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
       recipientId: profile.id, readAt: null,
       ...(deptIds ? { OR: [{ ticketId: null }, { ticket: { subDepartmentId: { in: deptIds } } }] } : {}),
     } }),
-  ]));
+  ]);
   return { myTasksCount, mentionsCount, inboxCount };
 });

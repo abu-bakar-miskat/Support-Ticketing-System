@@ -102,10 +102,14 @@ function scopeFor(departmentId: string, subDepartmentId?: string | null): EmailC
 }
 
 async function loadEmailConfigRaw(scope: EmailConfigScope): Promise<Record<string, unknown>> {
-  const raw =
+  // Id-keyed config read (callers verified access) — run unscoped to skip the
+  // per-query scope waterfall.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  const raw = await runAsSystem(async () =>
     "subDepartmentId" in scope
       ? (await prisma.subDepartment.findUnique({ where: { id: scope.subDepartmentId }, select: { emailConfig: true } }))?.emailConfig
-      : (await prisma.department.findUnique({ where: { id: scope.departmentId }, select: { emailConfig: true } }))?.emailConfig;
+      : (await prisma.department.findUnique({ where: { id: scope.departmentId }, select: { emailConfig: true } }))?.emailConfig,
+  );
   return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 }
 

@@ -124,6 +124,14 @@ export async function fetchProjectsList(
   profile: ProfileForProjects,
   scope: "mine" | "all",
 ): Promise<ProjectListRow[]> {
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() => collectProjectsList(profile, scope));
+}
+
+async function collectProjectsList(
+  profile: ProfileForProjects,
+  scope: "mine" | "all",
+): Promise<ProjectListRow[]> {
   const isPrivileged =
     profile.role === "admin" || profile.role === "manager" || profile.role === "sub_manager";
 

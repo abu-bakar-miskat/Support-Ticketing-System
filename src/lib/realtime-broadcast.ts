@@ -40,3 +40,23 @@ export function broadcastForceLogout(userIds: string[], reason: string): Promise
     })),
   );
 }
+
+/**
+ * Fires when a new inbound email lands at a connected mailbox — either opening
+ * a ticket or threading a reply onto an existing one. The Received-mail panel
+ * (department- and sub-department-scoped) subscribes to these topics and
+ * refetches so newly arrived mail shows up without a manual reload.
+ *
+ * Broadcasts to both the department- and sub-department-scoped topics so
+ * whichever panel is open updates. Channel names must match the topic exactly
+ * (see createMailboxMailSubscription).
+ */
+export function broadcastMailboxMail(
+  departmentId: string,
+  subDepartmentId: string,
+): Promise<void> {
+  return broadcast([
+    { topic: `mailbox-mail:dept:${departmentId}`, event: "mail_received", payload: {} },
+    { topic: `mailbox-mail:subdept:${subDepartmentId}`, event: "mail_received", payload: {} },
+  ]);
+}

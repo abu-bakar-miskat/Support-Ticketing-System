@@ -144,7 +144,17 @@ export function mergeScopeWhere(
 ): Record<string, unknown> {
   const parts: Record<string, unknown>[] = [];
   if (where && Object.keys(where).length > 0) parts.push(where);
-  parts.push({ tenantId: { in: tenantIds } });
+  // A ticket the caller is explicitly assigned or granted is readable even when
+  // its tenant is outside the caller's allowlist — e.g. a sub-department member
+  // with no active TenantMembership for that tenant must still see (and open)
+  // the ticket assigned to them. The grant is narrow: only these specific ids
+  // cross the tenant boundary, never the rest of the tenant.
+  const tenantPredicate = { tenantId: { in: tenantIds } };
+  parts.push(
+    grantedTicketIds
+      ? { OR: [tenantPredicate, { id: { in: grantedTicketIds } }] }
+      : tenantPredicate,
+  );
   if (subDepartmentTeamIds) {
     const subPredicate = { subDepartmentId: { in: subDepartmentTeamIds } };
     parts.push(
@@ -341,8 +351,14 @@ async function applyTenantScope(
     const result = (await query(runArgs)) as
       | { id?: string | null; tenantId?: string | null; subDepartmentId?: string | null }
       | null;
-    const subOk = rowSubDepartmentAllowed(result, subAllow) || rowGrantedTicketAccess(result, grantedIds);
-    if (!rowInScope(result, scope) || !subOk) {
+    // An explicit per-ticket grant (assignee/ASG-06) overrides BOTH the tenant
+    // and sub-department checks for exactly that ticket — otherwise an assignee
+    // whose tenant allowlist omits the ticket's tenant reads null and the route
+    // 404s ("Ticket not found") on a ticket they legitimately own.
+    const granted = rowGrantedTicketAccess(result, grantedIds);
+    const tenantOk = rowInScope(result, scope) || granted;
+    const subOk = rowSubDepartmentAllowed(result, subAllow) || granted;
+    if (!tenantOk || !subOk) {
       if (operation === "findUniqueOrThrow") throw new Error(`No ${modelLabel} found`);
       return null;
     }

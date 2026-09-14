@@ -27,23 +27,35 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}))
   const userId = typeof body?.userId === "string" ? body.userId : ""
-  if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 })
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
+  if (!userId && !email) {
+    return NextResponse.json({ error: "userId or email is required" }, { status: 400 })
   }
 
-  const user = await prisma.profile.findUnique({
-    where: { id: userId },
+  // Super-admin is a platform-wide flag on an existing Profile, and a Profile
+  // only exists once its owner has signed in (id is the Supabase auth uid).
+  // So an invite-by-email can only be granted to someone who already has an
+  // account — there's nothing to flag before that.
+  const user = await prisma.profile.findFirst({
+    where: userId ? { id: userId } : { email },
     select: { id: true, deletedAt: true, isSuperAdmin: true },
   })
   if (!user || user.deletedAt) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 })
+    return NextResponse.json(
+      {
+        error: email
+          ? "No account exists for this email yet. They must sign in once before they can be made a super admin."
+          : "User not found",
+      },
+      { status: 404 },
+    )
   }
 
   // Privileged-access change + its audit record are written together: if the
   // audit write fails, the grant is rolled back (accountability guarantee).
   const admin = await prisma.$transaction(async (tx) => {
     const updated = await tx.profile.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: { isSuperAdmin: true },
       select: { id: true, name: true, email: true, avatarUrl: true },
     })
@@ -52,7 +64,7 @@ export async function POST(request: NextRequest) {
       actorId: profile!.id,
       action: "SUPER_ADMIN_GRANTED",
       targetType: "Profile",
-      targetId: userId,
+      targetId: user.id,
       before: { isSuperAdmin: user.isSuperAdmin },
       after: { isSuperAdmin: true },
       client: tx,

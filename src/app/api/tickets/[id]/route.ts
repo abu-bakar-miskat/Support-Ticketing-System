@@ -11,6 +11,9 @@ import { parseStartDatePayload, parseDueDatePayload, formatCalendarDate, dueHasT
 import { assertAssigneeEligibleForTicket } from "@/lib/ticket-detail-data"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
+import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
+import { startTimerOnStatusChange } from "@/lib/timer-autostart"
+import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
 type TicketPriority = (typeof VALID_PRIORITIES)[number]
 
@@ -34,6 +37,7 @@ export async function PATCH(
       sprint:  { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
       module:  { select: { id: true, name: true } },
+      slaTimer: { select: { resolutionTargetMins: true } },
     },
   })
 
@@ -101,6 +105,9 @@ export async function PATCH(
     priority?: TicketPriority
     status?: string
     closedAt?: Date | null
+    inProgressStartedAt?: Date
+    resolutionDurationMins?: number | null
+    resolvedWithinAllowed?: boolean | null
     startDate?: Date | null
     dueDate?: Date | null
     description?: string | null
@@ -146,7 +153,23 @@ export async function PATCH(
       where: { subDepartmentId: ticket.subDepartmentId, label: updateData.status },
       select: { isComplete: true },
     })
-    updateData.closedAt = subDepartmentStatus?.isComplete ? (ticket.closedAt ?? new Date()) : null
+    const isCompletion = !!subDepartmentStatus?.isComplete
+    updateData.closedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
+
+    // Start the resolution timer on entry to "In Progress"; stop it + record the
+    // total time and within/exceeded verdict on completion (shared helper). This
+    // is the board drag-and-drop path, so it must behave like /move and /status.
+    Object.assign(
+      updateData,
+      resolutionUpdateOnStatusChange({
+        toStatus: updateData.status,
+        isCompletion,
+        newClosedAt: updateData.closedAt,
+        currentInProgressStartedAt: ticket.inProgressStartedAt,
+        slaResolutionTargetMins: ticket.slaTimer?.resolutionTargetMins,
+        estimatedTime: ticket.estimatedTime,
+      }),
+    )
   }
 
   if (hasPriority) {
@@ -571,8 +594,20 @@ export async function PATCH(
     void Promise.all(events)
   })
 
-  if (hasStatus && updateData.closedAt) {
-    cascadeCompleteToSubtickets(id).catch(() => undefined)
+  // Status side-effects for the board (drag-and-drop) path, mirroring /move:
+  // auto-stop/-start the assignee's timer and cascade completion to sub-tickets.
+  if (hasStatus && updated.status !== ticket.status) {
+    after(async () => {
+      await stopRunningTimersOnStatusChange(id, updated.status).catch(() => undefined)
+      await startTimerOnStatusChange(id, updated.status, {
+        id: profile.id,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+      }).catch(() => undefined)
+    })
+    if (updateData.closedAt) {
+      cascadeCompleteToSubtickets(id).catch(() => undefined)
+    }
   }
 
   return NextResponse.json(updated)

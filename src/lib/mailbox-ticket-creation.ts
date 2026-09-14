@@ -34,8 +34,13 @@ export async function createTicketFromInboundEmail(params: {
   fromEmail: string;
   fromName: string;
   subject: string | null;
+  /** Parsed email body (sanitized HTML) to seed the ticket description with. */
+  description?: string | null;
+  /** The mailbox this email arrived at — its per-mailbox assignment override
+   *  (if any) takes precedence over the sub-department's method. */
+  mailboxConnectionId?: string | null;
 }): Promise<CreateTicketFromEmailResult> {
-  const { departmentId, teamId, fromEmail, fromName, subject } = params;
+  const { departmentId, teamId, fromEmail, fromName, subject, description, mailboxConnectionId } = params;
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
   const setupCheck = await assertDepartmentOperational(departmentId);
@@ -56,12 +61,14 @@ export async function createTicketFromInboundEmail(params: {
     teamId,
     formValues: {},
     excludeUserId: managerRow?.userId ?? null,
+    mailboxConnectionId,
   });
 
   const ticket = await prisma.$transaction(async (tx) => {
     const created = await tx.ticket.create({
       data: {
         title,
+        description: description?.trim() ? description : null,
         type: "Task",
         priority: "Medium",
         status,

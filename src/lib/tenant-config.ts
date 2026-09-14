@@ -35,10 +35,15 @@ export async function getTenantConfig(tenantId: string) {
 export async function tenantEmailConfigForDepartment(
   departmentId: string,
 ): Promise<unknown | null> {
-  const dept = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { tenant: { select: { emailConfig: true } } },
-  });
+  // Id-keyed config read (callers verified access) — run unscoped to skip the
+  // per-query scope waterfall.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  const dept = await runAsSystem(() =>
+    prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { tenant: { select: { emailConfig: true } } },
+    }),
+  );
   return dept?.tenant?.emailConfig ?? null;
 }
 

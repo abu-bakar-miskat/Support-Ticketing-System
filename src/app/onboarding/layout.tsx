@@ -11,11 +11,12 @@ export default async function OnboardingLayout({
   const profile = await getProfile()
   if (!profile) redirect("/login")
 
-  // Already has a subDepartment membership or is admin/manager → send to dashboard
+  // Already in a workspace → their role landing, not this empty join screen.
   if (
     profile.role === "admin" ||
     profile.role === "manager" ||
-    (profile.memberships?.length ?? 0) > 0
+    (profile.memberships?.length ?? 0) > 0 ||
+    (profile.tenantMemberships?.length ?? 0) > 0
   ) {
     redirect("/")
   }

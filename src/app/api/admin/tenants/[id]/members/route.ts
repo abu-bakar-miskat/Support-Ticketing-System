@@ -7,9 +7,10 @@ import { applyTenantMembership } from "@/lib/tenant-membership"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
+import { sendTenantInviteEmail } from "@/lib/email"
+import { INVITE_TTL_MS } from "@/lib/invites/constants"
 import type { Role } from "@/generated/prisma/enums"
 
-const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "agent"]
 
 type Params = { params: Promise<{ id: string }> }
@@ -77,7 +78,7 @@ export async function POST(request: Request, { params }: Params) {
     return forbidden("Only a super-admin or an admin of this tenant can add members.")
   }
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true } })
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true } })
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
   const body = await request.json().catch(() => ({}))
@@ -133,6 +134,7 @@ export async function POST(request: Request, { params }: Params) {
   if (dup) return NextResponse.json({ error: "A pending invite already exists for this email" }, { status: 409 })
 
   const token = randomBytes(32).toString("hex")
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS)
   await prisma.tenantInvite.create({
     data: {
       token,
@@ -142,9 +144,28 @@ export async function POST(request: Request, { params }: Params) {
       departmentIds: role === "admin" ? undefined : departmentIds,
       subDepartmentId: needsSubDepartment ? subDepartmentId : null,
       invitedBy: profile.id,
-      expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      expiresAt,
     },
   })
+
+  // Best-effort: email the invitee so the 72h window + 24h reminder apply. The
+  // accept link is still returned so a delivery failure never blocks the invite.
+  try {
+    await sendTenantInviteEmail({
+      to: email,
+      inviterName: profile.name,
+      inviterId: profile.id,
+      tenantId,
+      tenantName: tenant.name,
+      role,
+      departmentId: departmentIds[0] ?? null,
+      inviteToken: token,
+      expiresAt,
+    })
+  } catch (err) {
+    console.error("[tenant-members] failed to send invite email:", err)
+  }
+
   return NextResponse.json(
     { invited: true, email, role, acceptPath: `/tenant-invite/${token}` },
     { status: 201 },

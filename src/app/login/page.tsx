@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PenLogo } from "@/components/auth/sts-logo";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { OtpVerifyForm } from "@/components/auth/otp-verify-form";
+import { ResendCodeButton } from "@/components/auth/resend-code-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
@@ -54,7 +55,7 @@ async function requestLoginCode(formData: FormData) {
   // the request step with an error.
   if (isDevTestAccount(email)) {
     redirect(
-      `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=magiclink${nextQuery}`,
+      `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=magiclink&t=${Date.now()}${nextQuery}`,
     );
   }
 
@@ -67,7 +68,9 @@ async function requestLoginCode(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(result.error)}${nextQuery}`);
   }
 
-  redirect(`/login?step=sent&email=${encodeURIComponent(email)}&verificationType=${result.verificationType}${nextQuery}`);
+  // `t` is the send time — the resend countdown reads it so the 90s cooldown
+  // survives a refresh and restarts on each fresh send.
+  redirect(`/login?step=sent&email=${encodeURIComponent(email)}&verificationType=${result.verificationType}&t=${Date.now()}${nextQuery}`);
 }
 
 export default async function LoginPage({
@@ -79,6 +82,7 @@ export default async function LoginPage({
     step?: string;
     email?: string;
     verificationType?: string;
+    t?: string;
   }>;
 }) {
   const {
@@ -87,11 +91,16 @@ export default async function LoginPage({
     step,
     email: emailParam,
     verificationType: verificationTypeParam,
+    t: sentAtParam,
   } = await searchParams;
   const next = safeNextPath(nextParam);
   const sentEmail = (emailParam ?? "").trim();
   const verificationType = verificationTypeParam === "signup" ? "signup" : "magiclink";
   const sentStep = step === "sent" && sentEmail.length > 0;
+  // Send time for the resend countdown; falls back to "now" so a code reached
+  // this step even without the marker still starts a full 90s cooldown.
+  const sentAt = Number(sentAtParam);
+  const codeSentAt = Number.isFinite(sentAt) && sentAt > 0 ? sentAt : Date.now();
 
   // Redirect already-authenticated users to the dashboard (or invite next).
   // Skip this on the OTP step: verifyOtpCode has just set the session and
@@ -214,19 +223,13 @@ export default async function LoginPage({
             <div className="h-6" />
 
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px]">
-              <form action={requestLoginCode}>
-                {next !== "/" && (
-                  <input type="hidden" name="next" value={next} />
-                )}
-                <input type="hidden" name="email" value={sentEmail} />
-                <input type="hidden" name="verificationType" value={verificationType} />
-                <button
-                  type="submit"
-                  className="rounded-sm font-semibold text-sts-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
-                >
-                  Resend code
-                </button>
-              </form>
+              <ResendCodeButton
+                email={sentEmail}
+                next={next}
+                verificationType={verificationType}
+                sentAt={codeSentAt}
+                resendAction={requestLoginCode}
+              />
               <span className="text-sts-card-border" aria-hidden>
                 |
               </span>

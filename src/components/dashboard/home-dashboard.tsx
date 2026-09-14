@@ -20,7 +20,6 @@ import { DualClock } from "@/components/dashboard/london-clock";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { RailCard } from "@/components/manager/rail-card";
 import { DrawerLink } from "@/components/tickets/drawer-link";
-import { HomeDashboardSectionsSkeleton } from "@/components/skeletons/page-skeletons";
 import { useLondonGreeting } from "@/lib/london-time";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -100,6 +99,25 @@ export type HomeDashboardData = {
   activity: ActivityItem[];
   ledSubDepartments: LedSubDepartment[];
   subDepartmentTickets: SubDeptTicket[];
+};
+
+const EMPTY_HOME: HomeDashboardData = {
+  dateLine: "",
+  metrics: {
+    open: 0,
+    overdue: 0,
+    dueThisWeek: 0,
+    inProgress: 0,
+    completed: 0,
+    todo: 0,
+    timeTodaySecs: 0,
+    timeToday: "0m",
+  },
+  attention: [],
+  projects: [],
+  activity: [],
+  ledSubDepartments: [],
+  subDepartmentTickets: [],
 };
 
 // ── Style maps ────────────────────────────────────────────────────────────────
@@ -303,8 +321,14 @@ function TeamRow({ team }: { team: LedSubDepartment }) {
   );
 }
 
-function TeamsYouLeadCard({ teams }: { teams: LedSubDepartment[] }) {
-  if (teams.length === 0) return null;
+function TeamsYouLeadCard({
+  teams,
+  showEmpty,
+}: {
+  teams: LedSubDepartment[];
+  showEmpty?: boolean;
+}) {
+  if (teams.length === 0 && !showEmpty) return null;
   return (
     <section className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card shadow-sts-card">
       <div className="flex items-center gap-2.5 border-b border-sts-card-border px-4 py-3">
@@ -317,9 +341,13 @@ function TeamsYouLeadCard({ teams }: { teams: LedSubDepartment[] }) {
         </span>
       </div>
       <div className="divide-y divide-sts-card-border/60">
-        {teams.map((team) => (
-          <TeamRow key={team.id} team={team} />
-        ))}
+        {teams.length === 0 ? (
+          <p className="px-4 py-5 font-sans text-[13px] text-sts-muted">
+            No teams assigned yet.
+          </p>
+        ) : (
+          teams.map((team) => <TeamRow key={team.id} team={team} />)
+        )}
       </div>
     </section>
   );
@@ -375,18 +403,22 @@ function SubDeptTicketsCard({ tickets }: { tickets: SubDeptTicket[] }) {
 
 export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData }) {
   const userName = useAuthStore((s) => s.user?.name ?? "");
+  const role = useAuthStore((s) => s.user?.role);
   const firstName = userName.split(" ")[0] || userName;
   const timeGreeting = useLondonGreeting();
 
-  const { data, isPending } = useQuery<HomeDashboardData>({
+  const { data = EMPTY_HOME, isError, refetch, isFetching, isPlaceholderData } = useQuery<HomeDashboardData>({
     queryKey: ["dashboard", "home"],
     queryFn: async () => {
-      const response = await fetch("/api/dashboard/home");
+      const response = await fetch("/api/dashboard/home", {
+        signal: AbortSignal.timeout(20_000),
+      });
       if (!response.ok) throw new Error("Could not load dashboard");
       return response.json();
     },
     staleTime: 30_000,
     initialData,
+    placeholderData: EMPTY_HOME,
     refetchOnWindowFocus: false,
   });
 
@@ -405,14 +437,17 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
                 <h1 className="sts-text-display">{timeGreeting}.</h1>
               )}
               <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-sts-muted">
-                {data ? buildDigest(data.metrics) : "Loading your day…"}
+                {isError
+                  ? "Could not load your day."
+                  : isFetching && isPlaceholderData
+                    ? "Loading your day…"
+                    : buildDigest(data.metrics)}
               </p>
             </div>
             <DualClock hideBangladesh className="shrink-0 justify-end" />
           </div>
 
-          {data && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <MetricCard
                 label="Open" value={data.metrics.open} color="#0a76b9"
                 sub="assigned to you" href="/tasks"
@@ -433,15 +468,27 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
                 href="/time"
               />
             </div>
-          )}
         </header>
 
-        {isPending && !data ? (
-          <HomeDashboardSectionsSkeleton />
-        ) : data ? (
-          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-7">
+          {isError ? (
+          <p className="font-sans text-[13px] text-sts-muted">
+            Home stats timed out.{" "}
+            <button
+              type="button"
+              className="font-medium text-sts-accent underline-offset-2 hover:underline"
+              onClick={() => void refetch()}
+            >
+              Try again
+            </button>
+          </p>
+        ) : null}
+
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-7">
             <div className="flex min-w-0 flex-col gap-6">
-              <TeamsYouLeadCard teams={data.ledSubDepartments} />
+              <TeamsYouLeadCard
+                teams={data.ledSubDepartments}
+                showEmpty={role === "sub_manager"}
+              />
               <AttentionCard attention={data.attention} />
               <SubDeptTicketsCard tickets={data.subDepartmentTickets} />
             </div>
@@ -450,7 +497,6 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
               <MyActivityRail activity={data.activity} />
             </div>
           </div>
-        ) : null}
       </div>
     </div>
   );

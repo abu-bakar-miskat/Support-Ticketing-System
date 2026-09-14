@@ -453,6 +453,35 @@ export function createTicketChatSubscription(
   });
 }
 
+// ── Received-mail panel (mailbox-scoped broadcast) ────────────────────────────
+
+/**
+ * Subscribes to the `mailbox-mail:dept:{id}` / `mailbox-mail:subdept:{id}`
+ * broadcast topic (see lib/realtime-broadcast.ts → broadcastMailboxMail). Fires
+ * whenever a new inbound email lands at a connected mailbox so the Received-mail
+ * panel can refetch.
+ *
+ * Broadcast delivery matches on the channel name (= topic), so do NOT append
+ * :seq/:attempt here — that would make the name diverge from the server topic
+ * and messages would never arrive.
+ */
+export function createMailboxMailSubscription(
+  supabase: SupabaseLike,
+  topic: string,
+  onMail: () => void,
+): () => void {
+  return autoReconnect((onStatus) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const channel = supabase.channel(topic) as any;
+    channel.on("broadcast", { event: "mail_received" }, () => onMail());
+    channel.subscribe((status: string, err?: Error) => {
+      logStatus(topic, status, err);
+      onStatus(status, err);
+    });
+    return () => supabase.removeChannel(channel);
+  });
+}
+
 /** Sync running timer when another tab or component starts/stops time. */
 export function createTimerBroadcastSubscription(
   supabase: SupabaseLike,

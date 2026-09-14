@@ -291,6 +291,9 @@ model TenantInvite {
   expiresAt  DateTime
   acceptedAt DateTime?
   revokedAt  DateTime?
+  // Set when the 24h "invite still pending" reminder email has been sent, so the
+  // reminder sweep fires exactly once per invite. See lib/invites/reminders.ts.
+  reminderSentAt DateTime?
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inviter Profile @relation("TenantInvitesSent", fields: [invitedBy], references: [id])
@@ -474,6 +477,9 @@ model DepartmentInvite {
   expiresAt    DateTime
   acceptedAt   DateTime?
   revokedAt    DateTime?
+  // Set when the 24h "invite still pending" reminder email has been sent, so the
+  // reminder sweep fires exactly once per invite. See lib/invites/reminders.ts.
+  reminderSentAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
@@ -838,6 +844,15 @@ model Ticket {
   dueDate      DateTime?
   cycleTime    Int?
   closedAt     DateTime?
+  // ── Resolution time tracking ── the ticket-level timer runs from the moment
+  // the ticket first enters "In Progress" (inProgressStartedAt) until it reaches
+  // a completion status (closedAt). resolutionDurationMins is the elapsed wall
+  // clock between the two; resolvedWithinAllowed records whether that beat the
+  // ticket's allowed resolution time (SLA resolutionTargetMins, else
+  // estimatedTime) — null when no start time or no allowed target exists.
+  inProgressStartedAt   DateTime?
+  resolutionDurationMins Int?
+  resolvedWithinAllowed  Boolean?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?
@@ -1081,6 +1096,11 @@ model MailboxConnection {
   address          String                  @unique
   authType         MailboxAuthType         @default(RESEND)
   credentialsRef   String?
+  // Per-mailbox ticket-assignment override. null = inherit the sub-department's
+  // method (which itself falls back to the department default). manualAssigneeIds
+  // is the hand-picked roster used when assignmentMethod is MANUAL_SELECT.
+  assignmentMethod  AssignmentMethod?
+  manualAssigneeIds String[]               @default([])
   status           MailboxConnectionStatus @default(ACTIVE)
   // EM-07 exponential-backoff bookkeeping for the health-check cron.
   failureCount     Int                     @default(0)

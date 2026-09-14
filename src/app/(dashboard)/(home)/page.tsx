@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { HomeDashboard } from "@/components/dashboard/home-dashboard";
 
@@ -9,7 +10,6 @@ export default async function HomePage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
@@ -29,11 +29,7 @@ export default async function HomePage() {
   }
 
   if (profile.role === "manager") {
-    const managedIds: string[] = profile.managedDepartmentIds ?? [];
-    // Only redirect to manager dashboard when in a dept they actually manage.
-    if (!activeDeptId || managedIds.includes(activeDeptId)) {
-      redirect("/manager");
-    }
+    redirect("/manager");
   }
 
   return <HomeDashboard />;

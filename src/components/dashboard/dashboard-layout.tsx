@@ -110,15 +110,17 @@ export function DashboardLayout({
   const heldKeys = useRef(new Set<string>());
 
   const { data = EMPTY } = useQuery<LayoutData>({
-    queryKey: ["dashboard", "layout"],
+    queryKey: ["dashboard", "layout", initialLayoutData?.userId],
     queryFn: async () => {
-      const r = await fetch("/api/dashboard/layout");
+      const r = await fetch("/api/dashboard/layout", {
+        signal: AbortSignal.timeout(20_000),
+      });
       if (!r.ok) throw new Error(`Failed to load layout (${r.status})`);
       return r.json() as Promise<LayoutData>;
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
-    placeholderData: EMPTY,
+    placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });
 

@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { badRequest, forbidden } from "@/lib/api-response"
+import { sendTenantInviteEmail } from "@/lib/email"
+import { INVITE_TTL_MS } from "@/lib/invites/constants"
 import type { Role } from "@/generated/prisma/enums"
 
-const INVITE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 const VALID_ROLES: Role[] = ["admin", "manager", "sub_manager", "agent"]
 
 type Params = { params: Promise<{ id: string }> }
@@ -28,7 +29,7 @@ export async function POST(request: Request, { params }: Params) {
     return forbidden("Only a super-admin or an admin of this tenant can invite members.")
   }
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true } })
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true } })
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
   const body = await request.json().catch(() => ({}))
@@ -65,8 +66,25 @@ export async function POST(request: Request, { params }: Params) {
     select: { id: true, email: true, role: true, token: true, expiresAt: true },
   })
 
-  // Return the accept link so the caller can share it (email delivery is out of
-  // scope for the dev flow; wire sendInviteEmail here when ready).
+  // Email the invitee so the 72h clock and the 24h reminder have something to
+  // reference. Delivery failure shouldn't lose the invite — the accept link is
+  // still returned for manual sharing — so this is best-effort.
+  try {
+    await sendTenantInviteEmail({
+      to: email,
+      inviterName: profile.name,
+      inviterId: profile.id,
+      tenantId,
+      tenantName: tenant.name,
+      role,
+      message,
+      inviteToken: invite.token,
+      expiresAt: invite.expiresAt,
+    })
+  } catch (err) {
+    console.error("[tenant-invites] failed to send invite email:", err)
+  }
+
   return NextResponse.json(
     { ...invite, acceptPath: `/tenant-invite/${invite.token}` },
     { status: 201 },

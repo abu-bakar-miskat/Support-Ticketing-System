@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { isNativeDeptMemberOrManager } from "@/lib/support-project";
 import { resolveActiveTenantId, departmentInTenant } from "@/lib/tenant-scope";
+import { runAsSystem } from "@/lib/request-scope";
 
 export type DeptScope = {
   activeDeptId: string;
@@ -630,17 +631,21 @@ export function buildPeopleMembershipWhere(
 export const getProfileDeptScope = cache(async function getProfileDeptScope(
   profile: ProfileLike,
 ): Promise<DeptScope> {
-  const scope = await resolveDeptScopeInner(profile);
-  if (!scope) return scope;
+  // Department lookup is already bounded by the profile's own ids. Running
+  // unscoped skips resolveTicketScope → RoleAssignment on every dashboard page.
+  return runAsSystem(async () => {
+    const scope = await resolveDeptScopeInner(profile);
+    if (!scope) return scope;
 
-  const activeTenantId =
-    profile.activeTenantId !== undefined
-      ? profile.activeTenantId
-      : await resolveActiveTenantId(profile);
-  if (!activeTenantId) return scope;
+    const activeTenantId =
+      profile.activeTenantId !== undefined
+        ? profile.activeTenantId
+        : await resolveActiveTenantId(profile);
+    if (!activeTenantId) return scope;
 
-  const ok = await departmentInTenant(scope.activeDeptId, activeTenantId);
-  return ok ? scope : null;
+    const ok = await departmentInTenant(scope.activeDeptId, activeTenantId);
+    return ok ? scope : null;
+  });
 });
 
 async function resolveDeptScopeInner(
@@ -744,6 +749,14 @@ async function getHomeDepartmentIds(profile: ProfileLike): Promise<string[]> {
  * - Guest cross-access department: only that department's tasks
  */
 export async function getPersonalTaskDeptScope(
+  profile: ProfileLike,
+): Promise<DeptScope> {
+  // Reads below are bound to the caller's own sub-department / granted dept
+  // ids — run unscoped to skip the per-query scope waterfall.
+  return runAsSystem(() => personalTaskDeptScopeInner(profile));
+}
+
+async function personalTaskDeptScopeInner(
   profile: ProfileLike,
 ): Promise<DeptScope> {
   const deptScope = await getProfileDeptScope(profile);

@@ -66,7 +66,9 @@ export function DepartmentsLayout({
   const { data = EMPTY } = useQuery<LayoutData>({
     queryKey: ["dashboard", "layout"],
     queryFn: async () => {
-      const r = await fetch("/api/dashboard/layout");
+      const r = await fetch("/api/dashboard/layout", {
+        signal: AbortSignal.timeout(20_000),
+      });
       if (!r.ok) throw new Error(`Failed to load layout (${r.status})`);
       return r.json() as Promise<LayoutData>;
     },

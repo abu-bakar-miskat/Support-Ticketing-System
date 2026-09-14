@@ -1,5 +1,5 @@
 import "server-only"
-import { prisma } from "@/lib/db"
+import { getUnscopedPrisma } from "@/lib/db"
 import { DEPT_SLUG_COOKIE, SUBDEPT_SLUG_COOKIE } from "@/lib/tenant-path"
 import type { LoginCookie } from "@/lib/auth/complete-login"
 
@@ -20,7 +20,7 @@ function activeDeptCookie(departmentId: string): LoginCookie {
 
 /** Active-dept id cookie plus its slug cookie (for /<tenant>/<dept>/… URLs). */
 async function deptCookies(departmentId: string): Promise<LoginCookie[]> {
-  const dept = await prisma.department.findUnique({
+  const dept = await getUnscopedPrisma().department.findUnique({
     where: { id: departmentId },
     select: { slug: true },
   })
@@ -65,9 +65,10 @@ export type PostLoginLanding = {
  *   Tenant admin     → /departments (org console)
  *   Department admin → /departments (their assigned departments), or "/" when
  *                      they administer just one
- *   Manager/Sub-manager/Agent → "/" (their own home dashboard), with the active
- *                      department/sub-department cookie set so home dispatches
- *                      by role (manager → /manager, others → HomeDashboard)
+ *   Manager          → /manager (department console)
+ *   Sub-manager/Agent → "/" (personal Home), with the active department /
+ *                      sub-department cookie set
+ *   Tenant member with no dept yet → "/" (Home, not onboarding)
  *   Unassigned       → /onboarding
  */
 export async function resolvePostLoginLanding(userId: string, isSuperAdmin: boolean): Promise<PostLoginLanding> {
@@ -78,39 +79,37 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     }
   }
 
-  // Scoped models — run as system so login landing doesn't recurse into
-  // getProfile → RoleAssignment sync (hangs on the shared pooler).
-  const { runAsSystem } = await import("@/lib/request-scope")
-  const [tenantMembership, managedDepts, memberships, deptAccess] = await runAsSystem(() =>
-    Promise.all([
-      prisma.tenantMembership.findFirst({
-        where: { userId, isActive: true },
-        orderBy: { createdAt: "asc" },
-        select: { role: true },
-      }),
-      prisma.departmentManager.findMany({
-        where: { userId },
-        select: { departmentId: true, role: true },
-        orderBy: { assignedAt: "asc" },
-      }),
-      prisma.subDepartmentMembership.findMany({
-        where: { userId, isActive: true },
-        select: {
-          subDepartmentId: true,
-          subDepartment: { select: { departmentId: true, slug: true } },
-        },
-        orderBy: { joinedAt: "asc" },
-      }),
-      prisma.departmentAccess.findMany({
-        where: {
-          userId,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
-        select: { departmentId: true },
-        orderBy: { grantedAt: "asc" },
-      }),
-    ]),
-  )
+  // Unscoped client so login landing cannot recurse into getProfile / Prisma
+  // tenant scope (that hang sent invitees to a spinner or /onboarding).
+  const db = getUnscopedPrisma()
+  const [tenantMembership, managedDepts, memberships, deptAccess] = await Promise.all([
+    db.tenantMembership.findFirst({
+      where: { userId, isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { role: true },
+    }),
+    db.departmentManager.findMany({
+      where: { userId },
+      select: { departmentId: true, role: true },
+      orderBy: { assignedAt: "asc" },
+    }),
+    db.subDepartmentMembership.findMany({
+      where: { userId, isActive: true },
+      select: {
+        subDepartmentId: true,
+        subDepartment: { select: { departmentId: true, slug: true } },
+      },
+      orderBy: { joinedAt: "asc" },
+    }),
+    db.departmentAccess.findMany({
+      where: {
+        userId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      select: { departmentId: true },
+      orderBy: { grantedAt: "asc" },
+    }),
+  ])
 
   if (tenantMembership?.role === "admin") {
     return { redirectPath: "/departments", cookies: [] }
@@ -135,13 +134,13 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
     return { redirectPath: "/", cookies: await deptCookies(adminDeptIds[0]!) }
   }
 
-  // Managers, sub-managers, and agents land on their own home dashboard ("/"),
-  // not the raw board. Home dispatches by role (manager → /manager, everyone
-  // else → HomeDashboard) using the active-dept cookie set here.
-  if (managerDeptIds.length > 0) {
+  // Tenant-level managers (invite with no department yet) and department
+  // managers both land on the manager console — not agent Home.
+  if (tenantMembership?.role === "manager" || managerDeptIds.length > 0) {
+    const deptId = managerDeptIds[0] ?? adminDeptIds[0]
     return {
-      redirectPath: "/",
-      cookies: await deptCookies(managerDeptIds[0]!),
+      redirectPath: "/manager",
+      cookies: deptId ? await deptCookies(deptId) : [],
     }
   }
 
@@ -166,6 +165,12 @@ export async function resolvePostLoginLanding(userId: string, isSuperAdmin: bool
       redirectPath: "/",
       cookies: await deptCookies(deptAccess[0]!.departmentId),
     }
+  }
+
+  // They belong to a tenant (agent / sub-manager) but have no sub-department
+  // yet. Home is their view; onboarding is only for people with no workspace.
+  if (tenantMembership) {
+    return { redirectPath: "/", cookies: [] }
   }
 
   return { redirectPath: "/onboarding", cookies: [] }

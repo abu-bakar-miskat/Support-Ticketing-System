@@ -425,16 +425,21 @@ describe("grantedTicketIdsFor — ASG-06 explicit grant allowlist", () => {
 });
 
 describe("mergeScopeWhere — ASG-06 grant override", () => {
-  it("ORs the granted-id predicate alongside the sub-department predicate", () => {
+  it("ORs the granted-id predicate alongside BOTH the tenant and sub-department predicates", () => {
     expect(mergeScopeWhere(undefined, ["tenant-A"], ["subDepartmentA"], ["t-granted"])).toEqual({
       AND: [
-        { tenantId: { in: ["tenant-A"] } },
+        { OR: [{ tenantId: { in: ["tenant-A"] } }, { id: { in: ["t-granted"] } }] },
         { OR: [{ subDepartmentId: { in: ["subDepartmentA"] } }, { id: { in: ["t-granted"] } }] },
       ],
     });
   });
-  it("is unaffected when there is no sub-department restriction to override", () => {
+  it("ORs the grant into the tenant predicate even with no sub-department restriction", () => {
     expect(mergeScopeWhere(undefined, ["tenant-A"], null, ["t-granted"])).toEqual({
+      OR: [{ tenantId: { in: ["tenant-A"] } }, { id: { in: ["t-granted"] } }],
+    });
+  });
+  it("leaves the plain tenant predicate when there are no grants", () => {
+    expect(mergeScopeWhere(undefined, ["tenant-A"], null, null)).toEqual({
       tenantId: { in: ["tenant-A"] },
     });
   });
@@ -467,7 +472,7 @@ describe("extension — ASG-06 grant overrides SD-06 sub-department restriction"
     );
     expect(calls[0].where).toEqual({
       AND: [
-        { tenantId: { in: ["tenant-A"] } },
+        { OR: [{ tenantId: { in: ["tenant-A"] } }, { id: { in: ["t-granted"] } }] },
         { OR: [{ subDepartmentId: { in: ["subDepartmentA"] } }, { id: { in: ["t-granted"] } }] },
       ],
     });
@@ -491,6 +496,40 @@ describe("extension — ASG-06 grant overrides SD-06 sub-department restriction"
   it("still drops an ungranted, out-of-sub-department ticket findUnique → null", async () => {
     const registered = registerScope();
     const row = { id: "t-other", tenantId: "tenant-A", subDepartmentId: "subDepartmentB" };
+    const res = await runWithScope(
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
+      () =>
+        registered.query.ticket.$allOperations({
+          operation: "findUnique",
+          args: {},
+          query: () => Promise.resolve(row),
+        } as never),
+    );
+    expect(res).toBeNull();
+  });
+
+  it("keeps a granted ticket findUnique whose tenant is outside the caller's allowlist", async () => {
+    // Missing-membership scenario: the caller is a sub-department member of the
+    // ticket's tenant but has no active TenantMembership, so tenant-B is absent
+    // from tenantIds. The per-ticket grant (they're the assignee) must still let
+    // them read exactly this ticket.
+    const registered = registerScope();
+    const row = { id: "t-granted", tenantId: "tenant-B", subDepartmentId: "subDepartmentB" };
+    const res = await runWithScope(
+      { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
+      () =>
+        registered.query.ticket.$allOperations({
+          operation: "findUnique",
+          args: {},
+          query: () => Promise.resolve(row),
+        } as never),
+    );
+    expect(res).toEqual(row);
+  });
+
+  it("drops an ungranted ticket findUnique whose tenant is outside the allowlist → null", async () => {
+    const registered = registerScope();
+    const row = { id: "t-other", tenantId: "tenant-B", subDepartmentId: "subDepartmentB" };
     const res = await runWithScope(
       { tenantIds: ["tenant-A"], subDepartmentTeamIds: ["subDepartmentA"], grantedTicketIds: ["t-granted"] },
       () =>

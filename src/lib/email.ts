@@ -9,6 +9,7 @@ import { renderIntakeManagerAlert } from "./email-templates/intake-manager-alert
 import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed-alert";
 import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-connection-failed-alert";
 import { renderInvite } from "./email-templates/invite";
+import { renderTenantInvite } from "./email-templates/tenant-invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
 import { renderStatusChanged } from "./email-templates/status-changed";
@@ -514,6 +515,8 @@ export async function sendInviteEmail(args: {
   role: string;
   message?: string | null;
   inviteToken: string;
+  expiresAt: Date;
+  isReminder?: boolean;
 }) {
   if (!(await isAuthEmailConfigured())) return;
   const config = await getEmailConfig(args.departmentId);
@@ -527,6 +530,8 @@ export async function sendInviteEmail(args: {
     role: args.role,
     message: args.message,
     inviteToken: args.inviteToken,
+    expiresAt: args.expiresAt,
+    isReminder: args.isReminder,
     signature,
     branding: brandingFrom(config),
     override: overrides.invite,
@@ -541,6 +546,55 @@ export async function sendInviteEmail(args: {
   });
   if (!result.ok) {
     console.error("[email] invite rejected:", result.error);
+    throw new Error(result.error);
+  }
+}
+
+/**
+ * Tenant-level invitation (join an organization). Unlike sendInviteEmail there's
+ * no per-department email identity to key off when the invite is tenant-wide
+ * (e.g. an admin invite carries no department), so email config falls back to the
+ * tenant/global sender via getEmailConfig(departmentId?). Reused for both the
+ * initial send and the 24h reminder (isReminder).
+ */
+export async function sendTenantInviteEmail(args: {
+  to: string;
+  inviterName: string;
+  inviterId: string;
+  tenantId: string;
+  tenantName: string;
+  role: string;
+  departmentId?: string | null;
+  message?: string | null;
+  inviteToken: string;
+  expiresAt: Date;
+  isReminder?: boolean;
+}) {
+  if (!(await isAuthEmailConfigured())) return;
+  const config = await getEmailConfig(args.departmentId ?? undefined);
+  const signature = await getUserSignature(args.inviterId);
+  const { subject, html, text } = renderTenantInvite({
+    inviteeEmail: args.to,
+    inviterName: args.inviterName,
+    tenantName: args.tenantName,
+    role: args.role,
+    message: args.message,
+    inviteToken: args.inviteToken,
+    expiresAt: args.expiresAt,
+    isReminder: args.isReminder,
+    signature,
+    branding: brandingFrom(config),
+  });
+  const result = await sendAuthEmail({
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+  if (!result.ok) {
+    console.error("[email] tenant invite rejected:", result.error);
     throw new Error(result.error);
   }
 }

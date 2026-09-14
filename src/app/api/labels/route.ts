@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope } from "@/lib/dept-scope";
+import { runAsSystem } from "@/lib/request-scope";
 
 export async function GET() {
   const { profile, error } = await requireAuth();
@@ -10,19 +11,26 @@ export async function GET() {
   const deptScope = await getProfileDeptScope(profile);
   const departmentId = deptScope?.activeDeptId ?? null;
 
-  const labels = await prisma.label.findMany({
-    where: { departmentId },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, color: true },
-  });
-
-  // Also include labels used in tickets that aren't in the registry yet
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      deletedAt: null,
-      ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
-    },
-    select: { labels: true },
+  // deptScope already resolved the caller's access; the remaining reads are
+  // narrowed by explicit department/sub-department ids, so run them unscoped
+  // to avoid re-triggering the per-query scope waterfall on the shared pooler.
+  const { labels, tickets } = await runAsSystem(async () => {
+    const [labels, tickets] = await Promise.all([
+      prisma.label.findMany({
+        where: { departmentId },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, color: true },
+      }),
+      // Also include labels used in tickets that aren't in the registry yet
+      prisma.ticket.findMany({
+        where: {
+          deletedAt: null,
+          ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
+        },
+        select: { labels: true },
+      }),
+    ]);
+    return { labels, tickets };
   });
 
   const ticketLabelCounts = new Map<string, number>();

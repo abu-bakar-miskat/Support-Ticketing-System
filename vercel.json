@@ -40,6 +40,10 @@
     {
       "path": "/api/cron/scheduled-reports",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/invite-reminder-sweep",
+      "schedule": "0 * * * *"
     }
   ]
 }

@@ -6,6 +6,7 @@ import { reconcileProfileOnLogin } from "@/lib/reconcile-profile-on-login"
 import { resolveActiveTenantId } from "@/lib/tenant-scope"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
+import { runAsSystem } from "@/lib/request-scope"
 
 export type ProfileMembership = {
   subDepartmentId: string
@@ -16,7 +17,8 @@ export type ProfileMembership = {
 
 /** Fetch the profile row and all of its relation lists for a given auth id in one parallel batch. */
 function loadProfileAndRelations(userId: string) {
-  return Promise.all([
+  return runAsSystem(() =>
+    Promise.all([
     prisma.profile.findUnique({ where: { id: userId } }),
 
     (prisma.subDepartmentMembership as any).findMany({
@@ -50,7 +52,8 @@ function loadProfileAndRelations(userId: string) {
         tenant: { select: { status: true, deletedAt: true } },
       },
     }).catch(() => [] as { tenantId: string; role: string; tenant: { status: string; deletedAt: Date | null } }[]),
-  ] as const)
+  ] as const),
+  )
 }
 
 export const getProfile = cache(async () => {

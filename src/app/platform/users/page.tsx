@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
-import { loadDirectoryUsers } from "@/lib/platform/user-directory"
+import { loadPlatformUserDirectory } from "@/lib/platform/user-directory"
 import { PlatformUsers } from "@/components/platform/platform-users"
 import type { InviteTenant } from "@/components/platform/platform-invite-member-dialog"
 
@@ -13,7 +13,7 @@ export default async function PlatformUsersPage() {
   if (!profile.isSuperAdmin) redirect("/")
 
   const [users, tenantRows] = await Promise.all([
-    loadDirectoryUsers(),
+    loadPlatformUserDirectory(),
     prisma.tenant.findMany({
       where: { deletedAt: null },
       select: {
@@ -32,10 +32,9 @@ export default async function PlatformUsersPage() {
     }),
   ])
 
-  // Super admins are managed on the Administrators page; this directory covers
-  // the tenant-scoped users only.
-  const nonAdminUsers = users.filter((u) => !u.isSuperAdmin)
+  // Platform Users directory excludes super admins — those live under Administrators.
+  const members = users.filter((u) => !u.isSuperAdmin)
   const tenants: InviteTenant[] = tenantRows
 
-  return <PlatformUsers users={nonAdminUsers} tenants={tenants} currentUserId={profile.id} />
+  return <PlatformUsers users={members} tenants={tenants} currentUserId={profile.id} />
 }

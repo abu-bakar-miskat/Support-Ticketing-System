@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { cn } from "@/lib/utils";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
 type AdminRow = {
@@ -21,14 +20,6 @@ type AdminRow = {
   departments?: DeptInfo[];
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  sub_manager: "Lead",
-  agent: "Agent",
-};
-
-/** Departments a user touches, as pills. Matches the admin-list rendering. */
 function DeptPills({ departments }: { departments?: DeptInfo[] }) {
   if (departments && departments.length > 0) {
     return (
@@ -210,71 +201,58 @@ export function PlatformAdministrators({
             Current administrators ({admins.length})
           </h2>
           <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
-            {admins.map((admin) => {
-              const isSelf = admin.id === currentUserId;
-              // Everyone in this list holds super-admin, so that's the badge to
-              // show (matches the "All users" directory). Fall back to the tenant
-              // role only if a row somehow isn't flagged super-admin.
-              const roleLabel = admin.isSuperAdmin
-                ? "Super Admin"
-                : admin.role
-                  ? ROLE_LABELS[admin.role] ?? admin.role
-                  : null;
-              // undefined = just added via search (not yet hydrated); [] = server
-              // confirmed no memberships.
-              const departments = admin.departments;
-              const tenants = admin.tenants ?? [];
-              return (
-                <div
-                  key={admin.id}
-                  className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-sts-surface/50"
-                >
-                  <div className="flex min-w-0 flex-1 items-start gap-2.5">
-                    <UserAvatar name={admin.name} avatarUrl={admin.avatarUrl} size={28} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                        <span className="truncate font-sans text-[13px] font-medium text-sts-foreground">
-                          {admin.name || admin.email}
-                        </span>
-                        {isSelf && <span className="font-sans text-[11px] text-sts-subtle">(you)</span>}
-                        {roleLabel && (
-                          <span
-                            className={cn(
-                              "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-medium",
-                              admin.isSuperAdmin
-                                ? "bg-sts-blue text-white dark:text-gray-900"
-                                : "bg-sts-blue-tint text-sts-blue",
-                            )}
-                          >
-                            {roleLabel}
-                          </span>
-                        )}
-                      </div>
-                      <div className="truncate font-sans text-[11.5px] text-sts-subtle">{admin.email}</div>
-
-                      {tenants.length > 0 && (
-                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">
-                          {tenants.join(", ")}
-                        </div>
-                      )}
-
-                      <DeptPills departments={departments} />
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={isSelf || busyId === admin.id}
-                    title={isSelf ? "You can't remove your own super-admin access" : undefined}
-                    onClick={() => setConfirmRemove(admin)}
+            {admins.length === 0 ? (
+              <p className="px-2 py-6 text-center font-sans text-[12px] text-sts-subtle">
+                No platform administrators yet.
+              </p>
+            ) : (
+              admins.map((admin) => {
+                const isSelf = admin.id === currentUserId;
+                const departments = admin.departments;
+                const tenants = admin.tenants ?? [];
+                return (
+                  <div
+                    key={admin.id}
+                    className="flex items-start justify-between gap-3 rounded-lg px-2 py-2 hover:bg-sts-surface/50"
                   >
-                    <X className="size-3.5" />
-                    Remove
-                  </Button>
-                </div>
-              );
-            })}
+                    <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                      <UserAvatar name={admin.name} avatarUrl={admin.avatarUrl} size={28} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                          <span className="truncate font-sans text-[13px] font-medium text-sts-foreground">
+                            {admin.name || admin.email}
+                          </span>
+                          {isSelf && <span className="font-sans text-[11px] text-sts-subtle">(you)</span>}
+                          <span className="rounded-full bg-sts-blue px-1.5 py-0.5 font-sans text-[10px] font-medium text-white dark:text-gray-900">
+                            Super Admin
+                          </span>
+                        </div>
+                        <div className="truncate font-sans text-[11.5px] text-sts-subtle">{admin.email}</div>
+
+                        {tenants.length > 0 && (
+                          <div className="mt-1 font-sans text-[11px] text-sts-subtle">
+                            {tenants.join(", ")}
+                          </div>
+                        )}
+
+                        <DeptPills departments={departments} />
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={isSelf || busyId === admin.id}
+                      title={isSelf ? "You can't remove your own super-admin access" : undefined}
+                      onClick={() => setConfirmRemove(admin)}
+                    >
+                      <X className="size-3.5" />
+                      Remove
+                    </Button>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

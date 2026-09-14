@@ -43,15 +43,19 @@ const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
 
 function matchesRoleFilter(u: UserRow, f: RoleFilter): boolean {
   switch (f) {
-    case "all": return true;
-    case "admin": return u.role === "admin";
-    case "manager": return u.role === "manager";
-    case "sub_manager": return u.role === "sub_manager";
-    case "agent": return u.role === "agent";
+    case "all":
+      return true;
+    case "admin":
+      return u.role === "admin";
+    case "manager":
+      return u.role === "manager";
+    case "sub_manager":
+      return u.role === "sub_manager";
+    case "agent":
+      return u.role === "agent";
   }
 }
 
-/** Departments a user touches, as pills. */
 function DeptPills({ departments }: { departments?: DeptInfo[] }) {
   if (departments && departments.length > 0) {
     return (
@@ -129,8 +133,8 @@ export function PlatformUsers({
       <div className="w-full px-6 py-8 lg:px-10">
         <PageHeader
           icon={Users}
-          title="Users"
-          description="Every user across all tenants and departments. Super admins are managed separately under Administrators."
+          title="Platform users"
+          description="All members across the platform, excluding super admins. Use Administrators to manage platform-level access."
           actions={<PlatformInviteMemberDialog tenants={tenants} />}
         />
 
@@ -181,7 +185,7 @@ export function PlatformUsers({
             ) : (
               filteredUsers.map((user) => {
                 const roleLabel = user.role ? ROLE_LABELS[user.role] ?? user.role : null;
-                const tenants = user.tenants ?? [];
+                const userTenants = user.tenants ?? [];
                 return (
                   <div key={user.id} className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-sts-surface/50">
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={28} />
@@ -200,8 +204,8 @@ export function PlatformUsers({
                         )}
                       </div>
                       <div className="truncate font-sans text-[11.5px] text-sts-subtle">{user.email}</div>
-                      {tenants.length > 0 && (
-                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">{tenants.join(", ")}</div>
+                      {userTenants.length > 0 && (
+                        <div className="mt-1 font-sans text-[11px] text-sts-subtle">{userTenants.join(", ")}</div>
                       )}
                       <DeptPills departments={user.departments} />
                     </div>

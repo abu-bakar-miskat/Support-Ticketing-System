@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 
-export type DirectoryUser = {
+export type PlatformDirectoryUser = {
   id: string
   name: string
   email: string
@@ -8,16 +8,19 @@ export type DirectoryUser = {
   role: string
   isSuperAdmin: boolean
   tenants: string[]
-  departments: { id: string; name: string; isManager: boolean; subDepartments: string[] }[]
+  departments: {
+    id: string
+    name: string
+    isManager: boolean
+    subDepartments: string[]
+  }[]
 }
 
 /**
- * Load every active profile and aggregate the departments each one touches
- * (primary subDepartment, extra subDepartment memberships, direct membership,
- * or management) into one de-duplicated per-user record. Shared by the platform
- * Administrators (super-admin management) and Users (directory) pages.
+ * Load every active profile with tenants + departments aggregated.
+ * Used by /platform/administrators and /platform/users.
  */
-export async function loadDirectoryUsers(): Promise<DirectoryUser[]> {
+export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser[]> {
   const rows = await prisma.profile.findMany({
     where: { deletedAt: null },
     select: {
@@ -51,6 +54,8 @@ export async function loadDirectoryUsers(): Promise<DirectoryUser[]> {
   })
 
   return rows.map((r) => {
+    // Aggregate every department this user touches (primary subDepartment, extra subDepartment
+    // memberships, direct membership, or management) into one de-duplicated list.
     const deptMap = new Map<
       string,
       { id: string; name: string; isManager: boolean; subDepartments: Set<string> }

@@ -15,6 +15,7 @@ const PLATFORM_NAV = [
   { label: "Settings", href: "/platform/settings", icon: Settings },
   { label: "Users", href: "/platform/users", icon: Users },
   { label: "Administrators", href: "/platform/administrators", icon: ShieldCheck },
+  { label: "Users", href: "/platform/users", icon: Users },
 ] as const;
 
 /**

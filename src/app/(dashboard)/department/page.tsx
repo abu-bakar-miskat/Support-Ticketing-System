@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { avatarColorFor } from "@/lib/board-data";
 import {
   DepartmentDetailPage,
@@ -22,8 +23,10 @@ export default async function DepartmentRoute() {
   const activeDeptId = profileScope?.activeDeptId ?? null;
   if (!activeDeptId) redirect("/departments");
 
+  // activeDeptId comes from the caller's resolved dept scope (access already
+  // verified) — run unscoped to skip the per-query scope waterfall.
   const [dept, managers, memberships, accessGrants, availableSubDepartments, allUsers, pendingInvites, joinRequests] =
-    await Promise.all([
+    await runAsSystem(() => Promise.all([
       prisma.department.findUnique({
         where: { id: activeDeptId },
         select: {
@@ -110,7 +113,7 @@ export default async function DepartmentRoute() {
           department: { select: { id: true, name: true } },
         },
       }),
-    ]);
+    ]));
 
   if (!dept) redirect("/departments");
 

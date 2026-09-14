@@ -751,6 +751,14 @@ async function getHomeDepartmentIds(profile: ProfileLike): Promise<string[]> {
 export async function getPersonalTaskDeptScope(
   profile: ProfileLike,
 ): Promise<DeptScope> {
+  // Reads below are bound to the caller's own sub-department / granted dept
+  // ids — run unscoped to skip the per-query scope waterfall.
+  return runAsSystem(() => personalTaskDeptScopeInner(profile));
+}
+
+async function personalTaskDeptScopeInner(
+  profile: ProfileLike,
+): Promise<DeptScope> {
   const deptScope = await getProfileDeptScope(profile);
   const granted = profile.grantedAccessDeptIds ?? [];
   const hasCrossAccess =

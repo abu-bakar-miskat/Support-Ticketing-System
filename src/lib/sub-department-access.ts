@@ -77,13 +77,18 @@ export async function resolveSubDepartmentByName(
 ): Promise<SubDepartmentDetail | null> {
   const where = await scopedWhere(profile);
 
-  const subDepartment = await prisma.subDepartment.findFirst({
-    where: { ...where, name },
-    include: {
-      department: { select: { id: true, name: true, assignmentMethod: true } },
-      memberships: { where: { isActive: true }, select: { id: true } },
-    },
-  });
+  // scopedWhere already encodes the caller's access (managed/active dept ids,
+  // tenant) — run unscoped to skip the per-query scope waterfall.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  const subDepartment = await runAsSystem(() =>
+    prisma.subDepartment.findFirst({
+      where: { ...where, name },
+      include: {
+        department: { select: { id: true, name: true, assignmentMethod: true } },
+        memberships: { where: { isActive: true }, select: { id: true } },
+      },
+    }),
+  );
 
   if (!subDepartment) return null;
 
@@ -111,23 +116,27 @@ export async function getSubDepartmentAboutData(
 ): Promise<SubDepartmentAboutData | null> {
   const where = await scopedWhere(profile);
 
-  const subDepartment = await prisma.subDepartment.findFirst({
-    where: { ...where, name },
-    include: {
-      department: { select: { id: true, name: true, assignmentMethod: true } },
-      counter: { select: { lastNumber: true } },
-      _count: { select: { projects: true } },
-      memberships: {
-        where: { isActive: true },
-        orderBy: { joinedAt: "asc" },
-        select: {
-          role: true,
-          doNotAssign: true,
-          user: { select: { id: true, name: true, avatarUrl: true } },
+  // Same rationale as resolveSubDepartmentByName: access is in the where.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  const subDepartment = await runAsSystem(() =>
+    prisma.subDepartment.findFirst({
+      where: { ...where, name },
+      include: {
+        department: { select: { id: true, name: true, assignmentMethod: true } },
+        counter: { select: { lastNumber: true } },
+        _count: { select: { projects: true } },
+        memberships: {
+          where: { isActive: true },
+          orderBy: { joinedAt: "asc" },
+          select: {
+            role: true,
+            doNotAssign: true,
+            user: { select: { id: true, name: true, avatarUrl: true } },
+          },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!subDepartment) return null;
 

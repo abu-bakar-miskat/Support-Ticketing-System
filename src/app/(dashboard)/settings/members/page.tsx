@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { avatarColorFor } from "@/lib/board-data";
 import {
   SettingsMembersPage,
@@ -149,7 +150,7 @@ export default async function SettingsMembersRoute() {
   // Fetch available subDepartments for the subDepartment assignment dropdown (admin/manager only).
   // When a department is active, only that department's subDepartments — required for invites + Add member.
   const availableSubDepartments = (isAdmin || isManager)
-    ? await prisma.subDepartment.findMany({
+    ? await runAsSystem(() => prisma.subDepartment.findMany({
         where: activeDeptId
           ? { departmentId: activeDeptId }
           : isAdmin
@@ -163,14 +164,14 @@ export default async function SettingsMembersRoute() {
               })(),
         orderBy: { name: "asc" },
         select: { id: true, name: true, departmentId: true },
-      })
+      }))
     : [];
 
   // Departments the caller can assign members to — powers the tenant-wide
   // Department dropdown + the Add-member department picker. Admins see every
   // department in the tenant; managers see only the ones they manage.
   const availableDepartments = (isAdmin || isManager)
-    ? await prisma.department.findMany({
+    ? await runAsSystem(() => prisma.department.findMany({
         where: isAdmin
           ? { tenantId }
           : (() => {
@@ -182,7 +183,7 @@ export default async function SettingsMembersRoute() {
             })(),
         orderBy: { name: "asc" },
         select: { id: true, name: true },
-      })
+      }))
     : [];
 
   // Role precedence — the Role column shows a user's *effective* role, i.e. the
@@ -274,7 +275,9 @@ export default async function SettingsMembersRoute() {
   }
 
   const activeDept = activeDeptId
-    ? await prisma.department.findUnique({ where: { id: activeDeptId }, select: { name: true } })
+    ? await runAsSystem(() =>
+        prisma.department.findUnique({ where: { id: activeDeptId }, select: { name: true } }),
+      )
     : null;
 
   const members: MemberRow[] = [

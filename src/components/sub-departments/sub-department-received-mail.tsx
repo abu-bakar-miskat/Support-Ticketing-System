@@ -13,6 +13,7 @@ export function SubDepartmentReceivedMail({
     <ReceivedMailPanel
       endpoint={`/api/admin/sub-departments/${subDepartmentId}/mailbox-mail`}
       canManage={canManage}
+      realtimeTopic={`mailbox-mail:subdept:${subDepartmentId}`}
     />
   );
 }

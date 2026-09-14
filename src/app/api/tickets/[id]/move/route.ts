@@ -13,6 +13,7 @@ import { broadcastProjectBoardsChange } from "@/lib/project-boards-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 
 export async function PATCH(
   request: NextRequest,
@@ -43,6 +44,10 @@ export async function PATCH(
       projectId: true,
       assigneeId: true,
       creatorId: true,
+      // Resolution-timer inputs: saved In Progress start + allowed target.
+      inProgressStartedAt: true,
+      estimatedTime: true,
+      slaTimer: { select: { resolutionTargetMins: true } },
       assignees: { select: { userId: true } },
       subDepartment: { select: { prefix: true, departmentId: true } },
       intake: {
@@ -117,11 +122,23 @@ export async function PATCH(
     ticket.labels.some((label) => !nextLabels.includes(label))
 
   const newClosedAt = validStatus.isComplete ? (ticket.closedAt ?? new Date()) : null
+
+  // Start the resolution timer on entry to "In Progress"; stop it + record the
+  // total time and within/exceeded verdict on completion (shared helper).
+  const resolutionData = resolutionUpdateOnStatusChange({
+    toStatus: status,
+    isCompletion: validStatus.isComplete,
+    newClosedAt,
+    currentInProgressStartedAt: ticket.inProgressStartedAt,
+    slaResolutionTargetMins: ticket.slaTimer?.resolutionTargetMins,
+    estimatedTime: ticket.estimatedTime,
+  })
+
   const updated = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
     const result = await tx.ticket.update({
       where: { id },
-      data: { status, closedAt: newClosedAt },
+      data: { status, closedAt: newClosedAt, ...resolutionData },
       select: { id: true, status: true },
     })
     if (labelsChanged) {

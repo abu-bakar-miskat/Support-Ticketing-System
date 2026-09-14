@@ -191,7 +191,7 @@ export function DepartmentMailboxesPage({
   }
 
   return (
-    <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <ConfirmDialog
         open={!!confirmDisconnect}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null); }}
@@ -446,6 +446,7 @@ export function DepartmentMailboxesPage({
         <ReceivedMailPanel
           endpoint={`/api/admin/departments/${departmentId}/mailbox-mail`}
           canManage={canManage}
+          realtimeTopic={`mailbox-mail:dept:${departmentId}`}
         />
       )}
 

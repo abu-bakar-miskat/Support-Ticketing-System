@@ -838,6 +838,15 @@ model Ticket {
   dueDate      DateTime?
   cycleTime    Int?
   closedAt     DateTime?
+  // ── Resolution time tracking ── the ticket-level timer runs from the moment
+  // the ticket first enters "In Progress" (inProgressStartedAt) until it reaches
+  // a completion status (closedAt). resolutionDurationMins is the elapsed wall
+  // clock between the two; resolvedWithinAllowed records whether that beat the
+  // ticket's allowed resolution time (SLA resolutionTargetMins, else
+  // estimatedTime) — null when no start time or no allowed target exists.
+  inProgressStartedAt   DateTime?
+  resolutionDurationMins Int?
+  resolvedWithinAllowed  Boolean?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?

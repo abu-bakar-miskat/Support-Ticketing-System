@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Ban, Check, ChevronDown, Inbox, Mail, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { createMailboxMailSubscription } from "@/lib/realtime";
 
 type MailboxMessage = {
   id: string;
@@ -68,9 +70,16 @@ function formatDate(iso: string) {
 export function ReceivedMailPanel({
   endpoint,
   canManage,
+  realtimeTopic,
 }: {
   endpoint: string;
   canManage: boolean;
+  /**
+   * Supabase Realtime broadcast topic to watch for newly arrived mail
+   * (see lib/realtime-broadcast.ts → broadcastMailboxMail). When a
+   * `mail_received` event fires, the panel refetches.
+   */
+  realtimeTopic?: string;
 }) {
   const [messages, setMessages] = useState<MailboxMessage[] | null>(null);
   const [suppressed, setSuppressed] = useState<SuppressedMail[] | null>(null);
@@ -81,20 +90,46 @@ export function ReceivedMailPanel({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"mail" | "suppressed">("mail");
 
+  // Ref so the realtime subscription (mounted once per endpoint) always calls
+  // the latest loader without re-subscribing on every render.
+  const loadRef = useRef<() => void>(() => {});
+
+  const load = useCallback(
+    (silent = false) => {
+      fetch(endpoint)
+        .then(jsonOrThrow)
+        .then((data) => {
+          setMessages(data.messages);
+          setSuppressed(data.suppressed);
+          setMailboxes(data.connections ?? []);
+          setError(null);
+        })
+        .catch((e) => {
+          // On a background refresh, keep the mail already on screen rather than
+          // wiping it out — just surface the error banner.
+          setError(e instanceof Error ? e.message : "Couldn't load received mail.");
+          if (!silent) {
+            setMessages([]);
+            setSuppressed([]);
+          }
+        });
+    },
+    [endpoint],
+  );
+
   useEffect(() => {
-    fetch(endpoint)
-      .then(jsonOrThrow)
-      .then((data) => {
-        setMessages(data.messages);
-        setSuppressed(data.suppressed);
-        setMailboxes(data.connections ?? []);
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "Couldn't load received mail.");
-        setMessages([]);
-        setSuppressed([]);
-      });
-  }, [endpoint]);
+    loadRef.current = () => load(true);
+  }, [load]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!realtimeTopic) return;
+    const supabase = createClient();
+    return createMailboxMailSubscription(supabase, realtimeTopic, () => loadRef.current());
+  }, [realtimeTopic]);
 
   const activeMailbox = mailboxes.find((m) => m.id === selectedMailbox) ?? null;
 

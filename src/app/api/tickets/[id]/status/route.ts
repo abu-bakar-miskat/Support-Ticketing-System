@@ -12,6 +12,7 @@ import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 
 type Status = string
 
@@ -38,6 +39,11 @@ export async function PATCH(
       creatorId: true,
       deletedAt: true,
       closedAt: true,
+      // Resolution timer inputs: the saved In Progress start + the allowed
+      // resolution target (SLA target, else per-ticket estimate).
+      inProgressStartedAt: true,
+      estimatedTime: true,
+      slaTimer: { select: { resolutionTargetMins: true } },
       assignees: { select: { userId: true } },
       subDepartment: { select: { prefix: true, departmentId: true } },
       intake: {
@@ -129,6 +135,19 @@ export async function PATCH(
     ticket.labels.some((label) => !nextLabels.includes(label))
 
   const newClosedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
+
+  // Start the resolution timer on entry to "In Progress"; stop it and record
+  // the total time + within/exceeded verdict on completion. Shared with /move
+  // and the generic PATCH route so every status path behaves identically.
+  const resolutionData = resolutionUpdateOnStatusChange({
+    toStatus: to,
+    isCompletion,
+    newClosedAt,
+    currentInProgressStartedAt: ticket.inProgressStartedAt,
+    slaResolutionTargetMins: ticket.slaTimer?.resolutionTargetMins,
+    estimatedTime: ticket.estimatedTime,
+  })
+
   const updated = await prisma.$transaction(async (tx) => {
     // Set session var so the trigger can stamp the correct actor on ActivityLog
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
@@ -137,6 +156,7 @@ export async function PATCH(
       data: {
         status: to as Status,
         closedAt: newClosedAt,
+        ...resolutionData,
       },
     })
     if (count === 0) return null
@@ -148,7 +168,14 @@ export async function PATCH(
     }
     return tx.ticket.findUnique({
       where: { id },
-      select: { id: true, status: true, cycleTime: true },
+      select: {
+        id: true,
+        status: true,
+        cycleTime: true,
+        inProgressStartedAt: true,
+        resolutionDurationMins: true,
+        resolvedWithinAllowed: true,
+      },
     })
   })
 

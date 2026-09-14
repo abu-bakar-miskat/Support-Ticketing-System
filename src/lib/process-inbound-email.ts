@@ -19,6 +19,7 @@ import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
 import { findMailboxRouteForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
+import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
 import { createTicketFromInboundEmail } from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
 
@@ -182,6 +183,7 @@ export async function processInboundEmail(
   const headers = normalizeHeaderKeys(email.headers)
   const isSystem = isAutoReply(headers)
   const { name: fromName, email: fromEmail } = parseFromAddress(email.from)
+  const { bodyHtml, quoted } = pickBody(email.text, email.html)
 
   let ticket: MatchedTicket | null = null
   let submitterEmail: string | null = null
@@ -292,6 +294,7 @@ export async function processInboundEmail(
         fromEmail,
         fromName,
         subject: email.subject,
+        description: bodyHtml,
         mailboxConnectionId: route.id,
       })
     } catch (err) {
@@ -327,7 +330,6 @@ export async function processInboundEmail(
   // against, so its first message is always "trusted" — never quarantined.
   const senderVerified = isNewTicket || !submitterEmail || fromEmail === submitterEmail.toLowerCase()
   const messageStatus = isSystem ? "system" : (senderVerified ? "trusted" : "quarantined")
-  const { bodyHtml, quoted } = pickBody(email.text, email.html)
   const throttled = !isSystem && !isNewTicket && await isOverRateLimit(ticket.id)
 
   // Create atomically under a per-message-id advisory lock. The top-of-function
@@ -407,6 +409,16 @@ export async function processInboundEmail(
     where: { id: ticket.id },
     data: { updatedAt: new Date() },
   }).catch((err) => console.error("[inbound] failed to touch ticket for realtime badge:", err))
+
+  // Refresh any open Received-mail panel (department + sub-department scoped) so
+  // this newly arrived email shows up without a manual reload. Covers both new
+  // tickets and replies threaded onto an existing one.
+  await prisma.subDepartment
+    .findUnique({ where: { id: ticket.subDepartmentId }, select: { departmentId: true } })
+    .then((sd) => {
+      if (sd) return broadcastMailboxMail(sd.departmentId, ticket.subDepartmentId)
+    })
+    .catch((err) => console.error("[inbound] failed to broadcast mailbox mail:", err))
 
   // The new-ticket path already fired an assignment/failure notification from
   // createTicketFromInboundEmail — a "customer replied"/reopen notification

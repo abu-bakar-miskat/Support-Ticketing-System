@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SubDepartmentReceivedMail } from "@/components/sub-departments/sub-department-received-mail";
 import {
   getSubDepartmentMailboxConnections,
@@ -410,17 +417,26 @@ export function SubDepartmentMailboxManager({
                       {editingAssignment ? (
                         <span className="flex items-center gap-1.5">
                           Assignment:
-                          <select
+                          <Select
                             value={draftAssignmentMethod}
-                            onChange={(e) => setDraftAssignmentMethod(e.target.value as AssignmentMethod)}
+                            onValueChange={(v) => v && setDraftAssignmentMethod(v as AssignmentMethod)}
                             disabled={savingAssignment}
-                            aria-label="Assignment method"
-                            className="h-6 rounded border border-sts-blue/40 bg-sts-surface px-1.5 text-[11px] text-sts-foreground outline-none focus:border-sts-blue"
                           >
-                            {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
-                              <option key={value} value={value}>{label}</option>
-                            ))}
-                          </select>
+                            <SelectTrigger
+                              size="sm"
+                              aria-label="Assignment method"
+                              className="h-6 border-sts-blue/40 bg-sts-surface px-1.5 text-[11px] text-sts-foreground"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
+                                <SelectItem key={value} value={value} className="text-[11px]">
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <button
                             type="button"
                             onClick={saveAssignmentMethod}

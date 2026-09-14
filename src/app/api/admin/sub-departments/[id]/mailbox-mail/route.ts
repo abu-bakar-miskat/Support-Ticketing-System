@@ -18,8 +18,9 @@ function mailboxConnectionIdsForRecipients(
 }
 
 // GET /api/admin/sub-departments/[id]/mailbox-mail
-// Every email this sub-department's mailbox connection(s) received: inbound
-// TicketMessages filed against the subDepartment's tickets, plus auto-generated mail
+// The original email that opened each ticket in this sub-department (the first
+// inbound TicketMessage per ticket) — customer replies to an existing ticket are
+// NOT listed here, only the mail that created a ticket. Plus auto-generated mail
 // that never became a ticket (MailSuppressionLog, keyed by mailboxConnectionId).
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile: caller, error } = await requireAdminOrManager()
@@ -49,8 +50,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const [messages, suppressed] = await Promise.all([
     prisma.ticketMessage.findMany({
       where: { direction: "inbound", ticket: { subDepartmentId: id } },
-      orderBy: { createdAt: "desc" },
-      take: 200,
+      // One row per ticket — its earliest inbound message, i.e. the email that
+      // opened the ticket. `distinct` keeps the first row seen per ticketId in
+      // the given order, so ticketId + createdAt asc yields the original mail and
+      // drops every later reply. Re-sorted to newest-first below for display.
+      orderBy: [{ ticketId: "asc" }, { createdAt: "asc" }],
+      distinct: ["ticketId"],
       select: {
         id: true,
         status: true,
@@ -81,9 +86,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       : Promise.resolve([]),
   ])
 
+  const sortedMessages = messages
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 200)
+
   return NextResponse.json({
     connections,
-    messages: messages.map((m) => ({
+    messages: sortedMessages.map((m) => ({
       id: m.id,
       status: m.status,
       fromName: m.fromName,

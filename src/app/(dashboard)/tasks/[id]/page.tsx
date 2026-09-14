@@ -503,6 +503,15 @@ export default async function TicketPage({
   const canChangeStatus = canEdit;
   const canDelete = canDeleteTicket(profile, { creatorId: ticket.creatorId });
 
+  // Email-created tickets (from a mailbox connection) have no `intake` row, so
+  // there's no submitterEmail/replyToken to reply through. Fall back to the most
+  // recent inbound customer message — the same resolution the messages API uses
+  // (POST /api/tickets/[id]/messages) so the composer isn't gated stricter than
+  // the endpoint behind it. ticketMessages is ordered createdAt asc.
+  const latestInbound = [...ticketMessages]
+    .reverse()
+    .find((m) => m.direction === "inbound");
+
   return (
     <>
       {shouldSwitchDept && taskOriginDeptId && <ActiveDeptSync deptId={taskOriginDeptId} />}
@@ -618,10 +627,13 @@ export default async function TicketPage({
         customerReply={{
           enabled:
             RESEND_RECEIVING_ENABLED &&
-            !!ticket.intake &&
-            ticket.intake.formConfig.allowCustomerReplies,
-          customerName: ticket.intake?.submitterName ?? null,
-          customerEmail: ticket.intake?.submitterEmail ?? null,
+            (ticket.intake
+              ? ticket.intake.formConfig.allowCustomerReplies
+              : !!latestInbound?.fromEmail),
+          customerName:
+            ticket.intake?.submitterName ?? latestInbound?.fromName ?? null,
+          customerEmail:
+            ticket.intake?.submitterEmail ?? latestInbound?.fromEmail ?? null,
         }}
         intake={
           ticket.intake

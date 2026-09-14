@@ -20,16 +20,21 @@ export type InviteLandingScope = {
 };
 
 /**
- * Public URL for an accepted invite. Includes tenant/department slugs so the
- * first navigation is already canonical — `/` alone waits on the dashboard
- * layout while the invitee still sees "Verifying…".
+ * Public URL for an accepted invite. Always ends on a known dashboard root
+ * (`departments` / `manager` / `board`) so a department slug like
+ * `help-center` is not treated as the page itself, and the first document can
+ * paint a skeleton instead of blocking on Home aggregates.
  */
 export function inviteLandingPath(
   role: string,
-  scope: Pick<InviteLandingScope, "tenantSlug" | "departmentSlug">,
+  scope: Pick<
+    InviteLandingScope,
+    "tenantSlug" | "departmentSlug" | "subDepartmentSlug"
+  >,
 ): string {
   const tenant = scope.tenantSlug;
   const dept = scope.departmentSlug;
+  const sub = scope.subDepartmentSlug;
   if (role === "admin") {
     return tenant ? `/${tenant}/departments` : "/departments";
   }
@@ -37,9 +42,13 @@ export function inviteLandingPath(
     if (tenant && dept) return `/${tenant}/${dept}/manager`;
     return "/manager";
   }
-  if (tenant && dept) return `/${tenant}/${dept}`;
-  if (tenant) return `/${tenant}`;
-  return "/";
+  const board = "board";
+  if (tenant && dept && sub && sub !== tenant && sub !== dept) {
+    return `/${tenant}/${dept}/${sub}/${board}`;
+  }
+  if (tenant && dept) return `/${tenant}/${dept}/${board}`;
+  if (tenant) return `/${tenant}/${board}`;
+  return `/${board}`;
 }
 
 /**

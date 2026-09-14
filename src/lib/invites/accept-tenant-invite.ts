@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db";
+import { getUnscopedPrisma } from "@/lib/db";
 import { applyTenantMembership } from "@/lib/tenant-membership";
 import { synchronizeLegacyRoleAssignments } from "@/lib/role-assignment";
 import { runAsSystem } from "@/lib/request-scope";
@@ -72,7 +72,8 @@ async function resolveInviteScope(invite: InviteRow): Promise<{
   let subDepartmentSlug: string | null = null;
 
   if (subDepartmentId) {
-    const sub = await prisma.subDepartment.findFirst({
+    const db = getUnscopedPrisma();
+    const sub = await db.subDepartment.findFirst({
       where: { id: subDepartmentId, tenantId: invite.tenantId },
       select: {
         id: true,
@@ -89,7 +90,8 @@ async function resolveInviteScope(invite: InviteRow): Promise<{
       subDepartmentId = null;
     }
   } else if (departmentIds[0]) {
-    const dept = await prisma.department.findFirst({
+    const db = getUnscopedPrisma();
+    const dept = await db.department.findFirst({
       where: { id: departmentIds[0], tenantId: invite.tenantId },
       select: { id: true, slug: true },
     });
@@ -133,7 +135,10 @@ export async function acceptTenantInvite(
   profile: { id: string; email: string },
 ): Promise<AcceptTenantInviteResult> {
   return runAsSystem(async () => {
-    const invite = (await prisma.tenantInvite.findUnique({
+    const t0 = Date.now();
+    console.info("[acceptTenantInvite] start");
+    const db = getUnscopedPrisma();
+    const invite = (await db.tenantInvite.findUnique({
       where: { token },
       include: { tenant: { select: { id: true, name: true, slug: true } } },
     })) as InviteRow | null;
@@ -158,6 +163,7 @@ export async function acceptTenantInvite(
     }
 
     const scope = await resolveInviteScope(invite);
+    console.info(`[acceptTenantInvite] loaded+scoped ${Date.now() - t0}ms`);
 
     if (invite.acceptedAt) {
       return successFrom(invite, scope);
@@ -172,7 +178,7 @@ export async function acceptTenantInvite(
     // syncUserRoleAssignments) also means every entry point — the login callback
     // and /api/tenant-invites/[token]/accept alike — leaves the invitee with
     // populated scope rows, and costs no extra FOR UPDATE transaction.
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       // Serialize against a concurrent resolveUserScope rebuild for this user;
       // it deletes and recreates these same rows, which races to P2002.
       await tx.$executeRaw`SELECT "id" FROM "Profile" WHERE "id" = ${profile.id} FOR UPDATE`;
@@ -198,6 +204,7 @@ export async function acceptTenantInvite(
         data: { acceptedAt: new Date() },
       });
     });
+    console.info(`[acceptTenantInvite] committed ${Date.now() - t0}ms`);
 
     return successFrom(invite, scope);
   });
@@ -206,7 +213,7 @@ export async function acceptTenantInvite(
 /** Read-only invite details for the landing page. */
 export async function getTenantInvitePreview(token: string) {
   return runAsSystem(async () => {
-    const invite = await prisma.tenantInvite.findUnique({
+    const invite = await getUnscopedPrisma().tenantInvite.findUnique({
       where: { token },
       select: {
         email: true,

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { HomeDashboard } from "@/components/dashboard/home-dashboard";
-import { getHomeDashboardData } from "@/lib/dashboard-home-data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Home — Support Ticketing System" };
@@ -37,6 +36,5 @@ export default async function HomePage() {
     }
   }
 
-  const initialData = await getHomeDashboardData(profile);
-  return <HomeDashboard initialData={initialData} />;
+  return <HomeDashboard />;
 }

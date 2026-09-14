@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/db";
+import { getUnscopedPrisma } from "@/lib/db";
 import { synchronizeLegacyRoleAssignments } from "@/lib/role-assignment";
 import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
@@ -33,9 +33,9 @@ export type AcceptInviteResult =
     };
 
 /**
- * Dashboard path for an accepted department-invite role. Department invites only
- * carry `agent` / `sub_manager`, both of which land on the home dashboard — it
- * dispatches by role using the active department/sub-department cookies below.
+ * Dashboard path for an accepted department-invite role. Department invites
+ * only carry `agent` / `sub_manager`; both land on the ticket board with the
+ * active department/sub-department cookies set below.
  */
 export function departmentInviteLandingPath(
   result: Extract<AcceptInviteResult, { ok: true }>,
@@ -65,7 +65,8 @@ async function acceptDepartmentInviteInner(
   token: string,
   profile: { id: string; email: string },
 ): Promise<AcceptInviteResult> {
-  const invite = await prisma.departmentInvite.findUnique({
+  const db = getUnscopedPrisma();
+  const invite = await db.departmentInvite.findUnique({
     where: { token },
     include: {
       department: {
@@ -89,16 +90,6 @@ async function acceptDepartmentInviteInner(
   if (invite.revokedAt) {
     return { ok: false, code: "revoked", message: "This invitation has been revoked." };
   }
-  if (invite.acceptedAt) {
-    return {
-      ok: false,
-      code: "already_accepted",
-      message: "This invitation has already been accepted.",
-    };
-  }
-  if (invite.expiresAt.getTime() < Date.now()) {
-    return { ok: false, code: "expired", message: "This invitation has expired." };
-  }
 
   const signedInEmail = profile.email.trim().toLowerCase();
   const inviteEmail = invite.email.trim().toLowerCase();
@@ -111,12 +102,30 @@ async function acceptDepartmentInviteInner(
       signedInEmail: profile.email,
     };
   }
+  if (invite.expiresAt.getTime() < Date.now() && !invite.acceptedAt) {
+    return { ok: false, code: "expired", message: "This invitation has expired." };
+  }
+
+  if (invite.acceptedAt) {
+    return {
+      ok: true,
+      tenantId: invite.department.tenantId,
+      tenantSlug: invite.department.tenant.slug,
+      departmentId: invite.department.id,
+      departmentName: invite.department.name,
+      departmentSlug: invite.department.slug,
+      subDepartmentId: invite.subDepartment.id,
+      subDepartmentName: invite.subDepartment.name,
+      subDepartmentSlug: invite.subDepartment.slug,
+      role: invite.role,
+    };
+  }
 
   if (invite.subDepartment.departmentId !== invite.departmentId) {
     return { ok: false, code: "not_found", message: "This invitation link is invalid." };
   }
 
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     // Take the per-user Profile lock up front, the same order
     // rebuildUserRoleAssignments uses, so this transaction and a concurrent
     // scope rebuild can never grab these rows in opposite orders.
@@ -196,7 +205,7 @@ async function acceptDepartmentInviteInner(
 }
 
 export async function getInvitePreview(token: string) {
-  const invite = await prisma.departmentInvite.findUnique({
+  const invite = await getUnscopedPrisma().departmentInvite.findUnique({
     where: { token },
     select: {
       email: true,

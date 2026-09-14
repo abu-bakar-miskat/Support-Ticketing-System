@@ -13,6 +13,10 @@ const globalForPrisma = globalThis as unknown as {
   databaseUrl?: string;
   schemaVersion?: string;
   poolRecreatePromise?: Promise<void>;
+  unscopedPrisma?: InstanceType<typeof PrismaClient>;
+  unscopedPool?: Pool;
+  unscopedDatabaseUrl?: string;
+  unscopedSchemaVersion?: string;
 };
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -275,6 +279,69 @@ function getPrisma() {
   );
   globalForPrisma.schemaVersion = schemaVersion;
   return globalForPrisma.prismaExtended;
+}
+
+/**
+ * Prisma client without the tenant-scope extension, on its own 1-connection
+ * pool. Invite accept and login bootstrap query `department` / `subDepartment`
+ * before a request scope exists; the scoped client then calls getProfile() and
+ * hangs OTP verify. Sharing the dashboard pool is just as bad: `/departments`
+ * routinely pins every slot for 10–20s. This client stays off both traps.
+ */
+export function getUnscopedPrisma(): PrismaInstance {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+
+  const normalized = normalizePoolerUrl(connectionString);
+  const schemaVersion = getSchemaVersion();
+
+  if (
+    !isStalePrismaClient(globalForPrisma.unscopedPrisma) &&
+    globalForPrisma.unscopedPrisma &&
+    globalForPrisma.unscopedDatabaseUrl === normalized &&
+    globalForPrisma.unscopedSchemaVersion === schemaVersion
+  ) {
+    return globalForPrisma.unscopedPrisma;
+  }
+
+  const stalePrisma = globalForPrisma.unscopedPrisma;
+  const stalePool = globalForPrisma.unscopedPool;
+  if (stalePrisma) {
+    globalForPrisma.unscopedPool = undefined;
+    globalForPrisma.unscopedPrisma = undefined;
+    void stalePrisma.$disconnect().catch(() => {});
+  } else if (stalePool) {
+    void stalePool.end().catch(() => {});
+  }
+
+  assertDatabaseUrl(connectionString);
+  const pool = new Pool({
+    connectionString: toPgConnectionString(normalized),
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    idleTimeoutMillis: isDev ? 5_000 : 10_000,
+    keepAlive: true,
+    connectionTimeoutMillis: 8_000,
+    allowExitOnIdle: true,
+    application_name: isDev ? "pen-tickets-auth-dev" : "pen-tickets-auth",
+  });
+  pool.on("error", (err) => {
+    console.warn("[db auth pool] idle connection error:", err.message);
+  });
+  pool.setMaxListeners(8);
+
+  const client = new PrismaClient({
+    adapter: new PrismaPg(pool),
+    transactionOptions: { maxWait: 8_000, timeout: 20_000 },
+  });
+
+  globalForPrisma.unscopedPrisma = client;
+  globalForPrisma.unscopedPool = pool;
+  globalForPrisma.unscopedDatabaseUrl = normalized;
+  globalForPrisma.unscopedSchemaVersion = schemaVersion;
+  return client;
 }
 
 type PrismaInstance = InstanceType<typeof PrismaClient>;

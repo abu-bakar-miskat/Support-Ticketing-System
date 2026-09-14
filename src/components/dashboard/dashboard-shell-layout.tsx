@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
 import { getProfile } from "@/lib/profile";
-import { getDashboardLayoutData } from "@/lib/dashboard-layout-data";
-import { getTenantBranding } from "@/lib/tenant-config";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
 import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
-import { runWithScope } from "@/lib/request-scope";
-import { resolveProfileTicketScope } from "@/lib/prisma-scope";
 
 async function DeferredBadges({ profile, activeDeptId }: { profile: AuthProfile; activeDeptId: string | null }) {
   const badges = await getDashboardBadgesData(profile).catch((error) => {
@@ -92,35 +88,9 @@ export async function DashboardShellLayout({ children }: { children: React.React
     redirect("/onboarding");
   }
 
-  const ticketScope = await resolveProfileTicketScope({
-    id: profile.id,
-    isSuperAdmin: profile.isSuperAdmin,
-    tenantIds: profile.tenantIds,
-  });
-  const ambient =
-    ticketScope.kind === "platform"
-      ? { isPlatformAdmin: true as const, tenantIds: profile.tenantIds }
-      : ticketScope.kind === "tenant"
-        ? {
-            tenantIds: ticketScope.tenantIds,
-            ...(ticketScope.subDepartmentTeamIds
-              ? { subDepartmentTeamIds: ticketScope.subDepartmentTeamIds }
-              : {}),
-            ...(ticketScope.grantedTicketIds
-              ? { grantedTicketIds: ticketScope.grantedTicketIds }
-              : {}),
-          }
-        : { tenantIds: profile.tenantIds };
-
-  const [layoutData, branding] = await runWithScope(ambient, () =>
-    Promise.all([
-      getDashboardLayoutData(profile, true),
-      profile.activeTenantId
-        ? getTenantBranding(profile.activeTenantId)
-        : Promise.resolve(null),
-    ]),
-  );
-
+  // Sidebar/projects load on the client (`/api/dashboard/layout`) so the first
+  // HTML after login is just getProfile + chrome — not minutes of layout queries
+  // while the OTP screen still says "Verifying…".
   return (
     <>
       <UserHydrator
@@ -137,18 +107,10 @@ export async function DashboardShellLayout({ children }: { children: React.React
           role: m.role,
         }))}
       />
-      {/* Per-tenant branding: only the logo + name change in the shell — the
-          app keeps its default theme colour for every tenant. */}
-      <DashboardLayout
-        initialLayoutData={layoutData}
-        brandingName={branding?.displayName ?? null}
-        brandingLogoUrl={branding?.logoUrl ?? null}
-        brandingHideLogo={branding?.hideLogo ?? false}
-        brandingHideDisplayName={branding?.hideDisplayName ?? false}
-      >
+      <DashboardLayout>
         {children}
         <Suspense fallback={null}>
-          <DeferredBadges profile={profile} activeDeptId={layoutData.activeDeptId} />
+          <DeferredBadges profile={profile} activeDeptId={null} />
         </Suspense>
       </DashboardLayout>
     </>

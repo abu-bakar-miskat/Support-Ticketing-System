@@ -86,6 +86,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/api/screening/answer" ||
     pathname === "/api/screening/submit" ||
     pathname === "/api/screening/score" || // guarded by shared secret (or admin session) in the route
+    pathname.startsWith("/api/auth/verify-otp") || // OTP sign-in; no session yet
     pathname.startsWith("/api/v1/") ||
     pathname.startsWith("/api/webhooks/") || // authenticated by HMAC signature, not session
     pathname.startsWith("/api/mcp/") || // authenticated by API key in the path, not session

@@ -1,5 +1,5 @@
 import "server-only"
-import { prisma } from "@/lib/db"
+import { prisma, getUnscopedPrisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
 
 function profileNameFromUser(user: {
@@ -91,11 +91,14 @@ export async function reconcileProfileOnLogin(
   if (!user.email) return
 
   const name = profileNameFromUser(user)
+  // Invite signup must not queue behind the dashboard pool — that is what
+  // left OTP verify stuck on "Verifying…".
+  const db = opts?.skipDefaultTenant ? getUnscopedPrisma() : prisma
 
-  let profile = await prisma.profile.findUnique({ where: { id: user.id } })
+  let profile = await db.profile.findUnique({ where: { id: user.id } })
   if (profile) {
     if (profile.deletedAt) {
-      await prisma.profile.update({
+      await db.profile.update({
         where: { id: user.id },
         data: {
           deletedAt: null,
@@ -113,7 +116,7 @@ export async function reconcileProfileOnLogin(
     return
   }
 
-  const byEmail = await prisma.profile.findUnique({ where: { email: user.email } })
+  const byEmail = await db.profile.findUnique({ where: { email: user.email } })
   if (byEmail) {
     if (byEmail.deletedAt) {
       await migrateProfileAuthId(byEmail.id, user.id)
@@ -121,7 +124,7 @@ export async function reconcileProfileOnLogin(
     return
   }
 
-  await prisma.profile.create({
+  await db.profile.create({
     data: { id: user.id, email: user.email, name },
   })
 

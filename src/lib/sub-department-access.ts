@@ -111,7 +111,7 @@ export async function getSubDepartmentAboutData(
   const subDepartment = await prisma.subDepartment.findFirst({
     where: { ...where, name },
     include: {
-      department: { select: { id: true, name: true } },
+      department: { select: { id: true, name: true, assignmentMethod: true } },
       counter: { select: { lastNumber: true } },
       _count: { select: { projects: true } },
       memberships: {
@@ -151,6 +151,8 @@ export async function getSubDepartmentAboutData(
     color: subDepartment.color ?? avatarColorFor(subDepartment.name),
     departmentId: subDepartment.department.id,
     departmentName: subDepartment.department.name,
+    assignmentMethod:
+      subDepartment.assignmentMethod ?? subDepartment.department.assignmentMethod,
     // Members = agents only; sub-managers are counted separately in the UI.
     memberCount: agents.length,
     workloadThreshold: subDepartment.workloadThreshold,

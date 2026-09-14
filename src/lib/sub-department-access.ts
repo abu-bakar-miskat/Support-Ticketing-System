@@ -161,7 +161,6 @@ export async function getSubDepartmentAboutData(
     workloadThreshold: subDepartment.workloadThreshold,
     ticketsKeyed: subDepartment.counter?.lastNumber ?? 0,
     projectCount: subDepartment._count.projects,
-    assignmentMethod: subDepartment.assignmentMethod ?? subDepartment.department.assignmentMethod,
     manualAssigneeIds: subDepartment.manualAssigneeIds,
     subManagers,
     agents,

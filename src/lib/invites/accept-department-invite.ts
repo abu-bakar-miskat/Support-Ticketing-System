@@ -34,8 +34,8 @@ export type AcceptInviteResult =
 
 /**
  * Dashboard path for an accepted department-invite role. Department invites
- * only carry `agent` / `sub_manager`; both land on the ticket board with the
- * active department/sub-department cookies set below.
+ * only carry `agent` / `sub_manager`; both land on Home with the active
+ * department/sub-department cookies set below.
  */
 export function departmentInviteLandingPath(
   result: Extract<AcceptInviteResult, { ok: true }>,

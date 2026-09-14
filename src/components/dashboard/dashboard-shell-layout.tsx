@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
+import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
 import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
+import { layoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
 
@@ -88,9 +90,11 @@ export async function DashboardShellLayout({ children }: { children: React.React
     redirect("/onboarding");
   }
 
-  // Sidebar/projects load on the client (`/api/dashboard/layout`) so the first
-  // HTML after login is just getProfile + chrome — not minutes of layout queries
-  // while the OTP screen still says "Verifying…".
+  // Seed sidebar role/memberships from the profile so Home is usable immediately.
+  // Full project lists still load in the background via `/api/dashboard/layout`.
+  const cookieStore = await cookies();
+  const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
+
   return (
     <>
       <UserHydrator
@@ -107,10 +111,10 @@ export async function DashboardShellLayout({ children }: { children: React.React
           role: m.role,
         }))}
       />
-      <DashboardLayout>
+      <DashboardLayout initialLayoutData={layoutSeedFromProfile(profile, activeDeptId)}>
         {children}
         <Suspense fallback={null}>
-          <DeferredBadges profile={profile} activeDeptId={null} />
+          <DeferredBadges profile={profile} activeDeptId={activeDeptId} />
         </Suspense>
       </DashboardLayout>
     </>

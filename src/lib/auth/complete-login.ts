@@ -19,6 +19,7 @@ import {
 import { TENANT_SLUG_COOKIE } from "@/lib/tenant-path";
 import { loginBlockReason } from "@/lib/tenant-lifecycle";
 import { resolvePostLoginLanding } from "@/lib/auth/post-login-redirect";
+import { isGenericLandingPath } from "@/lib/auth-redirect";
 
 const AUTH_NEXT_COOKIE = "pen_auth_next";
 
@@ -279,10 +280,9 @@ export async function completeLogin(args: {
     }
   }
 
-  // No specific deep link: land by role (role-hierarchy.md) — Super Admin to the
-  // platform console, tenant admin to the org console, manager/agent to their
-  // department board, unassigned to onboarding. A deep link still wins.
-  if (next === "/") {
+  // Department home (`/{tenant}/{dept}`) is not a deep link — it's the rewrite
+  // of `/`. Dispatch by role so managers land on /manager, not agent Home.
+  if (isGenericLandingPath(next)) {
     const landing = await resolvePostLoginLanding(
       profile.id,
       profile.isSuperAdmin,

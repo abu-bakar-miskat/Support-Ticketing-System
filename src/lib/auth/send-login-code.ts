@@ -5,7 +5,10 @@ import { escapeHtml } from "@/lib/email-templates/_shared";
 import { isAuthEmailConfigured, sendAuthEmail } from "@/lib/email-transport";
 
 const DEFAULT_FROM = "PEN Support <onboarding@mail.pengroup.com>";
-const RESEND_WINDOW_MS = 60_000;
+// Server-side backstop for the 90s resend cooldown enforced in the UI. Keeps a
+// user (or a bypassed client) from hammering the mail server with back-to-back
+// code requests.
+const RESEND_WINDOW_MS = 90_000;
 const lastSentAt = new Map<string, number>();
 
 export type SendLoginCodeResult =
@@ -21,7 +24,8 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
   const now = Date.now();
   const previous = lastSentAt.get(email) ?? 0;
   if (now - previous < RESEND_WINDOW_MS) {
-    return { error: "Please wait a minute before requesting another code." };
+    const wait = Math.ceil((RESEND_WINDOW_MS - (now - previous)) / 1000);
+    return { error: `Please wait ${wait} seconds before requesting another code.` };
   }
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !(await isAuthEmailConfigured())) {

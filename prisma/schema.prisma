@@ -291,6 +291,9 @@ model TenantInvite {
   expiresAt  DateTime
   acceptedAt DateTime?
   revokedAt  DateTime?
+  // Set when the 24h "invite still pending" reminder email has been sent, so the
+  // reminder sweep fires exactly once per invite. See lib/invites/reminders.ts.
+  reminderSentAt DateTime?
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inviter Profile @relation("TenantInvitesSent", fields: [invitedBy], references: [id])
@@ -474,6 +477,9 @@ model DepartmentInvite {
   expiresAt    DateTime
   acceptedAt   DateTime?
   revokedAt    DateTime?
+  // Set when the 24h "invite still pending" reminder email has been sent, so the
+  // reminder sweep fires exactly once per invite. See lib/invites/reminders.ts.
+  reminderSentAt DateTime?
 
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)

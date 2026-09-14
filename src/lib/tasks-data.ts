@@ -17,6 +17,11 @@ import type { getProfile } from "@/lib/profile";
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
 export async function getMyTasksData(profile: Profile): Promise<MyTasksResponse> {
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() => collectMyTasksData(profile));
+}
+
+async function collectMyTasksData(profile: Profile): Promise<MyTasksResponse> {
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
   const isMgrOrAdmin = isAdmin || isManager;
@@ -76,6 +81,14 @@ export async function getMyTasksData(profile: Profile): Promise<MyTasksResponse>
 }
 
 export async function getTasksMetaData(
+  profile: Profile,
+  activeDeptId?: string | null,
+): Promise<TasksMetaResponse> {
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() => collectTasksMetaData(profile, activeDeptId));
+}
+
+async function collectTasksMetaData(
   profile: Profile,
   activeDeptId?: string | null,
 ): Promise<TasksMetaResponse> {

@@ -42,6 +42,17 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
   profile: AuthProfile,
   deferBadges = false,
 ): Promise<LayoutData> {
+  // These queries already filter by the caller's tenant/dept/memberships.
+  // Skipping the per-query scope extension avoids a getProfile waterfall that
+  // could stall every dashboard page for minutes on the shared pooler.
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() => loadDashboardLayoutData(profile, deferBadges));
+});
+
+async function loadDashboardLayoutData(
+  profile: AuthProfile,
+  deferBadges = false,
+): Promise<LayoutData> {
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
   const isDeptLevel = isAdmin || isManager;
@@ -385,4 +396,57 @@ export const getDashboardLayoutData = cache(async function getDashboardLayoutDat
     activeFeatureKeys: activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet),
     platformFlags,
   };
-});
+}
+
+/** Nav/role chrome from the profile alone — no extra queries. Sidebar refetches the rest. */
+export function layoutSeedFromProfile(
+  profile: AuthProfile,
+  activeDeptId: string | null,
+): LayoutData {
+  const memberships = (profile.memberships ?? []) as ProfileMembership[];
+  const subDepartments = memberships.map((m) => ({
+    id: m.subDepartment.id,
+    name: m.subDepartment.name,
+    prefix: m.subDepartment.prefix,
+    departmentId: m.subDepartment.department?.id ?? null,
+    departmentName: m.subDepartment.department?.name ?? null,
+  }));
+  const inActiveDept = activeDeptId
+    ? subDepartments.filter((s) => s.departmentId === activeDeptId)
+    : subDepartments;
+  const deptById = new Map<string, { id: string; name: string }>();
+  for (const s of subDepartments) {
+    if (s.departmentId && s.departmentName && !deptById.has(s.departmentId)) {
+      deptById.set(s.departmentId, { id: s.departmentId, name: s.departmentName });
+    }
+  }
+  const managed = profile.managedDepartmentIds ?? [];
+  return {
+    projects: [],
+    subDepartments: inActiveDept,
+    departments: [...deptById.values()].map((d) => ({ ...d, projects: [] })),
+    allDepts: [...deptById.values()],
+    activeDeptId,
+    activeDeptType: null,
+    isCrossAccessDept: checkIsCrossAccessDept(profile, activeDeptId),
+    crossAccessDeptIds: [],
+    isFullAccessDept: false,
+    isManagerOfActiveDept: Boolean(activeDeptId && managed.includes(activeDeptId)),
+    canAdminActiveDeptSettings: Boolean(
+      activeDeptId && canAdminDeptSettings(profile, activeDeptId),
+    ),
+    canAccessModules: canAccessModulesArea(profile, activeDeptId),
+    recentTickets: [],
+    projectNames: {},
+    pinnedProjectIds: parsePinnedProjectIds(profile.preferences),
+    assignedProjectIds: [],
+    myTasksCount: 0,
+    mentionsCount: 0,
+    inboxCount: 0,
+    userRole: profile.role,
+    isSuperAdmin: profile.isSuperAdmin,
+    userId: profile.id,
+    activeFeatureKeys: "ALL",
+    platformFlags: {},
+  };
+}

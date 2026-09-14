@@ -10,6 +10,7 @@ import {
   signatureBlock,
   summaryTable,
 } from "./_shared";
+import { formatInviteExpiry } from "../invites/constants";
 import type { EmailTemplateOverride } from "../email-config";
 
 export const INVITE_PLACEHOLDER_KEYS = [
@@ -23,6 +24,7 @@ export const INVITE_PLACEHOLDER_KEYS = [
   "messageBlock",
   "inviteUrl",
   "acceptInviteButton",
+  "expiresAt",
   "signature",
 ] as const;
 
@@ -34,6 +36,8 @@ export function renderInvite({
   role,
   message,
   inviteToken,
+  expiresAt,
+  isReminder = false,
   signature,
   branding,
   override,
@@ -45,6 +49,8 @@ export function renderInvite({
   role: string;
   message?: string | null;
   inviteToken: string;
+  expiresAt: Date;
+  isReminder?: boolean;
   signature?: { html: string; text: string } | null;
   branding?: Branding;
   override?: EmailTemplateOverride;
@@ -60,6 +66,8 @@ export function renderInvite({
   );
   const email = escapeHtml(inviteeEmail);
   const url = ensureAbsoluteUrl(`${BASE_URL}/invite/${inviteToken}`);
+  const expiryText = formatInviteExpiry(expiresAt);
+  const expiryLineHtml = `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">This invitation expires on <strong>${escapeHtml(expiryText)}</strong>. After that the link stops working and a new invitation is required.</p>`;
   const sig = signatureBlock(signature);
   const messageText = (message ?? "").trim();
   const messageHtml = messageText
@@ -81,10 +89,15 @@ export function renderInvite({
         messageBlock,
         inviteUrl: url,
         acceptInviteButton: button({ href: url, label: "Accept invitation", branding }),
+        expiresAt: escapeHtml(expiryText),
         signature: sig.html,
       },
-      fallbackSubject: `${inviterName} invited you to join ${departmentName}`,
-      fallbackHeading: "You're invited to join a department",
+      fallbackSubject: isReminder
+        ? `Reminder: your invitation to join ${departmentName} expires soon`
+        : `${inviterName} invited you to join ${departmentName}`,
+      fallbackHeading: isReminder
+        ? "Your invitation is still waiting"
+        : "You're invited to join a department",
       branding,
       showConfidentialityNotice: !sig.hasSignature,
     });
@@ -97,21 +110,29 @@ export function renderInvite({
   ];
   const infoHtml = summaryTable(infoRows);
 
-  const heading = "You're invited to join a department";
+  const heading = isReminder
+    ? "Your invitation is still waiting"
+    : "You're invited to join a department";
+  const intro = isReminder
+    ? `<p style="margin:0 0 24px 0;">Just a reminder — <strong>${inviter}</strong> invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department, and your invitation hasn't been accepted yet.</p>`
+    : `<p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>`;
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
-    <p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>
+    ${intro}
     ${messageHtml}
     ${infoHtml}
     ${button({ href: url, label: "Accept invitation", branding })}
-    <p style="margin:24px 0 0 0;color:#6b7280;font-size:13px;">This invitation was sent to ${email}. Sign in with your Microsoft work account to accept.</p>
+    ${expiryLineHtml}
+    <p style="margin:8px 0 0 0;color:#6b7280;font-size:13px;">This invitation was sent to ${email}. Sign in with your Microsoft work account to accept.</p>
     ${sig.html}
   `;
 
   const textParts = [
     `Hello,`,
     "",
-    `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment.`,
+    isReminder
+      ? `Just a reminder — ${inviterName} invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment, and your invitation hasn't been accepted yet.`
+      : `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment.`,
   ];
   if (messageText) {
     textParts.push("", messageText);
@@ -124,17 +145,23 @@ export function renderInvite({
     "",
     `Accept invitation: ${url}`,
     "",
+    `This invitation expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
+    "",
     `This invitation was sent to ${inviteeEmail}. Sign in with your Microsoft work account to accept.`,
     "",
     sig.text,
   );
 
   return {
-    subject: `${inviterName} invited you to join ${departmentName}`,
+    subject: isReminder
+      ? `Reminder: your invitation to join ${departmentName} expires soon`
+      : `${inviterName} invited you to join ${departmentName}`,
     html: layout({
       heading,
       bodyHtml: body,
-      preheader: `${inviterName} invited you to ${departmentName}`,
+      preheader: isReminder
+        ? `Your invitation to ${departmentName} expires ${expiryText}`
+        : `${inviterName} invited you to ${departmentName}`,
       branding,
       showConfidentialityNotice: !sig.hasSignature,
     }),

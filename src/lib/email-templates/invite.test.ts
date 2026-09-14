@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { renderInvite } from "./invite";
-import { safeNextPath } from "../auth-redirect";
+import { formatInviteExpiry } from "../invites/constants";
+import { safeNextPath, isGenericLandingPath } from "../auth-redirect";
+
+const EXPIRES = new Date("2026-09-17T14:30:00Z");
 
 describe("renderInvite", () => {
-  it("includes department, subDepartment, role, message, and CTA", () => {
+  it("includes department, subDepartment, role, message, CTA, and the expiry", () => {
     const { subject, html, text } = renderInvite({
       inviteeEmail: "jamie@pengroup.com",
       inviterName: "Alex Rivera",
@@ -12,6 +15,7 @@ describe("renderInvite", () => {
       role: "sub_manager",
       message: "Welcome aboard",
       inviteToken: "abc123",
+      expiresAt: EXPIRES,
       signature: { html: "<div>Sig</div>", text: "Sig" },
     });
 
@@ -22,8 +26,29 @@ describe("renderInvite", () => {
     expect(html).toContain("Sub-manager");
     expect(html).toContain("/invite/abc123");
     expect(html).toContain("Accept invitation");
+    // Criterion: the exact expiry date/time is stated.
+    expect(html).toContain("This invitation expires on");
+    expect(html).toContain(formatInviteExpiry(EXPIRES));
+    expect(text).toContain("This invitation expires on");
+    expect(text).toContain(formatInviteExpiry(EXPIRES));
     expect(text).toContain("Welcome aboard");
     expect(text).toContain("jamie@pengroup.com");
+  });
+
+  it("uses a reminder subject/tone when isReminder is set", () => {
+    const { subject, html } = renderInvite({
+      inviteeEmail: "jamie@pengroup.com",
+      inviterName: "Alex Rivera",
+      departmentName: "Engineering",
+      subDepartmentName: "Platform",
+      role: "agent",
+      inviteToken: "abc123",
+      expiresAt: EXPIRES,
+      isReminder: true,
+    });
+    expect(subject.toLowerCase()).toContain("reminder");
+    expect(html).toContain("still waiting");
+    expect(html).toContain("This invitation expires on");
   });
 
   it("omits message block when message is empty", () => {
@@ -35,6 +60,7 @@ describe("renderInvite", () => {
       role: "agent",
       message: "   ",
       inviteToken: "tok",
+      expiresAt: EXPIRES,
     });
     expect(html).not.toContain("border-left:3px solid");
   });
@@ -54,5 +80,17 @@ describe("safeNextPath", () => {
     expect(safeNextPath("https://evil.com")).toBe("/");
     expect(safeNextPath("//evil.com")).toBe("/");
     expect(safeNextPath("/\\evil")).toBe("/");
+  });
+});
+
+describe("isGenericLandingPath", () => {
+  it("treats tenant/dept home as role-dispatch, not a deep link", () => {
+    expect(isGenericLandingPath("/")).toBe(true);
+    expect(isGenericLandingPath("/uchiha-clan")).toBe(true);
+    expect(isGenericLandingPath("/uchiha-clan/tech-support")).toBe(true);
+    expect(isGenericLandingPath("/api/user/preferences")).toBe(true);
+    expect(isGenericLandingPath("/uchiha-clan/tech-support/manager")).toBe(false);
+    expect(isGenericLandingPath("/uchiha-clan/tech-support/tasks")).toBe(false);
+    expect(isGenericLandingPath("/invite/abc")).toBe(false);
   });
 });

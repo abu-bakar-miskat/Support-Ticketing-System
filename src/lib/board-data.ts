@@ -557,6 +557,11 @@ export async function countBoardCards(where: Omit<BoardCardWhere, "skip" | "take
 }
 
 export async function getBoardCards(where: BoardCardWhere = {}): Promise<BoardCardData[]> {
+  const { runAsSystem } = await import("@/lib/request-scope")
+  return runAsSystem(() => collectBoardCards(where))
+}
+
+async function collectBoardCards(where: BoardCardWhere = {}): Promise<BoardCardData[]> {
   const resolvedWhere = await resolveBoardCardFilters(where)
   const tickets = await prisma.ticket.findMany({
     where: buildTicketWhere(resolvedWhere),

@@ -3,13 +3,13 @@ import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { sendInviteEmail } from "@/lib/email";
+import { INVITE_TTL_MS } from "@/lib/invites/constants";
 import type { Role } from "@/generated/prisma/enums";
 
 type Params = { params: Promise<{ id: string }> };
 
 const INVITE_ROLES = new Set<Role>(["agent", "sub_manager"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function canManageDept(
   profile: { role: string; managedDepartmentIds?: string[] },
@@ -174,6 +174,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       role,
       message,
       inviteToken: token,
+      expiresAt,
     });
   } catch (err) {
     console.error("[invites] failed to send invite email:", err);

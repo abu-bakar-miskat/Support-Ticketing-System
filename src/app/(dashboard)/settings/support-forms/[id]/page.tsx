@@ -39,7 +39,7 @@ export default async function SettingsFieldBuilderRoute({
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.grantedAccessDeptIds ?? []),
     ])
-    if (!managedIds.has(form.departmentId)) redirect("/support-forms")
+    if (!managedIds.has(form.departmentId)) redirect("/settings/support-forms")
   }
 
   const fields: FieldRow[] = form.fields.map((f) => ({

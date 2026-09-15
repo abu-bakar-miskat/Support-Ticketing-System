@@ -18,7 +18,7 @@ function parseAssignmentMethod(value: unknown): AssignmentMethod | null | undefi
 async function assertFormScope(
   formId: string,
   deptScope: Set<string> | null,
-): Promise<{ form: { id: string; departmentId: string; intakeSubDepartmentId: string } } | NextResponse> {
+): Promise<{ form: { id: string; departmentId: string; intakeSubDepartmentId: string | null } } | NextResponse> {
   const form = await prisma.intakeFormConfig.findUnique({
     where: { id: formId },
     select: { id: true, departmentId: true, intakeSubDepartmentId: true },
@@ -47,7 +47,12 @@ export async function PATCH(
 
   const body = await request.json()
   const name = (body.name as string | undefined)?.trim()
-  const intakeSubDepartmentId = (body.intakeSubDepartmentId as string | undefined)?.trim()
+  // Present with a value = set default sub-department; present as null/"" = clear
+  // (department-level form, route by issue); absent = leave untouched.
+  const subDeptProvided = "intakeSubDepartmentId" in body
+  const intakeSubDepartmentId = subDeptProvided
+    ? (body.intakeSubDepartmentId as string | null)?.trim() || null
+    : undefined
   const isActive = typeof body.isActive === "boolean" ? body.isActive : undefined
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
@@ -62,7 +67,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 })
   }
 
-  if (intakeSubDepartmentId !== undefined) {
+  if (intakeSubDepartmentId) {
     const subDepartment = await prisma.subDepartment.findUnique({
       where: { id: intakeSubDepartmentId },
       select: { departmentId: true },
@@ -80,7 +85,7 @@ export async function PATCH(
     where: { id },
     data: {
       ...(name !== undefined ? { name } : {}),
-      ...(intakeSubDepartmentId !== undefined ? { intakeSubDepartmentId } : {}),
+      ...(subDeptProvided ? { intakeSubDepartmentId } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
       ...(autoAssign !== undefined ? { autoAssign } : {}),
       ...(assignmentMethod !== undefined ? { assignmentMethod } : {}),

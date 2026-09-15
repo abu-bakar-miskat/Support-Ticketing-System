@@ -185,8 +185,10 @@ export type IntakeFormRow = {
   displayMode: "FORM" | "CHAT";
   departmentId: string;
   departmentName: string;
-  intakeSubDepartmentId: string;
-  intakeSubDepartmentName: string;
+  /** Optional default/fallback routing target. Department-level forms leave this
+   *  null and route each issue via its SLA policy's sub-department. */
+  intakeSubDepartmentId: string | null;
+  intakeSubDepartmentName: string | null;
   /** Relative public form path (/support/<tenant>/<dept>/<subdept>/<id>),
    *  built server-side from stored slugs. Prefix with origin to share. */
   publicPath: string;
@@ -290,7 +292,7 @@ function IntakeFormModal({
     isEdit ? mode.form.departmentId : (departments[0]?.id ?? ""),
   );
   const [intakeSubDepartmentId, setIntakeSubDepartmentId] = useState(
-    isEdit ? mode.form.intakeSubDepartmentId : (lockedSubDepartmentId ?? ""),
+    isEdit ? (mode.form.intakeSubDepartmentId ?? "") : (lockedSubDepartmentId ?? ""),
   );
   const [isActive, setIsActive] = useState(isEdit ? mode.form.isActive : true);
   // null = inherit the sub-department's method (→ department → round-robin).
@@ -315,10 +317,6 @@ function IntakeFormModal({
       setError("Form name is required.");
       return;
     }
-    if (!intakeSubDepartmentId) {
-      setError("Support subDepartment is required.");
-      return;
-    }
     if (!isEdit && !departmentId) {
       setError("Department is required.");
       return;
@@ -341,7 +339,7 @@ function IntakeFormModal({
           isEdit
             ? {
                 name: name.trim(),
-                intakeSubDepartmentId,
+                intakeSubDepartmentId: intakeSubDepartmentId || null,
                 isActive,
                 autoAssign,
                 assignmentMethod,
@@ -350,7 +348,7 @@ function IntakeFormModal({
             : {
                 name: name.trim(),
                 departmentId,
-                intakeSubDepartmentId,
+                intakeSubDepartmentId: intakeSubDepartmentId || null,
                 autoAssign,
                 assignmentMethod,
                 displayMode,
@@ -450,11 +448,14 @@ function IntakeFormModal({
           {!lockedSubDepartmentId && (
             <div className="flex flex-col gap-1.5">
               <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-                Support subDepartment
+                Default sub-department{" "}
+                <span className="font-normal text-sts-subtle">(optional)</span>
               </label>
               <Select
-                value={intakeSubDepartmentId}
-                onValueChange={(v) => setIntakeSubDepartmentId(v ?? "")}
+                value={intakeSubDepartmentId || "__none__"}
+                onValueChange={(v) =>
+                  setIntakeSubDepartmentId(v === "__none__" ? "" : (v ?? ""))
+                }
                 disabled={!departmentId && !isEdit}
               >
                 <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
@@ -467,10 +468,16 @@ function IntakeFormModal({
                   >
                     {availableSubDepartments.find(
                       (t) => t.id === intakeSubDepartmentId,
-                    )?.name ?? "Select sub department"}
+                    )?.name ?? "None — route by issue"}
                   </span>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem
+                    value="__none__"
+                    className="font-sans text-[12.5px]"
+                  >
+                    None — route by issue
+                  </SelectItem>
                   {availableSubDepartments.map((t) => (
                     <SelectItem
                       key={t.id}
@@ -482,6 +489,11 @@ function IntakeFormModal({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="font-sans text-[11.5px] text-sts-subtle">
+                Each issue routes tickets to a sub-department via its SLA policy.
+                This fallback is only used when a chosen issue doesn&apos;t set
+                one.
+              </p>
             </div>
           )}
 
@@ -2317,6 +2329,308 @@ function FormDesignModal({
   );
 }
 
+// ── Issues editor ─────────────────────────────────────────────────────────────
+// A form's "issues" are its enabled SLA policies (formConfigId). Each issue can
+// route its ticket to a concerned sub-department; assignment then follows that
+// sub-department's assignment method (unless the form/issue overrides it).
+
+type IssueRow = {
+  id: string;
+  name: string;
+  subDepartmentId: string | null;
+  priority: string | null;
+  firstResponseMins: number;
+  resolutionMins: number;
+};
+
+function IssueEditorRow({
+  issue,
+  subDepartments,
+  requiresSubDept,
+  onSave,
+  onDelete,
+}: {
+  issue: IssueRow;
+  subDepartments: SubDepartmentOption[];
+  requiresSubDept: boolean;
+  onSave: (id: string, patch: { name: string; subDepartmentId: string | null }) => Promise<void>;
+  onDelete: (id: string) => void;
+}) {
+  const [name, setName] = useState(issue.name);
+  const [subDepartmentId, setSubDepartmentId] = useState(issue.subDepartmentId ?? "");
+  const [saving, setSaving] = useState(false);
+  const dirty = name.trim() !== issue.name || (subDepartmentId || null) !== issue.subDepartmentId;
+  const canSave = dirty && !saving && name.trim().length > 0 && !(requiresSubDept && !subDepartmentId);
+
+  async function save() {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      await onSave(issue.id, { name: name.trim(), subDepartmentId: subDepartmentId || null });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Issue name"
+        className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
+      />
+      <div className="w-[190px] shrink-0">
+        <Select
+          value={subDepartmentId || "__default__"}
+          onValueChange={(v) => setSubDepartmentId(v === "__default__" ? "" : (v ?? ""))}
+        >
+          <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+            <span className={subDepartmentId ? "text-sts-foreground" : "text-sts-subtle"}>
+              {subDepartments.find((s) => s.id === subDepartmentId)?.name ??
+                (requiresSubDept ? "Select sub-department" : "Form default")}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {!requiresSubDept && (
+              <SelectItem value="__default__" className="font-sans text-[12.5px]">
+                Form default
+              </SelectItem>
+            )}
+            {subDepartments.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <button
+        type="button"
+        onClick={save}
+        disabled={!canSave}
+        className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
+        title="Save issue"
+      >
+        {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+        Save
+      </button>
+      <button
+        type="button"
+        onClick={() => onDelete(issue.id)}
+        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-500/10 hover:text-sts-red"
+        title="Delete issue"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function IssuesModal({
+  form,
+  subDepartments,
+  onClose,
+}: {
+  form: IntakeFormRow;
+  subDepartments: SubDepartmentOption[];
+  onClose: () => void;
+}) {
+  const [issues, setIssues] = useState<IssueRow[] | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newSubDept, setNewSubDept] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Department-level forms (no default sub-department) must route every issue.
+  const requiresSubDept = !form.intakeSubDepartmentId;
+  const base = `/api/departments/${form.departmentId}/sla-policies`;
+
+  useEffect(() => {
+    fetch(`${base}?formConfigId=${form.id}`)
+      .then((r) => r.json())
+      .then((data: IssueRow[]) => setIssues(Array.isArray(data) ? data : []))
+      .catch(() => setIssues([]));
+  }, [base, form.id]);
+
+  async function addIssue() {
+    const name = newName.trim();
+    if (!name) { setError("Issue name is required."); return; }
+    if (requiresSubDept && !newSubDept) { setError("Pick a sub-department for this issue."); return; }
+    setAdding(true);
+    setError(null);
+    try {
+      const res = await fetch(base, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          formConfigId: form.id,
+          subDepartmentId: newSubDept || null,
+          // Sensible default SLA targets; fine-tune on the SLA policies page.
+          firstResponseMins: 60,
+          resolutionMins: 480,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError((d as { error?: string }).error ?? "Failed to add issue.");
+        return;
+      }
+      const created: IssueRow = await res.json();
+      setIssues((prev) => [...(prev ?? []), created]);
+      setNewName("");
+      setNewSubDept("");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function saveIssue(id: string, patch: { name: string; subDepartmentId: string | null }) {
+    const res = await fetch(`${base}/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error((d as { error?: string }).error ?? "Failed to save issue.");
+      return;
+    }
+    const updated: IssueRow = await res.json();
+    setIssues((prev) => prev?.map((i) => (i.id === id ? { ...i, ...updated } : i)) ?? null);
+    toast.success("Issue saved.");
+  }
+
+  async function deleteIssue(id: string) {
+    const res = await fetch(`${base}/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setIssues((prev) => prev?.filter((i) => i.id !== id) ?? null);
+    } else {
+      toast.error("Failed to delete issue.");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
+      <div
+        className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
+        style={{ height: "70vh", maxHeight: "70vh", background: "var(--sts-card-solid)" }}
+      >
+        <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
+          <div>
+            <h2 className="sts-text-modal-title">Issues</h2>
+            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+              {form.name} · {form.departmentName}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <p className="mb-3 font-sans text-[11.5px] text-sts-subtle">
+            Customers pick an issue on the public form. Each issue routes its ticket to the chosen
+            sub-department, where it&apos;s recorded and assigned using that sub-department&apos;s
+            assignment method.
+            {requiresSubDept
+              ? " This form has no default sub-department, so every issue must route to one."
+              : " Leave an issue on “Form default” to use the form’s default sub-department."}
+          </p>
+
+          {/* Add new issue */}
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addIssue(); }}
+              placeholder="New issue, e.g. Cannot log in"
+              className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
+            />
+            <div className="w-[190px] shrink-0">
+              <Select value={newSubDept || "__default__"} onValueChange={(v) => setNewSubDept(v === "__default__" ? "" : (v ?? ""))}>
+                <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+                  <span className={newSubDept ? "text-sts-foreground" : "text-sts-subtle"}>
+                    {subDepartments.find((s) => s.id === newSubDept)?.name ??
+                      (requiresSubDept ? "Select sub-department" : "Form default")}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {!requiresSubDept && (
+                    <SelectItem value="__default__" className="font-sans text-[12.5px]">
+                      Form default
+                    </SelectItem>
+                  )}
+                  {subDepartments.map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <button
+              type="button"
+              onClick={addIssue}
+              disabled={adding}
+              className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
+            >
+              {adding ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" strokeWidth={2.5} />}
+              Add issue
+            </button>
+          </div>
+
+          {error && <p className="mb-3 font-sans text-[11.5px] text-sts-red">{error}</p>}
+
+          {issues === null ? (
+            <div className="flex h-24 items-center justify-center">
+              <Loader2 className="size-5 animate-spin text-sts-muted" />
+            </div>
+          ) : issues.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-sts-card-border py-10 text-center">
+              <p className="font-sans text-[13px] text-sts-muted">No issues yet.</p>
+              <p className="mt-1 font-sans text-[12px] text-sts-subtle">
+                Add an issue above so the form can route and record tickets.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {issues.map((issue) => (
+                <IssueEditorRow
+                  key={issue.id}
+                  issue={issue}
+                  subDepartments={subDepartments}
+                  requiresSubDept={requiresSubDept}
+                  onSave={saveIssue}
+                  onDelete={deleteIssue}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-sts-card-border px-6 py-3">
+          <p className="font-sans text-[11px] text-sts-subtle">
+            Fine-tune SLA targets, priority &amp; assignees on the SLA policies page.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 items-center rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsIntakeFormsPage({
   forms: initialForms,
   departments,
@@ -2328,7 +2642,7 @@ export function SettingsIntakeFormsPage({
   // Base path the per-form "submissions" link hangs off. Defaults to the
   // department Support Forms area; the sub-department support-forms page passes
   // its own so the link stays within that context.
-  submissionsBasePath = "/support-forms",
+  submissionsBasePath = "/settings/support-forms",
 }: {
   forms: IntakeFormRow[];
   departments: DeptOption[];
@@ -2344,6 +2658,7 @@ export function SettingsIntakeFormsPage({
   const [, startTransition] = useTransition();
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [fieldModal, setFieldModal] = useState<IntakeFormRow | null>(null);
+  const [issuesModal, setIssuesModal] = useState<IntakeFormRow | null>(null);
   const [designModal, setDesignModal] = useState<IntakeFormRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IntakeFormRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -2599,6 +2914,15 @@ export function SettingsIntakeFormsPage({
                     {/* Actions */}
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[56px] items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setIssuesModal(form)}
+                          className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
+                          title="Add or edit the issues shown on this form and their routing"
+                        >
+                          <ListChecks className="size-3.5" />
+                          Issues
+                        </button>
                         {form.displayMode !== "CHAT" && (
                           <button
                             type="button"
@@ -2660,6 +2984,19 @@ export function SettingsIntakeFormsPage({
           form={fieldModal}
           defaultFields={fieldModal.defaultFields}
           onClose={() => setFieldModal(null)}
+        />
+      )}
+
+      {issuesModal && (
+        <IssuesModal
+          form={issuesModal}
+          subDepartments={
+            departments.find((d) => d.id === issuesModal.departmentId)?.subDepartments ?? []
+          }
+          onClose={() => {
+            setIssuesModal(null);
+            startTransition(() => router.refresh());
+          }}
         />
       )}
 

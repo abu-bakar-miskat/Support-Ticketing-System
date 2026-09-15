@@ -72,10 +72,20 @@ export async function createTicketFromPayload(
     ? ([...responses, { _ikey: idempotencyKey }] as unknown[])
     : (responses as unknown[])
 
+  // Every ticket must land in a sub-department (it drives the human ID prefix).
+  // A department-level form has no default, so routing must come from the chosen
+  // issue's SLA policy. Fail loudly rather than create an orphaned ticket.
+  const targetSubDepartmentId = routedSubDepartmentId ?? form.intakeSubDepartmentId
+  if (!targetSubDepartmentId) {
+    throw new Error(
+      `Form ${formConfigId} resolved no sub-department: the selected issue's SLA policy must set one, or the form needs a default sub-department`,
+    )
+  }
+
   const prep = await prepareConversion({
     formId: formConfigId,
     formName: form.name,
-    intakeSubDepartmentId: routedSubDepartmentId ?? form.intakeSubDepartmentId,
+    intakeSubDepartmentId: targetSubDepartmentId,
     departmentId: form.departmentId,
     responses,
     priority: resolvedPriority,

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DepartmentsLayout } from "@/components/departments/departments-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
-import { layoutSeedFromProfile } from "@/lib/dashboard-layout-data";
+import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -40,7 +40,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
           role: m.role,
         }))}
       />
-      <DepartmentsLayout initialLayoutData={layoutSeedFromProfile(profile, activeDeptId)}>
+      <DepartmentsLayout initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}>
         {children}
       </DepartmentsLayout>
     </>

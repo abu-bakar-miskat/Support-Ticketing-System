@@ -95,6 +95,13 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "workflows",
       },
       {
+        label: "Support forms",
+        href: "/settings/support-forms",
+        adminOnly: true,
+        deptSpecific: true,
+        templateFeatureKey: "supportForm",
+      },
+      {
         label: "SLA policies",
         href: "/settings/sla",
         adminOnly: true,

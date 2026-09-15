@@ -89,6 +89,18 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // `?formConfigId=` returns every issue authored on one support form (across
+  // sub-departments) — powers the form's own Issues editor.
+  const formConfigId = req.nextUrl.searchParams.get("formConfigId")
+  if (formConfigId && formConfigId.trim()) {
+    const policies = await prisma.slaPolicy.findMany({
+      where: { departmentId: id, formConfigId: formConfigId.trim() },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: POLICY_SELECT,
+    })
+    return NextResponse.json(policies.map(shapePolicy))
+  }
+
   // `?scope=all` returns every policy in the department (department-wide plus all
   // sub-departments), for the department page's cross-sub-department overview.
   if (req.nextUrl.searchParams.get("scope") === "all") {
@@ -162,6 +174,21 @@ export async function POST(
 
   const scope = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
   if ("error" in scope) return scope.error
+
+  // A department-level form (no default sub-department) routes each ticket via
+  // the picked issue's policy, so such a policy MUST name a target sub-department.
+  if (formConfigId && !scope.subDepartmentId) {
+    const linkedForm = await prisma.intakeFormConfig.findUnique({
+      where: { id: formConfigId },
+      select: { intakeSubDepartmentId: true },
+    })
+    if (linkedForm && !linkedForm.intakeSubDepartmentId) {
+      return NextResponse.json(
+        { error: "This form has no default sub-department, so the issue must route to one (set subDepartmentId)." },
+        { status: 400 },
+      )
+    }
+  }
 
   const last = await prisma.slaPolicy.findFirst({
     where: { departmentId: id, subDepartmentId: scope.subDepartmentId },

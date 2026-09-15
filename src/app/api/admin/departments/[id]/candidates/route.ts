@@ -45,6 +45,10 @@ export async function GET(
     where: {
       deletedAt: null,
       id: { notIn: existingMemberIds },
+      // Admins, managers and super admins already have full access — never offer
+      // them as sub-department member candidates.
+      role: { notIn: ["admin", "manager"] },
+      isSuperAdmin: false,
       ...(q ? {
         OR: [
           { name: { contains: q, mode: "insensitive" } },

@@ -18,6 +18,7 @@ import {
   Settings2,
   Activity,
   BanIcon,
+  Mail,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -644,19 +645,27 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               type="button"
               onClick={() => setShowAddMemberModal(true)}
               disabled={data.availableSubDepartments.length === 0}
-              title={data.availableSubDepartments.length === 0 ? "Create a sub-department before adding members" : undefined}
+              title={
+                data.availableSubDepartments.length === 0
+                  ? "Create a sub-department before adding members"
+                  : "Add people who already have an account"
+              }
               className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <UserPlus className="size-3" /> Add member
+              <UserPlus className="size-3" /> Add existing members
             </button>
             <button
               type="button"
               onClick={() => setShowInviteModal(true)}
               disabled={data.availableSubDepartments.length === 0}
-              title={data.availableSubDepartments.length === 0 ? "Create a sub-department before inviting" : undefined}
+              title={
+                data.availableSubDepartments.length === 0
+                  ? "Create a sub-department before inviting"
+                  : "Send an email invite to someone without an account"
+              }
               className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Plus className="size-3" /> Invite to sub-department
+              <Mail className="size-3" /> Invite new members
             </button>
           </div>
         }

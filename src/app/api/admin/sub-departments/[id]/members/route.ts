@@ -54,6 +54,16 @@ export async function POST(
   if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
+  // Admins, managers and super admins already have full access — they can't be
+  // added as a sub-department sub-manager or agent. (Authoritative check; the
+  // pickers also hide them.)
+  if (profile.role === "admin" || profile.role === "manager" || profile.isSuperAdmin) {
+    return NextResponse.json(
+      { error: "Admins, managers and super admins already have full access and can't be added as a sub-department member." },
+      { status: 400 },
+    )
+  }
+
   const trimmedName = nickname?.trim() || null
 
   const membership = await prisma.$transaction(async (tx) => {

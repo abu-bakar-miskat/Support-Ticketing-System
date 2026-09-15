@@ -753,6 +753,7 @@ type ProfileOption = {
   name: string;
   email: string;
   role: string;
+  isSuperAdmin?: boolean;
   subDepartment: { id: string; name: string } | null;
   avatarUrl?: string | null;
 };
@@ -799,6 +800,9 @@ function AssignMemberModal({
   }, [subDepartment.id]);
 
   const filtered = profiles.filter((p) => {
+    // Admins, managers and super admins already have full access — never offer
+    // them as a sub-department sub-manager or agent.
+    if (p.role === "admin" || p.role === "manager" || p.isSuperAdmin) return false;
     if (subManagerIds.has(p.id)) return false;
     // Agents may already be in other sub-departments; only skip people already on this one
     // (unless promoting an existing member to sub-manager).
@@ -853,7 +857,7 @@ function AssignMemberModal({
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="sts-text-modal-title">
-              {isSubManagerMode ? "Add sub-manager" : "Add members"}
+              {isSubManagerMode ? "Add sub-manager" : "Add existing members"}
             </h2>
             <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
               Sub-department:{" "}
@@ -1344,7 +1348,7 @@ function SubDepartmentCard({
             <button
               type="button"
               onClick={onInvite}
-              title="Invite by email"
+              title="Invite new members (email invite for people without an account)"
               className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
             >
               <UserPlus className="size-3.5" />
@@ -1431,7 +1435,7 @@ function SubDepartmentCard({
               className="flex shrink-0 items-center gap-1 font-sans text-[11.5px] font-medium text-sts-blue hover:underline"
             >
               <Plus className="size-3" />
-              Assign member
+              Add existing members
             </button>
           )}
         </div>

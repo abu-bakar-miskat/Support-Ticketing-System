@@ -120,6 +120,12 @@ export function DashboardLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
+    // The seed from `layoutSeedFromProfile` is intentionally partial (e.g. it omits
+    // managed departments the user isn't a sub-department member of, so the dept
+    // badge and project list are incomplete). Mark it as already-stale so the real
+    // `/api/dashboard/layout` data loads in the background on mount instead of being
+    // suppressed by `staleTime`.
+    initialDataUpdatedAt: 0,
     placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });

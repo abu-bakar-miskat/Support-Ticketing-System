@@ -78,51 +78,58 @@ export async function transferTicket(params: {
   const nextAssigneeId = assigneeMembership?.isActive ? ticket.assigneeId : null;
   const actorName = actor?.name ?? "Someone";
 
-  const newTicketNumber = await prisma.$transaction(async (tx) => {
-    const counter = await tx.subDepartmentTicketCounter.upsert({
-      where: { subDepartmentId: targetSubDepartment.id },
-      create: { subDepartmentId: targetSubDepartment.id, lastNumber: 1 },
-      update: { lastNumber: { increment: 1 } },
-    });
+  let newTicketNumber: number;
+  try {
+    newTicketNumber = await prisma.$transaction(async (tx) => {
+      const counter = await tx.subDepartmentTicketCounter.upsert({
+        where: { subDepartmentId: targetSubDepartment.id },
+        create: { subDepartmentId: targetSubDepartment.id, lastNumber: 1 },
+        update: { lastNumber: { increment: 1 } },
+      });
 
-    await tx.ticket.update({
-      where: { id: ticketId },
-      data: {
-        subDepartmentId: targetSubDepartment.id,
-        ticketNumber: counter.lastNumber,
-        assigneeId: nextAssigneeId,
-        transferredFromSubDepartmentId: ticket.subDepartmentId,
-        transferredFromName: ticket.subDepartment.name,
-        transferredById: actorId,
-        transferredByName: actorName,
-        transferredAt: new Date(),
-      },
-    });
-
-    await tx.activityLog.create({
-      data: {
-        ticketId,
-        actorId,
-        action: "FORWARDED",
-        metadata: {
-          fromTeamId: ticket.subDepartmentId,
-          fromSubDepartmentName: ticket.subDepartment.name,
-          fromDepartmentId: ticket.subDepartment.departmentId,
-          toTeamId: targetSubDepartment.id,
-          toSubDepartmentName: targetSubDepartment.name,
-          toDepartmentId: targetSubDepartment.departmentId,
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          subDepartmentId: targetSubDepartment.id,
+          ticketNumber: counter.lastNumber,
+          assigneeId: nextAssigneeId,
+          transferredFromSubDepartmentId: ticket.subDepartmentId,
+          transferredFromName: ticket.subDepartment.name,
+          transferredById: actorId,
+          transferredByName: actorName,
+          transferredAt: new Date(),
         },
-      },
-    });
+      });
 
-    await tx.ticketAccessGrant.upsert({
-      where: { ticketId_userId: { ticketId, userId: actorId } },
-      create: { ticketId, userId: actorId, reason: "transfer" },
-      update: {},
-    });
+      await tx.activityLog.create({
+        data: {
+          ticketId,
+          actorId,
+          action: "FORWARDED",
+          metadata: {
+            fromTeamId: ticket.subDepartmentId,
+            fromSubDepartmentName: ticket.subDepartment.name,
+            fromDepartmentId: ticket.subDepartment.departmentId,
+            toTeamId: targetSubDepartment.id,
+            toSubDepartmentName: targetSubDepartment.name,
+            toDepartmentId: targetSubDepartment.departmentId,
+          },
+        },
+      });
 
-    return counter.lastNumber;
-  });
+      await tx.ticketAccessGrant.upsert({
+        where: { ticketId_userId: { ticketId, userId: actorId } },
+        create: { ticketId, userId: actorId, reason: "transfer" },
+        update: {},
+      });
+
+      return counter.lastNumber;
+    });
+  } catch (err) {
+    // Surface a clean error to the caller instead of a 500 (ASG-06 acceptance).
+    console.error("[ticket-transfer] transfer failed:", err);
+    return { ok: false, error: "Could not complete the transfer. Please try again." };
+  }
 
   return {
     ok: true,

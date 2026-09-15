@@ -11,7 +11,7 @@ const PLATFORM_NAV = [
   { label: "Tenants", href: "/platform", icon: Building2 },
   { label: "Tenant Types", href: "/platform/tenant-types", icon: Tags },
   { label: "Templates", href: "/platform/templates", icon: LayoutTemplate },
-  { label: "Activity Log", href: "/platform/activity", icon: History },
+  { label: "Audit Log", href: "/platform/activity", icon: History },
   { label: "Settings", href: "/platform/settings", icon: Settings },
   { label: "Users", href: "/platform/users", icon: Users },
   { label: "Administrators", href: "/platform/administrators", icon: ShieldCheck },

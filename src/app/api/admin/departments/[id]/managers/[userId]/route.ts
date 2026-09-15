@@ -26,19 +26,22 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Only an admin of this department can remove an admin." }, { status: 403 })
   }
 
-  const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
+  const dept = await prisma.department.findUnique({ where: { id }, select: { name: true, tenantId: true } })
 
   await prisma.departmentManager.deleteMany({ where: { departmentId: id, userId } })
 
   // NFR-09/DAT-05 (slice 20): permission revocations (department manager) are audited.
+  // Target the Profile so the audit UI shows the affected user's name, and
+  // snapshot the department name so the entry reads meaningfully.
   if (dept) {
     await recordAuditEvent({
       tenantId: dept.tenantId,
+      departmentId: id,
       actorId: profile!.id,
       action: "DEPARTMENT_MANAGER_REVOKED",
-      targetType: "DepartmentManager",
-      targetId: `${id}:${userId}`,
-      before: { departmentId: id, userId },
+      targetType: "Profile",
+      targetId: userId,
+      before: { department: dept.name, role: target?.role ?? "manager" },
       after: null,
     })
   }

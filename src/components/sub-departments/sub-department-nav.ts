@@ -22,9 +22,8 @@ export function getSubDepartmentNav(name: string): SubDepartmentNavGroup[] {
         { label: "About", href: base },
         { label: "Mailbox", href: `${base}/mailbox` },
         { label: "Email settings", href: `${base}/email` },
-        { label: "Automation rules", href: `${base}/automation-rules` },
-        { label: "SLA policies", href: `${base}/sla-policies` },
-        { label: "Assignment methods", href: `${base}/assignment` },
+        // Automation rules, SLA policies and assignment methods are now inherited
+        // wholly from the parent department — configured there, not per sub-department.
       ],
     },
   ];

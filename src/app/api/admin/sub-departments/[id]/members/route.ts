@@ -80,8 +80,10 @@ export async function POST(
       action: before ? "SUB_DEPARTMENT_MEMBER_UPDATED" : "SUB_DEPARTMENT_MEMBER_ADDED",
       targetType: "Profile",
       targetId: userId,
-      before: before ?? null,
-      after: { role: saved.role, isActive: saved.isActive, nickname: saved.nickname },
+      // Snapshot the sub-department name so the audit reads meaningfully without
+      // a join (which sub-department the member was added to / changed in).
+      before: before ? { subDepartment: subDepartment.name, ...before } : null,
+      after: { subDepartment: subDepartment.name, role: saved.role, isActive: saved.isActive, nickname: saved.nickname },
       client: tx,
     })
     return saved
@@ -154,7 +156,7 @@ export async function PATCH(
 
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: subDepartmentId },
-    select: { tenantId: true, departmentId: true },
+    select: { name: true, tenantId: true, departmentId: true },
   })
   if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
 
@@ -174,8 +176,8 @@ export async function PATCH(
       action: "SUB_DEPARTMENT_MEMBER_UPDATED",
       targetType: "Profile",
       targetId: userId,
-      before,
-      after: { role: saved.role, isActive: saved.isActive, doNotAssign: saved.doNotAssign },
+      before: before ? { subDepartment: subDepartment.name, ...before } : null,
+      after: { subDepartment: subDepartment.name, role: saved.role, isActive: saved.isActive, doNotAssign: saved.doNotAssign },
       client: tx,
     })
     return saved
@@ -200,7 +202,7 @@ export async function DELETE(
 
   const subDepartment = await prisma.subDepartment.findUnique({
     where: { id: subDepartmentId },
-    select: { tenantId: true, departmentId: true },
+    select: { name: true, tenantId: true, departmentId: true },
   })
   if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
 
@@ -230,7 +232,7 @@ export async function DELETE(
       action: "SUB_DEPARTMENT_MEMBER_REMOVED",
       targetType: "Profile",
       targetId: userId,
-      before: before ?? null,
+      before: before ? { subDepartment: subDepartment.name, ...before } : null,
       after: null,
       client: tx,
     })

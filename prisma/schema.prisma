@@ -863,7 +863,8 @@ model Ticket {
   // sub-department. Names are snapshotted at transfer time so a
   // "Transferred from X by Y" badge renders on cards and the detail page
   // without any extra join.
-  transferredFromSubDepartmentId String?   @db.Uuid
+  // SubDepartment ids are CUIDs, not UUIDs — this snapshot column must be text.
+  transferredFromSubDepartmentId String?
   transferredFromName            String?
   transferredById                String?   @db.Uuid
   transferredByName              String?

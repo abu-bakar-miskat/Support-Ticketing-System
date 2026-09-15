@@ -10,7 +10,6 @@ import { assertFeatureEnabled } from "@/lib/feature-flags"
 async function assertTimeTracking(profile: { activeTenantId?: string | null }) {
   if (!profile.activeTenantId) return null
   const check = await assertFeatureEnabled(profile.activeTenantId, "timeTracking")
-  try { require("fs").appendFileSync("/tmp/ticket-debug.log", `${new Date().toISOString()} [time:featureFlag] ${JSON.stringify({ tenant: profile.activeTenantId, ok: check.ok, error: check.error })}\n`) } catch {}
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: 403 })
   return null
 }
@@ -119,20 +118,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (action === "start") {
-    try {
-      require("fs").appendFileSync("/tmp/ticket-debug.log", `${new Date().toISOString()} [time:start] ${JSON.stringify({ ticketId, profileId: profile.id, role: profile.role, activeTenantId: profile.activeTenantId })}\n`)
-    } catch {}
     if (ticketId) {
       const ticket = await prisma.ticket.findUnique({
         where: { id: ticketId },
         select: { id: true, deletedAt: true },
       })
       if (!ticket || ticket.deletedAt !== null) {
-        try { require("fs").appendFileSync("/tmp/ticket-debug.log", `${new Date().toISOString()} [time:not-found] ${JSON.stringify({ ticketId, found: !!ticket })}\n`) } catch {}
         return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
       }
       const tScope = await ticketsInScope(profile, [ticketId])
-      try { require("fs").appendFileSync("/tmp/ticket-debug.log", `${new Date().toISOString()} [time:inScope] ${JSON.stringify({ ticketId, inScope: tScope })}\n`) } catch {}
       if (!tScope) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }

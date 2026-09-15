@@ -342,10 +342,9 @@ async function loadDashboardLayoutData(
 export function layoutSeedFromProfile(
   profile: AuthProfile,
   activeDeptId: string | null,
-  deptNames: ReadonlyMap<string, string> | Record<string, string> = {},
+  deptNames: ReadonlyMap<string, string> = new Map(),
 ): LayoutData {
-  const nameOf = (id: string): string | undefined =>
-    deptNames instanceof Map ? deptNames.get(id) : deptNames[id];
+  const nameOf = (id: string): string | undefined => deptNames.get(id);
 
   const memberships = (profile.memberships ?? []) as ProfileMembership[];
   const subDepartments = memberships.map((m) => ({

@@ -14,6 +14,7 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
 type TicketPriority = (typeof VALID_PRIORITIES)[number]
 
@@ -597,14 +598,14 @@ export async function PATCH(
   // Status side-effects for the board (drag-and-drop) path, mirroring /move:
   // auto-stop/-start the assignee's timer and cascade completion to sub-tickets.
   if (hasStatus && updated.status !== ticket.status) {
-    after(async () => {
+    after(() => runWithScope(uniqueTicketReadScope(profile, id), async () => {
       await stopRunningTimersOnStatusChange(id, updated.status).catch(() => undefined)
       await startTimerOnStatusChange(id, updated.status, {
         id: profile.id,
         name: profile.name,
         avatarUrl: profile.avatarUrl,
       }).catch(() => undefined)
-    })
+    }))
     if (updateData.closedAt) {
       cascadeCompleteToSubtickets(id).catch(() => undefined)
     }

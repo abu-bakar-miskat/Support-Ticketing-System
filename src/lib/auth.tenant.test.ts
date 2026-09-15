@@ -1,6 +1,13 @@
-import { describe, it, expect } from "vitest"
-import { canAccessTicket } from "./auth"
+import { describe, it, expect, vi } from "vitest"
+
+vi.mock("@/lib/dept-scope", () => ({
+  getProfileDeptScope: vi.fn(),
+  projectInScope: vi.fn(),
+}))
+
+import { assertTicketAccess, canAccessTicket } from "./auth"
 import type { AuthProfile } from "./auth"
+import { getProfileDeptScope } from "@/lib/dept-scope"
 
 function profile(overrides: Partial<AuthProfile> = {}): AuthProfile {
   return {
@@ -28,6 +35,11 @@ const baseTicket = {
 describe("canAccessTicket — tenant gate", () => {
   it("allows a same-tenant participant", () => {
     expect(canAccessTicket(profile(), baseTicket)).toBe(true)
+  })
+
+  it("authorizes a direct participant without resolving department scope", async () => {
+    await expect(assertTicketAccess(profile(), baseTicket, { forWrite: true })).resolves.toBeNull()
+    expect(getProfileDeptScope).not.toHaveBeenCalled()
   })
 
   it("rejects a cross-tenant ticket even for the creator/assignee", () => {

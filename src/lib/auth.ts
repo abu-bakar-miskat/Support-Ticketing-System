@@ -348,6 +348,20 @@ export async function assertTicketAccess(
     return forbidden("You don't have access to this draft.");
   }
 
+  // Direct participants are explicitly allowed to work on their own non-draft
+  // tickets outside the currently selected department workspace. Avoid resolving
+  // that workspace here: apart from being unnecessary for this authorization
+  // decision, it made status updates wait on an unrelated scope query.
+  if (!ticket.isDraft && isDirectTicketParticipant(profile, ticket)) {
+    if (forWrite && ticket.deletedAt !== null) {
+      return NextResponse.json(
+        { error: "Ticket has been deleted" },
+        { status: 409 },
+      );
+    }
+    return null;
+  }
+
   const deptScope = await getProfileDeptScope(profile);
   if (!canAccessTicket(profile, ticket, deptScope)) {
     // Admins may still open a draft via project/dept fallbacks below; others already returned.

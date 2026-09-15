@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { ticketsInScope } from "@/lib/dept-scope"
 import { sendResolutionEmail, sendStatusChangedEmail } from "@/lib/email"
-import { canEditTicket } from "@/lib/ticket-date-permissions"
-import { buildTicketEditContext } from "@/lib/cross-access"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
@@ -14,31 +11,18 @@ import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
-
-function dbg(where: string, data: unknown) {
-  try {
-    // TEMP DEBUG — remove after diagnosing status/timer 403
-    require("fs").appendFileSync(
-      "/tmp/ticket-debug.log",
-      `${new Date().toISOString()} [${where}] ${JSON.stringify(data)}\n`,
-    )
-  } catch {}
-}
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
-  if (error) {
-    dbg("move:requireAuth-failed", {})
-    return error
-  }
+  if (error) return error
 
   const { id } = await params
   const body = await request.json().catch(() => ({}))
   const { status, chosenLabel } = body as { status?: string; chosenLabel?: string }
-  dbg("move:start", { id, status, profileId: profile.id, role: profile.role })
 
   if (!status?.trim()) {
     return NextResponse.json({ error: "Status is required" }, { status: 400 })
@@ -54,6 +38,8 @@ export async function PATCH(
       ticketNumber: true,
       labels: true,
       deletedAt: true,
+      isDraft: true,
+      tenantId: true,
       closedAt: true,
       projectId: true,
       assigneeId: true,
@@ -76,28 +62,11 @@ export async function PATCH(
   })
 
   if (!ticket || ticket.deletedAt) {
-    dbg("move:not-found", { id, found: !!ticket, deletedAt: ticket?.deletedAt })
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
 
-  const editCtx = await buildTicketEditContext(profile, ticket)
-  const canEdit = canEditTicket(profile, editCtx)
-  dbg("move:canEdit", { id, canEdit, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId, editCtx })
-  if (!canEdit) {
-    return NextResponse.json(
-      {
-        error:
-          "You can only move tickets you are assigned to, co-assigned to, or created",
-      },
-      { status: 403 },
-    )
-  }
-
-  const inScope = await ticketsInScope(profile, [id])
-  dbg("move:inScope", { id, inScope, subDepartmentId: ticket.subDepartmentId })
-  if (!inScope) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
+  const accessError = await assertTicketEditAccess(profile, ticket)
+  if (accessError) return accessError
 
   // Validate the status exists for this subDepartment, and look up the status being left
   // (in the same query) so its linked labels can be dropped from the ticket.
@@ -105,7 +74,6 @@ export async function PATCH(
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: status } }),
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: ticket.status } }),
   ])
-  dbg("move:validStatus", { id, status, valid: !!validStatus, isComplete: validStatus?.isComplete })
   if (!validStatus) {
     return NextResponse.json({ error: `"${status}" is not a valid status for this subDepartment` }, { status: 400 })
   }
@@ -154,29 +122,21 @@ export async function PATCH(
     estimatedTime: ticket.estimatedTime,
   })
 
-  dbg("move:before-update", { id, status, newClosedAt, resolutionData })
-  let updated
-  try {
-    updated = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
-      const result = await tx.ticket.update({
-        where: { id },
-        data: { status, closedAt: newClosedAt, ...resolutionData },
-        select: { id: true, status: true },
-      })
-      if (labelsChanged) {
-        await tx.ticket.update({
-          where: { id },
-          data: { labels: nextLabels },
-        })
-      }
-      return result
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
+    const result = await tx.ticket.update({
+      where: { id },
+      data: { status, closedAt: newClosedAt, ...resolutionData },
+      select: { id: true, status: true },
     })
-    dbg("move:update-ok", { id, updated })
-  } catch (e) {
-    dbg("move:update-threw", { id, message: (e as Error)?.message, code: (e as { code?: string })?.code })
-    throw e
-  }
+    if (labelsChanged) {
+      await tx.ticket.update({
+        where: { id },
+        data: { labels: nextLabels },
+      })
+    }
+    return result
+  })
 
   // Broadcast immediately so other viewers update before slow side-effects run
   if (fromStatus !== status) {
@@ -195,7 +155,10 @@ export async function PATCH(
   }
 
   // Heavy work after the response — keeps StatusSelect snappy
-  after(async () => {
+  // `after()` runs outside the request's async context. Keep this ticket's
+  // narrow authorization scope so the timer helper can read the ticket and
+  // create the assignee's time entry after a move to In Progress.
+  after(() => runWithScope(uniqueTicketReadScope(profile, id), async () => {
     if (ticket.closedAt !== newClosedAt) {
       await syncResolutionTimerOnClosedAtChange(id, newClosedAt).catch(() => undefined)
     }
@@ -245,7 +208,7 @@ export async function PATCH(
         subDepartmentId: ticket.subDepartmentId,
       }).catch((err) => console.error("[status-changed email] failed:", err))
     }
-  })
+  }))
 
   return NextResponse.json(updated)
 }

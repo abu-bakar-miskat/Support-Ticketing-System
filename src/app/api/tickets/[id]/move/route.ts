@@ -15,16 +15,30 @@ import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-l
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 
+function dbg(where: string, data: unknown) {
+  try {
+    // TEMP DEBUG — remove after diagnosing status/timer 403
+    require("fs").appendFileSync(
+      "/tmp/ticket-debug.log",
+      `${new Date().toISOString()} [${where}] ${JSON.stringify(data)}\n`,
+    )
+  } catch {}
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
-  if (error) return error
+  if (error) {
+    dbg("move:requireAuth-failed", {})
+    return error
+  }
 
   const { id } = await params
   const body = await request.json().catch(() => ({}))
   const { status, chosenLabel } = body as { status?: string; chosenLabel?: string }
+  dbg("move:start", { id, status, profileId: profile.id, role: profile.role })
 
   if (!status?.trim()) {
     return NextResponse.json({ error: "Status is required" }, { status: 400 })
@@ -62,11 +76,14 @@ export async function PATCH(
   })
 
   if (!ticket || ticket.deletedAt) {
+    dbg("move:not-found", { id, found: !!ticket, deletedAt: ticket?.deletedAt })
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
 
   const editCtx = await buildTicketEditContext(profile, ticket)
-  if (!canEditTicket(profile, editCtx)) {
+  const canEdit = canEditTicket(profile, editCtx)
+  dbg("move:canEdit", { id, canEdit, assigneeId: ticket.assigneeId, creatorId: ticket.creatorId, editCtx })
+  if (!canEdit) {
     return NextResponse.json(
       {
         error:
@@ -76,7 +93,9 @@ export async function PATCH(
     )
   }
 
-  if (!(await ticketsInScope(profile, [id]))) {
+  const inScope = await ticketsInScope(profile, [id])
+  dbg("move:inScope", { id, inScope, subDepartmentId: ticket.subDepartmentId })
+  if (!inScope) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -86,6 +105,7 @@ export async function PATCH(
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: status } }),
     prisma.subDepartmentStatus.findFirst({ where: { subDepartmentId: ticket.subDepartmentId, label: ticket.status } }),
   ])
+  dbg("move:validStatus", { id, status, valid: !!validStatus, isComplete: validStatus?.isComplete })
   if (!validStatus) {
     return NextResponse.json({ error: `"${status}" is not a valid status for this subDepartment` }, { status: 400 })
   }
@@ -134,21 +154,29 @@ export async function PATCH(
     estimatedTime: ticket.estimatedTime,
   })
 
-  const updated = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
-    const result = await tx.ticket.update({
-      where: { id },
-      data: { status, closedAt: newClosedAt, ...resolutionData },
-      select: { id: true, status: true },
-    })
-    if (labelsChanged) {
-      await tx.ticket.update({
+  dbg("move:before-update", { id, status, newClosedAt, resolutionData })
+  let updated
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
+      const result = await tx.ticket.update({
         where: { id },
-        data: { labels: nextLabels },
+        data: { status, closedAt: newClosedAt, ...resolutionData },
+        select: { id: true, status: true },
       })
-    }
-    return result
-  })
+      if (labelsChanged) {
+        await tx.ticket.update({
+          where: { id },
+          data: { labels: nextLabels },
+        })
+      }
+      return result
+    })
+    dbg("move:update-ok", { id, updated })
+  } catch (e) {
+    dbg("move:update-threw", { id, message: (e as Error)?.message, code: (e as { code?: string })?.code })
+    throw e
+  }
 
   // Broadcast immediately so other viewers update before slow side-effects run
   if (fromStatus !== status) {

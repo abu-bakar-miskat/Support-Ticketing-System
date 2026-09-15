@@ -472,6 +472,36 @@ export async function ticketsInScope(
   if (ticketIds.length === 0) return true;
   const deptScope = await getProfileDeptScope(profile);
 
+  // Direct participants (assignee, co-assignee, creator) may always act on their
+  // own tickets — even when the ticket's sub-department is outside their active
+  // department workspace, or they hold no sub-department membership for it at all.
+  // This mirrors the READ gate (canAccessTicket -> isDirectTicketParticipant in
+  // lib/auth); without it an assigned agent can open the ticket but every status
+  // change / timer start 403s. Run under runAsSystem so the tenant-scope
+  // extension can't strip a legitimately-assigned ticket that happens to sit
+  // outside the caller's sub-department allowlist (or whose exception-id cache is
+  // still cold); the `where` restricts to the caller's own participation, so the
+  // unscoped read leaks nothing.
+  const participantInScope = async (): Promise<boolean> => {
+    if (!profile.id) return false;
+    const n = await runAsSystem(() =>
+      prisma.ticket.count({
+        where: {
+          id: { in: ticketIds },
+          deletedAt: null,
+          isDraft: false,
+          ...(projectId ? { projectId } : {}),
+          OR: [
+            { assigneeId: profile.id },
+            { creatorId: profile.id },
+            { assignees: { some: { userId: profile.id } } },
+          ],
+        },
+      }),
+    );
+    return n === ticketIds.length;
+  };
+
   if (deptScope?.isCrossAccessOnly && profile.id) {
     const memberCount = await prisma.ticket.count({
       where: {
@@ -488,7 +518,8 @@ export async function ticketsInScope(
         },
       },
     });
-    return memberCount === ticketIds.length;
+    if (memberCount === ticketIds.length) return true;
+    return participantInScope();
   }
 
   const subDepartmentIds =
@@ -496,7 +527,9 @@ export async function ticketsInScope(
     profile.subDepartmentIds ??
     (profile.subDepartmentId ? [profile.subDepartmentId] : []);
 
-  if (profile.role !== "admin" && subDepartmentIds.length === 0) return false;
+  if (profile.role !== "admin" && subDepartmentIds.length === 0) {
+    return participantInScope();
+  }
 
   const count = await prisma.ticket.count({
     where: {
@@ -524,7 +557,8 @@ export async function ticketsInScope(
       project: { members: { some: { userId: profile.id } } },
     },
   });
-  return memberCount === ticketIds.length;
+  if (memberCount === ticketIds.length) return true;
+  return participantInScope();
 }
 
 /** Returns true when a subDepartment belongs to the active department scope. */

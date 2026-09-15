@@ -4481,6 +4481,8 @@ function TimeTrackingSection({
           },
         ];
       });
+    } catch (err) {
+      toastError("Could not start timer", err);
     } finally {
       setStarting(false);
     }
@@ -4515,6 +4517,8 @@ function TimeTrackingSection({
         }),
       );
       router.refresh();
+    } catch (err) {
+      toastError("Could not pause timer", err);
     } finally {
       setStopping(false);
     }

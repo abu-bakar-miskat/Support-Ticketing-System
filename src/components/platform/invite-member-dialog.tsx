@@ -17,6 +17,19 @@ const roleLabel = (r: string) =>
       ? "Sub-manager"
       : r.charAt(0).toUpperCase() + r.slice(1)
 
+const ROLE_CARD_LABEL: Record<(typeof MEMBER_ROLES)[number], string> = {
+  admin: "Admin",
+  manager: "Manager",
+  sub_manager: "Sub-manager",
+  agent: "Agent",
+}
+const ROLE_CARD_HINT: Record<(typeof MEMBER_ROLES)[number], string> = {
+  admin: "Full access across the whole tenant.",
+  manager: "Manages department(s).",
+  sub_manager: "Leads a sub-department.",
+  agent: "Works tickets in a sub-department.",
+}
+
 /**
  * Add-or-invite a member to a tenant. Existing users are added instantly; a new
  * email gets an invitation link. Admins get the whole tenant; managers/leads/
@@ -187,6 +200,36 @@ export function InviteMemberDialog({
                 </div>
               )}
 
+              {/* Role first — decides which targets are needed below. */}
+              <div>
+                <label className="block font-sans text-[12px] font-medium text-sts-foreground">Role</label>
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  {MEMBER_ROLES.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRole(r)}
+                      className={cn(
+                        "flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors",
+                        role === r
+                          ? "border-sts-blue bg-sts-blue/10"
+                          : "border-sts-card-border bg-sts-surface hover:border-sts-blue/40",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "font-sans text-[12.5px] font-semibold",
+                          role === r ? "text-sts-blue" : "text-sts-foreground",
+                        )}
+                      >
+                        {ROLE_CARD_LABEL[r]}
+                      </span>
+                      <span className="font-sans text-[10.5px] text-sts-subtle">{ROLE_CARD_HINT[r]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block font-sans text-[12px] font-medium text-sts-foreground">Email</label>
                 <Input
@@ -199,21 +242,11 @@ export function InviteMemberDialog({
                 />
               </div>
 
-              <div>
-                <label className="block font-sans text-[12px] font-medium text-sts-foreground">Role</label>
-                <Select value={role} onValueChange={(v) => setRole(v ?? "agent")}>
-                  <SelectTrigger className="mt-1 h-9 w-full">
-                    <span className="font-sans text-[12.5px]">{roleLabel(role)}</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEMBER_ROLES.map((r) => (
-                      <SelectItem key={r} value={r} className="font-sans text-[12.5px]">
-                        {roleLabel(r)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {role === "admin" && (
+                <p className="rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[11.5px] text-sts-muted">
+                  Admins have full access across the whole tenant — no department needed.
+                </p>
+              )}
 
               {/* Manager: manages one or more whole departments (multi-select). */}
               {needsDepartments && !needsSubDepartment && (

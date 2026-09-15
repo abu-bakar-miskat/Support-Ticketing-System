@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createClient } from "@/lib/supabase/server"
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 import {
   contentTypeForFile,
   isAllowedUploadFile,
@@ -17,7 +18,7 @@ function sanitizeFileName(name: string) {
 
 export async function POST(request: NextRequest) {
   const { profile, error } = await requireAuth()
-  if (error) return error
+  if (error || !profile) return error
 
   const formData = await request.formData()
   const file = formData.get("file") as File | null
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  return runWithScope(uniqueTicketReadScope(profile, ticketId), async () => {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     select: {
@@ -121,4 +123,5 @@ export async function POST(request: NextRequest) {
   })
 
   return NextResponse.json(attachment, { status: 201 })
+  })
 }

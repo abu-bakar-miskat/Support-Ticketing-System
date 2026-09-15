@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { getRequestScope, runAsSystem, type RequestScope } from "@/lib/request-scope";
+import { getRequestScope, runAsSystem, runWithScope, type RequestScope } from "@/lib/request-scope";
 
 /**
  * Non-bypassable tenant scoping for every model that carries a `tenantId`
@@ -283,7 +283,32 @@ export function scopeFromRequestScope(scope: RequestScope): TicketScope {
  * A ticket query with no ambient scope and no authenticated caller throws rather
  * than leaking every tenant — system/background code must use `runAsSystem`.
  */
-export async function resolveTicketScope(modelLabel?: string): Promise<TicketScope> {
+/**
+ * Unique reads and writes never need the assigned-ticket / RoleAssignment scan.
+ * That scan exists so *list* reads (board, inbox) hide out-of-sub-department
+ * rows. A findUnique is one id: tenant post-filter (+ a grant pin for this id)
+ * is enough, and assertTicketAccess still decides whether the caller may act.
+ *
+ * Comment notifications, mention expansion, and similar fire-and-forget work
+ * run after the request ALS ends — if those unique reads scan, they fill
+ * DB_POOL_MAX and the comment POST EMAXCONN-hangs for every non-super-admin.
+ */
+const SKIP_EXCEPTION_SCAN = new Set([
+  ...UNIQUE_READ,
+  "create",
+  "createMany",
+  "update",
+  "updateMany",
+  "delete",
+  "deleteMany",
+  "upsert",
+]);
+
+export async function resolveTicketScope(
+  modelLabel?: string,
+  operation?: string,
+  uniqueTicketId?: string,
+): Promise<TicketScope> {
   const ambient = getRequestScope();
   if (ambient) return scopeFromRequestScope(ambient);
 
@@ -302,6 +327,13 @@ export async function resolveTicketScope(modelLabel?: string): Promise<TicketSco
   if (profile.isSuperAdmin) return { kind: "platform" };
   if (modelLabel && modelLabel !== "Ticket") {
     return { kind: "tenant", tenantIds: profile.tenantIds };
+  }
+  if (operation && SKIP_EXCEPTION_SCAN.has(operation)) {
+    return {
+      kind: "tenant",
+      tenantIds: profile.tenantIds,
+      ...(uniqueTicketId ? { grantedTicketIds: [uniqueTicketId] } : {}),
+    };
   }
   return resolveProfileTicketScope(profile);
 }
@@ -324,6 +356,20 @@ export async function resolveProfileTicketScope(profile: {
     ...(subDepartmentTeamIds != null ? { subDepartmentTeamIds } : {}),
     ...(exceptionTicketIds.length > 0 ? { grantedTicketIds: exceptionTicketIds } : {}),
   };
+}
+
+/**
+ * Run `fn` under the caller's resolved ticket scope (tenant + SD-06 + grants).
+ * Prefer this over `runAsSystem` on any path that reads tickets — system scope
+ * skips the sub-department allowlist, so agents/sub-managers would see (or miss)
+ * the wrong rows. Exception-ticket scans still run once (React-cached).
+ */
+export async function runWithProfileScope<T>(
+  profile: { id: string; isSuperAdmin?: boolean; tenantIds: string[] },
+  fn: () => T,
+): Promise<T> {
+  const ticketScope = await resolveProfileTicketScope(profile);
+  return await runWithScope(ticketScopeToRequestScope(ticketScope), fn);
 }
 
 /** Map a TicketScope onto the ALS RequestScope shape used by runWithScope. */
@@ -357,7 +403,9 @@ async function applyTenantScope(
   args: QueryArgs,
   query: (args: QueryArgs) => Promise<unknown>,
 ): Promise<unknown> {
-  const scope = await resolveTicketScope(modelLabel);
+  const uniqueTicketId =
+    typeof args.where?.id === "string" ? args.where.id : undefined;
+  const scope = await resolveTicketScope(modelLabel, operation, uniqueTicketId);
   const plan = planTicketOperation(operation, scope);
   const subAllow = subDepartmentAllowlist(modelLabel, scope);
   const grantedIds = grantedTicketIdsFor(modelLabel, scope);

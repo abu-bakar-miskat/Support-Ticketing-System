@@ -406,6 +406,7 @@ export function Sidebar({
   const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
   const isAdmin = userRole === "admin";
   const isManager = userRole === "manager";
+  const isSubManager = userRole === "sub_manager";
   const isAgent = userRole === "agent";
   const activeDept = allDepts.find((d) => d.id === activeDeptId);
   // Agent / sub_manager belong to a sub-department only — show the sub-department
@@ -487,10 +488,12 @@ export function Sidebar({
                 { label: "Members", href: "/department", icon: UsersRound, templateFeatureKey: "members" as const },
                 { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "members" as const },
                 { label: "Sub Departments", href: "/sub-departments", icon: Network, templateFeatureKey: "subDepartmentReports" as const },
-                // Recruitment is hidden from the UI (code/routes/APIs retained).
-                // { label: "Recruitment", href: "/recruitment", icon: BriefcaseBusiness, templateFeatureKey: "recruitment" as const },
               ]
-            : []),
+            : isSubManager
+              ? [
+                  { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "members" as const },
+                ]
+              : []),
         ];
 
   const navMain: NavItem[] = navMainBase;

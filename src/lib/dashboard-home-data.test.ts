@@ -9,6 +9,9 @@ vi.mock("@/lib/dept-scope", () => ({
   getProfileDeptScope: vi.fn().mockResolvedValue({ subDepartmentIds: ["a", "b"], isHub: true }),
   buildProjectDeptWhere: vi.fn(),
 }));
+vi.mock("@/lib/prisma-scope", () => ({
+  runWithProfileScope: (_profile: unknown, fn: () => unknown) => fn(),
+}));
 import { prisma } from "@/lib/db";
 import { getHomeDashboardData } from "./dashboard-home-data";
 

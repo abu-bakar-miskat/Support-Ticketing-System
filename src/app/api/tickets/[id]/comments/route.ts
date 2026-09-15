@@ -4,16 +4,18 @@ import { prisma } from "@/lib/db"
 import { processMentions, resolveMentionedProfiles } from "@/lib/mentions"
 import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAuth()
-  if (error) return error
+  if (error || !profile) return error
 
   const { id: ticketId } = await params
 
+  return runWithScope(uniqueTicketReadScope(profile, ticketId), async () => {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     select: {
@@ -160,7 +162,7 @@ export async function POST(
 
   const snippet = commentBody.length > 140 ? `${commentBody.slice(0, 137)}...` : commentBody
 
-  const assigneeIds = ticket.assignees.map((a) => a.userId)
+  const assigneeIds = (ticket.assignees ?? []).map((a) => a.userId)
   const commentRecipients = new Set([
     ticket.creatorId,
     ticket.assigneeId,
@@ -186,4 +188,5 @@ export async function POST(
     },
     { status: 201 },
   )
+  })
 }

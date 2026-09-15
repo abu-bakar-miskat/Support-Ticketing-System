@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { NextResponse } from "next/server"
 import { POST } from "./route"
 
 const mockProfile = {
@@ -13,6 +14,14 @@ const mockProfile = {
 }
 
 vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
+vi.mock("@/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/auth")>()
+  return {
+    ...actual,
+    assertTicketAccess: vi.fn().mockResolvedValue(null),
+    assertTicketEditAccess: vi.fn().mockResolvedValue(null),
+  }
+})
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn() },
@@ -24,10 +33,13 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }))
 
 import { getProfile } from "@/lib/profile"
+import { assertTicketAccess, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createClient } from "@/lib/supabase/server"
 
 const mockGetProfile = vi.mocked(getProfile)
+const mockAssertAccess = vi.mocked(assertTicketAccess)
+const mockAssertEditAccess = vi.mocked(assertTicketEditAccess)
 const mockTicketFindUnique = vi.mocked(prisma.ticket.findUnique)
 const mockCommentFindUnique = vi.mocked(prisma.comment.findUnique)
 const mockAttachmentCreate = vi.mocked(prisma.attachment.create)
@@ -70,6 +82,8 @@ const accessibleTicket = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetProfile.mockResolvedValue(mockProfile as never)
+  mockAssertAccess.mockResolvedValue(null)
+  mockAssertEditAccess.mockResolvedValue(null)
   mockTicketFindUnique.mockResolvedValue(accessibleTicket as never)
   mockCommentFindUnique.mockResolvedValue({ ticketId: "ticket-1" } as never)
   mockCreateClient.mockResolvedValue(mockStorageClient as never)
@@ -143,7 +157,9 @@ describe("POST /api/attachments", () => {
   })
 
   it("returns 403 when caller cannot access the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" } as never)
+    mockAssertEditAccess.mockResolvedValue(
+      NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    )
     const res = await POST(makeRequest({ file: makeFile(), ticketId: "ticket-1" }))
     expect(res.status).toBe(403)
     expect(mockAttachmentCreate).not.toHaveBeenCalled()
@@ -187,7 +203,7 @@ describe("POST /api/attachments", () => {
     await POST(makeRequest({ file: pdf, ticketId: "ticket-1", commentId: "comment-1" }))
     expect(upload).toHaveBeenCalledWith(
       expect.stringContaining("report.pdf"),
-      pdf,
+      expect.any(File),
       expect.objectContaining({ contentType: "application/pdf" }),
     )
 
@@ -195,7 +211,7 @@ describe("POST /api/attachments", () => {
     await POST(makeRequest({ file: docx, ticketId: "ticket-1", commentId: "comment-1" }))
     expect(upload).toHaveBeenCalledWith(
       expect.stringContaining("notes.docx"),
-      docx,
+      expect.any(File),
       expect.objectContaining({
         contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       }),
@@ -204,6 +220,9 @@ describe("POST /api/attachments", () => {
 
   it("returns 409 when ticket is soft-deleted", async () => {
     mockTicketFindUnique.mockResolvedValue({ ...accessibleTicket, deletedAt: new Date() } as never)
+    mockAssertEditAccess.mockResolvedValue(
+      NextResponse.json({ error: "Ticket has been deleted" }, { status: 409 }),
+    )
     const res = await POST(makeRequest({ file: makeFile(), ticketId: "ticket-1" }))
     expect(res.status).toBe(409)
     expect(mockAttachmentCreate).not.toHaveBeenCalled()

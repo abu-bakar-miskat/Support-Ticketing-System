@@ -76,12 +76,20 @@ async function BoardData({
         crossAccessDeptId: deptScope.activeDeptId,
       })
     : deptScope
-      ? await getBoardCards({ ...boardSearchParams, allowedDeptIds: deptScope.allowedDeptIds })
+      ? await getBoardCards({
+          ...boardSearchParams,
+          allowedDeptIds: deptScope.allowedDeptIds,
+          ...(deptScope.subDepartmentIds.length > 0
+            ? { subDepartmentIdIn: deptScope.subDepartmentIds }
+            : {}),
+        })
       : profile.role === "admin"
         ? await getBoardCards({ ...boardSearchParams, tenantId: profile.activeTenantId ?? "__no_tenant__" })
         : isManager && allowedDeptIds?.length
           ? await getBoardCards({ ...boardSearchParams, allowedDeptIds })
-          : await getBoardCards({ ...boardSearchParams, tenantId: profile.activeTenantId ?? "__no_tenant__" });
+          : membershipIds.length > 0
+            ? await getBoardCards({ ...boardSearchParams, subDepartmentIdIn: membershipIds })
+            : await getBoardCards({ ...boardSearchParams, tenantId: profile.activeTenantId ?? "__no_tenant__" });
 
   // Only the caller's accessible sub-departments in the active department.
   // Do not merge every membership (that adds empty groups from other depts).

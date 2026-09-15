@@ -30,8 +30,6 @@ const PRIORITY_ORDER = ["Urgent", "Critical", "High", "Medium", "Low"]
 export async function GET(request: Request) {
   const { profile, error } = await requireAuth()
   if (error) return error
-  // Access is already bound by dept/tenant filters below — skip the
-  // assigned-ticket grant scan that otherwise wraps every Ticket groupBy.
   return runAsSystem(() => loadOverview(request, profile))
 }
 

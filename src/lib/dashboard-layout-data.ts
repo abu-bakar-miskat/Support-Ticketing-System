@@ -357,6 +357,17 @@ export function layoutSeedFromProfile(
     }
   }
   const managed = profile.managedDepartmentIds ?? [];
+  const granted = profile.grantedAccessDeptIds ?? [];
+  for (const id of [...managed, ...granted]) {
+    if (!deptById.has(id)) deptById.set(id, { id, name: "Department" });
+  }
+  if (
+    activeDeptId &&
+    !deptById.has(activeDeptId) &&
+    (profile.role === "admin" || managed.includes(activeDeptId) || granted.includes(activeDeptId))
+  ) {
+    deptById.set(activeDeptId, { id: activeDeptId, name: "Department" });
+  }
   return {
     projects: [],
     subDepartments: inActiveDept,

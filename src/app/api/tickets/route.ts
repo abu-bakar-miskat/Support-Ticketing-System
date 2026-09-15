@@ -42,8 +42,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  const canSeeAllProjectTickets =
+    profile.role === "admin" || profile.role === "manager" || profile.isSuperAdmin === true
+  const membershipIds = profile.subDepartmentIds ?? []
   const tickets = await runAsSystem(() => prisma.ticket.findMany({
-    where: { projectId, deletedAt: null, isDraft: false },
+    where: {
+      projectId,
+      deletedAt: null,
+      isDraft: false,
+      ...(canSeeAllProjectTickets || membershipIds.length === 0
+        ? {}
+        : {
+            OR: [
+              { subDepartmentId: { in: membershipIds } },
+              { assigneeId: profile.id },
+              { assignees: { some: { userId: profile.id } } },
+            ],
+          }),
+    },
     orderBy: [{ status: "asc" }, { ticketNumber: "asc" }],
     select: {
       id: true,

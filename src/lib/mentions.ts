@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { sendMentionEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
+import { runAsSystem } from "@/lib/request-scope"
 import {
   getMentionableProjectMembers,
   getMentionableUsersForTicketDept,
@@ -39,14 +40,16 @@ export async function resolveMentionedProfiles(
   const byId = new Map<string, MentionProfile>()
 
   if (handles.includes("all")) {
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
-      select: {
-        subDepartmentId: true,
-        projectId: true,
-        subDepartment: { select: { departmentId: true } },
-      },
-    })
+    const ticket = await runAsSystem(() =>
+      prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: {
+          subDepartmentId: true,
+          projectId: true,
+          subDepartment: { select: { departmentId: true } },
+        },
+      }),
+    )
     if (ticket) {
       // @all targets the project's assigned members; if the ticket has no
       // project, fall back to everyone mentionable in the subDepartment/department.
@@ -96,10 +99,12 @@ export async function processMentions({
   if (!profiles.length) return
 
   const notifiedSet = new Set(alreadyNotifiedIds)
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: ticketId },
-    select: { subDepartmentId: true, subDepartment: { select: { departmentId: true } } },
-  })
+  const ticket = await runAsSystem(() =>
+    prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { subDepartmentId: true, subDepartment: { select: { departmentId: true } } },
+    }),
+  )
   const departmentId = ticket?.subDepartment.departmentId ?? null
   const subDepartmentId = ticket?.subDepartmentId ?? null
 

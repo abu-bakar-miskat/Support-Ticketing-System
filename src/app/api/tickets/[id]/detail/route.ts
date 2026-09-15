@@ -4,7 +4,7 @@ import {
   getTicketDetailPayload,
   getTicketDetailRecord,
 } from "@/lib/ticket-detail-data";
-import { runWithScope } from "@/lib/request-scope";
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope";
 
 export async function GET(
   _req: NextRequest,
@@ -15,19 +15,7 @@ export async function GET(
   const { profile, error } = await requireAuth();
   if (error) return error;
 
-  // Super-admins skip tenant scoping entirely. For everyone else, do NOT call
-  // resolveProfileTicketScope() here — that scans every assigned ticket
-  // (getExceptionTicketIds) before the detail query even starts, which is why
-  // this route was fast for super-admins and 40s–minutes for other roles.
-  // This unique read only needs: the caller's tenants + an exception for *this* id.
-  const requestScope = profile.isSuperAdmin
-    ? { isPlatformAdmin: true as const, tenantIds: [] as string[] }
-    : {
-        tenantIds: profile.tenantIds,
-        grantedTicketIds: [id],
-      };
-
-  return runWithScope(requestScope, async () => {
+  return runWithScope(uniqueTicketReadScope(profile, id), async () => {
     const ticket = await getTicketDetailRecord(id);
     if (!ticket || ticket.deletedAt) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

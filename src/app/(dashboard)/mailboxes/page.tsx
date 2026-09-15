@@ -13,7 +13,8 @@ export default async function DepartmentMailboxesRoute() {
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
-  if (!isAdmin && !isManager) redirect("/settings");
+  const isSubManager = profile.role === "sub_manager";
+  if (!isAdmin && !isManager && !isSubManager) redirect("/");
 
   const profileScope = await getProfileDeptScope(profile);
   const activeDeptId = profileScope?.activeDeptId ?? null;
@@ -36,11 +37,17 @@ export default async function DepartmentMailboxesRoute() {
 
   if (!dept) redirect("/departments");
 
+  const membershipIds = new Set(profile.subDepartmentIds ?? []);
+  const subDepartments =
+    isSubManager
+      ? dept.subDepartments.filter((s) => membershipIds.has(s.id))
+      : dept.subDepartments;
+
   return (
     <DepartmentMailboxesPage
       departmentId={dept.id}
       departmentName={dept.name}
-      subDepartments={dept.subDepartments}
+      subDepartments={subDepartments}
       canManage={isAdmin || isManager}
     />
   );

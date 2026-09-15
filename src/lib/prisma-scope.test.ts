@@ -10,11 +10,17 @@ import {
   rowGrantedTicketAccess,
   scopeFromRequestScope,
   resolveTicketScope,
+  runWithProfileScope,
   withTenantScope,
   TENANT_SCOPED_MODELS,
   type TicketScope,
 } from "./prisma-scope";
-import { runWithScope, runAsSystem, withSystemScope } from "./request-scope";
+import {
+  runWithScope,
+  runAsSystem,
+  withSystemScope,
+  uniqueTicketReadScope,
+} from "./request-scope";
 
 const tenantA: TicketScope = { kind: "tenant", tenantIds: ["tenant-A"] };
 
@@ -218,6 +224,14 @@ describe("resolveTicketScope — ambient resolution", () => {
     vi.doUnmock("@/lib/db");
   });
 
+  it("runWithProfileScope installs a platform ambient scope for super-admins", async () => {
+    const scope = await runWithProfileScope(
+      { id: "sa", isSuperAdmin: true, tenantIds: ["tenant-A"] },
+      () => resolveTicketScope(),
+    );
+    expect(scope).toEqual({ kind: "platform" });
+  });
+
   it("skips assigned-ticket scans for non-ticket models (projects, settings, mailboxes)", async () => {
     const ticketFindMany = vi.fn();
     const grantFindMany = vi.fn();
@@ -238,6 +252,90 @@ describe("resolveTicketScope — ambient resolution", () => {
     await expect(resolveTicketScope("Project")).resolves.toEqual({
       kind: "tenant",
       tenantIds: ["tenant-A"],
+    });
+    expect(ticketFindMany).not.toHaveBeenCalled();
+    expect(grantFindMany).not.toHaveBeenCalled();
+    expect(assigneeFindMany).not.toHaveBeenCalled();
+    expect(resolveSubDepartmentTeamIds).not.toHaveBeenCalled();
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
+  it("uniqueTicketReadScope pins this ticket id and skips assigned-ticket scans", async () => {
+    const ticketFindMany = vi.fn();
+    const grantFindMany = vi.fn();
+    const assigneeFindMany = vi.fn();
+    const resolveSubDepartmentTeamIds = vi.fn();
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({
+        id: "user-agent",
+        tenantIds: ["tenant-A"],
+        isSuperAdmin: false,
+      }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({ resolveSubDepartmentTeamIds }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: {
+        ticketAccessGrant: { findMany: grantFindMany },
+        ticket: { findMany: ticketFindMany },
+        ticketAssignee: { findMany: assigneeFindMany },
+      },
+    }));
+
+    await expect(
+      runWithScope(
+        uniqueTicketReadScope(
+          { isSuperAdmin: false, tenantIds: ["tenant-A"] },
+          "ticket-1",
+        ),
+        () => resolveTicketScope("Ticket"),
+      ),
+    ).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      grantedTicketIds: ["ticket-1"],
+    });
+    expect(ticketFindMany).not.toHaveBeenCalled();
+    expect(grantFindMany).not.toHaveBeenCalled();
+    expect(assigneeFindMany).not.toHaveBeenCalled();
+    expect(resolveSubDepartmentTeamIds).not.toHaveBeenCalled();
+
+    expect(
+      uniqueTicketReadScope({ isSuperAdmin: true, tenantIds: ["tenant-A"] }, "ticket-1"),
+    ).toEqual({ isPlatformAdmin: true, tenantIds: [] });
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
+  it("skips assigned-ticket scans for unique ticket reads (comments, notifications)", async () => {
+    const ticketFindMany = vi.fn();
+    const grantFindMany = vi.fn();
+    const assigneeFindMany = vi.fn();
+    const resolveSubDepartmentTeamIds = vi.fn();
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({
+        id: "user-manager",
+        tenantIds: ["tenant-A"],
+        isSuperAdmin: false,
+      }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({ resolveSubDepartmentTeamIds }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: {
+        ticketAccessGrant: { findMany: grantFindMany },
+        ticket: { findMany: ticketFindMany },
+        ticketAssignee: { findMany: assigneeFindMany },
+      },
+    }));
+
+    await expect(resolveTicketScope("Ticket", "findUnique", "ticket-1")).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      grantedTicketIds: ["ticket-1"],
     });
     expect(ticketFindMany).not.toHaveBeenCalled();
     expect(grantFindMany).not.toHaveBeenCalled();

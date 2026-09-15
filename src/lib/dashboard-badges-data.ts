@@ -9,21 +9,19 @@ export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
   const [deptScope, personalScope] = await Promise.all([getProfileDeptScope(profile), getPersonalTaskDeptScope(profile)]);
   const deptIds = deptScope?.subDepartmentIds;
   const personalIds = personalScope?.subDepartmentIds;
-  // Counts are bound to the caller's own id + resolved sub-department ids; run
-  // unscoped so the badge query (loaded on every page) skips the scope waterfall.
   const [myTasksCount, mentionsCount, inboxCount] = await runAsSystem(() => Promise.all([
     prisma.ticket.count({ where: {
       assigneeId: profile.id, deletedAt: null,
       status: { notIn: ["Live", "Done", "Completed", "Closed"] },
-      ...(personalIds ? { subDepartmentId: { in: personalIds } } : {}),
+      ...(personalIds && personalIds.length > 0 ? { subDepartmentId: { in: personalIds } } : {}),
     } }),
     prisma.mention.count({ where: {
       mentionedUserId: profile.id, readAt: null,
-      ...(deptIds ? { comment: { ticket: { subDepartmentId: { in: deptIds } } } } : {}),
+      ...(deptIds && deptIds.length > 0 ? { comment: { ticket: { subDepartmentId: { in: deptIds } } } } : {}),
     } }),
     prisma.notification.count({ where: {
       recipientId: profile.id, readAt: null,
-      ...(deptIds ? { OR: [{ ticketId: null }, { ticket: { subDepartmentId: { in: deptIds } } }] } : {}),
+      ...(deptIds && deptIds.length > 0 ? { OR: [{ ticketId: null }, { ticket: { subDepartmentId: { in: deptIds } } }] } : {}),
     } }),
   ]));
   return { myTasksCount, mentionsCount, inboxCount };

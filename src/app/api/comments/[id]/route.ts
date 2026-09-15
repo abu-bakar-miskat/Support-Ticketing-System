@@ -3,6 +3,7 @@ import { requireAuth } from "@/app/api/admin/_guard"
 import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
 import { assertTicketAccess } from "@/lib/auth"
+import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 
 export async function GET(
   _req: NextRequest,
@@ -111,14 +112,20 @@ export async function PATCH(
     .filter((m) => m.notifiedAt !== null)
     .map((m) => m.mentionedUserId)
 
-  processMentions({
-    commentId: id,
-    ticketId: comment.ticketId,
-    actorId: profile.id,
-    body: newBody,
-    ticketTitle: comment.ticket.title,
-    alreadyNotifiedIds,
-  }).catch(() => undefined)
+  void runWithScope(uniqueTicketReadScope(profile, comment.ticketId), async () => {
+    try {
+      await processMentions({
+        commentId: id,
+        ticketId: comment.ticketId,
+        actorId: profile.id,
+        body: newBody,
+        ticketTitle: comment.ticket.title,
+        alreadyNotifiedIds,
+      })
+    } catch {
+      // Mentions are best-effort; the edit already succeeded.
+    }
+  })
 
   return NextResponse.json(updated)
 }

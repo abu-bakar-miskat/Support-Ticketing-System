@@ -70,6 +70,30 @@ export function runWithScope<T>(scope: RequestScope, fn: () => T): T {
 }
 
 /**
+ * Ambient scope for a unique ticket read/write (detail, comments, attachments).
+ *
+ * Super-admins skip tenant scoping. Everyone else gets their tenants plus an
+ * exception for *this* ticket id — do not call `resolveProfileTicketScope()`
+ * here. That scans every assigned ticket (`getExceptionTicketIds`) before the
+ * unique read starts, which is why comments/detail were instant for
+ * super-admins and hung or 404'd for other roles.
+ *
+ * Real authorization still happens after the unique read via `assertTicketAccess`.
+ */
+export function uniqueTicketReadScope(
+  profile: { isSuperAdmin?: boolean; tenantIds: string[] },
+  ticketId: string,
+): RequestScope {
+  if (profile.isSuperAdmin) {
+    return { isPlatformAdmin: true, tenantIds: [] };
+  }
+  return {
+    tenantIds: profile.tenantIds ?? [],
+    grantedTicketIds: [ticketId],
+  };
+}
+
+/**
  * Run `fn` with tenant scoping disabled. The sole sanctioned bypass — reserve for
  * trusted system paths (crons, migrations, cross-tenant intake) and keep the
  * bypassed region as small as possible.

@@ -100,11 +100,23 @@ export async function getProjectDetailsData(
   })();
   const defaultTab = projectTabPrefs[project.id] ?? null;
 
-  // Access to this project was decided above; the reads below are all bound to
-  // project.id — run unscoped to skip the per-query scope waterfall.
+  const canSeeAllProjectTickets =
+    profile.role === "admin" || profile.role === "manager" || profile.isSuperAdmin === true;
+  const membershipIds = profile.subDepartmentIds ?? [];
+  const staffTicketWhere =
+    canSeeAllProjectTickets || membershipIds.length === 0
+      ? {}
+      : {
+          OR: [
+            { subDepartmentId: { in: membershipIds } },
+            { assigneeId: profile.id },
+            { assignees: { some: { userId: profile.id } } },
+          ],
+        };
+
   const [tickets, cards, cardSubDepartmentIds, recentActivity, projectTimeEntries, projectModules] = await runAsSystem(() => Promise.all([
     prisma.ticket.findMany({
-      where: { projectId: project.id, deletedAt: null },
+      where: { projectId: project.id, deletedAt: null, ...staffTicketWhere },
       orderBy: { updatedAt: "desc" },
       include: {
         subDepartment: { select: { prefix: true, name: true } },
@@ -118,9 +130,14 @@ export async function getProjectDetailsData(
         },
       },
     }),
-    getBoardCards({ projectId: project.id }),
+    getBoardCards({
+      projectId: project.id,
+      ...(membershipIds.length > 0 && !canSeeAllProjectTickets
+        ? { subDepartmentIdIn: membershipIds }
+        : {}),
+    }),
     prisma.ticket.findMany({
-      where: { projectId: project.id, deletedAt: null, parentId: null },
+      where: { projectId: project.id, deletedAt: null, parentId: null, ...staffTicketWhere },
       select: { id: true, subDepartmentId: true },
     }),
     prisma.activityLog.findMany({

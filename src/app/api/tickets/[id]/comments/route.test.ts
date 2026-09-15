@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { NextResponse } from "next/server"
 import { POST } from "./route"
 
 const mockProfile = {
@@ -13,6 +14,13 @@ const mockProfile = {
 }
 
 vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
+vi.mock("@/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/auth")>()
+  return {
+    ...actual,
+    assertTicketAccess: vi.fn().mockResolvedValue(null),
+  }
+})
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn() },
@@ -21,13 +29,18 @@ vi.mock("@/lib/db", () => ({
     activityLog: { create: vi.fn() },
   },
 }))
-vi.mock("@/lib/mentions", () => ({ processMentions: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/mentions", () => ({
+  processMentions: vi.fn().mockResolvedValue(undefined),
+  resolveMentionedProfiles: vi.fn().mockResolvedValue([]),
+}))
 
 import { getProfile } from "@/lib/profile"
+import { assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
 
 const mockGetProfile = vi.mocked(getProfile)
+const mockAssertAccess = vi.mocked(assertTicketAccess)
 const mockTicketFindUnique = vi.mocked(prisma.ticket.findUnique)
 const mockCommentCreate = vi.mocked(prisma.comment.create)
 const mockAttachmentFindMany = vi.mocked(prisma.attachment.findMany)
@@ -52,11 +65,13 @@ const accessibleTicket = {
   assigneeId: null,
   creatorId: "00000000-0000-0000-0000-000000000009",
   deletedAt: null,
+  assignees: [],
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockGetProfile.mockResolvedValue(mockProfile as never)
+  mockAssertAccess.mockResolvedValue(null)
   mockTicketFindUnique.mockResolvedValue(accessibleTicket as never)
   mockActivityLogCreate.mockResolvedValue({} as never)
   mockAttachmentFindMany.mockResolvedValue([] as never)
@@ -136,7 +151,9 @@ describe("POST /api/tickets/[id]/comments", () => {
   })
 
   it("returns 403 when caller cannot view the ticket (IDOR guard)", async () => {
-    mockGetProfile.mockResolvedValue({ ...mockProfile, subDepartmentId: "other-team" } as never)
+    mockAssertAccess.mockResolvedValue(
+      NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    )
     const res = await POST(makeRequest({ body: "hi" }), { params: mockParams })
     expect(res.status).toBe(403)
     expect(mockCommentCreate).not.toHaveBeenCalled()

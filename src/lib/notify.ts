@@ -1,5 +1,6 @@
 import webpush from "web-push"
 import { prisma } from "@/lib/db"
+import { runAsSystem } from "@/lib/request-scope"
 import type { NotificationType } from "@/generated/prisma/enums"
 
 // Configure VAPID once at module load — safe to call multiple times (idempotent)
@@ -93,21 +94,23 @@ async function buildAndBroadcast(
       ? prisma.profile.findUnique({ where: { id: actorId }, select: { name: true } })
       : null,
     ticketId
-      ? prisma.ticket.findUnique({
-          where: { id: ticketId },
-          select: {
-            title: true,
-            ticketNumber: true,
-            subDepartment: { select: { prefix: true } },
-            project: { select: { name: true } },
-            parent: {
-              select: {
-                ticketNumber: true,
-                subDepartment: { select: { prefix: true } },
+      ? runAsSystem(() =>
+          prisma.ticket.findUnique({
+            where: { id: ticketId },
+            select: {
+              title: true,
+              ticketNumber: true,
+              subDepartment: { select: { prefix: true } },
+              project: { select: { name: true } },
+              parent: {
+                select: {
+                  ticketNumber: true,
+                  subDepartment: { select: { prefix: true } },
+                },
               },
             },
-          },
-        })
+          }),
+        )
       : null,
     commentId
       ? prisma.comment.findUnique({ where: { id: commentId }, select: { body: true } })

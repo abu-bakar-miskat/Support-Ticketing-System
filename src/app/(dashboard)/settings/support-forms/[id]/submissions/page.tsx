@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import { getProfile } from "@/lib/profile"
-import { resolveSubDepartmentByName } from "@/lib/sub-department-access"
 import { prisma } from "@/lib/db"
+import { fetchProjectDepartmentPeople } from "@/lib/project-department-people"
 import {
   SettingsIntakeSubmissionsPage,
   type SubmissionRow,
@@ -9,30 +9,41 @@ import {
 
 export const metadata = { title: "Submissions — Support Ticketing System" }
 
-export default async function SubDepartmentSubmissionsRoute({
+export default async function SettingsIntakeSubmissionsRoute({
   params,
 }: {
-  params: Promise<{ name: string; id: string }>
+  params: Promise<{ id: string }>
 }) {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  if (profile.role !== "manager" && profile.role !== "admin") redirect("/")
 
-  const { name, id: formId } = await params
-  const subDepartment = await resolveSubDepartmentByName(decodeURIComponent(name), profile)
-  if (!subDepartment) notFound()
+  const isAdmin = profile.role === "admin"
+  const isManager = profile.role === "manager"
+  if (!isAdmin && !isManager) redirect("/")
+
+  const { id: formId } = await params
 
   const form = await prisma.intakeFormConfig.findUnique({
     where: { id: formId },
-    include: { department: { select: { id: true, name: true } } },
+    include: {
+      department: { select: { id: true, name: true } },
+    },
   })
 
-  // Any form routed to this sub-department (department- or sub-department-scoped).
-  if (!form || form.intakeSubDepartmentId !== subDepartment.id) {
-    notFound()
+  if (!form) notFound()
+
+  // Scope check for managers
+  if (!isAdmin) {
+    const managedIds = new Set([
+      ...(profile.managedDepartmentIds ?? []),
+      ...(profile.grantedAccessDeptIds ?? []),
+    ])
+    if (!managedIds.has(form.departmentId)) redirect("/settings/support-forms")
   }
 
-  const [intakes, subDepartmentMemberships] = await Promise.all([
+  // A department-level form spans sub-departments (each issue routes via its SLA
+  // policy), so the "assign to" picker draws from the whole department's people.
+  const [intakes, people] = await Promise.all([
     prisma.intake.findMany({
       where: { formConfigId: formId },
       orderBy: { createdAt: "desc" },
@@ -55,17 +66,13 @@ export default async function SubDepartmentSubmissionsRoute({
         },
       },
     }),
-    prisma.subDepartmentMembership.findMany({
-      where: { subDepartmentId: form.intakeSubDepartmentId, isActive: true },
-      select: { user: { select: { id: true, name: true, avatarUrl: true } } },
-      orderBy: { joinedAt: "asc" },
-    }),
+    fetchProjectDepartmentPeople(form.departmentId),
   ])
 
-  const subDepartmentMembers = subDepartmentMemberships.map((m) => ({
-    id: m.user.id,
-    name: m.user.name,
-    avatarUrl: m.user.avatarUrl ?? null,
+  const subDepartmentMembers = people.map((p) => ({
+    id: p.id,
+    name: p.name,
+    avatarUrl: p.avatarUrl ?? null,
   }))
 
   const submissions: SubmissionRow[] = intakes.map((i) => {
@@ -85,8 +92,6 @@ export default async function SubDepartmentSubmissionsRoute({
     }
   })
 
-  const basePath = `/sub-departments/${name}/support-forms`
-
   return (
     <SettingsIntakeSubmissionsPage
       formId={formId}
@@ -94,13 +99,6 @@ export default async function SubDepartmentSubmissionsRoute({
       departmentName={form.department.name}
       submissions={submissions}
       subDepartmentMembers={subDepartmentMembers}
-      formsBasePath={basePath}
-      backLabel="Support forms"
-      crumbs={[
-        { label: subDepartment.name, href: basePath },
-        { label: form.name, href: `${basePath}/${formId}/submissions` },
-        { label: "Submissions", href: `${basePath}/${formId}/submissions` },
-      ]}
     />
   )
 }

@@ -31,18 +31,18 @@ export default async function SettingsIntakeSubmissionDetailRoute({
       ...(profile.managedDepartmentIds ?? []),
       ...(profile.grantedAccessDeptIds ?? []),
     ])
-    if (!managedIds.has(form.departmentId)) redirect("/support-forms")
+    if (!managedIds.has(form.departmentId)) redirect("/settings/support-forms")
   }
 
   return (
     <IntakeSubmissionDetailView
       formId={formId}
       intakeId={intakeId}
-      basePath="/support-forms"
+      basePath="/settings/support-forms"
       crumbs={[
-        { label: "Support forms", href: "/support-forms" },
-        { label: form.name, href: `/support-forms/${formId}` },
-        { label: "Submissions", href: `/support-forms/${formId}/submissions` },
+        { label: "Support forms", href: "/settings/support-forms" },
+        { label: form.name, href: `/settings/support-forms/${formId}` },
+        { label: "Submissions", href: `/settings/support-forms/${formId}/submissions` },
       ]}
     />
   )

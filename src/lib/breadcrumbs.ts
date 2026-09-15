@@ -50,46 +50,46 @@ function staticRouteCrumbs(pathname: string): BreadcrumbCrumb[] | null {
 }
 
 function supportFormsCrumbs(pathname: string): BreadcrumbCrumb[] | null {
-  if (!pathname.startsWith("/support-forms")) return null;
+  if (!pathname.startsWith("/settings/support-forms")) return null;
 
   const home: BreadcrumbCrumb = { label: "Home", href: "/" };
   const supportForms: BreadcrumbCrumb = {
     label: "Support forms",
-    href: "/support-forms",
+    href: "/settings/support-forms",
   };
 
   const submissionDetail = pathname.match(
-    /^\/support-forms\/([^/]+)\/submissions\/([^/]+)$/,
+    /^\/settings\/support-forms\/([^/]+)\/submissions\/([^/]+)$/,
   );
   if (submissionDetail) {
     const [, formId] = submissionDetail;
     return [
       home,
       supportForms,
-      { label: "Form", href: `/support-forms/${formId}` },
-      { label: "Submissions", href: `/support-forms/${formId}/submissions` },
+      { label: "Form", href: `/settings/support-forms/${formId}` },
+      { label: "Submissions", href: `/settings/support-forms/${formId}/submissions` },
       { label: "Submission", href: pathname },
     ];
   }
 
-  const submissions = pathname.match(/^\/support-forms\/([^/]+)\/submissions$/);
+  const submissions = pathname.match(/^\/settings\/support-forms\/([^/]+)\/submissions$/);
   if (submissions) {
     const [, formId] = submissions;
     return [
       home,
       supportForms,
-      { label: "Form", href: `/support-forms/${formId}` },
+      { label: "Form", href: `/settings/support-forms/${formId}` },
       { label: "Submissions", href: pathname },
     ];
   }
 
-  const formBuilder = pathname.match(/^\/support-forms\/([^/]+)$/);
+  const formBuilder = pathname.match(/^\/settings\/support-forms\/([^/]+)$/);
   if (formBuilder) {
     const [, formId] = formBuilder;
     return [
       home,
       supportForms,
-      { label: "Form fields", href: `/support-forms/${formId}` },
+      { label: "Form fields", href: `/settings/support-forms/${formId}` },
     ];
   }
 

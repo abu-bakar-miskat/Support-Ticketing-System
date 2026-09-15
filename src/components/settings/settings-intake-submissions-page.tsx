@@ -82,7 +82,7 @@ export function SettingsIntakeSubmissionsPage({
   // Base path for the support-forms list this page hangs off. Defaults to the
   // department Support Forms area; the sub-department support-forms area passes
   // its own so navigation stays in that context.
-  formsBasePath = "/support-forms",
+  formsBasePath = "/settings/support-forms",
   backLabel = "Support forms",
   crumbs,
 }: {
@@ -97,9 +97,9 @@ export function SettingsIntakeSubmissionsPage({
 }) {
   const crumbList = crumbs ?? [
     { label: "Home", href: "/" },
-    { label: "Support forms", href: "/support-forms" },
-    { label: formName, href: `/support-forms/${formId}` },
-    { label: "Submissions", href: `/support-forms/${formId}/submissions` },
+    { label: "Support forms", href: "/settings/support-forms" },
+    { label: formName, href: `/settings/support-forms/${formId}` },
+    { label: "Submissions", href: `/settings/support-forms/${formId}/submissions` },
   ];
   const router = useRouter();
   const [, startTransition] = useTransition();

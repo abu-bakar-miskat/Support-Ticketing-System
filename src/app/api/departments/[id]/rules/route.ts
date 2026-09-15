@@ -47,7 +47,7 @@ async function resolveSubDepartmentScope(
 async function resolveFormScope(
   departmentId: string,
   raw: string | null | undefined,
-): Promise<{ formConfigId: string | null; subDepartmentId?: string } | { error: NextResponse }> {
+): Promise<{ formConfigId: string | null; subDepartmentId?: string | null } | { error: NextResponse }> {
   const formConfigId = raw && raw.trim() ? raw.trim() : null
   if (!formConfigId) return { formConfigId: null }
   const form = await prisma.intakeFormConfig.findFirst({

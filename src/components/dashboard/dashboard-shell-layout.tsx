@@ -6,7 +6,7 @@ import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
 import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
-import { layoutSeedFromProfile } from "@/lib/dashboard-layout-data";
+import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
 
@@ -111,7 +111,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
           role: m.role,
         }))}
       />
-      <DashboardLayout initialLayoutData={layoutSeedFromProfile(profile, activeDeptId)}>
+      <DashboardLayout initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}>
         {children}
         <Suspense fallback={null}>
           <DeferredBadges profile={profile} activeDeptId={activeDeptId} />

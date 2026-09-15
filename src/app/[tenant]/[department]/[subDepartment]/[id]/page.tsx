@@ -70,7 +70,10 @@ export default async function PublicIntakeFormPage({
 
   if (segmentSlug({ slug: form.department.tenant.slug, name: form.department.tenant.name }) !== tenant) notFound()
   if (segmentSlug({ slug: form.department.slug, name: form.department.name }) !== department) notFound()
-  if (segmentSlug({ slug: form.intakeSubDepartment.slug, name: form.intakeSubDepartment.name }) !== subDepartment) notFound()
+  // The 3rd segment is cosmetic: department-level forms have no fixed
+  // sub-department, so it holds the department slug rather than a sub-dept one.
+  // We no longer validate it — the form id is the real access token.
+  void subDepartment
 
   // Form inactive → unavailable message
   if (!form.isActive) {

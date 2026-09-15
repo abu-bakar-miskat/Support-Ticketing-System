@@ -51,7 +51,9 @@ export async function POST(request: Request) {
   const body = await request.json()
   const name = (body.name as string)?.trim()
   const departmentId = (body.departmentId as string)?.trim()
-  const intakeSubDepartmentId = (body.intakeSubDepartmentId as string)?.trim()
+  // Optional: a department-level form has no fixed sub-department; each issue
+  // routes via its SLA policy. Only a fallback default when provided.
+  const intakeSubDepartmentId = (body.intakeSubDepartmentId as string | null)?.trim() || null
   const autoAssign = typeof body.autoAssign === "boolean" ? body.autoAssign : undefined
   const assignmentMethod = parseAssignmentMethod(body.assignmentMethod)
   const displayMode =
@@ -60,9 +62,9 @@ export async function POST(request: Request) {
   // from the department it's DEPARTMENT-wide. Defaults to DEPARTMENT.
   const scope = body.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" : "DEPARTMENT"
 
-  if (!name || !departmentId || !intakeSubDepartmentId) {
+  if (!name || !departmentId) {
     return NextResponse.json(
-      { error: "name, departmentId, and intakeTeamId are required" },
+      { error: "name and departmentId are required" },
       { status: 400 },
     )
   }
@@ -70,19 +72,22 @@ export async function POST(request: Request) {
   const adminError = assertDepartmentAdmin(profile!, departmentId)
   if (adminError) return adminError
 
-  // Verify the intake subDepartment belongs to the department
-  const subDepartment = await prisma.subDepartment.findUnique({
-    where: { id: intakeSubDepartmentId },
-    select: { departmentId: true },
-  })
-  if (!subDepartment) {
-    return NextResponse.json({ error: "Intake subDepartment not found" }, { status: 404 })
-  }
-  if (subDepartment.departmentId !== departmentId) {
-    return NextResponse.json(
-      { error: "Intake subDepartment must belong to the selected department" },
-      { status: 400 },
-    )
+  // When a fallback default sub-department is provided, verify it belongs to the
+  // department. Department-level forms leave it null and route by issue instead.
+  if (intakeSubDepartmentId) {
+    const subDepartment = await prisma.subDepartment.findUnique({
+      where: { id: intakeSubDepartmentId },
+      select: { departmentId: true },
+    })
+    if (!subDepartment) {
+      return NextResponse.json({ error: "Intake subDepartment not found" }, { status: 404 })
+    }
+    if (subDepartment.departmentId !== departmentId) {
+      return NextResponse.json(
+        { error: "Intake subDepartment must belong to the selected department" },
+        { status: 400 },
+      )
+    }
   }
 
   const form = await prisma.intakeFormConfig.create({

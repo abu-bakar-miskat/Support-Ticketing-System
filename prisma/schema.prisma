@@ -1821,7 +1821,10 @@ model IntakeFormConfig {
   id           String            @id @default(uuid())
   name         String
   departmentId String
-  intakeSubDepartmentId String @map("intakeTeamId")
+  // Optional: a department-level form has no fixed sub-department — each issue
+  // (SlaPolicy) routes its ticket to a sub-department via SlaPolicy.subDepartmentId.
+  // When set, it's the form's default/fallback routing target.
+  intakeSubDepartmentId String? @map("intakeTeamId")
   // Where the form was created / its owner level: "DEPARTMENT" (a department-wide
   // form) or "SUB_DEPARTMENT" (owned by intakeSubDepartmentId's sub-department).
   // A sub-department only sees its own SUB_DEPARTMENT forms; the department sees
@@ -1849,7 +1852,7 @@ model IntakeFormConfig {
   updatedAt    DateTime          @updatedAt
 
   department Department        @relation(fields: [departmentId], references: [id])
-  intakeSubDepartment SubDepartment @relation(fields: [intakeSubDepartmentId], references: [id])
+  intakeSubDepartment SubDepartment? @relation(fields: [intakeSubDepartmentId], references: [id])
   fields     IntakeFormField[]
   intakes    Intake[]
   issues     IntakeIssue[]

@@ -334,11 +334,19 @@ async function loadDashboardLayoutData(
   };
 }
 
-/** Nav/role chrome from the profile alone — no extra queries. Sidebar refetches the rest. */
+/**
+ * Nav/role chrome from the profile. Pass `deptNames` for ids not covered by
+ * memberships (admin active dept, managed/granted) so the sidebar shows the
+ * real name instead of a placeholder before `/api/dashboard/layout` loads.
+ */
 export function layoutSeedFromProfile(
   profile: AuthProfile,
   activeDeptId: string | null,
+  deptNames: ReadonlyMap<string, string> | Record<string, string> = {},
 ): LayoutData {
+  const nameOf = (id: string): string | undefined =>
+    deptNames instanceof Map ? deptNames.get(id) : deptNames[id];
+
   const memberships = (profile.memberships ?? []) as ProfileMembership[];
   const subDepartments = memberships.map((m) => ({
     id: m.subDepartment.id,
@@ -359,14 +367,20 @@ export function layoutSeedFromProfile(
   const managed = profile.managedDepartmentIds ?? [];
   const granted = profile.grantedAccessDeptIds ?? [];
   for (const id of [...managed, ...granted]) {
-    if (!deptById.has(id)) deptById.set(id, { id, name: "Department" });
+    if (!deptById.has(id)) {
+      const name = nameOf(id);
+      if (name) deptById.set(id, { id, name });
+    }
   }
   if (
     activeDeptId &&
     !deptById.has(activeDeptId) &&
     (profile.role === "admin" || managed.includes(activeDeptId) || granted.includes(activeDeptId))
   ) {
-    deptById.set(activeDeptId, { id: activeDeptId, name: "Department" });
+    deptById.set(activeDeptId, {
+      id: activeDeptId,
+      name: nameOf(activeDeptId) ?? "Department",
+    });
   }
   return {
     projects: [],
@@ -396,4 +410,44 @@ export function layoutSeedFromProfile(
     activeFeatureKeys: "ALL",
     platformFlags: {},
   };
+}
+
+/** Seed plus a single name lookup for depts not present on memberships. */
+export async function getLayoutSeedFromProfile(
+  profile: AuthProfile,
+  activeDeptId: string | null,
+): Promise<LayoutData> {
+  const memberships = (profile.memberships ?? []) as ProfileMembership[];
+  const known = new Map<string, string>();
+  for (const m of memberships) {
+    const id = m.subDepartment.department?.id;
+    const name = m.subDepartment.department?.name;
+    if (id && name) known.set(id, name);
+  }
+
+  const needed = new Set<string>();
+  for (const id of [
+    ...(profile.managedDepartmentIds ?? []),
+    ...(profile.grantedAccessDeptIds ?? []),
+    ...(activeDeptId ? [activeDeptId] : []),
+  ]) {
+    if (!known.has(id)) needed.add(id);
+  }
+
+  if (needed.size > 0) {
+    try {
+      const { runAsSystem } = await import("@/lib/request-scope");
+      const rows = await runAsSystem(() =>
+        prisma.department.findMany({
+          where: { id: { in: [...needed] } },
+          select: { id: true, name: true },
+        }),
+      );
+      for (const row of rows) known.set(row.id, row.name);
+    } catch (err) {
+      console.error("[layout-seed] Could not resolve department names", err);
+    }
+  }
+
+  return layoutSeedFromProfile(profile, activeDeptId, known);
 }

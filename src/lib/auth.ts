@@ -208,9 +208,19 @@ function ticketOutsideActiveTenant(
   profile: AuthProfile,
   ticket: TicketAccessFields,
 ): boolean {
-  const active = profile.activeTenantId;
-  if (!active || !ticket.tenantId) return false;
-  return ticket.tenantId !== active;
+  if (!ticket.tenantId) return false;
+  // A ticket is "outside" only when the caller isn't a member of its tenant at
+  // all. Gating on the single *active* tenant wrongly hid tickets (e.g. opened
+  // from a notification) that belong to another tenant the user belongs to —
+  // surfacing as a false "Ticket not found". Membership still prevents any
+  // cross-tenant leak.
+  const tenantIds = profile.tenantIds ?? [];
+  if (tenantIds.length === 0) {
+    // Fall back to the active tenant when membership isn't populated.
+    const active = profile.activeTenantId;
+    return active ? ticket.tenantId !== active : false;
+  }
+  return !tenantIds.includes(ticket.tenantId);
 }
 
 function getCoAssigneeIds(
@@ -381,7 +391,11 @@ export async function assertTicketAccess(
       fullAccess.includes(deptId);
 
     if (!allowedViaProject && !allowedViaFullAccess) {
-      return notFound("Ticket not found.");
+      // In-tenant but not a participant/member/project-member: this is an ACCESS
+      // issue, not a missing ticket — return 403 with a clear message so the UI
+      // never shows a misleading "Ticket not found" / "deleted" for a ticket that
+      // exists (ASG acceptance). Cross-tenant stays 404 above to hide existence.
+      return forbidden("You don't have access to this ticket.");
     }
   }
   if (forWrite && ticket.deletedAt !== null) {

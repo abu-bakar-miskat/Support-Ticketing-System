@@ -60,6 +60,16 @@ export type AddCommentBody = {
   hasAttachment?: boolean;
 };
 
+/** Carries the HTTP status so the UI can tell "no access" (403) from "gone" (404). */
+export class TicketDetailError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "TicketDetailError";
+    this.status = status;
+  }
+}
+
 export async function getTicketDetail(
   id: string,
   signal?: AbortSignal,
@@ -67,7 +77,7 @@ export async function getTicketDetail(
   const res = await fetch(`/api/tickets/${id}/detail`, { signal });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? "Failed to fetch ticket detail");
+    throw new TicketDetailError(res.status, body?.error ?? "Failed to fetch ticket detail");
   }
   return res.json();
 }

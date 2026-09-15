@@ -8,6 +8,7 @@ vi.mock("@/lib/db", () => ({
     department: { findUnique: vi.fn() },
   },
 }))
+vi.mock("@/lib/role-assignment", () => ({ syncUserRoleAssignments: vi.fn() }))
 
 import { DELETE } from "./route"
 import { getProfile } from "@/lib/profile"

@@ -9,6 +9,7 @@ vi.mock("@/lib/db", () => ({
     profile: { findUnique: vi.fn(), update: vi.fn() },
   },
 }))
+vi.mock("@/lib/role-assignment", () => ({ syncUserRoleAssignments: vi.fn() }))
 
 import { POST } from "./route"
 import { getProfile } from "@/lib/profile"

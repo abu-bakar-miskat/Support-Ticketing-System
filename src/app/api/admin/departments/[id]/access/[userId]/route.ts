@@ -145,6 +145,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return saved
   })
 
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so this department-access update takes effect on reads immediately
+  // (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
+
   return NextResponse.json(grant)
 }
 
@@ -182,5 +188,10 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       client: tx,
     })
   })
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so this department-access revocation takes effect on reads immediately
+  // (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
   return new NextResponse(null, { status: 204 })
 }

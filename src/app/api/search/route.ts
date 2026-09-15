@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { withAuthenticatedScope } from "@/lib/authenticated-route"
 import { prisma } from "@/lib/db"
 import { buildProjectDeptWhere, getProfileDeptScope } from "@/lib/dept-scope"
 import { assignedProjectsInDeptWhere } from "@/lib/cross-access"
 
-export async function GET(req: NextRequest) {
-  const { profile, error } = await requireAuth()
-  if (error) return error
-
-  const q = req.nextUrl.searchParams.get("q")?.trim()
+// Scope resolved once at the boundary and carried via AsyncLocalStorage, so the
+// ticket + project queries below hit the ambient fast-path instead of each
+// re-resolving the caller's scope. The route's own dept-scope `where` still
+// applies on top of the extension's tenant backstop.
+export const GET = withAuthenticatedScope(async (profile, request) => {
+  const q = new URL(request.url).searchParams.get("q")?.trim()
   if (!q || q.length < 2) return NextResponse.json({ tickets: [], projects: [] })
 
   const deptScope = await getProfileDeptScope(profile)
@@ -119,4 +120,4 @@ export async function GET(req: NextRequest) {
       ticketCount: p._count.tickets,
     })),
   })
-}
+})

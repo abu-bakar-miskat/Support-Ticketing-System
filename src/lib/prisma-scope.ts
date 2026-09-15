@@ -1,5 +1,9 @@
 import { cache } from "react";
-import { getRequestScope, runAsSystem, runWithScope, type RequestScope } from "@/lib/request-scope";
+import { getRequestScope, runWithScope, type RequestScope } from "@/lib/request-scope";
+import {
+  getCachedExceptionTicketIds,
+  getCachedSubDepartmentTeamIds,
+} from "@/lib/scope-cache";
 
 /**
  * Non-bypassable tenant scoping for every model that carries a `tenantId`
@@ -218,47 +222,22 @@ export function rowGrantedTicketAccess(
  * unbounded recursion; the `where` restricts to the caller's own assignments, so
  * the unscoped read leaks nothing. Both reads share one `db` import.
  */
-const getExceptionTicketIds = cache(async (userId: string): Promise<string[]> => {
-  const { prisma } = await import("@/lib/db");
-  // Two indexed lookups instead of one OR + nested `assignees.some` — that
-  // shape cannot use Ticket.assigneeId / TicketAssignee.userId and scanned
-  // every assigned ticket on every tenant-scoped read (projects, settings,
-  // calendar, mailboxes) for anyone who isn't a super admin.
-  const [grants, assigned, coAssigned] = await Promise.all([
-    prisma.ticketAccessGrant.findMany({ where: { userId }, select: { ticketId: true } }),
-    runAsSystem(() =>
-      prisma.ticket.findMany({
-        where: { deletedAt: null, assigneeId: userId },
-        select: { id: true },
-      }),
-    ),
-    runAsSystem(() =>
-      prisma.ticketAssignee.findMany({
-        where: { userId, ticket: { deletedAt: null } },
-        select: { ticketId: true },
-      }),
-    ),
-  ]);
-  return [
-    ...new Set([
-      ...grants.map((g) => g.ticketId),
-      ...assigned.map((t) => t.id),
-      ...coAssigned.map((a) => a.ticketId),
-    ]),
-  ];
-});
+// Cross-request cached (TTL-only) — see lib/scope-cache. The React `cache()`
+// wrapper still gives per-request identity; the inner cache collapses the trio
+// of ID lookups across concurrent requests on the same instance.
+const getExceptionTicketIds = cache((userId: string): Promise<string[]> =>
+  getCachedExceptionTicketIds(userId),
+);
 
 /**
- * SD-06 sub-department allowlist, React-cached per request for the same
- * reason as {@link getGrantedTicketIds}. `resolveSubDepartmentTeamIds` also
- * resyncs the caller's `RoleAssignment` rows (see lib/role-assignment.ts) —
- * caching this keeps that resync to once per request rather than once per
- * ticket-scoped query.
+ * SD-06 sub-department allowlist. Cross-request cached with explicit
+ * invalidation (Cache A in lib/scope-cache) — invalidated whenever the caller's
+ * role/membership/department grants change. The React `cache()` wrapper keeps
+ * per-request identity on top of the shared cache.
  */
-const getSubDepartmentTeamIds = cache(async (userId: string): Promise<string[] | null> => {
-  const { resolveSubDepartmentTeamIds } = await import("@/lib/role-assignment");
-  return resolveSubDepartmentTeamIds(userId);
-});
+const getSubDepartmentTeamIds = cache((userId: string): Promise<string[] | null> =>
+  getCachedSubDepartmentTeamIds(userId),
+);
 
 /** Pure: map an explicit request scope to a ticket scope. */
 export function scopeFromRequestScope(scope: RequestScope): TicketScope {

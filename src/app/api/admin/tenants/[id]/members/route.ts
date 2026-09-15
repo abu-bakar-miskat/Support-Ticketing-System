@@ -262,5 +262,10 @@ export async function DELETE(request: Request, { params }: Params) {
       client: tx,
     })
   })
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so this tenant-membership removal takes effect on reads immediately, rather
+  // than waiting for the empty-table reconciliation path (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
   return NextResponse.json({ ok: true })
 }

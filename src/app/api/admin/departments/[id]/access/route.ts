@@ -137,6 +137,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     return saved
   })
 
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so this department-access grant takes effect on reads immediately
+  // (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
+
   if (isNew) {
     createNotification({
       recipientId: userId,

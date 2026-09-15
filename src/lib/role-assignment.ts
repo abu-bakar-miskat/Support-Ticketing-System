@@ -343,6 +343,10 @@ export async function syncUserRoleAssignments(userId: string): Promise<void> {
   roleAssignmentSyncs.set(userId, sync);
   try {
     await sync;
+    // RoleAssignment (and its underlying grants) just changed — drop this
+    // user's cached role scope so the next read reflects it (Cache A).
+    const { invalidateUserScope } = await import("@/lib/scope-cache");
+    invalidateUserScope(userId);
   } finally {
     if (roleAssignmentSyncs.get(userId) === sync) {
       roleAssignmentSyncs.delete(userId);

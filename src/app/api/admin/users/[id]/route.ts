@@ -361,6 +361,13 @@ export async function DELETE(
     }),
   ])
 
+  // The cascade above clears every source table but not the derived
+  // RoleAssignment rows — rebuild them (from the now-empty sources) so the
+  // deleted user's canonical assignments are cleared and the cached scope
+  // invalidated, rather than leaking stale rows (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(id)
+
   // NFR-09/DAT-05 (slice 20): user removal is audited.
   if (profile!.activeTenantId) {
     await recordAuditEvent({

@@ -232,7 +232,7 @@ async function applyChange(tx: Prisma.TransactionClient, userId: string, actorId
  */
 export async function changeRoles(params: { userId: string; actor: RoleChangeActor; changes: RoleChange[]; expectedBefore: RoleChange[] }) {
   validateChanges(params.changes);
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Profile" WHERE "id" = ${params.userId} FOR UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "Profile" WHERE "id" = ${params.actor.id} FOR UPDATE`;
     const target = await tx.profile.findUnique({ where: { id: params.userId }, select: { id: true, deletedAt: true } });
@@ -270,6 +270,13 @@ export async function changeRoles(params: { userId: string; actor: RoleChangeAct
     await recordAuditEvent({ client: tx, tenantId: infos[0].tenantId, departmentId: auditDepartmentId, actorId: params.actor.id, action: "ROLE_ASSIGNMENTS_CHANGED", targetType: "Profile", targetId: params.userId, before, after: params.changes });
     return { ...previewRoleChanges(before, params.changes), before, after: params.changes, tenantId: infos[0].tenantId };
   });
+  // Role assignments are committed — drop the target's cached role scope so the
+  // change takes effect immediately on this instance (Cache A). This path
+  // rebuilds RoleAssignment via synchronizeLegacyRoleAssignments, not
+  // syncUserRoleAssignments, so it needs its own invalidation.
+  const { invalidateUserScope } = await import("@/lib/scope-cache");
+  invalidateUserScope(params.userId);
+  return result;
 }
 
 export function roleChangeHttpStatus(error: unknown) {

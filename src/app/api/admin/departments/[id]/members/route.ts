@@ -81,5 +81,11 @@ export async function DELETE(
     })
   })
 
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so removing these sub-department memberships takes effect on reads immediately
+  // (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
+
   return new NextResponse(null, { status: 204 })
 }

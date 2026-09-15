@@ -43,5 +43,11 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     })
   }
 
+  // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)
+  // so this department-manager revocation takes effect on reads immediately
+  // (see lib/role-assignment).
+  const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+  await syncUserRoleAssignments(userId)
+
   return new NextResponse(null, { status: 204 })
 }

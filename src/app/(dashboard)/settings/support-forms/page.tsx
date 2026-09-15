@@ -102,9 +102,6 @@ export default async function SettingsIntakeFormsRoute() {
     publicPath: supportFormPath({
       tenant: { slug: f.department.tenant.slug, name: f.department.tenant.name },
       department: { slug: f.department.slug, name: f.department.name },
-      subDepartment: f.intakeSubDepartment
-        ? { slug: f.intakeSubDepartment.slug, name: f.intakeSubDepartment.name }
-        : null,
       formId: f.id,
     }),
     workloadThreshold: f.intakeSubDepartment?.workloadThreshold ?? 0,

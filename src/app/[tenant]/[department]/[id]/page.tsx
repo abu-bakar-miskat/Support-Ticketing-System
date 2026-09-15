@@ -13,7 +13,6 @@ export const dynamic = "force-dynamic"
 type RouteParams = {
   tenant: string
   department: string
-  subDepartment: string
   id: string
 }
 
@@ -40,7 +39,7 @@ export default async function PublicIntakeFormPage({
 }: {
   params: Promise<RouteParams>
 }) {
-  const { tenant, department, subDepartment, id } = await params
+  const { tenant, department, id } = await params
 
   // This is a fully public page (anonymous requester). Every DB read below runs
   // under system scope via runAsSystem — a logged-out visitor has no caller
@@ -70,10 +69,6 @@ export default async function PublicIntakeFormPage({
 
   if (segmentSlug({ slug: form.department.tenant.slug, name: form.department.tenant.name }) !== tenant) notFound()
   if (segmentSlug({ slug: form.department.slug, name: form.department.name }) !== department) notFound()
-  // The 3rd segment is cosmetic: department-level forms have no fixed
-  // sub-department, so it holds the department slug rather than a sub-dept one.
-  // We no longer validate it — the form id is the real access token.
-  void subDepartment
 
   // Form inactive → unavailable message
   if (!form.isActive) {

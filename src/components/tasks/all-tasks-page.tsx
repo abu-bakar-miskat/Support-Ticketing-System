@@ -45,6 +45,7 @@ const PRIORITY_OPTIONS = [
 const SOURCE_OPTIONS = [
   { id: "intake", label: "Support Ticket" },
   { id: "manual", label: "Manual Ticket" },
+  { id: "mailbox", label: "Mailbox Ticket" },
 ];
 
 const ALL_SUB_DEPARTMENTS_VALUE = "__all_sub_departments__";
@@ -372,7 +373,7 @@ export function AllTasksPage({
   const [selPeople, setSelPeople] = useState<Set<string>>(new Set()); // profile IDs
   const [selModule, setSelModule] = useState<Set<string>>(new Set()); // module IDs
   const [selLabels, setSelLabels] = useState<Set<string>>(new Set()); // label names
-  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "manual"
+  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "manual" | "mailbox"
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
@@ -408,7 +409,7 @@ export function AllTasksPage({
       assigneeId: selPeople.size ? [...selPeople] : undefined,
       moduleId: selModule.size ? [...selModule] : undefined,
       labels: selLabels.size ? [...selLabels] : undefined,
-      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual") : undefined,
+      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual" | "mailbox") : undefined,
       sort: sortKey,
       search: search || undefined,
       dateFrom: dateRange?.from ?? undefined,
@@ -491,7 +492,7 @@ export function AllTasksPage({
       sort: sortKey,
       unassigned: unassignedOnly || undefined,
       drafts: draftsOnly || undefined,
-      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual") : undefined,
+      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual" | "mailbox") : undefined,
     }),
     [
       pageSize,

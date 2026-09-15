@@ -365,8 +365,12 @@ export type BoardCardWhere = {
   targetDateTo?: Date
   sortKey?: string
   unassignedOnly?: boolean
-  /** "intake" = only tickets created via an intake form, "manual" = only tickets without one */
-  source?: "intake" | "manual"
+  /**
+   * "intake"  = only tickets created via an intake form,
+   * "mailbox" = only tickets created from an inbound email (no intake form),
+   * "manual"  = only tickets created by hand (no intake form, not from email)
+   */
+  source?: "intake" | "manual" | "mailbox"
   /**
    * Draft visibility:
    * - undefined/false (default): exclude drafts from boards and normal lists
@@ -497,10 +501,21 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
     and.push({ assigneeId: null, assignees: { none: {} } })
   }
 
+  // Mailbox-created tickets have no Intake record (see lib/mailbox-ticket-creation.ts)
+  // and are only distinguishable by their TICKET_CREATED activity log carrying
+  // metadata.source === "email". Intake/manual creation paths never set that key.
+  const mailboxSourceFilter = {
+    activityLogs: {
+      some: { action: "TICKET_CREATED", metadata: { path: ["source"], equals: "email" } },
+    },
+  }
   if (where.source === "intake") {
     and.push({ intake: { isNot: null } })
+  } else if (where.source === "mailbox") {
+    and.push(mailboxSourceFilter)
   } else if (where.source === "manual") {
-    and.push({ intake: null })
+    // manual = no intake form AND not created from an inbound email
+    and.push({ intake: null, NOT: mailboxSourceFilter })
   }
 
   if (where.dateFrom || where.dateTo) {

@@ -306,6 +306,25 @@ export async function resolveProfileTicketScope(profile: {
   };
 }
 
+/** Map a TicketScope onto the ALS RequestScope shape used by runWithScope. */
+export function ticketScopeToRequestScope(ticketScope: TicketScope): RequestScope {
+  if (ticketScope.kind === "platform") {
+    return { isPlatformAdmin: true, tenantIds: [] };
+  }
+  if (ticketScope.kind === "system") {
+    return { system: true, tenantIds: [] };
+  }
+  return {
+    tenantIds: ticketScope.tenantIds,
+    ...(ticketScope.subDepartmentTeamIds
+      ? { subDepartmentTeamIds: ticketScope.subDepartmentTeamIds }
+      : {}),
+    ...(ticketScope.grantedTicketIds
+      ? { grantedTicketIds: ticketScope.grantedTicketIds }
+      : {}),
+  };
+}
+
 type QueryArgs = { where?: Where } & Record<string, unknown>;
 
 /**

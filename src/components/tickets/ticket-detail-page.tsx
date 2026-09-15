@@ -1571,9 +1571,10 @@ export function TicketDetailPage({
   // Poll for new messages only when the chat tab is open AND the browser tab is
   // visible. Broadcast handles the fast path; this catches emails that arrive
   // before Resend fires the webhook. 20s interval — low enough to catch stragglers,
-  // high enough not to hammer the DB.
+  // high enough not to hammer the DB. Skip while hydrating so polling doesn't
+  // contend with the primary /detail request.
   useEffect(() => {
-    if (activeTab !== "conversation") return;
+    if (isHydrating || activeTab !== "conversation") return;
     const poll = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -1593,16 +1594,16 @@ export function TicketDetailPage({
     };
     const interval = setInterval(poll, 20_000);
     return () => clearInterval(interval);
-  }, [activeTab, dbId]);
+  }, [isHydrating, activeTab, dbId]);
 
   // Reconciliation: ask the server to check Resend for any emails the webhook
-  // may have missed. Runs immediately when the Chat tab opens, then repeats
-  // every 30s while the tab stays open and visible — so a missed webhook
-  // self-heals without the user needing to close/reopen the ticket. If any
-  // are recovered the broadcast fires automatically, but we also refresh here
-  // as a belt-and-suspenders measure.
+  // may have missed. Runs when the Chat tab is open on a fully-loaded ticket,
+  // then repeats every 30s while the tab stays open and visible — so a missed
+  // webhook self-heals without the user needing to close/reopen the ticket.
+  // Skipped while hydrating so reconcile doesn't contend with /detail for the
+  // shared DB pool (that race caused 45s timeouts → "Failed to load ticket").
   useEffect(() => {
-    if (activeTab !== "conversation") return;
+    if (isHydrating || activeTab !== "conversation") return;
     let cancelled = false;
     const reconcile = async () => {
       if (document.visibilityState !== "visible") return;
@@ -1623,7 +1624,7 @@ export function TicketDetailPage({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [activeTab, dbId, refreshMessages]);
+  }, [isHydrating, activeTab, dbId, refreshMessages]);
 
   // Live GitHub Development section — the webhook broadcasts to
   // `ticket-github:{dbId}` when a linked PR changes state (e.g. merged), a new
@@ -2364,7 +2365,9 @@ export function TicketDetailPage({
                 size="md"
               />
 
-              <SlaIndicatorBadge ticketId={dbId} size="md" />
+              {!isHydrating ? (
+                <SlaIndicatorBadge ticketId={dbId} size="md" />
+              ) : null}
 
               {transferredFromName && (
                 <span
@@ -2893,7 +2896,7 @@ export function TicketDetailPage({
             {/* Intake */}
             {intake && <IntakeCard intake={intake} />}
 
-            <RuleExecutionLog ticketId={dbId} />
+            {!isHydrating ? <RuleExecutionLog ticketId={dbId} /> : null}
 
             {/* AI assist */}
             <TicketAssistPanel dbId={dbId} isIntake={!!intake} />

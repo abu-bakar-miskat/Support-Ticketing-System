@@ -79,16 +79,13 @@ export function useTicketDetail(id: string, initialData?: TicketDetailProps) {
     queryFn: ({ signal }) => getTicketDetail(id, signal),
     enabled: !!id,
     initialData,
+    // Board-card shell paints immediately; the real /detail response replaces it.
     placeholderData: () => initialData ?? resolvePlaceholder(queryClient, id),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    // Always refetch when the drawer/page (re)mounts so freshly-changed ticket
-    // data shows immediately. Cached data (or a board-card placeholder) paints
-    // instantly via placeholderData while the fresh fetch resolves.
-    refetchOnMount: "always",
-    retry: 2,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    refetchOnMount: true,
+    retry: 1,
   })
 }
 

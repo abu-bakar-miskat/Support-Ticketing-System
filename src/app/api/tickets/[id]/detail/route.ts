@@ -4,6 +4,7 @@ import {
   getTicketDetailPayload,
   getTicketDetailRecord,
 } from "@/lib/ticket-detail-data";
+import { runWithScope } from "@/lib/request-scope";
 
 export async function GET(
   _req: NextRequest,
@@ -11,27 +12,31 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const [{ profile, error }, ticket] = await Promise.all([
-    requireAuth(),
-    getTicketDetailRecord(id),
-  ]);
+  const { profile, error } = await requireAuth();
   if (error) return error;
 
-  if (!ticket || ticket.deletedAt) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  // Super-admins skip tenant scoping entirely. For everyone else, do NOT call
+  // resolveProfileTicketScope() here — that scans every assigned ticket
+  // (getExceptionTicketIds) before the detail query even starts, which is why
+  // this route was fast for super-admins and 40s–minutes for other roles.
+  // This unique read only needs: the caller's tenants + an exception for *this* id.
+  const requestScope = profile.isSuperAdmin
+    ? { isPlatformAdmin: true as const, tenantIds: [] as string[] }
+    : {
+        tenantIds: profile.tenantIds,
+        grantedTicketIds: [id],
+      };
 
-  // Build the payload concurrently with the access check — the check has its
-  // own DB round-trips and would otherwise serialize in front of the payload.
-  // The payload is only returned once the check passes.
-  const [access, payload] = await Promise.allSettled([
-    assertTicketAccess(profile, ticket),
-    getTicketDetailPayload(profile, id, ticket),
-  ]);
+  return runWithScope(requestScope, async () => {
+    const ticket = await getTicketDetailRecord(id);
+    if (!ticket || ticket.deletedAt) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-  if (access.status === "rejected") throw access.reason;
-  if (access.value) return access.value;
-  if (payload.status === "rejected") throw payload.reason;
+    const access = await assertTicketAccess(profile, ticket);
+    if (access) return access;
 
-  return NextResponse.json(payload.value);
+    const payload = await getTicketDetailPayload(profile, id, ticket);
+    return NextResponse.json(payload);
+  });
 }

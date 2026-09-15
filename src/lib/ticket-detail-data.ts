@@ -10,7 +10,6 @@ import {
 import { fetchProjectDepartmentPeople, assertUsersEligibleForProjectDepartment } from "@/lib/project-department-people";
 import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/ticket-date-permissions";
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
-import { buildTicketEditContext } from "@/lib/cross-access";
 import { isDueOverdue, isBlockedStatus } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
@@ -30,7 +29,7 @@ const ticketCoreInclude = {
   subDepartment: {
     select: { id: true, prefix: true, name: true, departmentId: true },
   },
-  project: { select: { name: true, color: true, kind: true, moduleSystemEnabled: true } },
+  project: { select: { name: true, color: true, kind: true, moduleSystemEnabled: true, departmentId: true } },
   module: { select: { id: true, name: true } },
   sprint: { select: { id: true, name: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
@@ -64,8 +63,61 @@ const ticketCoreInclude = {
       formConfig: { select: { name: true, allowCustomerReplies: true } },
     },
   },
-  pullRequests: { include: { pr: true } },
-  commits: { orderBy: { createdAt: "desc" as const } },
+  comments: {
+    where: { parentId: null, messageId: null, deletedAt: null },
+    orderBy: { createdAt: "asc" as const },
+    include: {
+      author: { select: { id: true, name: true, avatarUrl: true } },
+      attachments: {
+        select: {
+          id: true,
+          storageUrl: true,
+          fileName: true,
+          fileSize: true,
+        },
+      },
+      replies: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "asc" as const },
+        include: {
+          author: { select: { id: true, name: true, avatarUrl: true } },
+          attachments: {
+            select: {
+              id: true,
+              storageUrl: true,
+              fileName: true,
+              fileSize: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  messages: {
+    orderBy: { createdAt: "asc" as const },
+    include: {
+      author: { select: { id: true, name: true, avatarUrl: true } },
+      attachments: {
+        select: { id: true, storageUrl: true, fileName: true, fileSize: true },
+      },
+      notes: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "asc" as const },
+        include: { author: { select: { id: true, name: true, avatarUrl: true } } },
+      },
+    },
+  },
+  activityLogs: {
+    orderBy: { createdAt: "desc" as const },
+    take: 50,
+    include: { actor: { select: { name: true } } },
+  },
+  timeEntries: {
+    orderBy: { startedAt: "asc" as const },
+    include: {
+      profile: { select: { id: true, name: true, avatarUrl: true } },
+    },
+  },
 } as const;
 
 // ── Cached lookups ────────────────────────────────────────────────────────────
@@ -98,7 +150,7 @@ const getCachedProjectMembers = (projectId: string) =>
   )();
 
 /** @all audience for a ticket: project members if attached, else subDepartment/dept. */
-const getCachedTicketMentionable = (
+export const getCachedTicketMentionable = (
   projectId: string | null,
   departmentId: string | null,
   ticketSubDepartmentId: string,
@@ -196,69 +248,6 @@ export async function assertAssigneeEligibleForTicket(
   return { ok: true };
 }
 
-async function fetchTicketComments(ticketId: string) {
-  return prisma.comment.findMany({
-    // messageId: null → exclude notes attached to a specific email message;
-    // those render under their message, not in the general comments thread.
-    where: { ticketId, parentId: null, messageId: null, deletedAt: null },
-    orderBy: { createdAt: "asc" },
-    include: {
-      author: { select: { id: true, name: true, avatarUrl: true } },
-      attachments: {
-        select: {
-          id: true,
-          storageUrl: true,
-          fileName: true,
-          fileSize: true,
-        },
-      },
-      replies: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: "asc" },
-        include: {
-          author: { select: { id: true, name: true, avatarUrl: true } },
-          attachments: {
-            select: {
-              id: true,
-              storageUrl: true,
-              fileName: true,
-              fileSize: true,
-            },
-          },
-        },
-      },
-    },
-  });
-}
-
-async function fetchTicketMessages(ticketId: string) {
-  return prisma.ticketMessage.findMany({
-    where: { ticketId },
-    orderBy: { createdAt: "asc" },
-    include: {
-      author: { select: { id: true, name: true, avatarUrl: true } },
-      attachments: {
-        select: { id: true, storageUrl: true, fileName: true, fileSize: true },
-      },
-      // Internal notes attached to this specific message (staff-only).
-      notes: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, avatarUrl: true } } },
-      },
-    },
-  });
-}
-
-async function fetchTicketActivity(ticketId: string) {
-  return prisma.activityLog.findMany({
-    where: { ticketId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: { actor: { select: { name: true } } },
-  });
-}
-
 export async function getTicketDetailRecord(id: string) {
   return prisma.ticket.findUnique({
     where: { id },
@@ -268,60 +257,57 @@ export async function getTicketDetailRecord(id: string) {
 
 export async function getTicketDetailPayload(
   profile: Profile,
-  ticketId: string,
+  _ticketId: string,
   ticket: NonNullable<Awaited<ReturnType<typeof getTicketDetailRecord>>>,
 ) {
-  const ticketDeptId = ticket.subDepartment.departmentId;
+  // Minimal assignee list — enough to render without a department-wide roster query.
+  const assigneeFallback: AssignableUser[] = [
+    ...(ticket.assignee
+      ? [
+          {
+            id: ticket.assignee.id,
+            name: ticket.assignee.name,
+            avatarUrl: ticket.assignee.avatarUrl ?? null,
+            departmentName: null,
+            subDepartmentName: null,
+          },
+        ]
+      : []),
+    ...ticket.assignees.map((a) => ({
+      id: a.user.id,
+      name: a.user.name,
+      avatarUrl: a.user.avatarUrl ?? null,
+      departmentName: null,
+      subDepartmentName: null,
+    })),
+  ];
 
-  const [
-    comments,
-    messages,
-    activityLogs,
-    mentionableUsers,
-    subDepartmentMembers,
-    subDepartmentStatuses,
-    ticketTimeEntries,
-    ticketEditContext,
-    github,
-  ] = await Promise.all([
-    fetchTicketComments(ticketId),
-    fetchTicketMessages(ticketId),
-    fetchTicketActivity(ticketId),
-    getCachedTicketMentionable(ticket.projectId, ticketDeptId, ticket.subDepartmentId),
-    getAssignableUsersForTicketDepartment(ticketDeptId, [
-      ...(ticket.assignee
-        ? [
-            {
-              id: ticket.assignee.id,
-              name: ticket.assignee.name,
-              avatarUrl: ticket.assignee.avatarUrl ?? null,
-            },
-          ]
-        : []),
-      ...ticket.assignees.map((a) => ({
-        id: a.user.id,
-        name: a.user.name,
-        avatarUrl: a.user.avatarUrl ?? null,
-      })),
-    ]),
-    getCachedSubDepartmentStatuses(ticket.subDepartmentId),
-    prisma.timeEntry.findMany({
-      where: { ticketId },
-      include: {
-        profile: { select: { id: true, name: true, avatarUrl: true } },
-      },
-      orderBy: { startedAt: "asc" },
-    }),
-    buildTicketEditContext(profile, {
-      assigneeId: ticket.assigneeId,
-      creatorId: ticket.creatorId,
-      subDepartmentId: ticket.subDepartmentId,
-      projectId: ticket.projectId,
-      subDepartment: ticket.subDepartment,
-      assignees: ticket.assignees,
-    }),
-    buildGitHubDevData(ticket),
-  ]);
+  const ticketDeptId = ticket.subDepartment.departmentId;
+  const comments = ticket.comments;
+  const messages = ticket.messages;
+  const activityLogs = ticket.activityLogs;
+  const ticketTimeEntries = ticket.timeEntries;
+  // Statuses already load on the board via /api/sub-departments/:id/statuses.
+  const subDepartmentStatuses: Awaited<
+    ReturnType<typeof getCachedSubDepartmentStatuses>
+  > = [];
+  const ticketEditContext = {
+    assigneeId: ticket.assigneeId,
+    creatorId: ticket.creatorId,
+    coAssigneeIds: ticket.assignees.map((a) => a.user.id),
+    subDepartmentId: ticket.subDepartmentId,
+    departmentId: ticketDeptId,
+    projectId: ticket.projectId,
+    viewerIsProjectMember: false,
+  };
+
+  const mentionableUsers: Awaited<
+    ReturnType<typeof getCachedTicketMentionable>
+  > = [];
+  const subDepartmentMembers = assigneeFallback;
+  const github = { pullRequests: [], commits: [] } as Awaited<
+    ReturnType<typeof buildGitHubDevData>
+  >;
 
   const timeByUser = new Map<
     string,

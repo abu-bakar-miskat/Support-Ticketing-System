@@ -60,42 +60,11 @@ export type AddCommentBody = {
   hasAttachment?: boolean;
 };
 
-function combineAbortSignals(
-  ...signals: (AbortSignal | undefined)[]
-): AbortSignal | undefined {
-  const active = signals.filter((s): s is AbortSignal => !!s);
-  if (active.length === 0) return undefined;
-  if (active.length === 1) return active[0];
-  if (typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
-    return AbortSignal.any(active);
-  }
-  const controller = new AbortController();
-  for (const signal of active) {
-    if (signal.aborted) {
-      controller.abort(signal.reason);
-      return controller.signal;
-    }
-    signal.addEventListener("abort", () => controller.abort(signal.reason), {
-      once: true,
-    });
-  }
-  return controller.signal;
-}
-
 export async function getTicketDetail(
   id: string,
   signal?: AbortSignal,
 ): Promise<TicketDetailProps> {
-  // Detail payloads can take 10–15s under load; a 12s cap caused false failures.
-  // Still bound hung PWA fetches with a generous timeout.
-  const timeoutSignal =
-    typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-      ? AbortSignal.timeout(45_000)
-      : undefined;
-
-  const res = await fetch(`/api/tickets/${id}/detail`, {
-    signal: combineAbortSignals(signal, timeoutSignal),
-  });
+  const res = await fetch(`/api/tickets/${id}/detail`, { signal });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? "Failed to fetch ticket detail");

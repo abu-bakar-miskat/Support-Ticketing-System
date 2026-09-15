@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
   }
 
   const targetType = sp.get("targetType")
+  const targetId = sp.get("targetId")
   const actorId = sp.get("actorId")
   const departmentId = sp.get("departmentId")
   const take = Math.min(Number(sp.get("take")) || 50, MAX_TAKE)
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
     where: {
       ...(tenantFilter ? { tenantId: tenantFilter } : {}),
       ...(targetType ? { targetType } : {}),
+      ...(targetId ? { targetId } : {}),
       ...(actorId ? { actorId } : {}),
       ...(departmentId ? { departmentId } : {}),
       ...(createdAtFilter.gte || createdAtFilter.lte ? { createdAt: createdAtFilter } : {}),
@@ -75,16 +77,24 @@ export async function GET(request: NextRequest) {
     include: { tenant: { select: { id: true, name: true } } },
   })
 
-  // actorId has no Prisma relation (same convention as Agreement.createdById,
-  // AuditEvent's own design) so resolve display names with a side lookup.
-  const actors = await prisma.profile.findMany({
-    where: { id: { in: [...new Set(events.map((e) => e.actorId))] } },
+  // actorId/targetId have no Prisma relation (same convention as
+  // Agreement.createdById, AuditEvent's own design) so resolve display names with
+  // a side lookup. Targets are only named for Profile-typed events (user
+  // management) — so "removed sub department member" shows WHO, not a raw id.
+  const actorIds = events.map((e) => e.actorId)
+  const targetProfileIds = events.filter((e) => e.targetType === "Profile").map((e) => e.targetId)
+  const profiles = await prisma.profile.findMany({
+    where: { id: { in: [...new Set([...actorIds, ...targetProfileIds])] } },
     select: { id: true, name: true, email: true },
   })
-  const actorById = new Map(actors.map((a) => [a.id, a]))
+  const profileById = new Map(profiles.map((p) => [p.id, p]))
 
   return NextResponse.json({
-    events: events.map((e) => ({ ...e, actor: actorById.get(e.actorId) ?? null })),
+    events: events.map((e) => ({
+      ...e,
+      actor: profileById.get(e.actorId) ?? null,
+      target: e.targetType === "Profile" ? profileById.get(e.targetId) ?? null : null,
+    })),
     nextCursor: events.length === take ? events[events.length - 1]?.id : null,
   })
 }

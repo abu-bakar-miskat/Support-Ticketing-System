@@ -69,14 +69,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   // NFR-09/DAT-05 (slice 20): permission grants (department manager) are audited.
+  // Target the Profile (so the audit UI resolves & shows the affected user's
+  // name), and snapshot the department name so the entry reads meaningfully.
   await recordAuditEvent({
     tenantId: dept.tenantId,
+    departmentId: id,
     actorId: profile!.id,
     action: "DEPARTMENT_MANAGER_GRANTED",
-    targetType: "DepartmentManager",
-    targetId: `${id}:${userId}`,
+    targetType: "Profile",
+    targetId: userId,
     before: null,
-    after: { departmentId: id, userId, role },
+    after: { department: dept.name, role },
   })
 
   // Rebuild the canonical RoleAssignment rows (and invalidate the cached scope)

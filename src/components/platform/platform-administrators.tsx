@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ShieldCheck, X, Building2, Crown } from "lucide-react";
+import { ShieldCheck, X, Building2, Crown, ScrollText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UserAuditModal } from "@/components/platform/user-audit-modal";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
 type AdminRow = {
@@ -60,6 +61,7 @@ export function PlatformAdministrators({
   currentUserId: string;
 }) {
   const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins);
+  const [auditUser, setAuditUser] = useState<AdminRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // The admin awaiting removal confirmation (null = dialog closed).
@@ -238,17 +240,28 @@ export function PlatformAdministrators({
                         <DeptPills departments={departments} />
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={isSelf || busyId === admin.id}
-                      title={isSelf ? "You can't remove your own super-admin access" : undefined}
-                      onClick={() => setConfirmRemove(admin)}
-                    >
-                      <X className="size-3.5" />
-                      Remove
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAuditUser(admin)}
+                        title="View audit log for this administrator"
+                        className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+                      >
+                        <ScrollText className="size-3.5" />
+                        Audit
+                      </button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={isSelf || busyId === admin.id}
+                        title={isSelf ? "You can't remove your own super-admin access" : undefined}
+                        onClick={() => setConfirmRemove(admin)}
+                      >
+                        <X className="size-3.5" />
+                        Remove
+                      </Button>
+                    </div>
                   </div>
                 );
               })
@@ -270,6 +283,13 @@ export function PlatformAdministrators({
         successMessage={confirmRemove ? `${confirmRemove.name || confirmRemove.email} is no longer an administrator` : undefined}
         onConfirm={async () => { if (confirmRemove) await removeAdmin(confirmRemove); }}
       />
+      {auditUser && (
+        <UserAuditModal
+          userId={auditUser.id}
+          userName={auditUser.name || auditUser.email}
+          onClose={() => setAuditUser(null)}
+        />
+      )}
     </div>
   );
 }

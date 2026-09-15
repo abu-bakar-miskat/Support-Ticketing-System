@@ -20,6 +20,7 @@ import {
   Building2,
   CalendarDays,
   Users,
+  ArrowRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -90,6 +91,8 @@ type AuditEvent = {
   id: string;
   actorId: string;
   actor: { id: string; name: string | null; email: string } | null;
+  // Resolved display for Profile-typed targets (the user the action was about).
+  target: { id: string; name: string | null; email: string } | null;
   tenant: { id: string; name: string } | null;
   action: string;
   targetType: string;
@@ -162,6 +165,106 @@ function getTimeGroup(createdAt: string): TimeGroup {
   return "older";
 }
 
+// ── Before/after diff ───────────────────────────────────────────────────────────
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Compact, human-readable rendering of a single field value. */
+function formatValue(v: unknown): string {
+  if (v === undefined) return "—";
+  if (v === null) return "—";
+  if (typeof v === "string") return v.length ? v : '""';
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return JSON.stringify(v);
+}
+
+/** Top-level keys whose value actually changed between before and after. */
+function changedKeys(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...keys].filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+}
+
+const preClass =
+  "overflow-x-auto rounded-lg border border-sts-card-border bg-sts-surface p-2.5 font-mono text-[11px] leading-relaxed text-sts-muted";
+
+/**
+ * Show only what changed. For two plain objects we render a field-level
+ * "before → after" table (the common case). Create/delete events (one side
+ * null) list the present object's fields. Arrays / primitives fall back to a
+ * compact JSON view.
+ */
+function ChangeDiff({ before, after }: { before: unknown; after: unknown }) {
+  if (isPlainObject(before) && isPlainObject(after)) {
+    const keys = changedKeys(before, after);
+    if (keys.length === 0) {
+      return <p className="font-sans text-[11.5px] text-sts-subtle">No field changes recorded.</p>;
+    }
+    return (
+      <div className="overflow-hidden rounded-lg border border-sts-card-border">
+        {keys.map((k, i) => (
+          <div
+            key={k}
+            className={cn(
+              "grid grid-cols-[minmax(90px,140px)_1fr] gap-2 px-2.5 py-1.5",
+              i > 0 && "border-t border-sts-card-border/60",
+            )}
+          >
+            <span className="truncate font-mono text-[11px] text-sts-subtle" title={k}>{k}</span>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[11px]">
+              <span className="break-all text-sts-muted line-through decoration-sts-red/50">
+                {formatValue(before[k])}
+              </span>
+              <ArrowRight className="size-3 shrink-0 text-sts-subtle" />
+              <span className="break-all font-medium text-sts-foreground">{formatValue(after[k])}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Create (before null) or delete (after null) with an object payload.
+  const present = isPlainObject(after) ? after : isPlainObject(before) ? before : null;
+  if (present && (before == null || after == null)) {
+    return (
+      <div className="overflow-hidden rounded-lg border border-sts-card-border">
+        {Object.entries(present).map(([k, v], i) => (
+          <div
+            key={k}
+            className={cn(
+              "grid grid-cols-[minmax(90px,140px)_1fr] gap-2 px-2.5 py-1.5",
+              i > 0 && "border-t border-sts-card-border/60",
+            )}
+          >
+            <span className="truncate font-mono text-[11px] text-sts-subtle" title={k}>{k}</span>
+            <span className="min-w-0 break-all font-mono text-[11px] text-sts-foreground">{formatValue(v)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback for arrays / primitives — compact JSON, side by side.
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {before != null && (
+        <div>
+          <p className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">Before</p>
+          <pre className={preClass}>{JSON.stringify(before, null, 2)}</pre>
+        </div>
+      )}
+      {after != null && (
+        <div>
+          <p className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">After</p>
+          <pre className={preClass}>{JSON.stringify(after, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Event row ──────────────────────────────────────────────────────────────────
 
 function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolean }) {
@@ -207,7 +310,19 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
             <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id">
               {event.targetType}
             </span>
-            <span className="min-w-0 max-w-[280px] truncate font-mono text-[10.5px] text-sts-subtle">{event.targetId}</span>
+            {event.target ? (
+              <span
+                className="inline-flex min-w-0 max-w-[280px] items-center gap-1 truncate font-sans text-[11px] font-medium text-sts-foreground"
+                title={`${event.target.name ?? event.target.email} · ${event.targetId}`}
+              >
+                <Users className="size-2.5 shrink-0 text-sts-subtle" />
+                <span className="truncate">{event.target.name ?? event.target.email}</span>
+              </span>
+            ) : (
+              <span className="min-w-0 max-w-[280px] truncate font-mono text-[10.5px] text-sts-subtle">
+                {event.targetId}
+              </span>
+            )}
 
             {hasDetails && (
               <button
@@ -222,23 +337,8 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
           </div>
 
           {expanded && hasDetails && (
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              {event.before != null && (
-                <div>
-                  <p className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">Before</p>
-                  <pre className="overflow-x-auto rounded-lg border border-sts-card-border bg-sts-surface p-2.5 font-mono text-[11px] leading-relaxed text-sts-muted">
-                    {JSON.stringify(event.before, null, 2)}
-                  </pre>
-                </div>
-              )}
-              {event.after != null && (
-                <div>
-                  <p className="mb-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">After</p>
-                  <pre className="overflow-x-auto rounded-lg border border-sts-card-border bg-sts-surface p-2.5 font-mono text-[11px] leading-relaxed text-sts-muted">
-                    {JSON.stringify(event.after, null, 2)}
-                  </pre>
-                </div>
-              )}
+            <div className="mt-2">
+              <ChangeDiff before={event.before} after={event.after} />
             </div>
           )}
         </div>
@@ -252,14 +352,28 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
 export function PlatformActivityLog({
   tenants,
   actors,
+  // When set, locks the target-type filter (and hides its control) — e.g. the
+  // user-management tab passes "Profile" to show only user/permission events.
+  fixedTargetType,
+  // When set, shows only one target's trail (per-user drill-down). Combined with
+  // `compact` it renders a chromeless list suitable for a modal.
+  targetId,
+  compact = false,
+  title = "Audit Log",
+  description = "Full audit history of Super Admin and tenant-admin actions — feature flags, tenant lifecycle, agreements, templates, and more.",
 }: {
   tenants: TenantOption[];
   actors: ActorOption[];
+  fixedTargetType?: string;
+  targetId?: string;
+  compact?: boolean;
+  title?: string;
+  description?: string;
 }) {
   // Default to "All tenants" ("") so the log is never blank just because the
   // first-alphabetical tenant happens to have no audit events.
   const [tenantId, setTenantId] = useState<string>("");
-  const [targetType, setTargetType] = useState<string>("");
+  const [targetType, setTargetType] = useState<string>(fixedTargetType ?? "");
   const [actorId, setActorId] = useState<string>("");
   const [preset, setPreset] = useState<RangePreset>("all");
   const [customFrom, setCustomFrom] = useState("");
@@ -291,7 +405,9 @@ export function PlatformActivityLog({
   async function fetchPage(after: string | null) {
     const params = new URLSearchParams({ take: "50" });
     if (tenantId) params.set("tenantId", tenantId);
-    if (targetType) params.set("targetType", targetType);
+    const effectiveTargetType = fixedTargetType ?? targetType;
+    if (effectiveTargetType) params.set("targetType", effectiveTargetType);
+    if (targetId) params.set("targetId", targetId);
     if (actorId) params.set("actorId", actorId);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
@@ -324,7 +440,7 @@ export function PlatformActivityLog({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, targetType, actorId, from, to, refreshKey]);
+  }, [tenantId, targetType, targetId, actorId, from, to, refreshKey]);
 
   async function loadMore() {
     if (!cursor) return;
@@ -348,6 +464,7 @@ export function PlatformActivityLog({
       e.action.toLowerCase().includes(q) ||
       e.targetType.toLowerCase().includes(q) ||
       e.targetId.toLowerCase().includes(q) ||
+      (e.target?.name ?? e.target?.email ?? "").toLowerCase().includes(q) ||
       (e.tenant?.name ?? "").toLowerCase().includes(q) ||
       (e.actor?.name ?? e.actor?.email ?? "").toLowerCase().includes(q),
     );
@@ -364,12 +481,18 @@ export function PlatformActivityLog({
     return order.map((k) => ({ key: k, items: map.get(k) ?? [] })).filter((g) => g.items.length > 0);
   }, [filtered]);
 
-  const hasActiveFilter = !!(tenantId || targetType || actorId || preset !== "all" || search);
+  const hasActiveFilter = !!(
+    tenantId ||
+    (!fixedTargetType && targetType) ||
+    actorId ||
+    preset !== "all" ||
+    search
+  );
 
   function clearFilters() {
     setSearch("");
     setTenantId("");
-    setTargetType("");
+    setTargetType(fixedTargetType ?? "");
     setActorId("");
     setPreset("all");
     setCustomFrom("");
@@ -377,16 +500,19 @@ export function PlatformActivityLog({
   }
 
   return (
-    <div className="h-full overflow-y-auto px-5 py-6 sm:px-8 lg:px-12">
-      <PageHeader
-        className="mb-5"
-        icon={History}
-        iconClassName="text-sts-blue"
-        title="Activity Log"
-        description="Full audit history of Super Admin and tenant-admin actions — feature flags, tenant lifecycle, agreements, templates, and more."
-      />
+    <div className={cn(compact ? "" : "h-full overflow-y-auto px-5 py-6 sm:px-8 lg:px-12")}>
+      {!compact && (
+        <PageHeader
+          className="mb-5"
+          icon={History}
+          iconClassName="text-sts-blue"
+          title={title}
+          description={description}
+        />
+      )}
 
-      {/* Filter bar */}
+      {/* Filter bar — hidden in the per-user drill-down (compact) view */}
+      {!compact && (
       <div className={cn("mb-5 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3 transition-opacity", loading && "opacity-60")}>
         <div className="flex flex-wrap items-center gap-2">
           <SlidersHorizontal className="size-3.5 shrink-0 text-sts-subtle" />
@@ -410,6 +536,7 @@ export function PlatformActivityLog({
             </SelectContent>
           </Select>
 
+          {!fixedTargetType && (
           <Select value={targetType || ALL_OPTION} onValueChange={(v) => setTargetType(v === ALL_OPTION ? "" : v ?? "")}>
             <SelectTrigger className="h-8 w-[180px]">
               <span className="truncate font-sans text-[12px]">{targetType || "All target types"}</span>
@@ -425,6 +552,7 @@ export function PlatformActivityLog({
               ))}
             </SelectContent>
           </Select>
+          )}
 
           <Select value={actorId || ALL_OPTION} onValueChange={(v) => setActorId(v === ALL_OPTION ? "" : v ?? "")}>
             <SelectTrigger className="h-8 w-[180px]">
@@ -511,6 +639,7 @@ export function PlatformActivityLog({
           )}
         </div>
       </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">

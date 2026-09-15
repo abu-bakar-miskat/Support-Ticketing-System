@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, Crown, Search, Users } from "lucide-react";
+import { Building2, Crown, Search, ScrollText, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -9,6 +9,7 @@ import {
   PlatformInviteMemberDialog,
   type InviteTenant,
 } from "@/components/platform/platform-invite-member-dialog";
+import { UserAuditModal } from "@/components/platform/user-audit-modal";
 import { cn } from "@/lib/utils";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
@@ -99,6 +100,7 @@ export function PlatformUsers({
 }) {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [dirQuery, setDirQuery] = useState("");
+  const [auditUser, setAuditUser] = useState<UserRow | null>(null);
 
   const filteredUsers = useMemo(() => {
     const q = dirQuery.trim().toLowerCase();
@@ -209,6 +211,15 @@ export function PlatformUsers({
                       )}
                       <DeptPills departments={user.departments} />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setAuditUser(user)}
+                      title="View audit log for this user"
+                      className="mt-0.5 flex shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+                    >
+                      <ScrollText className="size-3.5" />
+                      Audit
+                    </button>
                   </div>
                 );
               })
@@ -216,6 +227,13 @@ export function PlatformUsers({
           </div>
         </div>
       </div>
+      {auditUser && (
+        <UserAuditModal
+          userId={auditUser.id}
+          userName={auditUser.name || auditUser.email}
+          onClose={() => setAuditUser(null)}
+        />
+      )}
     </div>
   );
 }

@@ -192,56 +192,74 @@ export async function PATCH(
     }
   }
 
-  const updatedProfile = Object.keys(data).length > 0
-    ? await prisma.profile.update({ where: { id }, data })
-    : await prisma.profile.findUniqueOrThrow({ where: { id } })
-
-  // NFR-09/DAT-05 (slice 20): user changes are audited with actor + before/after
-  // state. Role mutations are audited inside changeRoles; profile metadata here.
-  // Every event carries the target's department so it surfaces at both tenant
-  // and department level (the move case uses the new home department).
-  if (profile!.activeTenantId && Object.keys(data).length > 0) {
+  let updatedProfile
+  if (Object.keys(data).length > 0) {
+    // NFR-09/DAT-05 (slice 20): user changes are audited with actor + before/after
+    // state, and the change + its audit row commit TOGETHER — if the audit write
+    // fails the profile change rolls back (accountability guarantee). Role
+    // mutations are audited inside changeRoles; profile metadata here. Every event
+    // carries the target's department so it surfaces at both tenant and department
+    // level (the move case uses the new home department). tenantId may be null for
+    // a platform-level (super-admin) actor.
     const auditDepartmentId =
       moveToDepartmentId ??
-      (await resolveUserPrimaryDepartmentId(id, profile!.activeTenantId))
+      (profile!.activeTenantId
+        ? await resolveUserPrimaryDepartmentId(id, profile!.activeTenantId)
+        : null)
 
     const isActiveChanged =
       "isActive" in data && data.isActive !== profileBefore?.isActive
+    // Only audit metadata that actually changed — a PATCH re-sending unchanged
+    // fields shouldn't create a meaningless "updated user / no changes" entry.
+    const before = (profileBefore ?? {}) as Record<string, unknown>
+    const changedMetaKeys = Object.keys(data)
+      .filter((k) => k !== "isActive")
+      .filter((k) => JSON.stringify(before[k]) !== JSON.stringify((data as Record<string, unknown>)[k]))
 
-    // A restriction / reactivation is a distinct, security-relevant action —
-    // audit it under its own action rather than burying it in USER_UPDATED, so
-    // it is greppable regardless of which endpoint performed it (the tenant
-    // members endpoint already logs USER_RESTRICTED/USER_REENABLED).
-    if (isActiveChanged) {
-      await recordAuditEvent({
-        tenantId: profile!.activeTenantId,
-        departmentId: auditDepartmentId,
-        actorId: profile!.id,
-        action: data.isActive ? "USER_REENABLED" : "USER_RESTRICTED",
-        targetType: "Profile",
-        targetId: id,
-        before: { isActive: profileBefore?.isActive },
-        after: { isActive: data.isActive },
-      })
-    }
+    updatedProfile = await prisma.$transaction(async (tx) => {
+      const updated = await tx.profile.update({ where: { id }, data })
 
-    // Non-restriction profile metadata (location, timezone, department move) is
-    // audited separately from the restriction action above.
-    const metadataKeys = Object.keys(data).filter((k) => k !== "isActive")
-    if (metadataKeys.length > 0) {
-      const pick = (source: Record<string, unknown>) =>
-        Object.fromEntries(metadataKeys.map((k) => [k, source[k]]))
-      await recordAuditEvent({
-        tenantId: profile!.activeTenantId,
-        departmentId: auditDepartmentId,
-        actorId: profile!.id,
-        action: "USER_UPDATED",
-        targetType: "Profile",
-        targetId: id,
-        before: profileBefore ? pick(profileBefore as Record<string, unknown>) : profileBefore,
-        after: pick(data as Record<string, unknown>),
-      })
-    }
+      // A restriction / reactivation is a distinct, security-relevant action —
+      // audit it under its own action rather than burying it in USER_UPDATED, so
+      // it is greppable regardless of which endpoint performed it (the tenant
+      // members endpoint already logs USER_RESTRICTED/USER_REENABLED).
+      if (isActiveChanged) {
+        await recordAuditEvent({
+          tenantId: profile!.activeTenantId ?? null,
+          departmentId: auditDepartmentId,
+          actorId: profile!.id,
+          action: data.isActive ? "USER_REENABLED" : "USER_RESTRICTED",
+          targetType: "Profile",
+          targetId: id,
+          before: { isActive: profileBefore?.isActive },
+          after: { isActive: data.isActive },
+          client: tx,
+        })
+      }
+
+      // Non-restriction profile metadata (location, timezone, department move) is
+      // audited separately from the restriction action above — only when a value
+      // actually changed.
+      if (changedMetaKeys.length > 0) {
+        const pick = (source: Record<string, unknown>) =>
+          Object.fromEntries(changedMetaKeys.map((k) => [k, source[k]]))
+        await recordAuditEvent({
+          tenantId: profile!.activeTenantId ?? null,
+          departmentId: auditDepartmentId,
+          actorId: profile!.id,
+          action: "USER_UPDATED",
+          targetType: "Profile",
+          targetId: id,
+          before: profileBefore ? pick(profileBefore as Record<string, unknown>) : profileBefore,
+          after: pick(data as Record<string, unknown>),
+          client: tx,
+        })
+      }
+
+      return updated
+    })
+  } else {
+    updatedProfile = await prisma.profile.findUniqueOrThrow({ where: { id } })
   }
 
   // SA-03: an individual user restriction (isActive: false) needs the same
@@ -328,38 +346,48 @@ export async function DELETE(
   // Cascade-delete all user footprints, then soft-delete the profile.
   // Profile is soft-deleted (not hard-deleted) so that non-nullable FK references
   // on Ticket.creatorId, Comment.authorId, and Attachment.uploaderProfileId remain intact.
-  await prisma.$transaction([
+  // The USER_DELETED audit row is written in the SAME transaction (accountability
+  // guarantee, acceptance #6): if the audit can't be recorded the deletion rolls
+  // back. AuditEvent has no FK to Profile and is not part of this cascade, so the
+  // trail survives the user's deletion (acceptance #5). tenantId may be null for a
+  // platform-level (super-admin) actor.
+  const deletedAt = new Date()
+  await prisma.$transaction(async (tx) => {
     // ── Membership & access ──────────────────────────────────────────────────
-    (prisma.subDepartmentMembership as any).deleteMany({ where: { userId: id } }),
-    prisma.departmentManager.deleteMany({ where: { userId: id } }),
-    prisma.departmentMember.deleteMany({ where: { userId: id } }),
-    prisma.departmentAccess.deleteMany({ where: { userId: id } }),
-    (prisma.projectMember as any).deleteMany({ where: { userId: id } }),
-    (prisma.ticketAssignee as any).deleteMany({ where: { userId: id } }),
+    await (tx.subDepartmentMembership as any).deleteMany({ where: { userId: id } })
+    await tx.departmentManager.deleteMany({ where: { userId: id } })
+    await tx.departmentMember.deleteMany({ where: { userId: id } })
+    await tx.departmentAccess.deleteMany({ where: { userId: id } })
+    await (tx.projectMember as any).deleteMany({ where: { userId: id } })
+    await (tx.ticketAssignee as any).deleteMany({ where: { userId: id } })
     // ── Ticket assignment ────────────────────────────────────────────────────
     // Null-out primary assignee on open tickets so they can be re-assigned
-    prisma.ticket.updateMany({
-      where: { assigneeId: id },
-      data: { assigneeId: null },
-    }),
+    await tx.ticket.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } })
     // ── Personal workspace data ──────────────────────────────────────────────
-    prisma.timeEntry.deleteMany({ where: { profileId: id } }),
-    prisma.apiKey.deleteMany({ where: { createdById: id } }),
+    await tx.timeEntry.deleteMany({ where: { profileId: id } })
+    await tx.apiKey.deleteMany({ where: { createdById: id } })
     // ── Notifications & activity ─────────────────────────────────────────────
-    prisma.activityLog.deleteMany({ where: { actorId: id } }),
-    prisma.notification.deleteMany({
-      where: { OR: [{ recipientId: id }, { actorId: id }] },
-    }),
-    prisma.mention.deleteMany({ where: { mentionedUserId: id } }),
-    prisma.pushSubscription.deleteMany({ where: { userId: id } }),
+    await tx.activityLog.deleteMany({ where: { actorId: id } })
+    await tx.notification.deleteMany({ where: { OR: [{ recipientId: id }, { actorId: id }] } })
+    await tx.mention.deleteMany({ where: { mentionedUserId: id } })
+    await tx.pushSubscription.deleteMany({ where: { userId: id } })
     // ── Join requests ────────────────────────────────────────────────────────
-    prisma.joinRequest.deleteMany({ where: { userId: id } }),
+    await tx.joinRequest.deleteMany({ where: { userId: id } })
     // ── Soft-delete the profile ──────────────────────────────────────────────
-    prisma.profile.update({
-      where: { id },
-      data: { deletedAt: new Date(), subDepartmentId: null },
-    }),
-  ])
+    await tx.profile.update({ where: { id }, data: { deletedAt, subDepartmentId: null } })
+    // ── Immutable audit record (same transaction) ────────────────────────────
+    await recordAuditEvent({
+      tenantId: profile!.activeTenantId ?? null,
+      departmentId: deletedDepartmentId,
+      actorId: profile!.id,
+      action: "USER_DELETED",
+      targetType: "Profile",
+      targetId: id,
+      before: { deletedAt: null },
+      after: { deletedAt: deletedAt.toISOString() },
+      client: tx,
+    })
+  })
 
   // The cascade above clears every source table but not the derived
   // RoleAssignment rows — rebuild them (from the now-empty sources) so the
@@ -367,20 +395,6 @@ export async function DELETE(
   // invalidated, rather than leaking stale rows (see lib/role-assignment).
   const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
   await syncUserRoleAssignments(id)
-
-  // NFR-09/DAT-05 (slice 20): user removal is audited.
-  if (profile!.activeTenantId) {
-    await recordAuditEvent({
-      tenantId: profile!.activeTenantId,
-      departmentId: deletedDepartmentId,
-      actorId: profile!.id,
-      action: "USER_DELETED",
-      targetType: "Profile",
-      targetId: id,
-      before: { deletedAt: null },
-      after: { deletedAt: new Date().toISOString() },
-    })
-  }
 
   // Broadcast join_request_resolved for every pending request that was deleted,
   // so other admins' JoinRequestsSection removes the row in real time.

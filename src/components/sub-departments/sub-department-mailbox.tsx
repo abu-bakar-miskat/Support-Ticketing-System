@@ -191,6 +191,10 @@ export function SubDepartmentMailboxManager({
       setFormError("Enter a valid email address.");
       return;
     }
+    if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
+      setFormError("That address is already connected.");
+      return;
+    }
     setCheckingVerification(true);
     setFormError(null);
     try {

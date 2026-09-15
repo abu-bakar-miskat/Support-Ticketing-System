@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
+import { runAsSystem } from "@/lib/request-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -27,10 +28,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (error) return error
 
   const { id: departmentId } = await params
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { id: true },
-  })
+  const department = await runAsSystem(() =>
+    prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { id: true },
+    }),
+  )
   if (!department) {
     return NextResponse.json({ error: "Department not found" }, { status: 404 })
   }
@@ -42,12 +45,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }
   }
 
-  const connections = await prisma.mailboxConnection.findMany({
-    where: { departmentId },
-    select: { id: true, address: true, status: true, subDepartmentId: true },
-  })
+  const connections = await runAsSystem(() =>
+    prisma.mailboxConnection.findMany({
+      where: { departmentId },
+      select: { id: true, address: true, status: true, subDepartmentId: true },
+    }),
+  )
 
-  const [messages, suppressed] = await Promise.all([
+  const [messages, suppressed] = await runAsSystem(() => Promise.all([
     prisma.ticketMessage.findMany({
       where: { direction: "inbound", ticket: { subDepartment: { departmentId } } },
       orderBy: { createdAt: "desc" },
@@ -80,7 +85,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           take: 200,
         })
       : Promise.resolve([]),
-  ])
+  ]))
 
   return NextResponse.json({
     connections,

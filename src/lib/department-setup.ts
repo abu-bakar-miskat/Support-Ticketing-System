@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 
 /**
  * Department setup walkthrough gating (slice 15, DS-08/09/10).
@@ -34,10 +35,12 @@ export class DepartmentNotOperationalError extends Error {
 
 /** DS-08: whether a department may accept new tickets on any creation path. */
 export async function isDepartmentOperational(departmentId: string): Promise<boolean> {
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { setupCompletedAt: true },
-  });
+  const department = await runAsSystem(() =>
+    prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { setupCompletedAt: true },
+    }),
+  );
   return department?.setupCompletedAt != null;
 }
 
@@ -74,7 +77,9 @@ export async function completeDepartmentSetup(departmentId: string): Promise<voi
  */
 export async function needsWalkthroughOverview(userId: string, departmentId: string): Promise<boolean> {
   const [department, manager] = await Promise.all([
-    prisma.department.findUnique({ where: { id: departmentId }, select: { setupCompletedAt: true } }),
+    runAsSystem(() =>
+      prisma.department.findUnique({ where: { id: departmentId }, select: { setupCompletedAt: true } }),
+    ),
     prisma.departmentManager.findUnique({
       where: { departmentId_userId: { departmentId, userId } },
       select: { walkthroughDismissedAt: true },

@@ -8,7 +8,7 @@ import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { projectInScope, subDepartmentInScope, getProfileDeptScope } from "@/lib/dept-scope"
 import { resolveProfileTicketScope } from "@/lib/prisma-scope"
-import { getRequestScope, runWithScope } from "@/lib/request-scope"
+import { getRequestScope, runAsSystem, runWithScope } from "@/lib/request-scope"
 import { buildProjectDepartmentPeopleWhere } from "@/lib/project-department-people"
 import type { Prisma } from "@/generated/prisma/client"
 import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTicket, isProjectMember } from "@/lib/cross-access"
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const tickets = await prisma.ticket.findMany({
+  const tickets = await runAsSystem(() => prisma.ticket.findMany({
     where: { projectId, deletedAt: null, isDraft: false },
     orderBy: [{ status: "asc" }, { ticketNumber: "asc" }],
     select: {
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       assignee: { select: { name: true, avatarUrl: true } },
       subDepartment: { select: { prefix: true } },
     },
-  })
+  }))
 
   return NextResponse.json(tickets)
 }

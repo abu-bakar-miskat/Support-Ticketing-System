@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { SettingsWorkflowsPage } from "@/components/settings/settings-workflows-page";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
+import { runAsSystem } from "@/lib/request-scope";
 
 export const metadata = { title: "Workflows & statuses — Support Ticketing System" };
 
@@ -41,11 +42,11 @@ export default async function SettingsWorkflowsRoute() {
           : { id: { in: [] as string[] } }
       : { id: { in: leadSubDepartmentIds.length ? leadSubDepartmentIds : [] as string[] } };
 
-  const subDepartments = await prisma.subDepartment.findMany({
+  const subDepartments = await runAsSystem(() => prisma.subDepartment.findMany({
     where: subDepartmentWhere,
     orderBy: { name: "asc" },
     select: { id: true, name: true, prefix: true },
-  });
+  }));
 
   const defaultSubDepartmentId = subDepartments[0]?.id ?? null;
 

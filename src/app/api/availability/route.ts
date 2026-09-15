@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     ? [...new Set(idsParam.split(",").map((s) => s.trim()).filter(Boolean))]
     : undefined
 
-  const map = await getUnavailabilityByUserIds(userIds)
+  const { runAsSystem } = await import("@/lib/request-scope")
+  const map = await runAsSystem(() => getUnavailabilityByUserIds(userIds))
   return NextResponse.json(map)
 }

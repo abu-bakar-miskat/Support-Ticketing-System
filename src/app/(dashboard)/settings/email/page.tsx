@@ -5,6 +5,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { getEmailConfig } from "@/lib/email-config";
 import { getTenantConfig } from "@/lib/tenant-config";
 import { SettingsEmailPage } from "@/components/settings/settings-email-page";
+import { runAsSystem } from "@/lib/request-scope";
 
 export const metadata = { title: "Email settings — Support Ticketing System" };
 
@@ -44,11 +45,11 @@ export default async function SettingsEmailRoute() {
   const [tenant, departments, emailConfig] = await Promise.all([
     profile.activeTenantId ? getTenantConfig(profile.activeTenantId) : Promise.resolve(null),
     isAdmin || managedDeptIds.length > 0
-      ? prisma.department.findMany({
+      ? runAsSystem(() => prisma.department.findMany({
           where: deptWhere,
           orderBy: { name: "asc" },
           select: { id: true, name: true },
-        })
+        }))
       : Promise.resolve([]),
     getEmailConfig(),
   ]);

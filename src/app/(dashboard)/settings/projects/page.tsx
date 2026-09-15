@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import {
   SettingsProjectsPage,
 } from "@/components/settings/settings-projects-page";
@@ -33,7 +34,7 @@ export default async function SettingsProjectsRoute() {
   // Resolve subDepartment IDs within the scoped dept
   const scopedSubDepartmentIds = profileScope?.subDepartmentIds ?? null;
 
-  const [projects, departments] = await Promise.all([
+  const [projects, departments] = await runAsSystem(() => Promise.all([
     prisma.project.findMany({
       where: isAdmin
         ? activeDeptId && scopedSubDepartmentIds
@@ -62,7 +63,7 @@ export default async function SettingsProjectsRoute() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-  ]);
+  ]));
 
   // Auto-assign the active department (matching the sidebar create flow); admins
   // in global view (no active department) keep the full department picker.

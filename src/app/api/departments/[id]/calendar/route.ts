@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { forbidden } from "@/lib/api-response"
 import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
+import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/departments/[id]/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Members of the department (subDepartment + direct), their schedules, their off-days in
@@ -28,6 +29,16 @@ export async function GET(
   if (isNaN(from.getTime()) || isNaN(to.getTime())) {
     return NextResponse.json({ error: "Invalid from/to date" }, { status: 400 })
   }
+
+  return runAsSystem(() => loadCalendar(profile, departmentId, from, to))
+}
+
+async function loadCalendar(
+  profile: NonNullable<Awaited<ReturnType<typeof requireAuth>>["profile"]>,
+  departmentId: string,
+  from: Date,
+  to: Date,
+) {
 
   const subDepartments = await prisma.subDepartment.findMany({
     where: { departmentId },

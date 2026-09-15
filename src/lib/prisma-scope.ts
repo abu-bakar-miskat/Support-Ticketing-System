@@ -220,19 +220,32 @@ export function rowGrantedTicketAccess(
  */
 const getExceptionTicketIds = cache(async (userId: string): Promise<string[]> => {
   const { prisma } = await import("@/lib/db");
-  const [grants, assigned] = await Promise.all([
+  // Two indexed lookups instead of one OR + nested `assignees.some` — that
+  // shape cannot use Ticket.assigneeId / TicketAssignee.userId and scanned
+  // every assigned ticket on every tenant-scoped read (projects, settings,
+  // calendar, mailboxes) for anyone who isn't a super admin.
+  const [grants, assigned, coAssigned] = await Promise.all([
     prisma.ticketAccessGrant.findMany({ where: { userId }, select: { ticketId: true } }),
     runAsSystem(() =>
       prisma.ticket.findMany({
-        where: {
-          deletedAt: null,
-          OR: [{ assigneeId: userId }, { assignees: { some: { userId } } }],
-        },
+        where: { deletedAt: null, assigneeId: userId },
         select: { id: true },
       }),
     ),
+    runAsSystem(() =>
+      prisma.ticketAssignee.findMany({
+        where: { userId, ticket: { deletedAt: null } },
+        select: { ticketId: true },
+      }),
+    ),
   ]);
-  return [...new Set([...grants.map((g) => g.ticketId), ...assigned.map((t) => t.id)])];
+  return [
+    ...new Set([
+      ...grants.map((g) => g.ticketId),
+      ...assigned.map((t) => t.id),
+      ...coAssigned.map((a) => a.ticketId),
+    ]),
+  ];
 });
 
 /**
@@ -270,7 +283,7 @@ export function scopeFromRequestScope(scope: RequestScope): TicketScope {
  * A ticket query with no ambient scope and no authenticated caller throws rather
  * than leaking every tenant — system/background code must use `runAsSystem`.
  */
-export async function resolveTicketScope(): Promise<TicketScope> {
+export async function resolveTicketScope(modelLabel?: string): Promise<TicketScope> {
   const ambient = getRequestScope();
   if (ambient) return scopeFromRequestScope(ambient);
 
@@ -282,6 +295,13 @@ export async function resolveTicketScope(): Promise<TicketScope> {
       "Ticket query ran without a caller scope. Authenticated requests establish " +
         "scope via getProfile; wrap system/background access in runAsSystem().",
     );
+  }
+  // SD-06 / ASG-06 extras only apply to Ticket. Every other tenant-scoped model
+  // (Project, Department, MailboxConnection, …) only needs tenantIds — paying
+  // the assigned-ticket scan here is why non-super-admin dashboard pages hung.
+  if (profile.isSuperAdmin) return { kind: "platform" };
+  if (modelLabel && modelLabel !== "Ticket") {
+    return { kind: "tenant", tenantIds: profile.tenantIds };
   }
   return resolveProfileTicketScope(profile);
 }
@@ -337,7 +357,7 @@ async function applyTenantScope(
   args: QueryArgs,
   query: (args: QueryArgs) => Promise<unknown>,
 ): Promise<unknown> {
-  const scope = await resolveTicketScope();
+  const scope = await resolveTicketScope(modelLabel);
   const plan = planTicketOperation(operation, scope);
   const subAllow = subDepartmentAllowlist(modelLabel, scope);
   const grantedIds = grantedTicketIdsFor(modelLabel, scope);

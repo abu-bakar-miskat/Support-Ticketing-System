@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
+import { requireAuth, type AuthProfile } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
 import { resolveReportRange } from "@/lib/report-period"
 import { normalizeStatus, UI_STATUS_DOT } from "@/components/board/board-types"
@@ -29,7 +30,12 @@ const PRIORITY_ORDER = ["Urgent", "Critical", "High", "Medium", "Low"]
 export async function GET(request: Request) {
   const { profile, error } = await requireAuth()
   if (error) return error
+  // Access is already bound by dept/tenant filters below — skip the
+  // assigned-ticket grant scan that otherwise wraps every Ticket groupBy.
+  return runAsSystem(() => loadOverview(request, profile))
+}
 
+async function loadOverview(request: Request, profile: AuthProfile) {
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get("projectId") ?? "all"
   // Per-person filtering is manager/admin-only; ignore the param for others.

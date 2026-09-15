@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getProfileDeptScope, canManageDeptCalendar } from "@/lib/dept-scope";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { AssignmentSettingsPage } from "@/components/settings/assignment-settings-page";
+import { runAsSystem } from "@/lib/request-scope";
 
 export const metadata = { title: "Assignment methods — Support Ticketing System" };
 
@@ -25,24 +26,24 @@ export default async function SettingsAssignmentRoute() {
     const where = isAdmin
       ? { tenantId }
       : { id: { in: profile.managedDepartmentIds ?? [] } };
-    const first = await prisma.department.findFirst({
+    const first = await runAsSystem(() => prisma.department.findFirst({
       where,
       orderBy: { name: "asc" },
       select: { id: true },
-    });
+    }));
     departmentId = first?.id ?? null;
   }
 
   if (!departmentId) redirect("/settings/departments");
 
-  const department = await prisma.department.findUnique({
+  const department = await runAsSystem(() => prisma.department.findUnique({
     where: { id: departmentId },
     select: {
       id: true,
       name: true,
       subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
     },
-  });
+  }));
   if (!department) redirect("/settings/departments");
   if (!canManageDeptCalendar(profile, department.id)) redirect("/settings");
 

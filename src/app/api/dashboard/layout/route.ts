@@ -6,6 +6,9 @@ export async function GET() {
   const { profile, error } = await requireAuth();
   if (error) return error;
 
-  const data = await getDashboardLayoutData(profile);
+  // Badges already stream in via DeferredBadges in the dashboard shell. Ticket
+  // counts / recents are what pinned this endpoint at 20s and starved every
+  // other page of pooler slots.
+  const data = await getDashboardLayoutData(profile, true);
   return NextResponse.json(data);
 }

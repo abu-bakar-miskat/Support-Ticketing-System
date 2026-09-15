@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdminOrManager } from "@/lib/auth";
 import { getProfileDeptScope } from "@/lib/dept-scope";
+import { runAsSystem } from "@/lib/request-scope";
 
 // GET /api/departments/[id]/mailbox-mail
 // All mail seen by this department's mailbox connection(s): inbound
@@ -22,6 +23,11 @@ export async function GET(
       return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 });
     }
   }
+
+  return runAsSystem(() => loadMailboxMail(departmentId));
+}
+
+async function loadMailboxMail(departmentId: string) {
 
   const department = await prisma.department.findUnique({
     where: { id: departmentId },

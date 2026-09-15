@@ -76,8 +76,14 @@ export async function getUnavailabilityByUserIds(
   userIds?: string[],
 ): Promise<Record<string, UserUnavailability>> {
   const utcToday = toDateKey(new Date())
-  const windowStart = new Date(addDays(utcToday, -45) + "T00:00:00.000Z")
-  const windowEnd = new Date(addDays(utcToday, 45) + "T23:59:59.999Z")
+  // Avatar "away today" badges only need today ±1 day. The 90-day window is for
+  // callers that pass specific user ids (calendar / member config). Scanning
+  // every holiday in the tenant on every dashboard page hung /api/availability
+  // for 10s+ and starved getProfile.
+  const lookback = userIds && userIds.length > 0 ? 45 : 1
+  const lookahead = userIds && userIds.length > 0 ? 45 : 1
+  const windowStart = new Date(addDays(utcToday, -lookback) + "T00:00:00.000Z")
+  const windowEnd = new Date(addDays(utcToday, lookahead) + "T23:59:59.999Z")
 
   const holidayWhere: {
     date: { gte: Date; lte: Date }

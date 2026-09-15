@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { ticketsInScope } from "@/lib/dept-scope"
+import { runAsSystem } from "@/lib/request-scope"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { appendTicketEvent, broadcastTicketEvent } from "@/lib/ticket-events"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
@@ -59,7 +60,7 @@ export async function GET() {
   const disabled = await assertTimeTracking(profile)
   if (disabled) return disabled
 
-  const running = await prisma.timeEntry.findFirst({
+  const running = await runAsSystem(() => prisma.timeEntry.findFirst({
     where: { profileId: profile.id, endedAt: null },
     select: {
       id: true,
@@ -75,7 +76,7 @@ export async function GET() {
       },
     },
     orderBy: { startedAt: "desc" },
-  })
+  }))
 
   if (!running) return NextResponse.json(null)
 

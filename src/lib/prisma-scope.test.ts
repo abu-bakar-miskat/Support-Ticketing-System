@@ -125,6 +125,7 @@ describe("resolveTicketScope — ambient resolution", () => {
       prisma: {
         ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) },
         ticket: { findMany: vi.fn().mockResolvedValue([]) },
+        ticketAssignee: { findMany: vi.fn().mockResolvedValue([]) },
       },
     }));
 
@@ -151,6 +152,7 @@ describe("resolveTicketScope — ambient resolution", () => {
       prisma: {
         ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([{ ticketId: "t-granted" }]) },
         ticket: { findMany: vi.fn().mockResolvedValue([{ id: "t-assigned" }, { id: "t-granted" }]) },
+        ticketAssignee: { findMany: vi.fn().mockResolvedValue([]) },
       },
     }));
 
@@ -179,6 +181,7 @@ describe("resolveTicketScope — ambient resolution", () => {
       prisma: {
         ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) },
         ticket: { findMany: vi.fn().mockResolvedValue([]) },
+        ticketAssignee: { findMany: vi.fn().mockResolvedValue([]) },
       },
     }));
 
@@ -200,6 +203,7 @@ describe("resolveTicketScope — ambient resolution", () => {
       prisma: {
         ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) },
         ticket: { findMany: vi.fn().mockResolvedValue([]) },
+        ticketAssignee: { findMany: vi.fn().mockResolvedValue([]) },
       },
     }));
 
@@ -208,6 +212,37 @@ describe("resolveTicketScope — ambient resolution", () => {
       tenantIds: ["tenant-A"],
       subDepartmentTeamIds: [],
     });
+
+    vi.doUnmock("@/lib/profile");
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
+  it("skips assigned-ticket scans for non-ticket models (projects, settings, mailboxes)", async () => {
+    const ticketFindMany = vi.fn();
+    const grantFindMany = vi.fn();
+    const assigneeFindMany = vi.fn();
+    const resolveSubDepartmentTeamIds = vi.fn();
+    vi.doMock("@/lib/profile", () => ({
+      getProfile: vi.fn().mockResolvedValue({ id: "user-live-4", tenantIds: ["tenant-A"], isSuperAdmin: false }),
+    }));
+    vi.doMock("@/lib/role-assignment", () => ({ resolveSubDepartmentTeamIds }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: {
+        ticketAccessGrant: { findMany: grantFindMany },
+        ticket: { findMany: ticketFindMany },
+        ticketAssignee: { findMany: assigneeFindMany },
+      },
+    }));
+
+    await expect(resolveTicketScope("Project")).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+    });
+    expect(ticketFindMany).not.toHaveBeenCalled();
+    expect(grantFindMany).not.toHaveBeenCalled();
+    expect(assigneeFindMany).not.toHaveBeenCalled();
+    expect(resolveSubDepartmentTeamIds).not.toHaveBeenCalled();
 
     vi.doUnmock("@/lib/profile");
     vi.doUnmock("@/lib/role-assignment");

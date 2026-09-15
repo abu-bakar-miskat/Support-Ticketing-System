@@ -11,38 +11,19 @@ export async function GET() {
   const deptScope = await getProfileDeptScope(profile);
   const departmentId = deptScope?.activeDeptId ?? null;
 
-  // deptScope already resolved the caller's access; the remaining reads are
-  // narrowed by explicit department/sub-department ids, so run them unscoped
-  // to avoid re-triggering the per-query scope waterfall on the shared pooler.
-  const { labels, tickets } = await runAsSystem(async () => {
-    const [labels, tickets] = await Promise.all([
-      prisma.label.findMany({
-        where: { departmentId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, color: true },
-      }),
-      // Also include labels used in tickets that aren't in the registry yet
-      prisma.ticket.findMany({
-        where: {
-          deletedAt: null,
-          ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : {}),
-        },
-        select: { labels: true },
-      }),
-    ]);
-    return { labels, tickets };
-  });
-
-  const ticketLabelCounts = new Map<string, number>();
-  for (const t of tickets) {
-    for (const l of t.labels) {
-      ticketLabelCounts.set(l, (ticketLabelCounts.get(l) ?? 0) + 1);
-    }
-  }
+  // Registry only. Scanning every ticket just to count label usage filled the
+  // pooler on board/task pages. The picker treats missing counts as unused.
+  const labels = await runAsSystem(() =>
+    prisma.label.findMany({
+      where: { departmentId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, color: true },
+    }),
+  );
 
   return NextResponse.json({
     labels,
-    counts: Object.fromEntries(ticketLabelCounts),
+    counts: {},
   });
 }
 

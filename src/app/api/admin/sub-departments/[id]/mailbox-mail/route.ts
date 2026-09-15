@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
+import { runAsSystem } from "@/lib/request-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -27,10 +28,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (error) return error
 
   const { id } = await params
-  const subDepartment = await prisma.subDepartment.findUnique({
-    where: { id },
-    select: { id: true, departmentId: true },
-  })
+  const subDepartment = await runAsSystem(() =>
+    prisma.subDepartment.findUnique({
+      where: { id },
+      select: { id: true, departmentId: true },
+    }),
+  )
   if (!subDepartment) {
     return NextResponse.json({ error: "Sub-department not found" }, { status: 404 })
   }
@@ -42,12 +45,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     }
   }
 
-  const connections = await prisma.mailboxConnection.findMany({
-    where: { subDepartmentId: id },
-    select: { id: true, address: true, status: true, subDepartmentId: true },
-  })
+  const connections = await runAsSystem(() =>
+    prisma.mailboxConnection.findMany({
+      where: { subDepartmentId: id },
+      select: { id: true, address: true, status: true, subDepartmentId: true },
+    }),
+  )
 
-  const [messages, suppressed] = await Promise.all([
+  const [messages, suppressed] = await runAsSystem(() => Promise.all([
     prisma.ticketMessage.findMany({
       where: { direction: "inbound", ticket: { subDepartmentId: id } },
       // One row per ticket — its earliest inbound message, i.e. the email that
@@ -84,7 +89,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           take: 200,
         })
       : Promise.resolve([]),
-  ])
+  ]))
 
   const sortedMessages = messages
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())

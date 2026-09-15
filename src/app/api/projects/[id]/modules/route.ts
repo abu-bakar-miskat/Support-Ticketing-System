@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { projectInScope } from "@/lib/dept-scope"
 import { canManageModules } from "@/lib/module-permissions"
+import { runAsSystem } from "@/lib/request-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -16,7 +17,7 @@ export async function GET(_req: Request, { params }: Params) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 })
   }
 
-  const project = await prisma.project.findUnique({
+  const project = await runAsSystem(() => prisma.project.findUnique({
     where: { id },
     select: {
       moduleSystemEnabled: true,
@@ -31,7 +32,7 @@ export async function GET(_req: Request, { params }: Params) {
         },
       },
     },
-  })
+  }))
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 })
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getSlaIndicatorForTicket } from "@/lib/sla-engine"
+import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/tickets/[id]/sla — the ticket's SLA indicator (SLA-06): status +
 // remaining/overdue time for first-response and resolution. Returns
@@ -15,7 +16,7 @@ export async function GET(
 
   const { id: ticketId } = await params
 
-  const ticket = await prisma.ticket.findUnique({
+  const ticket = await runAsSystem(() => prisma.ticket.findUnique({
     where: { id: ticketId },
     select: {
       id: true,
@@ -27,12 +28,12 @@ export async function GET(
       assignees: { select: { userId: true } },
       subDepartment: { select: { departmentId: true } },
     },
-  })
+  }))
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
 
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
 
-  const indicator = await getSlaIndicatorForTicket(ticketId)
+  const indicator = await runAsSystem(() => getSlaIndicatorForTicket(ticketId))
   return NextResponse.json({ indicator })
 }

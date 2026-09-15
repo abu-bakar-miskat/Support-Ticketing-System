@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { runAsSystem } from "@/lib/request-scope"
 import { avatarColorFor } from "@/lib/avatar"
 import { entrySeconds, formatHm, relativeAgo } from "@/lib/time-data"
 import { getProfileDeptScope } from "@/lib/dept-scope"
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
   }
 
   const [profiles, weekEntries, closedGroups, closedLastWeek] =
-    await Promise.all([
+    await runAsSystem(() => Promise.all([
       prisma.profile.findMany({
         where: memberWhere,
         include: { subDepartment: { select: { name: true } } },
@@ -98,7 +99,7 @@ export async function GET(request: Request) {
           ...ticketWhere,
         },
       }),
-    ])
+    ]))
 
   const closedByAssignee = new Map<string | null, number>(
     closedGroups.map((g) => [g.assigneeId, g._count._all]),

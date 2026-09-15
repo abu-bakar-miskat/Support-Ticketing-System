@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { canAdminDeptSettings } from "@/lib/dept-scope";
+import { runAsSystem } from "@/lib/request-scope";
 import { DepartmentMailboxPage } from "@/components/settings/department-mailbox-page";
 
 export const metadata = { title: "Mailbox — Support Ticketing System" };
@@ -16,10 +17,12 @@ export default async function DepartmentMailboxRoute({
 
   const { id: departmentId } = await params;
 
-  const department = await prisma.department.findUnique({
-    where: { id: departmentId },
-    select: { id: true, name: true },
-  });
+  const department = await runAsSystem(() =>
+    prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { id: true, name: true },
+    }),
+  );
   if (!department) notFound();
 
   const canManage = canAdminDeptSettings(profile, departmentId);

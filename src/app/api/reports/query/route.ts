@@ -8,6 +8,7 @@ import { computeCrossDepartmentReport } from "@/lib/reporting/cross-department-r
 import { REPORT_TYPES, type ReportType } from "@/lib/reporting/export-doc";
 import type { FormFieldFilter } from "@/lib/board-search";
 import { assertFeatureEnabled } from "@/lib/feature-flags";
+import { runAsSystem } from "@/lib/request-scope";
 
 function isReportType(v: string | null): v is ReportType {
   return !!v && (REPORT_TYPES as readonly string[]).includes(v);
@@ -52,6 +53,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Report where-clauses already encode tenant/sub-department bounds.
+  return runAsSystem(() => loadReport(reportType, scope, start, end, sp));
+}
+
+async function loadReport(
+  reportType: ReportType,
+  scope: Awaited<ReturnType<typeof resolveReportScope>>,
+  start: Date,
+  end: Date,
+  sp: URLSearchParams,
+) {
   if (reportType === "cross_department") {
     if (scope.kind !== "cross_department") {
       return NextResponse.json(
@@ -73,7 +85,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ reportType, ...report });
   }
 
-  // custom_field
   const groupByFieldId = sp.get("groupByFieldId");
   if (!groupByFieldId) {
     return NextResponse.json({ error: "groupByFieldId is required for custom_field reports" }, { status: 400 });

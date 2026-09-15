@@ -29,11 +29,6 @@ const projectSelect = {
   subDepartmentId: true,
   departmentId: true,
   projectStatus: true,
-  _count: {
-    select: {
-      tickets: { where: { deletedAt: null } },
-    },
-  },
   subDepartment: { select: { department: { select: { id: true, name: true } } } },
   department: { select: { id: true, name: true } },
 } as const;
@@ -111,13 +106,13 @@ async function loadDashboardLayoutData(
             ? { tenantId: profile.activeTenantId ?? "__no_tenant__" }
             : { id: { in: allowedDeptIds ?? [] } },
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, type: true },
         })
       : !isDeptLevel && crossDeptIds.length > 0
         ? prisma.department.findMany({
             where: { id: { in: crossDeptIds } },
             orderBy: { name: "asc" },
-            select: { id: true, name: true },
+            select: { id: true, name: true, type: true },
           })
         : Promise.resolve([]),
     isDeptLevel
@@ -125,7 +120,7 @@ async function loadDashboardLayoutData(
           where: deptScope
             ? { departmentId: deptScope.activeDeptId }
             : isAdmin
-              ? {}
+              ? { tenantId: profile.activeTenantId ?? "__no_tenant__" }
               : { departmentId: { in: allowedDeptIds ?? [] } },
           orderBy: { name: "asc" },
           select: {
@@ -154,20 +149,13 @@ async function loadDashboardLayoutData(
   ) {
     const activeDept = await prisma.department.findUnique({
       where: { id: activeDeptId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, type: true },
     });
     if (activeDept) allDepts = [activeDept, ...allDepts];
   }
 
   // The active department's template type — drives per-type nav in the sidebar.
-  const activeDeptType = activeDeptId
-    ? (
-        await prisma.department.findUnique({
-          where: { id: activeDeptId },
-          select: { type: true },
-        })
-      )?.type ?? null
-    : null;
+  const activeDeptType = allDepts.find((d) => d.id === activeDeptId)?.type ?? null;
 
   const crossAccessDeptIds = allDepts
     .filter((d) => checkIsCrossAccessDept(profile, d.id))
@@ -216,7 +204,7 @@ async function loadDashboardLayoutData(
       : deptScope
         ? buildProjectDeptWhere(deptScope)
         : isAdmin
-          ? {}
+          ? { tenantId: profile.activeTenantId ?? "__no_tenant__" }
           : isManager && allowedDeptIds
             ? {
                 OR: [
@@ -235,26 +223,8 @@ async function loadDashboardLayoutData(
         activeDeptId,
       );
 
-  const recentTicketWhere = deptScope?.isCrossAccessOnly && profile.id
-    ? {
-        deletedAt: null,
-        project: {
-          members: { some: { userId: profile.id } },
-          OR: [
-            { departmentId: deptScope.activeDeptId },
-            { subDepartment: { departmentId: deptScope.activeDeptId } },
-          ],
-        },
-      }
-    : deptScope
-      ? { deletedAt: null, subDepartmentId: { in: deptScope.subDepartmentIds } }
-      : visibleSubDepartmentIds.length > 0
-        ? { deletedAt: null, subDepartmentId: { in: visibleSubDepartmentIds } }
-        : { deletedAt: null };
-
   const [
     projects,
-    recentTicketRows,
     assignedRows,
     badges,
     activeFeatureKeySet,
@@ -264,18 +234,6 @@ async function loadDashboardLayoutData(
       where: projectWhere,
       orderBy: { name: "asc" },
       select: projectSelect,
-    }),
-    prisma.ticket.findMany({
-      where: recentTicketWhere,
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        title: true,
-        ticketNumber: true,
-        status: true,
-        subDepartment: { select: { prefix: true } },
-      },
     }),
     prisma.projectMember.findMany({
       where: { userId: profile.id },
@@ -298,23 +256,6 @@ async function loadDashboardLayoutData(
 
   const dedupedProjects = dedupeSupportProjects(dedupeMiscProjects(projects));
 
-  const miscProjectIdRedirect = new Map<string, string>();
-  for (const project of projects) {
-    if (project.name !== "Miscellaneous" || !project.subDepartmentId) continue;
-    const canonical = dedupedProjects.find(
-      (row) => row.name === "Miscellaneous" && row.subDepartmentId === project.subDepartmentId,
-    );
-    if (canonical && canonical.id !== project.id) {
-      miscProjectIdRedirect.set(project.id, canonical.id);
-    }
-  }
-
-  const ticketCounts = new Map<string, number>();
-  for (const project of projects) {
-    const targetId = miscProjectIdRedirect.get(project.id) ?? project.id;
-    ticketCounts.set(targetId, (ticketCounts.get(targetId) ?? 0) + project._count.tickets);
-  }
-
   const pinnedProjectIds = parsePinnedProjectIds(profile.preferences);
   const assignedProjectIds = assignedRows.map((m) => m.projectId);
 
@@ -324,7 +265,7 @@ async function loadDashboardLayoutData(
     href: `/projects/${p.slug}`,
     color: p.color ?? "#0a76b9",
     avatarUrl: p.avatarUrl ?? null,
-    count: ticketCounts.get(p.id) ?? 0,
+    count: 0,
     subDepartmentId: p.subDepartmentId ?? null,
     kind: p.kind,
     projectStatus: p.projectStatus ?? "pipeline",
@@ -332,12 +273,7 @@ async function loadDashboardLayoutData(
     departmentName: p.department?.name ?? p.subDepartment?.department?.name ?? null,
   }));
 
-  const recentTickets = recentTicketRows.map((t) => ({
-    dbId: t.id,
-    ticketId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
-    label: t.title,
-    meta: t.status,
-  }));
+  const recentTickets: LayoutData["recentTickets"] = [];
 
   const projectNames = Object.fromEntries(
     dedupedProjects.flatMap((p) => [
@@ -374,7 +310,7 @@ async function loadDashboardLayoutData(
     projects: visibleProjects,
     subDepartments,
     departments: [...deptProjectMap.values()],
-    allDepts,
+    allDepts: allDepts.map(({ id, name }) => ({ id, name })),
     activeDeptId,
     activeDeptType,
     isCrossAccessDept,

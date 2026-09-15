@@ -8,6 +8,22 @@ import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
 import { runAsSystem } from "@/lib/request-scope"
 
+type AuthUser = {
+  id: string
+  email: string
+  user_metadata: Record<string, unknown>
+}
+
+const PROFILE_TTL_MS = process.env.NODE_ENV === "test" ? 0 : 8_000
+const globalForProfile = globalThis as unknown as {
+  profileByUserId?: Map<string, { at: number; profile: object }>
+  profileInflight?: Map<string, Promise<object | null>>
+}
+const profileByUserId = globalForProfile.profileByUserId ?? new Map()
+const profileInflight = globalForProfile.profileInflight ?? new Map()
+globalForProfile.profileByUserId = profileByUserId
+globalForProfile.profileInflight = profileInflight
+
 export type ProfileMembership = {
   subDepartmentId: string
   role: string
@@ -119,7 +135,27 @@ export const getProfile = cache(async () => {
     user_metadata: (claims.user_metadata ?? {}) as Record<string, unknown>,
   }
 
-  try {
+  const cached = PROFILE_TTL_MS > 0 ? profileByUserId.get(user.id) : undefined
+  if (cached && Date.now() - cached.at < PROFILE_TTL_MS) {
+    return cached.profile as Awaited<ReturnType<typeof loadAuthedProfile>>
+  }
+
+  const inflight = profileInflight.get(user.id)
+  if (inflight) return inflight as Promise<Awaited<ReturnType<typeof loadAuthedProfile>>>
+
+  const pending = loadAuthedProfile(user).then((profile) => {
+    if (profile && PROFILE_TTL_MS > 0) {
+      profileByUserId.set(user.id, { at: Date.now(), profile })
+    }
+    return profile
+  }).finally(() => {
+    if (profileInflight.get(user.id) === pending) profileInflight.delete(user.id)
+  })
+  profileInflight.set(user.id, pending)
+  return pending
+})
+
+const loadAuthedProfile = async (user: AuthUser) => {
     // Fetch the profile and its relations in one parallel batch. Reconciliation
     // already runs at login (auth/callback), so on the hot path this is the only
     // round-trip getProfile makes.
@@ -248,8 +284,4 @@ export const getProfile = cache(async () => {
       tenantIds,
       activeTenantId,
     }
-  } catch (error) {
-    console.error("Failed to load profile:", error)
-    throw error
-  }
-})
+}

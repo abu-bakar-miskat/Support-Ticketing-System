@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { runAsSystem } from "@/lib/request-scope"
 
 export async function GET(
   _request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
   if (error) return error
 
   const { id: ticketId } = await params
-  const ticket = await prisma.ticket.findUnique({
+  const ticket = await runAsSystem(() => prisma.ticket.findUnique({
     where: { id: ticketId },
     select: {
       id: true,
@@ -22,7 +23,7 @@ export async function GET(
       assignees: { select: { userId: true } },
       subDepartment: { select: { departmentId: true } },
     },
-  })
+  }))
   if (!ticket || ticket.deletedAt) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
@@ -30,7 +31,7 @@ export async function GET(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
 
-  const logs = await prisma.ruleExecutionLog.findMany({
+  const logs = await runAsSystem(() => prisma.ruleExecutionLog.findMany({
     where: { ticketId },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -42,7 +43,7 @@ export async function GET(
       stopProcessing: true,
       createdAt: true,
     },
-  })
+  }))
 
   return NextResponse.json({
     logs: logs.map((l) => ({

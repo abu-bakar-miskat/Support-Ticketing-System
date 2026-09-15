@@ -8,6 +8,7 @@ import {
   type DepartmentOption,
 } from "@/components/settings/settings-api-keys-page"
 import type { ApiKeyScope } from "@/generated/prisma/enums"
+import { runAsSystem } from "@/lib/request-scope"
 
 export const metadata = { title: "API keys — Support Ticketing System" }
 
@@ -44,7 +45,7 @@ export default async function SettingsApiKeysRoute() {
   const activeDeptId = deptScope?.activeDeptId ?? null
   const tenantId = profile.activeTenantId ?? "__no_tenant__"
 
-  const [dbKeys, departments] = await Promise.all([
+  const [dbKeys, departments] = await runAsSystem(() => Promise.all([
     prisma.apiKey.findMany({
       where: isAdmin
         ? activeDeptId ? { departmentId: activeDeptId } : { department: { tenantId } }
@@ -62,7 +63,7 @@ export default async function SettingsApiKeysRoute() {
           orderBy: { name: "asc" },
           select: { id: true, name: true },
         }),
-  ])
+  ]))
 
   const apiKeys: ApiKeyRow[] = dbKeys.map((key) => ({
     id: key.id,

@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { getProjectDetailsData } from "@/lib/project-details-data";
 import { canManageProjects } from "@/lib/project-permissions";
 import { ProjectProfilePage } from "@/components/projects/project-profile-page";
@@ -21,14 +22,14 @@ async function ProjectDetailData({ params }: Props) {
   if (!initialData) {
     // Distinguish "doesn't exist" (404) from "exists but no access" (friendly
     // access-denied page) — getProjectDetailsData returns null for both.
-    const existing = await prisma.project.findFirst({
+    const existing = await runAsSystem(() => prisma.project.findFirst({
       where: { OR: [{ slug: id }, { id }] },
       select: {
         name: true,
         department: { select: { name: true } },
         subDepartment: { select: { department: { select: { name: true } } } },
       },
-    });
+    }));
     if (!existing) notFound();
     return (
       <ProjectAccessDenied
@@ -50,15 +51,15 @@ async function ProjectDetailData({ params }: Props) {
     const canManage = canManageProjects(profile) && !isCrossAccess;
 
     if (profile.role === "admin") {
-      createDepartments = await prisma.department.findMany({
+      createDepartments = await runAsSystem(() => prisma.department.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true },
-      });
+      }));
     } else if (deptScope?.activeDeptId) {
-      const dept = await prisma.department.findUnique({
+      const dept = await runAsSystem(() => prisma.department.findUnique({
         where: { id: deptScope.activeDeptId },
         select: { id: true, name: true },
-      });
+      }));
       if (dept) {
         createDepartments = [dept];
         if (canManage) {

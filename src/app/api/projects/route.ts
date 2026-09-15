@@ -5,6 +5,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope"
 import { dedupeMiscProjects } from "@/lib/misc-project"
 import { dedupeSupportProjects } from "@/lib/support-project"
 import { assignedProjectsInDeptWhere } from "@/lib/cross-access"
+import { runAsSystem } from "@/lib/request-scope"
 
 export async function GET() {
   const { profile, error } = await requireAuth()
@@ -14,7 +15,7 @@ export async function GET() {
   const isAdmin = profile.role === "admin"
   const isManager = profile.role === "manager"
 
-  const rawProjects = await (async () => {
+  const rawProjects = await runAsSystem(async () => {
     if (deptScope?.activeDeptId) {
       const id = deptScope.activeDeptId
       if (deptScope.isCrossAccessOnly) {
@@ -61,7 +62,7 @@ export async function GET() {
       },
     })
     return memberships.map((m) => m.project)
-  })()
+  })
 
   const projects = dedupeSupportProjects(dedupeMiscProjects(rawProjects)).map(
     ({ slug: _slug, subDepartmentId, departmentId: _departmentId, ...p }) => ({ ...p, subDepartmentId }),

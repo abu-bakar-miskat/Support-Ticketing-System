@@ -6,6 +6,7 @@ import { canAccessModulesArea } from "@/lib/module-permissions"
 import { getSubDepartmentStatusesForSubDepartmentIds } from "@/lib/board-data"
 import { DEFAULT_STATUSES } from "@/components/board/board-types"
 import { parseEnabledBoardSubDepartmentIds } from "@/lib/project-boards"
+import { runAsSystem } from "@/lib/request-scope"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -40,6 +41,11 @@ export async function GET(_req: Request, { params }: Params) {
   if (!(await projectInScope(profile, id))) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 })
   }
+
+  return runAsSystem(() => loadModuleRollup(id))
+}
+
+async function loadModuleRollup(id: string) {
 
   const project = await prisma.project.findUnique({
     where: { id },

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
+import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/departments/upcoming-holidays
 // Top-bar indicator data for the active department: holidays in the next 7 days
@@ -21,7 +22,8 @@ export async function GET() {
   const eventTo = new Date(from)
   eventTo.setDate(eventTo.getDate() + 2)
 
-  const [holidays, events] = await Promise.all([
+  const [holidays, events] = await runAsSystem(() =>
+    Promise.all([
     prisma.departmentHoliday.findMany({
       where: { departmentId: deptScope.activeDeptId, startDate: { lte: holidayTo }, endDate: { gte: from } },
       orderBy: { startDate: "asc" },
@@ -32,7 +34,8 @@ export async function GET() {
       orderBy: { startDate: "asc" },
       select: { id: true, title: true, type: true, startDate: true, endDate: true },
     }),
-  ])
+  ]),
+  )
 
   return NextResponse.json({ holidays, events })
 }

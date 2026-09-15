@@ -33,7 +33,7 @@ export async function getProjectDetailsData(
   profile: Profile,
   idOrSlug: string,
 ): Promise<ProjectDetailsResponse | null> {
-  const project = await prisma.project.findFirst({
+  const project = await runAsSystem(() => prisma.project.findFirst({
     where: { OR: [{ slug: idOrSlug }, { id: idOrSlug }] },
     include: {
       department: { select: { id: true, name: true } },
@@ -56,7 +56,7 @@ export async function getProjectDetailsData(
         },
       },
     },
-  });
+  }));
 
   if (!project) return null;
 

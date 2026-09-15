@@ -322,6 +322,7 @@ export default async function SettingsMembersRoute() {
       currentUserId={profile.id}
       departmentId={activeDeptId}
       departmentName={activeDept?.name ?? null}
+      tenantId={profile.activeTenantId ?? null}
     />
   );
 }

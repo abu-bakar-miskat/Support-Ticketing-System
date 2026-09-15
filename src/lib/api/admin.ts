@@ -404,6 +404,28 @@ export async function createDepartmentInvite(
   return res.json()
 }
 
+export async function createTenantInvite(
+  tenantId: string,
+  body: {
+    email: string
+    role: "admin" | "manager" | "sub_manager" | "agent"
+    departmentIds?: string[]
+    subDepartmentId?: string | null
+    message?: string
+  },
+): Promise<{ id: string; email: string; role: string; token: string; acceptPath: string }> {
+  const res = await fetch(`/api/admin/tenants/${tenantId}/invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to send invite")
+  }
+  return res.json()
+}
+
 export async function revokeDepartmentInvite(deptId: string, inviteId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/invites/${inviteId}`, {
     method: "DELETE",

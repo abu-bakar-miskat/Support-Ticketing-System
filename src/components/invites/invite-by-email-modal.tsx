@@ -10,28 +10,46 @@ import {
 } from "@/lib/api/admin";
 
 export function InviteByEmailModal({
-  deptId,
+  deptId: fixedDeptId,
+  departments,
   subDepartments,
   onSent,
   onClose,
 }: {
-  deptId: string;
-  subDepartments: { id: string; name: string }[];
+  /** Fixed department (department-scoped surface). Omit to let the caller pick. */
+  deptId?: string;
+  /** When provided (and no fixed deptId), a department picker is shown — used by
+   *  the tenant-wide Members page so an admin can invite into any department. */
+  departments?: { id: string; name: string }[];
+  subDepartments: { id: string; name: string; departmentId?: string | null }[];
   onSent?: (invite: DepartmentInviteRow) => void;
   onClose: () => void;
 }) {
+  const showDeptPicker = !fixedDeptId && !!departments && departments.length > 0;
+  const [deptId, setDeptId] = useState(fixedDeptId ?? departments?.[0]?.id ?? "");
   const [email, setEmail] = useState("");
-  const [subDepartmentId, setSubDepartmentId] = useState(subDepartments[0]?.id ?? "");
+  // Sub-departments belonging to the chosen department (legacy rows with no
+  // departmentId are always eligible).
+  const subOptions = showDeptPicker
+    ? subDepartments.filter((s) => s.departmentId == null || s.departmentId === deptId)
+    : subDepartments;
+  const [subDepartmentId, setSubDepartmentId] = useState(subOptions[0]?.id ?? "");
   const [role, setRole] = useState<"agent" | "sub_manager">("agent");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function changeDept(next: string) {
+    setDeptId(next);
+    const first = subDepartments.find((s) => s.departmentId == null || s.departmentId === next);
+    setSubDepartmentId(first?.id ?? "");
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!email.trim() || !subDepartmentId) {
-      setError("Email and sub department are required");
+    if (!email.trim() || !deptId || !subDepartmentId) {
+      setError("Email, department and sub department are required");
       return;
     }
     setSaving(true);
@@ -58,7 +76,7 @@ export function InviteByEmailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Invite by email</p>
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Invite new member</p>
           <button type="button" onClick={onClose} aria-label="Close">
             <X className="size-4 text-sts-muted" />
           </button>
@@ -80,6 +98,22 @@ export function InviteByEmailModal({
               Recipient must sign in with their Microsoft work account.
             </p>
           </div>
+          {showDeptPicker && (
+            <div>
+              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+                Department
+              </label>
+              <SearchableSelect
+                aria-label="Department"
+                value={deptId}
+                onChange={changeDept}
+                options={departments!.map((d) => ({ value: d.id, label: d.name }))}
+                placeholder="Select a department…"
+                searchPlaceholder="Search departments…"
+                className="w-full bg-sts-surface"
+              />
+            </div>
+          )}
           <div>
             <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
               SubDepartment
@@ -88,8 +122,8 @@ export function InviteByEmailModal({
               aria-label="SubDepartment"
               value={subDepartmentId}
               onChange={setSubDepartmentId}
-              options={subDepartments.map((t) => ({ value: t.id, label: t.name }))}
-              placeholder={subDepartments.length === 0 ? "No sub departments available" : "Select a sub department…"}
+              options={subOptions.map((t) => ({ value: t.id, label: t.name }))}
+              placeholder={subOptions.length === 0 ? "No sub departments available" : "Select a sub department…"}
               searchPlaceholder="Search sub departments…"
               emptyLabel="No sub departments available"
               className="w-full bg-sts-surface"

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown } from "lucide-react";
+import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Table,
@@ -23,7 +23,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma/enums";
 import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, revokeDepartmentAccess } from "@/lib/api/admin";
-import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
+import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
 
@@ -192,7 +192,7 @@ export function AddMemberModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
           <span className="font-sans text-[14px] font-semibold text-sts-foreground">
-            Add member
+            Add existing members
           </span>
           <button
             type="button"
@@ -373,6 +373,7 @@ export function SettingsMembersPage({
   currentUserId,
   departmentId = null,
   departmentName = null,
+  tenantId = null,
 }: {
   members: MemberRow[];
   isAdmin: boolean;
@@ -382,6 +383,7 @@ export function SettingsMembersPage({
   currentUserId?: string;
   departmentId?: string | null;
   departmentName?: string | null;
+  tenantId?: string | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -625,9 +627,11 @@ export function SettingsMembersPage({
         onClose={() => setAddMemberOpen(false)}
       />
     )}
-    {inviteOpen && departmentId && (
-      <InviteByEmailModal
-        deptId={departmentId}
+    {inviteOpen && tenantId && (
+      <InviteMemberModal
+        tenantId={tenantId}
+        canInvitePrivileged={isAdmin}
+        departments={availableDepartments}
         subDepartments={availableSubDepartments}
         onSent={() => {
           toast.success("Invitation sent");
@@ -669,25 +673,28 @@ export function SettingsMembersPage({
         </div>
         {(isAdmin || isManager) && (departmentId || availableDepartments.length > 0) && (
           <div className="flex shrink-0 items-center gap-2">
-            {departmentId && (
-              <button
-                type="button"
-                onClick={() => setInviteOpen(true)}
-                disabled={availableSubDepartments.length === 0}
-                title={availableSubDepartments.length === 0 ? "Create a subDepartment before inviting" : undefined}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Plus className="size-3.5" />
-                Invite by email
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              disabled={!isAdmin && availableSubDepartments.length === 0}
+              title={
+                !isAdmin && availableSubDepartments.length === 0
+                  ? "Create a sub-department before inviting"
+                  : "Send an email invite to someone without an account"
+              }
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Mail className="size-3.5" />
+              Invite new members
+            </button>
             <button
               type="button"
               onClick={() => setAddMemberOpen(true)}
+              title="Add people who already have an account"
               className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
             >
               <Plus className="size-3.5" />
-              Add member
+              Add existing members
             </button>
           </div>
         )}

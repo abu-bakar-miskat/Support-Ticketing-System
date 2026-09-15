@@ -1113,11 +1113,6 @@ function DepartmentCard({
             )}
           </div>
 
-          {dept.accessGrants.length > 0 && (
-            <p className="border-t border-sts-card-border/70 px-3.5 py-2 font-sans text-[11px] text-sts-subtle">
-              {dept.accessGrants.length} cross-department access grant{dept.accessGrants.length !== 1 ? "s" : ""} — open Manage to review
-            </p>
-          )}
         </div>
 
         {/* Actions */}

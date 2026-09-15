@@ -107,7 +107,6 @@ export function JoinRequestDetailPane({
   showBack?: boolean
 }) {
   const router = useRouter()
-  const [accessType, setAccessType] = useState<"full" | "cross-access">("full")
   const [selectedRole, setSelectedRole] = useState<Role>("agent")
   const [nickname, setNickname] = useState("")
   const [isActive, setIsActive] = useState(true)
@@ -123,9 +122,9 @@ export function JoinRequestDetailPane({
       try {
         await handleJoinRequest(notification.subDepartmentId, notification.requestId, {
           action,
-          ...(action === "approve" && accessType === "cross-access"
-            ? { crossAccess: true }
-            : { role: selectedRole, nickname: nickname.trim() || null, isActive }
+          ...(action === "approve"
+            ? { role: selectedRole, nickname: nickname.trim() || null, isActive }
+            : {}
           ),
         })
         setLocalStatus(action === "approve" ? "approved" : "rejected")
@@ -221,40 +220,6 @@ export function JoinRequestDetailPane({
               APPROVAL OPTIONS
             </p>
 
-            {/* Access type toggle */}
-            <div className="mb-3">
-              <label className="mb-1.5 block font-sans text-[11.5px] text-sts-subtle">
-                Access type
-              </label>
-              <div className="flex gap-2">
-                {(["full", "cross-access"] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setAccessType(type)}
-                    className={cn(
-                      "flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-all",
-                      accessType === type
-                        ? "border-sts-id bg-sts-blue-tint"
-                        : "border-sts-card-border bg-sts-bg hover:border-sts-id/40",
-                    )}
-                  >
-                    <span className={cn(
-                      "font-sans text-[12px] font-semibold",
-                      accessType === type ? "text-sts-id" : "text-sts-foreground",
-                    )}>
-                      {type === "full" ? "Full member" : "Cross-sub-department"}
-                    </span>
-                    <span className="font-sans text-[11px] text-sts-subtle">
-                      {type === "full" ? "Joins as sub-department member" : "Add access to this sub-department (keeps their home)"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Full member options */}
-            {accessType === "full" && (<>
             {/* Role selector */}
             <div className="mb-3">
               <label className="mb-1 block font-sans text-[11.5px] text-sts-subtle">
@@ -308,7 +273,6 @@ export function JoinRequestDetailPane({
                 Active membership
               </span>
             </div>
-            </>)}
 
             {/* Action buttons */}
             <div className="flex gap-2">

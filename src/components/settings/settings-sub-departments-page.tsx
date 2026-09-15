@@ -54,7 +54,6 @@ import {
   deleteAdminSubDepartment,
   handleDepartmentJoinRequest,
 } from "@/lib/api/admin";
-import { ProjectAccessPicker } from "@/components/settings/settings-departments-page";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { notifEvents } from "@/store";
 
@@ -1024,14 +1023,13 @@ function timeAgoShort(isoString: string) {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-type ApprovalRole = "admin" | "manager" | "sub_manager" | "agent" | "cross-access";
+type ApprovalRole = "admin" | "manager" | "sub_manager" | "agent";
 
 const APPROVAL_ROLES: { value: ApprovalRole; label: string; hint: string }[] = [
   { value: "admin",        label: "Admin",           hint: "Full workspace access" },
   { value: "manager",      label: "Manager",         hint: "Manages whole department" },
   { value: "sub_manager",         label: "Sub-manager",     hint: "Sub-manager — pick a sub-department" },
   { value: "agent",        label: "Agent",           hint: "Member — pick a sub-department" },
-  { value: "cross-access", label: "Cross-dept access", hint: "Managers only — guest access to this department" },
 ];
 
 function JoinRequestsSection({
@@ -1048,19 +1046,6 @@ function JoinRequestsSection({
   const [nickname, setNickname] = useState("");
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [approveError, setApproveError] = useState<string | null>(null);
-  const [crossPermanent, setCrossPermanent] = useState(true);
-  const [crossExpiresAt, setCrossExpiresAt] = useState("");
-  const [crossReason, setCrossReason] = useState("");
-  const [crossFullAccess, setCrossFullAccess] = useState(false);
-  const [crossSelectedProjectIds, setCrossSelectedProjectIds] = useState<Set<string>>(new Set());
-
-  function toggleCrossProject(id: string) {
-    setCrossSelectedProjectIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
 
   // When another admin approves/rejects, remove the request from our list
   useEffect(() => {
@@ -1075,7 +1060,6 @@ function JoinRequestsSection({
   if (requests.length === 0) return null;
 
   const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "agent";
-  const isCrossAccess = selectedRole === "cross-access";
 
   function openExpand(req: PendingRequest) {
     const id = req.id;
@@ -1084,23 +1068,14 @@ function JoinRequestsSection({
     setSelectedRole("agent");
     setNickname("");
     setApproveError(null);
-    setCrossPermanent(true);
-    setCrossExpiresAt("");
-    setCrossReason("");
-    setCrossFullAccess(false);
-    setCrossSelectedProjectIds(new Set());
   }
 
   async function handleAction(
     req: PendingRequest,
     action: "approve" | "reject",
   ) {
-    if (action === "approve" && needsSubDepartment && !isCrossAccess && !selectedSubDepartmentId) {
+    if (action === "approve" && needsSubDepartment && !selectedSubDepartmentId) {
       setApproveError("Please select a sub-department");
-      return;
-    }
-    if (action === "approve" && isCrossAccess && !crossFullAccess && crossSelectedProjectIds.size === 0) {
-      setApproveError("Select at least one project, or choose full access");
       return;
     }
     setApproveError(null);
@@ -1114,14 +1089,6 @@ function JoinRequestsSection({
                 role: selectedRole,
                 ...(needsSubDepartment ? { subDepartmentId: selectedSubDepartmentId } : {}),
                 nickname: nickname.trim() || null,
-                ...(isCrossAccess
-                  ? {
-                      fullAccess: crossFullAccess,
-                      projectIds: [...crossSelectedProjectIds],
-                      expiresAt: crossPermanent ? undefined : crossExpiresAt || undefined,
-                      reason: crossReason || undefined,
-                    }
-                  : {}),
               }
             : {}),
         });
@@ -1203,7 +1170,7 @@ function JoinRequestsSection({
                             type="button"
                             onClick={() => {
                               setSelectedRole(r.value);
-                              if (r.value === "admin" || r.value === "manager" || r.value === "cross-access") setSelectedSubDepartmentId("");
+                              if (r.value === "admin" || r.value === "manager") setSelectedSubDepartmentId("");
                               else setSelectedSubDepartmentId(req.subDepartments[0]?.id ?? "");
                               setApproveError(null);
                             }}
@@ -1252,77 +1219,19 @@ function JoinRequestsSection({
                       </div>
                     )}
 
-                    {/* Nickname — not applicable for cross-access guests (no subDepartment membership) */}
-                    {!isCrossAccess && (
-                      <div className="flex min-w-[180px] flex-1 flex-col gap-1.5">
-                        <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
-                          Display name <span className="text-sts-subtle/60">(optional)</span>
-                        </label>
-                        <input
-                          value={nickname}
-                          onChange={(e) => setNickname(e.target.value)}
-                          placeholder={req.userName}
-                          className="h-9 rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle/50 focus:border-sts-id focus:ring-1 focus:ring-sts-id/20"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cross-department access — same duration/project-access/reason flow as the standalone grant */}
-                  {isCrossAccess && (
-                    <div className="mt-3 flex flex-col gap-3">
-                      <div>
-                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-subtle">Access duration</label>
-                        <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
-                          <button
-                            type="button"
-                            onClick={() => setCrossPermanent(true)}
-                            className={cn(
-                              "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                              crossPermanent ? "bg-sts-id text-white dark:text-gray-900" : "bg-sts-bg text-sts-muted hover:text-sts-foreground",
-                            )}
-                          >
-                            Permanent
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCrossPermanent(false)}
-                            className={cn(
-                              "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
-                              !crossPermanent ? "bg-sts-id text-white dark:text-gray-900" : "bg-sts-bg text-sts-muted hover:text-sts-foreground",
-                            )}
-                          >
-                            Set expiry
-                          </button>
-                        </div>
-                        {!crossPermanent && (
-                          <input
-                            type="date"
-                            value={crossExpiresAt}
-                            onChange={(e) => setCrossExpiresAt(e.target.value)}
-                            className="mt-2 h-9 w-full rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
-                          />
-                        )}
-                      </div>
-                      <ProjectAccessPicker
-                        deptId={req.departmentId}
-                        deptName={req.departmentName}
-                        fullAccess={crossFullAccess}
-                        onFullAccessChange={setCrossFullAccess}
-                        selectedProjectIds={crossSelectedProjectIds}
-                        onToggleProject={toggleCrossProject}
+                    {/* Display name */}
+                    <div className="flex min-w-[180px] flex-1 flex-col gap-1.5">
+                      <label className="font-sans text-[11.5px] font-medium text-sts-subtle">
+                        Display name <span className="text-sts-subtle/60">(optional)</span>
+                      </label>
+                      <input
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder={req.userName}
+                        className="h-9 rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle/50 focus:border-sts-id focus:ring-1 focus:ring-sts-id/20"
                       />
-                      <div>
-                        <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-subtle">Reason (optional)</label>
-                        <input
-                          value={crossReason}
-                          onChange={(e) => setCrossReason(e.target.value)}
-                          placeholder="e.g. Cross-sub-department ticket assignment"
-                          className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-bg px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
-                        />
-                      </div>
                     </div>
-                  )}
+                  </div>
 
                   {approveError && (
                     <p className="mt-2.5 flex items-center gap-1.5 font-sans text-[11.5px] text-sts-red">

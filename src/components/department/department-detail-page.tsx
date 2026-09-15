@@ -38,8 +38,6 @@ import {
 } from "@/components/ui/table";
 import {
   UserPickerDropdown,
-  GrantAccessModal,
-  ProjectAccessPicker,
   type UserOption,
   type AccessGrant,
 } from "@/components/settings/settings-departments-page";
@@ -51,10 +49,6 @@ import {
   assignDepartmentManager,
   removeDepartmentManager,
   removeDepartmentMember,
-  grantDepartmentAccess,
-  revokeDepartmentAccess,
-  fetchDepartmentAccessGrant,
-  updateDepartmentAccess,
   updateAdminUser,
   addAdminSubDepartmentMember,
   removeAdminSubDepartmentMember,
@@ -182,144 +176,6 @@ function DeptRoleToggle({
   );
 }
 
-// ── Edit Access Modal ────────────────────────────────────────────────────────
-
-function EditAccessModal({
-  deptId,
-  deptName,
-  grant,
-  onSaved,
-  onClose,
-}: {
-  deptId: string;
-  deptName: string;
-  grant: AccessGrant;
-  onSaved: (updated: AccessGrant) => void;
-  onClose: () => void;
-}) {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [permanent, setPermanent] = useState(true);
-  const [expiresAt, setExpiresAt] = useState("");
-  const [reason, setReason] = useState("");
-  const [fullAccess, setFullAccess] = useState(false);
-  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchDepartmentAccessGrant(deptId, grant.userId)
-      .then((data) => {
-        setFullAccess(data.fullAccess);
-        setPermanent(!data.expiresAt);
-        setExpiresAt(data.expiresAt ? data.expiresAt.slice(0, 10) : "");
-        setReason(data.reason ?? "");
-        setSelectedProjectIds(new Set(data.projectIds));
-      })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function toggleProject(id: string) {
-    setSelectedProjectIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
-  const canSubmit = fullAccess || selectedProjectIds.size > 0;
-
-  async function submit() {
-    if (!canSubmit) return;
-    setSaving(true);
-    try {
-      const updated = await updateDepartmentAccess(deptId, grant.userId, {
-        expiresAt: permanent ? undefined : expiresAt || undefined,
-        reason: reason || undefined,
-        fullAccess,
-        projectIds: [...selectedProjectIds],
-      });
-      onSaved(updated);
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Edit access — {grant.user.name}</p>
-          <button type="button" onClick={onClose}><X className="size-4 text-sts-muted" /></button>
-        </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-sts-subtle" />
-          </div>
-        ) : (
-          <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-5 py-4">
-            <div>
-              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Access duration</label>
-              <div className="flex h-9 overflow-hidden rounded-full border border-sts-card-border">
-                <button
-                  type="button"
-                  onClick={() => setPermanent(true)}
-                  className={cn(
-                    "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                    permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                  )}
-                >
-                  Permanent
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPermanent(false)}
-                  className={cn(
-                    "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
-                    !permanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                  )}
-                >
-                  Set expiry
-                </button>
-              </div>
-              {!permanent && (
-                <input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                  className="mt-2 h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
-                />
-              )}
-            </div>
-            <ProjectAccessPicker
-              deptId={deptId}
-              deptName={deptName}
-              fullAccess={fullAccess}
-              onFullAccessChange={setFullAccess}
-              selectedProjectIds={selectedProjectIds}
-              onToggleProject={toggleProject}
-            />
-            <div>
-              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Reason (optional)</label>
-              <input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-id"
-              />
-            </div>
-          </div>
-        )}
-        <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-          <button type="button" onClick={onClose} className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface">Cancel</button>
-          <button type="button" disabled={!canSubmit || saving || loading} onClick={submit} className="h-8 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50">
-            {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Section shell ────────────────────────────────────────────────────────────
 
 function Section({
@@ -379,7 +235,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
 
   const [managers, setManagers] = useState<ManagerRow[]>(data.managers);
   const [members, setMembers] = useState<MemberRow[]>(data.members);
-  const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(data.accessGrants);
+  // Read-only: still used to exclude existing guests from add/invite pickers.
+  const accessGrants = data.accessGrants;
   const [pendingInvites, setPendingInvites] = useState<DepartmentInviteRow[]>(data.pendingInvites);
   // Requests resolved in this session are hidden immediately; a router.refresh()
   // then drops them from `data.joinRequests` too. Deriving avoids mirroring props
@@ -393,10 +250,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   const [localRoles, setLocalRoles] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
-  const [showGrantModal, setShowGrantModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [editingGrant, setEditingGrant] = useState<AccessGrant | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<MemberRow | null>(null);
   const [configMember, setConfigMember] = useState<MemberConfigTarget | null>(null);
 
@@ -478,8 +333,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
 
   const managerIds = managers.map((m) => m.userId);
-  const memberIds = members.map((m) => m.userId);
-  const accessIds = accessGrants.map((g) => g.userId);
 
   // Manager candidates: only people already connected to this department — native
   // members or cross-access guests — not the whole organization.
@@ -577,18 +430,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
       // Revert on failure
       setMembers((prev) => prev.map((m) => (m.userId === member.userId ? { ...m, isActive: !next } : m)));
     }
-  }
-
-  async function grantAccess(userId: string, expiresAt: string, reason: string, fullAccess: boolean, projectIds: string[]) {
-    const created = await grantDepartmentAccess(data.id, {
-      userId, expiresAt: expiresAt || undefined, reason: reason || undefined, fullAccess, projectIds,
-    }).catch(() => null);
-    if (created) setAccessGrants((prev) => [...prev.filter((g) => g.userId !== userId), created]);
-  }
-
-  async function revokeAccess(userId: string) {
-    await revokeDepartmentAccess(data.id, userId).catch(() => null);
-    setAccessGrants((prev) => prev.filter((g) => g.userId !== userId));
   }
 
   function currentRole(m: MemberRow) {
@@ -1043,108 +884,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
       )}
 
-      {/* Cross-department access — managers only */}
-      <Section
-        icon={Users}
-        title="Cross-department access"
-        count={accessGrants.length}
-        action={
-          <button
-            type="button"
-            onClick={() => setShowGrantModal(true)}
-            className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors"
-          >
-            <Plus className="size-3" /> Grant access
-          </button>
-        }
-      >
-        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-          <Table className="min-w-[700px]">
-            <TableHeader>
-              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                <TableHead className="h-8 w-[26%]"><SectionLabel>Name</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[13%]"><SectionLabel>Access</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[13%]"><SectionLabel>Status</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>Reason</SectionLabel></TableHead>
-                <TableHead className="h-8 w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accessGrants.length === 0 ? (
-                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={6} className="py-0">
-                    <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-sts-muted">No cross-department access grants</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                accessGrants.map((g) => {
-                  const expired = !!g.expiresAt && new Date(g.expiresAt) < new Date();
-                  return (
-                    <TableRow key={g.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
-                      <TableCell className="py-0">
-                        <div className="flex h-[54px] items-center gap-2.5">
-                          <UserAvatar name={g.user.name} avatarUrl={g.user.avatarUrl ?? null} size={28} />
-                          <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{g.user.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <span className="font-sans text-[11.5px] text-sts-muted">{g.user.email}</span>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium",
-                            g.fullAccess ? "bg-sts-blue/10 text-sts-blue" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                          )}
-                        >
-                          {g.fullAccess ? "Full access" : "Limited"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        {expired ? (
-                          <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 font-sans text-[11.5px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">Expired</span>
-                        ) : (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-sans text-[11.5px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            <Clock className="size-2.5" /> Active
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <span className="block max-w-[160px] truncate font-sans text-[11.5px] text-sts-muted">{g.reason ?? "No reason"}</span>
-                      </TableCell>
-                      <TableCell className="py-0 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button type="button" onClick={() => setEditingGrant(g)} title="Edit access" className="font-sans text-[11.5px] font-medium text-sts-id hover:underline">
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => revokeAccess(g.userId)} title="Revoke access" className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
-                            <X className="size-3.5" />
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Section>
-
-      {showGrantModal && (
-        <GrantAccessModal
-          deptId={data.id}
-          deptName={data.name}
-          users={data.allUsers}
-          excludeIds={[...new Set([...managerIds, ...memberIds, ...accessIds])]}
-          onGrant={grantAccess}
-          onClose={() => setShowGrantModal(false)}
-        />
-      )}
-
       {showInviteModal && (
         <InviteByEmailModal
           deptId={data.id}
@@ -1164,16 +903,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           isAdmin={data.isAdmin}
           isManager={!data.isAdmin}
           onClose={() => setShowAddMemberModal(false)}
-        />
-      )}
-
-      {editingGrant && (
-        <EditAccessModal
-          deptId={data.id}
-          deptName={data.name}
-          grant={editingGrant}
-          onSaved={(updated) => setAccessGrants((prev) => prev.map((g) => (g.userId === updated.userId ? updated : g)))}
-          onClose={() => setEditingGrant(null)}
         />
       )}
 

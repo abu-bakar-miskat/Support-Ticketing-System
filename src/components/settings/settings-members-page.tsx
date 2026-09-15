@@ -22,7 +22,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma/enums";
-import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, grantDepartmentAccess, revokeDepartmentAccess } from "@/lib/api/admin";
+import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, revokeDepartmentAccess } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
@@ -114,7 +114,6 @@ export function AddMemberModal({
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Candidate | null>(null);
-  const [accessType, setAccessType] = useState<"full" | "guest">("full");
   // When no department is fixed (tenant-wide view) the admin picks one here; it
   // then scopes both the candidate search and the sub-department options.
   const [selectedDeptId, setSelectedDeptId] = useState(departmentId ?? availableDepartments[0]?.id ?? "");
@@ -124,8 +123,6 @@ export function AddMemberModal({
   );
   const [subDepartmentId, setSubDepartmentId] = useState(subDeptOptions[0]?.id ?? "");
   const [role, setRole] = useState<string>("agent");
-  const [guestPermanent, setGuestPermanent] = useState(true);
-  const [guestExpiresAt, setGuestExpiresAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -173,29 +170,12 @@ export function AddMemberModal({
     setSubmitError(null);
     setSubmitting(true);
     try {
-      if (accessType === "full") {
-        if (!subDepartmentId) {
-          setSubmitError("Please select a sub department.");
-          setSubmitting(false);
-          return;
-        }
-        await addAdminSubDepartmentMember(subDepartmentId, selected.id, role);
-      } else {
-        if (!effectiveDeptId) {
-          setSubmitError("Please select a department.");
-          setSubmitting(false);
-          return;
-        }
-        if (selected.role !== "manager" && selected.role !== "admin") {
-          setSubmitError("Cross-department access is only for department managers. Add this person to a sub-department instead.");
-          setSubmitting(false);
-          return;
-        }
-        await grantDepartmentAccess(effectiveDeptId, {
-          userId: selected.id,
-          ...(!guestPermanent && guestExpiresAt ? { expiresAt: guestExpiresAt } : {}),
-        });
+      if (!subDepartmentId) {
+        setSubmitError("Please select a sub department.");
+        setSubmitting(false);
+        return;
       }
+      await addAdminSubDepartmentMember(subDepartmentId, selected.id, role);
       toast.success(`${selected.name} has been added.`);
       router.refresh();
       onClose();
@@ -314,127 +294,44 @@ export function AddMemberModal({
             </div>
           )}
 
-          {/* Access type toggle */}
+          {/* Membership fields */}
           {selected && (
-            <>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAccessType("full")}
-                  className={cn(
-                    "flex-1 h-9 rounded-full border font-sans text-[12.5px] font-medium transition-colors",
-                    accessType === "full"
-                      ? "border-sts-blue bg-sts-blue text-white"
-                      : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
-                  )}
-                >
-                  Full member
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAccessType("guest")}
-                  className={cn(
-                    "flex-1 h-9 rounded-full border font-sans text-[12.5px] font-medium transition-colors",
-                    accessType === "guest"
-                      ? "border-sts-blue bg-sts-blue text-white"
-                      : "border-sts-card-border bg-sts-surface text-sts-muted hover:border-sts-blue/40 hover:text-sts-foreground",
-                  )}
-                >
-                  Guest access
-                </button>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="font-sans text-[11.5px] text-sts-subtle">SubDepartment</label>
+                <SearchableSelect
+                  value={subDepartmentId}
+                  onChange={setSubDepartmentId}
+                  options={subDeptOptions.map((t) => ({ value: t.id, label: t.name }))}
+                  placeholder="— Select sub department —"
+                  className="bg-sts-bg"
+                  aria-label="SubDepartment"
+                />
               </div>
-              <p className="font-sans text-[11px] text-sts-subtle">
-                Full member = join a sub-department. Guest access = cross-department access for managers only.
-              </p>
-              {accessType === "guest" && selected && selected.role !== "manager" && selected.role !== "admin" && (
-                <p className="font-sans text-[11.5px] text-amber-700 dark:text-amber-400">
-                  Cross-department guest access is for department managers only. Add agents and sub-managers to a sub-department instead.
-                </p>
-              )}
 
-              {/* Full member fields */}
-              {accessType === "full" && (
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-sans text-[11.5px] text-sts-subtle">SubDepartment</label>
-                    <SearchableSelect
-                      value={subDepartmentId}
-                      onChange={setSubDepartmentId}
-                      options={subDeptOptions.map((t) => ({ value: t.id, label: t.name }))}
-                      placeholder="— Select sub department —"
-                      className="bg-sts-bg"
-                      aria-label="SubDepartment"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-sans text-[11.5px] text-sts-subtle">Role</label>
-                    <SearchableSelect
-                      value={role}
-                      onChange={setRole}
-                      options={
-                        isAdmin
-                          ? [
-                              { value: "agent", label: "Agent" },
-                              { value: "sub_manager", label: "Sub-manager" },
-                              { value: "manager", label: "Manager" },
-                            ]
-                          : [
-                              { value: "agent", label: "Agent" },
-                              { value: "sub_manager", label: "Sub-manager" },
-                            ]
-                      }
-                      searchable={false}
-                      className="bg-sts-bg"
-                      aria-label="Role"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {accessType === "guest" && (
-                <div className="flex flex-col gap-2">
-                  <p className="font-sans text-[12px] text-sts-muted">
-                    The user will get read access to this department without joining a sub department.
-                  </p>
-                  <div>
-                    <span className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
-                      Access duration
-                    </span>
-                    <div className="flex h-8 overflow-hidden rounded-full border border-sts-card-border">
-                      <button
-                        type="button"
-                        onClick={() => setGuestPermanent(true)}
-                        className={cn(
-                          "flex flex-1 items-center justify-center font-sans text-[12px] font-medium transition-colors",
-                          guestPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                        )}
-                      >
-                        Permanent
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGuestPermanent(false)}
-                        className={cn(
-                          "flex flex-1 items-center justify-center border-l border-sts-card-border font-sans text-[12px] font-medium transition-colors",
-                          !guestPermanent ? "bg-sts-blue text-white dark:text-gray-900" : "bg-sts-surface text-sts-muted hover:text-sts-foreground",
-                        )}
-                      >
-                        Set expiry
-                      </button>
-                    </div>
-                    {!guestPermanent && (
-                      <input
-                        type="date"
-                        value={guestExpiresAt}
-                        onChange={(e) => setGuestExpiresAt(e.target.value)}
-                        className="mt-2 h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue/60"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+              <div className="flex flex-col gap-1">
+                <label className="font-sans text-[11.5px] text-sts-subtle">Role</label>
+                <SearchableSelect
+                  value={role}
+                  onChange={setRole}
+                  options={
+                    isAdmin
+                      ? [
+                          { value: "agent", label: "Agent" },
+                          { value: "sub_manager", label: "Sub-manager" },
+                          { value: "manager", label: "Manager" },
+                        ]
+                      : [
+                          { value: "agent", label: "Agent" },
+                          { value: "sub_manager", label: "Sub-manager" },
+                        ]
+                  }
+                  searchable={false}
+                  className="bg-sts-bg"
+                  aria-label="Role"
+                />
+              </div>
+            </div>
           )}
 
           {/* Error */}

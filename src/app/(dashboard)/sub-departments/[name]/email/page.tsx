@@ -58,6 +58,7 @@ export default async function Page({
         bodyTextColor: emailConfig.bodyTextColor,
         linkColor: emailConfig.linkColor,
         headerTitle: emailConfig.headerTitle,
+        useLogo: emailConfig.useLogo,
         pageBackground: emailConfig.pageBackground,
         hideFooter: emailConfig.hideFooter,
         helpHeading: emailConfig.helpHeading,

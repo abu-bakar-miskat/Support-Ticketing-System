@@ -42,16 +42,32 @@ export default async function SettingsEmailRoute() {
       ? { tenantId }
       : { id: { in: managedDeptIds } };
 
-  const [tenant, departments, emailConfig] = await Promise.all([
+  const [tenant, deptRows, emailConfig] = await Promise.all([
     profile.activeTenantId ? getTenantConfig(profile.activeTenantId) : Promise.resolve(null),
     isAdmin || managedDeptIds.length > 0
       ? runAsSystem(() => prisma.department.findMany({
           where: deptWhere,
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            subDepartments: { orderBy: { name: "asc" }, select: { id: true, name: true } },
+          },
         }))
       : Promise.resolve([]),
     getEmailConfig(),
+  ]);
+
+  // Each department, followed by its sub-departments, so the "Applies to" selector
+  // can scope email settings to a specific sub-department (saved as that sub's own
+  // override) instead of only the parent department.
+  const departments = deptRows.flatMap((d) => [
+    { id: d.id, name: d.name },
+    ...d.subDepartments.map((s) => ({
+      id: d.id,
+      name: `${d.name} › ${s.name}`,
+      subDepartmentId: s.id,
+    })),
   ]);
   const initialConfig = asConfigObject(tenant?.emailConfig);
 
@@ -73,6 +89,7 @@ export default async function SettingsEmailRoute() {
         bodyTextColor: emailConfig.bodyTextColor,
         linkColor: emailConfig.linkColor,
         headerTitle: emailConfig.headerTitle,
+        useLogo: emailConfig.useLogo,
         pageBackground: emailConfig.pageBackground,
         hideFooter: emailConfig.hideFooter,
         helpHeading: emailConfig.helpHeading,

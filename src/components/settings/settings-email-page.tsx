@@ -14,6 +14,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
 import { EmailIdentityCard } from "./settings-email-identity";
@@ -88,19 +89,18 @@ const switchClassName =
  * unset rows keep following the workspace default shown in the badge state.
  */
 function EmailNotificationsCard({
-  departments,
+  scope,
   switches,
   onWorkspaceSwitchChange,
 }: {
-  departments: DeptOption[];
+  scope: DeptOption | undefined;
   switches: Record<string, boolean>;
   onWorkspaceSwitchChange: (id: NotifyKey, checked: boolean) => void;
 }) {
-  const [departmentId, setDepartmentId] = useState<string>(departments[0]?.id ?? "");
+  const departmentId = scope?.id ?? "";
+  const subDepartmentId = scope?.subDepartmentId ?? null;
   const [overrides, setOverrides] = useState<Partial<Record<NotifyKey, boolean | null>>>({});
   const [loading, setLoading] = useState(false);
-
-  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
 
   useEffect(() => {
     if (!departmentId) {
@@ -136,36 +136,18 @@ function EmailNotificationsCard({
     }
   }
 
-  const showSelector = departments.length > 1;
-
   return (
     <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
       <div className="pb-1.5">
         <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Email notifications
         </h2>
-      </div>
-
-      {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
-          <label className="sts-text-label">Applies to</label>
-          <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select scope"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {departmentId ? (
           <p className="font-sans text-[11.5px] text-sts-subtle">
-            Overrides here only apply to tickets in this department — leave a toggle alone to keep following the workspace default.
+            Overrides here only apply to tickets in {scope?.name ?? "this department"} — leave a toggle alone to keep following the workspace default.
           </p>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <div className="flex flex-col">
         {loading
@@ -341,6 +323,7 @@ export type EmailBrandingValues = {
   bodyTextColor: string;
   linkColor: string;
   headerTitle: string;
+  useLogo: boolean;
   pageBackground: string;
   hideFooter: boolean;
   helpHeading: string;
@@ -359,19 +342,36 @@ const OPTIONAL_HEX_RE = /^(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))?$/;
 const BRANDING_DEFAULT_HEADER_TITLE = "Support Ticketing System";
 
 /**
+ * A unique key per scope option. A department and its sub-departments can share
+ * the same `department.id`, so keying/selecting on `id` alone collapses them —
+ * which silently saves a sub-department's edits to its parent department. The
+ * composite key keeps every scope distinct.
+ */
+function scopeKeyOf(d: DeptOption | undefined | null): string {
+  return d ? `${d.id}::${d.subDepartmentId ?? ""}` : "";
+}
+
+/**
  * Per-department branding for customer-facing email and public forms. Each
  * department can override the workspace logo/colors/footer; a form may still
  * set its own design on top. Unset departments fall back to the workspace
  * defaults.
  */
 function EmailBrandingCard({
+  scope,
   departments,
   workspaceDefaults,
 }: {
+  scope: DeptOption | undefined;
   departments: DeptOption[];
   workspaceDefaults: EmailBrandingValues;
 }) {
-  const [departmentId, setDepartmentId] = useState<string>(departments[0]?.id ?? "");
+  // The active scope is chosen by the page-level selector; read the department /
+  // sub-department straight off it — never re-derive the sub-department by matching
+  // on `id` alone (that collapses same-department subs). `departments` is still the
+  // full list, used only by "Reset all custom branding" below.
+  const selectedScope = scope;
+  const departmentId = selectedScope?.id ?? "";
   const [brandColor, setBrandColor] = useState(workspaceDefaults.brandColor);
   const [headerColor, setHeaderColor] = useState(workspaceDefaults.headerColor);
   const [logoUrl, setLogoUrl] = useState(workspaceDefaults.logoUrl);
@@ -379,6 +379,7 @@ function EmailBrandingCard({
   const [bodyTextColor, setBodyTextColor] = useState(workspaceDefaults.bodyTextColor);
   const [linkColor, setLinkColor] = useState(workspaceDefaults.linkColor);
   const [headerTitle, setHeaderTitle] = useState(workspaceDefaults.headerTitle);
+  const [useLogo, setUseLogo] = useState(workspaceDefaults.useLogo);
   const [pageBackground, setPageBackground] = useState(workspaceDefaults.pageBackground);
   const [hideFooter, setHideFooter] = useState(workspaceDefaults.hideFooter);
   const [helpHeading, setHelpHeading] = useState(workspaceDefaults.helpHeading);
@@ -393,8 +394,9 @@ function EmailBrandingCard({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
 
-  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+  const subDepartmentId = selectedScope?.subDepartmentId ?? null;
 
   useEffect(() => {
     if (!departmentId) return;
@@ -413,6 +415,7 @@ function EmailBrandingCard({
           // from the accent-derived default, keep it blank so the field reads empty.
           linkColor: data.override.linkColor ?? "",
           headerTitle: data.override.headerTitle ?? data.defaults.headerTitle,
+          useLogo: data.override.useLogo ?? data.defaults.useLogo,
           pageBackground: data.override.pageBackground ?? data.defaults.pageBackground,
           hideFooter: data.override.hideFooter ?? data.defaults.hideFooter,
           helpHeading: data.override.helpHeading ?? data.defaults.helpHeading,
@@ -430,6 +433,7 @@ function EmailBrandingCard({
         setBodyTextColor(effective.bodyTextColor);
         setLinkColor(effective.linkColor);
         setHeaderTitle(effective.headerTitle);
+        setUseLogo(effective.useLogo);
         setPageBackground(effective.pageBackground);
         setHideFooter(effective.hideFooter);
         setHelpHeading(effective.helpHeading);
@@ -461,6 +465,7 @@ function EmailBrandingCard({
     bodyTextColor !== saved.bodyTextColor ||
     linkColor !== saved.linkColor ||
     headerTitle !== saved.headerTitle ||
+    useLogo !== saved.useLogo ||
     pageBackground !== saved.pageBackground ||
     hideFooter !== saved.hideFooter ||
     helpHeading !== saved.helpHeading ||
@@ -487,8 +492,6 @@ function EmailBrandingCard({
         /\{year\}/g,
         String(year),
       );
-  const showSelector = departments.length > 1;
-
   function applyValues(v: EmailBrandingValues) {
     setBrandColor(v.brandColor);
     setHeaderColor(v.headerColor);
@@ -497,6 +500,7 @@ function EmailBrandingCard({
     setBodyTextColor(v.bodyTextColor);
     setLinkColor(v.linkColor);
     setHeaderTitle(v.headerTitle);
+    setUseLogo(v.useLogo);
     setPageBackground(v.pageBackground);
     setHideFooter(v.hideFooter);
     setHelpHeading(v.helpHeading);
@@ -524,6 +528,7 @@ function EmailBrandingCard({
         bodyTextColor: bodyTextColor.trim(),
         linkColor: linkColor.trim(),
         headerTitle: headerTitle.trim(),
+        useLogo,
         pageBackground: pageBackground.trim(),
         hideFooter,
         helpHeading: helpHeading.trim(),
@@ -568,6 +573,27 @@ function EmailBrandingCard({
     }
   }
 
+  // Only the distinct scopes shown in this page's selector (each department + each
+  // of its sub-departments). "Reset all" clears exactly these — never scopes that
+  // aren't listed here, so resetting from one sub-department can't wipe a sibling's.
+  const allScopes = departments.filter((d, i, arr) => arr.findIndex((o) => scopeKeyOf(o) === scopeKeyOf(d)) === i);
+
+  async function resetAllBranding() {
+    const results = await Promise.allSettled(
+      allScopes.map((d) => resetEmailBranding(d.id, d.subDepartmentId ?? null)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    // Reflect the cleared state in the currently-selected scope.
+    const data = await fetchEmailBranding(departmentId, subDepartmentId);
+    const defaults: EmailBrandingValues = { ...data.defaults, linkColor: "" };
+    applyValues(defaults);
+    setSaved(defaults);
+    setHasOverride(data.hasOverride);
+    if (failed > 0) {
+      throw new Error(`Cleared ${allScopes.length - failed} of ${allScopes.length}; ${failed} could not be reset.`);
+    }
+  }
+
   return (
     <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
       <div className="pb-1.5">
@@ -579,24 +605,6 @@ function EmailBrandingCard({
           Departments without a custom look fall back to the workspace default.
         </p>
       </div>
-
-      {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
-          <label className="sts-text-label">Applies to</label>
-          <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select department"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-sts-surface pt-3">
         <span
@@ -613,45 +621,61 @@ function EmailBrandingCard({
 
       <div className="flex flex-col gap-4 py-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="sts-text-label">Logo</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                disabled={loading}
-                placeholder="https://…/logo.svg"
-                className="h-9 w-full min-w-0 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-              />
-              <LogoUploadButton
-                disabled={loading}
-                scopeKey={subDepartmentId ? `${departmentId}-${subDepartmentId}` : departmentId}
-                onUploaded={(url) => {
-                  setLogoUrl(url);
-                  toast.success("Logo uploaded. Click “Save branding” to apply.");
-                }}
-                onError={(m) => toast.error(m)}
-              />
+          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="sts-text-label">Header</label>
+              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
+                <input
+                  type="checkbox"
+                  checked={!!useLogo}
+                  onChange={(e) => setUseLogo(e.target.checked)}
+                  disabled={loading}
+                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+                />
+                Use logo image
+              </label>
             </div>
-            <p className="font-sans text-[11px] text-sts-subtle">
-              Upload an image or paste a public URL. Shown on the dark email
-              header — a PNG or SVG with a light-colored logo reads best.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="sts-text-label">Header title</label>
-            <input
-              value={headerTitle}
-              onChange={(e) => setHeaderTitle(e.target.value)}
-              disabled={loading}
-              placeholder={BRANDING_DEFAULT_HEADER_TITLE}
-              className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-            />
-            <p className="font-sans text-[11px] text-sts-subtle">
-              The wordmark shown in the header bar. Leave blank for the default
-              “{BRANDING_DEFAULT_HEADER_TITLE}”.
-            </p>
+            {useLogo ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    disabled={loading}
+                    placeholder="https://…/logo.svg"
+                    className="h-9 w-full min-w-0 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                  />
+                  <LogoUploadButton
+                    disabled={loading}
+                    scopeKey={subDepartmentId ? `${departmentId}-${subDepartmentId}` : departmentId}
+                    onUploaded={(url) => {
+                      setLogoUrl(url);
+                      toast.success("Logo uploaded. Click “Save branding” to apply.");
+                    }}
+                    onError={(m) => toast.error(m)}
+                  />
+                </div>
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  Upload an image or paste a public URL. Shown on the dark email
+                  header — a PNG or SVG with a light-colored logo reads best.
+                </p>
+              </>
+            ) : (
+              <>
+                <input
+                  value={headerTitle}
+                  onChange={(e) => setHeaderTitle(e.target.value)}
+                  disabled={loading}
+                  placeholder={BRANDING_DEFAULT_HEADER_TITLE}
+                  className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                />
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  The wordmark shown in the header bar (in the accent color).
+                  Leave blank for the default “{BRANDING_DEFAULT_HEADER_TITLE}”.
+                  Tick “Use logo image” to show your logo here instead.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -956,7 +980,7 @@ function EmailBrandingCard({
                 className="flex items-center px-4 py-3"
                 style={{ background: validHeader ? headerColor : "#022941" }}
               >
-                {logoUrl.trim() ? (
+                {useLogo && logoUrl.trim() ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={logoUrl}
@@ -1058,7 +1082,27 @@ function EmailBrandingCard({
             {resetting ? "Resetting…" : "Use workspace default"}
           </button>
         )}
+        {allScopes.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setConfirmResetAll(true)}
+            disabled={saving || resetting || loading}
+            className="ml-auto inline-flex h-8 items-center rounded-full border border-red-300 px-3.5 font-sans text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/40 dark:hover:bg-red-500/10"
+          >
+            Reset all custom branding
+          </button>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={confirmResetAll}
+        onOpenChange={setConfirmResetAll}
+        title="Reset all custom branding"
+        description={`This clears the custom email branding for all ${allScopes.length} departments and sub-departments listed in the selector above, reverting them to the workspace default. It does not touch scopes that aren't listed here. This cannot be undone.`}
+        confirmLabel="Reset all"
+        successMessage={`Reset custom branding for all ${allScopes.length} scopes`}
+        onConfirm={resetAllBranding}
+      />
     </section>
   );
 }
@@ -1089,6 +1133,12 @@ export function SettingsEmailPage({
   const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
     mergeSwitches(defaultSwitches(), initialConfig),
   );
+  // The scope selector is lifted to the page so a single dropdown drives every
+  // section (notifications, senders, branding, templates) instead of each card
+  // carrying its own copy.
+  const [scopeKey, setScopeKey] = useState<string>(scopeKeyOf(departments[0]));
+  const selectedScope = departments.find((d) => scopeKeyOf(d) === scopeKey) ?? departments[0];
+  const showScopeSelector = departments.length > 1;
 
   function onWorkspaceSwitchChange(id: NotifyKey, checked: boolean) {
     const next = { ...switches, [id]: checked };
@@ -1135,6 +1185,24 @@ export function SettingsEmailPage({
             </button>
           ))}
         </div>
+
+        {showScopeSelector ? (
+          <div className="flex max-w-[920px] flex-col gap-1.5">
+            <label className="sts-text-label">Applies to</label>
+            <Select value={scopeKey} onValueChange={(v) => setScopeKey(v ?? scopeKeyOf(departments[0]))}>
+              <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+                <span>{selectedScope?.name ?? "Select scope"}</span>
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((d) => (
+                  <SelectItem key={scopeKeyOf(d)} value={scopeKeyOf(d)} className="font-sans text-[12.5px]">
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
       </div>
 
       {tab === "general" && canSeeGeneral ? (
@@ -1147,23 +1215,24 @@ export function SettingsEmailPage({
           />
 
           <EmailNotificationsCard
-            departments={departments}
+            scope={selectedScope}
             switches={switches}
             onWorkspaceSwitchChange={onWorkspaceSwitchChange}
           />
         </div>
       ) : tab === "branding" && canSeeGeneral ? (
         <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-          <EmailIdentityCard departments={departments} />
+          <EmailIdentityCard scope={selectedScope} />
           {branding ? (
             <EmailBrandingCard
+              scope={selectedScope}
               departments={departments}
               workspaceDefaults={branding}
             />
           ) : null}
         </div>
       ) : (
-        <SettingsEmailTemplatesPage departments={departments} />
+        <SettingsEmailTemplatesPage scope={selectedScope} departments={departments} />
       )}
     </div>
   );

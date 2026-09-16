@@ -105,6 +105,8 @@ export type Branding = {
   linkColor?: string;
   /** Wordmark text shown in the header bar. Falls back to {@link DEFAULT_HEADER_TITLE}. */
   headerTitle?: string;
+  /** When true (and a `logoUrl` is set), the header shows the logo image instead of the title text. */
+  useLogo?: boolean;
   /** Outer page background behind the email card. Falls back to {@link PAGE_BG}. */
   pageBackground?: string;
   /** When true, the footer line is omitted entirely (distinct from an empty
@@ -369,6 +371,13 @@ export function layout({
   const linkColor = resolveLinkColor(branding);
   const pageBg = branding?.pageBackground?.trim() || PAGE_BG;
   const headerTitle = escapeHtml(branding?.headerTitle?.trim() || DEFAULT_HEADER_TITLE);
+  // Header shows the logo image only when opted in AND a logo URL is set; otherwise
+  // it falls back to the accent-colored title text.
+  const logoUrl = branding?.logoUrl?.trim() ?? "";
+  const headerContent =
+    branding?.useLogo && logoUrl
+      ? `<img src="${escapeHtml(ensureAbsoluteUrl(logoUrl))}" alt="${headerTitle}" height="40" style="display:block;height:40px;width:auto;max-width:100%;border:0;" />`
+      : `<span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:42px;font-weight:700;letter-spacing:0.5px;color:${brand};">${headerTitle}</span>`;
   const normalizedBodyHtml = normalizeTemplateBodyHtml(bodyHtml, branding);
   const year = new Date().getFullYear();
   // A template's own footer always wins; otherwise the branding footer, then the
@@ -405,7 +414,7 @@ export function layout({
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
             <tr>
               <td style="background:${headerBg};border-radius:8px 8px 0 0;padding:24px 32px;text-align:left;">
-                <span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:42px;font-weight:700;letter-spacing:0.5px;color:${brand};">${headerTitle}</span>
+                ${headerContent}
               </td>
             </tr>
             <tr>

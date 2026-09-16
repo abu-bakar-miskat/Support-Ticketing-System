@@ -148,6 +148,36 @@ describe("layout — full branding reaches the email body", () => {
     expect(html).not.toContain("This is an automated message.");
   });
 
+  it("shows the header title text (accent) by default, not the logo", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", logoUrl: "https://cdn.example.com/logo.png", brandColor: "#123456" },
+    });
+    expect(html).toContain('color:#123456;">Acme');
+    expect(html).not.toContain("<img");
+  });
+
+  it("shows the logo image in the header when useLogo is set", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", logoUrl: "https://cdn.example.com/logo.png", useLogo: true },
+    });
+    expect(html).toContain('<img src="https://cdn.example.com/logo.png"');
+    expect(html).not.toContain(">Acme</span>");
+  });
+
+  it("falls back to the title when useLogo is set but no logo URL is provided", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", useLogo: true },
+    });
+    expect(html).toContain(">Acme</span>");
+    expect(html).not.toContain("<img");
+  });
+
   it("still renders a template-specific footer even when hideFooter is set", () => {
     const html = layout({
       heading: "Hi",

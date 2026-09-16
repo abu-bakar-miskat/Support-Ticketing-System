@@ -28,6 +28,8 @@ export type EmailBranding = {
   linkColor: string;
   /** Wordmark text shown in the email header bar. */
   headerTitle: string;
+  /** When true (and a logo is set), the header shows the logo image instead of the title. */
+  useLogo: boolean;
   /** Outer page background behind the email card. */
   pageBackground: string;
   /** When true, the footer line is omitted from the email entirely. */
@@ -108,6 +110,7 @@ export function emailConfigDefaults(): EmailConfig {
     bodyTextColor: BODY_TEXT_COLOR,
     linkColor: "",
     headerTitle: DEFAULT_HEADER_TITLE,
+    useLogo: false,
     pageBackground: PAGE_BG,
     hideFooter: false,
     helpHeading: DEFAULT_HELP_HEADING,
@@ -395,7 +398,7 @@ const BRANDING_KEYS = [
 ] as const;
 
 /** Branding keys stored as booleans (handled separately from the string keys above). */
-const BRANDING_BOOL_KEYS = ["hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const;
+const BRANDING_BOOL_KEYS = ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const;
 
 /** Parses a department's branding override out of its raw `emailConfig` JSON value. */
 export function readBrandingOverride(emailConfig: unknown): Partial<EmailBranding> {
@@ -561,6 +564,7 @@ export function brandingFrom(config: EmailConfig): EmailBranding {
     bodyTextColor: config.bodyTextColor,
     linkColor: config.linkColor,
     headerTitle: config.headerTitle,
+    useLogo: config.useLogo,
     pageBackground: config.pageBackground,
     hideFooter: config.hideFooter,
     helpHeading: config.helpHeading,

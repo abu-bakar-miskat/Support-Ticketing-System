@@ -141,6 +141,7 @@ export type EmailBrandingFields = {
   bodyTextColor: string;
   linkColor: string;
   headerTitle: string;
+  useLogo: boolean;
   pageBackground: string;
   hideFooter: boolean;
   helpHeading: string;

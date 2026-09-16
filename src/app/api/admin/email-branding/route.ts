@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       bodyTextColor: override.bodyTextColor ?? null,
       linkColor: override.linkColor ?? null,
       headerTitle: override.headerTitle ?? null,
+      useLogo: override.useLogo ?? null,
       pageBackground: override.pageBackground ?? null,
       hideFooter: override.hideFooter ?? null,
       helpHeading: override.helpHeading ?? null,
@@ -116,7 +117,7 @@ export async function PUT(request: NextRequest) {
     }
     branding[key] = (body[key] as string).trim();
   }
-  for (const key of ["hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const) {
+  for (const key of ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const) {
     if (body?.[key] === undefined) continue;
     if (typeof body[key] !== "boolean") {
       return NextResponse.json({ error: `${key} must be a boolean` }, { status: 400 });

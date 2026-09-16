@@ -10,7 +10,6 @@ import {
   type DomainStatusInfo,
   type EmailSenderInfo,
 } from "@/lib/api/email-notifications";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { DeptOption } from "./settings-email-templates-page";
 
@@ -290,12 +289,10 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   );
 }
 
-export function EmailIdentityCard({ departments }: { departments: DeptOption[] }) {
-  const [filterId, setFilterId] = useState<string>(departments[0]?.id ?? "");
+const scopeKeyOf = (d: DeptOption) => `${d.id}::${d.subDepartmentId ?? ""}`;
 
-  if (departments.length === 0) return null;
-
-  const visibleDepartments = departments.filter((d) => d.id === filterId);
+export function EmailIdentityCard({ scope }: { scope: DeptOption | undefined }) {
+  if (!scope) return null;
 
   return (
     <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
@@ -308,27 +305,7 @@ export function EmailIdentityCard({ departments }: { departments: DeptOption[] }
         </p>
       </div>
 
-      {departments.length > 1 && (
-        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
-          <label className="sts-text-label">Filter by department</label>
-          <Select value={filterId} onValueChange={(v) => setFilterId(v ?? departments[0]?.id ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((d) => d.id === filterId)?.name ?? "Select department"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {visibleDepartments.map((d) => (
-        <EmailIdentityRow key={d.id} department={d} />
-      ))}
+      <EmailIdentityRow key={scopeKeyOf(scope)} department={scope} />
     </section>
   );
 }

@@ -55,6 +55,18 @@ export default async function Page({
         headerColor: emailConfig.headerColor,
         logoUrl: emailConfig.logoUrl,
         footerText: emailConfig.footerText,
+        bodyTextColor: emailConfig.bodyTextColor,
+        linkColor: emailConfig.linkColor,
+        headerTitle: emailConfig.headerTitle,
+        pageBackground: emailConfig.pageBackground,
+        hideFooter: emailConfig.hideFooter,
+        helpHeading: emailConfig.helpHeading,
+        helpMessage: emailConfig.helpMessage,
+        supportEmail: emailConfig.supportEmail,
+        hideHelp: emailConfig.hideHelp,
+        hideSignature: emailConfig.hideSignature,
+        confidentialityNotice: emailConfig.confidentialityNotice,
+        hideConfidentiality: emailConfig.hideConfidentiality,
       }}
     />
   );

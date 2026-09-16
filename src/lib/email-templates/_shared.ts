@@ -12,10 +12,18 @@ export const BASE_URL = (() => {
 export const LOGO_URL = `${BASE_URL}/images/support-logo-horizontal-white.png`;
 
 export const HEADER_BG = "#022941";
-const BODY_TEXT_COLOR = "#06476f";
-const LINK_COLOR = "#0269af";
+export const BODY_TEXT_COLOR = "#06476f";
+export const LINK_COLOR = "#0269af";
+/** Outer page background behind the email card. */
+export const PAGE_BG = "#f8f8fc";
+/** Default wordmark shown in the email header bar. */
+export const DEFAULT_HEADER_TITLE = "Support Ticketing System";
 const BORDER_COLOR = "#d3d3fa";
-const SUPPORT_EMAIL = "support@penglobalbd.com";
+/** Defaults for the "Need Help?" support block near the foot of every email. */
+export const DEFAULT_SUPPORT_EMAIL = "support@penglobalbd.com";
+export const DEFAULT_HELP_HEADING = "Need Help?";
+export const DEFAULT_HELP_MESSAGE = "Please reach out to us at";
+const SUPPORT_EMAIL = DEFAULT_SUPPORT_EMAIL;
 
 const SIGNATURE_ICON_BASE_URL = `${BASE_URL}/images/signature-icons`;
 const SIGNATURE_ICON_BG = "rgba(19,161,74,0.1)";
@@ -75,7 +83,9 @@ export const DUMMY_SIGNATURE_HTML = `<div style="padding:18px 0 0 0;">
   </tr>
 </table></div>`;
 
-const CONFIDENTIALITY_NOTICE =
+/** Default confidentiality/legal notice shown near the foot of an email when the
+ * sender has no personal signature (and the notice hasn't been hidden). */
+export const CONFIDENTIALITY_NOTICE =
   "This email and any attachments are confidential and may contain privileged or legally protected information. " +
   "If you are not the intended recipient, any dissemination, distribution, or copying of this email is strictly " +
   "prohibited. If you have received this email in error, please notify the sender immediately and delete it from " +
@@ -83,11 +93,42 @@ const CONFIDENTIALITY_NOTICE =
 
 /** Per-workspace branding overrides applied to a rendered email. */
 export type Branding = {
+  /** Accent color for headings, buttons, and (unless `linkColor` is set) body links. */
   brandColor?: string;
+  /** Background of the header bar behind the wordmark. */
   headerColor?: string;
   logoUrl?: string;
   footerText?: string;
+  /** Color of body paragraph text. Falls back to {@link BODY_TEXT_COLOR}. */
+  bodyTextColor?: string;
+  /** Color of links/inline accents inside the body. Falls back to the accent (`brandColor`). */
+  linkColor?: string;
+  /** Wordmark text shown in the header bar. Falls back to {@link DEFAULT_HEADER_TITLE}. */
+  headerTitle?: string;
+  /** Outer page background behind the email card. Falls back to {@link PAGE_BG}. */
+  pageBackground?: string;
+  /** When true, the footer line is omitted entirely (distinct from an empty
+   * `footerText`, which falls back to the default footer). */
+  hideFooter?: boolean;
+  /** Heading of the "Need Help?" support block. Falls back to {@link DEFAULT_HELP_HEADING}. */
+  helpHeading?: string;
+  /** Lead-in text before the support email. Falls back to {@link DEFAULT_HELP_MESSAGE}. */
+  helpMessage?: string;
+  /** Support email shown (in accent) in the help block. Falls back to {@link DEFAULT_SUPPORT_EMAIL}. */
+  supportEmail?: string;
+  /** When true, the entire "Need Help?" support block is omitted. */
+  hideHelp?: boolean;
+  /** Confidentiality/legal notice text. Falls back to {@link CONFIDENTIALITY_NOTICE}. */
+  confidentialityNotice?: string;
+  /** When true, the confidentiality notice is never shown (even without a signature). */
+  hideConfidentiality?: boolean;
 };
+
+/** Resolves the effective color used for body links/inline accents: an explicit
+ * `linkColor` wins, else the accent (`brandColor`), else the built-in link color. */
+export function resolveLinkColor(branding?: Branding): string {
+  return branding?.linkColor?.trim() || branding?.brandColor?.trim() || LINK_COLOR;
+}
 
 /** Decode common HTML entities so escape is safe to call on already-encoded text. */
 export function unescapeHtmlEntities(input: string): string {
@@ -148,15 +189,18 @@ function looksLikeBracketUrl(raw: string): boolean {
   return /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/:?#].*)?$/i.test(value);
 }
 
-function linkAnchor(href: string, label: string): string {
-  return `<a href="${escapeHtml(ensureAbsoluteUrl(href))}" style="color:${LINK_COLOR};font-weight:600;text-decoration:underline;">${escapeHtml(label)}</a>`;
+function linkAnchor(href: string, label: string, color: string = LINK_COLOR): string {
+  return `<a href="${escapeHtml(ensureAbsoluteUrl(href))}" style="color:${color};font-weight:600;text-decoration:underline;">${escapeHtml(label)}</a>`;
 }
 
-function linkBareTicketUrlsInText(text: string): string {
-  return text.replace(BARE_TICKET_URL, (url) => linkAnchor(url, url));
+function linkBareTicketUrlsInText(text: string, color: string = LINK_COLOR): string {
+  return text.replace(BARE_TICKET_URL, (url) => linkAnchor(url, url, color));
 }
 
 export function normalizeTemplateBodyHtml(bodyHtml: string, branding?: Branding): string {
+  // Body links follow the configured accent so branding actually reaches the email
+  // body — not just the heading/buttons — unless a dedicated link color is set.
+  const linkColor = resolveLinkColor(branding);
   const withBracketLinks = bodyHtml.replace(
     /\[([^\]\s<]+)\]\s*([^<[\n]+?)(?=\s*<|\s*$)/g,
     (match, rawUrl: string, label: string) => {
@@ -166,13 +210,13 @@ export function normalizeTemplateBodyHtml(bodyHtml: string, branding?: Branding)
       if (CTA_BUTTON_LABEL.test(trimmedLabel)) {
         return button({ href, label: trimmedLabel, branding });
       }
-      return linkAnchor(href, trimmedLabel);
+      return linkAnchor(href, trimmedLabel, linkColor);
     },
   );
 
   return withBracketLinks
     .split(/(<[^>]+>)/g)
-    .map((part) => (part.startsWith("<") ? part : linkBareTicketUrlsInText(part)))
+    .map((part) => (part.startsWith("<") ? part : linkBareTicketUrlsInText(part, linkColor)))
     .join("");
 }
 
@@ -321,11 +365,30 @@ export function layout({
 }): string {
   const brand = branding?.brandColor || BRAND;
   const headerBg = branding?.headerColor || HEADER_BG;
+  const bodyText = branding?.bodyTextColor?.trim() || BODY_TEXT_COLOR;
+  const linkColor = resolveLinkColor(branding);
+  const pageBg = branding?.pageBackground?.trim() || PAGE_BG;
+  const headerTitle = escapeHtml(branding?.headerTitle?.trim() || DEFAULT_HEADER_TITLE);
   const normalizedBodyHtml = normalizeTemplateBodyHtml(bodyHtml, branding);
   const year = new Date().getFullYear();
-  const footer = (footerOverride || branding?.footerText || `© ${year} Support Ticketing System. This is an automated message.`).replace(
-    /\{year\}/g,
-    String(year),
+  // A template's own footer always wins; otherwise the branding footer, then the
+  // default — unless the footer has been explicitly removed (`hideFooter`), in
+  // which case only a template-specific footer can bring it back.
+  const rawFooter =
+    footerOverride ||
+    branding?.footerText ||
+    (branding?.hideFooter ? "" : `© ${year} Support Ticketing System. This is an automated message.`);
+  const footer = rawFooter.replace(/\{year\}/g, String(year));
+  // "Need Help?" support block — editable heading/message/email, or hidden entirely.
+  const showHelp = !branding?.hideHelp;
+  const helpHeading = escapeHtml(branding?.helpHeading?.trim() || DEFAULT_HELP_HEADING);
+  const helpMessage = escapeHtml(branding?.helpMessage?.trim() || DEFAULT_HELP_MESSAGE);
+  const supportEmail = escapeHtml(branding?.supportEmail?.trim() || DEFAULT_SUPPORT_EMAIL);
+  // Confidentiality notice: editable text, and hideable regardless of the caller's
+  // signature-driven `showConfidentialityNotice` flag.
+  const showNotice = showConfidentialityNotice && !branding?.hideConfidentiality;
+  const confidentialityNotice = escapeHtml(
+    branding?.confidentialityNotice?.trim() || CONFIDENTIALITY_NOTICE,
   );
   const preheaderHtml = preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(
@@ -334,44 +397,48 @@ export function layout({
     : "";
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background:#f8f8fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;">
+  <body style="margin:0;padding:0;background:${pageBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;">
     ${preheaderHtml}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8fc;padding:32px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${pageBg};padding:32px 16px;">
       <tr>
         <td align="center">
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
             <tr>
               <td style="background:${headerBg};border-radius:8px 8px 0 0;padding:24px 32px;text-align:left;">
-                <span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:42px;font-weight:700;letter-spacing:0.5px;color:#ffffff;">Support Ticketing System</span>
+                <span style="display:inline-block;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:24px;line-height:42px;font-weight:700;letter-spacing:0.5px;color:${brand};">${headerTitle}</span>
               </td>
             </tr>
             <tr>
               <td style="background:#ffffff;border-radius:0 0 8px 8px;padding:36px 40px;">
                 <h1 style="margin:0 0 20px 0;font-size:26px;line-height:1.3;font-weight:700;color:${brand};text-align:left;">${heading}</h1>
-                <div style="font-size:15px;line-height:1.6;color:${BODY_TEXT_COLOR};">
+                <div style="font-size:15px;line-height:1.6;color:${bodyText};">
                   ${normalizedBodyHtml}
                 </div>
-                ${showConfidentialityNotice
+                ${showNotice
                   ? `<div style="height:1px;background:${BORDER_COLOR};margin:28px 0 20px 0;"></div>
-                <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">${escapeHtml(CONFIDENTIALITY_NOTICE)}</p>`
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">${confidentialityNotice}</p>`
                   : ""}
               </td>
             </tr>
           </table>
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin-top:32px;">
-            <tr>
-              <td style="padding:0 32px 20px 32px;font-size:15px;line-height:1.5;color:${BODY_TEXT_COLOR};">
-                <p style="margin:0 0 8px 0;font-weight:600;">Need Help?</p>
+            ${showHelp
+              ? `<tr>
+              <td style="padding:0 32px 20px 32px;font-size:15px;line-height:1.5;color:${bodyText};">
+                <p style="margin:0 0 8px 0;font-weight:600;">${helpHeading}</p>
                 <!-- Plain text, not a mailto: link — penglobalbd.com doesn't match the
                      mail.pengroup.com sending domain and linked mismatches trip spam filters. -->
-                <p style="margin:0;">Please reach out to us at <span style="color:${LINK_COLOR};font-weight:600;">${SUPPORT_EMAIL}</span></p>
+                <p style="margin:0;">${helpMessage} <span style="color:${linkColor};font-weight:600;">${supportEmail}</span></p>
               </td>
-            </tr>
-            <tr>
+            </tr>`
+              : ""}
+            ${footer
+              ? `<tr>
               <td align="center" style="padding:0 32px;font-size:12px;line-height:1.5;color:#6b7280;">
                 ${escapeHtml(footer)}
               </td>
-            </tr>
+            </tr>`
+              : ""}
           </table>
         </td>
       </tr>

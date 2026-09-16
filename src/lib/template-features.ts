@@ -119,3 +119,49 @@ export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; 
     keys: ["supportForm", "apiKeys", "importForm", "emailSettings"],
   },
 ];
+
+/**
+ * Maps a route prefix to the feature key that gates it. Kept in lockstep with
+ * the sidebar (`sidebar.tsx` navViews/navMain) and settings nav
+ * (`settings-nav.ts`) `templateFeatureKey`s. Ordered longest-prefix first so
+ * `/settings/*` sub-routes resolve before generic prefixes. Un-gated routes
+ * (Home, Profile, Settings root, Notifications, Departments) are absent → never
+ * blocked.
+ */
+const FEATURE_PATH_ENTRIES: [prefix: string, key: TemplateFeatureKey][] = [
+  ["/settings/api-keys", "apiKeys"],
+  ["/settings/assignment", "assignmentMethods"],
+  ["/settings/branding", "branding"],
+  ["/settings/departments", "departmentsSettings"],
+  ["/settings/email", "emailSettings"],
+  ["/settings/import", "importForm"],
+  ["/settings/members", "members"],
+  ["/settings/projects", "projects"],
+  ["/settings/rules", "automationRules"],
+  ["/settings/sla", "slaPolicies"],
+  ["/settings/tags", "tagsLabels"],
+  ["/settings/templates", "ticketTemplates"],
+  ["/settings/workflows", "workflows"],
+  ["/sub-departments", "subDepartmentReports"],
+  ["/support-forms", "supportForm"],
+  ["/activity", "activity"],
+  ["/board", "board"],
+  ["/calendar", "calendar"],
+  ["/department", "members"],
+  ["/mailboxes", "members"],
+  ["/modules", "modules"],
+  ["/projects", "projects"],
+  ["/reports", "reports"],
+  ["/tasks", "tasks"],
+  ["/time", "myTime"],
+  ["/timeline", "timeline"],
+  ["/docs", "helpCenter"],
+].sort((a, b) => b[0].length - a[0].length) as [string, TemplateFeatureKey][];
+
+/** The feature key that gates `pathname`, or null when the route is un-gated. */
+export function featureKeyForPath(pathname: string): TemplateFeatureKey | null {
+  for (const [prefix, key] of FEATURE_PATH_ENTRIES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return key;
+  }
+  return null;
+}

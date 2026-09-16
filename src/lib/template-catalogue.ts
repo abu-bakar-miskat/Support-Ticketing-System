@@ -73,6 +73,27 @@ export async function hasTemplateFeature(tenantId: string, key: TemplateFeatureK
   return keys === "ALL" || keys.has(key);
 }
 
+/**
+ * The effective feature set for a request: the INTERSECTION of the tenant's
+ * active template features and (when a department is active) that department's
+ * restriction. A department can never surface a feature the tenant hasn't
+ * licensed. Fail-open: `"ALL"` on either side means the other governs; both
+ * unrestricted → `"ALL"`. Single source of truth for the sidebar, the settings
+ * nav, and the client route guard.
+ */
+export async function getEffectiveFeatureKeys(
+  tenantId: string | null | undefined,
+  departmentId: string | null | undefined,
+): Promise<Set<TemplateFeatureKey> | "ALL"> {
+  const tenantSet = tenantId ? await getTenantActiveFeatureKeys(tenantId) : "ALL";
+  if (!departmentId) return tenantSet;
+
+  const deptSet = await getDepartmentActiveFeatureKeys(departmentId);
+  if (deptSet === "ALL") return tenantSet;
+  if (tenantSet === "ALL") return deptSet;
+  return new Set([...deptSet].filter((k) => tenantSet.has(k)));
+}
+
 export type FeatureCheck = { ok: true } | { ok: false; error: string };
 
 /** Server-side 403 guard, same shape as assertFeatureEnabled (lib/feature-flags.ts). */

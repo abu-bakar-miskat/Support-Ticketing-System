@@ -21,6 +21,7 @@ import { NotificationsRealtime } from "@/components/realtime/notifications-realt
 import { TabTitleBadge } from "@/components/realtime/tab-title-badge";
 import { NotificationSidebar } from "@/components/dashboard/notification-sidebar";
 import { DashboardProvider } from "@/components/dashboard/dashboard-context";
+import { FeatureRouteGuard } from "@/components/dashboard/feature-route-guard";
 import { ProjectTabSyncProvider } from "@/components/projects/project-tab-sync";
 import { TimerHydrator } from "@/components/providers/timer-hydrator";
 import { AvailabilityProvider } from "@/components/providers/availability-provider";
@@ -250,6 +251,7 @@ export function DashboardLayout({
           />
           <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
             <ProjectTabSyncProvider>
+              <FeatureRouteGuard />
               <PageEnter>{children}</PageEnter>
             </ProjectTabSyncProvider>
           </main>

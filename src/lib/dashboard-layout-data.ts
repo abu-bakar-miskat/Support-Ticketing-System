@@ -16,7 +16,7 @@ import type { LayoutData } from "@/components/dashboard/dashboard-layout";
 import type { AuthProfile } from "@/lib/auth";
 import type { ProfileMembership } from "@/lib/profile";
 import { parsePinnedProjectIds } from "@/lib/pinned-projects-prefs";
-import { getTenantActiveFeatureKeys, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
+import { getEffectiveFeatureKeys } from "@/lib/template-catalogue";
 import { listFeatureFlags } from "@/lib/feature-flags";
 
 const projectSelect = {
@@ -242,13 +242,9 @@ async function loadDashboardLayoutData(
     deferBadges
       ? Promise.resolve({ myTasksCount: 0, mentionsCount: 0, inboxCount: 0 })
       : getDashboardBadgesData(profile),
-    // Inside a department, gate the sidebar by that department's template
-    // features; otherwise fall back to the tenant's active templates.
-    activeDeptId
-      ? getDepartmentActiveFeatureKeys(activeDeptId)
-      : profile.activeTenantId
-        ? getTenantActiveFeatureKeys(profile.activeTenantId)
-        : Promise.resolve("ALL" as const),
+    // Effective set = tenant active templates ∩ the active department's
+    // restriction (a department can't surface a feature the tenant hasn't licensed).
+    getEffectiveFeatureKeys(profile.activeTenantId, activeDeptId),
     profile.activeTenantId
       ? listFeatureFlags(profile.activeTenantId)
       : Promise.resolve({} as Record<string, boolean>),

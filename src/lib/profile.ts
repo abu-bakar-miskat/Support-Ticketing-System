@@ -49,16 +49,16 @@ function loadProfileAndRelations(userId: string) {
 
     prisma.departmentManager.findMany({
       where: { userId },
-      select: { departmentId: true, role: true },
-    }).catch(() => [] as { departmentId: string; role: string }[]),
+      select: { departmentId: true, role: true, department: { select: { tenantId: true } } },
+    }).catch(() => [] as { departmentId: string; role: string; department: { tenantId: string | null } | null }[]),
 
     prisma.departmentAccess.findMany({
       where: {
         userId,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
-      select: { departmentId: true, fullAccess: true },
-    }).catch(() => [] as { departmentId: string; fullAccess: boolean }[]),
+      select: { departmentId: true, fullAccess: true, department: { select: { tenantId: true } } },
+    }).catch(() => [] as { departmentId: string; fullAccess: boolean; department: { tenantId: string | null } | null }[]),
 
     prisma.tenantMembership.findMany({
       where: { userId, isActive: true },
@@ -176,19 +176,8 @@ const loadAuthedProfile = async (user: AuthUser) => {
     // soft-deleted one is — their data is untouched, only login is blocked.
     if (!profile.isActive) return null
 
-    const typedManaged = managedRaw as { departmentId: string; role: string }[]
-    const managedDepartmentIds = typedManaged.map((m) => m.departmentId)
-    // Departments this user administers (DEPARTMENT-scoped Admin) — the subset of
-    // managed departments with role=admin. Grants admin-only settings power for
-    // those departments (role-hierarchy.md); operational power still comes from
-    // managedDepartmentIds, which includes both admins and managers.
-    const departmentAdminIds = typedManaged
-      .filter((m) => m.role === "admin")
-      .map((m) => m.departmentId)
-    const grantedAccessDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[]).map((g) => g.departmentId)
-    const fullAccessGrantedDeptIds = (grantedRaw as { departmentId: string; fullAccess: boolean }[])
-      .filter((g) => g.fullAccess)
-      .map((g) => g.departmentId)
+    const typedManaged = managedRaw as { departmentId: string; role: string; department: { tenantId: string | null } | null }[]
+    const typedGranted = grantedRaw as { departmentId: string; fullAccess: boolean; department: { tenantId: string | null } | null }[]
 
     const typedMemberships = memberships as ProfileMembership[]
     // True when the user belongs to at least one hub department
@@ -219,12 +208,39 @@ const loadAuthedProfile = async (user: AuthUser) => {
       tenantIds,
     })
 
+    // Tenant isolation: a user's admin/manager power applies only inside the
+    // tenant they're currently acting in. `managedDepartmentIds`,
+    // `departmentAdminIds`, department-access grants, and the derived `role` are
+    // therefore scoped to the active tenant — an admin of tenant A must not gate
+    // through as admin of a tenant-B department by supplying its id
+    // (role-hierarchy.md). When no active tenant resolves (e.g. a super-admin who
+    // hasn't entered one) we don't filter — their power derives from isSuperAdmin,
+    // and there's no tenant context to leak into.
+    const inActiveTenant = (tenantId: string | null | undefined): boolean =>
+      !activeTenantId || tenantId === activeTenantId
+    const activeManaged = typedManaged.filter((m) => inActiveTenant(m.department?.tenantId))
+    const activeTenantMemberships = tenantMemberships.filter((t) => inActiveTenant(t.tenantId))
+
+    const managedDepartmentIds = activeManaged.map((m) => m.departmentId)
+    // Departments this user administers (DEPARTMENT-scoped Admin) — the subset of
+    // managed departments with role=admin, within the active tenant. Grants
+    // admin-only settings power for those departments (role-hierarchy.md).
+    const departmentAdminIds = activeManaged
+      .filter((m) => m.role === "admin")
+      .map((m) => m.departmentId)
+    const grantedAccessDeptIds = typedGranted
+      .filter((g) => inActiveTenant(g.department?.tenantId))
+      .map((g) => g.departmentId)
+    const fullAccessGrantedDeptIds = typedGranted
+      .filter((g) => g.fullAccess && inActiveTenant(g.department?.tenantId))
+      .map((g) => g.departmentId)
+
     // Cross-department access is manager-level only. Agents/sub-managers use
     // SubDepartmentMembership for cross-sub-department collaboration.
     const canUseDepartmentAccess =
       profile.isSuperAdmin === true ||
       managedDepartmentIds.length > 0 ||
-      tenantMemberships.some((t) => t.role === "admin")
+      activeTenantMemberships.some((t) => t.role === "admin")
 
     const scopedGrantedAccessDeptIds = canUseDepartmentAccess ? grantedAccessDeptIds : []
     const scopedFullAccessGrantedDeptIds = canUseDepartmentAccess ? fullAccessGrantedDeptIds : []
@@ -245,12 +261,15 @@ const loadAuthedProfile = async (user: AuthUser) => {
       ...(profile.isSuperAdmin && activeTenantId
         ? [{ role: "admin" as const, scopeType: "TENANT" as const, scopeId: activeTenantId }]
         : []),
-      ...tenantMemberships.map((t) => ({
+      // Only the active tenant's memberships and managed departments feed the
+      // effective role, so an admin/manager of another tenant doesn't resolve to
+      // that role while acting here (tenant isolation, role-hierarchy.md).
+      ...activeTenantMemberships.map((t) => ({
         role: t.role as ScopeRow["role"],
         scopeType: "TENANT" as const,
         scopeId: t.tenantId,
       })),
-      ...typedManaged.map((m) => ({
+      ...activeManaged.map((m) => ({
         role: (m.role === "admin" ? "admin" : "manager") as ScopeRow["role"],
         scopeType: "DEPARTMENT" as const,
         scopeId: m.departmentId,

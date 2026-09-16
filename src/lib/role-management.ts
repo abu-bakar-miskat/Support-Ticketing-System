@@ -210,8 +210,16 @@ function canManage(actor: RoleChangeActor, info: { tenantId: string; departmentI
   if (actor.isSuperAdmin && actor.activeTenantId === info.tenantId) return true;
   if ((actor.tenantMemberships ?? []).some((m) => m.tenantId === info.tenantId && m.role === "admin")) return true;
   if (!info.departmentId) return false;
-  const isAdminChange = before?.role === "admin" || after.role === "admin";
-  if (isAdminChange) return (actor.departmentAdminIds ?? []).includes(info.departmentId);
+  // Granting or removing a department-level Admin OR Manager requires admin
+  // authority over that department. A plain Manager may manage only lower roles
+  // (Agents, Sub-managers) — never mint an Admin or a peer Manager
+  // (role-hierarchy.md). Manager/admin roles only exist at DEPARTMENT scope;
+  // SUB_DEPARTMENT changes (sub_manager/agent) fall through to the operational check.
+  const isElevatedChange =
+    before?.role === "admin" ||
+    after.role === "admin" ||
+    (after.scopeType === "DEPARTMENT" && (before?.role === "manager" || after.role === "manager"));
+  if (isElevatedChange) return (actor.departmentAdminIds ?? []).includes(info.departmentId);
   return (actor.departmentAdminIds ?? []).includes(info.departmentId) || (actor.managedDepartmentIds ?? []).includes(info.departmentId);
 }
 

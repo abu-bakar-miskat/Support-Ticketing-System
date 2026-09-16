@@ -44,6 +44,7 @@ vi.mock("@/lib/db", () => ({
     },
     department: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
+    tenantMembership: { findFirst: vi.fn() },
     $transaction: vi.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg({ subDepartmentMembership: { updateMany: vi.fn(), upsert: vi.fn() } }))),
   },
 }))
@@ -74,6 +75,8 @@ function makeRequest(id: string, body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockRequireAuth.mockResolvedValue({ profile: mockAdmin as never, error: null })
+  // Target user is a member of the caller's active tenant (tenant-isolation guard).
+  vi.mocked(prisma.tenantMembership.findFirst).mockResolvedValue({ userId: "target" } as never)
   mockFindUnique.mockResolvedValue({ subDepartmentId: null, location: null, timezone: null, isActive: true } as never)
   mockFindUniqueOrThrow.mockResolvedValue(mockAdmin as never)
   mockLoadUserRoleChanges.mockResolvedValue([])

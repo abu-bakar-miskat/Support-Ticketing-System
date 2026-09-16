@@ -13,6 +13,20 @@ async function assertSubDepartmentScope(subDepartmentId: string, profile: AuthPr
   return null
 }
 
+// Deleting a sub-department is an Admin power (role-hierarchy.md): Managers may
+// create/edit sub-departments but not delete them. Gate on department admin —
+// a tenant admin (role === "admin", now scoped to the active tenant) passes;
+// otherwise the caller must be a DEPARTMENT-scoped Admin of the parent.
+async function assertSubDepartmentAdmin(subDepartmentId: string, profile: AuthProfile): Promise<NextResponse | null> {
+  if (profile.role === "admin") return null
+  const subDepartment = await prisma.subDepartment.findUnique({ where: { id: subDepartmentId }, select: { departmentId: true } })
+  if (!subDepartment) return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
+  if (!(profile.departmentAdminIds ?? []).includes(subDepartment.departmentId)) {
+    return NextResponse.json({ error: "Only an admin of this department can delete a sub-department." }, { status: 403 })
+  }
+  return null
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -77,7 +91,7 @@ export async function DELETE(
   if (error) return error
 
   const { id } = await params
-  const scopeError = await assertSubDepartmentScope(id, profile!)
+  const scopeError = await assertSubDepartmentAdmin(id, profile!)
   if (scopeError) return scopeError
 
   const ticketCount = await prisma.ticket.count({ where: { subDepartmentId: id } })

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { canManageDeptCalendar, departmentIdInScope } from "@/lib/dept-scope"
+import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import { AssignmentMethod } from "@/generated/prisma/enums"
 
 const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
@@ -64,7 +64,7 @@ export async function PATCH(
   if (error) return error
 
   const { id } = await params
-  if (!canManageDeptCalendar(profile, id)) {
+  if (!canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

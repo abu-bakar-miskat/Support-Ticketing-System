@@ -1,7 +1,27 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
+import type { AuthProfile } from "@/lib/auth"
 import { Role } from "@/generated/prisma/enums"
+
+/**
+ * Tenant isolation: a non-super-admin may only manage a target user who belongs
+ * to the caller's active tenant. Returns 404 (not 403) to avoid disclosing that a
+ * user exists in another tenant. Super-admins transcend tenant scope. Note we do
+ * NOT filter on membership.isActive so an admin can still reactivate a
+ * deactivated member of their tenant.
+ */
+async function assertTargetInCallerTenant(caller: AuthProfile, targetUserId: string): Promise<NextResponse | null> {
+  if (caller.isSuperAdmin) return null
+  const tenantId = caller.activeTenantId
+  if (!tenantId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const membership = await prisma.tenantMembership.findFirst({
+    where: { userId: targetUserId, tenantId },
+    select: { userId: true },
+  })
+  if (!membership) return NextResponse.json({ error: "User not found" }, { status: 404 })
+  return null
+}
 import { managerCanManageUser, subDepartmentInScope, resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
@@ -44,6 +64,9 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
+
+  const tenantError = await assertTargetInCallerTenant(profile!, id)
+  if (tenantError) return tenantError
 
   if (isManager && !(await managerCanManageUser(profile!, id))) {
     return NextResponse.json({ error: "User is outside your department scope" }, { status: 403 })
@@ -318,6 +341,9 @@ export async function DELETE(
   if (id === profile!.id) {
     return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 })
   }
+
+  const tenantError = await assertTargetInCallerTenant(profile!, id)
+  if (tenantError) return tenantError
 
   const target = await prisma.profile.findUnique({
     where: { id },

@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
-import { getProfileDeptScope } from "@/lib/dept-scope"
+import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
 import { checkDomainVerification } from "@/lib/resend-domains"
 import { AssignmentMethod } from "@/generated/prisma/enums"
+import type { AuthProfile } from "@/lib/auth"
 
 const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
 
-async function assertScope(caller: { role: string }, departmentId: string): Promise<NextResponse | null> {
-  if (caller.role !== "manager") return null
-  const deptScope = await getProfileDeptScope(caller as never)
-  if (!deptScope?.allowedDeptIds.includes(departmentId)) {
-    return NextResponse.json({ error: "Connection is outside your scope" }, { status: 403 })
+// Mailbox connection + its per-mailbox assignment method are admin-only settings
+// (role-hierarchy.md). Plain managers are excluded — only tenant/department admins.
+function assertScope(caller: AuthProfile, departmentId: string): NextResponse | null {
+  if (!canAdminDeptSettings(caller, departmentId)) {
+    return NextResponse.json({ error: "You must be an admin of this department." }, { status: 403 })
   }
   return null
 }

@@ -8,6 +8,7 @@ import type { AuthProfile } from "@/lib/auth";
 export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
   const [deptScope, personalScope] = await Promise.all([getProfileDeptScope(profile), getPersonalTaskDeptScope(profile)]);
   const deptIds = deptScope?.subDepartmentIds;
+  const activeDeptId = deptScope?.activeDeptId ?? null;
   const personalIds = personalScope?.subDepartmentIds;
   const [myTasksCount, mentionsCount, inboxCount] = await runAsSystem(() => Promise.all([
     prisma.ticket.count({ where: {
@@ -21,7 +22,14 @@ export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
     } }),
     prisma.notification.count({ where: {
       recipientId: profile.id, readAt: null,
-      ...(deptIds && deptIds.length > 0 ? { OR: [{ ticketId: null }, { ticket: { subDepartmentId: { in: deptIds } } }] } : {}),
+      // Department-scoped: ticket notifications limited to the active department's
+      // sub-departments, join-request notifications to the active department, and
+      // other (system, non-ticket/non-join) notifications kept.
+      ...(activeDeptId ? { OR: [
+        { ticket: { subDepartmentId: { in: deptIds ?? [] } } },
+        { joinRequest: { subDepartment: { departmentId: activeDeptId } } },
+        { AND: [{ ticketId: null }, { joinRequestId: null }] },
+      ] } : {}),
     } }),
   ]));
   return { myTasksCount, mentionsCount, inboxCount };

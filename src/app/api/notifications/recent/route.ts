@@ -2,14 +2,14 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { timeAgo } from "@/lib/format"
-import { resolveSubDepartmentTeamIds } from "@/lib/role-assignment"
-import { ticketPayloadInScope } from "@/lib/notification-scope"
+import { ticketPayloadInScope, resolveNotificationScope, joinRequestInDeptScope } from "@/lib/notification-scope"
 
 export async function GET() {
   const { profile, error } = await requireAuth()
   if (error) return error
 
-  const allowedSubDepartmentIds = await resolveSubDepartmentTeamIds(profile.id)
+  // Department-scoped to the caller's active department (see resolveNotificationScope).
+  const { allowedSubDepartmentIds, activeDeptId } = await resolveNotificationScope(profile)
 
   const rows = await prisma.notification.findMany({
     where: { recipientId: profile.id },
@@ -35,7 +35,11 @@ export async function GET() {
   const now = new Date()
 
   const items = rows
-    .filter((n) => ticketPayloadInScope(n.ticket, allowedSubDepartmentIds))
+    .filter((n) =>
+      n.type === "join_request"
+        ? joinRequestInDeptScope(n.joinRequest?.departmentId ?? null, activeDeptId)
+        : ticketPayloadInScope(n.ticket, allowedSubDepartmentIds),
+    )
     .map((n) => ({
     id: n.id,
     type: n.type,

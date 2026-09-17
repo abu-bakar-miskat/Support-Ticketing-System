@@ -11,8 +11,8 @@ import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentFailedAlertEmail } from "@/lib/email";
 import { getEligibleMembers, getOpenTicketCounts, isMemberAvailableNow } from "@/lib/rota";
-import { pickRoundRobin, pickWorkload, pickRuleBased, type AssignmentRuleLike } from "@/lib/assignment";
-import type { FormValues } from "@/lib/rules-engine";
+import { pickRoundRobin, pickWorkload, type AssignmentRuleLike } from "@/lib/assignment";
+import { evaluateConditionGroup, type FormValues } from "@/lib/rules-engine";
 import type { AssignmentMethod } from "@/generated/prisma/enums";
 
 export type AutoAssignResult = {
@@ -51,11 +51,17 @@ function logAssignmentOutcome(entry: {
 }
 
 /**
- * Resolves a ticket's assignee per the department's configured
- * `assignmentMethod` (ASG-01). `MANUAL` is intentional non-assignment, never
- * a failure. The other three methods report `failed: true` when no eligible
- * agent can be found (ASG-02) — callers must then call
- * `recordAssignmentFailure` after the ticket exists.
+ * Resolves a ticket's assignee for the sub-department the ticket landed in
+ * (ASG-01). Support-form / SLA "concerned" routing and mailbox email creation
+ * both pass that sub-department as `teamId`.
+ *
+ * Method precedence: per-mailbox override → sub-department → per-form →
+ * parent department → ROUND_ROBIN. Availability (schedule / holiday /
+ * doNotAssign) is always respected — unavailable members are skipped so the
+ * next eligible member in the sub-department gets the ticket.
+ *
+ * `MANUAL` is intentional non-assignment, never a failure. Other methods
+ * report `failed: true` when no eligible agent can be found (ASG-02).
  */
 export async function autoAssignTicket(params: {
   departmentId: string;
@@ -63,15 +69,14 @@ export async function autoAssignTicket(params: {
   formValues: FormValues;
   excludeUserId: string | null;
   /**
-   * The intake form the ticket came from, if any. Its per-form method override
-   * (IntakeFormConfig.assignmentMethod) wins over the subDepartment/department method
-   * when set. null/absent → resolve from subDepartment, then department.
+   * The intake form the ticket came from, if any. Used only when the
+   * sub-department (and mailbox) inherit — i.e. have no method of their own.
    */
   formConfigId?: string | null;
   /**
-   * The mailbox the inbound email arrived at, for email-created tickets. Its
-   * per-mailbox override (MailboxConnection.assignmentMethod) sits between the
-   * form and sub-department in precedence. null/absent → no mailbox override.
+   * The mailbox the inbound email arrived at. Its per-mailbox override
+   * (MailboxConnection.assignmentMethod) wins over the sub-department method
+   * when set. null/absent → no mailbox override.
    */
   mailboxConnectionId?: string | null;
 }): Promise<AutoAssignResult> {
@@ -87,21 +92,22 @@ export async function autoAssignTicket(params: {
       ? prisma.mailboxConnection.findUnique({ where: { id: mailboxConnectionId }, select: { assignmentMethod: true, manualAssigneeIds: true } })
       : Promise.resolve(null),
   ]);
-  // Precedence: per-form override → per-mailbox override → sub-department override
-  // → parent department → ROUND_ROBIN (preserves lib/rota.ts's historical
-  // default). Each level's null means "inherit from the next". `manualAssigneeIds`
-  // is read from whichever scope supplied the resolved method so MANUAL_SELECT
-  // uses that scope's hand-picked roster.
+  // Precedence: mailbox (email) → sub-department (routing target) → form →
+  // department → ROUND_ROBIN. The ticket's sub-department method wins over a
+  // form override so "concerned sub-department" routing honors that team's rota.
   let method: AssignmentMethod;
   let manualAssigneeIds: string[];
-  if (form?.assignmentMethod) {
-    method = form.assignmentMethod;
-    manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
-  } else if (mailbox?.assignmentMethod) {
+  if (mailbox?.assignmentMethod) {
     method = mailbox.assignmentMethod;
     manualAssigneeIds = mailbox.manualAssigneeIds;
+  } else if (subDepartment?.assignmentMethod) {
+    method = subDepartment.assignmentMethod;
+    manualAssigneeIds = subDepartment.manualAssigneeIds ?? [];
+  } else if (form?.assignmentMethod) {
+    method = form.assignmentMethod;
+    manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
   } else {
-    method = subDepartment?.assignmentMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
+    method = department?.assignmentMethod ?? "ROUND_ROBIN";
     manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
   }
 
@@ -111,8 +117,7 @@ export async function autoAssignTicket(params: {
     result = { assigneeId: null, method, failed: false };
   } else if (method === "RULE_BASED") {
     // Scope precedence, most specific first: form-scoped rules (formConfigId),
-    // then sub-department-scoped, then department-wide (both null). Non-null
-    // formConfigId sorts first, then non-null subDepartmentId, then `order`.
+    // then sub-department-scoped, then department-wide (both null).
     const rules = await prisma.assignmentRule.findMany({
       where: {
         departmentId,
@@ -130,11 +135,39 @@ export async function autoAssignTicket(params: {
       ],
       select: { id: true, conditions: true, agentId: true, enabled: true, order: true },
     });
-    const candidateId = pickRuleBased(rules as AssignmentRuleLike[], formValues);
-    const eligible = candidateId ? await isEligibleSubDepartmentMember(candidateId, teamId) : false;
-    result = eligible
-      ? { assigneeId: candidateId, method, failed: false }
-      : { assigneeId: null, method, failed: true };
+
+    // Walk matching rules in order; skip agents who aren't available members of
+    // this sub-department (holiday / off-hours / doNotAssign / inactive).
+    const ordered = (rules as AssignmentRuleLike[])
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => a.r.order - b.r.order || a.i - b.i)
+      .map(({ r }) => r);
+
+    let assigneeId: string | null = null;
+    let matchedUnavailable = false;
+    for (const rule of ordered) {
+      if (rule.enabled === false) continue;
+      if (!evaluateConditionGroup(rule.conditions, formValues)) continue;
+      if (await isEligibleSubDepartmentMember(rule.agentId, teamId)) {
+        assigneeId = rule.agentId;
+        break;
+      }
+      matchedUnavailable = true;
+    }
+
+    if (assigneeId) {
+      result = { assigneeId, method, failed: false };
+    } else if (matchedUnavailable) {
+      // A rule matched but every candidate was unavailable — jump to the next
+      // available member of this sub-department via round-robin.
+      const eligible = await getEligibleMembers(teamId, excludeUserId);
+      const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
+      result = picked
+        ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
+        : { assigneeId: null, method, failed: true };
+    } else {
+      result = { assigneeId: null, method, failed: true };
+    }
   } else if (method === "ROUND_ROBIN") {
     const eligible = await getEligibleMembers(teamId, excludeUserId);
     const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
@@ -143,8 +176,8 @@ export async function autoAssignTicket(params: {
       : { assigneeId: null, method, failed: true };
   } else if (method === "MANUAL_SELECT") {
     // Round-robin, but restricted to the hand-picked members configured on the
-    // sub-department. A single selected member means every ticket lands on them.
-    // Preserve getEligibleMembers' ordering so the shared rotaPointer stays stable.
+    // resolving scope. A single selected member means every ticket lands on them
+    // when they're available; otherwise the next selected available member.
     const selected = new Set(manualAssigneeIds);
     const eligible = (await getEligibleMembers(teamId, excludeUserId)).filter((m) =>
       selected.has(m.userId),
@@ -154,7 +187,7 @@ export async function autoAssignTicket(params: {
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
       : { assigneeId: null, method, failed: true };
   } else {
-    // WORKLOAD_BASED
+    // WORKLOAD_BASED — among currently available members only.
     const eligible = await getEligibleMembers(teamId, excludeUserId);
     const counts = await getOpenTicketCounts(teamId, eligible.map((m) => m.userId));
     const assigneeId = pickWorkload(counts);

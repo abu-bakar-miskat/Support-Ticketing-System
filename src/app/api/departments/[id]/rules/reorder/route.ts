@@ -26,13 +26,12 @@ export async function PATCH(
     return NextResponse.json({ error: "ruleIds must be an array of strings" }, { status: 400 })
   }
   const formConfigId = (body.formConfigId as string | undefined)?.trim() || null
-  const subDepartmentId = (body.subDepartmentId as string | undefined)?.trim() || null
 
-  // Scope the surface: a form's rules, else a sub-department's (non-form) rules,
-  // else department-wide. Only rules within that surface are reordered.
+  // Scope the surface: a form's rules, else department-wide (sub-departments
+  // inherit department rules — there is no per-sub-department reorder surface).
   const scopeWhere = formConfigId
     ? { departmentId: id, formConfigId }
-    : { departmentId: id, subDepartmentId, formConfigId: null }
+    : { departmentId: id, subDepartmentId: null, formConfigId: null }
 
   const owned = await prisma.rule.findMany({
     where: { ...scopeWhere, id: { in: ruleIds } },

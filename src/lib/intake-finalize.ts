@@ -43,26 +43,27 @@ export async function createTicketFromPayload(
 
   // ── Resolve priority + routing from the chosen SLA policy ────────────────────
   // A support form's selectable "issues" are its SLA policies; the picked policy
-  // (issueId) supplies priority, sub-department routing, the round-robin assignee
-  // pool, and — replacing the retired estimatedHours — its resolution target as
-  // the ticket's estimated minutes.
+  // (issueId) supplies priority, optional concerned sub-department routing, and
+  // — replacing the retired estimatedHours — its resolution target as the
+  // ticket's estimated minutes. Assignment then uses that sub-department's
+  // method among currently available members.
   let resolvedPriority: TicketPriority = TicketPriority.Medium
   let resolvedEstimatedMinutes: number | null = null
   let routedSubDepartmentId: string | null = null
-  let issueAssigneeIds: string[] = []
-  let issueRotaPointer = 0
 
   if (issueId) {
     const policy = await prisma.slaPolicy.findFirst({
       where: { id: issueId, formConfigId },
-      include: { assignees: { select: { userId: true }, orderBy: { userId: "asc" } } },
+      select: {
+        priority: true,
+        resolutionMins: true,
+        subDepartmentId: true,
+      },
     })
     if (policy) {
       resolvedPriority = policy.priority ?? TicketPriority.Medium
       resolvedEstimatedMinutes = policy.resolutionMins
       routedSubDepartmentId = policy.subDepartmentId
-      issueAssigneeIds = policy.assignees.map((a) => a.userId)
-      issueRotaPointer = policy.assigneeRotaPointer
     }
   } else if (priority && VALID_PRIORITIES.has(priority)) {
     resolvedPriority = priority as TicketPriority
@@ -103,9 +104,6 @@ export async function createTicketFromPayload(
     submitterName,
     title,
     autoAssign: form.autoAssign,
-    issueId: issueId ?? null,
-    issueAssigneeIds,
-    issueRotaPointer,
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>

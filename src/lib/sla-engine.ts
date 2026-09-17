@@ -178,14 +178,11 @@ export async function startSlaTimers(
     }
 
     const policies = await prisma.slaPolicy.findMany({
-      // Department-wide policies (subDepartmentId = null) apply to every ticket;
-      // a sub-department's own policies apply additionally to its tickets.
+      // SLA policies are department-scoped; sub-departments inherit them.
+      // `subDepartmentId` on a policy is optional issue routing, not a filter.
       where: {
         departmentId,
         enabled: true,
-        OR: subDepartmentId
-          ? [{ subDepartmentId: null }, { subDepartmentId }]
-          : [{ subDepartmentId: null }],
       },
       select: { id: true, conditions: true, firstResponseMins: true, resolutionMins: true },
     });

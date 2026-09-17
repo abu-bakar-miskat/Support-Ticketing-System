@@ -46,9 +46,9 @@ export async function POST(
     }
     rules = body.rules as Rule[]
   } else {
-    const subDepartmentId = (body.subDepartmentId as string | undefined)?.trim() || null
+    // Load department-wide rules (sub-departments inherit these).
     const saved = await prisma.rule.findMany({
-      where: { departmentId: id, subDepartmentId },
+      where: { departmentId: id, subDepartmentId: null },
       orderBy: { order: "asc" },
       select: { id: true, name: true, conditions: true, actions: true, order: true, enabled: true, stopProcessing: true },
     })

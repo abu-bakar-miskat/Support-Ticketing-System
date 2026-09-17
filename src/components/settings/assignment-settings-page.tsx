@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -19,13 +19,20 @@ import {
 import { cn } from "@/lib/utils";
 import type { MemberOption } from "@/components/ui/issue-assignee-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  RuleConditionsEditor,
+  conditionsSummary,
+  toRuleFormField,
+  type RuleConditionGroup,
+  type RuleFormField,
+} from "@/components/settings/rule-conditions-editor";
 
 type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
 
 type AssignmentRule = {
   id: string;
   name: string;
-  conditions: { combinator: "AND" | "OR"; conditions: unknown[] };
+  conditions: RuleConditionGroup;
   agentId: string;
   enabled: boolean;
   order: number;
@@ -170,6 +177,9 @@ export function AssignmentSettingsPage({
   // Rule-based rules per support form, keyed by form id. `undefined` = not yet
   // loaded (skeleton). See the "support form wise" rules table below.
   const [rulesByForm, setRulesByForm] = useState<Record<string, AssignmentRule[] | undefined>>({});
+  const [fieldsByForm, setFieldsByForm] = useState<Record<string, RuleFormField[]>>({});
+  const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
+  const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
 
   // Department page only: a dropdown to view/manage a specific sub-department's
   // assignment. "" = the department itself; a sub-department id = that sub-dept's
@@ -196,7 +206,10 @@ export function AssignmentSettingsPage({
     setRules(null);
     setForms(null);
     setRulesByForm({});
+    setFieldsByForm({});
+    setDepartmentFields([]);
     setDraftMethods({});
+    setExpandedRuleId(null);
     Promise.all([
       fetch(`/api/departments/${departmentId}/assignment-settings${scopeQs}`).then(jsonOrThrow),
       fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`).then(jsonOrThrow),
@@ -210,17 +223,47 @@ export function AssignmentSettingsPage({
         setForms(formList);
         setFormInheritedMethod(formsRes.inheritedMethod ?? "ROUND_ROBIN");
 
-        // Sub-department scope: rules are support-form wise — load each form's rules.
+        // Sub-department scope: rules are support-form wise — load each form's rules + fields.
         if (activeSubId && formList.length) {
           Promise.all(
-            formList.map((f) =>
-              fetch(`/api/departments/${departmentId}/assignment-rules?formConfigId=${encodeURIComponent(f.id)}`)
-                .then(jsonOrThrow)
-                .then((rs) => [f.id, rs] as const),
-            ),
+            formList.map(async (f) => {
+              const [rs, rawFields] = await Promise.all([
+                fetch(
+                  `/api/departments/${departmentId}/assignment-rules?formConfigId=${encodeURIComponent(f.id)}`,
+                ).then(jsonOrThrow) as Promise<AssignmentRule[]>,
+                fetch(`/api/intake/forms/${f.id}/fields`)
+                  .then(jsonOrThrow)
+                  .catch(() => [] as { id: string; label: string; type: string; options?: unknown }[]),
+              ]);
+              const fields = (
+                rawFields as { id: string; label: string; type: string; options?: unknown }[]
+              ).map((field) => toRuleFormField(field));
+              return [f.id, rs, fields] as const;
+            }),
           )
-            .then((entries) => setRulesByForm(Object.fromEntries(entries)))
+            .then((entries) => {
+              setRulesByForm(Object.fromEntries(entries.map(([id, rs]) => [id, rs])));
+              setFieldsByForm(Object.fromEntries(entries.map(([id, , fields]) => [id, fields])));
+            })
             .catch((e) => setError(e.message));
+        } else if (!activeSubId) {
+          // Department-wide rules: aggregate fields from all department forms for the picker.
+          fetch(`/api/departments/${departmentId}/forms`)
+            .then(jsonOrThrow)
+            .then(async (deptForms: { id: string; name: string }[]) => {
+              const lists = await Promise.all(
+                deptForms.map(async (f) => {
+                  const rawFields = await fetch(`/api/intake/forms/${f.id}/fields`)
+                    .then(jsonOrThrow)
+                    .catch(() => [] as { id: string; label: string; type: string; options?: unknown }[]);
+                  return (rawFields as { id: string; label: string; type: string; options?: unknown }[]).map(
+                    (field) => toRuleFormField(field, f.name),
+                  );
+                }),
+              );
+              setDepartmentFields(lists.flat());
+            })
+            .catch(() => setDepartmentFields([]));
         }
       })
       .catch((e) => setError(e.message));
@@ -290,6 +333,7 @@ export function AssignmentSettingsPage({
         }),
       );
       setRulesByForm((prev) => ({ ...prev, [form.id]: [...(prev[form.id] ?? []), created] }));
+      setExpandedRuleId(created.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create rule");
     }
@@ -544,8 +588,11 @@ export function AssignmentSettingsPage({
                   {resolvedMethodFor(form) === "RULE_BASED" && (
                     <FormRulesTable
                       rules={rulesByForm[form.id]}
+                      fields={fieldsByForm[form.id] ?? []}
                       members={members}
                       inputClass={inputClass}
+                      expandedRuleId={expandedRuleId}
+                      onToggleExpand={(id) => setExpandedRuleId((cur) => (cur === id ? null : id))}
                       onAdd={() => addFormRule(form)}
                       onUpdate={(id, patch) => updateFormRule(form.id, id, patch)}
                       onDelete={(id) => deleteFormRule(form.id, id)}
@@ -626,55 +673,68 @@ export function AssignmentSettingsPage({
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
-                {rules.map((rule, i) => (
-                  <div key={rule.id} className="rounded-xl border border-sts-card-border bg-sts-surface/40 p-3">
-                    <div className="flex items-center gap-2">
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-card font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
-                        {i + 1}
-                      </span>
-                      <input
-                        value={rule.name}
-                        onChange={(e) => updateRule(rule.id, { name: e.target.value })}
-                        placeholder="Rule name"
-                        className={cn(inputClass, "min-w-0 flex-1 font-medium")}
-                      />
-                      <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
+                {rules.map((rule, i) => {
+                  const expanded = expandedRuleId === rule.id;
+                  return (
+                    <div key={rule.id} className="rounded-xl border border-sts-card-border bg-sts-surface/40 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-sts-card font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
+                          {i + 1}
+                        </span>
                         <input
-                          type="checkbox"
-                          checked={rule.enabled}
-                          onChange={(e) => updateRule(rule.id, { enabled: e.target.checked })}
-                          className="size-3.5 accent-sts-blue"
+                          value={rule.name}
+                          onChange={(e) => updateRule(rule.id, { name: e.target.value })}
+                          placeholder="Rule name"
+                          className={cn(inputClass, "min-w-0 flex-1 font-medium")}
                         />
-                        Enabled
-                      </label>
+                        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
+                          <input
+                            type="checkbox"
+                            checked={rule.enabled}
+                            onChange={(e) => updateRule(rule.id, { enabled: e.target.checked })}
+                            className="size-3.5 accent-sts-blue"
+                          />
+                          Enabled
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => deleteRule(rule.id)}
+                          aria-label="Delete rule"
+                          className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <label className="font-sans text-[11.5px] text-sts-muted" htmlFor={`agent-${rule.id}`}>
+                          Assign to
+                        </label>
+                        <AgentSelect
+                          value={rule.agentId}
+                          members={members}
+                          inputClass={inputClass}
+                          onChange={(agentId) => updateRule(rule.id, { agentId })}
+                        />
+                      </div>
                       <button
                         type="button"
-                        onClick={() => deleteRule(rule.id)}
-                        aria-label="Delete rule"
-                        className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
+                        onClick={() => setExpandedRuleId((cur) => (cur === rule.id ? null : rule.id))}
+                        className="mt-2 font-sans text-[11.5px] text-sts-blue hover:underline"
                       >
-                        <Trash2 className="size-3.5" />
+                        {expanded
+                          ? "Hide conditions"
+                          : conditionsSummary(rule.conditions, departmentFields)}
                       </button>
+                      {expanded && (
+                        <RuleConditionsEditor
+                          conditions={rule.conditions}
+                          fields={departmentFields}
+                          onChange={(conditions) => updateRule(rule.id, { conditions })}
+                        />
+                      )}
                     </div>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <label className="font-sans text-[11.5px] text-sts-muted" htmlFor={`agent-${rule.id}`}>
-                        Agent (user id)
-                      </label>
-                      <input
-                        id={`agent-${rule.id}`}
-                        value={rule.agentId}
-                        onChange={(e) => updateRule(rule.id, { agentId: e.target.value })}
-                        placeholder="Paste a user id"
-                        className={cn(inputClass, "w-64 font-mono text-[11.5px]")}
-                      />
-                    </div>
-                    <p className="mt-2 sts-text-meta">
-                      {rule.conditions.conditions.length === 0
-                        ? "Applies to every ticket (no conditions)."
-                        : `${rule.conditions.conditions.length} condition(s) — edit via the API for now.`}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SectionCard>
@@ -688,15 +748,21 @@ export function AssignmentSettingsPage({
 
 function FormRulesTable({
   rules,
+  fields,
   members,
   inputClass,
+  expandedRuleId,
+  onToggleExpand,
   onAdd,
   onUpdate,
   onDelete,
 }: {
   rules: AssignmentRule[] | undefined;
+  fields: RuleFormField[];
   members: MemberOption[];
   inputClass: string;
+  expandedRuleId: string | null;
+  onToggleExpand: (id: string) => void;
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<AssignmentRule>) => void;
   onDelete: (id: string) => void;
@@ -742,57 +808,75 @@ function FormRulesTable({
               </tr>
             </thead>
             <tbody>
-              {rules.map((rule, i) => (
-                <tr key={rule.id} className="border-b border-sts-card-border last:border-0">
-                  <td className="px-3 py-2 align-middle">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-sts-surface font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
-                      {i + 1}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <input
-                      value={rule.name}
-                      onChange={(e) => onUpdate(rule.id, { name: e.target.value })}
-                      placeholder="Rule name"
-                      className={cn(inputClass, "w-full min-w-[140px] font-medium")}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <AgentSelect
-                      value={rule.agentId}
-                      members={members}
-                      inputClass={inputClass}
-                      onChange={(agentId) => onUpdate(rule.id, { agentId })}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-middle">
-                    <span className="sts-text-meta">
-                      {rule.conditions.conditions.length === 0
-                        ? "Any ticket"
-                        : `${rule.conditions.conditions.length} condition(s)`}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-center align-middle">
-                    <input
-                      type="checkbox"
-                      checked={rule.enabled}
-                      onChange={(e) => onUpdate(rule.id, { enabled: e.target.checked })}
-                      className="size-3.5 accent-sts-blue"
-                      aria-label={`Enable ${rule.name}`}
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-right align-middle">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(rule.id)}
-                      aria-label="Delete rule"
-                      className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {rules.map((rule, i) => {
+                const expanded = expandedRuleId === rule.id;
+                return (
+                  <Fragment key={rule.id}>
+                    <tr className={cn("border-b border-sts-card-border", expanded && "bg-sts-surface/30")}>
+                      <td className="px-3 py-2 align-middle">
+                        <span className="flex size-6 items-center justify-center rounded-md bg-sts-surface font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
+                          {i + 1}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        <input
+                          value={rule.name}
+                          onChange={(e) => onUpdate(rule.id, { name: e.target.value })}
+                          placeholder="Rule name"
+                          className={cn(inputClass, "w-full min-w-[140px] font-medium")}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        <AgentSelect
+                          value={rule.agentId}
+                          members={members}
+                          inputClass={inputClass}
+                          onChange={(agentId) => onUpdate(rule.id, { agentId })}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        <button
+                          type="button"
+                          onClick={() => onToggleExpand(rule.id)}
+                          className="sts-text-meta text-left hover:text-sts-blue hover:underline"
+                        >
+                          {conditionsSummary(rule.conditions, fields)}
+                        </button>
+                      </td>
+                      <td className="px-3 py-2 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          checked={rule.enabled}
+                          onChange={(e) => onUpdate(rule.id, { enabled: e.target.checked })}
+                          className="size-3.5 accent-sts-blue"
+                          aria-label={`Enable ${rule.name}`}
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-right align-middle">
+                        <button
+                          type="button"
+                          onClick={() => onDelete(rule.id)}
+                          aria-label="Delete rule"
+                          className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr className="border-b border-sts-card-border last:border-0 bg-sts-surface/30">
+                        <td colSpan={6} className="px-3 pb-4 pt-1">
+                          <RuleConditionsEditor
+                            conditions={rule.conditions}
+                            fields={fields}
+                            onChange={(conditions) => onUpdate(rule.id, { conditions })}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

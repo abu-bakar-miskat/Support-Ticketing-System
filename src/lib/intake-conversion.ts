@@ -63,12 +63,7 @@ export type ConversionPrep = {
   managers: { id: string; name: string | null; email: string | null }[];
   projectId: string;
   newRotaPointer: number;
-  // Set only when the ticket was assigned via a specific issue's round-robin
-  // pool (2+ assignees). Tells runConversion to advance that issue's cursor
-  // instead of the subDepartment ROTA.
-  rotaIssueId?: string | null;
-  newIssueRotaPointer?: number | null;
-  // ASG-02/03 (slice 11): true when the department's auto-assignment method
+  // ASG-02/03 (slice 11): true when the sub-department's auto-assignment method
   // found no eligible agent. The ticket is still created (unassigned) —
   // callers must report the failure once the ticket exists.
   assignmentFailed: boolean;
@@ -119,9 +114,6 @@ export async function prepareConversion({
   submitterName,
   title = "",
   autoAssign = true,
-  issueId = null,
-  issueAssigneeIds = [],
-  issueRotaPointer = 0,
 }: {
   formId: string;
   formName: string;
@@ -132,12 +124,6 @@ export async function prepareConversion({
   submitterName: string;
   title?: string;
   autoAssign?: boolean;
-  /** The chosen issue (if any) whose assignee pool drives assignment. */
-  issueId?: string | null;
-  /** Users assigned to that issue (department-scoped). Empty → subDepartment ROTA. */
-  issueAssigneeIds?: string[];
-  /** Round-robin cursor stored on the issue. */
-  issueRotaPointer?: number;
 }): Promise<ConversionPrep> {
   const subDepartment = await prisma.subDepartment.findUniqueOrThrow({
     where: { id: intakeSubDepartmentId },
@@ -169,34 +155,22 @@ export async function prepareConversion({
 
   let assigneeId: string | null = null;
   let nextPointer = subDepartment.rotaPointer;
-  let newIssueRotaPointer: number | null = null;
   let assignmentFailed = false;
 
   if (autoAssign) {
-    if (issueAssigneeIds.length > 0) {
-      // Per-issue assignment (department-scoped): a single assignee goes direct;
-      // multiple assignees round-robin via the issue's own cursor. The subDepartment ROTA
-      // (and its pointer) is left untouched in this path.
-      const idx = issueAssigneeIds.length === 1 ? 0 : issueRotaPointer % issueAssigneeIds.length;
-      assigneeId = issueAssigneeIds[idx];
-      if (issueAssigneeIds.length > 1) {
-        newIssueRotaPointer = (issueRotaPointer + 1) % issueAssigneeIds.length;
-      }
-    } else {
-      // Slice 11 (ASG-01): the department's configured assignment method
-      // (rule-based / round-robin / workload-based / manual) picks the agent.
-      const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
-      const result = await autoAssignTicket({
-        departmentId,
-        teamId: intakeSubDepartmentId,
-        formValues,
-        excludeUserId: managerId,
-        formConfigId: formId,
-      });
-      assigneeId = result.assigneeId;
-      assignmentFailed = result.failed;
-      if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
-    }
+    // Tickets land in the (possibly SLA-routed) sub-department and are assigned
+    // using that sub-department's method among currently available members.
+    const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
+    const result = await autoAssignTicket({
+      departmentId,
+      teamId: intakeSubDepartmentId,
+      formValues,
+      excludeUserId: managerId,
+      formConfigId: formId,
+    });
+    assigneeId = result.assigneeId;
+    assignmentFailed = result.failed;
+    if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
   }
 
   const assigneeProfile = assigneeId
@@ -229,8 +203,6 @@ export async function prepareConversion({
     managers,
     projectId,
     newRotaPointer: nextPointer,
-    rotaIssueId: newIssueRotaPointer !== null ? issueId : null,
-    newIssueRotaPointer,
     assignmentFailed,
   };
 }
@@ -316,15 +288,6 @@ export async function runConversion(
     where: { id: prep.intakeSubDepartmentId },
     data: { rotaPointer: prep.newRotaPointer },
   });
-
-  // When assignment came from a specific policy's round-robin pool, advance that
-  // policy's cursor (the subDepartment pointer above is unchanged in that path).
-  if (prep.rotaIssueId && prep.newIssueRotaPointer !== null && prep.newIssueRotaPointer !== undefined) {
-    await tx.slaPolicy.update({
-      where: { id: prep.rotaIssueId },
-      data: { assigneeRotaPointer: prep.newIssueRotaPointer },
-    });
-  }
 
   await ensureProjectMembers(prep.projectId, [prep.assigneeId], tx);
 

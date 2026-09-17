@@ -27,8 +27,7 @@ export default async function DepartmentSlaSettingsRoute({
   }));
   if (!department) notFound();
 
-  const canManage = canAdminDeptSettings(profile, departmentId);
-  if (!canManage) redirect("/settings/departments");
+  if (!canAdminDeptSettings(profile, departmentId)) redirect("/settings/departments");
 
   return (
     <SlaSettingsPage

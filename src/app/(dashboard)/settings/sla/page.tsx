@@ -14,8 +14,6 @@ export default async function SettingsSlaRoute() {
   const isAdmin = profile.role === "admin";
   if (!isAdmin) redirect("/settings");
 
-  // Resolve which department these SLA policies belong to: the active department
-  // when one is entered, otherwise the first the admin/manager can manage.
   const deptScope = await getProfileDeptScope(profile);
   let departmentId = deptScope?.activeDeptId ?? null;
 

@@ -7,7 +7,7 @@ import {
   getMentionableProjectMembers,
   getMentionableUsersForTicketDept,
 } from "@/lib/mentionable-users";
-import { fetchProjectDepartmentPeople, assertUsersEligibleForProjectDepartment } from "@/lib/project-department-people";
+import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/ticket-date-permissions";
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
 import { isDueOverdue, isBlockedStatus } from "@/lib/format";
@@ -208,44 +208,87 @@ export async function getAssignableUsersForTicketDepartment(
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * SD-06: a ticket belongs to exactly one sub-department, so membership in a
+ * *different* sub-department under the same parent department (what
+ * buildProjectDepartmentPeopleWhere allows for department-wide Projects) must
+ * not be enough to become its assignee/co-assignee — only real access to this
+ * ticket's own sub-department, or a genuine department-wide grant, counts.
+ * Batched so ticket creation can validate the primary assignee and every
+ * co-assignee in a couple of queries instead of one round-trip each.
+ */
+export async function assertUsersEligibleForTicketSubDepartment(
+  subDepartmentId: string,
+  departmentId: string | null,
+  userIds: string[],
+): Promise<{ ok: true } | { ok: false; invalidIds: string[] }> {
+  if (userIds.length === 0) return { ok: true };
+
+  const onSubDepartment = await prisma.profile.findMany({
+    where: {
+      id: { in: userIds },
+      OR: [
+        { subDepartmentId },
+        { memberships: { some: { subDepartmentId, isActive: true } } },
+      ],
+    },
+    select: { id: true },
+  });
+  const onSubDepartmentSet = new Set(onSubDepartment.map((p) => p.id));
+  const remaining = userIds.filter((id) => !onSubDepartmentSet.has(id));
+  if (remaining.length === 0) return { ok: true };
+
+  if (!departmentId) {
+    return { ok: false, invalidIds: remaining };
+  }
+
+  const deptWide = await prisma.profile.findMany({
+    where: {
+      id: { in: remaining },
+      OR: [
+        { managedDepartments: { some: { departmentId } } },
+        {
+          departmentAccesses: {
+            some: {
+              departmentId,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+          },
+        },
+        { directDeptMemberships: { some: { departmentId } } },
+      ],
+    },
+    select: { id: true },
+  });
+  const deptWideSet = new Set(deptWide.map((p) => p.id));
+  const invalidIds = remaining.filter((id) => !deptWideSet.has(id));
+  if (invalidIds.length > 0) return { ok: false, invalidIds };
+  return { ok: true };
+}
+
 export async function assertAssigneeEligibleForTicket(
   ticket: { subDepartmentId: string; subDepartment: { departmentId: string | null } },
   assigneeId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const assigneeProfile = await prisma.profile.findUnique({
     where: { id: assigneeId },
-    select: { id: true, subDepartmentId: true, role: true },
+    select: { id: true },
   });
   if (!assigneeProfile) {
     return { ok: false, error: "Assignee not found" };
   }
 
-  const deptId = ticket.subDepartment.departmentId;
-  if (deptId) {
-    const eligibility = await assertUsersEligibleForProjectDepartment(deptId, [
-      assigneeId,
-    ]);
-    if (!eligibility.ok) {
-      return {
-        ok: false,
-        error: "Assignee must belong to the ticket's department",
-      };
-    }
+  const eligibility = await assertUsersEligibleForTicketSubDepartment(
+    ticket.subDepartmentId,
+    ticket.subDepartment.departmentId,
+    [assigneeId],
+  );
+  if (eligibility.ok) {
     return { ok: true };
   }
-
-  const onTicketSubDepartment =
-    assigneeProfile.subDepartmentId === ticket.subDepartmentId ||
-    !!(await prisma.subDepartmentMembership.findFirst({
-      where: { userId: assigneeId, subDepartmentId: ticket.subDepartmentId, isActive: true },
-      select: { userId: true },
-    }));
-
-  if (!onTicketSubDepartment) {
-    return { ok: false, error: "Assignee must belong to the ticket's subDepartment" };
-  }
-
-  return { ok: true };
+  return ticket.subDepartment.departmentId
+    ? { ok: false, error: "Assignee must belong to the ticket's department" }
+    : { ok: false, error: "Assignee must belong to the ticket's subDepartment" };
 }
 
 export async function getTicketDetailRecord(id: string) {

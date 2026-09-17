@@ -43,26 +43,27 @@ export async function createTicketFromPayload(
 
   // ── Resolve priority + routing from the chosen SLA policy ────────────────────
   // A support form's selectable "issues" are its SLA policies; the picked policy
-  // (issueId) supplies priority, sub-department routing, the round-robin assignee
-  // pool, and — replacing the retired estimatedHours — its resolution target as
-  // the ticket's estimated minutes.
+  // (issueId) supplies priority, optional concerned sub-department routing, and
+  // — replacing the retired estimatedHours — its resolution target as the
+  // ticket's estimated minutes. Assignment then uses that sub-department's
+  // method among currently available members.
   let resolvedPriority: TicketPriority = TicketPriority.Medium
   let resolvedEstimatedMinutes: number | null = null
   let routedSubDepartmentId: string | null = null
-  let issueAssigneeIds: string[] = []
-  let issueRotaPointer = 0
 
   if (issueId) {
     const policy = await prisma.slaPolicy.findFirst({
       where: { id: issueId, formConfigId },
-      include: { assignees: { select: { userId: true }, orderBy: { userId: "asc" } } },
+      select: {
+        priority: true,
+        resolutionMins: true,
+        subDepartmentId: true,
+      },
     })
     if (policy) {
       resolvedPriority = policy.priority ?? TicketPriority.Medium
       resolvedEstimatedMinutes = policy.resolutionMins
       routedSubDepartmentId = policy.subDepartmentId
-      issueAssigneeIds = policy.assignees.map((a) => a.userId)
-      issueRotaPointer = policy.assigneeRotaPointer
     }
   } else if (priority && VALID_PRIORITIES.has(priority)) {
     resolvedPriority = priority as TicketPriority
@@ -73,12 +74,23 @@ export async function createTicketFromPayload(
     : (responses as unknown[])
 
   // Every ticket must land in a sub-department (it drives the human ID prefix).
-  // A department-level form has no default, so routing must come from the chosen
-  // issue's SLA policy. Fail loudly rather than create an orphaned ticket.
-  const targetSubDepartmentId = routedSubDepartmentId ?? form.intakeSubDepartmentId
+  // Support forms are department-scoped, so routing precedence is:
+  //   1. the chosen issue's SLA policy (SlaPolicy.subDepartmentId),
+  //   2. the form's hidden fallback (legacy forms only — no longer set in the UI),
+  //   3. the department's default (first-created) sub-department.
+  // A department always has at least one sub-department, so a ticket always lands.
+  let targetSubDepartmentId = routedSubDepartmentId ?? form.intakeSubDepartmentId
+  if (!targetSubDepartmentId) {
+    const defaultSub = await prisma.subDepartment.findFirst({
+      where: { departmentId: form.departmentId },
+      orderBy: { id: "asc" }, // cuids are time-ordered ⇒ first-created
+      select: { id: true },
+    })
+    targetSubDepartmentId = defaultSub?.id ?? null
+  }
   if (!targetSubDepartmentId) {
     throw new Error(
-      `Form ${formConfigId} resolved no sub-department: the selected issue's SLA policy must set one, or the form needs a default sub-department`,
+      `Form ${formConfigId} resolved no sub-department: department ${form.departmentId} has no sub-departments`,
     )
   }
 
@@ -92,9 +104,6 @@ export async function createTicketFromPayload(
     submitterName,
     title,
     autoAssign: form.autoAssign,
-    issueId: issueId ?? null,
-    issueAssigneeIds,
-    issueRotaPointer,
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>

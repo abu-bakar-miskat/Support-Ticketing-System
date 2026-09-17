@@ -42,7 +42,9 @@ export type RuleTicketContext = {
   assigneeId: string | null;
   /**
    * The intake form the ticket came from, if any. Rules scoped to this form
-   * (formConfigId set) run in addition to the department/sub-department rules.
+   * (formConfigId set) run in addition to the department-wide rules. Sub-
+   * departments inherit department rules — there is no per-sub-department
+   * rule surface.
    */
   formConfigId?: string | null;
 };
@@ -63,16 +65,14 @@ export async function applyRulesToTicket(
 ): Promise<RuleExecutionResult> {
   try {
     const rows = await prisma.rule.findMany({
-      // Department-wide rules (subDepartmentId = null, no form) apply to every
-      // ticket; a sub-department's own rules apply additionally to its tickets;
-      // and — when the ticket came from an intake form — that form's rules apply
-      // too. All run together, in `order`.
+      // Automation rules are department-scoped. Sub-departments inherit them.
+      // Department-wide rules (no form) apply to every ticket; form-scoped rules
+      // also run when the ticket came from that intake form. All run in `order`.
       where: {
         departmentId: ticket.departmentId,
         enabled: true,
         OR: [
           { subDepartmentId: null, formConfigId: null },
-          { subDepartmentId: ticket.subDepartmentId, formConfigId: null },
           ...(ticket.formConfigId ? [{ formConfigId: ticket.formConfigId }] : []),
         ],
       },

@@ -157,7 +157,6 @@ export default async function SettingsIntakeFormsRoute() {
       departments={deptOptions}
       isAdmin={isAdmin}
       scopedDepartmentName={scopedDepartment?.name ?? null}
-      activeSubDepartmentId={null}
       activeSubDepartmentName={null}
       workspaceBranding={workspaceBranding}
     />

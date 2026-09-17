@@ -59,6 +59,44 @@ async function requestLoginCode(formData: FormData) {
     );
   }
 
+  // A pending invite (accepted or not) must be accepted before a normal
+  // sign-in — send the user to the invite's own preview/accept page rather
+  // than letting them straight into a sign-in that silently grants it. This
+  // applies whether or not they already have a Profile (e.g. an existing
+  // member invited to a second department).
+  const now = new Date();
+  const [tenantInvite, departmentInvite] = await Promise.all([
+    prisma.tenantInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+      select: { token: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.departmentInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+      select: { token: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  if (tenantInvite && next !== `/tenant-invite/${tenantInvite.token}`) {
+    redirect(`/tenant-invite/${tenantInvite.token}`);
+  }
+  if (departmentInvite && next !== `/invite/${departmentInvite.token}`) {
+    redirect(`/invite/${departmentInvite.token}`);
+  }
+
+  // No sign-in code for an email with no workspace account and no pending
+  // invite either — surface an invitation prompt instead of letting Supabase
+  // silently create a new auth user with no matching Profile.
+  if (!tenantInvite && !departmentInvite) {
+    const profile = await prisma.profile.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (!profile) {
+      redirect(`/login?notice=no-account&email=${encodeURIComponent(email)}${nextQuery}`);
+    }
+  }
+
   // Generate the credential with Supabase, but send the numeric OTP ourselves.
   // A hosted Supabase template can otherwise silently turn signInWithOtp into
   // a magic-link email when it contains {{ .ConfirmationURL }}.
@@ -83,6 +121,7 @@ export default async function LoginPage({
     email?: string;
     verificationType?: string;
     t?: string;
+    notice?: string;
   }>;
 }) {
   const {
@@ -92,11 +131,14 @@ export default async function LoginPage({
     email: emailParam,
     verificationType: verificationTypeParam,
     t: sentAtParam,
+    notice,
   } = await searchParams;
   const next = safeNextPath(nextParam);
-  const sentEmail = (emailParam ?? "").trim();
+  const paramEmail = (emailParam ?? "").trim();
   const verificationType = verificationTypeParam === "signup" ? "signup" : "magiclink";
-  const sentStep = step === "sent" && sentEmail.length > 0;
+  const sentStep = step === "sent" && paramEmail.length > 0;
+  const noAccountStep = notice === "no-account" && paramEmail.length > 0;
+  const backToLoginHref = `/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`;
   // Send time for the resend countdown; falls back to "now" so a code reached
   // this step even without the marker still starts a full 90s cooldown.
   const sentAt = Number(sentAtParam);
@@ -170,12 +212,16 @@ export default async function LoginPage({
         <h1
           className={cn(
             "text-center font-semibold leading-[1.12] tracking-[-0.025em] text-sts-foreground",
-            sentStep
+            sentStep || noAccountStep
               ? "text-[28px] text-balance sm:text-[30px]"
               : "whitespace-nowrap text-[clamp(1.4rem,7vw,1.875rem)]",
           )}
         >
-          {sentStep ? "Check your inbox" : "Sign in to your workspace"}
+          {noAccountStep
+            ? "No account found"
+            : sentStep
+              ? "Check your inbox"
+              : "Sign in to your workspace"}
         </h1>
 
         <div className="h-2.5" />
@@ -185,9 +231,16 @@ export default async function LoginPage({
             "max-w-[20rem] text-center text-[13.5px] leading-relaxed text-pretty text-sts-muted",
           )}
         >
-          {sentStep
-            ? `We emailed a sign-in code to ${sentEmail}`
-            : "Enter your work email and we’ll send you a secure, password-free sign-in code."}
+          {noAccountStep ? (
+            <>
+              We couldn&apos;t find a workspace account for{" "}
+              <span className="font-medium text-sts-foreground">{paramEmail}</span>
+            </>
+          ) : sentStep ? (
+            `We emailed a sign-in code to ${paramEmail}`
+          ) : (
+            "Enter your work email and we’ll send you a secure, password-free sign-in code."
+          )}
         </p>
 
         <div className="h-7 sm:h-8" />
@@ -218,13 +271,13 @@ export default async function LoginPage({
 
             <div className="h-6" />
 
-            <OtpVerifyForm email={sentEmail} next={next} verificationType={verificationType} />
+            <OtpVerifyForm email={paramEmail} next={next} verificationType={verificationType} />
 
             <div className="h-6" />
 
             <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12.5px]">
               <ResendCodeButton
-                email={sentEmail}
+                email={paramEmail}
                 next={next}
                 verificationType={verificationType}
                 sentAt={codeSentAt}
@@ -234,12 +287,42 @@ export default async function LoginPage({
                 |
               </span>
               <a
-                href={`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+                href={backToLoginHref}
                 className="rounded-sm text-sts-muted underline-offset-4 transition-colors hover:text-sts-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
               >
                 Use a different email
               </a>
             </div>
+          </>
+        ) : noAccountStep ? (
+          <>
+            <div className="flex w-full flex-col items-center text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-1 ring-destructive/15">
+                <UserXIcon />
+              </div>
+
+              <div className="h-5" />
+
+              <p className="max-w-[19rem] text-[13.5px] leading-relaxed text-sts-muted">
+                Ask your department or tenant admin to invite you, then try
+                signing in again.
+              </p>
+            </div>
+
+            <div className="h-6" />
+
+            <a
+              href={backToLoginHref}
+              className={cn(
+                "flex h-12 w-full items-center justify-center gap-2 rounded-xl",
+                "border border-sts-card-border bg-sts-card text-[14px] font-semibold text-sts-foreground shadow-sm",
+                "sts-pressable transition-[background-color,transform,box-shadow] duration-200 hover:border-sts-subtle/70",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-sts-card",
+              )}
+            >
+              <BackArrowIcon />
+              Back to sign in
+            </a>
           </>
         ) : (
           <>
@@ -328,6 +411,48 @@ function ArrowIcon() {
     >
       <path d="M5 12h14" />
       <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+function BackArrowIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </svg>
+  );
+}
+
+function UserXIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="m17 8 4 4" />
+      <path d="m21 8-4 4" />
     </svg>
   );
 }

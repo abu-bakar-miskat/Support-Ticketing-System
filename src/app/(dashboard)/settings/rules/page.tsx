@@ -15,7 +15,7 @@ export default async function SettingsRulesRoute() {
   if (!isAdmin) redirect("/settings");
 
   // Resolve which department these rules belong to: the active department when
-  // one is entered, otherwise the first the admin/manager can manage.
+  // one is entered, otherwise the first the admin can manage.
   const deptScope = await getProfileDeptScope(profile);
   let departmentId = deptScope?.activeDeptId ?? null;
 
@@ -36,11 +36,7 @@ export default async function SettingsRulesRoute() {
 
   const department = await runAsSystem(() => prisma.department.findUnique({
     where: { id: departmentId },
-    select: {
-      id: true,
-      name: true,
-      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
-    },
+    select: { id: true, name: true },
   }));
   if (!department) redirect("/settings/departments");
   if (!canAdminDeptSettings(profile, department.id)) redirect("/settings");
@@ -49,7 +45,6 @@ export default async function SettingsRulesRoute() {
     <RulesSettingsPage
       departmentId={department.id}
       departmentName={department.name}
-      subDepartments={department.subDepartments}
     />
   );
 }

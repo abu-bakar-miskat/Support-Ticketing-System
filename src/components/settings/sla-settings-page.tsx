@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, X, Clock, Timer, User, FileText, Flag, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IssueAssigneeSelect, type MemberOption } from "@/components/ui/issue-assignee-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
@@ -25,21 +23,11 @@ type SlaPolicy = {
   formConfigId: string | null;
   subDepartmentId: string | null;
   priority: Priority | null;
-  assigneeIds: string[];
 };
 
 type SubDepartmentOption = { id: string; name: string };
 
 type FormOption = { id: string; name: string };
-type Person = MemberOption;
-
-/** Shape of the /people rows we care about, before mapping to MemberOption. */
-type RawPerson = {
-  id: string;
-  name: string | null;
-  avatarUrl?: string | null;
-  subDepartment?: { name?: string | null; department?: { name?: string | null } | null } | null;
-};
 
 function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
   return (
@@ -51,16 +39,6 @@ function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: 
   );
 }
 
-function toMember(p: RawPerson): Person {
-  return {
-    id: p.id,
-    name: p.name ?? "Unknown",
-    avatarUrl: p.avatarUrl ?? null,
-    departmentName: p.subDepartment?.department?.name ?? null,
-    subDepartmentName: p.subDepartment?.name ?? null,
-  };
-}
-
 type SlaConfig = {
   pauseOutsideHours: boolean;
   pauseWhenWaitingForCustomer: boolean;
@@ -70,7 +48,6 @@ type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: s
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Render a minute count as a compact human duration, e.g. 90 → "1h 30m". */
 function formatMins(mins: number): string {
   if (!Number.isFinite(mins) || mins <= 0) return "—";
   const d = Math.floor(mins / 1440);
@@ -87,85 +64,37 @@ async function jsonOrThrow(res: Response) {
   return res.json();
 }
 
+const SUB_DEPT_OPTIONS = (subDepartments: SubDepartmentOption[]) => [
+  { value: "", label: "None (form default)" },
+  ...subDepartments.map((s) => ({ value: s.id, label: s.name })),
+];
+
 export function SlaSettingsPage({
   departmentId,
   departmentName,
-  subDepartmentId,
-  subDepartmentName,
   subDepartments,
 }: {
   departmentId: string;
   departmentName: string;
-  /** When set, this surface manages ONLY the given sub-department's SLA. */
-  subDepartmentId?: string;
-  subDepartmentName?: string;
-  /** Sub-departments of this department — powers the department page's scope tabs. */
   subDepartments?: SubDepartmentOption[];
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
   const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // null = modal closed; "" = open for no particular form; a form id = open
-  // pre-scoped to that support form.
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Department page only: a scope dropdown to view policies sub-department-wise.
-  // "all" merges every sub-department, "" is department-wide, else a sub-dept id.
-  const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
-  const [activeScope, setActiveScope] = useState<string>(showScopeSelect ? "all" : "");
-  const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name]));
-
-  // Options for the scope dropdown, in display order.
-  const scopeOptions = [
-    { value: "all", label: "All sub-departments" },
-    { value: "", label: "Only Department" },
-    ...(subDepartments ?? []).map((s) => ({ value: s.id, label: s.name })),
-  ];
-
-  // Working hours + members stay at the surface's own scope (the sub-department on
-  // the scoped surface, else department-wide), independent of the selected scope.
-  const settingsScopeQs = subDepartmentId ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}` : "";
-  const settingsScopeBody = subDepartmentId ? { subDepartmentId } : {};
-
-  // Policies + forms follow the selected scope on the department page.
-  const policiesScopeQs = subDepartmentId
-    ? `?subDepartmentId=${encodeURIComponent(subDepartmentId)}`
-    : activeScope === "all"
-      ? "?scope=all"
-      : activeScope
-        ? `?subDepartmentId=${encodeURIComponent(activeScope)}`
-        : "";
-
-  // On the merged "All" overview the target scope is ambiguous, so creating is
-  // disabled there; otherwise new policies land in the selected scope.
-  const creationDisabled = showScopeSelect && activeScope === "all";
-  const showPolicySubDept = showScopeSelect && activeScope === "all";
-  // Default routing target for a new issue: the scoped sub-department (scoped
-  // surface), else the selected scope, else none (department-level — pick per issue).
-  const newPolicySubDeptDefault = subDepartmentId
-    ? subDepartmentId
-    : activeScope && activeScope !== "all"
-      ? activeScope
-      : "";
-  const createScopeName =
-    subDepartmentName ??
-    (activeScope && activeScope !== "all" ? subDeptNameById.get(activeScope) : null) ??
-    departmentName;
+  const subDeptList = subDepartments ?? [];
 
   const loadSettings = () => {
-    Promise.all([
-      fetch(`/api/departments/${departmentId}/sla-settings${settingsScopeQs}`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/people`).then(jsonOrThrow),
-    ])
-      .then(([settingsRes, peopleRes]) => {
+    fetch(`/api/departments/${departmentId}/sla-settings`)
+      .then(jsonOrThrow)
+      .then((settingsRes) => {
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
-        setPeople(((peopleRes.people ?? []) as RawPerson[]).map(toMember));
       })
       .catch((e) => setError(e.message));
   };
@@ -173,8 +102,8 @@ export function SlaSettingsPage({
   const loadPolicies = () => {
     setPolicies(null);
     Promise.all([
-      fetch(`/api/departments/${departmentId}/sla-policies${policiesScopeQs}`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/forms${policiesScopeQs}`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/sla-policies`).then(jsonOrThrow),
+      fetch(`/api/departments/${departmentId}/forms`).then(jsonOrThrow),
     ])
       .then(([policiesRes, formsRes]) => {
         setPolicies(policiesRes);
@@ -183,8 +112,8 @@ export function SlaSettingsPage({
       .catch((e) => setError(e.message));
   };
 
-  useEffect(loadSettings, [departmentId, subDepartmentId]);
-  useEffect(loadPolicies, [departmentId, policiesScopeQs]);
+  useEffect(loadSettings, [departmentId]);
+  useEffect(loadPolicies, [departmentId]);
 
   async function createPolicy(input: {
     name: string;
@@ -192,27 +121,25 @@ export function SlaSettingsPage({
     resolutionMins: number;
     formConfigId: string | null;
     priority: Priority | null;
-    assigneeIds: string[];
     subDepartmentId: string | null;
   }) {
     setCreating(true);
     setError(null);
     try {
+      const body: Record<string, unknown> = {
+        name: input.name,
+        firstResponseMins: input.firstResponseMins,
+        resolutionMins: input.resolutionMins,
+        formConfigId: input.formConfigId,
+        priority: input.priority,
+      };
+      if (input.subDepartmentId) body.subDepartmentId = input.subDepartmentId;
+
       const created = await jsonOrThrow(
         await fetch(`/api/departments/${departmentId}/sla-policies`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: input.name,
-            firstResponseMins: input.firstResponseMins,
-            resolutionMins: input.resolutionMins,
-            formConfigId: input.formConfigId,
-            priority: input.priority,
-            assigneeIds: input.assigneeIds,
-            // The per-issue routing picker is authoritative; it defaults to the
-            // page scope so the scoped sub-department SLA surface still works.
-            subDepartmentId: input.subDepartmentId,
-          }),
+          body: JSON.stringify(body),
         }),
       );
       setPolicies((prev) => [...(prev ?? []), created]);
@@ -224,8 +151,6 @@ export function SlaSettingsPage({
     }
   }
 
-  // Explicit save (from a row's Update button). Commits the staged edits and
-  // syncs state from the server response. Throws so the row can surface errors.
   async function savePolicy(id: string, patch: Partial<SlaPolicy>) {
     setError(null);
     const updated = await jsonOrThrow(
@@ -238,7 +163,6 @@ export function SlaSettingsPage({
     setPolicies((prev) => prev?.map((p) => (p.id === id ? { ...p, ...updated } : p)) ?? null);
   }
 
-  // Throws on failure so the ConfirmDialog keeps the modal open + toasts.
   async function deletePolicy(id: string) {
     const res = await fetch(`/api/departments/${departmentId}/sla-policies/${id}`, { method: "DELETE" });
     if (!res.ok) {
@@ -257,7 +181,7 @@ export function SlaSettingsPage({
         await fetch(`/api/departments/${departmentId}/sla-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slaConfig, businessHours, ...settingsScopeBody }),
+          body: JSON.stringify({ slaConfig, businessHours }),
         }),
       );
     } catch (e) {
@@ -278,8 +202,6 @@ export function SlaSettingsPage({
     });
   }
 
-  // Bucket policies under their support form; anything with no form (or a form
-  // that no longer exists) falls into the trailing "not linked" group.
   const policiesByForm = new Map<string, SlaPolicy[]>();
   const noFormPolicies: SlaPolicy[] = [];
   for (const p of policies ?? []) {
@@ -296,23 +218,16 @@ export function SlaSettingsPage({
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
         href="/settings/departments"
-        className={cn(
-          "mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground",
-          subDepartmentId && "hidden",
-        )}
+        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back to departments
       </Link>
 
-      <h1 className="sts-text-modal-title mb-1">
-        SLA policies — {subDepartmentName ?? departmentName}
-      </h1>
+      <h1 className="sts-text-modal-title mb-1">SLA policies — {departmentName}</h1>
       <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
-        {subDepartmentId
-          ? "These policies and business hours run in addition to the parent department's, for this sub-department's tickets only. "
-          : ""}
-        First-response and resolution targets, matched against submitted form values. When several
-        policies match, the strictest target on each metric wins.
+        Policies are configured at the department level; sub-departments inherit them. First-response
+        and resolution targets are matched against submitted form values. When several policies match,
+        the strictest target on each metric wins.
       </p>
 
       {error && (
@@ -321,27 +236,6 @@ export function SlaSettingsPage({
         </div>
       )}
 
-      {/* ── Sub-department scope selector (department page only) ── */}
-      {showScopeSelect && (
-        <div className="mb-5 flex items-center gap-2">
-          <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
-          <Select items={scopeOptions} value={activeScope} onValueChange={(v) => setActiveScope(v ?? "")}>
-            <SelectTrigger className="w-60 border-sts-blue/30 bg-sts-blue/5 font-sans text-[12.5px] font-medium text-sts-blue hover:bg-sts-blue/10">
-              <FileText className="size-3.5 text-sts-blue" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {scopeOptions.map((opt) => (
-                <SelectItem key={opt.value || "dept-wide"} value={opt.value} className="font-sans text-[12.5px]">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* ── Policies, grouped by support form ── */}
       <div className="mb-8">
         <div className="mb-3">
           <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
@@ -349,7 +243,6 @@ export function SlaSettingsPage({
             <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
               {policies.length} {policies.length === 1 ? "policy" : "policies"} ·{" "}
               {policies.filter((p) => p.enabled).length} active · grouped by support form
-              {showPolicySubDept ? " · across all sub-departments" : ""}
             </p>
           )}
         </div>
@@ -373,11 +266,7 @@ export function SlaSettingsPage({
                 key={form.id}
                 title={form.name}
                 policies={policiesByForm.get(form.id) ?? []}
-                people={people}
-                subDepartments={subDepartments ?? []}
-                canCreate={!creationDisabled}
-                showSubDept={showPolicySubDept}
-                subDeptNameById={subDeptNameById}
+                subDepartments={subDeptList}
                 onNewPolicy={() => setNewPolicyFor(form.id)}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
@@ -389,11 +278,7 @@ export function SlaSettingsPage({
               <PolicyGroup
                 title="Not linked to a form"
                 policies={noFormPolicies}
-                people={people}
-                subDepartments={subDepartments ?? []}
-                canCreate={!creationDisabled}
-                showSubDept={showPolicySubDept}
-                subDeptNameById={subDeptNameById}
+                subDepartments={subDeptList}
                 onNewPolicy={() => setNewPolicyFor("")}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
@@ -404,7 +289,6 @@ export function SlaSettingsPage({
         )}
       </div>
 
-      {/* ── Working-hours settings ── */}
       <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
         <h2 className="mb-3 font-sans text-[13.5px] font-semibold text-sts-foreground">Working hours (SLA-04)</h2>
         {!slaConfig || !businessHours ? (
@@ -504,12 +388,10 @@ export function SlaSettingsPage({
 
       {newPolicyFor !== null && (
         <NewPolicyModal
-          scopeName={createScopeName}
+          departmentName={departmentName}
           creating={creating}
           forms={forms}
-          people={people}
-          subDepartments={subDepartments ?? []}
-          initialSubDepartmentId={newPolicySubDeptDefault}
+          subDepartments={subDeptList}
           initialFormConfigId={newPolicyFor}
           onCancel={() => setNewPolicyFor(null)}
           onCreate={createPolicy}
@@ -519,16 +401,10 @@ export function SlaSettingsPage({
   );
 }
 
-// ── Per-form policy group ────────────────────────────────────────────────────
-/** One support form's SLA policies, with its own "New policy" button. */
 function PolicyGroup({
   title,
   policies,
-  people,
   subDepartments,
-  canCreate,
-  showSubDept,
-  subDeptNameById,
   onNewPolicy,
   onSave,
   onDelete,
@@ -536,14 +412,7 @@ function PolicyGroup({
 }: {
   title: string;
   policies: SlaPolicy[];
-  people: Person[];
-  /** Sub-departments an issue can route to (empty on the scoped sub-dept surface). */
   subDepartments: SubDepartmentOption[];
-  /** Whether the "New policy" button shows (hidden on the merged "All" overview). */
-  canCreate: boolean;
-  /** Show each policy's sub-department, for the cross-sub-department overview. */
-  showSubDept: boolean;
-  subDeptNameById: Map<string, string>;
   onNewPolicy: () => void;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -559,15 +428,13 @@ function PolicyGroup({
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
-        {canCreate && (
-          <button
-            type="button"
-            onClick={onNewPolicy}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-          >
-            <Plus className="size-3.5" /> New policy
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onNewPolicy}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+        >
+          <Plus className="size-3.5" /> New policy
+        </button>
       </div>
 
       {policies.length === 0 ? (
@@ -578,13 +445,12 @@ function PolicyGroup({
         ) : null
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse">
+          <table className="w-full min-w-[680px] border-collapse">
             <thead>
               <tr className="border-b border-sts-card-border text-left font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
                 <th className="px-2 py-2 font-medium">Issue</th>
-                <th className="px-2 py-2 font-medium">Route to</th>
+                <th className="px-2 py-2 font-medium">Sub-department</th>
                 <th className="px-2 py-2 font-medium">Priority goal</th>
-                <th className="px-2 py-2 font-medium">Assign to</th>
                 <th className="px-2 py-2 font-medium">Time to first response</th>
                 <th className="px-2 py-2 font-medium">Time to resolution</th>
                 <th className="px-2 py-2" />
@@ -595,15 +461,7 @@ function PolicyGroup({
                 <PolicyRow
                   key={policy.id}
                   policy={policy}
-                  people={people}
                   subDepartments={subDepartments}
-                  subDeptName={
-                    showSubDept
-                      ? policy.subDepartmentId
-                        ? subDeptNameById.get(policy.subDepartmentId) ?? null
-                        : "Only Department"
-                      : null
-                  }
                   onSave={onSave}
                   onDelete={onDelete}
                 />
@@ -616,28 +474,20 @@ function PolicyGroup({
   );
 }
 
-// ── Single policy row: staged edits committed via an explicit Update button ──
 function PolicyRow({
   policy,
-  people,
   subDepartments,
-  subDeptName,
   onSave,
   onDelete,
 }: {
   policy: SlaPolicy;
-  people: Person[];
-  /** Sub-departments an issue can route to (empty on the scoped sub-dept surface). */
   subDepartments: SubDepartmentOption[];
-  /** Sub-department label shown under the name in the "All" overview, else null. */
-  subDeptName: string | null;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [draft, setDraft] = useState({
     name: policy.name,
     priority: policy.priority,
-    assigneeIds: policy.assigneeIds,
     firstResponseMins: policy.firstResponseMins,
     resolutionMins: policy.resolutionMins,
     subDepartmentId: policy.subDepartmentId,
@@ -649,13 +499,9 @@ function PolicyRow({
     setDraft((d) => ({ ...d, [k]: v }));
   }
 
-  const sameIds = (a: string[], b: string[]) =>
-    a.length === b.length && [...a].sort().join() === [...b].sort().join();
-
   const dirty =
     draft.name !== policy.name ||
     draft.priority !== policy.priority ||
-    !sameIds(draft.assigneeIds, policy.assigneeIds) ||
     draft.firstResponseMins !== policy.firstResponseMins ||
     draft.resolutionMins !== policy.resolutionMins ||
     draft.subDepartmentId !== policy.subDepartmentId;
@@ -671,14 +517,18 @@ function PolicyRow({
     if (!canSave) return;
     setSaving(true);
     try {
-      await onSave(policy.id, {
+      const patch: Partial<SlaPolicy> = {
         name: draft.name.trim(),
         priority: draft.priority,
-        assigneeIds: draft.assigneeIds,
         firstResponseMins: draft.firstResponseMins,
         resolutionMins: draft.resolutionMins,
-        subDepartmentId: draft.subDepartmentId,
-      });
+      };
+      if (draft.subDepartmentId) {
+        patch.subDepartmentId = draft.subDepartmentId;
+      } else {
+        patch.subDepartmentId = null;
+      }
+      await onSave(policy.id, patch);
     } finally {
       setSaving(false);
     }
@@ -696,11 +546,6 @@ function PolicyRow({
           onChange={(e) => set("name", e.target.value)}
           className="w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15"
         />
-        {subDeptName && (
-          <span className="mt-1 inline-block rounded-full border border-sts-blue/20 bg-sts-blue/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
-            {subDeptName}
-          </span>
-        )}
       </td>
       <td className={cell}>
         {subDepartments.length > 0 ? (
@@ -708,14 +553,11 @@ function PolicyRow({
             <SearchableSelect
               value={draft.subDepartmentId ?? ""}
               onChange={(v) => set("subDepartmentId", v || null)}
-              options={[
-                { value: "", label: "Form default" },
-                ...subDepartments.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-              placeholder="Form default"
+              options={SUB_DEPT_OPTIONS(subDepartments)}
+              placeholder="None (form default)"
               searchable={false}
               size="sm"
-              aria-label="Route to sub-department"
+              aria-label="Sub-department concerned"
             />
           </div>
         ) : (
@@ -738,20 +580,6 @@ function PolicyRow({
             size="sm"
             aria-label="Priority goal"
           />
-        </div>
-      </td>
-      <td className={cell}>
-        <div className="w-[180px]">
-          {people.length === 0 ? (
-            <span className="font-sans text-[11.5px] text-sts-subtle">No members</span>
-          ) : (
-            <IssueAssigneeSelect
-              value={draft.assigneeIds}
-              onChange={(ids) => set("assigneeIds", ids)}
-              members={people}
-              className="w-full"
-            />
-          )}
         </div>
       </td>
       <td className={cell}>
@@ -812,33 +640,19 @@ function PolicyRow({
   );
 }
 
-// ── New-policy modal ─────────────────────────────────────────────────────────
-/**
- * Authors a policy from a support form's issue: pick a form, then one of its
- * issues — the issue's name becomes the policy name and its priority + first
- * assignee pre-fill (both still editable). All are optional; a policy with none
- * of them still applies to every ticket in scope.
- */
 function NewPolicyModal({
-  scopeName,
+  departmentName,
   creating,
   forms,
-  people,
   subDepartments,
-  initialSubDepartmentId,
   initialFormConfigId,
   onCancel,
   onCreate,
 }: {
-  scopeName: string;
+  departmentName: string;
   creating: boolean;
   forms: FormOption[];
-  people: Person[];
-  /** Sub-departments an issue can route to (empty on the scoped sub-dept surface). */
   subDepartments: SubDepartmentOption[];
-  /** Default routing target (page scope), "" = form default / department-level. */
-  initialSubDepartmentId: string;
-  /** Preselected support form ("" for none) — set when opened from a form's own "New policy" button. */
   initialFormConfigId: string;
   onCancel: () => void;
   onCreate: (input: {
@@ -847,22 +661,20 @@ function NewPolicyModal({
     resolutionMins: number;
     formConfigId: string | null;
     priority: Priority | null;
-    assigneeIds: string[];
     subDepartmentId: string | null;
   }) => void;
 }) {
-  // Fixed for the modal's lifetime — the form is chosen by which group's
-  // "New policy" button opened it, not from inside the modal.
   const formConfigId = initialFormConfigId;
   const [name, setName] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [firstResponseMins, setFirstResponseMins] = useState(60);
   const [resolutionMins, setResolutionMins] = useState(480);
-  const [subDepartmentId, setSubDepartmentId] = useState(initialSubDepartmentId);
+  const [subDepartmentId, setSubDepartmentId] = useState("");
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
@@ -874,7 +686,6 @@ function NewPolicyModal({
       resolutionMins,
       formConfigId: formConfigId || null,
       priority: priority || null,
-      assigneeIds,
       subDepartmentId: subDepartmentId || null,
     });
 
@@ -890,7 +701,6 @@ function NewPolicyModal({
         className="sts-glass-panel sts-modal-enter flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">New SLA policy</h2>
           <button
@@ -903,10 +713,9 @@ function NewPolicyModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex flex-col gap-4 overflow-y-auto px-[22px] py-5">
           <p className="font-sans text-[11.5px] text-sts-muted">
-            For <span className="font-medium text-sts-foreground">{scopeName}</span>
+            For <span className="font-medium text-sts-foreground">{departmentName}</span>
             {formName ? (
               <>
                 {" · "}
@@ -915,8 +724,8 @@ function NewPolicyModal({
                 </span>
               </>
             ) : null}
-            . Name the issue this policy covers, then set its priority goal
-            (targets apply when the ticket priority matches) and assignee.
+            . Name the issue this policy covers, then set its priority goal (targets apply when the
+            ticket priority matches).
           </p>
 
           <div className="space-y-1.5">
@@ -926,70 +735,50 @@ function NewPolicyModal({
               placeholder="e.g. Cannot login"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && canSubmit) submit(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSubmit) submit();
+              }}
               className={fieldCls}
             />
           </div>
 
           {subDepartments.length > 0 && (
             <div className="space-y-1.5">
-              <label className="sts-text-label flex items-center gap-1.5">
-                <FileText className="size-3" /> Route to sub-department
-              </label>
+              <label className="sts-text-label">Sub-department concerned (optional)</label>
               <SearchableSelect
                 value={subDepartmentId}
                 onChange={(v) => setSubDepartmentId(v ?? "")}
-                options={[
-                  { value: "", label: "Form default (route by form)" },
-                  ...subDepartments.map((s) => ({ value: s.id, label: s.name })),
-                ]}
-                placeholder="Form default (route by form)"
+                options={SUB_DEPT_OPTIONS(subDepartments)}
+                placeholder="None (form default)"
                 searchable={false}
                 size="md"
-                aria-label="Route to sub-department"
+                aria-label="Sub-department concerned"
               />
               <p className="font-sans text-[11px] text-sts-subtle">
-                Tickets for this issue are created in the chosen sub-department.
-                Required when the form has no default sub-department.
+                When set, tickets for this issue land in that sub-department. Otherwise the form or
+                department default applies.
               </p>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="sts-text-label flex items-center gap-1.5">
-                <Flag className="size-3" /> Priority goal
-              </label>
-              <SearchableSelect
-                value={priority}
-                onChange={(v) => setPriority(v as Priority | "")}
-                options={PRIORITIES.map((p) => ({
-                  value: p,
-                  label: p,
-                  color: UI_PRIORITY_DOT_HEX[p.toLowerCase() as UiPriority],
-                }))}
-                placeholder="Any priority (catch-all)"
-                searchable={false}
-                leadingDot
-                size="md"
-                aria-label="Priority goal"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="sts-text-label flex items-center gap-1.5">
-                <User className="size-3" /> Assign to
-              </label>
-              {people.length === 0 ? (
-                <p className="font-sans text-[11.5px] text-sts-subtle">No members to assign.</p>
-              ) : (
-                <IssueAssigneeSelect
-                  value={assigneeIds}
-                  onChange={setAssigneeIds}
-                  members={people}
-                  className="w-full"
-                />
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <label className="sts-text-label flex items-center gap-1.5">
+              <Flag className="size-3" /> Priority goal
+            </label>
+            <SearchableSelect
+              value={priority}
+              onChange={(v) => setPriority(v as Priority | "")}
+              options={PRIORITIES.map((p) => ({
+                value: p,
+                label: p,
+                color: UI_PRIORITY_DOT_HEX[p.toLowerCase() as UiPriority],
+              }))}
+              placeholder="Any priority (catch-all)"
+              searchable={false}
+              leadingDot
+              size="md"
+              aria-label="Priority goal"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -1022,7 +811,6 @@ function NewPolicyModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex h-14 shrink-0 items-center justify-end gap-2.5 border-t border-sts-card-border bg-sts-bg px-[22px]">
           <button
             type="button"

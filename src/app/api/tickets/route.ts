@@ -9,7 +9,7 @@ import { appendTicketEvent } from "@/lib/ticket-events"
 import { projectInScope, subDepartmentInScope, getProfileDeptScope } from "@/lib/dept-scope"
 import { resolveProfileTicketScope } from "@/lib/prisma-scope"
 import { getRequestScope, runAsSystem, runWithScope } from "@/lib/request-scope"
-import { buildProjectDepartmentPeopleWhere } from "@/lib/project-department-people"
+import { assertUsersEligibleForTicketSubDepartment } from "@/lib/ticket-detail-data"
 import type { Prisma } from "@/generated/prisma/client"
 import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTicket, isProjectMember } from "@/lib/cross-access"
 import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
@@ -324,6 +324,24 @@ async function createTicket(request: Request, profile: AuthProfile) {
     return NextResponse.json({ error: "Assignee not found" }, { status: 400 })
   }
 
+  // SD-06: the primary assignee and every co-assignee must have real access
+  // to THIS ticket's own subDepartment — not just any sibling subDepartment
+  // under the same department.
+  const assignmentCandidateIds = [...new Set([...(assigneeId ? [assigneeId] : []), ...coAssigneeIds])]
+  if (assignmentCandidateIds.length > 0) {
+    const eligibility = await assertUsersEligibleForTicketSubDepartment(
+      resolvedSubDepartmentId,
+      subDepartmentRecord.departmentId,
+      assignmentCandidateIds,
+    )
+    if (!eligibility.ok) {
+      return NextResponse.json(
+        { error: "Assignee and co-assignees must belong to the ticket's subDepartment" },
+        { status: 400 },
+      )
+    }
+  }
+
   // Resolve the project — if none selected, find or create a "Miscellaneous" project for this subDepartment
   let resolvedProjectId: string
   if (projectId) {
@@ -376,18 +394,13 @@ async function createTicket(request: Request, profile: AuthProfile) {
     return NextResponse.json({ error: "SubDepartment not found" }, { status: 404 })
   }
 
+  // Eligibility (existence + subDepartment scope) was already validated above.
   const coAssignees = coAssigneeIds.length > 0
     ? await prisma.profile.findMany({
-        where: {
-          ...buildProjectDepartmentPeopleWhere(subDepartmentRecord.departmentId),
-          id: { in: coAssigneeIds },
-        },
+        where: { id: { in: coAssigneeIds } },
         select: { id: true, name: true, email: true },
       })
     : []
-  if (coAssignees.length !== coAssigneeIds.length) {
-    return NextResponse.json({ error: "Co-assignees must belong to the ticket's department" }, { status: 400 })
-  }
 
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
   let ticket

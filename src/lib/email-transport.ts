@@ -4,6 +4,8 @@ import nodemailer from "nodemailer";
 import { getResendClient } from "@/lib/resend-client";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
+export type EmailAttachment = { content: string | Buffer; filename: string };
+
 export type OutboundEmail = {
   from: string;
   to: string | string[];
@@ -11,6 +13,8 @@ export type OutboundEmail = {
   html: string;
   text: string;
   replyTo?: string;
+  headers?: Record<string, string>;
+  attachments?: EmailAttachment[];
 };
 
 export type SendOutboundResult =
@@ -77,6 +81,7 @@ async function sendViaMailpitHttp(message: OutboundEmail): Promise<SendOutboundR
     Subject: message.subject,
     Text: message.text,
     HTML: message.html,
+    ...(message.headers ? { Headers: message.headers } : {}),
   };
 
   const auth = Buffer.from(`${uiUser}:${uiPass}`).toString("base64");
@@ -123,6 +128,8 @@ async function sendViaMailpitSmtp(message: OutboundEmail): Promise<SendOutboundR
       html: message.html,
       text: message.text,
       replyTo: message.replyTo,
+      headers: message.headers,
+      attachments: message.attachments,
     });
     return { ok: true, id: typeof info.messageId === "string" ? info.messageId : null, via: "mailpit" };
   } catch (err) {
@@ -135,6 +142,11 @@ async function sendViaMailpitSmtp(message: OutboundEmail): Promise<SendOutboundR
 
 /** Prefer HTTP (works through the reverse proxy); fall back to SMTP. */
 async function sendViaMailpit(message: OutboundEmail): Promise<SendOutboundResult> {
+  // Attachment encoding over Mailpit's HTTP API is fiddly; SMTP (nodemailer)
+  // handles attachments natively, so route those straight to SMTP.
+  if (message.attachments?.length) {
+    return sendViaMailpitSmtp(message);
+  }
   const httpResult = await sendViaMailpitHttp(message);
   if (httpResult.ok) return httpResult;
   const smtpResult = await sendViaMailpitSmtp(message);
@@ -158,6 +170,8 @@ async function sendViaResend(message: OutboundEmail): Promise<SendOutboundResult
     html: message.html,
     text: message.text,
     replyTo: message.replyTo,
+    ...(message.headers ? { headers: message.headers } : {}),
+    ...(message.attachments ? { attachments: message.attachments } : {}),
   });
 
   if (result.error) return { ok: false, error: result.error.message };
@@ -171,6 +185,34 @@ async function sendViaResend(message: OutboundEmail): Promise<SendOutboundResult
 export async function isAuthEmailDevMode(): Promise<boolean> {
   const { devMode } = await getPlatformSettings();
   return devMode;
+}
+
+/**
+ * Whether ALL outbound mail (ticket confirmations, assignments, replies, …)
+ * should be diverted to Mailpit instead of the real recipient.
+ *
+ * Local `next dev` always diverts — `NODE_ENV === "development"` is only true on
+ * a developer machine, never in a deployed (production/preview) build — so a
+ * confirmation for a ticket created via the support form or an inbound mailbox
+ * lands in Mailpit rather than emailing a real person. Deployed environments
+ * additionally honor the platform `devMode` flag. `DATABASE_URL` is shared, so
+ * we must NOT rely on the DB flag alone to tell local dev apart from prod.
+ */
+export async function isOutboundEmailDevMode(): Promise<boolean> {
+  if (process.env.NODE_ENV === "development") return true;
+  const { devMode } = await getPlatformSettings();
+  return devMode;
+}
+
+/**
+ * The single chokepoint for business email. In dev mode delivers via Mailpit so
+ * no real recipient is ever contacted from a developer machine; otherwise Resend.
+ */
+export async function sendOutboundEmail(message: OutboundEmail): Promise<SendOutboundResult> {
+  if (await isOutboundEmailDevMode()) {
+    return sendViaMailpit(message);
+  }
+  return sendViaResend(message);
 }
 
 /**

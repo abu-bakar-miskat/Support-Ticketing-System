@@ -18,7 +18,12 @@ vi.mock("nodemailer", () => ({
 vi.mock("@/lib/platform-settings", () => ({ getPlatformSettings }));
 vi.mock("@/lib/resend-client", () => ({ getResendClient }));
 
-import { getMailpitUiBase, isAuthEmailConfigured, sendAuthEmail } from "./email-transport";
+import {
+  getMailpitUiBase,
+  isAuthEmailConfigured,
+  sendAuthEmail,
+  sendOutboundEmail,
+} from "./email-transport";
 
 const message = {
   from: "PEN Support <noreply@example.com>",
@@ -105,5 +110,83 @@ describe("sendAuthEmail", () => {
     getPlatformSettings.mockResolvedValue({ devMode: false });
     getResendClient.mockReturnValue(null);
     await expect(isAuthEmailConfigured()).resolves.toBe(false);
+  });
+});
+
+describe("sendOutboundEmail — business email (ticket confirmations, etc.)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("MAILPIT_UI_BASE", "");
+    vi.stubEnv("MAILPIT_UI_USER", "");
+    vi.stubEnv("MAILPIT_UI_PASS", "");
+    vi.stubEnv("MAILPIT_SMTP_HOST", "");
+    vi.stubEnv("MAILPIT_SMTP_PORT", "");
+    vi.stubEnv("MAILPIT_SMTP_USER", "");
+    vi.stubEnv("MAILPIT_SMTP_PASS", "");
+    sendMail.mockResolvedValue({ messageId: "<mailpit-1>" });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ID: "http-msg-1" }) });
+    getResendClient.mockReturnValue({ emails: { send: resendSend } });
+    resendSend.mockResolvedValue({ data: { id: "re_1" }, error: null });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("diverts to Mailpit in local dev (NODE_ENV=development) without reading platform settings", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    await expect(sendOutboundEmail(message)).resolves.toEqual({
+      ok: true,
+      id: "http-msg-1",
+      via: "mailpit",
+    });
+    expect(fetchMock).toHaveBeenCalled();
+    expect(resendSend).not.toHaveBeenCalled();
+    // Shared DB flag must not be consulted to tell local dev apart from prod.
+    expect(getPlatformSettings).not.toHaveBeenCalled();
+  });
+
+  it("diverts to Mailpit in a deployed env when platform devMode is on", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    getPlatformSettings.mockResolvedValue({ devMode: true });
+
+    await expect(sendOutboundEmail(message)).resolves.toMatchObject({ via: "mailpit" });
+    expect(resendSend).not.toHaveBeenCalled();
+  });
+
+  it("sends via Resend in production when devMode is off", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    getPlatformSettings.mockResolvedValue({ devMode: false });
+
+    await expect(sendOutboundEmail(message)).resolves.toEqual({
+      ok: true,
+      id: "re_1",
+      via: "resend",
+    });
+    expect(resendSend).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it("routes attachment-bearing mail through SMTP, not the HTTP API", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    await expect(
+      sendOutboundEmail({ ...message, attachments: [{ content: "abc", filename: "a.txt" }] }),
+    ).resolves.toMatchObject({ via: "mailpit", id: "<mailpit-1>" });
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({ attachments: [{ content: "abc", filename: "a.txt" }] }),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("forwards custom headers (email threading) to Mailpit", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    await sendOutboundEmail({ ...message, headers: { "In-Reply-To": "<abc@x>" } });
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(body.Headers).toEqual({ "In-Reply-To": "<abc@x>" });
   });
 });

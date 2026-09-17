@@ -33,9 +33,7 @@ function allFeaturesEnabled(): Record<FeatureKey, boolean> {
 }
 
 function defaultNewTenantFeatureDefaults(): Record<FeatureKey, boolean> {
-  // Cross-department access starts off for new tenants; Super Admins enable it
-  // per tenant from Platform settings when ready.
-  return { ...allFeaturesEnabled(), crossDepartmentAccess: false };
+  return allFeaturesEnabled();
 }
 
 export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {

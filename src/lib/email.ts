@@ -19,11 +19,32 @@ import { renderSignatureHtml, renderSignatureText } from "./email-templates/sign
 import { normalizeSignaturePrefs } from "./signature-prefs";
 import { formatMessageIdHeader, normalizeMessageId } from "./inbound-email";
 import { prisma } from "./db";
-import { isAuthEmailConfigured, sendAuthEmail } from "./email-transport";
+import { isAuthEmailConfigured, isOutboundEmailDevMode, sendAuthEmail, sendOutboundEmail } from "./email-transport";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
+
+/**
+ * Sends through the dev-mode-aware transport (Mailpit in dev, Resend in prod)
+ * while presenting Resend's `{ data, error }` result shape, so every existing
+ * call site — and `logIfRejected` — keeps working unchanged. This is the single
+ * point through which all business email now flows.
+ */
+async function sendProviderEmail(message: {
+  from: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  text: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  attachments?: { content: string | Buffer; filename: string }[];
+}): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
+  const result = await sendOutboundEmail(message);
+  if (result.ok) return { data: result.id ? { id: result.id } : null, error: null };
+  return { data: null, error: { message: result.error } };
+}
 
 /** Threading id (RFC Message-ID) + Resend send id (bounce/delivery webhooks). */
 export type SentEmailIds = {
@@ -47,7 +68,9 @@ function logIfRejected(kind: string, result: { data: { id: string } | null; erro
  */
 async function resolveSentMessageIds(emailId: string | null | undefined): Promise<SentEmailIds> {
   if (!emailId) return { providerMessageId: null, providerEmailId: null };
-  if (!resend) {
+  // In dev the send went to Mailpit, so `emailId` isn't a Resend id — don't hit
+  // the real Resend API to resolve an RFC message-id; use the id we have.
+  if (!resend || (await isOutboundEmailDevMode())) {
     return { providerMessageId: normalizeMessageId(emailId) || null, providerEmailId: emailId };
   }
   let rfc: string | null = null;
@@ -124,7 +147,7 @@ export async function sendAssignmentEmail(args: {
   });
   logIfRejected(
     "assignment",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -164,7 +187,7 @@ export async function sendIntakeConfirmationEmail(args: {
   });
   const { data } = logIfRejected(
     "intake confirmation",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to: args.to,
       subject,
@@ -202,7 +225,7 @@ export async function sendIntakeVerificationEmail(args: {
   });
   const { error } = logIfRejected(
     "intake verification",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to: args.to,
       subject,
@@ -237,7 +260,7 @@ export async function sendIntakeManagerAlertEmail(args: {
   });
   logIfRejected(
     "intake manager alert",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -270,7 +293,7 @@ export async function sendAssignmentFailedAlertEmail(args: {
   });
   logIfRejected(
     "assignment failed alert",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -297,7 +320,7 @@ export async function sendMailboxConnectionFailedAlertEmail(args: {
   });
   logIfRejected(
     "mailbox connection failed alert",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -328,7 +351,7 @@ export async function sendResolutionEmail(args: {
   });
   logIfRejected(
     "resolution",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -361,7 +384,7 @@ export async function sendStatusChangedEmail(args: {
   });
   logIfRejected(
     "status changed",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -397,7 +420,7 @@ export async function sendTicketCompletedEmail(args: {
   });
   logIfRejected(
     "ticket completed",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -433,7 +456,7 @@ export async function sendTicketTransferredEmail(args: {
   });
   logIfRejected(
     "ticket transferred",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,
@@ -489,7 +512,7 @@ export async function sendCustomerReplyEmail(args: {
 
   const { data } = logIfRejected(
     "customer reply",
-    await resend.emails.send({
+    await sendProviderEmail({
       from,
       to: args.to,
       subject,
@@ -625,7 +648,7 @@ export async function sendMentionEmail(args: {
   });
   logIfRejected(
     "mention",
-    await resend.emails.send({
+    await sendProviderEmail({
       from: fromHeader(config),
       to,
       subject,

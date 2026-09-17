@@ -35,7 +35,6 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   intakeForms: "Public intake forms",
   recruitment: "Recruitment boards",
   timeTracking: "Time tracking",
-  crossDepartmentAccess: "Cross-department access (managers only)",
 };
 
 type TenantOption = { id: string; name: string; slug: string; status: string };
@@ -142,8 +141,8 @@ export function PlatformSettingsAdmin({
       setBaseline((b) => ({ ...b, devMode: Boolean(body.devMode) }));
       setStatus(
         body.devMode
-          ? "Dev mode on — OTP / invite emails go to Mailpit"
-          : "Production mode on — OTP / invite emails go via Resend",
+          ? "Dev mode on — all emails go to Mailpit"
+          : "Production mode on — all emails go via Resend",
       );
     } catch {
       setDevMode(prev);
@@ -347,8 +346,8 @@ export function PlatformSettingsAdmin({
                   </div>
                   <p className="mt-1 font-sans text-[12px] text-sts-muted">
                     {devMode
-                      ? "Dev mode: OTP, invite, and authentication emails go to Mailpit. Any email address can be invited or signed in."
-                      : "Production mode: OTP, invite, and authentication emails are sent via Resend to real inboxes."}
+                      ? "Dev mode: all emails — OTP, invites, and ticket notifications (confirmations, assignments, replies) — go to Mailpit. Any email address can be invited or signed in."
+                      : "Production mode: all emails are sent via Resend to real inboxes."}
                   </p>
                   <p className="mt-1 font-sans text-[11.5px] text-sts-subtle">
                     Applies immediately — no need to click Save changes.

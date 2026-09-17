@@ -100,6 +100,9 @@ export function UserProfileMenu({
       : (role ?? "agent");
 
   async function signOut() {
+    // Record the logout server-side before tearing down the session (the client
+    // can't write audit rows). Best-effort — never block the user leaving.
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");

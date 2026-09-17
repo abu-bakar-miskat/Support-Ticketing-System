@@ -27,6 +27,7 @@ export function PlatformEmailDomains({
             apiBase="/api/admin/email-domains"
             initialDomains={initialDomains}
             loadError={loadError}
+            allowRemove={false}
           />
         </div>
       </div>

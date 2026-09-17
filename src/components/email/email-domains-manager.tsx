@@ -149,6 +149,7 @@ export function EmailDomainsManager({
   loadError,
   departments,
   inUseDomains = [],
+  allowRemove = true,
 }: {
   apiBase: string;
   initialDomains: ManagerDomain[];
@@ -158,6 +159,9 @@ export function EmailDomainsManager({
   departments?: ManagerDepartmentScope[];
   /** Domains the tenant's mailboxes already send from, merged in read-only. */
   inUseDomains?: ManagerInUseDomain[];
+  /** When false, the Delete button is hidden for verified domains (but still
+   * shown for unverified ones). Defaults to true (always show). */
+  allowRemove?: boolean;
 }) {
   const requiresScope = Array.isArray(departments) && departments.length > 0;
   const [domains, setDomains] = useState<ManagerDomain[]>(initialDomains);
@@ -489,19 +493,21 @@ export function EmailDomainsManager({
                     </div>
                   </div>
                   {d.registered && d.id ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (d.id) setRemoving({ id: d.id, name: d.name });
-                      }}
-                      className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </Button>
+                    allowRemove || d.status !== "verified" ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (d.id) setRemoving({ id: d.id, name: d.name });
+                        }}
+                        className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </Button>
+                    ) : null
                   ) : (
                     <Button
                       variant="outline"

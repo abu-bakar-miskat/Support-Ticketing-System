@@ -82,7 +82,9 @@ function UnavailableBadge({
  * Shared avatar component — shows the profile photo if available,
  * falls back to a coloured circle with initials.
  *
- * Pass `userId` to auto-show an unavailability badge when the user is on holiday.
+ * Pass `userId` to auto-show an unavailability badge when the user is currently
+ * unavailable — inactive account, holiday, non-working day, or outside working
+ * hours (mirrors the assignment engine; see lib/availability.ts).
  * Pass `unavailable` / `unavailableLabel` to override the global lookup.
  * Pass `meta` to enable a hover card that shows name, subDepartment, and role.
  */

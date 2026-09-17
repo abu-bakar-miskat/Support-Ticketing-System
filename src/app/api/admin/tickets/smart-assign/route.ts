@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
-import { isMemberActiveInRotation } from "@/lib/rota"
+import { isMemberActiveInRotation, isMemberAvailableNow } from "@/lib/rota"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail } from "@/lib/email"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
@@ -98,11 +98,11 @@ export async function POST(req: NextRequest) {
       data: { assigneeId: assigneeIds[0] },
     })
   } else {
-    // Round robin — filter out members not "active in rotation" (profile isActive=false or subDepartment doNotAssign), fall back to
-    // all if that leaves nobody. Deliberately NOT using isMemberAvailableNow here: this is a
-    // manual bulk action over an explicitly chosen set of members, so filtering by real-time
-    // working hours/holiday would shrink the candidate pool (sometimes to just 1 person) and
-    // break the round-robin distribution across the tickets.
+    // Round robin — never distribute onto an unavailable member. Prefer those
+    // available right now (schedule + holiday aware, matching auto-assignment),
+    // so someone on holiday or outside their working hours is skipped. Fall back
+    // progressively so this manual bulk action never leaves a ticket unassigned:
+    //   available now → active in rotation (isActive & not doNotAssign) → full list.
     const firstTicket = await prisma.ticket.findUnique({
       where: { id: ticketIds[0] },
       select: { subDepartmentId: true },
@@ -111,10 +111,22 @@ export async function POST(req: NextRequest) {
 
     let effectiveIds = assigneeIds
     if (subDepartmentId) {
-      const flags = await Promise.all(assigneeIds.map((id) => isMemberActiveInRotation(id, subDepartmentId)))
-      const active = assigneeIds.filter((_, i) => flags[i])
-      if (active.length > 0) effectiveIds = active
-      // else: all members inactive in rotation — fall back to full list so no ticket is left unassigned
+      const availableFlags = await Promise.all(
+        assigneeIds.map((id) => isMemberAvailableNow(id, subDepartmentId)),
+      )
+      const available = assigneeIds.filter((_, i) => availableFlags[i])
+      if (available.length > 0) {
+        effectiveIds = available
+      } else {
+        // Nobody available right now — fall back to those merely active in
+        // rotation (still excludes deactivated accounts and doNotAssign), then
+        // the full chosen list, so no ticket is left unassigned.
+        const activeFlags = await Promise.all(
+          assigneeIds.map((id) => isMemberActiveInRotation(id, subDepartmentId)),
+        )
+        const active = assigneeIds.filter((_, i) => activeFlags[i])
+        if (active.length > 0) effectiveIds = active
+      }
     }
 
     // Assign ticket[i] → effectiveIds[i % effectiveIds.length]

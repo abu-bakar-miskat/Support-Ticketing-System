@@ -51,6 +51,19 @@ export async function GET(request: NextRequest) {
       headerColor: override.headerColor ?? null,
       logoUrl: override.logoUrl ?? null,
       footerText: override.footerText ?? null,
+      bodyTextColor: override.bodyTextColor ?? null,
+      linkColor: override.linkColor ?? null,
+      headerTitle: override.headerTitle ?? null,
+      useLogo: override.useLogo ?? null,
+      pageBackground: override.pageBackground ?? null,
+      hideFooter: override.hideFooter ?? null,
+      helpHeading: override.helpHeading ?? null,
+      helpMessage: override.helpMessage ?? null,
+      supportEmail: override.supportEmail ?? null,
+      hideHelp: override.hideHelp ?? null,
+      hideSignature: override.hideSignature ?? null,
+      confidentialityNotice: override.confidentialityNotice ?? null,
+      hideConfidentiality: override.hideConfidentiality ?? null,
     },
     hasOverride: Object.keys(override).length > 0,
   });
@@ -83,7 +96,36 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  await saveDepartmentEmailBranding(departmentId, branding as EmailBranding, subDepartmentId);
+  // Full-layout fields are optional; an empty color clears that override so it
+  // falls back to the layout default (linkColor empty = follow the accent).
+  for (const key of ["bodyTextColor", "linkColor", "pageBackground"] as const) {
+    if (body?.[key] === undefined) continue;
+    if (typeof body[key] !== "string") {
+      return NextResponse.json({ error: `${key} must be a string` }, { status: 400 });
+    }
+    const value = (body[key] as string).trim();
+    if (value && !HEX_RE.test(value)) {
+      return NextResponse.json({ error: `${key} must be a valid hex color` }, { status: 400 });
+    }
+    branding[key] = value;
+  }
+  // Optional free-text fields (header wordmark + "Need Help?" block).
+  for (const key of ["headerTitle", "helpHeading", "helpMessage", "supportEmail", "confidentialityNotice"] as const) {
+    if (body?.[key] === undefined) continue;
+    if (typeof body[key] !== "string") {
+      return NextResponse.json({ error: `${key} must be a string` }, { status: 400 });
+    }
+    branding[key] = (body[key] as string).trim();
+  }
+  for (const key of ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const) {
+    if (body?.[key] === undefined) continue;
+    if (typeof body[key] !== "boolean") {
+      return NextResponse.json({ error: `${key} must be a boolean` }, { status: 400 });
+    }
+    branding[key] = body[key] as boolean;
+  }
+
+  await saveDepartmentEmailBranding(departmentId, branding, subDepartmentId);
   return NextResponse.json({ ok: true });
 }
 

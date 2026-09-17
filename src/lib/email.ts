@@ -114,7 +114,7 @@ export async function sendAssignmentEmail(args: {
   if (!await isEmailPrefEnabled(args.assigneeId, "emailOnAssign")) return;
 
   const { to, assigneeId, assignedById, departmentId, subDepartmentId, ...rest } = args;
-  const signature = await getUserSignature(assignedById);
+  const signature = config.hideSignature ? null : await getUserSignature(assignedById);
   const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderAssignment({
     ...rest,
@@ -467,7 +467,7 @@ export async function sendCustomerReplyEmail(args: {
   if (!resend) return { providerMessageId: null, providerEmailId: null };
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyCustomerReply) return { providerMessageId: null, providerEmailId: null };
-  const signature = await getUserSignature(args.agentId);
+  const signature = config.hideSignature ? null : await getUserSignature(args.agentId);
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
 
   const { html, text } = renderCustomerReply({
@@ -520,7 +520,7 @@ export async function sendInviteEmail(args: {
 }) {
   if (!(await isAuthEmailConfigured())) return;
   const config = await getEmailConfig(args.departmentId);
-  const signature = await getUserSignature(args.inviterId);
+  const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const overrides = await getEmailTemplateOverrides(args.departmentId);
   const { subject, html, text } = renderInvite({
     inviteeEmail: args.to,
@@ -572,7 +572,7 @@ export async function sendTenantInviteEmail(args: {
 }) {
   if (!(await isAuthEmailConfigured())) return;
   const config = await getEmailConfig(args.departmentId ?? undefined);
-  const signature = await getUserSignature(args.inviterId);
+  const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const { subject, html, text } = renderTenantInvite({
     inviteeEmail: args.to,
     inviterName: args.inviterName,
@@ -615,7 +615,7 @@ export async function sendMentionEmail(args: {
   if (!await isEmailPrefEnabled(args.mentionedUserId, "emailOnMention")) return;
 
   const { to, mentionedUserId, actorId, departmentId, subDepartmentId, ...rest } = args;
-  const signature = await getUserSignature(actorId);
+  const signature = config.hideSignature ? null : await getUserSignature(actorId);
   const overrides = await getEmailTemplateOverrides(departmentId, subDepartmentId);
   const { subject, html, text } = renderMention({
     ...rest,

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useAppPathname } from "@/hooks/use-app-pathname";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
-  Activity,
   Bell,
   Building2,
+  History,
   Mail,
   Palette,
   Users,
@@ -56,7 +56,7 @@ export function DepartmentsSidebar({
     { label: "Departments", href: "/departments", icon: DepartmentIcon },
     { label: "Users", href: "/departments/users", icon: Users },
     { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
-    { label: "Activity", href: "/departments/activity", icon: Activity },
+    { label: "Audit Log", href: "/departments/activity", icon: History },
     {
       label: "Notifications",
       href: "/departments/inbox",

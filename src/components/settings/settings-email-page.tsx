@@ -14,6 +14,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
 import { EmailIdentityCard } from "./settings-email-identity";
@@ -88,19 +89,18 @@ const switchClassName =
  * unset rows keep following the workspace default shown in the badge state.
  */
 function EmailNotificationsCard({
-  departments,
+  scope,
   switches,
   onWorkspaceSwitchChange,
 }: {
-  departments: DeptOption[];
+  scope: DeptOption | undefined;
   switches: Record<string, boolean>;
   onWorkspaceSwitchChange: (id: NotifyKey, checked: boolean) => void;
 }) {
-  const [departmentId, setDepartmentId] = useState<string>(departments[0]?.id ?? "");
+  const departmentId = scope?.id ?? "";
+  const subDepartmentId = scope?.subDepartmentId ?? null;
   const [overrides, setOverrides] = useState<Partial<Record<NotifyKey, boolean | null>>>({});
   const [loading, setLoading] = useState(false);
-
-  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
 
   useEffect(() => {
     if (!departmentId) {
@@ -136,36 +136,18 @@ function EmailNotificationsCard({
     }
   }
 
-  const showSelector = departments.length > 1;
-
   return (
     <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
       <div className="pb-1.5">
         <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Email notifications
         </h2>
-      </div>
-
-      {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
-          <label className="sts-text-label">Applies to</label>
-          <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select scope"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {departmentId ? (
           <p className="font-sans text-[11.5px] text-sts-subtle">
-            Overrides here only apply to tickets in this department — leave a toggle alone to keep following the workspace default.
+            Overrides here only apply to tickets in {scope?.name ?? "this department"} — leave a toggle alone to keep following the workspace default.
           </p>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <div className="flex flex-col">
         {loading
@@ -338,9 +320,36 @@ export type EmailBrandingValues = {
   headerColor: string;
   logoUrl: string;
   footerText: string;
+  bodyTextColor: string;
+  linkColor: string;
+  headerTitle: string;
+  useLogo: boolean;
+  pageBackground: string;
+  hideFooter: boolean;
+  helpHeading: string;
+  helpMessage: string;
+  supportEmail: string;
+  hideHelp: boolean;
+  hideSignature: boolean;
+  confidentialityNotice: string;
+  hideConfidentiality: boolean;
 };
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+/** A hex color, or blank (meaning "inherit the layout default"). */
+const OPTIONAL_HEX_RE = /^(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))?$/;
+
+const BRANDING_DEFAULT_HEADER_TITLE = "Support Ticketing System";
+
+/**
+ * A unique key per scope option. A department and its sub-departments can share
+ * the same `department.id`, so keying/selecting on `id` alone collapses them —
+ * which silently saves a sub-department's edits to its parent department. The
+ * composite key keeps every scope distinct.
+ */
+function scopeKeyOf(d: DeptOption | undefined | null): string {
+  return d ? `${d.id}::${d.subDepartmentId ?? ""}` : "";
+}
 
 /**
  * Per-department branding for customer-facing email and public forms. Each
@@ -349,24 +358,45 @@ const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
  * defaults.
  */
 function EmailBrandingCard({
+  scope,
   departments,
   workspaceDefaults,
 }: {
+  scope: DeptOption | undefined;
   departments: DeptOption[];
   workspaceDefaults: EmailBrandingValues;
 }) {
-  const [departmentId, setDepartmentId] = useState<string>(departments[0]?.id ?? "");
+  // The active scope is chosen by the page-level selector; read the department /
+  // sub-department straight off it — never re-derive the sub-department by matching
+  // on `id` alone (that collapses same-department subs). `departments` is still the
+  // full list, used only by "Reset all custom branding" below.
+  const selectedScope = scope;
+  const departmentId = selectedScope?.id ?? "";
   const [brandColor, setBrandColor] = useState(workspaceDefaults.brandColor);
   const [headerColor, setHeaderColor] = useState(workspaceDefaults.headerColor);
   const [logoUrl, setLogoUrl] = useState(workspaceDefaults.logoUrl);
   const [footerText, setFooterText] = useState(workspaceDefaults.footerText);
+  const [bodyTextColor, setBodyTextColor] = useState(workspaceDefaults.bodyTextColor);
+  const [linkColor, setLinkColor] = useState(workspaceDefaults.linkColor);
+  const [headerTitle, setHeaderTitle] = useState(workspaceDefaults.headerTitle);
+  const [useLogo, setUseLogo] = useState(workspaceDefaults.useLogo);
+  const [pageBackground, setPageBackground] = useState(workspaceDefaults.pageBackground);
+  const [hideFooter, setHideFooter] = useState(workspaceDefaults.hideFooter);
+  const [helpHeading, setHelpHeading] = useState(workspaceDefaults.helpHeading);
+  const [helpMessage, setHelpMessage] = useState(workspaceDefaults.helpMessage);
+  const [supportEmail, setSupportEmail] = useState(workspaceDefaults.supportEmail);
+  const [hideHelp, setHideHelp] = useState(workspaceDefaults.hideHelp);
+  const [hideSignature, setHideSignature] = useState(workspaceDefaults.hideSignature);
+  const [confidentialityNotice, setConfidentialityNotice] = useState(workspaceDefaults.confidentialityNotice);
+  const [hideConfidentiality, setHideConfidentiality] = useState(workspaceDefaults.hideConfidentiality);
   const [saved, setSaved] = useState<EmailBrandingValues>(workspaceDefaults);
   const [hasOverride, setHasOverride] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
 
-  const subDepartmentId = departments.find((d) => d.id === departmentId)?.subDepartmentId ?? null;
+  const subDepartmentId = selectedScope?.subDepartmentId ?? null;
 
   useEffect(() => {
     if (!departmentId) return;
@@ -380,11 +410,39 @@ function EmailBrandingCard({
           headerColor: data.override.headerColor ?? data.defaults.headerColor,
           logoUrl: data.override.logoUrl ?? data.defaults.logoUrl,
           footerText: data.override.footerText ?? data.defaults.footerText,
+          bodyTextColor: data.override.bodyTextColor ?? data.defaults.bodyTextColor,
+          // linkColor is intentionally "follow accent" when unset — don't fill it
+          // from the accent-derived default, keep it blank so the field reads empty.
+          linkColor: data.override.linkColor ?? "",
+          headerTitle: data.override.headerTitle ?? data.defaults.headerTitle,
+          useLogo: data.override.useLogo ?? data.defaults.useLogo,
+          pageBackground: data.override.pageBackground ?? data.defaults.pageBackground,
+          hideFooter: data.override.hideFooter ?? data.defaults.hideFooter,
+          helpHeading: data.override.helpHeading ?? data.defaults.helpHeading,
+          helpMessage: data.override.helpMessage ?? data.defaults.helpMessage,
+          supportEmail: data.override.supportEmail ?? data.defaults.supportEmail,
+          hideHelp: data.override.hideHelp ?? data.defaults.hideHelp,
+          hideSignature: data.override.hideSignature ?? data.defaults.hideSignature,
+          confidentialityNotice: data.override.confidentialityNotice ?? data.defaults.confidentialityNotice,
+          hideConfidentiality: data.override.hideConfidentiality ?? data.defaults.hideConfidentiality,
         };
         setBrandColor(effective.brandColor);
         setHeaderColor(effective.headerColor);
         setLogoUrl(effective.logoUrl);
         setFooterText(effective.footerText);
+        setBodyTextColor(effective.bodyTextColor);
+        setLinkColor(effective.linkColor);
+        setHeaderTitle(effective.headerTitle);
+        setUseLogo(effective.useLogo);
+        setPageBackground(effective.pageBackground);
+        setHideFooter(effective.hideFooter);
+        setHelpHeading(effective.helpHeading);
+        setHelpMessage(effective.helpMessage);
+        setSupportEmail(effective.supportEmail);
+        setHideHelp(effective.hideHelp);
+        setHideSignature(effective.hideSignature);
+        setConfidentialityNotice(effective.confidentialityNotice);
+        setHideConfidentiality(effective.hideConfidentiality);
         setSaved(effective);
         setHasOverride(data.hasOverride);
       })
@@ -403,16 +461,60 @@ function EmailBrandingCard({
     brandColor !== saved.brandColor ||
     headerColor !== saved.headerColor ||
     logoUrl !== saved.logoUrl ||
-    footerText !== saved.footerText;
+    footerText !== saved.footerText ||
+    bodyTextColor !== saved.bodyTextColor ||
+    linkColor !== saved.linkColor ||
+    headerTitle !== saved.headerTitle ||
+    useLogo !== saved.useLogo ||
+    pageBackground !== saved.pageBackground ||
+    hideFooter !== saved.hideFooter ||
+    helpHeading !== saved.helpHeading ||
+    helpMessage !== saved.helpMessage ||
+    supportEmail !== saved.supportEmail ||
+    hideHelp !== saved.hideHelp ||
+    hideSignature !== saved.hideSignature ||
+    confidentialityNotice !== saved.confidentialityNotice ||
+    hideConfidentiality !== saved.hideConfidentiality;
   const validColor = HEX_RE.test(brandColor.trim());
   const validHeader = HEX_RE.test(headerColor.trim());
+  const validBodyText = HEX_RE.test(bodyTextColor.trim());
+  const validPageBg = HEX_RE.test(pageBackground.trim());
+  // Blank link color is valid — it means "follow the accent color".
+  const validLink = OPTIONAL_HEX_RE.test(linkColor.trim());
+  const allValid = validColor && validHeader && validBodyText && validPageBg && validLink;
+  // Empty link color follows the accent, mirroring how the email layout resolves it.
+  const effectiveLinkColor = linkColor.trim() || brandColor.trim();
   const year = new Date().getFullYear();
-  const previewFooter = (footerText || "").replace(/\{year\}/g, String(year));
-  const showSelector = departments.length > 1;
+  // Mirror the email's footer resolution: hidden → nothing; blank → the default; else the text.
+  const previewFooter = hideFooter
+    ? ""
+    : (footerText.trim() || "© {year} Support Ticketing System. This is an automated message.").replace(
+        /\{year\}/g,
+        String(year),
+      );
+  function applyValues(v: EmailBrandingValues) {
+    setBrandColor(v.brandColor);
+    setHeaderColor(v.headerColor);
+    setLogoUrl(v.logoUrl);
+    setFooterText(v.footerText);
+    setBodyTextColor(v.bodyTextColor);
+    setLinkColor(v.linkColor);
+    setHeaderTitle(v.headerTitle);
+    setUseLogo(v.useLogo);
+    setPageBackground(v.pageBackground);
+    setHideFooter(v.hideFooter);
+    setHelpHeading(v.helpHeading);
+    setHelpMessage(v.helpMessage);
+    setSupportEmail(v.supportEmail);
+    setHideHelp(v.hideHelp);
+    setHideSignature(v.hideSignature);
+    setConfidentialityNotice(v.confidentialityNotice);
+    setHideConfidentiality(v.hideConfidentiality);
+  }
 
   async function save() {
     if (!departmentId) return;
-    if (!validColor || !validHeader) {
+    if (!allValid) {
       toast.error("Enter a valid hex color, e.g. #0a76b9");
       return;
     }
@@ -423,9 +525,23 @@ function EmailBrandingCard({
         headerColor: headerColor.trim(),
         logoUrl: logoUrl.trim(),
         footerText,
+        bodyTextColor: bodyTextColor.trim(),
+        linkColor: linkColor.trim(),
+        headerTitle: headerTitle.trim(),
+        useLogo,
+        pageBackground: pageBackground.trim(),
+        hideFooter,
+        helpHeading: helpHeading.trim(),
+        helpMessage: helpMessage.trim(),
+        supportEmail: supportEmail.trim(),
+        hideHelp,
+        hideSignature,
+        confidentialityNotice: confidentialityNotice.trim(),
+        hideConfidentiality,
       };
       await setEmailBranding(departmentId, next, subDepartmentId);
       setSaved(next);
+      applyValues(next);
       setHasOverride(true);
       toast.success("Email branding saved");
     } catch (err) {
@@ -436,10 +552,7 @@ function EmailBrandingCard({
   }
 
   function resetToSaved() {
-    setBrandColor(saved.brandColor);
-    setHeaderColor(saved.headerColor);
-    setLogoUrl(saved.logoUrl);
-    setFooterText(saved.footerText);
+    applyValues(saved);
   }
 
   async function clearOverride() {
@@ -448,11 +561,8 @@ function EmailBrandingCard({
     try {
       await resetEmailBranding(departmentId, subDepartmentId);
       const data = await fetchEmailBranding(departmentId, subDepartmentId);
-      const defaults = data.defaults;
-      setBrandColor(defaults.brandColor);
-      setHeaderColor(defaults.headerColor);
-      setLogoUrl(defaults.logoUrl);
-      setFooterText(defaults.footerText);
+      const defaults: EmailBrandingValues = { ...data.defaults, linkColor: "" };
+      applyValues(defaults);
       setSaved(defaults);
       setHasOverride(false);
       toast.success("Reset to workspace branding");
@@ -460,6 +570,27 @@ function EmailBrandingCard({
       toastError("Failed to reset branding", err);
     } finally {
       setResetting(false);
+    }
+  }
+
+  // Only the distinct scopes shown in this page's selector (each department + each
+  // of its sub-departments). "Reset all" clears exactly these — never scopes that
+  // aren't listed here, so resetting from one sub-department can't wipe a sibling's.
+  const allScopes = departments.filter((d, i, arr) => arr.findIndex((o) => scopeKeyOf(o) === scopeKeyOf(d)) === i);
+
+  async function resetAllBranding() {
+    const results = await Promise.allSettled(
+      allScopes.map((d) => resetEmailBranding(d.id, d.subDepartmentId ?? null)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    // Reflect the cleared state in the currently-selected scope.
+    const data = await fetchEmailBranding(departmentId, subDepartmentId);
+    const defaults: EmailBrandingValues = { ...data.defaults, linkColor: "" };
+    applyValues(defaults);
+    setSaved(defaults);
+    setHasOverride(data.hasOverride);
+    if (failed > 0) {
+      throw new Error(`Cleared ${allScopes.length - failed} of ${allScopes.length}; ${failed} could not be reset.`);
     }
   }
 
@@ -474,24 +605,6 @@ function EmailBrandingCard({
           Departments without a custom look fall back to the workspace default.
         </p>
       </div>
-
-      {showSelector ? (
-        <div className="flex flex-col gap-1.5 border-t border-sts-surface py-3">
-          <label className="sts-text-label">Applies to</label>
-          <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((d) => d.id === departmentId)?.name ?? "Select department"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-sts-surface pt-3">
         <span
@@ -508,30 +621,61 @@ function EmailBrandingCard({
 
       <div className="flex flex-col gap-4 py-4 lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="sts-text-label">Logo</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                disabled={loading}
-                placeholder="https://…/logo.svg"
-                className="h-9 w-full min-w-0 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-              />
-              <LogoUploadButton
-                disabled={loading}
-                scopeKey={subDepartmentId ? `${departmentId}-${subDepartmentId}` : departmentId}
-                onUploaded={(url) => {
-                  setLogoUrl(url);
-                  toast.success("Logo uploaded. Click “Save branding” to apply.");
-                }}
-                onError={(m) => toast.error(m)}
-              />
+          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="sts-text-label">Header</label>
+              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
+                <input
+                  type="checkbox"
+                  checked={!!useLogo}
+                  onChange={(e) => setUseLogo(e.target.checked)}
+                  disabled={loading}
+                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+                />
+                Use logo image
+              </label>
             </div>
-            <p className="font-sans text-[11px] text-sts-subtle">
-              Upload an image or paste a public URL. Shown on the dark email
-              header — a PNG or SVG with a light-colored logo reads best.
-            </p>
+            {useLogo ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    disabled={loading}
+                    placeholder="https://…/logo.svg"
+                    className="h-9 w-full min-w-0 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                  />
+                  <LogoUploadButton
+                    disabled={loading}
+                    scopeKey={subDepartmentId ? `${departmentId}-${subDepartmentId}` : departmentId}
+                    onUploaded={(url) => {
+                      setLogoUrl(url);
+                      toast.success("Logo uploaded. Click “Save branding” to apply.");
+                    }}
+                    onError={(m) => toast.error(m)}
+                  />
+                </div>
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  Upload an image or paste a public URL. Shown on the dark email
+                  header — a PNG or SVG with a light-colored logo reads best.
+                </p>
+              </>
+            ) : (
+              <>
+                <input
+                  value={headerTitle}
+                  onChange={(e) => setHeaderTitle(e.target.value)}
+                  disabled={loading}
+                  placeholder={BRANDING_DEFAULT_HEADER_TITLE}
+                  className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                />
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  The wordmark shown in the header bar (in the accent color).
+                  Leave blank for the default “{BRANDING_DEFAULT_HEADER_TITLE}”.
+                  Tick “Use logo image” to show your logo here instead.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -557,7 +701,73 @@ function EmailBrandingCard({
               />
             </div>
             <p className="font-sans text-[11px] text-sts-subtle">
-              Used for email headings and call-to-action buttons.
+              Used for email headings, call-to-action buttons, and — unless a
+              separate link color is set below — links inside the body.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="sts-text-label">Body text color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={validBodyText ? bodyTextColor : "#06476f"}
+                onChange={(e) => setBodyTextColor(e.target.value)}
+                disabled={loading}
+                aria-label="Body text color picker"
+                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-bg p-1 disabled:opacity-50"
+              />
+              <input
+                value={bodyTextColor}
+                onChange={(e) => setBodyTextColor(e.target.value)}
+                disabled={loading}
+                placeholder="#06476f"
+                className={cn(
+                  "h-9 w-full max-w-[140px] rounded-md border bg-sts-bg px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50",
+                  validBodyText ? "border-sts-card-border" : "border-red-400",
+                )}
+              />
+            </div>
+            <p className="font-sans text-[11px] text-sts-subtle">
+              The color of the paragraph text in the email body.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="sts-text-label">Link color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={validLink ? effectiveLinkColor : "#0269af"}
+                onChange={(e) => setLinkColor(e.target.value)}
+                disabled={loading}
+                aria-label="Link color picker"
+                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-bg p-1 disabled:opacity-50"
+              />
+              <input
+                value={linkColor}
+                onChange={(e) => setLinkColor(e.target.value)}
+                disabled={loading}
+                placeholder="follows accent color"
+                className={cn(
+                  "h-9 w-full max-w-[180px] rounded-md border bg-sts-bg px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50",
+                  validLink ? "border-sts-card-border" : "border-red-400",
+                )}
+              />
+              {linkColor.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setLinkColor("")}
+                  disabled={loading}
+                  className="font-sans text-[11px] text-sts-muted underline hover:text-sts-foreground disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <p className="font-sans text-[11px] text-sts-subtle">
+              Color of links inside the email body. Leave blank to match the
+              accent color.
             </p>
           </div>
 
@@ -590,62 +800,254 @@ function EmailBrandingCard({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="sts-text-label">Footer text</label>
+            <label className="sts-text-label">Page background</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={validPageBg ? pageBackground : "#f8f8fc"}
+                onChange={(e) => setPageBackground(e.target.value)}
+                disabled={loading}
+                aria-label="Page background color picker"
+                className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-sts-card-border bg-sts-bg p-1 disabled:opacity-50"
+              />
+              <input
+                value={pageBackground}
+                onChange={(e) => setPageBackground(e.target.value)}
+                disabled={loading}
+                placeholder="#f8f8fc"
+                className={cn(
+                  "h-9 w-full max-w-[140px] rounded-md border bg-sts-bg px-3 font-mono text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50",
+                  validPageBg ? "border-sts-card-border" : "border-red-400",
+                )}
+              />
+            </div>
+            <p className="font-sans text-[11px] text-sts-subtle">
+              The area surrounding the email card. A soft, light tone reads best.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <label className="sts-text-label">Footer text</label>
+              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
+                <input
+                  type="checkbox"
+                  checked={!hideFooter}
+                  onChange={(e) => setHideFooter(!e.target.checked)}
+                  disabled={loading}
+                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+                />
+                Show footer
+              </label>
+            </div>
             <input
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
-              disabled={loading}
+              disabled={loading || hideFooter}
               placeholder="© {year} Support Ticketing System. This is an automated message."
               className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
             <p className="font-sans text-[11px] text-sts-subtle">
-              Use <span className="font-mono">{"{year}"}</span> to insert the
-              current year automatically.
+              {hideFooter ? (
+                "The footer is hidden — no footer line will appear in emails."
+              ) : (
+                <>
+                  Use <span className="font-mono">{"{year}"}</span> to insert the
+                  current year. Leave blank to use the default footer, or turn off
+                  “Show footer” to remove it entirely.
+                </>
+              )}
             </p>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="sts-text-label">“Need Help?” section</label>
+              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
+                <input
+                  type="checkbox"
+                  checked={!hideHelp}
+                  onChange={(e) => setHideHelp(!e.target.checked)}
+                  disabled={loading}
+                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+                />
+                Show section
+              </label>
+            </div>
+            {hideHelp ? (
+              <p className="font-sans text-[11px] text-sts-subtle">
+                The help section is hidden — it won’t appear in emails.
+              </p>
+            ) : (
+              <>
+                <input
+                  value={helpHeading}
+                  onChange={(e) => setHelpHeading(e.target.value)}
+                  disabled={loading}
+                  placeholder="Need Help?"
+                  aria-label="Help section heading"
+                  className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={helpMessage}
+                    onChange={(e) => setHelpMessage(e.target.value)}
+                    disabled={loading}
+                    placeholder="Please reach out to us at"
+                    aria-label="Help section message"
+                    className="h-9 w-full min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                  />
+                  <input
+                    value={supportEmail}
+                    onChange={(e) => setSupportEmail(e.target.value)}
+                    disabled={loading}
+                    placeholder="support@penglobalbd.com"
+                    aria-label="Support email"
+                    className="h-9 w-full min-w-0 max-w-[200px] rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                  />
+                </div>
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  Heading, message, and the support email shown near the foot of
+                  every email. The email address uses the accent color.
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!hideSignature}
+                onChange={(e) => setHideSignature(!e.target.checked)}
+                disabled={loading}
+                className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+              />
+              <span className="sts-text-label">Show sender signature</span>
+            </label>
+            <p className="font-sans text-[11px] text-sts-subtle">
+              When on, the sender’s personal signature (set in their own
+              settings) is appended to outgoing emails. Turn off to omit it.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <label className="sts-text-label">Confidentiality notice</label>
+              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
+                <input
+                  type="checkbox"
+                  checked={!hideConfidentiality}
+                  onChange={(e) => setHideConfidentiality(!e.target.checked)}
+                  disabled={loading}
+                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
+                />
+                Show notice
+              </label>
+            </div>
+            {hideConfidentiality ? (
+              <p className="font-sans text-[11px] text-sts-subtle">
+                The confidentiality notice is hidden — it won’t appear in emails.
+              </p>
+            ) : (
+              <>
+                <textarea
+                  value={confidentialityNotice}
+                  onChange={(e) => setConfidentialityNotice(e.target.value)}
+                  disabled={loading}
+                  rows={4}
+                  placeholder="This email and any attachments are confidential…"
+                  className="w-full resize-y rounded-md border border-sts-card-border bg-sts-bg px-3 py-2 font-sans text-[12.5px] leading-relaxed text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
+                />
+                <p className="font-sans text-[11px] text-sts-subtle">
+                  The legal/confidentiality paragraph near the foot of the email.
+                  It appears only when the sender has no personal signature. Leave
+                  blank to use the default text.
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex w-full flex-col gap-1.5 lg:max-w-[300px]">
           <label className="sts-text-label">Preview</label>
-          <div className="overflow-hidden rounded-md border border-sts-card-border bg-white">
-            <div
-              className="px-4 py-3"
-              style={{ background: validHeader ? headerColor : "#022941" }}
-            >
-              {logoUrl.trim() ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt="Logo preview"
-                  className="h-8 w-auto"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <span className="font-sans text-xs text-white/60">No logo</span>
-              )}
-            </div>
-            <div className="px-4 py-4">
+          <div
+            className="rounded-md border border-sts-card-border p-3"
+            style={{ background: validPageBg ? pageBackground : "#f8f8fc" }}
+          >
+            <div className="overflow-hidden rounded-md border border-black/5 bg-white shadow-sm">
               <div
-                className="font-sans text-[15px] font-bold"
-                style={{ color: validColor ? brandColor : "#0a76b9" }}
+                className="flex items-center px-4 py-3"
+                style={{ background: validHeader ? headerColor : "#022941" }}
               >
-                A reply to your request
+                {useLogo && logoUrl.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="Logo preview"
+                    className="h-8 w-auto"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="font-sans text-sm font-bold tracking-wide"
+                    style={{ color: validColor ? brandColor : "#0a76b9" }}
+                  >
+                    {headerTitle.trim() || BRANDING_DEFAULT_HEADER_TITLE}
+                  </span>
+                )}
               </div>
-              <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-[#06476f]">
-                Hi there, thanks for reaching out — here is an update on your
-                ticket.
-              </p>
-              <span
-                className="mt-3 inline-block rounded-full px-3 py-1.5 font-sans text-[11px] font-semibold text-white"
-                style={{ background: validColor ? brandColor : "#0a76b9" }}
-              >
-                View ticket
-              </span>
-              <p className="mt-4 border-t border-gray-200 pt-2 font-sans text-[10px] text-gray-400">
-                {previewFooter}
-              </p>
+              <div className="px-4 py-4">
+                <div
+                  className="font-sans text-[15px] font-bold"
+                  style={{ color: validColor ? brandColor : "#0a76b9" }}
+                >
+                  A reply to your request
+                </div>
+                <p
+                  className="mt-1.5 font-sans text-[11px] leading-relaxed"
+                  style={{ color: validBodyText ? bodyTextColor : "#06476f" }}
+                >
+                  Hi there, thanks for reaching out — here is an update on your{" "}
+                  <span
+                    className="font-semibold underline"
+                    style={{ color: validLink ? effectiveLinkColor : "#0269af" }}
+                  >
+                    ticket
+                  </span>
+                  .
+                </p>
+                <span
+                  className="mt-3 inline-block rounded-full px-3 py-1.5 font-sans text-[11px] font-semibold text-white"
+                  style={{ background: validColor ? brandColor : "#0a76b9" }}
+                >
+                  View ticket
+                </span>
+                {!hideHelp ? (
+                  <div
+                    className="mt-4 font-sans text-[10.5px] leading-relaxed"
+                    style={{ color: validBodyText ? bodyTextColor : "#06476f" }}
+                  >
+                    <p className="font-semibold">{helpHeading.trim() || "Need Help?"}</p>
+                    <p>
+                      {helpMessage.trim() || "Please reach out to us at"}{" "}
+                      <span
+                        className="font-semibold"
+                        style={{ color: validLink ? effectiveLinkColor : "#0269af" }}
+                      >
+                        {supportEmail.trim() || "support@penglobalbd.com"}
+                      </span>
+                    </p>
+                  </div>
+                ) : null}
+                {previewFooter ? (
+                  <p className="mt-4 border-t border-gray-200 pt-2 font-sans text-[10px] text-gray-400">
+                    {previewFooter}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -655,7 +1057,7 @@ function EmailBrandingCard({
         <button
           type="button"
           onClick={save}
-          disabled={saving || loading || !dirty || !validColor || !validHeader}
+          disabled={saving || loading || !dirty || !allValid}
           className="inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save branding"}
@@ -680,7 +1082,27 @@ function EmailBrandingCard({
             {resetting ? "Resetting…" : "Use workspace default"}
           </button>
         )}
+        {allScopes.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setConfirmResetAll(true)}
+            disabled={saving || resetting || loading}
+            className="ml-auto inline-flex h-8 items-center rounded-full border border-red-300 px-3.5 font-sans text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/40 dark:hover:bg-red-500/10"
+          >
+            Reset all custom branding
+          </button>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={confirmResetAll}
+        onOpenChange={setConfirmResetAll}
+        title="Reset all custom branding"
+        description={`This clears the custom email branding for all ${allScopes.length} departments and sub-departments listed in the selector above, reverting them to the workspace default. It does not touch scopes that aren't listed here. This cannot be undone.`}
+        confirmLabel="Reset all"
+        successMessage={`Reset custom branding for all ${allScopes.length} scopes`}
+        onConfirm={resetAllBranding}
+      />
     </section>
   );
 }
@@ -711,6 +1133,12 @@ export function SettingsEmailPage({
   const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
     mergeSwitches(defaultSwitches(), initialConfig),
   );
+  // The scope selector is lifted to the page so a single dropdown drives every
+  // section (notifications, senders, branding, templates) instead of each card
+  // carrying its own copy.
+  const [scopeKey, setScopeKey] = useState<string>(scopeKeyOf(departments[0]));
+  const selectedScope = departments.find((d) => scopeKeyOf(d) === scopeKey) ?? departments[0];
+  const showScopeSelector = departments.length > 1;
 
   function onWorkspaceSwitchChange(id: NotifyKey, checked: boolean) {
     const next = { ...switches, [id]: checked };
@@ -757,6 +1185,24 @@ export function SettingsEmailPage({
             </button>
           ))}
         </div>
+
+        {showScopeSelector ? (
+          <div className="flex max-w-[920px] flex-col gap-1.5">
+            <label className="sts-text-label">Applies to</label>
+            <Select value={scopeKey} onValueChange={(v) => setScopeKey(v ?? scopeKeyOf(departments[0]))}>
+              <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+                <span>{selectedScope?.name ?? "Select scope"}</span>
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((d) => (
+                  <SelectItem key={scopeKeyOf(d)} value={scopeKeyOf(d)} className="font-sans text-[12.5px]">
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
       </div>
 
       {tab === "general" && canSeeGeneral ? (
@@ -769,23 +1215,24 @@ export function SettingsEmailPage({
           />
 
           <EmailNotificationsCard
-            departments={departments}
+            scope={selectedScope}
             switches={switches}
             onWorkspaceSwitchChange={onWorkspaceSwitchChange}
           />
         </div>
       ) : tab === "branding" && canSeeGeneral ? (
         <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-          <EmailIdentityCard departments={departments} />
+          <EmailIdentityCard scope={selectedScope} />
           {branding ? (
             <EmailBrandingCard
+              scope={selectedScope}
               departments={departments}
               workspaceDefaults={branding}
             />
           ) : null}
         </div>
       ) : (
-        <SettingsEmailTemplatesPage departments={departments} />
+        <SettingsEmailTemplatesPage scope={selectedScope} departments={departments} />
       )}
     </div>
   );

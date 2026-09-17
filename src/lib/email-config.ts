@@ -2,7 +2,18 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { BRAND, HEADER_BG, LOGO_URL } from "@/lib/email-templates/_shared";
+import {
+  BRAND,
+  HEADER_BG,
+  LOGO_URL,
+  BODY_TEXT_COLOR,
+  PAGE_BG,
+  DEFAULT_HEADER_TITLE,
+  DEFAULT_HELP_HEADING,
+  DEFAULT_HELP_MESSAGE,
+  DEFAULT_SUPPORT_EMAIL,
+  CONFIDENTIALITY_NOTICE,
+} from "@/lib/email-templates/_shared";
 import { tenantEmailConfigForDepartment } from "@/lib/tenant-config";
 import { recordAuditEvent } from "@/lib/audit-log";
 
@@ -11,6 +22,32 @@ export type EmailBranding = {
   headerColor: string;
   logoUrl: string;
   footerText: string;
+  /** Body paragraph text color. */
+  bodyTextColor: string;
+  /** Body link/inline-accent color. Empty = follow the accent (`brandColor`). */
+  linkColor: string;
+  /** Wordmark text shown in the email header bar. */
+  headerTitle: string;
+  /** When true (and a logo is set), the header shows the logo image instead of the title. */
+  useLogo: boolean;
+  /** Outer page background behind the email card. */
+  pageBackground: string;
+  /** When true, the footer line is omitted from the email entirely. */
+  hideFooter: boolean;
+  /** Heading of the "Need Help?" support block. */
+  helpHeading: string;
+  /** Lead-in text before the support email in the help block. */
+  helpMessage: string;
+  /** Support email shown in the help block. */
+  supportEmail: string;
+  /** When true, the entire "Need Help?" support block is omitted. */
+  hideHelp: boolean;
+  /** When true, the sender's personal signature is omitted from outgoing email. */
+  hideSignature: boolean;
+  /** Confidentiality/legal notice text shown near the foot of the email. */
+  confidentialityNotice: string;
+  /** When true, the confidentiality notice is never shown. */
+  hideConfidentiality: boolean;
 };
 
 export type EmailConfig = {
@@ -70,6 +107,19 @@ export function emailConfigDefaults(): EmailConfig {
     headerColor: HEADER_BG,
     logoUrl: LOGO_URL,
     footerText: DEFAULT_FOOTER_TEXT,
+    bodyTextColor: BODY_TEXT_COLOR,
+    linkColor: "",
+    headerTitle: DEFAULT_HEADER_TITLE,
+    useLogo: false,
+    pageBackground: PAGE_BG,
+    hideFooter: false,
+    helpHeading: DEFAULT_HELP_HEADING,
+    helpMessage: DEFAULT_HELP_MESSAGE,
+    supportEmail: DEFAULT_SUPPORT_EMAIL,
+    hideHelp: false,
+    hideSignature: false,
+    confidentialityNotice: CONFIDENTIALITY_NOTICE,
+    hideConfidentiality: false,
   };
 }
 
@@ -332,7 +382,23 @@ export async function resolveDepartmentSender(
   return fallback ? { name: fallback.name, email: fallback.email } : null;
 }
 
-const BRANDING_KEYS = ["brandColor", "headerColor", "logoUrl", "footerText"] as const;
+const BRANDING_KEYS = [
+  "brandColor",
+  "headerColor",
+  "logoUrl",
+  "footerText",
+  "bodyTextColor",
+  "linkColor",
+  "headerTitle",
+  "pageBackground",
+  "helpHeading",
+  "helpMessage",
+  "supportEmail",
+  "confidentialityNotice",
+] as const;
+
+/** Branding keys stored as booleans (handled separately from the string keys above). */
+const BRANDING_BOOL_KEYS = ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const;
 
 /** Parses a department's branding override out of its raw `emailConfig` JSON value. */
 export function readBrandingOverride(emailConfig: unknown): Partial<EmailBranding> {
@@ -348,6 +414,10 @@ export function readBrandingOverride(emailConfig: unknown): Partial<EmailBrandin
       const trimmed = value.trim();
       if (trimmed) result[key] = trimmed;
     }
+  }
+  for (const key of BRANDING_BOOL_KEYS) {
+    const value = (stored as Record<string, unknown>)[key];
+    if (typeof value === "boolean") result[key] = value;
   }
   return result;
 }
@@ -384,6 +454,12 @@ export async function saveDepartmentEmailBranding(
       const value = branding[key]?.trim() ?? "";
       if (!value) delete nextBranding[key];
       else nextBranding[key] = value;
+    }
+    for (const key of BRANDING_BOOL_KEYS) {
+      if (branding[key] === undefined) continue;
+      // Store only the "on" state; false is the default, so drop it to keep the blob small.
+      if (branding[key]) nextBranding[key] = true;
+      else delete nextBranding[key];
     }
   }
 
@@ -485,6 +561,19 @@ export function brandingFrom(config: EmailConfig): EmailBranding {
     headerColor: config.headerColor,
     logoUrl: config.logoUrl,
     footerText: config.footerText,
+    bodyTextColor: config.bodyTextColor,
+    linkColor: config.linkColor,
+    headerTitle: config.headerTitle,
+    useLogo: config.useLogo,
+    pageBackground: config.pageBackground,
+    hideFooter: config.hideFooter,
+    helpHeading: config.helpHeading,
+    helpMessage: config.helpMessage,
+    supportEmail: config.supportEmail,
+    hideHelp: config.hideHelp,
+    hideSignature: config.hideSignature,
+    confidentialityNotice: config.confidentialityNotice,
+    hideConfidentiality: config.hideConfidentiality,
   };
 }
 

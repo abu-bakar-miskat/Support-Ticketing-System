@@ -13,7 +13,6 @@ import {
   saveEmailTemplate,
 } from "@/lib/api/email-templates";
 import { fetchEmailNotifications } from "@/lib/api/email-notifications";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -242,16 +241,18 @@ function TemplateEditor({
 }
 
 export function SettingsEmailTemplatesPage({
+  scope,
   departments = [],
 }: {
+  scope?: DeptOption | undefined;
   departments?: DeptOption[];
 } = {}) {
-  const [departmentId, setDepartmentId] = useState<string>(departments[0]?.id ?? "");
+  // The active scope is chosen by the page-level selector.
+  const departmentId = scope?.id ?? "";
+  const subDepartmentId = scope?.subDepartmentId ?? null;
   const [templates, setTemplates] = useState<EmailTemplateInfo[] | null>(null);
   const [disabledNotifyKeys, setDisabledNotifyKeys] = useState<Set<string>>(new Set());
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-
-  const subDepartmentId = departments.find((o) => o.id === departmentId)?.subDepartmentId ?? null;
 
   async function load() {
     if (!departmentId) return;
@@ -297,40 +298,16 @@ export function SettingsEmailTemplatesPage({
     );
   }
 
-  const showSelector = departments.length > 1;
-
   return (
     <div className="flex flex-col gap-3 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-      {showSelector ? (
-        <div className="flex max-w-[1040px] flex-col gap-1.5">
-          <label className="sts-text-label">Applies to</label>
-          <Select value={departmentId} onValueChange={(v) => setDepartmentId(v ?? "")}>
-            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
-              <span>{departments.find((o) => o.id === departmentId)?.name ?? "Select department"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((o) => (
-                <SelectItem key={o.id} value={o.id} className="font-sans text-[12.5px]">
-                  {o.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="font-sans text-[11.5px] text-sts-subtle">
-            Subject, heading, and body for this department&apos;s outgoing emails.
-            Templates without a customization use the built-in default.
-          </p>
-        </div>
-      ) : (
-        <p className="max-w-[1040px] font-sans text-[11.5px] text-sts-subtle">
-          Subject, heading, and body for{" "}
-          <span className="font-medium text-sts-foreground">
-            {departments[0]?.name ?? "this department"}
-          </span>
-          &apos;s outgoing emails. Templates without a customization use the built-in
-          default.
-        </p>
-      )}
+      <p className="max-w-[1040px] font-sans text-[11.5px] text-sts-subtle">
+        Subject, heading, and body for{" "}
+        <span className="font-medium text-sts-foreground">
+          {scope?.name ?? "this department"}
+        </span>
+        &apos;s outgoing emails. Templates without a customization use the built-in
+        default.
+      </p>
 
       {!templates ? (
         Array.from({ length: TEMPLATE_SKELETON_COUNT }).map((_, i) => (

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
 import { EmailIdentityCard } from "./settings-email-identity"
@@ -25,6 +26,9 @@ export function SettingsBrandingPage({
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const scopeKeyOf = (d: DeptOption) => `${d.id}::${d.subDepartmentId ?? ""}`
+  const [scopeKey, setScopeKey] = useState<string>(departments[0] ? scopeKeyOf(departments[0]) : "")
+  const selectedScope = departments.find((d) => scopeKeyOf(d) === scopeKey) ?? departments[0]
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -183,7 +187,25 @@ export function SettingsBrandingPage({
         </form>
       </section>
 
-      <EmailIdentityCard departments={departments} />
+      {departments.length > 1 ? (
+        <div className="flex max-w-[920px] flex-col gap-1.5">
+          <label className="sts-text-label">Applies to</label>
+          <Select value={scopeKey} onValueChange={(v) => setScopeKey(v ?? (departments[0] ? scopeKeyOf(departments[0]) : ""))}>
+            <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
+              <span>{selectedScope?.name ?? "Select department"}</span>
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((d) => (
+                <SelectItem key={scopeKeyOf(d)} value={scopeKeyOf(d)} className="font-sans text-[12.5px]">
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      <EmailIdentityCard scope={selectedScope} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, managerDeptScope } from "@/lib/auth";
 import { EMAIL_TEMPLATE_KEYS, type EmailTemplateKey, brandingFrom, getEmailConfig } from "@/lib/email-config";
-import { DEFAULT_TEMPLATES } from "@/lib/email-templates/defaults";
+import { DEFAULT_TEMPLATES, SAMPLE_BUTTON_BG } from "@/lib/email-templates/defaults";
 import { applyPlaceholders, layout, normalizeTemplateBodyHtml } from "@/lib/email-templates/_shared";
 
 function isTemplateKey(value: string): value is EmailTemplateKey {
@@ -45,10 +45,22 @@ export async function POST(request: Request) {
   const config = await getEmailConfig(departmentId, subDepartmentId);
   const branding = brandingFrom(config);
 
-  const renderedSubject = applyPlaceholders(subject, def.sample);
-  const renderedHeading = applyPlaceholders(heading, def.sample);
+  // Mirror the real send, where each sample placeholder reflects the scope's branding:
+  //  - the CTA button uses the accent color (real sends build it via `button({ branding })`)
+  //  - a hidden signature resolves the `{{signature}}` placeholder to nothing
+  const sample: Record<string, string> = {};
+  for (const [k, v] of Object.entries(def.sample)) {
+    if (k === "signature" && config.hideSignature) {
+      sample[k] = "";
+      continue;
+    }
+    sample[k] = v.split(`background:${SAMPLE_BUTTON_BG}`).join(`background:${branding.brandColor}`);
+  }
+
+  const renderedSubject = applyPlaceholders(subject, sample);
+  const renderedHeading = applyPlaceholders(heading, sample);
   const renderedBody = normalizeTemplateBodyHtml(
-    applyPlaceholders(bodyHtml, def.sample),
+    applyPlaceholders(bodyHtml, sample),
     branding,
   );
 

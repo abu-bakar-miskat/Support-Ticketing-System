@@ -133,19 +133,29 @@ export async function checkDomainStatus(email: string): Promise<DomainStatusInfo
   return res.json();
 }
 
+export type EmailBrandingFields = {
+  brandColor: string;
+  headerColor: string;
+  logoUrl: string;
+  footerText: string;
+  bodyTextColor: string;
+  linkColor: string;
+  headerTitle: string;
+  useLogo: boolean;
+  pageBackground: string;
+  hideFooter: boolean;
+  helpHeading: string;
+  helpMessage: string;
+  supportEmail: string;
+  hideHelp: boolean;
+  hideSignature: boolean;
+  confidentialityNotice: string;
+  hideConfidentiality: boolean;
+};
+
 export type EmailBrandingInfo = {
-  defaults: {
-    brandColor: string;
-    headerColor: string;
-    logoUrl: string;
-    footerText: string;
-  };
-  override: {
-    brandColor: string | null;
-    headerColor: string | null;
-    logoUrl: string | null;
-    footerText: string | null;
-  };
+  defaults: EmailBrandingFields;
+  override: { [K in keyof EmailBrandingFields]: EmailBrandingFields[K] | null };
   hasOverride: boolean;
 };
 
@@ -160,12 +170,7 @@ export async function fetchEmailBranding(
 
 export async function setEmailBranding(
   departmentId: string,
-  branding: {
-    brandColor: string;
-    headerColor: string;
-    logoUrl: string;
-    footerText: string;
-  },
+  branding: EmailBrandingFields,
   subDepartmentId?: string | null,
 ) {
   const res = await fetch("/api/admin/email-branding", {

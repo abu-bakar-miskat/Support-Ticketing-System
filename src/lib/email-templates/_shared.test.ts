@@ -96,6 +96,152 @@ describe("normalizeTemplateBodyHtml", () => {
     expect(html).toContain("[Backend] Fix the login flow");
     expect(html).not.toContain("<a href");
   });
+
+  it("colors body links with the accent (brandColor) so branding reaches the body", () => {
+    const html = normalizeTemplateBodyHtml(
+      `<p>[example.com/tickets/abc]my ticket</p>`,
+      { brandColor: "#ff0000" },
+    );
+    expect(html).toContain("color:#ff0000");
+  });
+
+  it("lets an explicit linkColor override the accent for body links", () => {
+    const html = normalizeTemplateBodyHtml(
+      `<p>[example.com/tickets/abc]my ticket</p>`,
+      { brandColor: "#ff0000", linkColor: "#00ff00" },
+    );
+    expect(html).toContain("color:#00ff00");
+    expect(html).not.toContain("color:#ff0000");
+  });
+});
+
+describe("layout — full branding reaches the email body", () => {
+  it("applies bodyTextColor, accent link color, header title, and page background", () => {
+    const html = layout({
+      heading: "Hello",
+      bodyHtml: `<p>See <a href="https://example.com/tickets/x">example.com/tickets/x</a></p>`,
+      branding: {
+        brandColor: "#123456",
+        bodyTextColor: "#abcdef",
+        headerTitle: "Acme Support",
+        pageBackground: "#101010",
+      },
+    });
+    // Header wordmark uses the custom title, page background is applied, body
+    // text uses bodyTextColor, and bare body ticket links follow the accent.
+    expect(html).toContain("background:#101010");
+    expect(html).toContain("color:#abcdef");
+    expect(html).toContain("color:#123456");
+    // The header title itself is rendered in the accent color.
+    expect(html).toContain('color:#123456;">Acme Support');
+    // No accent strip on the header anymore.
+    expect(html).not.toContain("border-top:4px");
+  });
+
+  it("shows the default footer when no branding footer is set", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>" });
+    expect(html).toContain("This is an automated message.");
+  });
+
+  it("omits the footer entirely when hideFooter is set", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>", branding: { hideFooter: true } });
+    expect(html).not.toContain("This is an automated message.");
+  });
+
+  it("shows the header title text (accent) by default, not the logo", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", logoUrl: "https://cdn.example.com/logo.png", brandColor: "#123456" },
+    });
+    expect(html).toContain('color:#123456;">Acme');
+    expect(html).not.toContain("<img");
+  });
+
+  it("shows the logo image in the header when useLogo is set", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", logoUrl: "https://cdn.example.com/logo.png", useLogo: true },
+    });
+    expect(html).toContain('<img src="https://cdn.example.com/logo.png"');
+    expect(html).not.toContain(">Acme</span>");
+  });
+
+  it("falls back to the title when useLogo is set but no logo URL is provided", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { headerTitle: "Acme", useLogo: true },
+    });
+    expect(html).toContain(">Acme</span>");
+    expect(html).not.toContain("<img");
+  });
+
+  it("still renders a template-specific footer even when hideFooter is set", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: { hideFooter: true },
+      footerOverride: "Sales team footer",
+    });
+    expect(html).toContain("Sales team footer");
+  });
+
+  it("renders the default Need Help block with the default support email", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>" });
+    expect(html).toContain("Need Help?");
+    expect(html).toContain("support@penglobalbd.com");
+  });
+
+  it("lets branding customize the Need Help heading, message, and email", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      branding: {
+        helpHeading: "Questions?",
+        helpMessage: "Email our team at",
+        supportEmail: "care@acme.com",
+      },
+    });
+    expect(html).toContain("Questions?");
+    expect(html).toContain("Email our team at");
+    expect(html).toContain("care@acme.com");
+    expect(html).not.toContain("Need Help?");
+    expect(html).not.toContain("support@penglobalbd.com");
+  });
+
+  it("omits the Need Help block entirely when hideHelp is set", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>", branding: { hideHelp: true } });
+    expect(html).not.toContain("Need Help?");
+    expect(html).not.toContain("support@penglobalbd.com");
+  });
+
+  it("shows the default confidentiality notice when the notice is enabled", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>", showConfidentialityNotice: true });
+    expect(html).toContain("This email and any attachments are confidential");
+  });
+
+  it("uses a custom confidentiality notice when branding sets one", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      showConfidentialityNotice: true,
+      branding: { confidentialityNotice: "Do not forward this message." },
+    });
+    expect(html).toContain("Do not forward this message.");
+    expect(html).not.toContain("This email and any attachments are confidential");
+  });
+
+  it("omits the confidentiality notice when hideConfidentiality is set, even without a signature", () => {
+    const html = layout({
+      heading: "Hi",
+      bodyHtml: "<p>x</p>",
+      showConfidentialityNotice: true,
+      branding: { hideConfidentiality: true },
+    });
+    expect(html).not.toContain("This email and any attachments are confidential");
+  });
 });
 
 describe("applyPlaceholders — DS-04 unresolved tokens render empty", () => {

@@ -274,15 +274,11 @@ type ModalMode = { type: "create" } | { type: "edit"; form: IntakeFormRow };
 function IntakeFormModal({
   mode,
   departments,
-  lockedSubDepartmentId = null,
   onClose,
   onSuccess,
 }: {
   mode: ModalMode;
   departments: DeptOption[];
-  /** On a sub-department's own page: new forms are SUB_DEPARTMENT-owned and
-   *  locked to this sub-department. */
-  lockedSubDepartmentId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -290,9 +286,6 @@ function IntakeFormModal({
   const [name, setName] = useState(isEdit ? mode.form.name : "");
   const [departmentId, setDepartmentId] = useState(
     isEdit ? mode.form.departmentId : (departments[0]?.id ?? ""),
-  );
-  const [intakeSubDepartmentId, setIntakeSubDepartmentId] = useState(
-    isEdit ? (mode.form.intakeSubDepartmentId ?? "") : (lockedSubDepartmentId ?? ""),
   );
   const [isActive, setIsActive] = useState(isEdit ? mode.form.isActive : true);
   // null = inherit the sub-department's method (→ department → round-robin).
@@ -305,9 +298,6 @@ function IntakeFormModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const availableSubDepartments =
-    departments.find((d) => d.id === departmentId)?.subDepartments ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -339,20 +329,20 @@ function IntakeFormModal({
           isEdit
             ? {
                 name: name.trim(),
-                intakeSubDepartmentId: intakeSubDepartmentId || null,
                 isActive,
                 autoAssign,
                 assignmentMethod,
                 displayMode,
               }
             : {
+                // Support forms are always department-scoped; a submission is
+                // routed to a sub-department by the chosen issue at submit time.
                 name: name.trim(),
                 departmentId,
-                intakeSubDepartmentId: intakeSubDepartmentId || null,
                 autoAssign,
                 assignmentMethod,
                 displayMode,
-                scope: lockedSubDepartmentId ? "SUB_DEPARTMENT" : "DEPARTMENT",
+                scope: "DEPARTMENT",
               },
         ),
       });
@@ -413,10 +403,7 @@ function IntakeFormModal({
               </label>
               <Select
                 value={departmentId}
-                onValueChange={(v) => {
-                  setDepartmentId(v ?? "");
-                  setIntakeSubDepartmentId("");
-                }}
+                onValueChange={(v) => setDepartmentId(v ?? "")}
               >
                 <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                   <span
@@ -440,60 +427,6 @@ function IntakeFormModal({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-
-          {/* On a sub-department's own page the routing target is fixed
-              (lockedSubDepartmentId) — it's pre-selected, so skip the picker. */}
-          {!lockedSubDepartmentId && (
-            <div className="flex flex-col gap-1.5">
-              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-                Default sub-department{" "}
-                <span className="font-normal text-sts-subtle">(optional)</span>
-              </label>
-              <Select
-                value={intakeSubDepartmentId || "__none__"}
-                onValueChange={(v) =>
-                  setIntakeSubDepartmentId(v === "__none__" ? "" : (v ?? ""))
-                }
-                disabled={!departmentId && !isEdit}
-              >
-                <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
-                  <span
-                    className={
-                      intakeSubDepartmentId
-                        ? "text-sts-foreground"
-                        : "text-sts-subtle"
-                    }
-                  >
-                    {availableSubDepartments.find(
-                      (t) => t.id === intakeSubDepartmentId,
-                    )?.name ?? "None — route by issue"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    value="__none__"
-                    className="font-sans text-[12.5px]"
-                  >
-                    None — route by issue
-                  </SelectItem>
-                  {availableSubDepartments.map((t) => (
-                    <SelectItem
-                      key={t.id}
-                      value={t.id}
-                      className="font-sans text-[12.5px]"
-                    >
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="font-sans text-[11.5px] text-sts-subtle">
-                Each issue routes tickets to a sub-department via its SLA policy.
-                This fallback is only used when a chosen issue doesn&apos;t set
-                one.
-              </p>
             </div>
           )}
 
@@ -2636,7 +2569,6 @@ export function SettingsIntakeFormsPage({
   departments,
   isAdmin,
   scopedDepartmentName = null,
-  activeSubDepartmentId = null,
   activeSubDepartmentName = null,
   workspaceBranding,
   // Base path the per-form "submissions" link hangs off. Defaults to the
@@ -2648,8 +2580,6 @@ export function SettingsIntakeFormsPage({
   departments: DeptOption[];
   isAdmin: boolean;
   scopedDepartmentName?: string | null;
-  /** When set, this is a single sub-department's own Support Forms page. */
-  activeSubDepartmentId?: string | null;
   activeSubDepartmentName?: string | null;
   workspaceBranding: FormBrandingDefaults;
   submissionsBasePath?: string;
@@ -2763,9 +2693,6 @@ export function SettingsIntakeFormsPage({
                   </TableHead>
                 )}
                 <TableHead className="h-8 w-[14%]">
-                  <SectionLabel>Sub department</SectionLabel>
-                </TableHead>
-                <TableHead className="h-8 w-[14%]">
                   <SectionLabel>Status</SectionLabel>
                 </TableHead>
                 <TableHead className="h-8 w-[14%]">
@@ -2817,23 +2744,6 @@ export function SettingsIntakeFormsPage({
                         </div>
                       </TableCell>
                     )}
-
-                    {/* Owner level + the sub-department the form is created from */}
-                    <TableCell className="py-0">
-                      <div className="flex h-[56px] items-center gap-1.5">
-                        {form.intakeSubDepartmentName ? (
-                          <span className="inline-flex max-w-full items-center rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                            <span className="truncate">
-                              {form.intakeSubDepartmentName}
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="font-sans text-[11.5px] text-sts-muted">
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
 
                     {/* Status toggle */}
                     <TableCell className="py-0">
@@ -2973,7 +2883,6 @@ export function SettingsIntakeFormsPage({
         <IntakeFormModal
           mode={modal}
           departments={departments}
-          lockedSubDepartmentId={activeSubDepartmentId}
           onClose={() => setModal(null)}
           onSuccess={handleSuccess}
         />

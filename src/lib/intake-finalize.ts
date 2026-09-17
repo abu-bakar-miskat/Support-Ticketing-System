@@ -73,12 +73,23 @@ export async function createTicketFromPayload(
     : (responses as unknown[])
 
   // Every ticket must land in a sub-department (it drives the human ID prefix).
-  // A department-level form has no default, so routing must come from the chosen
-  // issue's SLA policy. Fail loudly rather than create an orphaned ticket.
-  const targetSubDepartmentId = routedSubDepartmentId ?? form.intakeSubDepartmentId
+  // Support forms are department-scoped, so routing precedence is:
+  //   1. the chosen issue's SLA policy (SlaPolicy.subDepartmentId),
+  //   2. the form's hidden fallback (legacy forms only — no longer set in the UI),
+  //   3. the department's default (first-created) sub-department.
+  // A department always has at least one sub-department, so a ticket always lands.
+  let targetSubDepartmentId = routedSubDepartmentId ?? form.intakeSubDepartmentId
+  if (!targetSubDepartmentId) {
+    const defaultSub = await prisma.subDepartment.findFirst({
+      where: { departmentId: form.departmentId },
+      orderBy: { id: "asc" }, // cuids are time-ordered ⇒ first-created
+      select: { id: true },
+    })
+    targetSubDepartmentId = defaultSub?.id ?? null
+  }
   if (!targetSubDepartmentId) {
     throw new Error(
-      `Form ${formConfigId} resolved no sub-department: the selected issue's SLA policy must set one, or the form needs a default sub-department`,
+      `Form ${formConfigId} resolved no sub-department: department ${form.departmentId} has no sub-departments`,
     )
   }
 

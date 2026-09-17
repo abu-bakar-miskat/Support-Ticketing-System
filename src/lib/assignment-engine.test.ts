@@ -70,29 +70,40 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: "agent-1", method: "RULE_BASED", failed: false })
   })
 
-  it("RULE_BASED: fails when the matched agent is no longer an eligible subDepartment member", async () => {
+  it("RULE_BASED: skips an unavailable matched agent and uses the next matching rule", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
     mockRulesFindMany.mockResolvedValue([
       { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
+      { id: "r2", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-2", enabled: true, order: 1 },
     ] as never)
     mockProfileFind.mockResolvedValue({ isActive: true } as never)
-    mockMembershipFind.mockResolvedValue({ isActive: false, doNotAssign: false } as never)
+    mockMembershipFind
+      .mockResolvedValueOnce({ isActive: true, doNotAssign: false } as never)
+      .mockResolvedValueOnce({ isActive: true, doNotAssign: false } as never)
+    mockAvailableNow.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
 
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
-    expect(result).toEqual({ assigneeId: null, method: "RULE_BASED", failed: true })
+    expect(result).toEqual({ assigneeId: "agent-2", method: "RULE_BASED", failed: false })
   })
 
-  it("RULE_BASED: fails when the matched agent is outside working hours", async () => {
+  it("RULE_BASED: falls back to available sub-department members when all matched agents are unavailable", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "RULE_BASED" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
     mockRulesFindMany.mockResolvedValue([
       { id: "r1", conditions: { combinator: "AND", conditions: [] }, agentId: "agent-1", enabled: true, order: 0 },
     ] as never)
     mockProfileFind.mockResolvedValue({ isActive: true } as never)
     mockMembershipFind.mockResolvedValue({ isActive: true, doNotAssign: false } as never)
     mockAvailableNow.mockResolvedValue(false)
+    mockGetEligible.mockResolvedValue([{ userId: "available-a" }, { userId: "available-b" }])
 
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
-    expect(result).toEqual({ assigneeId: null, method: "RULE_BASED", failed: true })
+    expect(result).toEqual({
+      assigneeId: "available-a",
+      method: "RULE_BASED",
+      failed: false,
+      nextRotaPointer: 1,
+    })
   })
 
   it("RULE_BASED: fails when no rule matches", async () => {

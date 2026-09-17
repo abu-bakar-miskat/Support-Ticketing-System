@@ -288,11 +288,12 @@ function IntakeFormModal({
     isEdit ? mode.form.departmentId : (departments[0]?.id ?? ""),
   );
   const [isActive, setIsActive] = useState(isEdit ? mode.form.isActive : true);
-  // null = inherit the sub-department's method (→ department → round-robin).
-  const [assignmentMethod, setAssignmentMethod] =
-    useState<AssignmentMethod | null>(
-      isEdit ? mode.form.assignmentMethod : null,
-    );
+  // Support forms are department-scoped, so they carry a concrete assignment
+  // method (no "inherit from sub-department"). Legacy forms stored as inherit
+  // (null) fall back to round-robin — the engine's default.
+  const [assignmentMethod, setAssignmentMethod] = useState<AssignmentMethod>(
+    isEdit ? (mode.form.assignmentMethod ?? "ROUND_ROBIN") : "ROUND_ROBIN",
+  );
   const [displayMode, setDisplayMode] = useState<"FORM" | "CHAT">(
     isEdit ? mode.form.displayMode : "FORM",
   );
@@ -476,24 +477,15 @@ function IntakeFormModal({
               Assignment method
             </label>
             <Select
-              value={assignmentMethod ?? "INHERIT"}
-              onValueChange={(v) =>
-                setAssignmentMethod(
-                  v === "INHERIT" ? null : (v as AssignmentMethod),
-                )
-              }
+              value={assignmentMethod}
+              onValueChange={(v) => setAssignmentMethod(v as AssignmentMethod)}
             >
               <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-surface font-sans text-[13px] text-sts-foreground">
                 <span className="text-sts-foreground">
-                  {assignmentMethod === null
-                    ? "Inherit from sub-department"
-                    : ASSIGNMENT_METHOD_LABELS[assignmentMethod]}
+                  {ASSIGNMENT_METHOD_LABELS[assignmentMethod]}
                 </span>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="INHERIT" className="font-sans text-[12.5px]">
-                  Inherit from sub-department
-                </SelectItem>
                 {(
                   [
                     "RULE_BASED",
@@ -513,11 +505,9 @@ function IntakeFormModal({
               </SelectContent>
             </Select>
             <p className="font-sans text-[11.5px] text-sts-subtle">
-              {assignmentMethod === null
-                ? "Uses the sub-department's method (then department, then round-robin)."
-                : assignmentMethod === "MANUAL"
-                  ? "New tickets are left unassigned for manual pick."
-                  : `New tickets are assigned via ${ASSIGNMENT_METHOD_LABELS[assignmentMethod].toLowerCase()}.`}
+              {assignmentMethod === "MANUAL"
+                ? "New tickets are left unassigned for manual pick."
+                : `New tickets are assigned via ${ASSIGNMENT_METHOD_LABELS[assignmentMethod].toLowerCase()}.`}
             </p>
           </div>
 
@@ -2776,7 +2766,7 @@ export function SettingsIntakeFormsPage({
                               className={`inline-flex items-center gap-1.5 font-sans text-[11.5px] font-semibold ${style.className}`}
                               title={
                                 form.assignmentMethod === null
-                                  ? `Inherited from the sub-department (${ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]})`
+                                  ? `Inherited from the department (${ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]})`
                                   : "Set on the Assignment methods page"
                               }
                             >

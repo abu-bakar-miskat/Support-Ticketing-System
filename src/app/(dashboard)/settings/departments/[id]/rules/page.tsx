@@ -19,11 +19,7 @@ export default async function DepartmentRulesSettingsRoute({
 
   const department = await runAsSystem(() => prisma.department.findUnique({
     where: { id: departmentId },
-    select: {
-      id: true,
-      name: true,
-      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
-    },
+    select: { id: true, name: true },
   }));
   if (!department) notFound();
 
@@ -33,7 +29,6 @@ export default async function DepartmentRulesSettingsRoute({
     <RulesSettingsPage
       departmentId={department.id}
       departmentName={department.name}
-      subDepartments={department.subDepartments}
     />
   );
 }

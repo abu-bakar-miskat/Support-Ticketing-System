@@ -134,10 +134,8 @@ export async function PATCH(
     data.subDepartmentId = v
   }
   if (body.assigneeIds !== undefined) {
-    // Replacing the assignee pool resets the round-robin cursor (mirrors the
-    // retired IntakeIssue behaviour).
-    const ids = parseAssigneeIds(body.assigneeIds)
-    data.assignees = { deleteMany: {}, create: ids.map((userId) => ({ userId })) }
+    // Person assignment on SLA issues is retired — clear any leftover pool.
+    data.assignees = { deleteMany: {}, create: [] }
     data.assigneeRotaPointer = 0
   }
   if (body.priority !== undefined) {
@@ -156,25 +154,6 @@ export async function PATCH(
   }
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
-  }
-
-  // A department-level form (no default sub-department) routes each ticket via
-  // the picked issue's policy, so this policy can't end up without a target.
-  const effectiveFormConfigId =
-    data.formConfigId !== undefined ? data.formConfigId : policy.formConfigId
-  const effectiveSubDepartmentId =
-    data.subDepartmentId !== undefined ? data.subDepartmentId : policy.subDepartmentId
-  if (effectiveFormConfigId && !effectiveSubDepartmentId) {
-    const linkedForm = await prisma.intakeFormConfig.findUnique({
-      where: { id: effectiveFormConfigId },
-      select: { intakeSubDepartmentId: true },
-    })
-    if (linkedForm && !linkedForm.intakeSubDepartmentId) {
-      return NextResponse.json(
-        { error: "This form has no default sub-department, so the issue must route to one (set subDepartmentId)." },
-        { status: 400 },
-      )
-    }
   }
 
   const updated = await prisma.slaPolicy.update({ where: { id: policyId }, data, select: POLICY_SELECT })

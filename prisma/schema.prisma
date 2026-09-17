@@ -1282,17 +1282,16 @@ model SlaPolicy {
 
   subDepartmentId String? @map("teamId")
 
-  // The support form + issue this policy is authored against (the policy name
-  // mirrors the chosen issue's name), plus the priority/assignee an admin picks
-  // for it. Scalar-only (no FK relations) to keep the shared-DB migration purely
-  // additive. assigneeId is a Profile id.
+  // The support form this policy (issue) is authored against. `subDepartmentId`
+  // is an optional per-issue "concerned" routing target — policies are always
+  // department-owned and inherited by every sub-department. Person assignment
+  // is not configured here (use department assignment methods / automation rules).
   formConfigId String?
   priority     TicketPriority?
   assigneeId   String?         @db.Uuid
 
-  // SLA policies double as a support form's selectable "issues": the round-robin
-  // cursor + assignee pool used to route tickets created from this policy
-  // (mirrors the retired IntakeIssue.assignees + assigneeRotaPointer).
+  // Legacy round-robin cursor + assignee pool (person assignment on issues is
+  // retired; kept for migration compatibility).
   assigneeRotaPointer Int @default(0)
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1327,8 +1326,9 @@ model Rule {
 
   subDepartmentId String? @map("teamId")
   // Optional support-form scope. When set, the rule runs only on tickets created
-  // from this intake form (in addition to department/sub-department rules). null
-  // = not form-specific. See lib/rule-executor.ts.
+  // from this intake form (in addition to department-wide rules). null = not
+  // form-specific. Rules are department-scoped; sub-departments inherit them
+  // (subDepartmentId is always null for new rules). See lib/rule-executor.ts.
   formConfigId String?
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)

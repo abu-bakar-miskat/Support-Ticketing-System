@@ -4,6 +4,7 @@ import { PenLogo } from "@/components/auth/sts-logo";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { OtpVerifyForm } from "@/components/auth/otp-verify-form";
 import { ResendCodeButton } from "@/components/auth/resend-code-button";
+import { NoAccountDialog } from "@/components/auth/no-account-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/auth-redirect";
@@ -59,6 +60,17 @@ async function requestLoginCode(formData: FormData) {
     );
   }
 
+  // No sign-in code for an email with no workspace account — surface an
+  // invitation prompt instead of letting Supabase silently create a new
+  // auth user with no matching Profile.
+  const profile = await prisma.profile.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (!profile) {
+    redirect(`/login?notice=no-account&email=${encodeURIComponent(email)}${nextQuery}`);
+  }
+
   // Generate the credential with Supabase, but send the numeric OTP ourselves.
   // A hosted Supabase template can otherwise silently turn signInWithOtp into
   // a magic-link email when it contains {{ .ConfirmationURL }}.
@@ -83,6 +95,7 @@ export default async function LoginPage({
     email?: string;
     verificationType?: string;
     t?: string;
+    notice?: string;
   }>;
 }) {
   const {
@@ -92,6 +105,7 @@ export default async function LoginPage({
     email: emailParam,
     verificationType: verificationTypeParam,
     t: sentAtParam,
+    notice,
   } = await searchParams;
   const next = safeNextPath(nextParam);
   const sentEmail = (emailParam ?? "").trim();
@@ -287,6 +301,10 @@ export default async function LoginPage({
         )}
 
       </div>
+
+      {notice === "no-account" && emailParam && (
+        <NoAccountDialog email={emailParam} next={next} />
+      )}
     </main>
   );
 }

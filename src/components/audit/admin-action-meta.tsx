@@ -11,6 +11,8 @@ import {
   ToggleRight,
   RotateCw,
   ArrowRight,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,16 +55,27 @@ const VERB_META: Record<string, { icon: LucideIcon; color: string }> = {
 };
 const FALLBACK_META = { icon: History, color: "#64748b" };
 
+// Actions that don't follow the TARGET_VERB shape and need an explicit
+// icon + human phrase (e.g. session events).
+const SPECIAL_META: Record<string, { icon: LucideIcon; color: string; label: string }> = {
+  USER_LOGGED_IN: { icon: LogIn, color: "#059669", label: "logged in" },
+  USER_LOGGED_OUT: { icon: LogOut, color: "#64748b", label: "logged out" },
+};
+
 // Words kept upper-case when a raw action is turned into a readable phrase.
 const ACRONYMS = new Set(["SLA", "QA", "PR"]);
 
 export function adminActionMeta(action: string) {
+  const special = SPECIAL_META[action];
+  if (special) return { icon: special.icon, color: special.color };
   const verb = action.split("_").pop() ?? "";
   return VERB_META[verb] ?? FALLBACK_META;
 }
 
 /** "FEATURE_FLAG_DISABLED" → "disabled feature flag" */
 export function humanizeAction(action: string): string {
+  const special = SPECIAL_META[action];
+  if (special) return special.label;
   const parts = action.split("_");
   if (parts.length === 0) return action.toLowerCase();
   const verb = parts[parts.length - 1].toLowerCase();

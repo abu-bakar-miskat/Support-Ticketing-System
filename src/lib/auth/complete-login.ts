@@ -18,6 +18,7 @@ import {
 } from "@/lib/tenant-scope";
 import { TENANT_SLUG_COOKIE } from "@/lib/tenant-path";
 import { loginBlockReason } from "@/lib/tenant-lifecycle";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { resolvePostLoginLanding } from "@/lib/auth/post-login-redirect";
 import { isGenericLandingPath } from "@/lib/auth-redirect";
 
@@ -213,6 +214,17 @@ export async function completeLogin(args: {
   const tTenant = Date.now();
   const tenantId = await resolveLoginTenantId(profile.id, profile.isSuperAdmin);
   console.info(`[completeLogin] resolveLoginTenantId ${Date.now() - tTenant}ms`);
+
+  // Audit the successful sign-in. Best-effort — a failed audit write must never
+  // block or slow login, so swallow errors and never throw.
+  await recordAuditEvent({
+    tenantId,
+    actorId: profile.id,
+    action: "USER_LOGGED_IN",
+    targetType: "Profile",
+    targetId: profile.id,
+    after: { email: profile.email },
+  }).catch((err) => console.error("[completeLogin] audit login failed:", err));
 
   // No explicit /invite/<token> deep link: still consume any pending invite
   // addressed to this email so an invited user becomes a member however they

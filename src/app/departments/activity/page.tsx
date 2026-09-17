@@ -1,40 +1,43 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
+import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { resolveActivityScope } from "@/lib/activity-scope";
-import { buildActivityPageData } from "@/lib/activity-feed-data";
-import { ActivityPage } from "@/components/activity/activity-page";
-import { ActivityPageSkeleton } from "@/components/skeletons/page-skeletons";
+import { AuditLog } from "@/components/audit/audit-log";
 
-export const metadata = { title: "Activity — Support Ticketing System" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Audit Log — Support Ticketing System" };
 
-async function AllDepartmentsActivityData({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string>>;
-}) {
+export default async function Page() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  const sp = await searchParams;
   // "all" scope = every department the caller can reach (tenant-wide for admins).
   const scope = await resolveActivityScope(profile, "all");
-  const data = await buildActivityPageData(profile, sp, scope);
+  const tenantId = scope.tenantId;
 
-  return <ActivityPage {...data} basePath="/departments/activity" scope="all" />;
-}
-
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string>>;
-}) {
-  const profile = await getProfile();
-  if (!profile) redirect("/login");
+  // Filter option lists — where clauses are already bound to the caller's scope,
+  // so run unscoped to avoid the ticket-scope extension waterfall.
+  const [departments, actorProfiles] = await runAsSystem(() =>
+    Promise.all([
+      prisma.department.findMany({
+        where: scope.deptIds.length > 0 ? { id: { in: scope.deptIds } } : { tenantId },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+      prisma.profile.findMany({
+        where: { deletedAt: null, tenantMemberships: { some: { tenantId, isActive: true } } },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
+    ]),
+  );
 
   return (
-    <Suspense fallback={<ActivityPageSkeleton />}>
-      <AllDepartmentsActivityData searchParams={searchParams} />
-    </Suspense>
+    <AuditLog
+      scope="department"
+      actors={actorProfiles.map((p) => ({ id: p.id, name: p.name }))}
+      departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+    />
   );
 }

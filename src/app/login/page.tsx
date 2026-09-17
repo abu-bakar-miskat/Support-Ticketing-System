@@ -60,15 +60,30 @@ async function requestLoginCode(formData: FormData) {
     );
   }
 
-  // No sign-in code for an email with no workspace account — surface an
-  // invitation prompt instead of letting Supabase silently create a new
-  // auth user with no matching Profile.
+  // No sign-in code for an email with no workspace account and no pending
+  // invite — surface an invitation prompt instead of letting Supabase
+  // silently create a new auth user with no matching Profile. An invited
+  // email has no Profile yet either (completeLogin creates it and consumes
+  // the invite right after OTP verification), so it must still be let through.
   const profile = await prisma.profile.findUnique({
     where: { email },
     select: { id: true },
   });
   if (!profile) {
-    redirect(`/login?notice=no-account&email=${encodeURIComponent(email)}${nextQuery}`);
+    const now = new Date();
+    const [tenantInvite, departmentInvite] = await Promise.all([
+      prisma.tenantInvite.findFirst({
+        where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+        select: { id: true },
+      }),
+      prisma.departmentInvite.findFirst({
+        where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+        select: { id: true },
+      }),
+    ]);
+    if (!tenantInvite && !departmentInvite) {
+      redirect(`/login?notice=no-account&email=${encodeURIComponent(email)}${nextQuery}`);
+    }
   }
 
   // Generate the credential with Supabase, but send the numeric OTP ourselves.

@@ -151,6 +151,8 @@ enum NotificationType {
   template_request_submitted
   template_request_reviewed
   ticket_transferred
+  domain_request_submitted
+  domain_request_reviewed
 }
 
 enum JoinRequestStatus {
@@ -235,6 +237,66 @@ model Tenant {
   tenantTemplates  TenantTemplate[]
   templateRequests TemplateRequest[]
   ruleExecutionLogs RuleExecutionLog[]
+  emailDomains EmailDomain[]
+  emailDomainRequests EmailDomainRequest[]
+}
+
+// A sending domain (e.g. mail.acme.com) a tenant has registered in Resend and
+// is verifying. Resend domains are account-wide — Resend has no notion of which
+// tenant owns one — so this table records ownership, letting a tenant admin see
+// and manage only their own domains. `resendId` is the Resend domain id used to
+// fetch live status / DNS records and to verify/remove; live status is never
+// stored here (always read from Resend) so it can't drift. Once a domain is
+// verified, mailbox addresses on it pass checkDomainVerification.
+model EmailDomain {
+  id        String   @id @default(cuid())
+  tenantId  String
+  // Fully-qualified sending domain, lowercased. Globally unique: a given domain
+  // belongs to exactly one tenant (Resend registers it once account-wide).
+  name      String   @unique
+  // Resend domain id (opaque). Unique — one row per Resend domain.
+  resendId  String   @unique
+  // Which department / sub-department will use this domain. Chosen by the tenant
+  // admin at add time. `departmentId` is the owning department (always set when
+  // added from the tenant UI); `subDepartmentId` is set when the admin scoped it
+  // to a specific sub-department. Both null for domains added by a platform
+  // super-admin (no single tenant/department context). Plain scalars (no FK) so
+  // a deleted team just leaves a resolvable-by-name label, never an orphan-block.
+  departmentId    String?
+  subDepartmentId String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([departmentId])
+  @@index([subDepartmentId])
+}
+
+// A request from a department / sub-department manager to use a sending domain,
+// pending a tenant admin registering + verifying it. Approving auto-registers
+// the domain (creating an EmailDomain assigned to the requested scope). Plain
+// scalar dept/sub ids (no FK) mirror EmailDomain — a deleted team just leaves a
+// resolvable-by-name label. requestedById / resolvedById are Profile ids.
+model EmailDomainRequest {
+  id              String    @id @default(cuid())
+  tenantId        String
+  departmentId    String
+  subDepartmentId String?
+  domain          String
+  // pending | approved | rejected — a validated string (see lib), not an enum,
+  // so extending the lifecycle never needs a migration.
+  status          String    @default("pending")
+  note            String?
+  requestedById   String    @db.Uuid
+  resolvedById    String?   @db.Uuid
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
 }
 
 // Catalog of tenant category types (institution, agency, company, …). Tenant.type

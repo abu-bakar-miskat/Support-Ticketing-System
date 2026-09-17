@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
+import { listTenantDomains, listTenantInUseDomains, listTenantDepartmentScopes } from "@/lib/email-domains";
+import { listPendingDomainRequests } from "@/lib/email-domain-requests";
 import {
   DepartmentsMailboxes,
   type DepartmentMailboxUsage,
@@ -16,11 +18,18 @@ export default async function DepartmentsMailboxesRoute() {
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
 
   // ── Per-department shared-mailbox usage (tenant-wide) ────────────────────
-  const [depts, mailboxGroups] = await Promise.all([
+  const [depts, mailboxGroups, mailboxConnections, domains, inUseDomains, scopeOptions, domainRequests] = await Promise.all([
     prisma.department.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        subDepartments: {
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        },
+      },
     }),
     prisma.mailboxConnection.groupBy({
       by: ["departmentId", "status"],
@@ -28,6 +37,15 @@ export default async function DepartmentsMailboxesRoute() {
       _count: { _all: true },
       _max: { lastCheckedAt: true },
     }),
+    prisma.mailboxConnection.findMany({
+      where: { tenantId },
+      orderBy: { address: "asc" },
+      select: { subDepartmentId: true, address: true, status: true, lastCheckedAt: true },
+    }),
+    profile.activeTenantId ? listTenantDomains(profile.activeTenantId) : Promise.resolve([]),
+    profile.activeTenantId ? listTenantInUseDomains(profile.activeTenantId) : Promise.resolve([]),
+    profile.activeTenantId ? listTenantDepartmentScopes(profile.activeTenantId) : Promise.resolve([]),
+    profile.activeTenantId ? listPendingDomainRequests(profile.activeTenantId) : Promise.resolve([]),
   ]);
 
   type DeptAgg = { total: number; active: number; issues: number; lastCheckedAt: Date | null };
@@ -46,11 +64,26 @@ export default async function DepartmentsMailboxesRoute() {
     mailboxByDept.set(g.departmentId, entry);
   }
 
+  const mailboxesBySubDepartment = new Map<string, DepartmentMailboxUsage["subDepartments"][number]["mailboxes"]>();
+  for (const mailbox of mailboxConnections) {
+    const entries = mailboxesBySubDepartment.get(mailbox.subDepartmentId) ?? [];
+    entries.push({
+      address: mailbox.address,
+      status: mailbox.status,
+      lastCheckedAt: mailbox.lastCheckedAt ? mailbox.lastCheckedAt.toISOString() : null,
+    });
+    mailboxesBySubDepartment.set(mailbox.subDepartmentId, entries);
+  }
+
   const rows: DepartmentMailboxUsage[] = depts.map((d) => {
     const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
     return {
       departmentId: d.id,
       name: d.name,
+      subDepartments: d.subDepartments.map((subDepartment) => ({
+        ...subDepartment,
+        mailboxes: mailboxesBySubDepartment.get(subDepartment.id) ?? [],
+      })),
       total: u.total,
       active: u.active,
       issues: u.issues,
@@ -58,5 +91,13 @@ export default async function DepartmentsMailboxesRoute() {
     };
   });
 
-  return <DepartmentsMailboxes rows={rows} />;
+  return (
+    <DepartmentsMailboxes
+      rows={rows}
+      domains={domains}
+      inUseDomains={inUseDomains}
+      departments={scopeOptions}
+      domainRequests={domainRequests}
+    />
+  );
 }

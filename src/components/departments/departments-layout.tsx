@@ -151,7 +151,7 @@ export function DepartmentsLayout({
             onOpenSearch={openSearch}
             onNotifClick={() => setNotifOpen(true)}
           />
-          <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <main className="min-h-0 flex-1 flex flex-col overflow-y-auto">
             <PageEnter>{children}</PageEnter>
           </main>
         </div>

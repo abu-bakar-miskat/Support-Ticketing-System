@@ -264,6 +264,11 @@ export default async function DepartmentsPage() {
       return {
         departmentId: d.id,
         name: d.name,
+        subDepartments: d.subDepartments.map((subDepartment) => ({
+          id: subDepartment.id,
+          name: subDepartment.name,
+          mailboxes: [],
+        })),
         total: u.total,
         active: u.active,
         issues: u.issues,

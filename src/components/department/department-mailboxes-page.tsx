@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -16,6 +16,10 @@ import {
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ReceivedMailPanel } from "@/components/mailbox/received-mail-panel";
+import {
+  DomainRequestForm,
+  type ScopeRequestStatus,
+} from "@/components/email/domain-request-form";
 import {
   getDepartmentMailboxConnections,
   createDepartmentMailboxConnection,
@@ -73,18 +77,39 @@ export function DepartmentMailboxesPage({
   departmentName,
   subDepartments,
   canManage,
+  canRequestDomain = false,
+  domainRequests = [],
 }: {
   departmentId: string;
   departmentName: string;
   subDepartments: { id: string; name: string }[];
   canManage: boolean;
+  /** Managers / sub-managers can request a sending domain (admins register directly). */
+  canRequestDomain?: boolean;
+  /** Existing domain requests in this department, shown with their status. */
+  domainRequests?: ScopeRequestStatus[];
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
   const [address, setAddress] = useState("");
+  const addressRef = useRef<HTMLInputElement>(null);
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
+
+  /** Opens the connect form prefilled with `@<domain>`, cursor at the start so
+   * the admin just types the local part. */
+  function connectForDomain(domain: string) {
+    setAddress(`@${domain}`);
+    openConnect();
+    setTimeout(() => {
+      const el = addressRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(0, 0);
+      }
+    }, 50);
+  }
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -226,6 +251,16 @@ export function DepartmentMailboxesPage({
         )}
       </div>
 
+      {/* ── Request a sending domain (managers / sub-managers) ── */}
+      {canRequestDomain && (
+        <DomainRequestForm
+          departmentId={departmentId}
+          subDepartments={subDepartments}
+          existingRequests={domainRequests}
+          onConnectMailbox={canManage && !noSubDepartments ? connectForDomain : undefined}
+        />
+      )}
+
       {/* ── Connect mailbox modal ── */}
       {canManage && showConnect && !noSubDepartments && (
         <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={closeConnect}>
@@ -245,6 +280,7 @@ export function DepartmentMailboxesPage({
                   Mailbox address
                 </label>
                 <input
+                  ref={addressRef}
                   autoFocus
                   type="email"
                   value={address}

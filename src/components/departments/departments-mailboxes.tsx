@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronRight,
+  Globe,
   Inbox,
   Mail,
   Search,
@@ -20,10 +22,25 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import {
+  EmailDomainsManager,
+  type ManagerDomain,
+  type ManagerDepartmentScope,
+} from "@/components/email/email-domains-manager";
+import {
+  DomainRequestsPanel,
+  type PendingDomainRequest,
+} from "@/components/email/domain-requests-panel";
+import type { InUseDomain } from "@/lib/email-domains";
 
 export type DepartmentMailboxUsage = {
   departmentId: string;
   name: string;
+  subDepartments: {
+    id: string;
+    name: string;
+    mailboxes: { address: string; status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE"; lastCheckedAt: string | null }[];
+  }[];
   /** Total mailbox connections in the department. */
   total: number;
   /** Connections currently healthy (ACTIVE). */
@@ -37,6 +54,19 @@ export type DepartmentMailboxUsage = {
 type FilterKey = "all" | "attention" | "uncovered";
 type SortKey = "name" | "total" | "issues";
 type SortDir = "asc" | "desc";
+
+function SortIcon({
+  column,
+  sortKey,
+  sortDir,
+}: {
+  column: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDir;
+}) {
+  if (sortKey !== column) return null;
+  return sortDir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />;
+}
 
 /** Relative "…ago" formatting (mirrors department-mailboxes-page.tsx). */
 function relativeTime(iso: string | null): string {
@@ -158,16 +188,38 @@ const ROW_STATUS: Record<
   },
 };
 
+const MAILBOX_STATUS: Record<
+  DepartmentMailboxUsage["subDepartments"][number]["mailboxes"][number]["status"],
+  { label: string; dot: string; text: string }
+> = {
+  ACTIVE: { label: "Healthy", dot: "bg-sts-green", text: "text-sts-green" },
+  AUTH_ERROR: { label: "Sign-in expired", dot: "bg-red-500", text: "text-red-600 dark:text-red-400" },
+  UNREACHABLE: { label: "Not responding", dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+};
+
 /**
  * Tenant-wide view of how shared mailboxes are distributed across departments.
  * Read-only overview — enter a department (click a row) to connect or manage
  * its inboxes on /settings/departments/[id]/mailbox.
  */
-export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] }) {
+export function DepartmentsMailboxes({
+  rows,
+  domains,
+  inUseDomains,
+  departments,
+  domainRequests,
+}: {
+  rows: DepartmentMailboxUsage[];
+  domains: ManagerDomain[];
+  inUseDomains: InUseDomain[];
+  departments: ManagerDepartmentScope[];
+  domainRequests: PendingDomainRequest[];
+}) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [expandedDepartmentIds, setExpandedDepartmentIds] = useState<Set<string>>(() => new Set());
 
   const totals = useMemo(() => {
     let mailboxes = 0;
@@ -220,12 +272,14 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
     }
   }
 
-  const SortIcon = ({ column }: { column: SortKey }) =>
-    sortKey !== column ? null : sortDir === "asc" ? (
-      <ArrowUp className="size-3" />
-    ) : (
-      <ArrowDown className="size-3" />
-    );
+  function toggleDepartment(departmentId: string) {
+    setExpandedDepartmentIds((current) => {
+      const next = new Set(current);
+      if (next.has(departmentId)) next.delete(departmentId);
+      else next.add(departmentId);
+      return next;
+    });
+  }
 
   const filterTabs: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: "All", count: counts.all },
@@ -305,7 +359,7 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
                   className="flex items-center gap-1 hover:text-sts-foreground"
                 >
                   Department
-                  <SortIcon column="name" />
+                  <SortIcon column="name" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead>Status</TableHead>
@@ -316,7 +370,7 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
                   className="ml-auto flex items-center gap-1 hover:text-sts-foreground"
                 >
                   Mailboxes
-                  <SortIcon column="total" />
+                  <SortIcon column="total" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">Healthy</TableHead>
@@ -327,7 +381,7 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
                   className="ml-auto flex items-center gap-1 hover:text-sts-foreground"
                 >
                   Need attention
-                  <SortIcon column="issues" />
+                  <SortIcon column="issues" sortKey={sortKey} sortDir={sortDir} />
                 </button>
               </TableHead>
               <TableHead className="text-right">Last checked</TableHead>
@@ -351,18 +405,30 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
               visible.map((r) => {
                 const status = rowStatus(r);
                 const s = ROW_STATUS[status];
+                const isExpanded = expandedDepartmentIds.has(r.departmentId);
                 return (
-                <TableRow key={r.departmentId} className="group relative cursor-pointer hover:bg-sts-surface/50">
+                <Fragment key={r.departmentId}>
+                  <TableRow
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    aria-controls={`department-mailboxes-${r.departmentId}`}
+                    onClick={() => toggleDepartment(r.departmentId)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        toggleDepartment(r.departmentId);
+                      }
+                    }}
+                    className="group cursor-pointer hover:bg-sts-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sts-blue"
+                  >
                   <TableCell className="font-sans text-[13px] font-medium text-sts-foreground">
-                    <Link
-                      href={`/settings/departments/${r.departmentId}/mailbox`}
-                      className="flex items-center gap-2.5 after:absolute after:inset-0"
-                    >
+                    <span className="flex items-center gap-2.5">
                       <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", s.avatar)}>
                         <Mail className={cn("size-3.5", s.avatarIcon)} />
                       </span>
                       {r.name}
-                    </Link>
+                    </span>
                   </TableCell>
                   <TableCell>
                     <span
@@ -403,9 +469,72 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
                     {relativeTime(r.lastCheckedAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <ChevronRight className="ml-auto size-4 text-sts-subtle transition-colors group-hover:text-sts-foreground" />
+                    <ChevronDown
+                      className={cn(
+                        "ml-auto size-4 text-sts-subtle transition-transform group-hover:text-sts-foreground",
+                        !isExpanded && "-rotate-90",
+                      )}
+                    />
                   </TableCell>
-                </TableRow>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow id={`department-mailboxes-${r.departmentId}`} className="bg-sts-surface/40 hover:bg-sts-surface/40">
+                      <TableCell colSpan={7} className="px-5 py-3">
+                        {r.subDepartments.length === 0 ? (
+                          <p className="font-sans text-[12px] text-sts-muted">No sub-departments yet.</p>
+                        ) : (
+                          <div className="divide-y divide-sts-card-border rounded-lg border border-sts-card-border bg-sts-card">
+                            {r.subDepartments.map((subDepartment) => (
+                              <div key={subDepartment.id} className="px-3 py-3">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div>
+                                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                                      {subDepartment.name}
+                                    </p>
+                                    <p className="mt-0.5 font-sans text-[11px] text-sts-muted">
+                                      {subDepartment.mailboxes.length} {subDepartment.mailboxes.length === 1 ? "mailbox" : "mailboxes"}
+                                    </p>
+                                  </div>
+                                  <Link
+                                    href={`/sub-departments/${encodeURIComponent(subDepartment.name)}/mailbox`}
+                                    onClick={(event) => event.stopPropagation()}
+                                    className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-sts-blue hover:underline"
+                                  >
+                                    Manage mailboxes
+                                    <ChevronRight className="size-3.5" />
+                                  </Link>
+                                </div>
+                                {subDepartment.mailboxes.length === 0 ? (
+                                  <p className="mt-2 font-sans text-[11.5px] text-sts-subtle">No mailbox connected.</p>
+                                ) : (
+                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    {subDepartment.mailboxes.map((mailbox) => {
+                                      const mailboxStatus = MAILBOX_STATUS[mailbox.status];
+                                      return (
+                                        <div key={mailbox.address} className="rounded-md bg-sts-surface px-2.5 py-2">
+                                          <p className="truncate font-sans text-[11.5px] font-medium text-sts-foreground">
+                                            {mailbox.address}
+                                          </p>
+                                          <div className="mt-1 flex items-center justify-between gap-2 font-sans text-[10.5px]">
+                                            <span className={cn("inline-flex items-center gap-1", mailboxStatus.text)}>
+                                              <span className={cn("size-1.5 rounded-full", mailboxStatus.dot)} />
+                                              {mailboxStatus.label}
+                                            </span>
+                                            <span className="text-sts-subtle">{relativeTime(mailbox.lastCheckedAt)}</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
                 );
               })
             )}
@@ -414,8 +543,29 @@ export function DepartmentsMailboxes({ rows }: { rows: DepartmentMailboxUsage[] 
       </div>
 
       <p className="font-sans text-[11.5px] text-sts-subtle">
-        Click a department to connect or manage its shared inboxes.
+        Click a department to view its sub-departments and their mailboxes.
       </p>
+
+      {/* ── Email domains ── */}
+      <div className="mt-2 border-t border-sts-card-border pt-6">
+        <div className="flex items-center gap-2">
+          <Globe className="size-4 text-sts-muted" />
+          <h2 className="sts-text-admin-title">Email domains for your mailboxes</h2>
+        </div>
+        <p className="mt-[3px] mb-4 font-sans text-[13px] text-sts-muted">
+          Register and verify the domains your mailboxes send and receive from. A mailbox address can only be connected
+          once its domain is verified. Domains already used by your mailboxes are listed below — verify any that
+          aren&apos;t yet.
+        </p>
+        <DomainRequestsPanel requests={domainRequests} />
+        <EmailDomainsManager
+          apiBase="/api/admin/email-identity/domains"
+          initialDomains={domains}
+          loadError={null}
+          departments={departments}
+          inUseDomains={inUseDomains}
+        />
+      </div>
     </div>
   );
 }

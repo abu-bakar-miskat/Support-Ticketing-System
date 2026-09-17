@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -23,6 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubDepartmentReceivedMail } from "@/components/sub-departments/sub-department-received-mail";
+import {
+  DomainRequestForm,
+  type ScopeRequestStatus,
+} from "@/components/email/domain-request-form";
 import {
   getSubDepartmentMailboxConnections,
   createSubDepartmentMailboxConnection,
@@ -98,6 +102,8 @@ export function SubDepartmentMailboxManager({
   departmentId,
   assignmentMethod,
   canManage,
+  canRequestDomain = false,
+  domainRequests = [],
 }: {
   subDepartmentId: string;
   subDepartmentName: string;
@@ -107,12 +113,17 @@ export function SubDepartmentMailboxManager({
    *  value for any mailbox that has no per-mailbox override of its own. */
   assignmentMethod: AssignmentMethod;
   canManage: boolean;
+  /** Managers can request a sending domain for this sub-department. */
+  canRequestDomain?: boolean;
+  /** Existing domain requests for this sub-department, shown with their status. */
+  domainRequests?: ScopeRequestStatus[];
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
   const [address, setAddress] = useState("");
+  const addressRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [checkingVerification, setCheckingVerification] = useState(false);
   const [verifiedAddress, setVerifiedAddress] = useState<string | null>(null);
@@ -329,14 +340,45 @@ export function SubDepartmentMailboxManager({
         )}
       </div>
 
+      {/* ── Request a sending domain (managers) ── */}
+      {canRequestDomain && (
+        <DomainRequestForm
+          departmentId={departmentId}
+          fixedSubDepartment={{ id: subDepartmentId, name: subDepartmentName }}
+          existingRequests={domainRequests}
+          onConnectMailbox={
+            canManage
+              ? (domain) => {
+                  setAddress(`@${domain}`);
+                  setVerifiedAddress(null);
+                  setShowConnect(true);
+                  setTimeout(() => {
+                    const el = addressRef.current;
+                    if (el) {
+                      el.focus();
+                      // setSelectionRange throws on type="email"/"number" inputs,
+                      // which don't support text selection. Guard against it.
+                      if (/^(text|search|url|tel|password)$/.test(el.type)) {
+                        el.setSelectionRange(0, 0);
+                      }
+                    }
+                  }, 50);
+                }
+              : undefined
+          }
+        />
+      )}
+
       {/* ── Connect form ── */}
       {canManage && showConnect && (
         <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4">
           <label className="font-sans text-[11.5px] font-medium text-sts-muted">Mailbox address</label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
+              ref={addressRef}
               autoFocus
-              type="email"
+              type="text"
+              inputMode="email"
               value={address}
               onChange={(e) => { setAddress(e.target.value); setFormError(null); setVerifiedAddress(null); }}
               onKeyDown={(e) => { if (e.key === "Enter") { if (verifiedAddress === address.trim().toLowerCase()) connect(); else checkVerification(); } if (e.key === "Escape") setShowConnect(false); }}

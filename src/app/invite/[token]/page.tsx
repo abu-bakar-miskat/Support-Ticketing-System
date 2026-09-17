@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getInvitePreview } from "@/lib/invites/accept-department-invite";
@@ -140,7 +139,30 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
+    const loginHref = `/login?next=${encodeURIComponent(`/invite/${token}`)}`;
+    return (
+      <InviteShell>
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
+          You&apos;re invited to join a department
+        </h1>
+        <p className="mt-3 text-center text-[13.5px] text-sts-muted">
+          {invite.inviter.name} has invited you to join{" "}
+          <span className="font-medium text-sts-foreground">{invite.department.name}</span> as{" "}
+          <span className="font-medium text-sts-foreground">{invite.role}</span> on the{" "}
+          <span className="font-medium text-sts-foreground">{invite.subDepartment.name}</span>{" "}
+          sub-department.
+        </p>
+        <p className="mt-2 text-center text-[12px] text-sts-subtle">
+          Invitation sent to {invite.email}. Sign in with that address to accept.
+        </p>
+        <Link
+          href={loginHref}
+          className="mt-6 inline-block rounded-full bg-sts-button px-5 py-2.5 text-[13px] font-semibold text-sts-button-fg hover:bg-sts-button/90"
+        >
+          Sign in to accept
+        </Link>
+      </InviteShell>
+    );
   }
 
   return (

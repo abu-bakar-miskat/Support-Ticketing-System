@@ -59,28 +59,40 @@ async function requestLoginCode(formData: FormData) {
     );
   }
 
+  // A pending invite (accepted or not) must be accepted before a normal
+  // sign-in — send the user to the invite's own preview/accept page rather
+  // than letting them straight into a sign-in that silently grants it. This
+  // applies whether or not they already have a Profile (e.g. an existing
+  // member invited to a second department).
+  const now = new Date();
+  const [tenantInvite, departmentInvite] = await Promise.all([
+    prisma.tenantInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+      select: { token: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.departmentInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+      select: { token: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  if (tenantInvite && next !== `/tenant-invite/${tenantInvite.token}`) {
+    redirect(`/tenant-invite/${tenantInvite.token}`);
+  }
+  if (departmentInvite && next !== `/invite/${departmentInvite.token}`) {
+    redirect(`/invite/${departmentInvite.token}`);
+  }
+
   // No sign-in code for an email with no workspace account and no pending
-  // invite — surface an invitation prompt instead of letting Supabase
-  // silently create a new auth user with no matching Profile. An invited
-  // email has no Profile yet either (completeLogin creates it and consumes
-  // the invite right after OTP verification), so it must still be let through.
-  const profile = await prisma.profile.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (!profile) {
-    const now = new Date();
-    const [tenantInvite, departmentInvite] = await Promise.all([
-      prisma.tenantInvite.findFirst({
-        where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
-        select: { id: true },
-      }),
-      prisma.departmentInvite.findFirst({
-        where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
-        select: { id: true },
-      }),
-    ]);
-    if (!tenantInvite && !departmentInvite) {
+  // invite either — surface an invitation prompt instead of letting Supabase
+  // silently create a new auth user with no matching Profile.
+  if (!tenantInvite && !departmentInvite) {
+    const profile = await prisma.profile.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (!profile) {
       redirect(`/login?notice=no-account&email=${encodeURIComponent(email)}${nextQuery}`);
     }
   }

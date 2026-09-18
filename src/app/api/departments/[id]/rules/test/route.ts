@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine"
 import { isConditionGroup, isRuleActions } from "@/lib/rule-validation"
+import { assertRuleActionTargetsInDepartment } from "@/lib/rule-action-targets"
 
 /**
  * POST /api/departments/:id/rules/test — dry-run (RE-04).
@@ -43,6 +44,8 @@ export async function POST(
       }
       const actionsError = isRuleActions(r?.actions)
       if (actionsError) return NextResponse.json({ error: actionsError }, { status: 400 })
+      const targetCheck = await assertRuleActionTargetsInDepartment(id, r?.actions)
+      if (!targetCheck.ok) return NextResponse.json({ error: targetCheck.error }, { status: 400 })
     }
     rules = body.rules as Rule[]
   } else {

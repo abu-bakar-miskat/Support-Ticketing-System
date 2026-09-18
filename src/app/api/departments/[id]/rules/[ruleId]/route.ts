@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { isConditionGroup, isRuleActions } from "@/lib/rule-validation"
+import { assertRuleActionTargetsInDepartment } from "@/lib/rule-action-targets"
 
 const RULE_SELECT = {
   id: true,
@@ -51,6 +52,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.actions !== undefined) {
     const actionsError = isRuleActions(body.actions)
     if (actionsError) return NextResponse.json({ error: actionsError }, { status: 400 })
+    const targetCheck = await assertRuleActionTargetsInDepartment(id, body.actions)
+    if (!targetCheck.ok) return NextResponse.json({ error: targetCheck.error }, { status: 400 })
     data.actions = body.actions
   }
   if (body.enabled !== undefined) data.enabled = body.enabled === true

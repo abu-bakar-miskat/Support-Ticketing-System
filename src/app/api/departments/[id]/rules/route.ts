@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { isConditionGroup, isRuleActions, DEFAULT_CONDITION_GROUP } from "@/lib/rule-validation"
+import { assertRuleActionTargetsInDepartment } from "@/lib/rule-action-targets"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 
 const RULE_SELECT = {
@@ -103,6 +104,8 @@ export async function POST(
   }
   const actionsError = isRuleActions(actions)
   if (actionsError) return NextResponse.json({ error: actionsError }, { status: 400 })
+  const targetCheck = await assertRuleActionTargetsInDepartment(id, actions)
+  if (!targetCheck.ok) return NextResponse.json({ error: targetCheck.error }, { status: 400 })
 
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
   if (!dept) return NextResponse.json({ error: "Department not found" }, { status: 404 })

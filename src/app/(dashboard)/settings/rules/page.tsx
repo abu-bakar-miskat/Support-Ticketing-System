@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope, canAdminDeptSettings } from "@/lib/dept-scope";
+import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { RulesSettingsPage } from "@/components/settings/rules-settings-page";
 import { runAsSystem } from "@/lib/request-scope";
 
@@ -36,15 +37,28 @@ export default async function SettingsRulesRoute() {
 
   const department = await runAsSystem(() => prisma.department.findUnique({
     where: { id: departmentId },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      subDepartments: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
   }));
   if (!department) redirect("/settings/departments");
   if (!canAdminDeptSettings(profile, department.id)) redirect("/settings");
+
+  const people = await runAsSystem(() => fetchProjectDepartmentPeople(department.id));
+  const members = people.map((p) => ({
+    id: p.id,
+    name: p.name,
+    subDepartmentName: p.subDepartmentName,
+  }));
 
   return (
     <RulesSettingsPage
       departmentId={department.id}
       departmentName={department.name}
+      members={members}
+      subDepartments={department.subDepartments}
     />
   );
 }

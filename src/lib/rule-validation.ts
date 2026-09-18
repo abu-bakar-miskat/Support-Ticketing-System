@@ -40,7 +40,8 @@ export function isConditionGroup(value: unknown): value is ConditionGroup {
 /**
  * Validate a RuleAction[] from an API body. Returns an error message string, or
  * null when valid. Each action must have a known `type` and an optional object
- * `params`. set_priority requires a TicketPriority enum value.
+ * `params`. set_priority / assign_agent / assign_group require concrete params
+ * (no free-text blanks).
  */
 export function isRuleActions(value: unknown): string | null {
   if (!Array.isArray(value)) return "actions must be an array";
@@ -53,12 +54,58 @@ export function isRuleActions(value: unknown): string | null {
     if (a.params !== undefined && (typeof a.params !== "object" || a.params === null || Array.isArray(a.params))) {
       return "action.params must be an object";
     }
+    const params = (a.params ?? {}) as Record<string, unknown>;
     if (a.type === "set_priority") {
-      const priority = (a.params as Record<string, unknown> | undefined)?.priority;
+      const priority = params.priority;
       if (typeof priority !== "string" || !VALID_RULE_PRIORITIES.includes(priority)) {
         return `set_priority.params.priority must be one of: ${VALID_RULE_PRIORITIES.join(", ")}`;
       }
     }
+    if (a.type === "assign_agent") {
+      const agentId = params.agentId;
+      if (typeof agentId !== "string" || !agentId.trim()) {
+        return "assign_agent.params.agentId is required";
+      }
+    }
+    if (a.type === "assign_group") {
+      const groupId =
+        typeof params.subDepartmentId === "string"
+          ? params.subDepartmentId
+          : typeof params.teamId === "string"
+            ? params.teamId
+            : "";
+      if (!groupId.trim()) {
+        return "assign_group.params.subDepartmentId is required";
+      }
+    }
   }
   return null;
+}
+
+/** Collect agent / sub-department ids referenced by rule actions (for scope checks). */
+export function collectRuleActionTargetIds(actions: unknown): {
+  agentIds: string[];
+  subDepartmentIds: string[];
+} {
+  const agentIds: string[] = [];
+  const subDepartmentIds: string[] = [];
+  if (!Array.isArray(actions)) return { agentIds, subDepartmentIds };
+  for (const raw of actions) {
+    if (typeof raw !== "object" || raw === null) continue;
+    const a = raw as Partial<RuleAction>;
+    const params = (a.params ?? {}) as Record<string, unknown>;
+    if (a.type === "assign_agent" && typeof params.agentId === "string" && params.agentId.trim()) {
+      agentIds.push(params.agentId.trim());
+    }
+    if (a.type === "assign_group") {
+      const groupId =
+        typeof params.subDepartmentId === "string"
+          ? params.subDepartmentId
+          : typeof params.teamId === "string"
+            ? params.teamId
+            : "";
+      if (groupId.trim()) subDepartmentIds.push(groupId.trim());
+    }
+  }
+  return { agentIds, subDepartmentIds };
 }

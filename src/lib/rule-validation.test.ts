@@ -22,7 +22,23 @@ describe("isRuleActions", () => {
 
   it("still allows other actions without priority params", () => {
     expect(isRuleActions([{ type: "set_tag", params: { tag: "vip" } }])).toBeNull();
+  });
+
+  it("requires assign_agent to pick a concrete agentId", () => {
     expect(isRuleActions([{ type: "assign_agent", params: { agentId: "u1" } }])).toBeNull();
+    expect(isRuleActions([{ type: "assign_agent", params: {} }])).toMatch(/agentId is required/);
+    expect(isRuleActions([{ type: "assign_agent", params: { agentId: "  " } }])).toMatch(
+      /agentId is required/,
+    );
+  });
+
+  it("requires assign_group to pick a concrete sub-department", () => {
+    expect(
+      isRuleActions([{ type: "assign_group", params: { subDepartmentId: "sd1" } }]),
+    ).toBeNull();
+    expect(isRuleActions([{ type: "assign_group", params: {} }])).toMatch(
+      /subDepartmentId is required/,
+    );
   });
 
   it("exposes the Prisma TicketPriority enum values", () => {

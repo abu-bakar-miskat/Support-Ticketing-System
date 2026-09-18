@@ -59,6 +59,8 @@ type RulesPlan = {
 
 type SlaPolicyLite = { id: string; name: string };
 type FormLite = { id: string; name: string };
+type MemberOption = { id: string; name: string; subDepartmentName?: string | null };
+type SubDepartmentOption = { id: string; name: string };
 
 const ACTION_TYPES: { value: RuleActionType; label: string }[] = [
   { value: "assign_agent", label: "Assign agent" },
@@ -73,8 +75,14 @@ const ACTION_TYPES: { value: RuleActionType; label: string }[] = [
 const PRIORITIES = Object.values(TicketPriority);
 const CATEGORIES = Object.values(TicketCategory);
 
-function defaultParamsForAction(type: RuleActionType): Record<string, unknown> {
+function defaultParamsForAction(
+  type: RuleActionType,
+  members: readonly MemberOption[],
+  subDepartments: readonly SubDepartmentOption[],
+): Record<string, unknown> {
   if (type === "set_priority") return { priority: TicketPriority.Medium };
+  if (type === "assign_agent") return { agentId: members[0]?.id ?? "" };
+  if (type === "assign_group") return { subDepartmentId: subDepartments[0]?.id ?? "" };
   return {};
 }
 
@@ -108,9 +116,13 @@ async function jsonOrThrow(res: Response) {
 export function RulesSettingsPage({
   departmentId,
   departmentName,
+  members = [],
+  subDepartments = [],
 }: {
   departmentId: string;
   departmentName: string;
+  members?: MemberOption[];
+  subDepartments?: SubDepartmentOption[];
 }) {
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
@@ -335,6 +347,8 @@ export function RulesSettingsPage({
                 total={rules.length}
                 fields={departmentFields}
                 slaPolicies={slaPolicies}
+                members={members}
+                subDepartments={subDepartments}
                 saving={savingId === rule.id}
                 onChange={(r) => patchLocal(rule.id, () => r)}
                 onSave={() => saveRule(rule)}
@@ -612,6 +626,8 @@ function RuleCard({
   total,
   fields,
   slaPolicies,
+  members,
+  subDepartments,
   saving,
   onChange,
   onSave,
@@ -623,6 +639,8 @@ function RuleCard({
   total: number;
   fields: RuleFormField[];
   slaPolicies: SlaPolicyLite[];
+  members: MemberOption[];
+  subDepartments: SubDepartmentOption[];
   saving: boolean;
   onChange: (r: Rule) => void;
   onSave: () => void;
@@ -685,6 +703,8 @@ function RuleCard({
       <ActionsEditor
         actions={rule.actions}
         slaPolicies={slaPolicies}
+        members={members}
+        subDepartments={subDepartments}
         onChange={(actions) => onChange({ ...rule, actions })}
       />
 
@@ -705,10 +725,14 @@ function RuleCard({
 function ActionsEditor({
   actions,
   slaPolicies,
+  members,
+  subDepartments,
   onChange,
 }: {
   actions: RuleAction[];
   slaPolicies: SlaPolicyLite[];
+  members: MemberOption[];
+  subDepartments: SubDepartmentOption[];
   onChange: (a: RuleAction[]) => void;
 }) {
   return (
@@ -723,7 +747,9 @@ function ActionsEditor({
                 const type = e.target.value as RuleActionType;
                 onChange(
                   actions.map((x, xi) =>
-                    xi === ai ? { type, params: defaultParamsForAction(type) } : x,
+                    xi === ai
+                      ? { type, params: defaultParamsForAction(type, members, subDepartments) }
+                      : x,
                   ),
                 );
               }}
@@ -738,6 +764,8 @@ function ActionsEditor({
             <ActionParams
               action={a}
               slaPolicies={slaPolicies}
+              members={members}
+              subDepartments={subDepartments}
               onChange={(params) => onChange(actions.map((x, xi) => (xi === ai ? { ...x, params } : x)))}
             />
             <button
@@ -754,7 +782,10 @@ function ActionsEditor({
           onClick={() =>
             onChange([
               ...actions,
-              { type: "set_priority", params: defaultParamsForAction("set_priority") },
+              {
+                type: "assign_agent",
+                params: defaultParamsForAction("assign_agent", members, subDepartments),
+              },
             ])
           }
           className="inline-flex w-fit items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
@@ -769,34 +800,58 @@ function ActionsEditor({
 function ActionParams({
   action,
   slaPolicies,
+  members,
+  subDepartments,
   onChange,
 }: {
   action: RuleAction;
   slaPolicies: SlaPolicyLite[];
+  members: MemberOption[];
+  subDepartments: SubDepartmentOption[];
   onChange: (params: Record<string, unknown>) => void;
 }) {
   const p = (action.params ?? {}) as Record<string, string>;
   const set = (key: string, value: string) => onChange({ ...p, [key]: value });
 
   switch (action.type) {
-    case "assign_agent":
+    case "assign_agent": {
+      const known = members.some((m) => m.id === p.agentId);
       return (
-        <input
-          placeholder="agent user id"
-          value={p.agentId ?? ""}
+        <select
+          value={known ? p.agentId : ""}
           onChange={(e) => set("agentId", e.target.value)}
           className={cn(inputCls, "flex-1")}
-        />
+          aria-label="Assign to agent"
+        >
+          <option value="">{members.length === 0 ? "No agents in department" : "Select agent…"}</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.subDepartmentName ? `${m.name} · ${m.subDepartmentName}` : m.name}
+            </option>
+          ))}
+        </select>
       );
-    case "assign_group":
+    }
+    case "assign_group": {
+      const known = subDepartments.some((s) => s.id === p.subDepartmentId);
       return (
-        <input
-          placeholder="sub-department id"
-          value={p.subDepartmentId ?? ""}
+        <select
+          value={known ? p.subDepartmentId : ""}
           onChange={(e) => set("subDepartmentId", e.target.value)}
           className={cn(inputCls, "flex-1")}
-        />
+          aria-label="Assign to group"
+        >
+          <option value="">
+            {subDepartments.length === 0 ? "No sub-departments" : "Select sub-department…"}
+          </option>
+          {subDepartments.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       );
+    }
     case "set_priority":
       return (
         <select
@@ -859,15 +914,23 @@ function ActionParams({
           className={cn(inputCls, "flex-1")}
         />
       );
-    case "send_notification":
+    case "send_notification": {
+      const known = members.some((m) => m.id === p.recipientId);
       return (
         <>
-          <input
-            placeholder="recipient user id"
-            value={p.recipientId ?? ""}
+          <select
+            value={known ? p.recipientId : ""}
             onChange={(e) => set("recipientId", e.target.value)}
-            className={cn(inputCls, "w-40")}
-          />
+            className={cn(inputCls, "min-w-[150px] flex-1")}
+            aria-label="Notify recipient"
+          >
+            <option value="">{members.length === 0 ? "No agents in department" : "Select recipient…"}</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
           <input
             placeholder="message (optional)"
             value={p.message ?? ""}
@@ -876,6 +939,7 @@ function ActionParams({
           />
         </>
       );
+    }
     default:
       return null;
   }

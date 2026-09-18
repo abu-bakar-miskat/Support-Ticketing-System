@@ -1164,6 +1164,11 @@ model MailboxConnection {
   // is the hand-picked roster used when assignmentMethod is MANUAL_SELECT.
   assignmentMethod  AssignmentMethod?
   manualAssigneeIds String[]               @default([])
+  // Manual on/off switch, independent of health `status`. When false the mailbox
+  // is paused: the inbound router skips it so no new tickets are created, but
+  // existing tickets are untouched. `status` stays health-only (ACTIVE/AUTH_ERROR/
+  // UNREACHABLE) and is managed by the health-check cron.
+  isActive         Boolean                 @default(true)
   status           MailboxConnectionStatus @default(ACTIVE)
   // EM-07 exponential-backoff bookkeeping for the health-check cron.
   failureCount     Int                     @default(0)

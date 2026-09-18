@@ -14,6 +14,7 @@ vi.mock("@/lib/mailbox-credentials", () => ({
 vi.mock("@/lib/mail-providers", () => ({ getMailProvider: vi.fn() }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email", () => ({ sendMailboxConnectionFailedAlertEmail: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 
 import { prisma } from "@/lib/db"
 import { encryptMailboxCredentials } from "@/lib/mailbox-credentials"
@@ -51,7 +52,7 @@ describe("createMailboxConnection", () => {
     await createMailboxConnection({
       tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
       scopeType: "DEPARTMENT", address: "Support@Tickets.PenGroup.com",
-      authType: "IMAP", plaintextCredentials: "super-secret",
+      authType: "IMAP", plaintextCredentials: "super-secret", actorId: "admin-1",
     })
 
     expect(encryptMailboxCredentials).toHaveBeenCalledWith("super-secret")
@@ -69,7 +70,7 @@ describe("createMailboxConnection", () => {
     mockCreate.mockResolvedValue({ id: "mc-1" } as never)
     await createMailboxConnection({
       tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
-      scopeType: "DEPARTMENT", address: "support@tickets.pengroup.com", authType: "RESEND",
+      scopeType: "DEPARTMENT", address: "support@tickets.pengroup.com", authType: "RESEND", actorId: "admin-1",
     })
     expect(encryptMailboxCredentials).not.toHaveBeenCalled()
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ credentialsRef: null }) }))
@@ -79,7 +80,7 @@ describe("createMailboxConnection", () => {
 describe("updateMailboxConnection", () => {
   it("re-encrypts new credentials and never selects credentialsRef", async () => {
     mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { plaintextCredentials: "new-secret" })
+    await updateMailboxConnection("mc-1", { plaintextCredentials: "new-secret" }, "admin-1")
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: { credentialsRef: "encrypted(new-secret)" } }),
     )
@@ -89,26 +90,26 @@ describe("updateMailboxConnection", () => {
 
   it("clears credentials when plaintextCredentials is explicitly null", async () => {
     mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { plaintextCredentials: null })
+    await updateMailboxConnection("mc-1", { plaintextCredentials: null }, "admin-1")
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { credentialsRef: null } }))
   })
 
   it("leaves credentials untouched when the field is omitted", async () => {
     mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { address: "new@tickets.pengroup.com" })
+    await updateMailboxConnection("mc-1", { address: "new@tickets.pengroup.com" }, "admin-1")
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { address: "new@tickets.pengroup.com" } }))
   })
 })
 
 describe("findMailboxRouteForRecipients", () => {
-  it("matches on exact (case-insensitive) address, stripping angle brackets", async () => {
+  it("matches on exact (case-insensitive) address, stripping angle brackets, and only active mailboxes", async () => {
     mockFindFirst.mockResolvedValue({ id: "mc-1", address: "support@tickets.pengroup.com", tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1" } as never)
 
     const route = await findMailboxRouteForRecipients(['"PEN" <Support@Tickets.PenGroup.com>'])
 
     expect(route?.id).toBe("mc-1")
     expect(mockFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { address: { in: ["support@tickets.pengroup.com"] } } }),
+      expect.objectContaining({ where: { address: { in: ["support@tickets.pengroup.com"] }, isActive: true } }),
     )
   })
 

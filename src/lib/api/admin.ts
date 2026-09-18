@@ -453,6 +453,7 @@ export type MailboxConnection = {
   authType: "RESEND" | "OAUTH_M365" | "OAUTH_GOOGLE" | "IMAP"
   assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT" | null
   manualAssigneeIds: string[]
+  isActive: boolean
   status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE"
   failureCount: number
   lastCheckedAt: string | null
@@ -506,6 +507,7 @@ export async function updateMailboxConnection(
     plaintextCredentials?: string | null
     assignmentMethod?: MailboxConnection["assignmentMethod"]
     manualAssigneeIds?: string[]
+    isActive?: boolean
   },
 ): Promise<MailboxConnection> {
   const res = await fetch(`/api/admin/mailbox-connections/${connectionId}`, {

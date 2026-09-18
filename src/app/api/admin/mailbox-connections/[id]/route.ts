@@ -40,6 +40,11 @@ export async function PATCH(
   const { address, plaintextCredentials } = body as { address?: string; plaintextCredentials?: string | null }
   const assignmentMethod = body.assignmentMethod as unknown
   const manualAssigneeIds = body.manualAssigneeIds as unknown
+  const isActive = body.isActive as unknown
+
+  if (isActive !== undefined && typeof isActive !== "boolean") {
+    return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
+  }
 
   if (address !== undefined) {
     const verification = await checkDomainVerification(address)
@@ -97,11 +102,16 @@ export async function PATCH(
     }
   }
 
-  const updated = await updateMailboxConnection(id, {
-    address,
-    plaintextCredentials,
-    ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
-  })
+  const updated = await updateMailboxConnection(
+    id,
+    {
+      address,
+      plaintextCredentials,
+      ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
+      ...(isActive !== undefined ? { isActive: isActive as boolean } : {}),
+    },
+    caller!.id,
+  )
   return NextResponse.json(updated)
 }
 
@@ -120,6 +130,6 @@ export async function DELETE(
   const scopeError = await assertScope(caller!, existing.departmentId)
   if (scopeError) return scopeError
 
-  await deleteMailboxConnection(id)
+  await deleteMailboxConnection(id, caller!.id)
   return new NextResponse(null, { status: 204 })
 }

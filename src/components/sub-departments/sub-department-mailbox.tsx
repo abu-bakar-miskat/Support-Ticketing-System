@@ -9,6 +9,7 @@ import {
   Mail,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Trash2,
   X,
@@ -144,6 +145,8 @@ export function SubDepartmentMailboxManager({
   const [editAddress, setEditAddress] = useState("");
   const [rechecking, setRechecking] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<Record<string, boolean>>({});
+  const [confirmDisable, setConfirmDisable] = useState<MailboxConnection | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<MailboxConnection | null>(null);
 
   useEffect(() => {
@@ -294,6 +297,21 @@ export function SubDepartmentMailboxManager({
     setConfirmDisconnect(null);
   }
 
+  // Manual on/off switch. Turning a mailbox off stops new tickets being opened
+  // from it (the inbound router skips inactive mailboxes) without touching any
+  // existing tickets.
+  async function toggleActive(c: MailboxConnection) {
+    setTogglingId((prev) => ({ ...prev, [c.id]: true }));
+    try {
+      const updated = await updateMailboxConnection(c.id, { isActive: !c.isActive });
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+    } catch {
+      // leave the current state in place on a failed toggle
+    } finally {
+      setTogglingId((prev) => ({ ...prev, [c.id]: false }));
+    }
+  }
+
   async function copyAddress(c: MailboxConnection) {
     try {
       await navigator.clipboard.writeText(c.address);
@@ -306,6 +324,20 @@ export function SubDepartmentMailboxManager({
 
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+      <ConfirmDialog
+        open={!!confirmDisable}
+        onOpenChange={(open) => { if (!open) setConfirmDisable(null); }}
+        title="Turn off mailbox"
+        description={
+          confirmDisable
+            ? `Turn off "${confirmDisable.address}"? New emails to it will stop opening tickets for ${subDepartmentName}. Existing tickets are kept, and you can turn it back on anytime.`
+            : ""
+        }
+        confirmLabel="Turn off"
+        successMessage={confirmDisable ? `${confirmDisable.address} turned off` : undefined}
+        onConfirm={async () => { if (confirmDisable) await toggleActive(confirmDisable); }}
+      />
+
       <ConfirmDialog
         open={!!confirmDisconnect}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null); }}
@@ -328,16 +360,6 @@ export function SubDepartmentMailboxManager({
             Connect the shared inboxes that open tickets for {subDepartmentName}.
           </p>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => { setShowConnect((v) => !v); setFormError(null); setVerifiedAddress(null); }}
-            className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white transition-opacity hover:opacity-90 dark:text-gray-900"
-          >
-            <Plus className="size-[13px]" strokeWidth={2.5} />
-            Connect mailbox
-          </button>
-        )}
       </div>
 
       {/* ── Request a sending domain (managers) ── */}
@@ -533,12 +555,32 @@ export function SubDepartmentMailboxManager({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
-                    <span className={cn("flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[10.5px] font-semibold", meta.chip)}>
-                      <span className={cn("size-1.5 rounded-full", meta.dot)} />
-                      {meta.label}
-                    </span>
+                    {c.isActive ? (
+                      <span className={cn("flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[10.5px] font-semibold", meta.chip)}>
+                        <span className={cn("size-1.5 rounded-full", meta.dot)} />
+                        {meta.label}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold text-sts-subtle">
+                        <span className="size-1.5 rounded-full bg-sts-subtle" />
+                        Off
+                      </span>
+                    )}
                     {canManage && editingId !== c.id && (
                       <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => (c.isActive ? setConfirmDisable(c) : toggleActive(c))}
+                          disabled={!!togglingId[c.id]}
+                          title={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-medium hover:bg-sts-surface disabled:opacity-50",
+                            c.isActive ? "text-sts-green hover:text-sts-green" : "text-sts-subtle hover:text-sts-foreground",
+                          )}
+                        >
+                          {togglingId[c.id] ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
+                          {c.isActive ? "On" : "Off"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => recheck(c.id)}

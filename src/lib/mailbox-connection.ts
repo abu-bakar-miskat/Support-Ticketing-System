@@ -4,6 +4,7 @@ import { encryptMailboxCredentials } from "@/lib/mailbox-credentials";
 import { getMailProvider } from "@/lib/mail-providers";
 import { createNotification } from "@/lib/notify";
 import { sendMailboxConnectionFailedAlertEmail } from "@/lib/email";
+import { recordAuditEvent } from "@/lib/audit-log";
 import type { AssignmentMethod, MailboxAuthType, MailboxScopeType } from "@/generated/prisma/enums";
 
 /**
@@ -25,6 +26,7 @@ const SAFE_SELECT = {
   authType: true,
   assignmentMethod: true,
   manualAssigneeIds: true,
+  isActive: true,
   status: true,
   failureCount: true,
   lastCheckedAt: true,
@@ -45,6 +47,7 @@ export type MailboxConnectionSafe = {
   authType: MailboxAuthType;
   assignmentMethod: AssignmentMethod | null;
   manualAssigneeIds: string[];
+  isActive: boolean;
   status: "ACTIVE" | "AUTH_ERROR" | "UNREACHABLE";
   failureCount: number;
   lastCheckedAt: Date | null;
@@ -92,12 +95,14 @@ export async function createMailboxConnection(params: {
   authType: MailboxAuthType;
   /** Plaintext, encrypted before storage. Omit/null for RESEND (uses the platform API key). */
   plaintextCredentials?: string | null;
+  /** Profile id of the admin performing the change, for the audit trail. */
+  actorId: string;
 }): Promise<MailboxConnectionSafe> {
   const credentialsRef = params.plaintextCredentials
     ? encryptMailboxCredentials(params.plaintextCredentials)
     : null;
 
-  return prisma.mailboxConnection.create({
+  const created = await prisma.mailboxConnection.create({
     data: {
       tenantId: params.tenantId,
       departmentId: params.departmentId,
@@ -109,6 +114,18 @@ export async function createMailboxConnection(params: {
     },
     select: SAFE_SELECT,
   });
+
+  await recordAuditEvent({
+    tenantId: created.tenantId,
+    departmentId: created.departmentId,
+    actorId: params.actorId,
+    action: "MAILBOX_CONNECTION_CREATED",
+    targetType: "MailboxConnection",
+    targetId: created.id,
+    after: { address: created.address, scopeType: created.scopeType, subDepartmentId: created.subDepartmentId },
+  }).catch(() => undefined);
+
+  return created;
 }
 
 export async function updateMailboxConnection(
@@ -118,9 +135,14 @@ export async function updateMailboxConnection(
     plaintextCredentials?: string | null;
     assignmentMethod?: AssignmentMethod | null;
     manualAssigneeIds?: string[];
+    /** Manual on/off switch. When toggled it's audited as ENABLED / DISABLED. */
+    isActive?: boolean;
   },
+  actorId: string,
 ): Promise<MailboxConnectionSafe> {
-  return prisma.mailboxConnection.update({
+  const before = await prisma.mailboxConnection.findUnique({ where: { id }, select: SAFE_SELECT });
+
+  const updated = await prisma.mailboxConnection.update({
     where: { id },
     data: {
       ...(params.address !== undefined ? { address: params.address.trim().toLowerCase() } : {}),
@@ -129,13 +151,46 @@ export async function updateMailboxConnection(
         : {}),
       ...(params.assignmentMethod !== undefined ? { assignmentMethod: params.assignmentMethod } : {}),
       ...(params.manualAssigneeIds !== undefined ? { manualAssigneeIds: params.manualAssigneeIds } : {}),
+      ...(params.isActive !== undefined ? { isActive: params.isActive } : {}),
     },
     select: SAFE_SELECT,
   });
+
+  // A toggle of the on/off switch is recorded as its own ENABLED/DISABLED action
+  // so the trail reads clearly; any other edit is a generic UPDATED.
+  const toggled = params.isActive !== undefined && before?.isActive !== updated.isActive;
+  await recordAuditEvent({
+    tenantId: updated.tenantId,
+    departmentId: updated.departmentId,
+    actorId,
+    action: toggled
+      ? updated.isActive
+        ? "MAILBOX_CONNECTION_ENABLED"
+        : "MAILBOX_CONNECTION_DISABLED"
+      : "MAILBOX_CONNECTION_UPDATED",
+    targetType: "MailboxConnection",
+    targetId: updated.id,
+    before: before ? { address: before.address, isActive: before.isActive, assignmentMethod: before.assignmentMethod } : undefined,
+    after: { address: updated.address, isActive: updated.isActive, assignmentMethod: updated.assignmentMethod },
+  }).catch(() => undefined);
+
+  return updated;
 }
 
-export async function deleteMailboxConnection(id: string): Promise<void> {
+export async function deleteMailboxConnection(id: string, actorId: string): Promise<void> {
+  const before = await prisma.mailboxConnection.findUnique({ where: { id }, select: SAFE_SELECT });
   await prisma.mailboxConnection.delete({ where: { id } });
+  if (before) {
+    await recordAuditEvent({
+      tenantId: before.tenantId,
+      departmentId: before.departmentId,
+      actorId,
+      action: "MAILBOX_CONNECTION_DELETED",
+      targetType: "MailboxConnection",
+      targetId: before.id,
+      before: { address: before.address, scopeType: before.scopeType, subDepartmentId: before.subDepartmentId },
+    }).catch(() => undefined);
+  }
 }
 
 /** Strips display-name/angle-bracket wrapping and lowercases, matching extractReplyToken's tolerance. */
@@ -163,8 +218,11 @@ export async function findMailboxRouteForRecipients(recipients: string[]): Promi
   const candidates = [...new Set(recipients.map(normalizeRecipientAddress))].filter(Boolean);
   if (candidates.length === 0) return null;
 
+  // Only route to a mailbox the admin has switched on. A paused (isActive:false)
+  // mailbox is skipped so no new tickets are opened from it, while its existing
+  // tickets stay intact.
   return prisma.mailboxConnection.findFirst({
-    where: { address: { in: candidates } },
+    where: { address: { in: candidates }, isActive: true },
     select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true },
   });
 }

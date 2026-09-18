@@ -114,15 +114,15 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         deptSpecific: true,
         templateFeatureKey: "slaPolicies",
       },
+      // {
+      //   label: "Automation rules",
+      //   href: "/settings/rules",
+      //   adminOnly: true,
+      //   deptSpecific: true,
+      //   templateFeatureKey: "automationRules",
+      // },
       {
-        label: "Automation rules",
-        href: "/settings/rules",
-        adminOnly: true,
-        deptSpecific: true,
-        templateFeatureKey: "automationRules",
-      },
-      {
-        label: "Assignment methods",
+        label: "Assignment Rules",
         href: "/settings/assignment",
         managerOnly: true,
         deptSpecific: true,

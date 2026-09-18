@@ -90,6 +90,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       address,
       authType: resolvedAuthType as never,
       plaintextCredentials,
+      actorId: caller!.id,
     })
     return NextResponse.json(connection, { status: 201 })
   } catch (err) {

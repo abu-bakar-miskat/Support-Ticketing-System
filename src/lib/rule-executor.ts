@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine";
-import { getEligibleMembers } from "@/lib/rota";
+import { getEligibleMembers, isMemberAvailableNow } from "@/lib/rota";
 import { createNotification } from "@/lib/notify";
 import {
   TicketCategory,
@@ -123,9 +123,14 @@ export async function applyRulesToTicket(
       const p = (action.params ?? {}) as Record<string, unknown>;
       switch (action.type) {
         case "assign_agent":
+          // WH-03 / ASG-04: never auto-assign an unavailable agent (holiday,
+          // off working day/hours, inactive, doNotAssign). Leave the ticket's
+          // existing assignee (from the assignment engine) untouched.
           if (typeof p.agentId === "string" && p.agentId) {
-            data.assigneeId = p.agentId;
-            assigned = true;
+            if (await isMemberAvailableNow(p.agentId, ticket.subDepartmentId)) {
+              data.assigneeId = p.agentId;
+              assigned = true;
+            }
           }
           break;
         case "assign_group": {

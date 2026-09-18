@@ -12,7 +12,12 @@ vi.mock("@/lib/db", () => ({
 }))
 
 import { prisma } from "@/lib/db"
-import { resolveAssignee, getEligibleMembers, getOpenTicketCounts } from "./rota"
+import {
+  resolveAssignee,
+  getEligibleMembers,
+  getOpenTicketCounts,
+  isMemberAvailableNow,
+} from "./rota"
 
 const mockMembershipFindMany = vi.mocked(prisma.subDepartmentMembership.findMany)
 const mockMembershipFindUnique = vi.mocked(prisma.subDepartmentMembership.findUnique)
@@ -32,6 +37,39 @@ beforeEach(() => {
   mockHolidayFind.mockResolvedValue(null as never)
   mockScheduleFind.mockResolvedValue(null as never)
   mockSubDepartmentStatuses.mockResolvedValue([{ label: "Done" }] as never)
+})
+
+describe("isMemberAvailableNow", () => {
+  it("returns false when doNotAssign is set for the sub-department", async () => {
+    mockMembershipFindUnique.mockResolvedValue({ doNotAssign: true } as never)
+    expect(await isMemberAvailableNow("a", TEAM_ID)).toBe(false)
+  })
+
+  it("returns false on a non-working day", async () => {
+    // Force "now" via a schedule that excludes every weekday — whichever day
+    // Intl reports, includes() will fail.
+    mockScheduleFind.mockResolvedValue({
+      workingDays: [],
+      workStartTime: "00:00",
+      workEndTime: "23:59",
+    } as never)
+    expect(await isMemberAvailableNow("a", TEAM_ID)).toBe(false)
+  })
+
+  it("returns false outside working hours", async () => {
+    // Impossible window: end before start means any wall-clock time is outside.
+    mockScheduleFind.mockResolvedValue({
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      workStartTime: "23:59",
+      workEndTime: "00:00",
+    } as never)
+    expect(await isMemberAvailableNow("a", TEAM_ID)).toBe(false)
+  })
+
+  it("returns false when the member is on holiday today", async () => {
+    mockHolidayFind.mockResolvedValue({ id: "h1" } as never)
+    expect(await isMemberAvailableNow("a", TEAM_ID)).toBe(false)
+  })
 })
 
 describe("getEligibleMembers", () => {
@@ -54,6 +92,21 @@ describe("getEligibleMembers", () => {
     mockProfileFind.mockResolvedValue({ timezone: null, isActive: false } as never)
     const result = await getEligibleMembers(TEAM_ID, null)
     expect(result).toEqual([])
+  })
+
+  it("excludes members marked doNotAssign or outside their schedule", async () => {
+    mockMembershipFindMany.mockResolvedValue([{ userId: "a" }, { userId: "b" }] as never)
+    mockMembershipFindUnique
+      .mockResolvedValueOnce({ doNotAssign: true } as never) // a excluded
+      .mockResolvedValueOnce({ doNotAssign: false } as never) // b ok
+    mockScheduleFind.mockResolvedValue({
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      workStartTime: "00:00",
+      workEndTime: "23:59",
+    } as never)
+
+    const result = await getEligibleMembers(TEAM_ID, null)
+    expect(result.map((m) => m.userId)).toEqual(["b"])
   })
 })
 

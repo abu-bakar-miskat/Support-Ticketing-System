@@ -25,8 +25,11 @@ function getNowInTz(tz: string): { dayOfWeek: number; time: string } {
   }).formatToParts(now)
 
   const dayStr = parts.find((p) => p.type === "weekday")?.value ?? "Mon"
-  const hour = parts.find((p) => p.type === "hour")?.value ?? "09"
+  // Intl can emit "24" at midnight with hour12:false — normalize to "00"
+  // so string comparisons against workStartTime/workEndTime stay correct.
+  let hour = parts.find((p) => p.type === "hour")?.value ?? "09"
   const minute = parts.find((p) => p.type === "minute")?.value ?? "00"
+  if (hour === "24") hour = "00"
 
   const DAY_MAP: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,

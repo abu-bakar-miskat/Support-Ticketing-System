@@ -4,10 +4,10 @@ import { X } from "lucide-react";
 import { PlatformActivityLog } from "@/components/platform/platform-activity-log";
 
 /**
- * Per-user audit trail (drill-down). Renders the shared audit log in compact
- * mode, scoped to one target profile — the immutable record of privileged
- * changes made to this user (admin grant/revoke, role changes, activation,
- * deletion). Read-only.
+ * Per-admin audit trail (drill-down). Renders the shared audit log in compact
+ * mode, scoped to everything this user has DONE (actorId) — logins plus every
+ * privileged action they performed: tenant lifecycle, feature flags, agreements,
+ * role/permission changes, templates, and more. Read-only.
  */
 export function UserAuditModal({
   userId,
@@ -42,8 +42,7 @@ export function UserAuditModal({
           <PlatformActivityLog
             tenants={[]}
             actors={[]}
-            fixedTargetType="Profile"
-            targetId={userId}
+            fixedActorId={userId}
             compact
           />
         </div>

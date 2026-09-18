@@ -1,12 +1,19 @@
 // Tenant-in-URL routing helpers. The active tenant's SLUG is shown as the first
-// URL segment for every tenant-scoped page (e.g. /pen-global-bd/board). The
-// authoritative scope source remains the ACTIVE_TENANT_COOKIE (tenant id) — the
-// slug is cosmetic and always forced to match it, so this introduces no
-// tenant-isolation risk. See proxy.ts (rewrite/redirect) and TenantSlugProvider.
+// URL segment for every tenant-scoped page (e.g. /pen-global-bd/board).
+//
+// The active-tenant cookie stores `id|slug` so the two cannot drift (legacy
+// id-only values are still accepted). Middleware also forwards the URL slug via
+// x-tenant-slug so SSR resolves the org from the link the user opened.
+
+/** HttpOnly cookie: tenant id, optionally `id|slug` composite. */
+export const ACTIVE_TENANT_COOKIE_NAME = "pen_active_tenant";
 
 /** Cookie mirroring the active tenant's slug so middleware can build URLs
- *  without a DB lookup. Set wherever ACTIVE_TENANT_COOKIE is set. */
+ *  without a DB lookup. Kept in sync whenever the active-tenant cookie is set. */
 export const TENANT_SLUG_COOKIE = "pen_active_tenant_slug";
+
+/** Request header set by proxy when the public URL carries a tenant slug. */
+export const X_TENANT_SLUG_HEADER = "x-tenant-slug";
 
 /** Cookie mirroring the active department's slug — the second URL segment for
  *  department-scoped pages (/<tenant>/<dept>/board). Set wherever the active
@@ -16,6 +23,23 @@ export const DEPT_SLUG_COOKIE = "pen_active_dept_slug";
 /** Cookie mirroring the active sub-department's slug — the third URL segment
  *  (/<tenant>/<dept>/<subdept>/board). Set wherever pen_active_team is set. */
 export const SUBDEPT_SLUG_COOKIE = "pen_active_subdept_slug";
+
+/** Encode id + slug into one cookie value so they cannot drift apart. */
+export function formatActiveTenantCookie(id: string, slug: string): string {
+  return `${id}|${slug}`;
+}
+
+/** Parse `id|slug` (or legacy bare id). */
+export function parseActiveTenantCookie(
+  raw: string | undefined | null,
+): { id: string | null; slug: string | null } {
+  if (!raw) return { id: null, slug: null };
+  const pipe = raw.indexOf("|");
+  if (pipe === -1) return { id: raw, slug: null };
+  const id = raw.slice(0, pipe).trim();
+  const slug = raw.slice(pipe + 1).trim();
+  return { id: id || null, slug: slug || null };
+}
 
 /**
  * Tenant-scoped roots that are NOT tied to a single department, so they carry

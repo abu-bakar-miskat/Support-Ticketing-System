@@ -196,6 +196,7 @@ describe("sweepAgreementReminders — SA-06", () => {
         id: "a1",
         tenantId: "t1",
         endDate: new Date("2026-09-17T00:00:00.000Z"), // 30 days out
+        renewalStatus: "ACTIVE",
         reminderDaysBefore: [60, 30, 7],
         sentReminderDays: [],
         tenant: { name: "Acme" },
@@ -223,6 +224,7 @@ describe("sweepAgreementReminders — SA-06", () => {
         id: "a1",
         tenantId: "t1",
         endDate: new Date("2026-09-17T00:00:00.000Z"),
+        renewalStatus: "ACTIVE",
         reminderDaysBefore: [60, 30, 7],
         sentReminderDays: [60, 30],
         tenant: { name: "Acme" },

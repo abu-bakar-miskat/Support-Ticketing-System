@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell, Check, CheckCheck, X, AtSign, MessageCircle,
-  MoveRight, UserCheck, Eye, GitPullRequest, Users, Loader2, Inbox, AlertTriangle, ArrowLeftRight,
+  MoveRight, UserCheck, Eye, GitPullRequest, Users, Loader2, Inbox, AlertTriangle, ArrowLeftRight, CalendarClock,
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,7 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   join_request:   { icon: Users,          color: "#059669", label: "join request"        },
   intake_manager_alert: { icon: Inbox,    color: "#0a76b9", label: "new support ticket"   },
   assignment_failed_alert: { icon: AlertTriangle, color: "#dc2626", label: "needs a manual assignee" },
+  agreement_expiring: { icon: CalendarClock, color: "#d97706", label: "agreement expiring" },
 };
 
 // ── Single notification row ────────────────────────────────────────────────────

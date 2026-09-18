@@ -18,6 +18,7 @@ import {
   AGREEMENT_DOC_TYPES_LABEL,
   validateAgreementDocFile,
 } from "@/lib/agreement-doc-file";
+import { getAgreementExpiry } from "@/lib/agreement-expiry";
 
 const RENEWAL_STATUSES = ["ACTIVE", "PENDING_RENEWAL", "RENEWED", "EXPIRED", "CANCELLED"] as const;
 type RenewalStatus = (typeof RENEWAL_STATUSES)[number];
@@ -256,8 +257,26 @@ export function TenantAgreements({
         {agreements.map((a) => (
           <li key={a.id} className="rounded-lg border border-sts-card-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-sans text-[12.5px] text-sts-foreground">
-                {fmtDate(a.startDate)} → {fmtDate(a.endDate)}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="font-sans text-[12.5px] text-sts-foreground">
+                  {fmtDate(a.startDate)} → {fmtDate(a.endDate)}
+                </div>
+                {(() => {
+                  const flag = getAgreementExpiry(a.endDate, a.renewalStatus);
+                  if (flag.state === "ok") return null;
+                  return (
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold",
+                        flag.state === "expired"
+                          ? "bg-sts-red/10 text-sts-red"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                      )}
+                    >
+                      {flag.label}
+                    </span>
+                  );
+                })()}
               </div>
               <Select
                 value={a.renewalStatus}

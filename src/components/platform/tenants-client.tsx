@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
   Building2,
@@ -67,7 +67,8 @@ function StatusBadge({ tenant }: { tenant: TenantRow }) {
 function TenantCard({
   tenant,
   canManage,
-  busy,
+  entering,
+  enterDisabled,
   index,
   onEnter,
   onManage,
@@ -78,7 +79,10 @@ function TenantCard({
 }: {
   tenant: TenantRow;
   canManage: boolean;
-  busy: boolean;
+  /** True only for the card whose Enter was clicked. */
+  entering: boolean;
+  /** True while any Enter is in flight — disables other cards without the loading label. */
+  enterDisabled: boolean;
   index: number;
   onEnter: () => void;
   onManage: () => void;
@@ -173,14 +177,14 @@ function TenantCard({
         )}
         <button
           type="button"
-          disabled={busy || locked}
+          disabled={entering || enterDisabled || locked}
           onClick={onEnter}
           className={cn(
             "ml-auto flex items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900",
             !canManage && "w-full",
           )}
         >
-          {busy ? (
+          {entering ? (
             "Entering…"
           ) : (
             <>
@@ -202,6 +206,7 @@ export function TenantsClient({
   canManage: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [tenants, setTenants] = useState(initialTenants);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -218,6 +223,20 @@ export function TenantsClient({
   const suspendedCount = tenants.filter((t) => !t.deleted && t.status === "suspended").length;
   const memberTotal = liveTenants.reduce((sum, t) => sum + t.members, 0);
   const deptTotal = liveTenants.reduce((sum, t) => sum + t.departments, 0);
+
+  // Enter leaves busy set while navigating away. Returning via back (bfcache),
+  // soft nav, or remount must clear it or every Enter button stays disabled.
+  useEffect(() => {
+    setBusy(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setBusy(null);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   async function enterTenant(tenantId: string) {
     if (busy) return;
@@ -342,7 +361,8 @@ export function TenantsClient({
                 key={t.id}
                 tenant={t}
                 canManage={canManage}
-                busy={!!busy?.startsWith("enter-")}
+                entering={busy === `enter-${t.id}`}
+                enterDisabled={!!busy?.startsWith("enter-") && busy !== `enter-${t.id}`}
                 index={i}
                 onEnter={() => enterTenant(t.id)}
                 onManage={() => router.push(`/platform/${t.id}`)}
@@ -373,7 +393,8 @@ export function TenantsClient({
                     key={t.id}
                     tenant={t}
                     canManage={canManage}
-                    busy={!!busy?.startsWith("enter-")}
+                    entering={busy === `enter-${t.id}`}
+                enterDisabled={!!busy?.startsWith("enter-") && busy !== `enter-${t.id}`}
                     index={i}
                     onEnter={() => enterTenant(t.id)}
                     onManage={() => router.push(`/platform/${t.id}`)}

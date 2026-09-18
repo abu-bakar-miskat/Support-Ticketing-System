@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
+import { renewalStatusLabel } from "@/lib/agreement-expiry";
 import type { AgreementRenewalStatus } from "@/generated/prisma/enums";
 
 /**
@@ -307,6 +308,7 @@ export async function sweepAgreementReminders(now: Date = new Date()): Promise<n
       id: true,
       tenantId: true,
       endDate: true,
+      renewalStatus: true,
       reminderDaysBefore: true,
       sentReminderDays: true,
       tenant: { select: { name: true } },
@@ -333,11 +335,14 @@ export async function sweepAgreementReminders(now: Date = new Date()): Promise<n
       .sort((a, b) => a - b)[0];
     if (dueDay === undefined) continue;
 
+    // Identify the tenant, the expiry date, the days remaining, and the current
+    // agreement status (SA-06 acceptance criteria).
+    const message = `${agreement.tenant.name}'s agreement (${renewalStatusLabel(agreement.renewalStatus)}) expires in ${daysUntilExpiry} day(s) on ${agreement.endDate.toISOString().slice(0, 10)}.`;
     for (const admin of superAdmins) {
       await createNotification({
         recipientId: admin.id,
         type: "agreement_expiring",
-        message: `${agreement.tenant.name}'s agreement expires in ${daysUntilExpiry} day(s) (${agreement.endDate.toISOString().slice(0, 10)}).`,
+        message,
       });
     }
 

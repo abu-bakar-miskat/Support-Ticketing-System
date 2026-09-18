@@ -7,10 +7,15 @@
  * transcend tenant scope and may act within any tenant.
  */
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import {
+  ACTIVE_TENANT_COOKIE_NAME,
+  X_TENANT_SLUG_HEADER,
+  parseActiveTenantCookie,
+} from "@/lib/tenant-path";
 
-export const ACTIVE_TENANT_COOKIE = "pen_active_tenant";
+export const ACTIVE_TENANT_COOKIE = ACTIVE_TENANT_COOKIE_NAME;
 export const TENANT_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 export type TenantProfileLike = {
@@ -20,10 +25,10 @@ export type TenantProfileLike = {
   tenantIds?: string[];
 };
 
-/** Cookie-only active tenant id (no validation). */
+/** Cookie-only active tenant id (supports legacy id-only and `id|slug`). */
 export async function getActiveTenantCookie(): Promise<string | null> {
   const store = await cookies();
-  return store.get(ACTIVE_TENANT_COOKIE)?.value || null;
+  return parseActiveTenantCookie(store.get(ACTIVE_TENANT_COOKIE)?.value).id;
 }
 
 /** True when the profile may act within the given tenant. */
@@ -37,14 +42,25 @@ export function hasTenantAccess(
 
 /**
  * Resolve the caller's active tenant id, validated against membership.
- *  - Member: the cookie tenant when they belong to it, else their first tenant.
- *  - Super-admin: the cookie tenant when it still exists, else their first
- *    membership, else the oldest tenant (so a fresh super-admin lands somewhere).
- * Returns null only when there is genuinely no tenant to resolve.
+ *  - URL slug (x-tenant-slug from proxy) wins when the caller can access it —
+ *    so /wayne-enterprise/… never renders another org's data.
+ *  - Else cookie tenant when valid, else first membership / oldest tenant.
  */
 export async function resolveActiveTenantId(
   profile: TenantProfileLike,
 ): Promise<string | null> {
+  const headerList = await headers();
+  const urlSlug = (headerList.get(X_TENANT_SLUG_HEADER) ?? "").trim().toLowerCase();
+  if (urlSlug) {
+    const bySlug = await prisma.tenant.findFirst({
+      where: { slug: urlSlug, deletedAt: null },
+      select: { id: true },
+    });
+    if (bySlug && hasTenantAccess(profile, bySlug.id)) {
+      return bySlug.id;
+    }
+  }
+
   const cookieTenant = await getActiveTenantCookie();
   const memberTenantIds = profile.tenantIds ?? [];
 
@@ -55,6 +71,7 @@ export async function resolveActiveTenantId(
     }
     if (memberTenantIds.length > 0) return memberTenantIds[0];
     const first = await prisma.tenant.findFirst({
+      where: { deletedAt: null },
       orderBy: { createdAt: "asc" },
       select: { id: true },
     });

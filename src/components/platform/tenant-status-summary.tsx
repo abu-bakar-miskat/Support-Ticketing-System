@@ -18,6 +18,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getAgreementExpiry } from "@/lib/agreement-expiry";
 
 const RENEWAL_STATUSES = ["ACTIVE", "PENDING_RENEWAL", "RENEWED", "EXPIRED", "CANCELLED"] as const;
 type RenewalStatus = (typeof RENEWAL_STATUSES)[number];
@@ -214,7 +215,29 @@ export function TenantStatusSummary() {
                     {new Date(r.tenantCreatedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">
-                    {r.agreementEndDate ? new Date(r.agreementEndDate).toLocaleDateString() : "—"}
+                    {r.agreementEndDate ? (
+                      <span className="flex flex-wrap items-center gap-2">
+                        {new Date(r.agreementEndDate).toLocaleDateString()}
+                        {(() => {
+                          const flag = getAgreementExpiry(r.agreementEndDate, r.renewalStatus);
+                          if (flag.state === "ok") return null;
+                          return (
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold",
+                                flag.state === "expired"
+                                  ? "bg-sts-red/10 text-sts-red"
+                                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                              )}
+                            >
+                              {flag.label}
+                            </span>
+                          );
+                        })()}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     {r.renewalStatus ? (

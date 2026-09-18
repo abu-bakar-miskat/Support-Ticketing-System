@@ -197,6 +197,9 @@ export function PlatformActivityLog({
   // When set, shows only one target's trail (per-user drill-down). Combined with
   // `compact` it renders a chromeless list suitable for a modal.
   targetId,
+  // When set, shows every action PERFORMED BY this actor (locks + hides the actor
+  // filter) — the per-admin "everything this user did" audit trail.
+  fixedActorId,
   compact = false,
   title = "Audit Log",
   description = "Full audit history of Super Admin and tenant-admin actions — feature flags, tenant lifecycle, agreements, templates, and more.",
@@ -205,6 +208,7 @@ export function PlatformActivityLog({
   actors: ActorOption[];
   fixedTargetType?: string;
   targetId?: string;
+  fixedActorId?: string;
   compact?: boolean;
   title?: string;
   description?: string;
@@ -247,7 +251,8 @@ export function PlatformActivityLog({
     const effectiveTargetType = fixedTargetType ?? targetType;
     if (effectiveTargetType) params.set("targetType", effectiveTargetType);
     if (targetId) params.set("targetId", targetId);
-    if (actorId) params.set("actorId", actorId);
+    const effectiveActorId = fixedActorId ?? actorId;
+    if (effectiveActorId) params.set("actorId", effectiveActorId);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (after) params.set("cursor", after);
@@ -279,7 +284,7 @@ export function PlatformActivityLog({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId, targetType, targetId, actorId, from, to, refreshKey]);
+  }, [tenantId, targetType, targetId, fixedActorId, actorId, from, to, refreshKey]);
 
   async function loadMore() {
     if (!cursor) return;

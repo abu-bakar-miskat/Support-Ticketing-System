@@ -1,9 +1,11 @@
 import "server-only"
 import { cache } from "react"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
 import { reconcileProfileOnLogin } from "@/lib/reconcile-profile-on-login"
-import { resolveActiveTenantId } from "@/lib/tenant-scope"
+import { resolveActiveTenantId, getActiveTenantCookie } from "@/lib/tenant-scope"
+import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
 import { runAsSystem } from "@/lib/request-scope"
@@ -135,25 +137,45 @@ export const getProfile = cache(async () => {
     user_metadata: (claims.user_metadata ?? {}) as Record<string, unknown>,
   }
 
-  const cached = PROFILE_TTL_MS > 0 ? profileByUserId.get(user.id) : undefined
+  // The cross-request cache must key on the active-tenant context, not just the
+  // user: `profile.activeTenantId` (and every tenant-scoped field derived from
+  // it) depends on the active-tenant cookie / URL slug, which change when a
+  // super-admin switches tenants. Keying by user id alone served the previous
+  // tenant's profile for up to PROFILE_TTL_MS after a switch — the "still shows
+  // the previous tenant" bug.
+  const cacheKey = await activeTenantCacheKey(user.id)
+
+  const cached = PROFILE_TTL_MS > 0 ? profileByUserId.get(cacheKey) : undefined
   if (cached && Date.now() - cached.at < PROFILE_TTL_MS) {
     return cached.profile as Awaited<ReturnType<typeof loadAuthedProfile>>
   }
 
-  const inflight = profileInflight.get(user.id)
+  const inflight = profileInflight.get(cacheKey)
   if (inflight) return inflight as Promise<Awaited<ReturnType<typeof loadAuthedProfile>>>
 
   const pending = loadAuthedProfile(user).then((profile) => {
     if (profile && PROFILE_TTL_MS > 0) {
-      profileByUserId.set(user.id, { at: Date.now(), profile })
+      profileByUserId.set(cacheKey, { at: Date.now(), profile })
     }
     return profile
   }).finally(() => {
-    if (profileInflight.get(user.id) === pending) profileInflight.delete(user.id)
+    if (profileInflight.get(cacheKey) === pending) profileInflight.delete(cacheKey)
   })
-  profileInflight.set(user.id, pending)
+  profileInflight.set(cacheKey, pending)
   return pending
 })
+
+/**
+ * Cache key for the cross-request profile cache. Combines the user id with the
+ * active-tenant context (URL slug from the proxy, then the active-tenant cookie)
+ * so a tenant switch resolves to a different key and recomputes the profile
+ * rather than returning the previous tenant's cached copy.
+ */
+async function activeTenantCacheKey(userId: string): Promise<string> {
+  const [cookieTenant, headerList] = await Promise.all([getActiveTenantCookie(), headers()])
+  const slug = (headerList.get(X_TENANT_SLUG_HEADER) ?? "").trim().toLowerCase()
+  return `${userId}::${slug}::${cookieTenant ?? ""}`
+}
 
 const loadAuthedProfile = async (user: AuthUser) => {
     // Fetch the profile and its relations in one parallel batch. Reconciliation

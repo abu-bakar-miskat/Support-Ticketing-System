@@ -39,25 +39,52 @@ export function applyActiveTenantCookies(
 }
 
 /**
- * Heal a desynced slug cookie: the id cookie is authoritative. Returns the
- * active tenant (or null). Always re-writes the slug cookie when a tenant
- * resolves so /vcad/… never shows another org's data.
+ * Resolve the active tenant for the client URL guard.
+ *
+ * - `?urlSlug=nishan` — the URL is the user's intent. If they can access that
+ *   tenant, switch cookies to it (fixes /nishan showing VCAD data).
+ * - No urlSlug — report the cookie tenant only. Never write cookies here: a
+ *   stale in-flight GET must not overwrite a just-completed Enter POST.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const { profile, error } = await requireAuth()
   if (error) return error
+
+  const urlSlug = (new URL(request.url).searchParams.get("urlSlug") ?? "")
+    .trim()
+    .toLowerCase()
+
+  if (urlSlug) {
+    const bySlug = await prisma.tenant.findFirst({
+      where: { slug: urlSlug, deletedAt: null },
+      select: { id: true, slug: true, name: true },
+    })
+    if (bySlug && hasTenantAccess(profile, bySlug.id)) {
+      const cookieId = await getActiveTenantCookie()
+      const switched = cookieId !== bySlug.id
+      const res = NextResponse.json({
+        tenant: { id: bySlug.id, slug: bySlug.slug, name: bySlug.name },
+        switched,
+      })
+      if (switched) {
+        applyActiveTenantCookies(res, bySlug)
+      } else {
+        // Id already correct — only re-assert the slug cookie (do not clear dept).
+        res.cookies.set(TENANT_SLUG_COOKIE, bySlug.slug, COOKIE_BASE)
+      }
+      return res
+    }
+  }
 
   const cookieId = await getActiveTenantCookie()
   let tenantId: string | null = cookieId
 
-  // Prefer the cookie when the caller can access it; otherwise fall back the
-  // same way resolveActiveTenantId does so the slug we mint matches the id
-  // getProfile will actually use.
   if (tenantId && !hasTenantAccess(profile, tenantId)) {
     tenantId = (profile.tenantIds ?? [])[0] ?? null
   }
   if (!tenantId && profile.isSuperAdmin) {
     const first = await prisma.tenant.findFirst({
+      where: { deletedAt: null },
       orderBy: { createdAt: "asc" },
       select: { id: true },
     })
@@ -66,26 +93,19 @@ export async function GET() {
   if (!tenantId) {
     tenantId = (profile.tenantIds ?? [])[0] ?? null
   }
-  if (!tenantId) return NextResponse.json({ tenant: null })
+  if (!tenantId) return NextResponse.json({ tenant: null, switched: false })
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: { id: true, slug: true, name: true },
   })
-  if (!tenant) return NextResponse.json({ tenant: null })
+  if (!tenant) return NextResponse.json({ tenant: null, switched: false })
 
-  const res = NextResponse.json({
+  // Read-only: do not Set-Cookie. Callers that need a heal pass urlSlug.
+  return NextResponse.json({
     tenant: { id: tenant.id, slug: tenant.slug, name: tenant.name },
+    switched: false,
   })
-  // Re-assert the slug cookie so it cannot drift from the id cookie.
-  res.cookies.set(TENANT_SLUG_COOKIE, tenant.slug, COOKIE_BASE)
-  if (cookieId !== tenant.id) {
-    res.cookies.set(ACTIVE_TENANT_COOKIE, tenant.id, {
-      ...COOKIE_BASE,
-      httpOnly: true,
-    })
-  }
-  return res
 }
 
 // Switch the caller's active tenant. Members (and super-admins) only.

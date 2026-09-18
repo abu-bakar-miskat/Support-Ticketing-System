@@ -580,7 +580,6 @@ function DepartmentCard({
   onEnterWorkspace?: (id: string) => void;
   animationIndex?: number;
 }) {
-  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(dept.name);
   const [entering, setEntering] = useState(false);
@@ -598,22 +597,31 @@ function DepartmentCard({
     setEditing(false);
   }
 
-  async function setActiveDept() {
-    await fetch("/api/active-dept", {
+  async function setActiveDept(): Promise<{ ok: boolean; slug: string; error?: string }> {
+    const res = await fetch("/api/active-dept", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deptId: dept.id }),
     });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, slug: "", error: body.error ?? "Could not open this department" };
+    }
+    return { ok: true, slug: typeof body.slug === "string" ? body.slug : "" };
   }
 
   async function managePeople() {
     setManaging(true);
-    try {
-      await setActiveDept();
-      router.push("/department");
-    } catch {
+    const result = await setActiveDept();
+    if (!result.ok) {
       setManaging(false);
+      return;
     }
+    // Full navigation (same as Enter) so the new active-dept cookie is always
+    // present on the next document request. Soft router.push raced the cookie
+    // and bounced back to /departments when activeDeptId was still null.
+    window.location.assign("/department");
   }
 
   const membersBySub = dept.membersBySubDepartment ?? [];

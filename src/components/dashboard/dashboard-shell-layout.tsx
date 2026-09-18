@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
+import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
@@ -97,6 +98,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
 
   return (
     <>
+      <TenantUrlGuard />
       <UserHydrator
         id={profile.id}
         email={profile.email}

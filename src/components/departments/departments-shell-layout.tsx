@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DepartmentsLayout } from "@/components/departments/departments-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
+import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
 
   return (
     <>
+      <TenantUrlGuard />
       <UserHydrator
         id={profile.id}
         email={profile.email}

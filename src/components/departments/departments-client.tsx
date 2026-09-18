@@ -88,12 +88,14 @@ export function DepartmentsClient({
   const mailboxTotal = (mailboxUsage ?? []).reduce((sum, r) => sum + r.total, 0);
 
   async function enterWorkspace(deptId: string) {
-    await fetch("/api/active-dept", {
+    const res = await fetch("/api/active-dept", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deptId }),
     });
-    window.location.href = "/";
+    if (!res.ok) return;
+    window.location.assign("/");
   }
 
   return (

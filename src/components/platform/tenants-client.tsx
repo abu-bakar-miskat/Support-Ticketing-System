@@ -220,10 +220,12 @@ export function TenantsClient({
   const deptTotal = liveTenants.reduce((sum, t) => sum + t.departments, 0);
 
   async function enterTenant(tenantId: string) {
+    if (busy) return;
     setBusy(`enter-${tenantId}`);
     setError(null);
     const res = await fetch("/api/active-tenant", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenantId }),
     });
@@ -234,7 +236,8 @@ export function TenantsClient({
       return;
     }
     const { slug } = await res.json().catch(() => ({ slug: "" }));
-    window.location.href = slug ? `/${slug}/departments` : "/departments";
+    // Full navigation so the new cookies are the only source of truth.
+    window.location.assign(slug ? `/${slug}/departments` : "/departments");
   }
 
   async function setTenantStatus(tenantId: string, status: "active" | "suspended") {
@@ -339,7 +342,7 @@ export function TenantsClient({
                 key={t.id}
                 tenant={t}
                 canManage={canManage}
-                busy={busy === `enter-${t.id}`}
+                busy={!!busy?.startsWith("enter-")}
                 index={i}
                 onEnter={() => enterTenant(t.id)}
                 onManage={() => router.push(`/platform/${t.id}`)}
@@ -370,7 +373,7 @@ export function TenantsClient({
                     key={t.id}
                     tenant={t}
                     canManage={canManage}
-                    busy={busy === `enter-${t.id}`}
+                    busy={!!busy?.startsWith("enter-")}
                     index={i}
                     onEnter={() => enterTenant(t.id)}
                     onManage={() => router.push(`/platform/${t.id}`)}

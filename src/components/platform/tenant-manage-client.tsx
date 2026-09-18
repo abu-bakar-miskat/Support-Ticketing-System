@@ -404,12 +404,13 @@ export function TenantManageClient({
   async function enterTenant() {
     const res = await fetch("/api/active-tenant", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenantId: tenant.id }),
     });
     if (res.ok) {
       const { slug } = await res.json().catch(() => ({ slug: "" }));
-      window.location.href = slug ? `/${slug}/departments` : "/departments";
+      window.location.assign(slug ? `/${slug}/departments` : "/departments");
     }
   }
 

@@ -7,6 +7,49 @@ type Db = Prisma.TransactionClient | typeof prisma;
 
 export type MembershipRole = "admin" | "manager" | "sub_manager" | "agent";
 
+/** Shown whenever someone tries to grant a second tenant-admin role. */
+export const TENANT_ADMIN_EXCLUSIVE_ERROR =
+  "This user is already a tenant admin of another organisation and cannot administer a second one.";
+
+export class TenantAdminExclusiveError extends Error {
+  constructor(message = TENANT_ADMIN_EXCLUSIVE_ERROR) {
+    super(message);
+    this.name = "TenantAdminExclusiveError";
+  }
+}
+
+/**
+ * A person may be tenant admin of at most one organisation. Returns the other
+ * tenant when `userId` already holds an active admin membership outside
+ * `forTenantId` (pass the tenant you're about to grant admin on).
+ */
+export async function findOtherTenantAdminConflict(
+  db: Db,
+  userId: string,
+  forTenantId: string,
+): Promise<{ tenantId: string; tenantName: string } | null> {
+  const other = await db.tenantMembership.findFirst({
+    where: {
+      userId,
+      role: "admin",
+      isActive: true,
+      tenantId: { not: forTenantId },
+    },
+    select: { tenantId: true, tenant: { select: { name: true } } },
+  });
+  if (!other) return null;
+  return { tenantId: other.tenantId, tenantName: other.tenant.name };
+}
+
+/** True when the user already administers any tenant (used by create-tenant picker). */
+export async function isTenantAdminAnywhere(db: Db, userId: string): Promise<boolean> {
+  const row = await db.tenantMembership.findFirst({
+    where: { userId, role: "admin", isActive: true },
+    select: { userId: true },
+  });
+  return !!row;
+}
+
 /**
  * Ensure the user has an *active* `TenantMembership` in `tenantId`.
  *
@@ -68,6 +111,14 @@ export async function applyTenantMembership(
   },
 ): Promise<{ departmentIds: string[] }> {
   const { tenantId, userId, role, actorId } = opts;
+
+  // Tenant-admin is exclusive across organisations — never grant a second one.
+  if (role === "admin") {
+    const conflict = await findOtherTenantAdminConflict(db, userId, tenantId);
+    if (conflict) {
+      throw new TenantAdminExclusiveError();
+    }
+  }
 
   const requested = opts.departmentIds ?? [];
   const deptIds =

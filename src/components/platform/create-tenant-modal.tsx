@@ -63,9 +63,9 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
     const seq = ++searchSeq.current;
     const timer = setTimeout(async () => {
       setSearching(true);
-      const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(adminEmail.trim())}`).catch(
-        () => null,
-      );
+      const res = await fetch(
+        `/api/admin/users/search?q=${encodeURIComponent(adminEmail.trim())}&excludeTenantAdmins=1`,
+      ).catch(() => null);
       if (seq !== searchSeq.current) return;
       const body = res && res.ok ? await res.json().catch(() => ({ users: [] })) : { users: [] };
       setSearchResults(body.users ?? []);

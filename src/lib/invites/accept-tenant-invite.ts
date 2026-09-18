@@ -1,6 +1,10 @@
 import "server-only";
 import { getUnscopedPrisma } from "@/lib/db";
-import { applyTenantMembership } from "@/lib/tenant-membership";
+import {
+  applyTenantMembership,
+  findOtherTenantAdminConflict,
+  TENANT_ADMIN_EXCLUSIVE_ERROR,
+} from "@/lib/tenant-membership";
 import { synchronizeLegacyRoleAssignments } from "@/lib/role-assignment";
 import { runAsSystem } from "@/lib/request-scope";
 import type { Role } from "@/generated/prisma/enums";
@@ -21,7 +25,13 @@ export type AcceptTenantInviteResult =
     }
   | {
       ok: false;
-      code: "not_found" | "expired" | "revoked" | "already_accepted" | "email_mismatch";
+      code:
+        | "not_found"
+        | "expired"
+        | "revoked"
+        | "already_accepted"
+        | "email_mismatch"
+        | "tenant_admin_exclusive";
       message: string;
       inviteEmail?: string;
       signedInEmail?: string;
@@ -167,6 +177,17 @@ export async function acceptTenantInvite(
 
     if (invite.acceptedAt) {
       return successFrom(invite, scope);
+    }
+
+    if (invite.role === "admin") {
+      const conflict = await findOtherTenantAdminConflict(db, profile.id, invite.tenantId);
+      if (conflict) {
+        return {
+          ok: false,
+          code: "tenant_admin_exclusive",
+          message: TENANT_ADMIN_EXCLUSIVE_ERROR,
+        };
+      }
     }
 
     // One transaction = one connection checkout for the whole accept. As

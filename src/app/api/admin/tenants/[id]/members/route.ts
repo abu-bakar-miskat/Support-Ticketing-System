@@ -3,7 +3,12 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { badRequest, forbidden, notFound } from "@/lib/api-response"
-import { applyTenantMembership } from "@/lib/tenant-membership"
+import {
+  applyTenantMembership,
+  findOtherTenantAdminConflict,
+  TENANT_ADMIN_EXCLUSIVE_ERROR,
+  TenantAdminExclusiveError,
+} from "@/lib/tenant-membership"
 import { recordAuditEvent } from "@/lib/audit-log"
 import { resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
@@ -42,16 +47,28 @@ export async function GET(request: Request, { params }: Params) {
   const url = new URL(request.url)
   const q = (url.searchParams.get("q") ?? "").trim()
   if (q.length < 2) return NextResponse.json({ users: [] })
+  // When picking someone to make tenant admin, hide anyone who already
+  // administers another organisation — they can't hold a second admin seat.
+  const forAdminRole = (url.searchParams.get("role") ?? "").toLowerCase() === "admin"
 
   const currentMembers = await prisma.tenantMembership.findMany({
     where: { tenantId, isActive: true },
     select: { userId: true },
   })
+  const excludeIds = new Set(currentMembers.map((m) => m.userId))
+
+  if (forAdminRole) {
+    const otherAdmins = await prisma.tenantMembership.findMany({
+      where: { role: "admin", isActive: true, tenantId: { not: tenantId } },
+      select: { userId: true },
+    })
+    for (const row of otherAdmins) excludeIds.add(row.userId)
+  }
 
   const users = await prisma.profile.findMany({
     where: {
       deletedAt: null,
-      id: { notIn: currentMembers.map((m) => m.userId) },
+      ...(excludeIds.size > 0 ? { id: { notIn: [...excludeIds] } } : {}),
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { email: { contains: q, mode: "insensitive" } },
@@ -115,14 +132,27 @@ export async function POST(request: Request, { params }: Params) {
   })
 
   if (existing) {
-    await applyTenantMembership(prisma, {
-      tenantId,
-      userId: existing.id,
-      role: role as "admin" | "manager" | "sub_manager" | "agent",
-      departmentIds,
-      subDepartmentId: needsSubDepartment ? subDepartmentId : null,
-      actorId: profile.id,
-    })
+    if (role === "admin") {
+      const conflict = await findOtherTenantAdminConflict(prisma, existing.id, tenantId)
+      if (conflict) {
+        return NextResponse.json({ error: TENANT_ADMIN_EXCLUSIVE_ERROR }, { status: 409 })
+      }
+    }
+    try {
+      await applyTenantMembership(prisma, {
+        tenantId,
+        userId: existing.id,
+        role: role as "admin" | "manager" | "sub_manager" | "agent",
+        departmentIds,
+        subDepartmentId: needsSubDepartment ? subDepartmentId : null,
+        actorId: profile.id,
+      })
+    } catch (e) {
+      if (e instanceof TenantAdminExclusiveError) {
+        return NextResponse.json({ error: e.message }, { status: 409 })
+      }
+      throw e
+    }
     return NextResponse.json({ added: true, member: { ...existing, role } })
   }
 

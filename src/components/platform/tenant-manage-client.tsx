@@ -211,8 +211,10 @@ export function TenantManageClient({
     const seq = ++searchSeq.current;
     const timer = setTimeout(async () => {
       setSearching(true);
+      const roleParam =
+        inviteRole === "admin" ? `&role=admin` : "";
       const res = await fetch(
-        `/api/admin/tenants/${tenant.id}/members?q=${encodeURIComponent(inviteEmail.trim())}`,
+        `/api/admin/tenants/${tenant.id}/members?q=${encodeURIComponent(inviteEmail.trim())}${roleParam}`,
       ).catch(() => null);
       if (seq !== searchSeq.current) return;
       const body =
@@ -223,7 +225,7 @@ export function TenantManageClient({
       setSearching(false);
     }, 250);
     return () => clearTimeout(timer);
-  }, [inviteEmail, pickedUser, tenant.id]);
+  }, [inviteEmail, pickedUser, tenant.id, inviteRole]);
 
   function pickUser(u: UserResult) {
     setPickedUser(u);
@@ -838,7 +840,17 @@ export function TenantManageClient({
                 </div>
                 <Select
                   value={inviteRole}
-                  onValueChange={(v) => setInviteRole(v ?? "agent")}
+                  onValueChange={(v) => {
+                    const next = v ?? "agent";
+                    setInviteRole(next);
+                    // Switching to Tenant admin re-filters the email picker —
+                    // drop a previously picked user so they can't slip through
+                    // after becoming ineligible.
+                    if (next === "admin") {
+                      setPickedUser(null);
+                      setSearchResults([]);
+                    }
+                  }}
                 >
                   <SelectTrigger className="h-9! min-w-[150px] bg-sts-card! hover:bg-sts-surface!">
                     <span className="font-sans text-[12.5px]">

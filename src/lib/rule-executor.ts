@@ -3,7 +3,11 @@ import { prisma } from "@/lib/db";
 import { planRules, type Rule, type FormValues } from "@/lib/rules-engine";
 import { getEligibleMembers } from "@/lib/rota";
 import { createNotification } from "@/lib/notify";
-import type { NotificationType } from "@/generated/prisma/enums";
+import {
+  TicketCategory,
+  TicketPriority,
+  type NotificationType,
+} from "@/generated/prisma/enums";
 
 /**
  * Unified per-department automation rules executor (slice 09, RE-01/02).
@@ -15,16 +19,8 @@ import type { NotificationType } from "@/generated/prisma/enums";
  * Never throws — a rule/action failure must never block ticket creation.
  */
 
-const PRIORITIES = new Set(["Low", "Medium", "High", "Critical", "Urgent"]);
-const CATEGORIES = new Set([
-  "Bug",
-  "FeatureRequest",
-  "Question",
-  "TechnicalIssue",
-  "AccountAccess",
-  "Billing",
-  "Other",
-]);
+const PRIORITIES = new Set<string>(Object.values(TicketPriority));
+const CATEGORIES = new Set<string>(Object.values(TicketCategory));
 const NOTIFICATION_TYPES = new Set<string>([
   "mention",
   "assignment",
@@ -149,10 +145,15 @@ export async function applyRulesToTicket(
           break;
         }
         case "set_priority":
-          if (typeof p.priority === "string" && PRIORITIES.has(p.priority)) data.priority = p.priority;
+          // Persist only TicketPriority enum values — never free text.
+          if (typeof p.priority === "string" && PRIORITIES.has(p.priority)) {
+            data.priority = p.priority as TicketPriority;
+          }
           break;
         case "set_category":
-          if (typeof p.category === "string" && CATEGORIES.has(p.category)) data.category = p.category;
+          if (typeof p.category === "string" && CATEGORIES.has(p.category)) {
+            data.category = p.category as TicketCategory;
+          }
           break;
         case "set_tag": {
           const tag = typeof p.tag === "string" ? p.tag : typeof p.label === "string" ? p.label : null;

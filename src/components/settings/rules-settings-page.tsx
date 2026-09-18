@@ -21,6 +21,7 @@ import {
   type RuleConditionGroup,
   type RuleFormField,
 } from "@/components/settings/rule-conditions-editor";
+import { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
 
 // ── Types (mirror lib/rules-engine.ts) ───────────────────────────────────────
 type RuleActionType =
@@ -69,8 +70,13 @@ const ACTION_TYPES: { value: RuleActionType; label: string }[] = [
   { value: "change_column", label: "Set status" },
   { value: "send_notification", label: "Send notification" },
 ];
-const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"];
-const CATEGORIES = ["Bug", "FeatureRequest", "Question", "TechnicalIssue", "AccountAccess", "Billing", "Other"];
+const PRIORITIES = Object.values(TicketPriority);
+const CATEGORIES = Object.values(TicketCategory);
+
+function defaultParamsForAction(type: RuleActionType): Record<string, unknown> {
+  if (type === "set_priority") return { priority: TicketPriority.Medium };
+  return {};
+}
 
 const inputCls =
   "h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none transition-colors focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15";
@@ -713,9 +719,14 @@ function ActionsEditor({
           <div key={ai} className="flex items-center gap-2">
             <select
               value={a.type}
-              onChange={(e) =>
-                onChange(actions.map((x, xi) => (xi === ai ? { type: e.target.value as RuleActionType, params: {} } : x)))
-              }
+              onChange={(e) => {
+                const type = e.target.value as RuleActionType;
+                onChange(
+                  actions.map((x, xi) =>
+                    xi === ai ? { type, params: defaultParamsForAction(type) } : x,
+                  ),
+                );
+              }}
               className={inputCls}
             >
               {ACTION_TYPES.map((t) => (
@@ -740,7 +751,12 @@ function ActionsEditor({
         ))}
         <button
           type="button"
-          onClick={() => onChange([...actions, { type: "set_priority", params: {} }])}
+          onClick={() =>
+            onChange([
+              ...actions,
+              { type: "set_priority", params: defaultParamsForAction("set_priority") },
+            ])
+          }
           className="inline-flex w-fit items-center gap-1 rounded-full border border-sts-card-border px-2 py-1 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
         >
           <Plus className="size-3" /> Add action
@@ -784,11 +800,10 @@ function ActionParams({
     case "set_priority":
       return (
         <select
-          value={p.priority ?? ""}
+          value={PRIORITIES.includes(p.priority as (typeof PRIORITIES)[number]) ? p.priority : TicketPriority.Medium}
           onChange={(e) => set("priority", e.target.value)}
           className={cn(inputCls, "flex-1")}
         >
-          <option value="">Select priority…</option>
           {PRIORITIES.map((x) => (
             <option key={x} value={x}>
               {x}

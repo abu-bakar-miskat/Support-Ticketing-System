@@ -144,7 +144,7 @@ export async function createTicketFromPayload(
       issueId ?? null,
     ).catch(() => undefined)
     // RE-01/02: run the department's automation rules against the submitted form
-    // values and apply the fired actions to the new ticket.
+    // values (plus resolved TicketPriority enum) and apply fired actions.
     await applyRulesToTicket(
       {
         id: ticketId,
@@ -154,7 +154,7 @@ export async function createTicketFromPayload(
         assigneeId: prep.assigneeId ?? null,
         formConfigId,
       },
-      formValues,
+      { ...formValues, priority: resolvedPriority },
     )
   }
 

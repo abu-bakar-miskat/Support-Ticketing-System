@@ -4,6 +4,7 @@ import {
   type RuleAction,
   type RuleActionType,
 } from "@/lib/rules-engine";
+import { TicketPriority } from "@/generated/prisma/enums";
 
 export const DEFAULT_CONDITION_GROUP: ConditionGroup = { combinator: "AND", conditions: [] };
 
@@ -17,6 +18,9 @@ export const RULE_ACTION_TYPES: RuleActionType[] = [
   "change_column",
   "send_notification",
 ];
+
+/** Allowed TicketPriority enum values for set_priority actions (never free text). */
+export const VALID_RULE_PRIORITIES = Object.values(TicketPriority) as string[];
 
 /** Structural guard for a rules-engine ConditionGroup coming from an API body. */
 export function isConditionGroup(value: unknown): value is ConditionGroup {
@@ -36,7 +40,7 @@ export function isConditionGroup(value: unknown): value is ConditionGroup {
 /**
  * Validate a RuleAction[] from an API body. Returns an error message string, or
  * null when valid. Each action must have a known `type` and an optional object
- * `params`.
+ * `params`. set_priority requires a TicketPriority enum value.
  */
 export function isRuleActions(value: unknown): string | null {
   if (!Array.isArray(value)) return "actions must be an array";
@@ -48,6 +52,12 @@ export function isRuleActions(value: unknown): string | null {
     }
     if (a.params !== undefined && (typeof a.params !== "object" || a.params === null || Array.isArray(a.params))) {
       return "action.params must be an object";
+    }
+    if (a.type === "set_priority") {
+      const priority = (a.params as Record<string, unknown> | undefined)?.priority;
+      if (typeof priority !== "string" || !VALID_RULE_PRIORITIES.includes(priority)) {
+        return `set_priority.params.priority must be one of: ${VALID_RULE_PRIORITIES.join(", ")}`;
+      }
     }
   }
   return null;

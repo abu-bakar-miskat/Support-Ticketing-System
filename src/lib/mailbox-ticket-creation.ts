@@ -10,6 +10,7 @@ import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
 import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
+import { TicketPriority } from "@/generated/prisma/enums";
 
 /**
  * EM-01/02/03: creates a brand-new ticket from an inbound email that matched
@@ -70,7 +71,7 @@ export async function createTicketFromInboundEmail(params: {
         title,
         description: description?.trim() ? description : null,
         type: "Task",
-        priority: "Medium",
+        priority: TicketPriority.Medium,
         status,
         ticketNumber: 0, // stamped by DB trigger
         creatorId,
@@ -108,7 +109,13 @@ export async function createTicketFromInboundEmail(params: {
   // the retry-on-error change in process-inbound-email) retry it — creating a
   // duplicate ticket, since the message row that gates idempotency isn't stored
   // until after this returns. Log and move on instead.
-  const ruleFormValues = { title, subject: subject ?? "", fromEmail, fromName, priority: "Medium" };
+  const ruleFormValues = {
+    title,
+    subject: subject ?? "",
+    fromEmail,
+    fromName,
+    priority: TicketPriority.Medium,
+  };
   await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId)
     .catch((err) => console.error("[inbound] startSlaTimers failed for", ticket.id, err));
 

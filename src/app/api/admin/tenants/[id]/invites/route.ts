@@ -122,7 +122,7 @@ export async function POST(request: Request, { params }: Params) {
     select: { id: true, email: true, role: true, token: true, expiresAt: true },
   })
 
-  // Email the invitee so the 72h clock and the 24h reminder have something to
+  // Email the invitee so the 24h clock and the 12h reminder have something to
   // reference. Delivery failure shouldn't lose the invite — the accept link is
   // still returned for manual sharing — so this is best-effort.
   try {

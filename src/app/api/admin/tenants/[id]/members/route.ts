@@ -178,7 +178,7 @@ export async function POST(request: Request, { params }: Params) {
     },
   })
 
-  // Best-effort: email the invitee so the 72h window + 24h reminder apply. The
+  // Best-effort: email the invitee so the 24h window + 12h reminder apply. The
   // accept link is still returned so a delivery failure never blocks the invite.
   try {
     await sendTenantInviteEmail({

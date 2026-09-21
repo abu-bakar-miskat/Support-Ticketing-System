@@ -20,8 +20,8 @@ const roleLabel = (role: string) =>
 /**
  * Tenant-level invitation email (join an organization/tenant), distinct from the
  * department invite. Accept link resolves to `/tenant-invite/<token>`. Supports a
- * reminder variant fired ~24h before nothing has happened; both variants state
- * the exact 72h expiry.
+ * reminder variant fired ~12h before nothing has happened; both variants state
+ * the 24h (1-day) validity window and its exact expiry time.
  */
 export function renderTenantInvite({
   inviteeEmail,
@@ -77,7 +77,7 @@ export function renderTenantInvite({
     ${messageHtml}
     ${infoHtml}
     ${button({ href: url, label: "Accept invitation", branding })}
-    <p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">This invitation expires on <strong>${escapeHtml(expiryText)}</strong>. After that the link stops working and a new invitation is required.</p>
+    <p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">This invitation is valid for 1 day and expires on <strong>${escapeHtml(expiryText)}</strong>. After that the link stops working and a new invitation is required.</p>
     <p style="margin:8px 0 0 0;color:#6b7280;font-size:13px;">This invitation was sent to ${email}. Sign in with your Microsoft work account to accept.</p>
     ${sig.html}
   `;
@@ -97,7 +97,7 @@ export function renderTenantInvite({
     "",
     `Accept invitation: ${url}`,
     "",
-    `This invitation expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
+    `This invitation is valid for 1 day and expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
     "",
     `This invitation was sent to ${inviteeEmail}. Sign in with your Microsoft work account to accept.`,
     "",

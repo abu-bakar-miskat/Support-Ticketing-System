@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { generateLink, sendAuthEmail, isAuthEmailConfigured } = vi.hoisted(() => ({
+const { generateLink, sendAuthEmail, isAuthEmailConfigured, getPlatformSettings } = vi.hoisted(() => ({
   generateLink: vi.fn(),
   sendAuthEmail: vi.fn(),
   isAuthEmailConfigured: vi.fn(),
+  getPlatformSettings: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +14,9 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/email-transport", () => ({
   sendAuthEmail,
   isAuthEmailConfigured,
+}));
+vi.mock("@/lib/platform-settings", () => ({
+  getPlatformSettings,
 }));
 
 import { sendLoginCode } from "./send-login-code";
@@ -28,6 +32,7 @@ describe("sendLoginCode", () => {
       error: null,
     });
     sendAuthEmail.mockResolvedValue({ ok: true, id: "email-1", via: "resend" });
+    getPlatformSettings.mockResolvedValue({ otpEmailTemplate: null });
   });
 
   it("sends only the numeric OTP and never includes a magic link", async () => {
@@ -49,6 +54,21 @@ describe("sendLoginCode", () => {
     expect(message.html).toContain("12345678");
     expect(message.html).not.toContain("ConfirmationURL");
     expect(message.html).not.toContain("href=");
+  });
+
+  it("uses the super-admin OTP override when one is set", async () => {
+    getPlatformSettings.mockResolvedValue({
+      otpEmailTemplate: {
+        subject: "Custom sign-in subject",
+        bodyHtml: "<p>Your code is {{code}}</p>",
+      },
+    });
+
+    await sendLoginCode("override.user@example.com");
+
+    const message = sendAuthEmail.mock.calls[0][0];
+    expect(message.subject).toBe("Custom sign-in subject");
+    expect(message.html).toBe("<p>Your code is 12345678</p>");
   });
 
   it("does not send when Supabase cannot mint a code", async () => {

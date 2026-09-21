@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { PLATFORM_FEATURE_KEYS, isFeatureKey, type FeatureKey } from "@/lib/feature-keys";
+import type { OtpEmailTemplate } from "@/lib/email-templates/otp";
 
 /**
  * Platform-wide global configuration (see the PlatformSetting model). Each
@@ -26,6 +27,13 @@ export type PlatformSettings = {
    * tenants are untouched — feature flags are fail-open, see lib/feature-flags).
    */
   newTenantFeatureDefaults: Record<FeatureKey, boolean>;
+  /**
+   * Super-admin override for the OTP sign-in email (subject + full body HTML,
+   * `{{code}}` placeholder). `null` means "use the built-in OTP_DEFAULT". OTP is
+   * platform-global because login is email-first — there's no tenant/department
+   * context when a code is sent. See lib/email-templates/otp.ts.
+   */
+  otpEmailTemplate: OtpEmailTemplate | null;
 };
 
 function allFeaturesEnabled(): Record<FeatureKey, boolean> {
@@ -41,7 +49,17 @@ export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   supportEmail: "",
   devMode: false,
   newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
+  otpEmailTemplate: null,
 };
+
+/** Coerce a stored JSON value into a validated OTP template, or null. */
+function parseOtpTemplate(value: unknown): OtpEmailTemplate | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const { subject, bodyHtml } = value as Record<string, unknown>;
+  if (typeof subject !== "string" || !subject.trim()) return null;
+  if (typeof bodyHtml !== "string" || !bodyHtml.trim()) return null;
+  return { subject, bodyHtml };
+}
 
 /** Coerce a stored JSON value into a validated feature-defaults map. */
 function parseFeatureDefaults(value: unknown): Record<FeatureKey, boolean> {
@@ -67,6 +85,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     supportEmail: typeof supportEmail === "string" ? supportEmail : PLATFORM_SETTINGS_DEFAULTS.supportEmail,
     devMode: typeof devMode === "boolean" ? devMode : PLATFORM_SETTINGS_DEFAULTS.devMode,
     newTenantFeatureDefaults: parseFeatureDefaults(byKey.get("newTenantFeatureDefaults")),
+    otpEmailTemplate: parseOtpTemplate(byKey.get("otpEmailTemplate")),
   };
 }
 
@@ -84,6 +103,10 @@ export async function setPlatformSettings(
   if (patch.devMode !== undefined) writes.push({ key: "devMode", value: patch.devMode });
   if (patch.newTenantFeatureDefaults !== undefined) {
     writes.push({ key: "newTenantFeatureDefaults", value: parseFeatureDefaults(patch.newTenantFeatureDefaults) });
+  }
+  if (patch.otpEmailTemplate !== undefined) {
+    // null clears the override (falls back to OTP_DEFAULT at render time).
+    writes.push({ key: "otpEmailTemplate", value: parseOtpTemplate(patch.otpEmailTemplate) });
   }
 
   await prisma.$transaction(

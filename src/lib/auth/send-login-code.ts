@@ -1,8 +1,9 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml } from "@/lib/email-templates/_shared";
+import { renderOtpEmail } from "@/lib/email-templates/otp";
 import { isAuthEmailConfigured, sendAuthEmail } from "@/lib/email-transport";
+import { getPlatformSettings } from "@/lib/platform-settings";
 
 const DEFAULT_FROM = "PEN Support <onboarding@mail.pengroup.com>";
 // Server-side backstop for the 90s resend cooldown enforced in the UI. Keeps a
@@ -46,13 +47,14 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
     return { error: "Could not generate a sign-in code. Please try again." };
   }
 
-  const safeCode = escapeHtml(code);
+  const { otpEmailTemplate } = await getPlatformSettings();
+  const mail = renderOtpEmail(code, otpEmailTemplate);
   const result = await sendAuthEmail({
     from: process.env.RESEND_FROM_EMAIL || DEFAULT_FROM,
     to: email,
-    subject: "Your PEN Support sign-in code",
-    html: `<!doctype html><html><body style="margin:0;padding:32px 16px;background:#f8f8fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#06476f"><table role="presentation" width="100%"><tr><td align="center"><table role="presentation" width="560" style="max-width:560px;width:100%"><tr><td style="padding:24px 30px;background:#022941;border-radius:8px 8px 0 0;color:#fff;font-size:20px;font-weight:700">PEN <span style="color:#43b5e8">Support</span></td></tr><tr><td style="padding:36px 40px;background:#fff;border-radius:0 0 8px 8px"><h1 style="margin:0 0 16px;color:#0a76b9;font-size:25px">Your sign-in code</h1><p style="margin:0 0 24px;font-size:15px;line-height:1.6">Enter this code on the sign-in page:</p><p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:7px;color:#022941">${safeCode}</p><p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6">The code expires in a few minutes. If you did not request it, you can ignore this email.</p></td></tr></table></td></tr></table></body></html>`,
-    text: `Your PEN Support sign-in code is: ${code}\n\nThe code expires in a few minutes. If you did not request it, you can ignore this email.`,
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
   });
 
   if (!result.ok) return { error: result.error };

@@ -12,11 +12,14 @@ import {
   Power,
   FlaskConical,
   ExternalLink,
+  Mail,
+  RotateCcw,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { HtmlCodeEditor } from "@/components/ui/html-code-editor";
 import {
   Select,
   SelectContent,
@@ -37,6 +40,10 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   timeTracking: "Time tracking",
 };
 
+/** Feature keys shown as toggles on this page. `recruitment` is intentionally
+ * hidden here while its flag/path-gating stays defined in feature-keys.ts. */
+const VISIBLE_FEATURE_KEYS = PLATFORM_FEATURE_KEYS.filter((k) => k !== "recruitment");
+
 type TenantOption = { id: string; name: string; slug: string; status: string };
 type Overview = {
   tenants: number;
@@ -51,18 +58,25 @@ type PlatformSettings = {
   devMode: boolean;
   newTenantFeatureDefaults: Record<FeatureKey, boolean>;
 };
+type OtpTemplate = { subject: string; bodyHtml: string };
 
 export function PlatformSettingsAdmin({
   tenants: initialTenants,
   settings: initialSettings,
   overview,
   mailpitUiBase,
+  otpTemplate,
+  otpDefault,
 }: {
   tenants: TenantOption[];
   settings: PlatformSettings;
   overview: Overview;
   /** Public Mailpit inbox URL (no credentials in the URL). */
   mailpitUiBase: string;
+  /** Current super-admin OTP override, or null when using the built-in default. */
+  otpTemplate: OtpTemplate | null;
+  /** The built-in OTP template — used to prefill and to reset. */
+  otpDefault: OtpTemplate;
 }) {
   const [tenants, setTenants] = useState<TenantOption[]>(initialTenants);
 
@@ -242,6 +256,71 @@ export function PlatformSettingsAdmin({
     }
   }
 
+  // ── OTP sign-in email template ───────────────────────────────────────────────
+  // Platform-global: login is email-first, so there's no tenant/department context
+  // when a code is sent. Seed from the override, falling back to the built-in default.
+  const [otpSubject, setOtpSubject] = useState((otpTemplate ?? otpDefault).subject);
+  const [otpBodyHtml, setOtpBodyHtml] = useState((otpTemplate ?? otpDefault).bodyHtml);
+  const [otpBaseline, setOtpBaseline] = useState<OtpTemplate>(otpTemplate ?? otpDefault);
+  const [savingOtp, setSavingOtp] = useState(false);
+  const [resettingOtp, setResettingOtp] = useState(false);
+
+  const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
+  const otpPreviewHtml = otpBodyHtml.replaceAll("{{code}}", "123456");
+
+  async function saveOtp() {
+    setSavingOtp(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/platform-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpEmailTemplate: { subject: otpSubject, bodyHtml: otpBodyHtml } }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Failed to save OTP email");
+        return;
+      }
+      const saved: OtpTemplate = body.otpEmailTemplate ?? otpDefault;
+      setOtpSubject(saved.subject);
+      setOtpBodyHtml(saved.bodyHtml);
+      setOtpBaseline(saved);
+      setStatus("OTP sign-in email saved");
+    } catch {
+      setError("Failed to save OTP email");
+    } finally {
+      setSavingOtp(false);
+    }
+  }
+
+  async function resetOtp() {
+    setResettingOtp(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/platform-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpEmailTemplate: null }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Failed to reset OTP email");
+        return;
+      }
+      setOtpSubject(otpDefault.subject);
+      setOtpBodyHtml(otpDefault.bodyHtml);
+      setOtpBaseline(otpDefault);
+      setStatus("OTP sign-in email reset to default");
+    } catch {
+      setError("Failed to reset OTP email");
+    } finally {
+      setResettingOtp(false);
+    }
+  }
+
   const statCards = [
     { label: "Tenants", value: overview.tenants, icon: Building2 },
     { label: "Suspended", value: overview.suspended, icon: Power },
@@ -391,7 +470,7 @@ export function PlatformSettingsAdmin({
                 Features toggled off here start disabled for tenants created afterwards. Existing tenants are unaffected.
               </p>
               <div className="mt-3 flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
-                {PLATFORM_FEATURE_KEYS.map((key) => (
+                {VISIBLE_FEATURE_KEYS.map((key) => (
                   <div key={key} className="flex items-center justify-between gap-3 py-2.5">
                     <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
                     <Switch
@@ -518,7 +597,7 @@ export function PlatformSettingsAdmin({
                         <Loader2 className="size-4 animate-spin text-sts-muted" />
                       </div>
                     )}
-                    {PLATFORM_FEATURE_KEYS.map((key) => (
+                    {VISIBLE_FEATURE_KEYS.map((key) => (
                       <div key={key} className="flex items-center justify-between gap-3 py-2.5">
                         <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
                         <Switch
@@ -533,6 +612,69 @@ export function PlatformSettingsAdmin({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* ── OTP sign-in email ─────────────────────────────────────────────── */}
+        <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
+          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+              <Mail className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">OTP sign-in email</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                The passwordless sign-in code email, sent to everyone across the platform. Use{" "}
+                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{code}}"}</code>{" "}
+                where the numeric code should appear.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 px-[22px] py-5">
+            {/* Subject — full width */}
+            <div className="flex flex-col gap-[5px]">
+              <label className="font-sans text-[13px] font-medium text-sts-foreground">Subject</label>
+              <Input value={otpSubject} onChange={(e) => setOtpSubject(e.target.value)} />
+            </div>
+
+            {/* Body editor + live preview, side by side and height-matched */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <div className="flex flex-col gap-[5px]">
+                <label className="font-sans text-[13px] font-medium text-sts-foreground">Body HTML</label>
+                <HtmlCodeEditor
+                  value={otpBodyHtml}
+                  onChange={setOtpBodyHtml}
+                  minHeight={420}
+                  maxHeight={420}
+                  className="h-[420px]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-[5px]">
+                <label className="font-sans text-[13px] font-medium text-sts-foreground">Preview</label>
+                <div className="h-[420px] overflow-hidden rounded-lg border border-sts-card-border bg-white">
+                  <iframe
+                    title="OTP email preview"
+                    srcDoc={otpPreviewHtml}
+                    sandbox=""
+                    className="h-full w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <Button onClick={saveOtp} disabled={!otpDirty || savingOtp}>
+                {savingOtp ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Save
+              </Button>
+              <Button variant="outline" onClick={resetOtp} disabled={resettingOtp}>
+                {resettingOtp ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+                Reset to default
+              </Button>
+            </div>
           </div>
         </div>
       </div>

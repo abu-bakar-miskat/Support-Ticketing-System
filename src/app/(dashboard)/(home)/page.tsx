@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { HomeDashboard } from "@/components/dashboard/home-dashboard";
+import { dashboardHomeRedirect } from "@/lib/dashboard-home-routing";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Home — Support Ticketing System" };
@@ -13,24 +14,11 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
-  // Super-admins default to the platform tenants console while at the platform
-  // level. Once they've entered a department (active dept set), Home behaves
-  // like the normal tenant dashboard with its usual layout. Tenant admins are
-  // scoped to their own tenant and never reach the platform area — they fall
-  // through to the normal tenant dashboard below.
-  if (profile.isSuperAdmin && !activeDeptId) {
-    redirect("/platform");
-  }
-
-  // Tenant admins land on the departments (org management) view. Guarded to real
-  // tenant admins — super-admins also derive role "admin" but are handled above.
-  if (profile.role === "admin" && !profile.isSuperAdmin) {
-    redirect("/departments");
-  }
-
-  if (profile.role === "manager") {
-    redirect("/manager");
-  }
+  // Admins default to their management console only before selecting a
+  // department. Once "Enter workspace" sets the active-department cookie, Home
+  // must render that workspace rather than bouncing back to the picker.
+  const defaultDestination = dashboardHomeRedirect(profile, activeDeptId);
+  if (defaultDestination) redirect(defaultDestination);
 
   return <HomeDashboard />;
 }

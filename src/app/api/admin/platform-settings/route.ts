@@ -53,6 +53,23 @@ export async function PUT(request: Request) {
     patch.newTenantFeatureDefaults = body.newTenantFeatureDefaults
   }
 
+  if (body.otpEmailTemplate !== undefined) {
+    if (body.otpEmailTemplate === null) {
+      patch.otpEmailTemplate = null // reset to built-in default
+    } else if (typeof body.otpEmailTemplate !== "object" || Array.isArray(body.otpEmailTemplate)) {
+      return NextResponse.json({ error: "otpEmailTemplate must be an object or null" }, { status: 400 })
+    } else {
+      const { subject, bodyHtml } = body.otpEmailTemplate as Record<string, unknown>
+      if (typeof subject !== "string" || !subject.trim()) {
+        return NextResponse.json({ error: "OTP email subject cannot be empty" }, { status: 400 })
+      }
+      if (typeof bodyHtml !== "string" || !bodyHtml.trim()) {
+        return NextResponse.json({ error: "OTP email body cannot be empty" }, { status: 400 })
+      }
+      patch.otpEmailTemplate = { subject, bodyHtml }
+    }
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 })
   }

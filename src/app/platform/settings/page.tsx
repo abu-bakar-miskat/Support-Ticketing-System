@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { getPlatformSettings } from "@/lib/platform-settings"
 import { getMailpitUiBase } from "@/lib/email-transport"
+import { OTP_DEFAULT } from "@/lib/email-templates/otp"
 import { PlatformSettingsAdmin } from "@/components/platform/platform-settings-admin"
 
 export const dynamic = "force-dynamic"
@@ -41,6 +42,8 @@ export default async function PlatformSettingsPage() {
       settings={settings}
       overview={overview}
       mailpitUiBase={getMailpitUiBase()}
+      otpTemplate={settings.otpEmailTemplate}
+      otpDefault={OTP_DEFAULT}
     />
   )
 }

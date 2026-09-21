@@ -55,6 +55,9 @@ import {
   handleDepartmentJoinRequest,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
+import { deriveSubDepartmentPrefix } from "@/lib/sub-department-prefix";
+import { toastError } from "@/lib/toast-error";
+import { toast } from "sonner";
 import { notifEvents } from "@/store";
 
 export type SubDepartmentRow = {
@@ -195,36 +198,49 @@ type ModalMode =
 function SubDepartmentModal({
   mode,
   departments,
+  activeDeptId,
   onClose,
   onSuccess,
 }: {
   mode: ModalMode;
   departments: Department[];
+  activeDeptId?: string | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const isEdit = mode.type === "edit";
+  // The department is implied by context and the picker is hidden: on edit it's
+  // the sub-department's own department; on create it's the one you're already
+  // in (or the only one in scope).
+  const lockedDeptId = isEdit
+    ? mode.subDepartment.departmentId
+    : activeDeptId && departments.some((d) => d.id === activeDeptId)
+      ? activeDeptId
+      : departments.length === 1
+        ? departments[0].id
+        : null;
   const [name, setName] = useState(isEdit ? mode.subDepartment.name : "");
   const [prefix, setPrefix] = useState(isEdit ? mode.subDepartment.prefix : "");
+  // Auto-suggest the prefix from the name until the user hand-edits it. In edit
+  // mode we never touch the existing prefix, so treat it as already edited.
+  const [prefixTouched, setPrefixTouched] = useState(isEdit);
   const [color, setColor] = useState(isEdit ? mode.subDepartment.color : PRESET_COLORS[0]);
   const [departmentId, setDepartmentId] = useState(
-    isEdit ? mode.subDepartment.departmentId : (departments[0]?.id ?? ""),
+    isEdit ? mode.subDepartment.departmentId : (lockedDeptId ?? departments[0]?.id ?? ""),
   );
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function validatePrefix(p: string) {
-    if (p.length < 2 || p.length > 5) return "Prefix must be 2–5 characters";
+    if (p.length < 2 || p.length > 10) return "Prefix must be 2–10 characters";
     if (!/^[A-Z]+$/.test(p)) return "Prefix must contain only letters (A–Z)";
     return null;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
 
     const prefixError = validatePrefix(prefix);
-    if (prefixError) { setError(prefixError); return; }
+    if (prefixError) { toast.error(prefixError); return; }
 
     setSaving(true);
     try {
@@ -235,7 +251,7 @@ function SubDepartmentModal({
       }
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      toastError("Failed to save sub-department", err);
     } finally {
       setSaving(false);
     }
@@ -271,7 +287,11 @@ function SubDepartmentModal({
             </label>
             <input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setName(value);
+                if (!prefixTouched) setPrefix(deriveSubDepartmentPrefix(value));
+              }}
               required
               autoFocus
               placeholder="e.g. Frontend"
@@ -279,18 +299,23 @@ function SubDepartmentModal({
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-1 flex-col gap-1.5">
               <label className="font-sans text-[12px] font-semibold text-sts-foreground">
                 Prefix{" "}
-                <span className="text-sts-subtle">(2–5 letters)</span>
+                <span className="text-sts-subtle">
+                  {isEdit ? "(2–10 letters)" : "(auto-filled, editable)"}
+                </span>
               </label>
               <input
                 value={prefix}
-                onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setPrefix(e.target.value.toUpperCase());
+                  setPrefixTouched(true);
+                }}
                 required
                 minLength={2}
-                maxLength={5}
+                maxLength={10}
                 placeholder="FE"
                 className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-mono text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id focus:ring-1 focus:ring-sts-id"
               />
@@ -326,22 +351,20 @@ function SubDepartmentModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="font-sans text-[12px] font-semibold text-sts-foreground">
-              Department
-            </label>
-            <SearchableSelect
-              value={departmentId}
-              onChange={setDepartmentId}
-              options={departments.map((d) => ({ value: d.id, label: d.name }))}
-              placeholder="Select department…"
-              className="bg-sts-surface"
-              aria-label="Department"
-            />
-          </div>
-
-          {error && (
-            <p className="font-sans text-[12px] text-red-500">{error}</p>
+          {!lockedDeptId && (
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-[12px] font-semibold text-sts-foreground">
+                Department
+              </label>
+              <SearchableSelect
+                value={departmentId}
+                onChange={setDepartmentId}
+                options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                placeholder="Select department…"
+                className="bg-sts-surface"
+                aria-label="Department"
+              />
+            </div>
           )}
 
           <div className="mt-1 flex justify-end gap-2">
@@ -1481,12 +1504,14 @@ function SubDepartmentCard({
 export function SettingsSubDepartmentsPage({
   subDepartments,
   departments,
+  activeDeptId,
   isAdmin,
   isManager = false,
   pendingRequests = [],
 }: {
   subDepartments: SubDepartmentRow[];
   departments: Department[];
+  activeDeptId?: string | null;
   isAdmin: boolean;
   isManager?: boolean;
   pendingRequests?: PendingRequest[];
@@ -1528,6 +1553,7 @@ export function SettingsSubDepartmentsPage({
         <SubDepartmentModal
           mode={modal}
           departments={departments}
+          activeDeptId={activeDeptId}
           onClose={() => setModal(null)}
           onSuccess={refresh}
         />

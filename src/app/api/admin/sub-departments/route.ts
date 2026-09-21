@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
 import { departmentTenantId } from "@/lib/tenant-scope"
 import { seedSubDepartmentStatuses } from "@/lib/board-columns"
+import { runAsSystem } from "@/lib/request-scope"
 
 /** URL-safe slug from a name (mirrors scripts/backfill-subdepartment-slugs.ts). */
 function slugify(name: string): string {
@@ -31,6 +32,20 @@ async function uniqueSubDepartmentSlug(
   let i = 2
   while (used.has(slug)) slug = `${base}-${i++}`
   return slug
+}
+
+/**
+ * Whether a prefix is already taken. `prefix` is `@unique` across ALL
+ * sub-departments (the DB index is not tenant-scoped), so the scan runs under
+ * `runAsSystem` — the default `prisma` is tenant-scoped and would otherwise miss
+ * prefixes owned by other tenants, reporting a clash-free prefix the insert then
+ * rejects. Comparison is case-insensitive since prefixes are stored uppercase.
+ */
+async function prefixTaken(prefix: string): Promise<boolean> {
+  const clash = await runAsSystem(() =>
+    prisma.subDepartment.findFirst({ where: { prefix }, select: { id: true } }),
+  )
+  return clash !== null
 }
 
 function isUniqueViolation(e: unknown): boolean {
@@ -72,8 +87,8 @@ export async function POST(request: Request) {
   if (!name || !prefix || !departmentId) {
     return NextResponse.json({ error: "name, prefix, and departmentId are required" }, { status: 400 })
   }
-  if (prefix.length < 2 || prefix.length > 5) {
-    return NextResponse.json({ error: "Prefix must be 2–5 characters" }, { status: 400 })
+  if (prefix.length < 2 || prefix.length > 10) {
+    return NextResponse.json({ error: "Prefix must be 2–10 characters" }, { status: 400 })
   }
   if (!/^[A-Z]+$/.test(prefix)) {
     return NextResponse.json({ error: "Prefix must contain only letters" }, { status: 400 })
@@ -98,6 +113,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Department not found" }, { status: 404 })
   }
 
+  // Reject a duplicate prefix up-front so nothing is saved — the user must pick a
+  // unique one. The P2002 catch below is the race backstop for the same rule.
+  if (await prefixTaken(prefix)) {
+    return NextResponse.json(
+      { error: `Prefix "${prefix}" is already in use. Choose a different one.` },
+      { status: 409 },
+    )
+  }
+
   try {
     const slug = await uniqueSubDepartmentSlug(departmentId, name)
     const subDepartment = await prisma.subDepartment.create({
@@ -115,7 +139,10 @@ export async function POST(request: Request) {
     return NextResponse.json(subDepartment, { status: 201 })
   } catch (e) {
     if (isUniqueViolation(e)) {
-      return NextResponse.json({ error: "A subDepartment with that prefix already exists" }, { status: 409 })
+      return NextResponse.json(
+        { error: `Prefix "${prefix}" is already in use. Choose a different one.` },
+        { status: 409 },
+      )
     }
     throw e
   }

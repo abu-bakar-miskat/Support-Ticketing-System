@@ -1018,6 +1018,7 @@ export function ProjectBoardPage({
       dbId: ticket.id,
       humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
       title: ticket.title,
+      description: null,
       priority: uiPriorityFromDb(ticket.priority),
       status: ticket.status,
       subDepartment: name,

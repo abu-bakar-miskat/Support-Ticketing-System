@@ -35,7 +35,7 @@ function formatDue(
 }
 
 const ticketSelect = {
-  id: true, title: true, ticketNumber: true, priority: true, status: true,
+  id: true, title: true, description: true, ticketNumber: true, priority: true, status: true,
   moduleId: true, labels: true, estimatedTime: true, startDate: true,
   dueDate: true, createdAt: true,
   transferredFromName: true, transferredByName: true,
@@ -86,6 +86,7 @@ export function toBoardCard(
     dbId: t.id,
     humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title,
+    description: t.description ?? null,
     priority: PRIORITY_TO_UI[t.priority] ?? "medium",
     status: t.status,
     subDepartment: t.subDepartment.name,

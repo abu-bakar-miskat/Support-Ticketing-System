@@ -23,6 +23,8 @@ const STORAGE_KEY = "pen.board.filters";
 const URL_PARAM = "boardFilters";
 
 export type BoardFiltersState = {
+  /** Free-text board search (title, description, status, priority, id, …). */
+  searchQuery: string;
   assigneeFilter: string;
   projectFilter: ProjectFilter;
   moduleFilter: ModuleFilter;
@@ -40,6 +42,7 @@ export type BoardFiltersState = {
 };
 
 const DEFAULT_FILTERS: BoardFiltersState = {
+  searchQuery: "",
   assigneeFilter: "all",
   projectFilter: "all",
   moduleFilter: "all",
@@ -109,6 +112,10 @@ function sanitize(raw: unknown): BoardFiltersState {
   if (targetRange) targetDateFilter = "all";
 
   return {
+    searchQuery:
+      typeof stored.searchQuery === "string"
+        ? stored.searchQuery
+        : DEFAULT_FILTERS.searchQuery,
     assigneeFilter:
       typeof stored.assigneeFilter === "string"
         ? stored.assigneeFilter
@@ -192,6 +199,10 @@ export function usePersistedBoardFilters() {
     window.history.replaceState(null, "", url.toString());
   }, [filters, ready]);
 
+  const setSearchQuery = useCallback((searchQuery: string) => {
+    setFilters((prev) => ({ ...prev, searchQuery }));
+  }, []);
+
   const setAssigneeFilter = useCallback((assigneeFilter: string) => {
     setFilters((prev) => ({ ...prev, assigneeFilter }));
   }, []);
@@ -254,6 +265,7 @@ export function usePersistedBoardFilters() {
   return {
     ...filters,
     ready,
+    setSearchQuery,
     setAssigneeFilter,
     setProjectFilter,
     setModuleFilter,

@@ -76,6 +76,7 @@ import {
   matchesProjectFilter,
   matchesLabelFilter,
   matchesModuleFilter,
+  matchesSearchQuery,
   collectAssignees,
   collectProjects,
   collectLabels,
@@ -680,6 +681,8 @@ export function BoardPage({
   }, [initialCards]);
 
   const {
+    searchQuery,
+    setSearchQuery,
     assigneeFilter,
     setAssigneeFilter,
     projectFilter,
@@ -860,6 +863,7 @@ export function BoardPage({
         dbId: ticket.id,
         humanId: `${ticket.subDepartmentPrefix}-${ticket.ticketNumber}`,
         title: ticket.title,
+        description: null,
         priority: uiPriorityFromDb(ticket.priority),
         status: ticket.status,
         subDepartment: subDepartmentName,
@@ -1022,6 +1026,7 @@ export function BoardPage({
     const effectiveAssignee = canFilterByAssignee ? assigneeFilter : "me";
     const result = scopedCards.filter((c) => {
       return (
+        matchesSearchQuery(c, searchQuery) &&
         matchesAssigneeFilter(c, effectiveAssignee, currentUserId) &&
         matchesProjectFilter(c, projectFilter) &&
         matchesModuleFilter(c, moduleFilter) &&
@@ -1037,6 +1042,7 @@ export function BoardPage({
     return sortCards(result, sortKey);
   }, [
     scopedCards,
+    searchQuery,
     assigneeFilter,
     projectFilter,
     moduleFilter,
@@ -1053,6 +1059,7 @@ export function BoardPage({
   ]);
 
   const hasActiveFilters =
+    searchQuery.trim() !== "" ||
     assigneeFilter !== "all" ||
     projectFilter !== "all" ||
     moduleFilter !== "all" ||
@@ -1133,6 +1140,8 @@ export function BoardPage({
             <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <BoardFilterBar
                 view="board"
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
                 isPrivileged={canFilterByAssignee}
                 currentUserId={currentUserId}
                 currentUserName={currentUserName}

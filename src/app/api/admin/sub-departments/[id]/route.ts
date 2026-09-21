@@ -48,8 +48,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Name is required" }, { status: 400 })
   }
   if (prefix !== undefined) {
-    if (prefix.length < 2 || prefix.length > 5) {
-      return NextResponse.json({ error: "Prefix must be 2–5 characters" }, { status: 400 })
+    if (prefix.length < 2 || prefix.length > 10) {
+      return NextResponse.json({ error: "Prefix must be 2–10 characters" }, { status: 400 })
     }
     if (!/^[A-Z]+$/.test(prefix)) {
       return NextResponse.json({ error: "Prefix must contain only letters" }, { status: 400 })

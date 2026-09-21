@@ -212,6 +212,8 @@ export type BoardCardData = {
   dbId: string
   humanId: string
   title: string
+  /** Plain-text ticket body — carried for free-text board search, not rendered on the card. */
+  description: string | null
   priority: UiPriority
   status: string
   subDepartment: string

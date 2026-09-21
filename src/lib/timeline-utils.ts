@@ -127,6 +127,7 @@ export function subCardToBoardCard(
     dbId: sub.dbId,
     humanId: sub.humanId,
     title: sub.title,
+    description: null,
     priority: sub.priority,
     status: sub.status,
     subDepartment: parent.subDepartment,

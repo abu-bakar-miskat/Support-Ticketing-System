@@ -158,6 +158,7 @@ export default async function SubDepartmentsPage() {
     <SettingsSubDepartmentsPage
       subDepartments={subDepartmentRows}
       departments={departments}
+      activeDeptId={activeDeptId}
       isAdmin={isAdmin}
       isManager={isManager}
       pendingRequests={pendingRequests}

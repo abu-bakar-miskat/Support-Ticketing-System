@@ -188,6 +188,34 @@ export function countAssigneeMatches(
   return cards.filter((c) => matchesAssigneeFilter(c, filter, userId)).length;
 }
 
+/**
+ * Free-text search across a card's textual fields — id, title, description,
+ * status, priority, assignees, project, module, labels and creator. Matches on
+ * whitespace-separated terms (AND); an empty/blank query matches everything.
+ */
+export function matchesSearchQuery(card: BoardCardData, query: string): boolean {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const haystack = [
+    card.humanId,
+    card.title,
+    card.description ?? "",
+    card.status,
+    card.priority,
+    card.assigneeName ?? "",
+    ...card.coAssignees.map((a) => a.name),
+    card.project,
+    card.moduleName ?? "",
+    card.creatorName,
+    ...card.labels,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return terms.every((term) => haystack.includes(term));
+}
+
 export function matchesLabelFilter(card: BoardCardData, filter: LabelFilter): boolean {
   if (!filter.length) return true;
   return filter.some((lbl) => card.labels.includes(lbl));

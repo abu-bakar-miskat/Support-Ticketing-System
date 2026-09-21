@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/invite/") || // department invite links — page sends users to login with ?next=
+    pathname.startsWith("/invite/") || // department invite links — page sends the OTP itself, pre-auth
     pathname.startsWith("/tenant-invite/") || // tenant invite links — same, and the page names the invited email/role
     PUBLIC_INTAKE_FORM_RE.test(pathname) || // public intake form: /<tenant>/<dept>/<form-uuid> (+ legacy 4-seg)
     pathname.startsWith("/support/") || // public intake support pages (e.g. /support/verify/<token>)

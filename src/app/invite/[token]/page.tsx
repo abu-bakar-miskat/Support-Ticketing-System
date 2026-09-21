@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getInvitePreview } from "@/lib/invites/accept-department-invite";
 import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AutoAcceptInvite } from "@/components/auth/auto-accept-tenant-invite";
+import { sendLoginCode } from "@/lib/auth/send-login-code";
+import { isDevTestAccount } from "@/lib/auth/dev-test-accounts";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Invitation — Support Ticketing System" };
@@ -139,29 +142,27 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const loginHref = `/login?next=${encodeURIComponent(`/invite/${token}`)}`;
-    return (
-      <InviteShell>
-        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
-          You&apos;re invited to join a department
-        </h1>
-        <p className="mt-3 text-center text-[13.5px] text-sts-muted">
-          {invite.inviter.name} has invited you to join{" "}
-          <span className="font-medium text-sts-foreground">{invite.department.name}</span> as{" "}
-          <span className="font-medium text-sts-foreground">{invite.role}</span> on the{" "}
-          <span className="font-medium text-sts-foreground">{invite.subDepartment.name}</span>{" "}
-          sub-department.
-        </p>
-        <p className="mt-2 text-center text-[12px] text-sts-subtle">
-          Invitation sent to {invite.email}. Sign in with that address to accept.
-        </p>
-        <Link
-          href={loginHref}
-          className="mt-6 inline-block rounded-full bg-sts-button px-5 py-2.5 text-[13px] font-semibold text-sts-button-fg hover:bg-sts-button/90"
-        >
-          Sign in to accept
-        </Link>
-      </InviteShell>
+    // Skip the "type your email again" login form entirely — the invite
+    // already tells us the recipient's email, so send the OTP straight away
+    // and land on code entry. A "please wait" resend-cooldown error means a
+    // code was already sent moments ago (e.g. a page refresh, or a mail
+    // gateway's link prefetch), so treat that as success too.
+    const next = `/invite/${token}`;
+    const nextQuery = `&next=${encodeURIComponent(next)}`;
+    const email = invite.email.trim().toLowerCase();
+
+    if (isDevTestAccount(email)) {
+      redirect(
+        `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=magiclink&t=${Date.now()}${nextQuery}`,
+      );
+    }
+
+    const result = await sendLoginCode(email);
+    if (result.error && !result.error.startsWith("Please wait")) {
+      redirect(`/login?error=${encodeURIComponent(result.error)}${nextQuery}`);
+    }
+    redirect(
+      `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=${result.verificationType ?? "magiclink"}&t=${Date.now()}${nextQuery}`,
     );
   }
 

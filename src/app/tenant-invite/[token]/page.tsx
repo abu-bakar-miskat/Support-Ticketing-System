@@ -1,8 +1,11 @@
+import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUnscopedPrisma } from "@/lib/db"
 import { getTenantInvitePreview } from "@/lib/invites/accept-tenant-invite"
 import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button"
 import { AutoAcceptTenantInvite } from "@/components/auth/auto-accept-tenant-invite"
+import { sendLoginCode } from "@/lib/auth/send-login-code"
+import { isDevTestAccount } from "@/lib/auth/dev-test-accounts"
 
 export const dynamic = "force-dynamic"
 
@@ -56,6 +59,38 @@ export default async function TenantInvitePage({
     Boolean(signedInEmail) &&
     signedInEmail !== invite!.email.toLowerCase()
 
+  // Not signed in (or signed in with a matching email but not yet caught
+  // above) and the invite is still usable: skip the "type your email again"
+  // login form entirely — send the OTP straight away and land on code entry.
+  // A "please wait" resend-cooldown error means a code was already sent
+  // moments ago (e.g. a page refresh, or a mail gateway's link prefetch), so
+  // treat that as success too rather than surfacing an error.
+  if (
+    invite &&
+    invite.status !== "revoked" &&
+    invite.status !== "expired" &&
+    !emailMismatch &&
+    error !== "email_mismatch"
+  ) {
+    const next = `/tenant-invite/${token}`
+    const nextQuery = `&next=${encodeURIComponent(next)}`
+    const email = invite.email.trim().toLowerCase()
+
+    if (isDevTestAccount(email)) {
+      redirect(
+        `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=magiclink&t=${Date.now()}${nextQuery}`,
+      )
+    }
+
+    const result = await sendLoginCode(email)
+    if (result.error && !result.error.startsWith("Please wait")) {
+      redirect(`/login?error=${encodeURIComponent(result.error)}${nextQuery}`)
+    }
+    redirect(
+      `/login?step=sent&email=${encodeURIComponent(email)}&verificationType=${result.verificationType ?? "magiclink"}&t=${Date.now()}${nextQuery}`,
+    )
+  }
+
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
       <div className="rounded-lg border p-6 shadow-sm">
@@ -75,25 +110,14 @@ export default async function TenantInvitePage({
             <p className="mt-1 text-xs text-muted-foreground">
               Invitation sent to {invite.email}. Sign in with that address to accept.
             </p>
-            {(emailMismatch || error === "email_mismatch") && (
-              <p className="mt-3 text-sm text-red-600">
-                You&apos;re signed in as {signedInEmail ?? "a different account"}. This
-                invitation is for {invite.email}. Sign out first, then continue.
-              </p>
-            )}
-            {emailMismatch || error === "email_mismatch" ? (
-              <SignOutToAcceptButton
-                invitedEmail={invite.email}
-                loginHref={loginHref}
-              />
-            ) : (
-              <a
-                href={loginHref}
-                className="mt-5 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                Sign in to accept
-              </a>
-            )}
+            <p className="mt-3 text-sm text-red-600">
+              You&apos;re signed in as {signedInEmail ?? "a different account"}. This
+              invitation is for {invite.email}. Sign out first, then continue.
+            </p>
+            <SignOutToAcceptButton
+              invitedEmail={invite.email}
+              loginHref={loginHref}
+            />
           </>
         )}
       </div>

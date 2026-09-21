@@ -361,7 +361,7 @@ export function ReceivedMailPanel({
           ))}
 
         {tab === "suppressed" &&
-          (shownSuppressed === null ? (
+          (shownOtherSuppressed === null ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">Loading…</p>
           ) : shownOtherSuppressed.length === 0 ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">

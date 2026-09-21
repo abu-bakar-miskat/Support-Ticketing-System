@@ -67,7 +67,7 @@ export function renderInvite({
   const email = escapeHtml(inviteeEmail);
   const url = ensureAbsoluteUrl(`${BASE_URL}/invite/${inviteToken}`);
   const expiryText = formatInviteExpiry(expiresAt);
-  const expiryLineHtml = `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">This invitation expires on <strong>${escapeHtml(expiryText)}</strong>. After that the link stops working and a new invitation is required.</p>`;
+  const expiryLineHtml = `<p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">This invitation is valid for 1 day and expires on <strong>${escapeHtml(expiryText)}</strong>. After that the link stops working and a new invitation is required.</p>`;
   const sig = signatureBlock(signature);
   const messageText = (message ?? "").trim();
   const messageHtml = messageText
@@ -145,7 +145,7 @@ export function renderInvite({
     "",
     `Accept invitation: ${url}`,
     "",
-    `This invitation expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
+    `This invitation is valid for 1 day and expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
     "",
     `This invitation was sent to ${inviteeEmail}. Sign in with your Microsoft work account to accept.`,
     "",

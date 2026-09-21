@@ -3,15 +3,15 @@
  * tenant invites) and the reminder sweep so the numbers never drift apart.
  */
 
-/** An invite token is valid for exactly 72 hours from generation. */
-export const INVITE_TTL_MS = 72 * 60 * 60 * 1000;
+/** An invite token is valid for exactly 24 hours (1 day) from generation. */
+export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Once an unaccepted invite reaches this age, the reminder sweep sends a single
- * reminder email (guarded by `reminderSentAt`). 24h < 72h leaves ~48h of
+ * reminder email (guarded by `reminderSentAt`). 12h < 24h leaves ~12h of
  * runway between the reminder and expiry.
  */
-export const INVITE_REMINDER_AFTER_MS = 24 * 60 * 60 * 1000;
+export const INVITE_REMINDER_AFTER_MS = 12 * 60 * 60 * 1000;
 
 /**
  * Human-readable absolute expiry, e.g. "Thu, 17 Sep 2026, 14:30 UTC". Rendered

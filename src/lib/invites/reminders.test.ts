@@ -65,7 +65,7 @@ beforeEach(() => {
 });
 
 describe("sweepInviteReminders", () => {
-  it("only queries invites that are unaccepted, unrevoked, unreminded, aged 24h, and unexpired", async () => {
+  it("only queries invites that are unaccepted, unrevoked, unreminded, aged 12h, and unexpired", async () => {
     await sweepInviteReminders(NOW);
     const where = deptFind.mock.calls[0][0]!.where as Record<string, unknown>;
     expect(where.acceptedAt).toBeNull();

@@ -618,6 +618,97 @@ export function DepartmentMailboxesPage({
                   </div>
                 </div>
 
+                {editingAssignmentId === c.id && (
+                  <div className="flex flex-col gap-3 border-t border-sts-card-border px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-sans text-[12px] text-sts-muted">Assignment method</span>
+                      <Select
+                        value={draftAssignmentMethod}
+                        onValueChange={(v) => v && setDraftAssignmentMethod(v as AssignmentMethod | "INHERIT")}
+                        disabled={savingAssignment}
+                      >
+                        <SelectTrigger
+                          size="sm"
+                          aria-label="Assignment method"
+                          className="h-7 border-sts-blue/40 bg-sts-surface px-2 text-[12px] text-sts-foreground"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="INHERIT" className="text-[12px]">
+                            Inherit · {ASSIGNMENT_METHOD_LABEL[inheritedMethod(c.subDepartmentId)]}
+                          </SelectItem>
+                          {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
+                            <SelectItem key={value} value={value} className="text-[12px]">
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <button
+                        type="button"
+                        onClick={() => saveAssignmentMethod(c)}
+                        disabled={savingAssignment}
+                        title="Save assignment method"
+                        className="rounded-full p-1 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
+                      >
+                        {savingAssignment ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
+                        disabled={savingAssignment}
+                        title="Cancel"
+                        className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Member picker — only for the "Manual user" method. One picked
+                        member sends every ticket to them; several round-robin. */}
+                    {draftAssignmentMethod === "MANUAL_SELECT" && (
+                      <div className="flex flex-col gap-2 border-t border-sts-card-border pt-3">
+                        <p className="font-sans text-[11.5px] text-sts-muted">
+                          Pick who receives tickets from this mailbox. Choose one member to send every
+                          ticket to them, or several to round-robin across them.
+                        </p>
+                        {membersBySubDept[c.subDepartmentId] === undefined ? (
+                          <div className="flex items-center gap-2 text-sts-subtle">
+                            <Loader2 className="size-3.5 animate-spin" />
+                            <span className="font-sans text-[12px]">Loading members…</span>
+                          </div>
+                        ) : membersBySubDept[c.subDepartmentId]!.length === 0 ? (
+                          <p className="font-sans text-[12px] text-sts-subtle">
+                            This sub-department has no active members yet.
+                          </p>
+                        ) : (
+                          <ul className="flex flex-col gap-1">
+                            {membersBySubDept[c.subDepartmentId]!.map((m) => (
+                              <li key={m.id}>
+                                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-sts-surface">
+                                  <input
+                                    type="checkbox"
+                                    checked={draftMemberIds.includes(m.id)}
+                                    onChange={() => toggleDraftMember(m.id)}
+                                    disabled={savingAssignment}
+                                    className="size-3.5 accent-sts-blue"
+                                  />
+                                  <span className="font-sans text-[12.5px] text-sts-foreground">{m.name}</span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    {assignmentError && (
+                      <p className="font-sans text-[11.5px] text-red-500">{assignmentError}</p>
+                    )}
+                  </div>
+                )}
+
                 {c.status !== "ACTIVE" && c.lastErrorMessage && (
                   <div className="flex items-start gap-2 border-t border-sts-card-border bg-red-50/50 px-4 py-2.5 dark:bg-red-900/10">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-red-500" />

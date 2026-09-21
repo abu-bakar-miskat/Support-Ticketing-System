@@ -4,6 +4,7 @@ import { getRequestScope } from "@/lib/request-scope"
 const m = vi.hoisted(() => ({
   auth: vi.fn(), scope: vi.fn(), projectScope: vi.fn(), subScope: vi.fn(), deptScope: vi.fn(),
   setup: vi.fn(), after: vi.fn(), email: vi.fn(), notify: vi.fn(), event: vi.fn(), members: vi.fn(),
+  eligibility: vi.fn(),
   ticket: { create: vi.fn(), findUnique: vi.fn() }, project: { findUnique: vi.fn() },
   subDepartment: { findUnique: vi.fn() }, profile: { findUnique: vi.fn(), findMany: vi.fn() },
   attachment: { updateMany: vi.fn() }, transaction: vi.fn(),
@@ -20,6 +21,9 @@ vi.mock("@/lib/cross-access", () => ({
   isProjectMember: vi.fn().mockResolvedValue(true),
 }))
 vi.mock("@/lib/department-setup", () => ({ assertDepartmentOperational: m.setup }))
+vi.mock("@/lib/ticket-detail-data", () => ({
+  assertUsersEligibleForTicketSubDepartment: m.eligibility,
+}))
 vi.mock("@/lib/misc-project", () => ({ resolveMiscProjectForSubDepartment: vi.fn().mockResolvedValue("misc-1") }))
 vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: m.members }))
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: m.email }))
@@ -48,6 +52,7 @@ beforeEach(() => {
   m.subScope.mockResolvedValue(true)
   m.deptScope.mockResolvedValue({ activeDeptId: "dept-1", subDepartmentIds: ["sub-1"] })
   m.setup.mockResolvedValue({ ok: true })
+  m.eligibility.mockResolvedValue({ ok: true })
   m.project.findUnique.mockResolvedValue({ kind: "standard", subDepartmentId: "sub-1", departmentId: "dept-1" })
   m.subDepartment.findUnique.mockResolvedValue({ id: "sub-1", departmentId: "dept-1", tenantId: "tenant-1" })
   m.profile.findUnique.mockResolvedValue({ id: "user-1" })
@@ -104,11 +109,9 @@ describe("POST /api/tickets", () => {
   })
 
   it("rejects ineligible co-assignees before saving", async () => {
-    m.profile.findMany.mockResolvedValue([])
+    m.eligibility.mockResolvedValueOnce({ ok: false, invalidIds: ["outside"] })
     expect((await POST(request({ ...valid, coAssigneeIds: ["outside"] }))).status).toBe(400)
-    expect(m.profile.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      id: { in: ["outside"] }, deletedAt: null, OR: expect.any(Array),
-    }) }))
+    expect(m.eligibility).toHaveBeenCalledWith("sub-1", "dept-1", ["user-1", "outside"])
     expect(m.ticket.create).not.toHaveBeenCalled()
   })
 

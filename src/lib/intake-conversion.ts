@@ -275,6 +275,10 @@ export async function runConversion(
         humanId: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
         title: prep.title,
         status: prep.status,
+        // The ticket is authored by the System user; keep the real requester on
+        // the entry so the activity feed can show who it was submitted for.
+        submitterName,
+        submitterEmail,
       },
     },
   });

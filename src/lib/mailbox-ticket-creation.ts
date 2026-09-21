@@ -29,6 +29,18 @@ export type CreateTicketFromEmailResult = {
   assigneeId: string | null;
 };
 
+/**
+ * A mailbox was switched off after the inbound router resolved its address but
+ * before this email could open a ticket. This is an expected drop, not a
+ * provider failure worth retrying.
+ */
+export class MailboxInactiveError extends Error {
+  constructor() {
+    super("Mailbox is inactive");
+    this.name = "MailboxInactiveError";
+  }
+}
+
 export async function createTicketFromInboundEmail(params: {
   departmentId: string;
   teamId: string;
@@ -66,6 +78,23 @@ export async function createTicketFromInboundEmail(params: {
   });
 
   const ticket = await prisma.$transaction(async (tx) => {
+    // The router also checks `isActive`, but that read can become stale while
+    // parsing/assignment is in progress. Lock this connection row at the point
+    // of creation so a concurrent off-toggle and ticket creation are ordered:
+    // whichever obtains the row lock first determines whether this email was
+    // accepted before or after the mailbox was paused.
+    if (mailboxConnectionId) {
+      const [connection] = await tx.$queryRaw<{ isActive: boolean }[]>`
+        SELECT "isActive"
+        FROM "MailboxConnection"
+        WHERE "id" = ${mailboxConnectionId}
+          AND "departmentId" = ${departmentId}
+          AND "teamId" = ${teamId}
+        FOR UPDATE
+      `;
+      if (!connection?.isActive) throw new MailboxInactiveError();
+    }
+
     const created = await tx.ticket.create({
       data: {
         title,

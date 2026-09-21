@@ -39,7 +39,7 @@ export const SUPPORT_TEMPLATE: SystemTemplate = {
     // Views a support team uses (no timeline/modules — those are sprint/dev views)
     "tasks", "board", "reports", "calendar", "myTime", "activity", "subDepartmentReports", "helpCenter",
     // Workspace
-    "members", "branding", "departmentsSettings",
+    "members", "sharedMailboxes", "branding", "departmentsSettings",
     // Configuration — support operations
     "tagsLabels", "ticketTemplates", "workflows", "slaPolicies", "automationRules", "assignmentMethods",
     // Integrations — customer channels

@@ -235,6 +235,20 @@ export function NewTicketModal({
       : showSubDepartmentPicker
         ? selectedSubDepartmentId
         : selectedProject?.subDepartmentId ?? defaultSubDepartmentId ?? null;
+
+  // Assignees must belong to the ticket's sub-department. When a sub-department
+  // is chosen (admin/global create flow), narrow the department-wide member list
+  // to that sub-department. Skip narrowing when membership data isn't available.
+  const membersForActiveSubDept = useMemo(() => {
+    if (!activeSubDepartmentId) return effectiveMembers;
+    if (!effectiveMembers.some((m) => m.subDepartmentIds && m.subDepartmentIds.length > 0)) {
+      return effectiveMembers;
+    }
+    return effectiveMembers.filter((m) =>
+      m.subDepartmentIds?.includes(activeSubDepartmentId),
+    );
+  }, [effectiveMembers, activeSubDepartmentId]);
+
   const propStatuses = statuses?.length ? statuses : undefined;
 
   // Fetch the real subDepartment statuses; fall back to prop or defaults while loading
@@ -328,10 +342,18 @@ export function NewTicketModal({
     if (!currentUserId || keepUnassigned) return;
     setAssigneeIds((prev) => {
       if (prev.length > 0) return prev;
-      if (!effectiveMembers.some((m) => m.id === currentUserId)) return prev;
+      if (!membersForActiveSubDept.some((m) => m.id === currentUserId)) return prev;
       return [currentUserId];
     });
-  }, [currentUserId, effectiveMembers, keepUnassigned]);
+  }, [currentUserId, membersForActiveSubDept, keepUnassigned]);
+
+  // Drop any picked assignees that aren't in the selected sub-department when it changes.
+  useEffect(() => {
+    setAssigneeIds((prev) => {
+      const next = prev.filter((id) => membersForActiveSubDept.some((m) => m.id === id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [membersForActiveSubDept]);
 
   // Auto-focus title on mount
   useEffect(() => {
@@ -1007,7 +1029,7 @@ export function NewTicketModal({
                     setAssigneeOpen={setAssigneeOpen}
                     assigneeSearch={assigneeSearch}
                     setAssigneeSearch={setAssigneeSearch}
-                    effectiveMembers={effectiveMembers}
+                    effectiveMembers={membersForActiveSubDept}
                     defaultAssigneeId={currentUserId}
                     membersLoading={membersLoading}
                   />
@@ -1541,7 +1563,7 @@ function StyledSelect({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropPos, setDropPos] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(null);
 
   const selected = options.find((o) => o.value === current) ?? null;
   const showSearch = searchable ?? options.length > 8;
@@ -1557,10 +1579,15 @@ function StyledSelect({
     const rect = triggerRef.current.getBoundingClientRect();
     const DROPDOWN_HEIGHT = 300;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow >= DROPDOWN_HEIGHT || spaceBelow >= rect.top
-      ? rect.bottom + 6
-      : rect.top - DROPDOWN_HEIGHT - 6;
-    setDropPos({ top, left: rect.left, width: rect.width });
+    // Anchor the bottom edge to the trigger's top when opening upward so the
+    // dropdown grows up from the trigger regardless of its actual height —
+    // computing `top` from a hardcoded height detaches it near the viewport top.
+    const openUp = !(spaceBelow >= DROPDOWN_HEIGHT || spaceBelow >= rect.top);
+    setDropPos(
+      openUp
+        ? { left: rect.left, width: rect.width, bottom: window.innerHeight - rect.top + 6 }
+        : { left: rect.left, width: rect.width, top: rect.bottom + 6 },
+    );
     setOpen(true);
   }, []);
 
@@ -1621,7 +1648,7 @@ function StyledSelect({
         <div
           ref={dropdownRef}
           className="fixed z-9999 overflow-hidden rounded-[8px] border border-sts-card-border bg-sts-bg shadow-xl"
-          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+          style={{ top: dropPos.top, bottom: dropPos.bottom, left: dropPos.left, width: dropPos.width }}
         >
           {showSearch && (
             <div className="border-b border-sts-card-border p-2">
@@ -1699,7 +1726,7 @@ function AssigneePicker({
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropPos, setDropPos] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(null);
 
   const canDefaultAssign =
     Boolean(defaultAssigneeId) &&
@@ -1715,10 +1742,15 @@ function AssigneePicker({
     const rect = triggerRef.current.getBoundingClientRect();
     const DROPDOWN_HEIGHT = 280;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow >= DROPDOWN_HEIGHT || spaceBelow >= rect.top
-      ? rect.bottom + 6
-      : rect.top - DROPDOWN_HEIGHT - 6;
-    setDropPos({ top, left: rect.left, width: rect.width });
+    // Anchor the bottom edge to the trigger's top when opening upward so the
+    // dropdown grows up from the trigger regardless of its actual height —
+    // computing `top` from a hardcoded height detaches it near the viewport top.
+    const openUp = !(spaceBelow >= DROPDOWN_HEIGHT || spaceBelow >= rect.top);
+    setDropPos(
+      openUp
+        ? { left: rect.left, width: rect.width, bottom: window.innerHeight - rect.top + 6 }
+        : { left: rect.left, width: rect.width, top: rect.bottom + 6 },
+    );
     setAssigneeOpen(true);
   }, [setAssigneeOpen]);
 
@@ -1820,7 +1852,7 @@ function AssigneePicker({
         <div
           ref={dropdownRef}
           className="fixed z-9999 overflow-hidden rounded-[8px] border border-sts-card-border bg-sts-bg shadow-xl"
-          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+          style={{ top: dropPos.top, bottom: dropPos.bottom, left: dropPos.left, width: dropPos.width }}
         >
           <div className="border-b border-sts-card-border p-2">
             <div className="relative">

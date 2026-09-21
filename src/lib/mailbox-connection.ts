@@ -215,23 +215,32 @@ export type MailboxRoute = {
  * against the webhook's recipient list.
  */
 export async function findMailboxRouteForRecipients(recipients: string[]): Promise<MailboxRoute | null> {
+  return findMailboxConnectionForRecipients(recipients, { activeOnly: true });
+}
+
+/**
+ * Resolves a configured mailbox even when it is paused. Inbound processing uses
+ * this solely to retain an audit/received-mail entry for paused mailboxes;
+ * callers that may create tickets must use `findMailboxRouteForRecipients`.
+ */
+export async function findMailboxConnectionForRecipients(
+  recipients: string[],
+  { activeOnly = false }: { activeOnly?: boolean } = {},
+): Promise<(MailboxRoute & { isActive: boolean }) | null> {
   const candidates = [...new Set(recipients.map(normalizeRecipientAddress))].filter(Boolean);
   if (candidates.length === 0) return null;
 
-  // Only route to a mailbox the admin has switched on. A paused (isActive:false)
-  // mailbox is skipped so no new tickets are opened from it, while its existing
-  // tickets stay intact.
   return prisma.mailboxConnection.findFirst({
-    where: { address: { in: candidates }, isActive: true },
-    select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true },
+    where: { address: { in: candidates }, ...(activeOnly ? { isActive: true } : {}) },
+    select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true, isActive: true },
   });
 }
 
 /**
- * EM-06: records a suppressed auto-generated inbound message (bounce/OOO/
- * Auto-Submitted) that arrived at a connected mailbox with no matching
- * ticket — there is, by definition, no ticket to attach it to, so it goes
- * here instead. Best-effort — never throws.
+ * EM-06: records inbound mail that intentionally did not create a ticket
+ * (auto-generated mail or email received while the mailbox is paused). There
+ * is no ticket to attach it to, so it goes here instead. Best-effort — never
+ * throws.
  */
 export async function logMailSuppression(params: {
   tenantId: string;

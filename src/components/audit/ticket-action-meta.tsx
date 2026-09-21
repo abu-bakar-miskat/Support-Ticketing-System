@@ -137,7 +137,14 @@ export function describeTicketAction(action: ActivityAction, meta: Record<string
     case "DATE_CHANGED":           return meta.to ? `set due date to ${String(meta.to)}` : "changed the due date";
     case "FORWARDED":              return meta.toSubDepartmentName ? `forwarded to ${String(meta.toSubDepartmentName)}` : "forwarded";
     case "TICKET_DELETED":         return "deleted the ticket";
-    case "TICKET_CREATED":         return meta.humanId ? `created ticket ${meta.humanId}` : "created the ticket";
+    case "TICKET_CREATED": {
+      // Support-form / mailbox tickets are authored by "System"; surface the
+      // requester's email alongside the created ticket.
+      const email = (meta.submitterEmail ?? meta.fromEmail) as string | undefined;
+      const base = meta.humanId ? `created ticket ${meta.humanId}` : "created the ticket";
+      return email ? `${base} for ${email}` : base;
+    }
+
     case "TITLE_CHANGED":          return meta.to ? `renamed to "${meta.to}"` : "changed the title";
     case "PRIORITY_CHANGED":       return meta.from && meta.to ? `changed priority from ${meta.from} to ${meta.to}` : `changed priority to ${meta.to ?? "?"}`;
     case "DESCRIPTION_CHANGED":    return meta.hadDescription ? "updated the description" : "added a description";

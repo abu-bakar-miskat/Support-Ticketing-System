@@ -18,9 +18,9 @@ import { classifyAttachment, INBOUND_MAX_BYTES } from "@/lib/message-attachments
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
-import { findMailboxRouteForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
+import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
-import { createTicketFromInboundEmail } from "@/lib/mailbox-ticket-creation"
+import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
 
 // Re-exported for existing call sites (webhook route, reconcile route) — the
@@ -263,14 +263,32 @@ export async function processInboundEmail(
   }
 
   if (!ticket) {
-    // EM-01/02/03: no existing conversation matched — check whether this
-    // landed in a connected mailbox, and if so either suppress it (EM-06,
-    // auto-generated mail never creates a ticket) or file a new one.
-    const route = await findMailboxRouteForRecipients(recipients)
-    if (!route) {
-      console.log("[inbound] no matching ticket or mailbox route, dropping message:", messageId)
+    // Always resolve the configured mailbox first. Its on/off state controls
+    // ticket creation only; it must never control whether the provider's email
+    // is received and recorded in the application's mailbox view.
+    const mailbox = await findMailboxConnectionForRecipients(recipients)
+    if (!mailbox) {
+      console.log("[inbound] no matching mailbox route, dropping message:", messageId)
       return false
     }
+
+    if (!mailbox.isActive) {
+        await logMailSuppression({
+          tenantId: mailbox.tenantId,
+          mailboxConnectionId: mailbox.id,
+          providerMessageId: normalizedMessageId,
+          fromEmail,
+          toAddress: mailbox.address,
+          subject: email.subject,
+          reason: "mailbox_paused",
+        })
+        broadcastMailboxMail(mailbox.departmentId, mailbox.subDepartmentId)
+          .catch((err) => console.error("[inbound] failed to broadcast paused mailbox mail:", err))
+        console.log("[inbound] received email at paused mailbox without creating a ticket:", messageId)
+        return false
+    }
+
+    const route = mailbox
 
     if (isSystem) {
       await logMailSuppression({
@@ -304,6 +322,24 @@ export async function processInboundEmail(
       // "not accepting tickets yet".
       if (err instanceof DepartmentNotOperationalError) {
         console.log("[inbound] mailbox route's department isn't operational yet, dropping:", messageId)
+        return false
+      }
+      // The mailbox can be turned off after route resolution but before the
+      // creation transaction takes its row lock. That is an intentional drop;
+      // retrying it would keep reopening tickets while the mailbox is paused.
+      if (err instanceof MailboxInactiveError) {
+        await logMailSuppression({
+          tenantId: route.tenantId,
+          mailboxConnectionId: route.id,
+          providerMessageId: normalizedMessageId,
+          fromEmail,
+          toAddress: route.address,
+          subject: email.subject,
+          reason: "mailbox_paused",
+        })
+        broadcastMailboxMail(route.departmentId, route.subDepartmentId)
+          .catch((broadcastErr) => console.error("[inbound] failed to broadcast paused mailbox mail:", broadcastErr))
+        console.log("[inbound] mailbox was turned off before ticket creation, dropping:", messageId)
         return false
       }
       // Any other failure is unexpected — do NOT silently drop the customer's

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Building2, Crown, Search, ScrollText, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Building2, Crown, Search, ScrollText, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   PlatformInviteMemberDialog,
@@ -90,7 +92,7 @@ function DeptPills({ departments }: { departments?: DeptInfo[] }) {
 }
 
 export function PlatformUsers({
-  users,
+  users: initialUsers,
   tenants,
   currentUserId,
 }: {
@@ -98,9 +100,27 @@ export function PlatformUsers({
   tenants: InviteTenant[];
   currentUserId: string;
 }) {
+  const [users, setUsers] = useState<UserRow[]>(initialUsers);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [dirQuery, setDirQuery] = useState("");
   const [auditUser, setAuditUser] = useState<UserRow | null>(null);
+  // The user awaiting delete confirmation (null = dialog closed).
+  const [confirmDelete, setConfirmDelete] = useState<UserRow | null>(null);
+
+  useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+
+  // Throws on failure so the ConfirmDialog surfaces a toast and keeps the modal
+  // open; on success it removes the row and toasts.
+  async function deleteUser(user: UserRow) {
+    const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Failed to delete user");
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== user.id));
+  }
 
   const filteredUsers = useMemo(() => {
     const q = dirQuery.trim().toLowerCase();
@@ -211,15 +231,28 @@ export function PlatformUsers({
                       )}
                       <DeptPills departments={user.departments} />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setAuditUser(user)}
-                      title="View audit log for this user"
-                      className="mt-0.5 flex shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
-                    >
-                      <ScrollText className="size-3.5" />
-                      Audit
-                    </button>
+                    <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAuditUser(user)}
+                        title="View audit log for this user"
+                        className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+                      >
+                        <ScrollText className="size-3.5" />
+                        Audit
+                      </button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={user.id === currentUserId}
+                        title={user.id === currentUserId ? "You can't delete your own account" : "Delete this user"}
+                        onClick={() => setConfirmDelete(user)}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 );
               })
@@ -227,6 +260,19 @@ export function PlatformUsers({
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+        title="Delete user"
+        description={
+          confirmDelete
+            ? `Delete ${confirmDelete.name || confirmDelete.email}? This removes their department, project, and ticket-assignment memberships across the platform and revokes their access. Tickets and comments they authored are preserved. This can't be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        successMessage={confirmDelete ? `${confirmDelete.name || confirmDelete.email} has been deleted` : undefined}
+        onConfirm={async () => { if (confirmDelete) await deleteUser(confirmDelete); }}
+      />
       {auditUser && (
         <UserAuditModal
           userId={auditUser.id}

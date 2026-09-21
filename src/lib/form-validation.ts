@@ -53,9 +53,17 @@ export type FormFieldDef = {
   /** Top-level required flag (IntakeFormField.isRequired); validation.required also honored. */
   required?: boolean;
   options?: string[];
+  /**
+   * Nested-select second level: maps a parent option to its allowed child
+   * options. When present, a dropdown value is encoded as `parent > child`.
+   */
+  childOptions?: Record<string, string[]> | null;
   validation?: FieldValidation | null;
   visibleWhen?: VisibilityRule | null;
 };
+
+/** Separator between the parent and child value of a nested-select dropdown. */
+export const NESTED_SELECT_SEPARATOR = " > ";
 
 export type SubmissionValues = Record<string, unknown>;
 
@@ -147,9 +155,22 @@ export function validateField(field: FormFieldDef, value: unknown): string | nul
     }
   }
 
-  // dropdown/radio: value must be one of the declared options when options exist.
-  if ((field.type === "dropdown" || field.type === "radio") && field.options && field.options.length > 0) {
+  // radio: value must be one of the declared options when options exist.
+  if (field.type === "radio" && field.options && field.options.length > 0) {
     if (!field.options.includes(String(value))) return `${field.label} has an invalid selection`;
+  }
+
+  // dropdown: the parent value must be a declared option. A nested-select value
+  // is encoded as `parent > child` — validate each half against its own list
+  // (options for the parent, childOptions[parent] for the child) so a valid
+  // nested selection is not flagged as invalid.
+  if (field.type === "dropdown" && field.options && field.options.length > 0) {
+    const [parent, child = ""] = String(value).split(NESTED_SELECT_SEPARATOR);
+    if (!field.options.includes(parent)) return `${field.label} has an invalid selection`;
+    if (child) {
+      const childOpts = field.childOptions?.[parent] ?? [];
+      if (!childOpts.includes(child)) return `${field.label} has an invalid selection`;
+    }
   }
 
   return null;
@@ -201,12 +222,25 @@ export function parseVisibleWhen(raw: unknown): VisibilityRule | null {
   return rule;
 }
 
+/** Normalize the stored childOptions JSON into a `parent -> string[]` map. */
+export function parseChildOptions(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string[]> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (Array.isArray(val)) {
+      out[key] = val.filter((x): x is string => typeof x === "string");
+    }
+  }
+  return out;
+}
+
 export function toFormFieldDef(field: {
   id: string;
   type: string;
   label: string;
   isRequired: boolean;
   options?: string[];
+  childOptions?: unknown;
   validation?: unknown;
   visibleWhen?: unknown;
 }): FormFieldDef {
@@ -220,6 +254,7 @@ export function toFormFieldDef(field: {
     label: field.label,
     required: field.isRequired,
     options: field.options,
+    childOptions: parseChildOptions(field.childOptions),
     validation,
     visibleWhen: parseVisibleWhen(field.visibleWhen),
   };

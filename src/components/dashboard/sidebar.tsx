@@ -484,12 +484,12 @@ export function Sidebar({
           ...(isAdmin || isManager
             ? [
                 { label: "Members", href: "/department", icon: UsersRound, templateFeatureKey: "members" as const },
-                { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "members" as const },
+                { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "sharedMailboxes" as const },
                 { label: "Sub Departments", href: "/sub-departments", icon: Network, templateFeatureKey: "subDepartmentReports" as const },
               ]
             : isSubManager
               ? [
-                  { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "members" as const },
+                  { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "sharedMailboxes" as const },
                 ]
               : []),
         ];

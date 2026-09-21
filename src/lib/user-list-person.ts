@@ -4,6 +4,8 @@ export type UserListPerson = {
   avatarUrl?: string | null;
   departmentName?: string | null;
   subDepartmentName?: string | null;
+  /** IDs of all active sub-department memberships — used to filter assignees to a chosen sub-department. */
+  subDepartmentIds?: string[];
 };
 
 export function formatUserListSubtitle(

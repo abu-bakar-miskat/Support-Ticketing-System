@@ -9,6 +9,7 @@ import {
   rowSubDepartmentAllowed,
   rowGrantedTicketAccess,
   scopeFromRequestScope,
+  resolveProfileTicketScope,
   resolveTicketScope,
   runWithProfileScope,
   withTenantScope,
@@ -104,6 +105,35 @@ describe("scopeFromRequestScope — pure mapping", () => {
 });
 
 describe("resolveTicketScope — ambient resolution", () => {
+  it("uses an agent's authenticated memberships without rebuilding RoleAssignment", async () => {
+    const resolveSubDepartmentTeamIds = vi.fn();
+    vi.doMock("@/lib/role-assignment", () => ({ resolveSubDepartmentTeamIds }));
+    vi.doMock("@/lib/db", () => ({
+      prisma: {
+        ticketAccessGrant: { findMany: vi.fn().mockResolvedValue([]) },
+        ticket: { findMany: vi.fn().mockResolvedValue([]) },
+        ticketAssignee: { findMany: vi.fn().mockResolvedValue([]) },
+      },
+    }));
+
+    await expect(
+      resolveProfileTicketScope({
+        id: "agent-without-backfill",
+        role: "agent",
+        subDepartmentIds: ["subDepartmentA"],
+        tenantIds: ["tenant-A"],
+      }),
+    ).resolves.toEqual({
+      kind: "tenant",
+      tenantIds: ["tenant-A"],
+      subDepartmentTeamIds: ["subDepartmentA"],
+    });
+    expect(resolveSubDepartmentTeamIds).not.toHaveBeenCalled();
+
+    vi.doUnmock("@/lib/role-assignment");
+    vi.doUnmock("@/lib/db");
+  });
+
   it("resolves a tenant scope from an ambient request store", async () => {
     const scope = await runWithScope({ tenantIds: ["tenant-A"] }, () => resolveTicketScope());
     expect(scope).toEqual({ kind: "tenant", tenantIds: ["tenant-A"] });

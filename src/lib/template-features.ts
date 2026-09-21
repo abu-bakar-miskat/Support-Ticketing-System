@@ -1,4 +1,4 @@
-import { LayoutGrid, Users2, Puzzle, Wrench } from "lucide-react";
+import { LayoutGrid, Wrench } from "lucide-react";
 
 /**
  * Named settings-nav and sidebar sections a Super Admin can bundle into a
@@ -24,6 +24,8 @@ export const TEMPLATE_FEATURE_KEYS = [
   "importForm",
   /** Members — sidebar "Members" (/department) + /settings/members. */
   "members",
+  /** Shared Mailboxes — sidebar "Shared Mailboxes" (/mailboxes). */
+  "sharedMailboxes",
   /** Departments management — /settings/departments. */
   "departmentsSettings",
   /** Branding — /settings/branding. */
@@ -76,6 +78,7 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   apiKeys: "API keys",
   importForm: "Import from Notion",
   members: "Members",
+  sharedMailboxes: "Shared Mailboxes",
   departmentsSettings: "Departments",
   branding: "Branding",
   projects: "Projects",
@@ -84,7 +87,7 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   workflows: "Workflows & statuses",
   slaPolicies: "SLA policies",
   automationRules: "Automation rules",
-  assignmentMethods: "Assignment methods",
+  assignmentMethods: "Assignment rules",
   board: "Board",
   timeline: "Timeline",
   modules: "Modules",
@@ -101,22 +104,12 @@ export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; 
   {
     label: "Sidebar",
     icon: LayoutGrid,
-    keys: ["tasks", "board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "subDepartmentReports", "helpCenter"],
-  },
-  {
-    label: "Workspace settings",
-    icon: Users2,
-    keys: ["members", "departmentsSettings", "branding"],
+    keys: ["tasks", "board", "timeline", "modules", "reports", "calendar", "myTime", "activity", "subDepartmentReports", "helpCenter", "members", "sharedMailboxes"],
   },
   {
     label: "Configuration settings",
     icon: Wrench,
-    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows", "slaPolicies", "automationRules", "assignmentMethods"],
-  },
-  {
-    label: "Integrations",
-    icon: Puzzle,
-    keys: ["supportForm", "apiKeys", "importForm", "emailSettings"],
+    keys: ["projects", "tagsLabels", "ticketTemplates", "workflows", "slaPolicies", "assignmentMethods", "supportForm", "apiKeys", "importForm", "emailSettings"],
   },
 ];
 
@@ -148,7 +141,7 @@ const FEATURE_PATH_ENTRIES: [prefix: string, key: TemplateFeatureKey][] = [
   ["/board", "board"],
   ["/calendar", "calendar"],
   ["/department", "members"],
-  ["/mailboxes", "members"],
+  ["/mailboxes", "sharedMailboxes"],
   ["/modules", "modules"],
   ["/projects", "projects"],
   ["/reports", "reports"],

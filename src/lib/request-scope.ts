@@ -66,7 +66,25 @@ export function enterRequestScope(scope: RequestScope): void {
 
 /** Run `fn` under an explicit caller scope (used by tests and wrapped callbacks). */
 export function runWithScope<T>(scope: RequestScope, fn: () => T): T {
-  return store.run(scope, fn);
+  return store.run(scope, () => awaitLazyThenable(fn()));
+}
+
+/**
+ * Prisma queries are lazy thenables: constructing one does not start the query.
+ * If a scope callback returns a PrismaPromise directly, its `.then()` may be
+ * invoked only after AsyncLocalStorage.run() has restored the caller's context.
+ * Consume thenables inside the scoped callback so the database extension sees
+ * the scope that the caller explicitly established.
+ */
+function awaitLazyThenable<T>(value: T): T {
+  if (
+    value != null &&
+    (typeof value === "object" || typeof value === "function") &&
+    typeof (value as { then?: unknown }).then === "function"
+  ) {
+    return (async () => await value)() as T;
+  }
+  return value;
 }
 
 /**
@@ -99,7 +117,10 @@ export function uniqueTicketReadScope(
  * bypassed region as small as possible.
  */
 export function runAsSystem<T>(fn: () => T): T {
-  return store.run({ system: true, tenantIds: [] }, fn);
+  return store.run(
+    { system: true, tenantIds: [] },
+    () => awaitLazyThenable(fn()),
+  );
 }
 
 /**

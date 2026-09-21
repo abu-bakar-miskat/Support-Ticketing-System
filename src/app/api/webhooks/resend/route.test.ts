@@ -59,12 +59,13 @@ vi.mock("@/lib/inbound-rate-limit", () => ({
 }))
 
 vi.mock("@/lib/mailbox-connection", () => ({
-  findMailboxRouteForRecipients: vi.fn().mockResolvedValue(null),
+  findMailboxConnectionForRecipients: vi.fn().mockResolvedValue(null),
   logMailSuppression: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@/lib/mailbox-ticket-creation", () => ({
   createTicketFromInboundEmail: vi.fn(),
+  MailboxInactiveError: class MailboxInactiveError extends Error {},
 }))
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
@@ -75,8 +76,8 @@ import { notifyCustomerReply } from "@/lib/notify-customer-reply"
 import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
-import { findMailboxRouteForRecipients } from "@/lib/mailbox-connection"
-import { createTicketFromInboundEmail } from "@/lib/mailbox-ticket-creation"
+import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
+import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
 import * as resendMod from "resend"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,7 +94,8 @@ const mockNotify = vi.mocked(notifyCustomerReply)
 const mockNotifyQuarantine = vi.mocked(notifyQuarantinedReply)
 const mockMaybeReopen = vi.mocked(maybeReopenTicket)
 const mockIsOverRateLimit = vi.mocked(isOverRateLimit)
-const mockFindMailboxRoute = vi.mocked(findMailboxRouteForRecipients)
+const mockFindMailboxConnection = vi.mocked(findMailboxConnectionForRecipients)
+const mockLogMailSuppression = vi.mocked(logMailSuppression)
 const mockCreateTicketFromInboundEmail = vi.mocked(createTicketFromInboundEmail)
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
@@ -186,7 +188,7 @@ beforeEach(() => {
   vi.mocked(prisma.ticket.update).mockResolvedValue({} as never)
   vi.mocked(prisma.ticket.findFirst).mockResolvedValue(null as never)
   vi.mocked(prisma.subDepartment.findUnique).mockResolvedValue(null as never)
-  mockFindMailboxRoute.mockResolvedValue(null)
+  mockFindMailboxConnection.mockResolvedValue(null)
   mockCreateTicketFromInboundEmail.mockReset()
 
   // Patch INBOUND_DOMAIN for extractReplyToken to work
@@ -309,12 +311,13 @@ describe("POST /api/webhooks/resend", () => {
     }
     mockVerify.mockReturnValue(mailboxEvent)
     mockFindIntake.mockResolvedValue(null as never)
-    mockFindMailboxRoute.mockResolvedValue({
+    mockFindMailboxConnection.mockResolvedValue({
       id: "mailbox-1",
       address: "support@pengroup.com",
       tenantId: "tenant-1",
       departmentId: "department-1",
       subDepartmentId: "team-1",
+      isActive: true,
     })
     mockCreateTicketFromInboundEmail.mockResolvedValue({
       id: "ticket-new",
@@ -344,6 +347,67 @@ describe("POST /api/webhooks/resend", () => {
         mailboxConnectionId: "mailbox-1",
       }),
     )
+  })
+
+  it("drops a new mailbox email when the mailbox is turned off during creation", async () => {
+    const mailboxEvent = {
+      ...receivedEventPayload,
+      data: {
+        ...receivedEventPayload.data,
+        to: ["support@pengroup.com"],
+        subject: "Cannot access my account",
+      },
+    }
+    mockVerify.mockReturnValue(mailboxEvent)
+    mockFindIntake.mockResolvedValue(null as never)
+    mockFindMailboxConnection.mockResolvedValue({
+      id: "mailbox-1",
+      address: "support@pengroup.com",
+      tenantId: "tenant-1",
+      departmentId: "department-1",
+      subDepartmentId: "team-1",
+      isActive: true,
+    })
+    mockCreateTicketFromInboundEmail.mockRejectedValue(new MailboxInactiveError())
+
+    const res = await POST(makeRequest(mailboxEvent))
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({ ok: true, stored: false })
+    expect(mockCreateMsg).not.toHaveBeenCalled()
+  })
+
+  it("records email received while a mailbox is off without creating a ticket", async () => {
+    const mailboxEvent = {
+      ...receivedEventPayload,
+      data: {
+        ...receivedEventPayload.data,
+        to: ["support@pengroup.com"],
+        subject: "Cannot access my account",
+      },
+    }
+    mockVerify.mockReturnValue(mailboxEvent)
+    mockFindIntake.mockResolvedValue(null as never)
+    mockFindMailboxConnection.mockResolvedValue({
+      id: "mailbox-1",
+      address: "support@pengroup.com",
+      tenantId: "tenant-1",
+      departmentId: "department-1",
+      subDepartmentId: "team-1",
+      isActive: false,
+    })
+
+    const res = await POST(makeRequest(mailboxEvent))
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({ ok: true, stored: false })
+    expect(mockCreateTicketFromInboundEmail).not.toHaveBeenCalled()
+    expect(mockCreateMsg).not.toHaveBeenCalled()
+    expect(mockLogMailSuppression).toHaveBeenCalledWith(expect.objectContaining({
+      mailboxConnectionId: "mailbox-1",
+      reason: "mailbox_paused",
+      subject: "Re: [SUP-7] Login broken",
+    }))
   })
 
   it("fires a customer_reply notification after persisting", async () => {

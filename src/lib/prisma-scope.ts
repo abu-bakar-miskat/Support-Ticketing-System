@@ -322,11 +322,28 @@ export async function resolveProfileTicketScope(profile: {
   id: string;
   isSuperAdmin?: boolean;
   tenantIds: string[];
+  role?: string;
+  subDepartmentIds?: string[];
+  subDepartmentId?: string | null;
 }): Promise<TicketScope> {
   if (profile.isSuperAdmin) return { kind: "platform" };
 
+  // Agents and sub-managers already carry their active membership ids on the
+  // authenticated profile. Do not resolve their scope through RoleAssignment:
+  // older agent accounts without backfilled RoleAssignment rows trigger a
+  // write transaction there, which can block ticket creation behind the single
+  // shared database connection. Their direct memberships are the restrictive
+  // source of truth, so using them is both faster and no broader.
+  const directSubDepartmentIds =
+    profile.role === "agent" || profile.role === "sub_manager"
+      ? profile.subDepartmentIds ??
+        (profile.subDepartmentId ? [profile.subDepartmentId] : [])
+      : undefined;
+
   const [subDepartmentTeamIds, exceptionTicketIds] = await Promise.all([
-    getSubDepartmentTeamIds(profile.id),
+    directSubDepartmentIds === undefined
+      ? getSubDepartmentTeamIds(profile.id)
+      : Promise.resolve(directSubDepartmentIds),
     getExceptionTicketIds(profile.id),
   ]);
   return {

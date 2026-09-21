@@ -466,7 +466,12 @@ const ACTIVITY_TEXT: Record<string, (meta: Record<string, unknown>) => string> =
     COMMENT_ADDED: () => "commented",
     ATTACHMENT_ADDED: (m) => `attached ${m.fileName ?? "a file"}`,
     MENTION: () => "mentioned someone",
-    TICKET_CREATED: () => "created this ticket",
+    TICKET_CREATED: (m) => {
+      // Support-form / mailbox tickets are authored by "System"; surface the
+      // requester's email submitted with the ticket.
+      const email = (m.submitterEmail ?? m.fromEmail) as string | undefined
+      return email ? `created this ticket for ${email}` : "created this ticket"
+    },
     TITLE_CHANGED: (m) => `renamed this ticket to "${m.to ?? "?"}"`,
     PRIORITY_CHANGED: (m) =>
       `changed priority from ${m.from ?? "?"} to ${m.to ?? "?"}`,

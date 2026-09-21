@@ -28,9 +28,10 @@ export default async function DepartmentMailboxesRoute() {
       select: {
         id: true,
         name: true,
+        assignmentMethod: true,
         subDepartments: {
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, assignmentMethod: true },
         },
       },
     }),
@@ -39,10 +40,17 @@ export default async function DepartmentMailboxesRoute() {
   if (!dept) redirect("/departments");
 
   const membershipIds = new Set(profile.subDepartmentIds ?? []);
-  const subDepartments =
+  const visibleSubDepartments =
     isSubManager
       ? dept.subDepartments.filter((s) => membershipIds.has(s.id))
       : dept.subDepartments;
+  // Resolve each sub-department's effective assignment method (its own override,
+  // else the parent department default) so per-mailbox "inherit" can label it.
+  const subDepartments = visibleSubDepartments.map((s) => ({
+    id: s.id,
+    name: s.name,
+    assignmentMethod: s.assignmentMethod ?? dept.assignmentMethod ?? "RULE_BASED",
+  }));
 
   const tenantId = profile.activeTenantId ?? null;
   const domainRequests = tenantId

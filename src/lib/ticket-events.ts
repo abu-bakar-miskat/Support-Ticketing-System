@@ -19,7 +19,11 @@ export type TicketEventPayloads = {
   DATE_CHANGED:           { fromStart: string | null; fromEnd: string | null; toStart: string | null; toEnd: string | null }
   FORWARDED:              { to: string }
   TICKET_DELETED:         { humanId: string; title: string }
-  TICKET_CREATED:         { humanId: string; title: string; status?: string }
+  // Support-form intake and inbound-mailbox tickets are authored by the synthetic
+  // "System" user, so the requester is carried in metadata for the feed to show:
+  // intake sets submitterName/submitterEmail; the mailbox flow sets source:"email"
+  // plus fromName/fromEmail.
+  TICKET_CREATED:         { humanId: string; title: string; status?: string; submitterName?: string; submitterEmail?: string; source?: string; fromName?: string; fromEmail?: string }
   TITLE_CHANGED:          { from: string; to: string }
   PRIORITY_CHANGED:       { from: string; to: string }
   DESCRIPTION_CHANGED:    { hadDescription: boolean; to?: string | null }

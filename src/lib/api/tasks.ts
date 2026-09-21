@@ -36,6 +36,7 @@ export type TasksMetaResponse = {
     avatarUrl: string | null;
     departmentName: string | null;
     subDepartmentName: string | null;
+    subDepartmentIds: string[];
     role: string;
   }[];
   defaultSubDepartmentId: string | null;
@@ -114,7 +115,11 @@ export function buildTicketExportUrl(filters: AllTasksFilters = {}, format: Expo
 }
 
 export async function fetchTasksMeta(): Promise<TasksMetaResponse> {
-  const res = await fetch("/api/tasks/meta");
+  // The create-task modal is opened before this optional metadata has loaded.
+  // Do not let a stuck upstream query leave its fields shimmering forever.
+  const res = await fetch("/api/tasks/meta", {
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!res.ok) throw new Error("Failed to fetch tasks meta");
   return res.json();
 }

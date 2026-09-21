@@ -107,6 +107,7 @@ export function mapProjectDepartmentPerson(
   role: string;
   departmentName: string | null;
   subDepartmentName: string | null;
+  subDepartmentIds: string[];
 } {
   const inDept = p.memberships.find((m) => m.subDepartment.department?.id === projectDeptId);
   const outsideDept = p.memberships.find(
@@ -127,6 +128,7 @@ export function mapProjectDepartmentPerson(
       p.directDeptMemberships[0]?.department?.name ??
       homeDept,
     subDepartmentName: inDept?.subDepartment.name ?? homeSubDepartment,
+    subDepartmentIds: p.memberships.map((m) => m.subDepartment.id),
   };
 }
 

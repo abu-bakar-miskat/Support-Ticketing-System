@@ -63,6 +63,26 @@ describe("validateField", () => {
     expect(validateField(f, "z")).toMatch(/invalid selection/);
     expect(validateField(f, "x")).toBeNull();
   });
+  it("accepts a valid nested-select `parent > child` value", () => {
+    const f = field({
+      id: "campus",
+      type: "dropdown",
+      options: ["Main", "North"],
+      childOptions: { Main: ["Block A", "Block B"], North: ["Block C"] },
+    });
+    expect(validateField(f, "Main > Block A")).toBeNull();
+    expect(validateField(f, "Main")).toBeNull();
+  });
+  it("rejects a nested-select value with a bad parent or child", () => {
+    const f = field({
+      id: "campus",
+      type: "dropdown",
+      options: ["Main", "North"],
+      childOptions: { Main: ["Block A"] },
+    });
+    expect(validateField(f, "Nope > Block A")).toMatch(/invalid selection/);
+    expect(validateField(f, "Main > Block Z")).toMatch(/invalid selection/);
+  });
   it("requires an unchecked boolean checkbox", () => {
     const f = field({ id: "c", type: "checkbox", required: true });
     expect(validateField(f, "false")).toMatch(/required/);

@@ -148,6 +148,18 @@ export function ReceivedMailPanel({
     return suppressed.filter((s) => s.mailboxConnectionId === activeMailbox.id);
   }, [suppressed, activeMailbox]);
 
+  // Pausing ticket creation is not a rejection of mail. Keep those emails in
+  // the primary Received mail view so turning a mailbox off does not make mail
+  // appear to stop arriving; only auto-generated mail remains suppressed.
+  const shownPausedMail = useMemo(
+    () => shownSuppressed?.filter((s) => s.reason === "mailbox_paused") ?? null,
+    [shownSuppressed],
+  );
+  const shownOtherSuppressed = useMemo(
+    () => shownSuppressed?.filter((s) => s.reason !== "mailbox_paused") ?? null,
+    [shownSuppressed],
+  );
+
   async function act(message: MailboxMessage, action: "accept" | "reject") {
     setBusyId(message.id);
     setError(null);
@@ -225,8 +237,8 @@ export function ReceivedMailPanel({
       <div className="flex items-center gap-1 border-b border-sts-card-border px-2">
         {(
           [
-            { key: "mail" as const, label: `Mail${shownMessages ? ` (${shownMessages.length})` : ""}` },
-            { key: "suppressed" as const, label: `Suppressed${shownSuppressed ? ` (${shownSuppressed.length})` : ""}` },
+            { key: "mail" as const, label: `Mail${shownMessages && shownPausedMail ? ` (${shownMessages.length + shownPausedMail.length})` : ""}` },
+            { key: "suppressed" as const, label: `Suppressed${shownOtherSuppressed ? ` (${shownOtherSuppressed.length})` : ""}` },
           ]
         ).map((t) => (
           <button
@@ -249,7 +261,7 @@ export function ReceivedMailPanel({
         {tab === "mail" &&
           (shownMessages === null ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">Loading…</p>
-          ) : shownMessages.length === 0 ? (
+          ) : shownMessages.length === 0 && (shownPausedMail?.length ?? 0) === 0 ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No mail for ${activeMailbox.address} yet.` : "No mail received yet."}
             </p>
@@ -333,19 +345,31 @@ export function ReceivedMailPanel({
                   )}
                 </div>
               ))}
+              {shownPausedMail?.map((s) => (
+                <div key={s.id} className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue/10 px-2 py-0.5 font-sans text-[10px] font-semibold tracking-wide text-sts-blue uppercase">
+                    <Mail className="size-2.5" /> received
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{s.subject ?? "(no subject)"}</p>
+                    <p className="truncate font-sans text-[11px] text-sts-subtle">{s.fromEmail ?? "unknown sender"} → {s.toAddress ?? "unknown address"} · Ticket creation paused</p>
+                  </div>
+                  <span className="hidden shrink-0 font-sans text-[11px] text-sts-subtle sm:inline">{formatDate(s.createdAt)}</span>
+                </div>
+              ))}
             </div>
           ))}
 
         {tab === "suppressed" &&
           (shownSuppressed === null ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">Loading…</p>
-          ) : shownSuppressed.length === 0 ? (
+          ) : shownOtherSuppressed.length === 0 ? (
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No suppressed mail for ${activeMailbox.address}.` : "No suppressed mail."}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {shownSuppressed.map((s) => (
+              {shownOtherSuppressed.map((s) => (
                 <div
                   key={s.id}
                   className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-surface/40 px-3 py-2.5"

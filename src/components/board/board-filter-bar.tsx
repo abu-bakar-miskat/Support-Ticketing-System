@@ -11,6 +11,7 @@ import {
   CalendarClock,
   Inbox,
   Tag,
+  Circle,
   Boxes,
   ChevronDown,
   Check,
@@ -21,9 +22,9 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import type { SubDepartmentBoardGroup } from "@/components/board/board-types";
+import type { SubDepartmentBoardGroup, SubDepartmentStatusConfig } from "@/components/board/board-types";
 import { labelStyle } from "@/components/board/board-types";
-import type { DateFilter, IntakeFilter, LabelFilter, PriorityFilter, ProjectFilter, ModuleFilter } from "@/components/board/board-filters";
+import type { DateFilter, IntakeFilter, LabelFilter, PriorityFilter, ProjectFilter, ModuleFilter, StatusFilter } from "@/components/board/board-filters";
 import { formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
 import { formatCalendarDate } from "@/lib/ticket-datetime";
 
@@ -158,6 +159,96 @@ function LabelMultiSelect({
                     }}
                   >
                     {lbl}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function StatusMultiSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: StatusFilter;
+  onChange: (v: StatusFilter) => void;
+  options: SubDepartmentStatusConfig[];
+}) {
+  const [open, setOpen] = useState(false);
+  const active = value.length > 0;
+
+  function toggle(label: string) {
+    const next = value.includes(label) ? value.filter((l) => l !== label) : [...value, label];
+    onChange(next);
+  }
+
+  const label =
+    value.length === 0 ? "Status" : value.length === 1 ? value[0] : `Status (${value.length})`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        aria-label="Filter by status"
+        className={cn(
+          "flex h-7 shrink-0 items-center gap-1 rounded-full border px-2 font-sans text-[11.5px] transition-colors",
+          active
+            ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
+            : "border-sts-card-border bg-sts-card text-sts-foreground hover:border-sts-muted",
+        )}
+      >
+        <Circle className={cn("size-3.5 shrink-0", active ? "text-sts-blue" : "text-sts-subtle")} />
+        <span className="max-w-[120px] truncate">{label}</span>
+        <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-52 rounded-xl border border-sts-card-border bg-sts-bg p-0 shadow-xl"
+      >
+        <div className="flex items-center justify-between border-b border-sts-card-border px-3 py-2">
+          <span className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">Status</span>
+          {value.length > 0 && (
+            <button type="button" onClick={() => onChange([])} className="font-sans text-[11.5px] text-sts-muted hover:text-sts-red">
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1.5">
+          {options.length === 0 ? (
+            <p className="px-2.5 py-2 font-sans text-[11.5px] text-sts-subtle">No statuses in current view</p>
+          ) : (
+            options.map((status) => {
+              const checked = value.includes(status.label);
+              return (
+                <button
+                  key={status.id}
+                  type="button"
+                  onClick={() => toggle(status.label)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors",
+                    checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                      checked ? "border-sts-blue bg-sts-blue" : "border-sts-card-border bg-transparent",
+                    )}
+                  >
+                    {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
+                  </span>
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: status.color }}
+                    aria-hidden
+                  />
+                  <span className="truncate font-sans text-[12px] font-medium text-sts-foreground">
+                    {status.label}
                   </span>
                 </button>
               );
@@ -482,6 +573,9 @@ type Props = {
   labelFilter: LabelFilter;
   onLabelFilterChange: (value: LabelFilter) => void;
   availableLabels: string[];
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (value: StatusFilter) => void;
+  availableStatuses: SubDepartmentStatusConfig[];
   hasActiveFilters: boolean;
   onClearFilters: () => void;
   assigneeCounts: { me: number; all: number; unassigned: number };
@@ -525,6 +619,9 @@ export function BoardFilterBar({
   labelFilter,
   onLabelFilterChange,
   availableLabels,
+  statusFilter,
+  onStatusFilterChange,
+  availableStatuses,
   hasActiveFilters,
   onClearFilters,
   assigneeCounts,
@@ -701,6 +798,13 @@ export function BoardFilterBar({
         size="sm"
         highlightWhenSet={intakeFilter !== "all"}
         className="w-auto max-w-[10rem] shrink-0"
+      />
+
+      {/* Status */}
+      <StatusMultiSelect
+        value={statusFilter}
+        onChange={onStatusFilterChange}
+        options={availableStatuses}
       />
 
       {/* Labels */}

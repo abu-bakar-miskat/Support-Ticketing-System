@@ -59,6 +59,7 @@ import {
   MessageSquare,
   Mail,
   ArrowUpRight,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
@@ -1052,6 +1053,44 @@ export function TicketDetailPage({
     },
     [],
   );
+
+  // Eligible to self-claim when the viewer is an assignable member of this
+  // ticket (present in the picker's eligible list) and isn't already its
+  // primary assignee. The server carve-out in PATCH /api/tickets/:id allows the
+  // self-assign even for agents who can't otherwise edit the ticket.
+  const canAssignToMe =
+    !!currentUserId &&
+    liveAssigneeId !== currentUserId &&
+    subDepartmentMembers.some((m) => m.id === currentUserId);
+
+  const handleAssignToMe = useCallback(async () => {
+    const me = subDepartmentMembers.find((m) => m.id === currentUserId);
+    if (!me) return;
+    const prev = liveAssigneeId
+      ? {
+          id: liveAssigneeId,
+          name: liveAssigneeName ?? "",
+          avatarUrl: liveAssigneeAvatarUrl,
+        }
+      : null;
+    // Optimistic — other viewers get the same via the ticket-activity broadcast.
+    handleAssigneeChange({ id: me.id, name: me.name, avatarUrl: me.avatarUrl });
+    try {
+      await updateTicket(dbId, { assigneeId: me.id });
+      toast.success("Ticket assigned to you");
+    } catch (err) {
+      handleAssigneeChange(prev);
+      toastError("Failed to assign this ticket to you", err);
+    }
+  }, [
+    subDepartmentMembers,
+    currentUserId,
+    liveAssigneeId,
+    liveAssigneeName,
+    liveAssigneeAvatarUrl,
+    handleAssigneeChange,
+    dbId,
+  ]);
 
   const handleCoAssigneesChange = useCallback(
     (list: { id: string; name: string; avatarUrl?: string | null }[]) => {
@@ -3611,6 +3650,16 @@ export function TicketDetailPage({
                 onAssigneeChange={handleAssigneeChange}
                 disabled={!canEditTicket}
               />
+              {canAssignToMe ? (
+                <button
+                  type="button"
+                  onClick={handleAssignToMe}
+                  className="flex items-center gap-1.5 self-start rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-blue transition-colors hover:bg-sts-surface"
+                >
+                  <UserPlus className="size-3.5" />
+                  Assign to me
+                </button>
+              ) : null}
               <CoAssigneeSelect
                 ticketId={dbId}
                 coAssignees={liveCoAssignees}

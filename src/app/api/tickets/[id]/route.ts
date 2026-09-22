@@ -86,7 +86,23 @@ export async function PATCH(
     hasProjectId || hasModuleId || hasSprintId || hasLabels || hasAssetLinks ||
     hasParentId || hasIsDraft || hasTemplateData
 
-  if (hasNonDescriptionEdit && !canEditTicket(profile, editCtx)) {
+  // Self-claim carve-out: a user who is otherwise ineligible to edit (e.g. an
+  // agent who isn't yet assigned) may still assign the ticket to *themselves*,
+  // provided assignee is the only non-description field they're changing.
+  // Sub-department eligibility is still enforced below via
+  // assertAssigneeEligibleForTicket, so this can't be used to claim tickets
+  // outside the caller's scope.
+  const isSelfClaimOnly =
+    hasAssignee &&
+    (body.assigneeId as string | null) === profile.id &&
+    !(
+      hasTitle || hasPriority || hasStatus || hasStartDate || hasDueDate ||
+      hasStoryPoints || hasEstimatedTime || hasProjectId || hasModuleId ||
+      hasSprintId || hasLabels || hasAssetLinks || hasParentId || hasIsDraft ||
+      hasTemplateData
+    )
+
+  if (hasNonDescriptionEdit && !isSelfClaimOnly && !canEditTicket(profile, editCtx)) {
     return NextResponse.json(
       { error: "You can only edit tickets you are assigned to, co-assigned to, created, or lead the subDepartment for" },
       { status: 403 },

@@ -14,6 +14,7 @@ export type IntakeFilter = "all" | "intake" | "non_intake";
 export type ProjectFilter = string; // "all" or a projectId
 export type ModuleFilter = string; // "all" or a moduleId
 export type LabelFilter = string[]; // empty = all
+export type StatusFilter = string[]; // empty = all (status labels)
 
 export function isAssignedToUser(card: BoardCardData, userId: string): boolean {
   if (!userId) return false;
@@ -219,6 +220,11 @@ export function matchesSearchQuery(card: BoardCardData, query: string): boolean 
 export function matchesLabelFilter(card: BoardCardData, filter: LabelFilter): boolean {
   if (!filter.length) return true;
   return filter.some((lbl) => card.labels.includes(lbl));
+}
+
+export function matchesStatusFilter(card: BoardCardData, filter: StatusFilter): boolean {
+  if (!filter.length) return true;
+  return filter.includes(card.status);
 }
 
 export function collectLabels(cards: BoardCardData[]): string[] {

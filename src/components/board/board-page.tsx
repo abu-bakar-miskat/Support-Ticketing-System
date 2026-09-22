@@ -75,6 +75,7 @@ import {
   matchesIntakeFilter,
   matchesProjectFilter,
   matchesLabelFilter,
+  matchesStatusFilter,
   matchesModuleFilter,
   matchesSearchQuery,
   collectAssignees,
@@ -697,6 +698,8 @@ export function BoardPage({
     setIntakeFilter,
     labelFilter,
     setLabelFilter,
+    statusFilter,
+    setStatusFilter,
     dueRange,
     setDueRange,
     targetDateFilter,
@@ -1036,7 +1039,8 @@ export function BoardPage({
         matchesTargetDateFilter(c, targetDateFilter) &&
         matchesTargetDateRange(c, targetRange) &&
         matchesIntakeFilter(c, intakeFilter) &&
-        matchesLabelFilter(c, labelFilter)
+        matchesLabelFilter(c, labelFilter) &&
+        matchesStatusFilter(c, statusFilter)
       );
     });
     return sortCards(result, sortKey);
@@ -1053,6 +1057,7 @@ export function BoardPage({
     targetRange,
     intakeFilter,
     labelFilter,
+    statusFilter,
     currentUserId,
     canFilterByAssignee,
     sortKey,
@@ -1069,7 +1074,8 @@ export function BoardPage({
     targetDateFilter !== "all" ||
     targetRange !== null ||
     intakeFilter !== "all" ||
-    labelFilter.length > 0;
+    labelFilter.length > 0 ||
+    statusFilter.length > 0;
 
   const defaultCreateProjectId =
     projectFilter !== "all" &&
@@ -1175,6 +1181,9 @@ export function BoardPage({
                 labelFilter={labelFilter}
                 onLabelFilterChange={setLabelFilter}
                 availableLabels={availableLabels}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                availableStatuses={effectiveStatuses}
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={clearFilters}
                 assigneeCounts={assigneeCounts}
@@ -1231,7 +1240,9 @@ export function BoardPage({
             className="flex h-full items-stretch gap-3 sm:gap-3.5"
             style={{ width: "max-content" }}
           >
-            {effectiveStatuses.map((status) => (
+            {effectiveStatuses
+              .filter((status) => statusFilter.length === 0 || statusFilter.includes(status.label))
+              .map((status) => (
               <BoardColumn
                 key={status.id}
                 status={status}

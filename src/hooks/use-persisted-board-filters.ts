@@ -9,6 +9,7 @@ import type {
   ModuleFilter,
   PriorityFilter,
   ProjectFilter,
+  StatusFilter,
 } from "@/components/board/board-filters";
 import type { SortKey } from "@/components/tasks/task-filter-dropdown";
 import type { DateRange } from "@/components/ui/date-range-dropdown";
@@ -32,6 +33,8 @@ export type BoardFiltersState = {
   dateFilter: DateFilter;
   intakeFilter: IntakeFilter;
   labelFilter: LabelFilter;
+  /** Selected status labels; empty = all statuses. */
+  statusFilter: StatusFilter;
   /** Inclusive due-date calendar range; mutually exclusive with dateFilter presets in the UI. */
   dueRange: DateRange;
   /** Personal target-date preset; matches any assignee's target date. */
@@ -50,6 +53,7 @@ const DEFAULT_FILTERS: BoardFiltersState = {
   dateFilter: "all",
   intakeFilter: "all",
   labelFilter: [],
+  statusFilter: [],
   dueRange: null,
   targetDateFilter: "all",
   targetRange: null,
@@ -138,6 +142,9 @@ function sanitize(raw: unknown): BoardFiltersState {
     labelFilter: Array.isArray(stored.labelFilter)
       ? stored.labelFilter.filter((v): v is string => typeof v === "string")
       : DEFAULT_FILTERS.labelFilter,
+    statusFilter: Array.isArray(stored.statusFilter)
+      ? stored.statusFilter.filter((v): v is string => typeof v === "string")
+      : DEFAULT_FILTERS.statusFilter,
     dueRange,
     targetDateFilter,
     targetRange,
@@ -231,6 +238,10 @@ export function usePersistedBoardFilters() {
     setFilters((prev) => ({ ...prev, labelFilter }));
   }, []);
 
+  const setStatusFilter = useCallback((statusFilter: StatusFilter) => {
+    setFilters((prev) => ({ ...prev, statusFilter }));
+  }, []);
+
   const setDueRange = useCallback((dueRange: DateRange) => {
     setFilters((prev) => ({
       ...prev,
@@ -273,6 +284,7 @@ export function usePersistedBoardFilters() {
     setDateFilter,
     setIntakeFilter,
     setLabelFilter,
+    setStatusFilter,
     setDueRange,
     setTargetDateFilter,
     setTargetRange,

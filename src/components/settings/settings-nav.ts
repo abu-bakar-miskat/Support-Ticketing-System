@@ -6,8 +6,13 @@ export type SettingsNavItem = {
   href: string;
   /** Only platform super-admins see this item */
   superAdminOnly?: true;
-/** Only admins see this item */
+  /** Only admins see this item */
   adminOnly?: true;
+  /**
+   * Tenant admins and the active department's Department Head. Plain managers
+   * do not see these items.
+   */
+  departmentAdmin?: true;
   /** Admins and managers see this item; staff do not */
   managerOnly?: true;
   /** Hidden for cross-department-access outsiders — department-specific management only */
@@ -67,6 +72,11 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         adminOnly: true,
         tenantScoped: true,
       },
+      {
+        label: "Template Marketplace",
+        href: "/settings/templates-catalogue",
+        adminOnly: true,
+      },
     ],
   },
   {
@@ -101,16 +111,23 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "workflows",
       },
       {
+        label: "Support template",
+        href: "/settings/support-template",
+        departmentAdmin: true,
+        deptSpecific: true,
+        templateFeatureKey: "supportForm",
+      },
+      {
         label: "Support forms",
         href: "/settings/support-forms",
-        adminOnly: true,
+        departmentAdmin: true,
         deptSpecific: true,
         templateFeatureKey: "supportForm",
       },
       {
         label: "SLA policies",
         href: "/settings/sla",
-        adminOnly: true,
+        departmentAdmin: true,
         deptSpecific: true,
         templateFeatureKey: "slaPolicies",
       },
@@ -156,16 +173,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       },
     ],
   },
-  {
-    label: "PLATFORM",
-    items: [
-      {
-        label: "Templates",
-        href: "/settings/templates-catalogue",
-        superAdminOnly: true,
-      },
-    ],
-  },
 ];
 
 export const ALL_SETTINGS_NAV_ITEMS = SETTINGS_NAV.flatMap((g) => g.items);
@@ -188,6 +195,7 @@ export function getFilteredNav(
   // pass it keep the pre-existing behavior.
   hasActiveDept = true,
   platformFlags?: Partial<Record<string, boolean>>,
+  isDepartmentAdmin = false,
 ): SettingsNavGroup[] {
   const isAdmin = role === "admin";
   const isManager = role === "manager";
@@ -198,6 +206,7 @@ export function getFilteredNav(
     items: group.items
       .filter((item) => {
         if (item.superAdminOnly) return isSuperAdmin;
+        if (item.departmentAdmin) return isAdmin || isDepartmentAdmin;
         if (item.adminOnly) return isAdmin;
         if (item.managerOnly) return isAdmin || isManager || isLead;
         return true;

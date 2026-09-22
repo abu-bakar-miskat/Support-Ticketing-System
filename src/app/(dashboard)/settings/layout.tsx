@@ -54,6 +54,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
       activeFeatureKeys={activeFeatureKeys}
       hasActiveDept={activeDeptId != null}
       platformFlags={platformFlags}
+      isDepartmentAdmin={
+        activeDeptId != null && (profile.departmentAdminIds ?? []).includes(activeDeptId)
+      }
     >
       {children}
     </SettingsLayout>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Clock } from "lucide-react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
+import { Check, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type TemplateFeatureKey, TEMPLATE_FEATURE_LABELS } from "@/lib/template-features";
@@ -16,39 +17,64 @@ export type CatalogueEntry = {
   status: "active" | "requested" | "available";
 };
 
-export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCatalogue: CatalogueEntry[] }) {
+export function SettingsTemplatesCataloguePage({
+  initialCatalogue,
+  approvalRequired,
+}: {
+  initialCatalogue: CatalogueEntry[];
+  approvalRequired: boolean;
+}) {
   const router = useRouter();
   const [catalogue, setCatalogue] = useState(initialCatalogue);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<CatalogueEntry | null>(null);
 
-  async function requestTemplate(id: string) {
-    setBusy(id);
+  async function enableTemplate(template: CatalogueEntry) {
+    setBusy(template.id);
     setError(null);
-    const res = await fetch(`/api/templates/${id}/request`, { method: "POST" });
+    setNotice(null);
+    const res = await fetch(`/api/templates/${template.id}/enable`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
     setBusy(null);
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to request template");
+      setError(body.error ?? "Failed to enable template");
       return;
     }
-    setCatalogue((prev) => prev.map((t) => (t.id === id ? { ...t, status: "requested" } : t)));
+    const status = body.status === "requested" ? "requested" : "active";
+    setCatalogue((prev) => prev.map((t) => (t.id === template.id ? { ...t, status } : t)));
+    setNotice(
+      status === "active"
+        ? `${template.name} is now active for your organization.`
+        : `Enablement request for ${template.name} is pending approval. A Super Admin has been notified.`,
+    );
+    setConfirming(null);
     router.refresh();
   }
+
+  const active = catalogue.filter((t) => t.status === "active");
 
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div>
-        <h1 className="sts-text-admin-title">Templates</h1>
+        <h1 className="sts-text-admin-title">Template Marketplace</h1>
         <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-          Templates bundle related settings sections together. Request one to unlock its features for your
-          organization — a Super Admin will review the request.
+          Published templates available to your organization. Enable one to add it to your active templates.
+          {approvalRequired
+            ? " Enablement requests stay inactive until a Super Admin approves them."
+            : ""}
         </p>
       </div>
 
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
           {error}
+        </div>
+      )}
+      {notice && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-sans text-[12.5px] text-emerald-700 dark:text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -69,7 +95,7 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
               )}
               {t.status === "requested" && (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 font-sans text-[10.5px] font-medium text-amber-600 dark:text-amber-400">
-                  <Clock className="size-3" /> Requested
+                  <Clock className="size-3" /> Pending Approval
                 </span>
               )}
             </div>
@@ -89,18 +115,64 @@ export function SettingsTemplatesCataloguePage({ initialCatalogue }: { initialCa
                 size="sm"
                 variant={t.status === "available" ? "default" : "outline"}
                 disabled={t.status !== "available" || busy === t.id}
-                onClick={() => requestTemplate(t.id)}
+                onClick={() => setConfirming(t)}
                 className="w-full"
               >
-                {t.status === "active" ? "Already active" : t.status === "requested" ? "Pending review" : busy === t.id ? "Requesting…" : "Request access"}
+                {t.status === "active"
+                  ? "Already active"
+                  : t.status === "requested"
+                    ? "Pending Approval"
+                    : "Enable"}
               </Button>
             </div>
           </li>
         ))}
         {catalogue.length === 0 && (
-          <p className="font-sans text-[13px] text-sts-muted">No templates are available in the catalogue yet.</p>
+          <p className="font-sans text-[13px] text-sts-muted">No templates are published in the marketplace yet.</p>
         )}
       </ul>
+
+      {active.length > 0 && (
+        <section className="mt-2">
+          <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Active templates</h2>
+          <ul className="mt-2 flex flex-col gap-1">
+            {active.map((t) => (
+              <li key={t.id} className="font-sans text-[13px] text-sts-muted">
+                {t.name}
+                {t.description ? ` — ${t.description}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <AlertDialog.Root open={confirming !== null} onOpenChange={(open) => { if (!busy && !open) setConfirming(null); }}>
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+          <AlertDialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+            <AlertDialog.Title className="sts-text-modal-title">
+              Enable {confirming?.name ?? "template"}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 font-sans text-[13px] text-sts-subtle">
+              {approvalRequired
+                ? `This sends an enablement request for ${confirming?.name ?? "this template"}. It stays inactive until a Super Admin approves it.`
+                : `This enables ${confirming?.name ?? "this template"} for your organization. You will see it in active templates.`}
+            </AlertDialog.Description>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" disabled={busy !== null} onClick={() => setConfirming(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={busy !== null || !confirming}
+                onClick={() => { if (confirming) void enableTemplate(confirming); }}
+              >
+                {busy && <Loader2 className="animate-spin" />}
+                Confirm
+              </Button>
+            </div>
+          </AlertDialog.Popup>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 }

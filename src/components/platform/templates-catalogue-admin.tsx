@@ -62,6 +62,8 @@ export function TemplatesCatalogueAdmin({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<TemplateRow | null>(null);
+  const [rejecting, setRejecting] = useState<RequestRow | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   // List controls
   const [query, setQuery] = useState("");
@@ -128,13 +130,13 @@ export function TemplatesCatalogueAdmin({
     setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, isActive: false } : t)));
   }
 
-  async function reviewRequest(requestId: string, decision: "APPROVED" | "REJECTED") {
+  async function reviewRequest(requestId: string, decision: "APPROVED" | "REJECTED", reviewNote?: string) {
     setBusy(requestId);
     setError(null);
     const res = await fetch(`/api/admin/template-requests/${requestId}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
+      body: JSON.stringify({ decision, reviewNote }),
     });
     setBusy(null);
     if (!res.ok) {
@@ -143,6 +145,8 @@ export function TemplatesCatalogueAdmin({
       return;
     }
     setRequests((prev) => prev.filter((r) => r.id !== requestId));
+    setRejecting(null);
+    setRejectReason("");
     if (decision === "APPROVED") {
       setTemplates((prev) =>
         prev.map((t) => {
@@ -236,7 +240,7 @@ export function TemplatesCatalogueAdmin({
         {requests.length > 0 && (
           <div className="mt-8">
             <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
-              Pending requests ({requests.length})
+              Pending approval ({requests.length})
             </h2>
             <ul className="mt-3 flex flex-col gap-2">
               {requests.map((r) => (
@@ -260,7 +264,11 @@ export function TemplatesCatalogueAdmin({
                       size="sm"
                       variant="outline"
                       disabled={busy === r.id}
-                      onClick={() => reviewRequest(r.id, "REJECTED")}
+                      onClick={() => {
+                        setRejecting(r);
+                        setRejectReason("");
+                        setError(null);
+                      }}
                     >
                       <X className="size-3.5" />
                       Reject
@@ -379,6 +387,47 @@ export function TemplatesCatalogueAdmin({
           }}
           onSaved={handleSaved}
         />
+      )}
+
+      {rejecting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop p-4">
+          <div className="sts-glass-panel w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+            <h2 className="sts-text-modal-title">Reject template request</h2>
+            <p className="mt-2 font-sans text-[13px] text-sts-subtle">
+              {rejecting.tenant.name}&apos;s request for {rejecting.template.name} will be marked Rejected. The
+              template stays inactive, and the Tenant Admin is notified with this reason.
+            </p>
+            <label className="mt-4 flex flex-col gap-1.5 font-sans text-[13px] font-medium text-sts-foreground">
+              Reason
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] font-normal text-sts-foreground outline-none"
+                placeholder="Why this request is rejected"
+              />
+            </label>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                disabled={busy === rejecting.id}
+                onClick={() => {
+                  setRejecting(null);
+                  setRejectReason("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={busy === rejecting.id || !rejectReason.trim()}
+                onClick={() => reviewRequest(rejecting.id, "REJECTED", rejectReason.trim())}
+              >
+                Reject
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmDialog

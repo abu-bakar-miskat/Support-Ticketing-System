@@ -15,12 +15,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return badRequest('decision must be "APPROVED" or "REJECTED"')
   }
 
+  const reviewNote = (body.reviewNote as string | undefined)?.trim() || undefined
+  if (decision === "REJECTED" && !reviewNote) {
+    return badRequest("A rejection reason is required")
+  }
+
   try {
     await reviewTemplateRequest({
       requestId: id,
       decision,
       reviewedById: profile!.id,
-      reviewNote: (body.reviewNote as string | undefined)?.trim() || undefined,
+      reviewNote,
     })
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 409 })

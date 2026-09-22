@@ -5,6 +5,7 @@ import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
 import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey, type TemplateFeatureKey } from "@/lib/template-features";
 import { SYSTEM_TEMPLATES } from "@/lib/system-templates";
+import { templateRequestReviewedMessage } from "@/lib/template-request-messages";
 import type { TemplateRequestStatus } from "@/generated/prisma/enums";
 
 /**
@@ -189,7 +190,7 @@ export async function requestTemplate(params: {
         recipientId: admin.id,
         actorId: params.requestedById,
         type: "template_request_submitted",
-        message: `New request for the "${template.name}" template.`,
+        message: `Enablement request for the "${template.name}" template is pending approval.`,
       }),
     ),
   );
@@ -209,6 +210,9 @@ export async function reviewTemplateRequest(params: {
   });
   if (!request) throw new Error("Request not found");
   if (request.status !== "PENDING") throw new Error("Request has already been reviewed");
+  if (params.decision === "REJECTED" && !params.reviewNote?.trim()) {
+    throw new Error("A rejection reason is required");
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.templateRequest.update({
@@ -247,11 +251,41 @@ export async function reviewTemplateRequest(params: {
     recipientId: request.requestedById,
     actorId: params.reviewedById,
     type: "template_request_reviewed",
-    message:
-      params.decision === "APPROVED"
-        ? `Your request for the "${request.template.name}" template was approved.`
-        : `Your request for the "${request.template.name}" template was rejected.`,
+    message: templateRequestReviewedMessage(request.template.name, params.decision, params.reviewNote),
   });
+}
+
+/**
+ * Tenant Admin enablement. With governance approval off, the template becomes
+ * active immediately. With it on, this files a pending request, notifies Super
+ * Admins, and leaves the template inactive until they approve.
+ */
+export async function enableTemplateForTenant(params: {
+  tenantId: string;
+  templateId: string;
+  actorId: string;
+  approvalRequired: boolean;
+}): Promise<{ status: "active" | "requested" }> {
+  if (!params.approvalRequired) {
+    const template = await prisma.template.findUnique({
+      where: { id: params.templateId },
+      select: { id: true, isActive: true },
+    });
+    if (!template || !template.isActive) throw new Error("Template not found");
+    await grantTemplateToTenant({
+      tenantId: params.tenantId,
+      templateId: params.templateId,
+      actorId: params.actorId,
+    });
+    return { status: "active" };
+  }
+
+  await requestTemplate({
+    tenantId: params.tenantId,
+    templateId: params.templateId,
+    requestedById: params.actorId,
+  });
+  return { status: "requested" };
 }
 
 export async function grantTemplateToTenant(params: { tenantId: string; templateId: string; actorId: string }) {

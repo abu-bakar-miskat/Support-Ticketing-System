@@ -12,7 +12,6 @@ export default async function SettingsSlaRoute() {
   if (!profile) redirect("/login");
 
   const isAdmin = profile.role === "admin";
-  if (!isAdmin) redirect("/settings");
 
   const deptScope = await getProfileDeptScope(profile);
   let departmentId = deptScope?.activeDeptId ?? null;
@@ -21,7 +20,7 @@ export default async function SettingsSlaRoute() {
     const tenantId = profile.activeTenantId ?? "__no_tenant__";
     const where = isAdmin
       ? { tenantId }
-      : { id: { in: profile.managedDepartmentIds ?? [] } };
+      : { id: { in: profile.departmentAdminIds ?? [] } };
     const first = await runAsSystem(() => prisma.department.findFirst({
       where,
       orderBy: { name: "asc" },

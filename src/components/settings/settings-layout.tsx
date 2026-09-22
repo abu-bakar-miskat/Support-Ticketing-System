@@ -63,6 +63,7 @@ function SettingsSubNav({
   activeFeatureKeys,
   hasActiveDept,
   platformFlags,
+  isDepartmentAdmin,
 }: {
   activeHref: string;
   role: string;
@@ -72,8 +73,9 @@ function SettingsSubNav({
   activeFeatureKeys: TemplateFeatureKey[] | "ALL";
   hasActiveDept: boolean;
   platformFlags?: Partial<Record<string, boolean>>;
+  isDepartmentAdmin: boolean;
 }) {
-  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags);
+  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags, isDepartmentAdmin);
   return (
     <nav
       aria-label="Settings"
@@ -115,6 +117,7 @@ function SettingsMobileNav({
   activeFeatureKeys,
   hasActiveDept,
   platformFlags,
+  isDepartmentAdmin,
 }: {
   activeHref: string;
   role: string;
@@ -124,9 +127,10 @@ function SettingsMobileNav({
   activeFeatureKeys: TemplateFeatureKey[] | "ALL";
   hasActiveDept: boolean;
   platformFlags?: Partial<Record<string, boolean>>;
+  isDepartmentAdmin: boolean;
 }) {
   const router = useRouter();
-  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags);
+  const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags, isDepartmentAdmin);
   const allItems = nav.flatMap((g) => g.items);
   const activeItem =
     allItems.find((item) => item.href === activeHref) ?? allItems[0];
@@ -174,6 +178,7 @@ export function SettingsLayout({
   activeFeatureKeys = "ALL",
   hasActiveDept = true,
   platformFlags,
+  isDepartmentAdmin = false,
 }: {
   children: React.ReactNode;
   role?: string;
@@ -183,13 +188,14 @@ export function SettingsLayout({
   activeFeatureKeys?: TemplateFeatureKey[] | "ALL";
   hasActiveDept?: boolean;
   platformFlags?: Partial<Record<string, boolean>>;
+  isDepartmentAdmin?: boolean;
 }) {
   const pathname = useAppPathname();
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] min-h-0 w-full flex-col overflow-hidden lg:flex-row">
-      <SettingsMobileNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} hasActiveDept={hasActiveDept} platformFlags={platformFlags} />
-      <SettingsSubNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} hasActiveDept={hasActiveDept} platformFlags={platformFlags} />
+      <SettingsMobileNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} hasActiveDept={hasActiveDept} platformFlags={platformFlags} isDepartmentAdmin={isDepartmentAdmin} />
+      <SettingsSubNav activeHref={pathname} role={role} counts={counts} isCrossAccess={isCrossAccess} isSuperAdmin={isSuperAdmin} activeFeatureKeys={activeFeatureKeys} hasActiveDept={hasActiveDept} platformFlags={platformFlags} isDepartmentAdmin={isDepartmentAdmin} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         {children}
       </div>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { listCatalogueForTenant } from "@/lib/template-catalogue"
+import { getPlatformSettings } from "@/lib/platform-settings"
 import { SettingsTemplatesCataloguePage } from "@/components/settings/settings-templates-catalogue-page"
 
 export const dynamic = "force-dynamic"
@@ -8,9 +9,21 @@ export const dynamic = "force-dynamic"
 export default async function TemplatesCataloguePage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
-  if (!profile.isSuperAdmin) redirect("/settings")
+  // Tenant Admin (role admin). Super Admin manages the catalogue from /platform/templates.
+  if (profile.role !== "admin") redirect("/settings")
 
-  const catalogue = await listCatalogueForTenant(profile.activeTenantId ?? "__no_tenant__")
+  const tenantId = profile.activeTenantId
+  if (!tenantId) redirect("/settings")
 
-  return <SettingsTemplatesCataloguePage initialCatalogue={catalogue} />
+  const [catalogue, settings] = await Promise.all([
+    listCatalogueForTenant(tenantId),
+    getPlatformSettings(),
+  ])
+
+  return (
+    <SettingsTemplatesCataloguePage
+      initialCatalogue={catalogue}
+      approvalRequired={settings.templateEnablementRequiresApproval}
+    />
+  )
 }

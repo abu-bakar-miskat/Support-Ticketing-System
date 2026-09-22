@@ -34,6 +34,12 @@ export type PlatformSettings = {
    * context when a code is sent. See lib/email-templates/otp.ts.
    */
   otpEmailTemplate: OtpEmailTemplate | null;
+  /**
+   * When true, a Tenant Admin "Enable" on the marketplace creates a pending
+   * request and leaves the template inactive until a Super Admin approves it.
+   * When false, Enable activates the template immediately.
+   */
+  templateEnablementRequiresApproval: boolean;
 };
 
 function allFeaturesEnabled(): Record<FeatureKey, boolean> {
@@ -50,6 +56,7 @@ export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   devMode: false,
   newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
   otpEmailTemplate: null,
+  templateEnablementRequiresApproval: false,
 };
 
 /** Coerce a stored JSON value into a validated OTP template, or null. */
@@ -86,6 +93,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     devMode: typeof devMode === "boolean" ? devMode : PLATFORM_SETTINGS_DEFAULTS.devMode,
     newTenantFeatureDefaults: parseFeatureDefaults(byKey.get("newTenantFeatureDefaults")),
     otpEmailTemplate: parseOtpTemplate(byKey.get("otpEmailTemplate")),
+    templateEnablementRequiresApproval: byKey.get("templateEnablementRequiresApproval") === true,
   };
 }
 
@@ -107,6 +115,12 @@ export async function setPlatformSettings(
   if (patch.otpEmailTemplate !== undefined) {
     // null clears the override (falls back to OTP_DEFAULT at render time).
     writes.push({ key: "otpEmailTemplate", value: parseOtpTemplate(patch.otpEmailTemplate) });
+  }
+  if (patch.templateEnablementRequiresApproval !== undefined) {
+    writes.push({
+      key: "templateEnablementRequiresApproval",
+      value: patch.templateEnablementRequiresApproval === true,
+    });
   }
 
   await prisma.$transaction(

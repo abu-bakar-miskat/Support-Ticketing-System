@@ -136,7 +136,7 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                         options={FIELD_TYPE_OPTIONS}
                         searchable={false}
                         size="sm"
-                        className="bg-sts-surface"
+                        className="w-full bg-sts-surface"
                         aria-label="Field type"
                       />
                     </div>

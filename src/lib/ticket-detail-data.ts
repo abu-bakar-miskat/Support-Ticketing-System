@@ -347,7 +347,13 @@ export async function getTicketDetailPayload(
   const mentionableUsers: Awaited<
     ReturnType<typeof getCachedTicketMentionable>
   > = [];
-  const subDepartmentMembers = assigneeFallback;
+  // Full department roster eligible for assignment, with current
+  // assignee/co-assignees folded in as extras so they always appear even if
+  // the cached roster is momentarily stale.
+  const subDepartmentMembers = await getAssignableUsersForTicketDepartment(
+    ticketDeptId,
+    assigneeFallback,
+  );
   const github = { pullRequests: [], commits: [] } as Awaited<
     ReturnType<typeof buildGitHubDevData>
   >;

@@ -2585,9 +2585,50 @@ export function SettingsIntakeFormsPage({
   const [optimisticActive, setOptimisticActive] = useState<
     Record<string, boolean>
   >({});
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [optimisticMethod, setOptimisticMethod] = useState<
+    Record<string, AssignmentMethod>
+  >({});
 
   function getIsActive(form: IntakeFormRow) {
     return optimisticActive[form.id] ?? form.isActive;
+  }
+
+  // Effective method to render in the inline picker: an optimistic pending
+  // change wins, then the form's own override, then the resolved fallback.
+  function getMethod(form: IntakeFormRow): AssignmentMethod {
+    return optimisticMethod[form.id] ?? form.assignmentMethod ?? form.effectiveMethod;
+  }
+
+  async function handleChangeMethod(
+    form: IntakeFormRow,
+    method: AssignmentMethod,
+  ) {
+    const previous = form.assignmentMethod ?? form.effectiveMethod;
+    if (method === getMethod(form)) return;
+    setOptimisticMethod((prev) => ({ ...prev, [form.id]: method }));
+    setAssigningId(form.id);
+    try {
+      const res = await fetch(`/api/intake/forms/${form.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        // Keep autoAssign in sync so an explicit "Manual" leaves tickets
+        // unassigned, matching the edit modal's behavior.
+        body: JSON.stringify({
+          assignmentMethod: method,
+          autoAssign: method !== "MANUAL",
+        }),
+      });
+      if (res.ok) {
+        startTransition(() => router.refresh());
+      } else {
+        setOptimisticMethod((prev) => ({ ...prev, [form.id]: previous }));
+      }
+    } catch {
+      setOptimisticMethod((prev) => ({ ...prev, [form.id]: previous }));
+    } finally {
+      setAssigningId(null);
+    }
   }
 
   function handleSuccess() {
@@ -2754,30 +2795,52 @@ export function SettingsIntakeFormsPage({
                       </div>
                     </TableCell>
 
-                    {/* Assignment method (configured on the Assignment methods page) */}
+                    {/* Assignment method — editable inline; PATCHes the form's
+                        own override so new tickets route by the chosen method. */}
                     <TableCell className="py-0">
                       <div className="flex h-[56px] items-center">
                         {(() => {
-                          const style =
-                            ASSIGNMENT_METHOD_STYLES[form.effectiveMethod];
+                          const method = getMethod(form);
+                          const style = ASSIGNMENT_METHOD_STYLES[method];
                           const MethodIcon = style.icon;
                           return (
-                            <span
-                              className={`inline-flex items-center gap-1.5 font-sans text-[11.5px] font-semibold ${style.className}`}
-                              title={
-                                form.assignmentMethod === null
-                                  ? `Inherited from the department (${ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]})`
-                                  : "Set on the Assignment methods page"
+                            <Select
+                              value={method}
+                              disabled={assigningId === form.id}
+                              onValueChange={(v) =>
+                                handleChangeMethod(form, v as AssignmentMethod)
                               }
                             >
-                              <MethodIcon className="size-3.5" />
-                              {ASSIGNMENT_METHOD_LABELS[form.effectiveMethod]}
-                              {form.assignmentMethod === null && (
-                                <span className="text-sts-subtle">
-                                  · inherited
+                              <SelectTrigger
+                                className="h-8 w-auto gap-1.5 rounded-full border-sts-card-border bg-sts-surface px-3 font-sans text-[11.5px] font-semibold"
+                                title="Change how new tickets from this form are assigned"
+                              >
+                                <span
+                                  className={`inline-flex items-center gap-1.5 ${style.className}`}
+                                >
+                                  <MethodIcon className="size-3.5" />
+                                  {ASSIGNMENT_METHOD_LABELS[method]}
                                 </span>
-                              )}
-                            </span>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(
+                                  [
+                                    "RULE_BASED",
+                                    "ROUND_ROBIN",
+                                    "WORKLOAD_BASED",
+                                    "MANUAL",
+                                  ] as const
+                                ).map((m) => (
+                                  <SelectItem
+                                    key={m}
+                                    value={m}
+                                    className="font-sans text-[12.5px]"
+                                  >
+                                    {ASSIGNMENT_METHOD_LABELS[m]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           );
                         })()}
                       </div>

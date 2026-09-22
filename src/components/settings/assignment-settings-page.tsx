@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,9 +12,7 @@ import {
   Scale,
   Hand,
   Layers,
-  FileText,
   AlertTriangle,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MemberOption } from "@/components/ui/issue-assignee-select";
@@ -39,12 +37,6 @@ type AssignmentRule = {
   formConfigId: string | null;
 };
 
-type FormAssignment = {
-  id: string;
-  name: string;
-  /** null = inherit the sub-department's (then department's) method. */
-  assignmentMethod: AssignmentMethod | null;
-};
 
 type MethodMeta = {
   value: AssignmentMethod;
@@ -165,25 +157,17 @@ export function AssignmentSettingsPage({
   const [method, setMethod] = useState<AssignmentMethod | null | undefined>(undefined);
   const [parentMethod, setParentMethod] = useState<AssignmentMethod | null>(null);
   const [rules, setRules] = useState<AssignmentRule[] | null>(null);
-  const [forms, setForms] = useState<FormAssignment[] | null>(null);
-  // What a form set to "Inherit" resolves to (sub-dept → dept → round-robin).
-  const [formInheritedMethod, setFormInheritedMethod] = useState<AssignmentMethod>("ROUND_ROBIN");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // Per-form staged (unsaved) method selection, keyed by form id. A missing key
-  // means "no pending change" (the row matches its persisted value).
-  const [draftMethods, setDraftMethods] = useState<Record<string, AssignmentMethod | null>>({});
-  const [savingFormId, setSavingFormId] = useState<string | null>(null);
-  // Rule-based rules per support form, keyed by form id. `undefined` = not yet
-  // loaded (skeleton). See the "support form wise" rules table below.
-  const [rulesByForm, setRulesByForm] = useState<Record<string, AssignmentRule[] | undefined>>({});
-  const [fieldsByForm, setFieldsByForm] = useState<Record<string, RuleFormField[]>>({});
+  // Condition fields for the rules editor — the union of every department form's
+  // fields (support forms are department-wide; a sub-department receives tickets
+  // from any of them via issue routing).
   const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
   const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
 
   // Department page only: a dropdown to view/manage a specific sub-department's
   // assignment. "" = the department itself; a sub-department id = that sub-dept's
-  // per-form surface. (The dedicated sub-department route sets subDepartmentId.)
+  // policy surface. (The dedicated sub-department route sets subDepartmentId.)
   const showScopeSelect = !subDepartmentId && (subDepartments?.length ?? 0) > 0;
   const [activeScope, setActiveScope] = useState<string>("");
   const subDeptNameById = new Map((subDepartments ?? []).map((s) => [s.id, s.name] as const));
@@ -204,174 +188,42 @@ export function AssignmentSettingsPage({
     // Reset to loading state so a scope switch doesn't flash the old scope's data.
     setMethod(undefined);
     setRules(null);
-    setForms(null);
-    setRulesByForm({});
-    setFieldsByForm({});
     setDepartmentFields([]);
-    setDraftMethods({});
     setExpandedRuleId(null);
     Promise.all([
       fetch(`/api/departments/${departmentId}/assignment-settings${scopeQs}`).then(jsonOrThrow),
       fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`).then(jsonOrThrow),
-      fetch(`/api/departments/${departmentId}/form-assignment-methods${scopeQs}`).then(jsonOrThrow),
     ])
-      .then(([settingsRes, rulesRes, formsRes]) => {
+      .then(([settingsRes, rulesRes]) => {
         setMethod(settingsRes.assignmentMethod ?? null);
         setParentMethod(settingsRes.parentMethod ?? null);
         setRules(rulesRes);
-        const formList: FormAssignment[] = formsRes.forms ?? [];
-        setForms(formList);
-        setFormInheritedMethod(formsRes.inheritedMethod ?? "ROUND_ROBIN");
-
-        // Sub-department scope: rules are support-form wise — load each form's rules + fields.
-        if (activeSubId && formList.length) {
-          Promise.all(
-            formList.map(async (f) => {
-              const [rs, rawFields] = await Promise.all([
-                fetch(
-                  `/api/departments/${departmentId}/assignment-rules?formConfigId=${encodeURIComponent(f.id)}`,
-                ).then(jsonOrThrow) as Promise<AssignmentRule[]>,
-                fetch(`/api/intake/forms/${f.id}/fields`)
-                  .then(jsonOrThrow)
-                  .catch(() => [] as { id: string; label: string; type: string; options?: unknown }[]),
-              ]);
-              const fields = (
-                rawFields as { id: string; label: string; type: string; options?: unknown }[]
-              ).map((field) => toRuleFormField(field));
-              return [f.id, rs, fields] as const;
-            }),
-          )
-            .then((entries) => {
-              setRulesByForm(Object.fromEntries(entries.map(([id, rs]) => [id, rs])));
-              setFieldsByForm(Object.fromEntries(entries.map(([id, , fields]) => [id, fields])));
-            })
-            .catch((e) => setError(e.message));
-        } else if (!activeSubId) {
-          // Department-wide rules: aggregate fields from all department forms for the picker.
-          fetch(`/api/departments/${departmentId}/forms`)
-            .then(jsonOrThrow)
-            .then(async (deptForms: { id: string; name: string }[]) => {
-              const lists = await Promise.all(
-                deptForms.map(async (f) => {
-                  const rawFields = await fetch(`/api/intake/forms/${f.id}/fields`)
-                    .then(jsonOrThrow)
-                    .catch(() => [] as { id: string; label: string; type: string; options?: unknown }[]);
-                  return (rawFields as { id: string; label: string; type: string; options?: unknown }[]).map(
-                    (field) => toRuleFormField(field, f.name),
-                  );
-                }),
-              );
-              setDepartmentFields(lists.flat());
-            })
-            .catch(() => setDepartmentFields([]));
-        }
       })
       .catch((e) => setError(e.message));
+
+    // Rule conditions match against form-field values, so the picker offers the
+    // union of every department form's fields — the same set at department and
+    // sub-department scope, since a sub-department receives tickets from any
+    // department form via issue routing.
+    fetch(`/api/departments/${departmentId}/forms`)
+      .then(jsonOrThrow)
+      .then(async (deptForms: { id: string; name: string }[]) => {
+        const lists = await Promise.all(
+          deptForms.map(async (f) => {
+            const rawFields = await fetch(`/api/intake/forms/${f.id}/fields`)
+              .then(jsonOrThrow)
+              .catch(() => [] as { id: string; label: string; type: string; options?: unknown }[]);
+            return (rawFields as { id: string; label: string; type: string; options?: unknown }[]).map(
+              (field) => toRuleFormField(field, f.name),
+            );
+          }),
+        );
+        setDepartmentFields(lists.flat());
+      })
+      .catch(() => setDepartmentFields([]));
   };
 
   useEffect(load, [departmentId, activeSubId]);
-
-  // The method currently shown for a form: its staged draft if one exists,
-  // otherwise its persisted value.
-  const draftFor = (form: FormAssignment) =>
-    form.id in draftMethods ? draftMethods[form.id] : form.assignmentMethod;
-  const isDirty = (form: FormAssignment) => draftFor(form) !== form.assignmentMethod;
-
-  function selectFormMethod(form: FormAssignment, next: AssignmentMethod | null) {
-    setDraftMethods((prev) => ({ ...prev, [form.id]: next }));
-  }
-
-  async function saveFormMethod(form: FormAssignment) {
-    const next = draftFor(form);
-    setError(null);
-    setSavingFormId(form.id);
-    try {
-      await jsonOrThrow(
-        await fetch(`/api/departments/${departmentId}/form-assignment-methods`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ formConfigId: form.id, assignmentMethod: next, subDepartmentId: activeSubId }),
-        }),
-      );
-      setForms((fs) => fs?.map((f) => (f.id === form.id ? { ...f, assignmentMethod: next } : f)) ?? null);
-      // Clear the draft so the row is no longer "dirty" (now matches persisted).
-      setDraftMethods((prev) => {
-        const copy = { ...prev };
-        delete copy[form.id];
-        return copy;
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update form assignment method");
-    } finally {
-      setSavingFormId(null);
-    }
-  }
-
-  // The method a form resolves to right now (staged draft, else persisted, else
-  // the inherited sub-department method) — decides whether its rules table shows.
-  const resolvedMethodFor = (form: FormAssignment): AssignmentMethod =>
-    draftFor(form) ?? formInheritedMethod;
-
-  async function addFormRule(form: FormAssignment) {
-    setError(null);
-    const defaultAgent = members[0]?.id;
-    if (!defaultAgent) {
-      setError("Add a sub department member to this sub-department before creating rules.");
-      return;
-    }
-    try {
-      const created: AssignmentRule = await jsonOrThrow(
-        await fetch(`/api/departments/${departmentId}/assignment-rules`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: "New rule",
-            conditions: { combinator: "AND", conditions: [] },
-            agentId: defaultAgent,
-            formConfigId: form.id,
-          }),
-        }),
-      );
-      setRulesByForm((prev) => ({ ...prev, [form.id]: [...(prev[form.id] ?? []), created] }));
-      setExpandedRuleId(created.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create rule");
-    }
-  }
-
-  async function updateFormRule(formId: string, id: string, patch: Partial<AssignmentRule>) {
-    setError(null);
-    setRulesByForm((prev) => ({
-      ...prev,
-      [formId]: prev[formId]?.map((r) => (r.id === id ? { ...r, ...patch } : r)),
-    }));
-    try {
-      await jsonOrThrow(
-        await fetch(`/api/departments/${departmentId}/assignment-rules/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        }),
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to update rule");
-      load();
-    }
-  }
-
-  async function deleteFormRule(formId: string, id: string) {
-    setError(null);
-    const prev = rulesByForm[formId];
-    setRulesByForm((p) => ({ ...p, [formId]: p[formId]?.filter((x) => x.id !== id) }));
-    try {
-      await jsonOrThrow(
-        await fetch(`/api/departments/${departmentId}/assignment-rules/${id}`, { method: "DELETE" }),
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete rule");
-      setRulesByForm((p) => ({ ...p, [formId]: prev }));
-    }
-  }
 
   async function changeMethod(next: AssignmentMethod | null) {
     setError(null);
@@ -400,6 +252,13 @@ export function AssignmentSettingsPage({
 
   async function addRule() {
     setError(null);
+    // The API requires an agent, so seed the rule with the first available member;
+    // the admin can reassign it afterwards via the "Assign to" picker.
+    const defaultAgent = members[0]?.id;
+    if (!defaultAgent) {
+      setError("Add a member to this department before creating rules.");
+      return;
+    }
     try {
       const created = await jsonOrThrow(
         await fetch(`/api/departments/${departmentId}/assignment-rules${scopeQs}`, {
@@ -408,7 +267,7 @@ export function AssignmentSettingsPage({
           body: JSON.stringify({
             name: "New rule",
             conditions: { combinator: "AND", conditions: [] },
-            agentId: "",
+            agentId: defaultAgent,
             ...(activeSubId ? { subDepartmentId: activeSubId } : {}),
           }),
         }),
@@ -501,120 +360,25 @@ export function AssignmentSettingsPage({
       )}
 
       <div className="mt-6 flex flex-col gap-6">
-        {/* ── Per support form — one card per form ── */}
-        {activeSubId && (
-          <div className="flex flex-col gap-3">
-            <div>
-              <h2 className="sts-text-section-label">Per support form</h2>
-              <p className="mt-1 sts-text-meta">
-                Set how tickets from each support form are assigned. “Inherit” uses this
-                sub-department&apos;s method ({methodLabel(formInheritedMethod)}).
-              </p>
-            </div>
-
-            {forms === null ? (
-              <SkeletonRows count={2} height="h-44" />
-            ) : forms.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-10 text-center">
-                <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No support forms yet</p>
-                <p className="mx-auto mt-1 max-w-xs sts-text-meta">
-                  Forms that route to this sub-department will appear here.
-                </p>
-              </div>
-            ) : (
-              forms.map((form) => (
-                <section
-                  key={form.id}
-                  className="rounded-2xl border border-sts-card-border bg-sts-card p-5 shadow-[var(--sts-card-shadow)]"
-                >
-                  <div className="mb-4 flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-blue">
-                      <FileText className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-sans text-[14px] font-semibold tracking-[-0.01em] text-sts-foreground">
-                        {form.name}
-                      </p>
-                      {form.assignmentMethod === null && (
-                        <p className="sts-text-meta">Inheriting {methodLabel(formInheritedMethod)}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div
-                    role="radiogroup"
-                    aria-label={`Assignment method for ${form.name}`}
-                    className="grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-                  >
-                    <MethodOption
-                      selected={draftFor(form) === null}
-                      disabled={savingFormId === form.id}
-                      onClick={() => selectFormMethod(form, null)}
-                      icon={Layers}
-                      chip="bg-sts-surface text-sts-subtle"
-                      className="sm:col-span-2"
-                      label="Inherit"
-                      description={`Use this sub-department's method — currently ${methodLabel(formInheritedMethod)}.`}
-                    />
-                    {METHODS.map((m) => (
-                      <MethodOption
-                        key={m.value}
-                        selected={draftFor(form) === m.value}
-                        disabled={savingFormId === form.id}
-                        onClick={() => selectFormMethod(form, m.value)}
-                        icon={m.icon}
-                        chip={m.chip}
-                        label={m.label}
-                        description={m.description}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-end gap-3 border-t border-sts-card-border pt-3">
-                    {isDirty(form) && (
-                      <span className="sts-text-meta">Unsaved changes</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => saveFormMethod(form)}
-                      disabled={!isDirty(form) || savingFormId === form.id}
-                      className="sts-pressable inline-flex items-center gap-1.5 rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {savingFormId === form.id && <Loader2 className="size-3.5 animate-spin" />}
-                      Save
-                    </button>
-                  </div>
-
-                  {/* Rules for this form — support form wise, shown as a table. */}
-                  {resolvedMethodFor(form) === "RULE_BASED" && (
-                    <FormRulesTable
-                      rules={rulesByForm[form.id]}
-                      fields={fieldsByForm[form.id] ?? []}
-                      members={members}
-                      inputClass={inputClass}
-                      expandedRuleId={expandedRuleId}
-                      onToggleExpand={(id) => setExpandedRuleId((cur) => (cur === id ? null : id))}
-                      onAdd={() => addFormRule(form)}
-                      onUpdate={(id, patch) => updateFormRule(form.id, id, patch)}
-                      onDelete={(id) => deleteFormRule(form.id, id)}
-                    />
-                  )}
-                </section>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ── Method selector — department scope only; sub-departments configure per form ── */}
-        {!activeSubId && (
+        {/* ── Method selector ──
+            Department scope: the department-wide default.
+            Sub-department scope: the sub-department's own method, which defaults
+            to inheriting the parent department. Support forms are department-wide
+            and route to a sub-department via their issues, so tickets that land
+            here follow this method. */}
         <SectionCard
           title="Method"
-          description="The default for every ticket in this department."
+          description={
+            activeSubId
+              ? "Applies to every ticket routed to this sub-department (via a support form's issue)."
+              : "The default for every ticket in this department."
+          }
         >
           {method === undefined ? (
             <SkeletonRows count={3} height="h-[68px]" />
           ) : (
             <div role="radiogroup" aria-label="Assignment method" className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {subDepartmentId && (
+              {activeSubId && (
                 <MethodOption
                   selected={method === null}
                   disabled={saving}
@@ -645,10 +409,11 @@ export function AssignmentSettingsPage({
             </div>
           )}
         </SectionCard>
-        )}
 
-        {/* ── Rule-based rules (department scope only; sub-departments configure per form) ── */}
-        {!activeSubId && method === "RULE_BASED" && (
+        {/* ── Rule-based rules — shown at whichever scope's method is RULE_BASED.
+            Department scope edits department-wide rules; sub-department scope
+            edits that sub-department's own rules (both loaded via scopeQs). ── */}
+        {method === "RULE_BASED" && (
           <SectionCard
             title="Rules"
             description="Checked top to bottom — the first matching rule assigns its agent."
@@ -740,147 +505,6 @@ export function AssignmentSettingsPage({
           </SectionCard>
         )}
       </div>
-    </div>
-  );
-}
-
-// ─── Per-form rules table ─────────────────────────────────────────────────────
-
-function FormRulesTable({
-  rules,
-  fields,
-  members,
-  inputClass,
-  expandedRuleId,
-  onToggleExpand,
-  onAdd,
-  onUpdate,
-  onDelete,
-}: {
-  rules: AssignmentRule[] | undefined;
-  fields: RuleFormField[];
-  members: MemberOption[];
-  inputClass: string;
-  expandedRuleId: string | null;
-  onToggleExpand: (id: string) => void;
-  onAdd: () => void;
-  onUpdate: (id: string, patch: Partial<AssignmentRule>) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <div className="mt-4 border-t border-sts-card-border pt-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Rules</h3>
-          <p className="mt-0.5 sts-text-meta">
-            Checked top to bottom — the first matching rule assigns its agent.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="sts-pressable inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white transition-colors hover:bg-sts-blue/90"
-        >
-          <Plus className="size-3.5" /> Add rule
-        </button>
-      </div>
-
-      {rules === undefined ? (
-        <SkeletonRows count={2} height="h-10" />
-      ) : rules.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-sts-card-border px-4 py-8 text-center">
-          <p className="font-sans text-[12.5px] font-medium text-sts-foreground">No rules yet</p>
-          <p className="mx-auto mt-1 max-w-xs sts-text-meta">
-            Tickets from this form will fail to auto-assign until you add at least one rule.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-sts-card-border">
-          <table className="w-full border-collapse font-sans text-[12.5px]">
-            <thead>
-              <tr className="border-b border-sts-card-border bg-sts-surface/50 text-left">
-                <th className="w-10 px-3 py-2 font-medium text-sts-subtle">#</th>
-                <th className="px-3 py-2 font-medium text-sts-subtle">Rule</th>
-                <th className="px-3 py-2 font-medium text-sts-subtle">Assign to</th>
-                <th className="px-3 py-2 font-medium text-sts-subtle">Conditions</th>
-                <th className="w-20 px-3 py-2 text-center font-medium text-sts-subtle">Enabled</th>
-                <th className="w-12 px-3 py-2" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rules.map((rule, i) => {
-                const expanded = expandedRuleId === rule.id;
-                return (
-                  <Fragment key={rule.id}>
-                    <tr className={cn("border-b border-sts-card-border", expanded && "bg-sts-surface/30")}>
-                      <td className="px-3 py-2 align-middle">
-                        <span className="flex size-6 items-center justify-center rounded-md bg-sts-surface font-sans text-[11px] font-semibold text-sts-subtle ring-1 ring-sts-card-border">
-                          {i + 1}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <input
-                          value={rule.name}
-                          onChange={(e) => onUpdate(rule.id, { name: e.target.value })}
-                          placeholder="Rule name"
-                          className={cn(inputClass, "w-full min-w-[140px] font-medium")}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <AgentSelect
-                          value={rule.agentId}
-                          members={members}
-                          inputClass={inputClass}
-                          onChange={(agentId) => onUpdate(rule.id, { agentId })}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-middle">
-                        <button
-                          type="button"
-                          onClick={() => onToggleExpand(rule.id)}
-                          className="sts-text-meta text-left hover:text-sts-blue hover:underline"
-                        >
-                          {conditionsSummary(rule.conditions, fields)}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-center align-middle">
-                        <input
-                          type="checkbox"
-                          checked={rule.enabled}
-                          onChange={(e) => onUpdate(rule.id, { enabled: e.target.checked })}
-                          className="size-3.5 accent-sts-blue"
-                          aria-label={`Enable ${rule.name}`}
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-right align-middle">
-                        <button
-                          type="button"
-                          onClick={() => onDelete(rule.id)}
-                          aria-label="Delete rule"
-                          className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                    {expanded && (
-                      <tr className="border-b border-sts-card-border last:border-0 bg-sts-surface/30">
-                        <td colSpan={6} className="px-3 pb-4 pt-1">
-                          <RuleConditionsEditor
-                            conditions={rule.conditions}
-                            fields={fields}
-                            onChange={(conditions) => onUpdate(rule.id, { conditions })}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

@@ -338,6 +338,8 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
 
     const updates: Prisma.SlaTimerUpdateInput = {};
     const breachRows: { metric: string; targetMins: number }[] = [];
+    // A first-time resolution breach auto-escalates the ticket (SLA-07).
+    let escalateForResolutionBreach = false;
 
     if (indicator.firstResponse.status !== "ON_TRACK" && timer.firstResponseStoppedAt === null) {
       if (indicator.firstResponse.status === "BREACHED" && timer.firstResponseBreachNotifiedAt === null) {
@@ -351,6 +353,7 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
       if (indicator.resolution.status === "BREACHED" && timer.resolutionBreachNotifiedAt === null) {
         updates.resolutionBreachNotifiedAt = now;
         breachRows.push({ metric: "resolution", targetMins: timer.resolutionTargetMins });
+        escalateForResolutionBreach = true;
       } else if (indicator.resolution.status === "AT_RISK" && timer.resolutionAtRiskNotifiedAt === null) {
         updates.resolutionAtRiskNotifiedAt = now;
       }
@@ -375,6 +378,18 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
     ]);
 
     await notifyRecipients(ticketId, departmentId, timer.ticket.assigneeId, updates);
+
+    // Resolution breach → auto-escalate the ticket to the sub-department's
+    // Escalated status, once, right after the breach is recorded. The DB
+    // trigger stamps the STATUS_CHANGED ActivityLog with this source so the UI
+    // renders it as an automation event. Dynamic import breaks the cycle
+    // (ticket-escalation → syncResolutionTimerOnClosedAtChange in this module).
+    if (escalateForResolutionBreach) {
+      const { escalateTicket } = await import("@/lib/ticket-escalation");
+      await escalateTicket(ticketId, {
+        activitySource: { source: "sla", event: "resolution_breach", targetMins: timer.resolutionTargetMins },
+      }).catch(() => undefined);
+    }
   } catch {
     // best-effort
   }
@@ -408,15 +423,36 @@ async function notifyRecipients(
  * metric not yet stopped) for at-risk/breach notifications — used by the
  * cron sweep so notifications fire even when nobody has the ticket open.
  */
+// The sweep runs under system scope (cross-tenant), so it can face every live
+// timer on the shared DB. Processing them one-at-a-time against a remote DB
+// overruns the 5-min cron cadence (and Vercel's function timeout), so bound the
+// work: a small concurrency pool plus a wall-clock budget. checkAndNotifySla is
+// idempotent (acts only while a *NotifiedAt column is null), so any timer a run
+// doesn't reach is simply picked up by the next run.
+const SWEEP_CONCURRENCY = 6;
+const SWEEP_BUDGET_MS = 4 * 60_000;
+
 export async function sweepSlaChecks(now: Date = new Date()): Promise<number> {
+  const deadline = Date.now() + SWEEP_BUDGET_MS;
   const timers = await prisma.slaTimer.findMany({
     where: { OR: [{ firstResponseStoppedAt: null }, { resolutionStoppedAt: null }] },
     select: { ticketId: true },
+    orderBy: { resolutionStartedAt: "asc" }, // oldest (closest to breach) first
   });
-  for (const { ticketId } of timers) {
-    await checkAndNotifySla(ticketId, now);
-  }
-  return timers.length;
+
+  let checked = 0;
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < timers.length && Date.now() < deadline) {
+      const { ticketId } = timers[cursor++]!;
+      await checkAndNotifySla(ticketId, now);
+      checked++;
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(SWEEP_CONCURRENCY, timers.length) }, worker),
+  );
+  return checked;
 }
 
 export type { SlaIndicator } from "@/lib/sla-timer";

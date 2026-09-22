@@ -89,6 +89,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/auth/verify-otp") || // OTP sign-in; no session yet
     pathname.startsWith("/api/v1/") ||
     pathname.startsWith("/api/webhooks/") || // authenticated by HMAC signature, not session
+    pathname.startsWith("/api/cron/") || // cron jobs — authenticated by Bearer CRON_SECRET in the route, not session
     pathname.startsWith("/api/mcp/") || // authenticated by API key in the path, not session
     pathname === "/offline" ||
     pathname === "/sw.js" ||

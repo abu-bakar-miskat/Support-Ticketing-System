@@ -103,7 +103,10 @@ export async function createTicketFromPayload(
     priority: resolvedPriority,
     submitterName,
     title,
-    autoAssign: form.autoAssign,
+    // No form-level autoAssign gate: the assignment engine resolves the method
+    // (sub-department → form → department) and honors a resolved MANUAL as a
+    // deliberate non-assignment. A "Manual" form no longer suppresses the
+    // routed sub-department's own auto-assignment method.
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>

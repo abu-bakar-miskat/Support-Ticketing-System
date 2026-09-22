@@ -113,7 +113,6 @@ export async function prepareConversion({
   priority,
   submitterName,
   title = "",
-  autoAssign = true,
 }: {
   formId: string;
   formName: string;
@@ -123,7 +122,6 @@ export async function prepareConversion({
   priority: TicketPriority;
   submitterName: string;
   title?: string;
-  autoAssign?: boolean;
 }): Promise<ConversionPrep> {
   const subDepartment = await prisma.subDepartment.findUniqueOrThrow({
     where: { id: intakeSubDepartmentId },
@@ -157,21 +155,25 @@ export async function prepareConversion({
   let nextPointer = subDepartment.rotaPointer;
   let assignmentFailed = false;
 
-  if (autoAssign) {
-    // Tickets land in the (possibly SLA-routed) sub-department and are assigned
-    // using that sub-department's method among currently available members.
-    const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
-    const result = await autoAssignTicket({
-      departmentId,
-      teamId: intakeSubDepartmentId,
-      formValues,
-      excludeUserId: managerId,
-      formConfigId: formId,
-    });
-    assigneeId = result.assigneeId;
-    assignmentFailed = result.failed;
-    if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
-  }
+  // Tickets land in the (possibly SLA-routed) sub-department and are assigned
+  // using that sub-department's method among currently available members. The
+  // engine resolves the method with precedence sub-department → form →
+  // department, and treats a resolved MANUAL as an intentional non-assignment
+  // (no assignee, no failure). We must therefore always let it run: gating on
+  // the form's own autoAssign flag would let a "Manual" *form* suppress the
+  // *sub-department's* auto method for issue-routed tickets — the exact case
+  // where a ticket reached the right team but was never picked up.
+  const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
+  const result = await autoAssignTicket({
+    departmentId,
+    teamId: intakeSubDepartmentId,
+    formValues,
+    excludeUserId: managerId,
+    formConfigId: formId,
+  });
+  assigneeId = result.assigneeId;
+  assignmentFailed = result.failed;
+  if (result.nextRotaPointer !== undefined) nextPointer = result.nextRotaPointer;
 
   const assigneeProfile = assigneeId
     ? await prisma.profile.findUniqueOrThrow({

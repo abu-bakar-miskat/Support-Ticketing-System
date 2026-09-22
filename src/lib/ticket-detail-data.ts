@@ -1,6 +1,7 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getSubDepartmentStatuses } from "@/lib/board-data";
 import {
@@ -209,6 +210,92 @@ export async function getAssignableUsersForTicketDepartment(
 }
 
 /**
+ * Prisma `where` matching exactly who may be assigned to a ticket — kept in sync
+ * with {@link assertUsersEligibleForTicketSubDepartment} so every user we offer
+ * in the assignee picker passes the server-side eligibility check on save.
+ * Tier 1: the ticket's own sub-department. Tier 2 (dept-wide grants): managers,
+ * active department access grants, and direct department memberships.
+ */
+function ticketAssigneeEligibilityWhere(
+  subDepartmentId: string,
+  departmentId: string | null,
+) {
+  const or: Prisma.ProfileWhereInput[] = [
+    { subDepartmentId },
+    { memberships: { some: { subDepartmentId, isActive: true } } },
+  ];
+  if (departmentId) {
+    or.push(
+      { managedDepartments: { some: { departmentId } } },
+      {
+        departmentAccesses: {
+          some: {
+            departmentId,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+        },
+      },
+      { directDeptMemberships: { some: { departmentId } } },
+    );
+  }
+  return { deletedAt: null, OR: or };
+}
+
+const fetchEligibleAssignees = (
+  subDepartmentId: string,
+  departmentId: string | null,
+) =>
+  prisma.profile.findMany({
+    where: ticketAssigneeEligibilityWhere(subDepartmentId, departmentId),
+    select: {
+      id: true,
+      name: true,
+      avatarUrl: true,
+      subDepartment: {
+        select: { name: true, department: { select: { name: true } } },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+const getCachedEligibleAssignees = (
+  subDepartmentId: string,
+  departmentId: string | null,
+) =>
+  unstable_cache(
+    () => fetchEligibleAssignees(subDepartmentId, departmentId),
+    ["ticket-detail-eligible-assignees", subDepartmentId, departmentId ?? "none"],
+    { revalidate: 300 },
+  )();
+
+/** Users eligible to be this ticket's assignee/co-assignee, for the picker. */
+export async function getEligibleAssigneesForTicket(
+  subDepartmentId: string,
+  departmentId: string | null,
+  extras: AssignableUser[] = [],
+): Promise<AssignableUser[]> {
+  const people = await getCachedEligibleAssignees(subDepartmentId, departmentId);
+
+  const byId = new Map<string, AssignableUser>();
+  for (const u of people) {
+    byId.set(u.id, {
+      id: u.id,
+      name: u.name,
+      avatarUrl: u.avatarUrl ?? null,
+      departmentName: u.subDepartment?.department?.name ?? null,
+      subDepartmentName: u.subDepartment?.name ?? null,
+    });
+  }
+  // Fold in current assignee/co-assignees so they always render, even if the
+  // cached roster is briefly stale.
+  for (const u of extras) {
+    if (!byId.has(u.id)) byId.set(u.id, u);
+  }
+
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * SD-06: a ticket belongs to exactly one sub-department, so membership in a
  * *different* sub-department under the same parent department (what
  * buildProjectDepartmentPeopleWhere allows for department-wide Projects) must
@@ -347,10 +434,13 @@ export async function getTicketDetailPayload(
   const mentionableUsers: Awaited<
     ReturnType<typeof getCachedTicketMentionable>
   > = [];
-  // Full department roster eligible for assignment, with current
-  // assignee/co-assignees folded in as extras so they always appear even if
-  // the cached roster is momentarily stale.
-  const subDepartmentMembers = await getAssignableUsersForTicketDepartment(
+  // Users eligible to be assigned to THIS ticket — the ticket's own
+  // sub-department plus department-wide grant holders. Kept in sync with the
+  // server-side eligibility check so every option in the picker is accepted on
+  // save (a whole-department roster would list members of sibling
+  // sub-departments who then get rejected — see SD-06).
+  const subDepartmentMembers = await getEligibleAssigneesForTicket(
+    ticket.subDepartmentId,
     ticketDeptId,
     assigneeFallback,
   );

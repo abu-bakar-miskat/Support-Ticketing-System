@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
 import { avatarColorFor } from "@/lib/avatar"
 import { entrySeconds, formatHm, relativeAgo } from "@/lib/time-data"
-import { getProfileDeptScope } from "@/lib/dept-scope"
+import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
 import type { StatCard, SubDepartmentMember, SubDepartmentTimeResponse, ProjectTimeRow } from "@/lib/api/reports"
 
@@ -46,19 +46,21 @@ export async function GET(request: Request) {
   const lastWeekStart = prevStart
   const lastWeekEnd = prevEnd
 
-  const deptScope = await getProfileDeptScope(profile)
+  const analyticsScope = await resolveAnalyticsScope(profile, searchParams.get("departmentId"))
+  const ticketScope = analyticsScope.ticketWhere
   // No dept scope (admin global) still bounds to the active tenant.
   const tenantId = profile.activeTenantId ?? "__no_tenant__"
 
+  const memberSubIds = analyticsScope.subDepartmentIds
   const memberWhere = {
-    ...(deptScope
-      ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
+    ...(memberSubIds
+      ? { subDepartmentId: { in: memberSubIds.length ? memberSubIds : ["__none__"] } }
       : { tenantMemberships: { some: { tenantId, isActive: true } } }),
     ...(personScoped ? { id: personId } : {}),
     deletedAt: null,
   }
   const ticketWhere = {
-    ...(deptScope ? { subDepartmentId: { in: deptScope.subDepartmentIds } } : { tenantId }),
+    ...ticketScope,
     ...(projectScoped ? { projectId } : {}),
     ...(personScoped ? { assigneeId: personId } : {}),
   }
@@ -73,8 +75,8 @@ export async function GET(request: Request) {
       prisma.timeEntry.findMany({
         where: {
           OR: [{ startedAt: { gte: weekStart, lt: weekEnd } }, { endedAt: null }],
-          ...(deptScope
-            ? { profile: { subDepartmentId: { in: deptScope.subDepartmentIds } } }
+          ...(memberSubIds
+            ? { profile: { subDepartmentId: { in: memberSubIds.length ? memberSubIds : ["__none__"] } } }
             : { profile: { tenantMemberships: { some: { tenantId, isActive: true } } } }),
           ...(projectScoped ? { ticket: { projectId } } : {}),
           ...(personScoped ? { profileId: personId } : {}),

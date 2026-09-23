@@ -132,13 +132,46 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: null, method: "ROUND_ROBIN", failed: true })
   })
 
-  it("WORKLOAD_BASED: assigns to the lowest open-ticket count", async () => {
-    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED" } as never)
+  it("WORKLOAD_BASED: skips agents at/over the threshold in favor of one under it", async () => {
+    // Default threshold 5: "a" is at capacity, so "b" (under it) gets the ticket.
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", workloadThreshold: 5 } as never)
     mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
     mockGetCounts.mockResolvedValue([{ userId: "a", count: 5 }, { userId: "b", count: 1 }])
 
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
-    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false })
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 0 })
+  })
+
+  it("WORKLOAD_BASED: round-robins among under-threshold agents from the rota pointer", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", workloadThreshold: 5 } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 1 } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }])
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 0 }, { userId: "b", count: 2 }, { userId: "c", count: 1 }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    // pointer 1 → "b" is under threshold, so it wins; advance to 2.
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 2 })
+  })
+
+  it("WORKLOAD_BASED: falls back to the fewest open tickets when everyone is at/over the threshold", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", workloadThreshold: 3 } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 6 }, { userId: "b", count: 4 }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 0 })
+  })
+
+  it("WORKLOAD_BASED: an override sub-department uses its own threshold over the department's", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "ROUND_ROBIN", workloadThreshold: 5 } as never)
+    // Sub sets its own WORKLOAD_BASED with a tight threshold of 2.
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "WORKLOAD_BASED", workloadThreshold: 2 } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 3 }, { userId: "b", count: 1 }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+    // "a" is over the sub's threshold of 2, so "b" (under it) wins.
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 0 })
   })
 
   it("WORKLOAD_BASED: fails when there is nobody eligible", async () => {
@@ -194,13 +227,14 @@ describe("autoAssignTicket — ASG-01", () => {
     expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
   })
 
-  it("inherits the parent department's method when the sub-department override is null", async () => {
-    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED" } as never)
+  it("inherits the parent department's method (and threshold) when the sub-department override is null", async () => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", workloadThreshold: 5 } as never)
     mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null } as never)
     mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
     mockGetCounts.mockResolvedValue([{ userId: "a", count: 3 }, { userId: "b", count: 0 }])
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
-    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false })
+    // Both are under the inherited threshold of 5, so from pointer 0 "a" wins round-robin.
+    expect(result).toEqual({ assigneeId: "a", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 1 })
   })
 
   it("RULE_BASED: queries rules scoped to the sub-department plus department-wide, sub-dept first", async () => {
@@ -301,7 +335,9 @@ describe("autoAssignTicket — form ↔ sub-department precedence", () => {
     const mockMailboxFind = vi.mocked(prisma.mailboxConnection.findUnique)
     mockMailboxFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", manualAssigneeIds: [] } as never)
     mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
-    mockGetCounts.mockResolvedValue([{ userId: "a", count: 4 }, { userId: "b", count: 1 }])
+    // "a" is at the default capacity of 5, so the mailbox's workload method sends
+    // the ticket to "b" — the point being the mailbox method wins outright.
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 5 }, { userId: "b", count: 1 }])
     const result = await autoAssignTicket({
       departmentId: "d1",
       teamId: "t1",
@@ -311,7 +347,7 @@ describe("autoAssignTicket — form ↔ sub-department precedence", () => {
       mailboxConnectionId: "mb1",
       issueRouted: false,
     })
-    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false })
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false, nextRotaPointer: 0 })
   })
 })
 

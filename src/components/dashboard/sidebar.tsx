@@ -431,6 +431,7 @@ export function Sidebar({
   const navMainBase: NavItem[] = isAdminGlobalView
     ? [
         { label: "Departments", href: "/departments", icon: DepartmentIcon },
+        { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports" },
         {
           label: "Notifications",
           href: "/inbox",

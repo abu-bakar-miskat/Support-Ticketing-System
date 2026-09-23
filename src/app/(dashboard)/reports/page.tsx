@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { SubDepartmentTimePage } from "@/components/time/sub-department-time-page";
@@ -11,10 +12,16 @@ export default async function ReportsPage() {
   // Reports is hidden from the agent role (nav link is hidden too).
   if (profile.role === "agent") redirect("/");
 
+  const cookieStore = await cookies();
+  const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
+  // Tenant view (no department selected): tenant admin filters by department.
+  // A selected department keeps the report inside that department.
+  const tenantWide = profile.role === "admin" && !activeDeptId;
+
   return (
     <>
-      <OpsReportPanels />
-      <SubDepartmentTimePage />
+      {!tenantWide && <OpsReportPanels />}
+      <SubDepartmentTimePage showDepartmentFilter={tenantWide} />
     </>
   );
 }

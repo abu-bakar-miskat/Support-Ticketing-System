@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { precedingEquivalentRange } from "@/lib/reporting/date-range";
 import { summarizeResolutionMinutes, type ResolutionStats } from "@/lib/reporting/stats";
-import type { ReportScope } from "@/lib/reporting/report-scope";
+import { reportScopeWhere, type ReportScope } from "@/lib/reporting/report-scope";
 
 export type ResolutionByPriority = Record<string, ResolutionStats>;
 export type ResolutionTimeReport = {
@@ -11,12 +11,6 @@ export type ResolutionTimeReport = {
   current: ResolutionByPriority;
   preceding: ResolutionByPriority;
 };
-
-function scopeWhere(scope: ReportScope) {
-  if (scope.kind === "department") return { subDepartmentId: { in: scope.subDepartmentIds } };
-  if (scope.kind === "cross_department") return { tenantId: scope.tenantId };
-  return { id: "__none__" };
-}
 
 /**
  * RPT-02: mean/median resolution time by priority for tickets *resolved*
@@ -31,7 +25,7 @@ async function fetchResolutionByPriority(
 ): Promise<ResolutionByPriority> {
   const tickets = await prisma.ticket.findMany({
     where: {
-      ...scopeWhere(scope),
+      ...reportScopeWhere(scope),
       deletedAt: null,
       closedAt: { gte: start, lt: end },
     },

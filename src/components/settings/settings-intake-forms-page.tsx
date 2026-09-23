@@ -488,7 +488,6 @@ function IntakeFormModal({
               <SelectContent>
                 {(
                   [
-                    "RULE_BASED",
                     "ROUND_ROBIN",
                     "WORKLOAD_BASED",
                     "MANUAL",
@@ -2825,7 +2824,6 @@ export function SettingsIntakeFormsPage({
                               <SelectContent>
                                 {(
                                   [
-                                    "RULE_BASED",
                                     "ROUND_ROBIN",
                                     "WORKLOAD_BASED",
                                     "MANUAL",

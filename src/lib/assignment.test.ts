@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickRoundRobin, pickWorkload, pickRuleBased, type AssignmentRuleLike } from "./assignment";
+import { pickRoundRobin, pickWorkloadThreshold, pickRuleBased, type AssignmentRuleLike } from "./assignment";
 import type { ConditionGroup } from "./rules-engine";
 
 const unconditional: ConditionGroup = { combinator: "AND", conditions: [] };
@@ -31,23 +31,37 @@ describe("pickRoundRobin", () => {
   });
 });
 
-describe("pickWorkload", () => {
-  it("picks the lowest open-ticket count", () => {
-    const candidates = [{ userId: "a", count: 5 }, { userId: "b", count: 2 }, { userId: "c", count: 8 }];
-    expect(pickWorkload(candidates)).toBe("b");
+describe("pickWorkloadThreshold", () => {
+  it("round-robins among members under the threshold, advancing the pointer", () => {
+    // All three are under threshold 5 → strict rotation from the pointer.
+    const candidates = [{ userId: "a", count: 4 }, { userId: "b", count: 0 }, { userId: "c", count: 1 }];
+    expect(pickWorkloadThreshold(candidates, 5, 0)).toEqual({ userId: "a", nextPointer: 1 });
+    expect(pickWorkloadThreshold(candidates, 5, 1)).toEqual({ userId: "b", nextPointer: 2 });
   });
 
-  it("breaks ties by input order", () => {
-    const candidates = [{ userId: "a", count: 2 }, { userId: "b", count: 2 }];
-    expect(pickWorkload(candidates)).toBe("a");
+  it("skips members at/over the threshold when someone is still under it", () => {
+    // From pointer 0: "a" is at capacity (5 >= 5), so the next under-threshold
+    // member ("b") gets it.
+    const candidates = [{ userId: "a", count: 5 }, { userId: "b", count: 1 }];
+    expect(pickWorkloadThreshold(candidates, 5, 0)).toEqual({ userId: "b", nextPointer: 0 });
+  });
+
+  it("falls back to the fewest open tickets when everyone is at/over the threshold", () => {
+    const candidates = [{ userId: "a", count: 7 }, { userId: "b", count: 5 }, { userId: "c", count: 9 }];
+    expect(pickWorkloadThreshold(candidates, 5, 0)).toEqual({ userId: "b", nextPointer: 2 });
+  });
+
+  it("breaks the all-over-threshold fallback tie by input order", () => {
+    const candidates = [{ userId: "a", count: 5 }, { userId: "b", count: 5 }];
+    expect(pickWorkloadThreshold(candidates, 5, 1)).toEqual({ userId: "a", nextPointer: 1 });
   });
 
   it("returns null for an empty candidate list", () => {
-    expect(pickWorkload([])).toBeNull();
+    expect(pickWorkloadThreshold([], 5, 0)).toBeNull();
   });
 
   it("handles a single candidate", () => {
-    expect(pickWorkload([{ userId: "solo", count: 100 }])).toBe("solo");
+    expect(pickWorkloadThreshold([{ userId: "solo", count: 100 }], 5, 0)).toEqual({ userId: "solo", nextPointer: 0 });
   });
 });
 

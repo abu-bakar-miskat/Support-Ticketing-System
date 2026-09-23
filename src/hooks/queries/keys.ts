@@ -55,8 +55,8 @@ export const calendarKeys = {
 }
 
 export const reportKeys = {
-  subDepartmentTime: (from: string, to: string, projectId: string, personId: string) =>
-    ["reports", "team-time", from, to, projectId, personId] as const,
-  overview: (from: string, to: string, projectId: string, personId: string) =>
-    ["reports", "overview", from, to, projectId, personId] as const,
+  subDepartmentTime: (from: string, to: string, projectId: string, personId: string, departmentId = "all") =>
+    ["reports", "team-time", from, to, projectId, personId, departmentId] as const,
+  overview: (from: string, to: string, projectId: string, personId: string, departmentId = "all") =>
+    ["reports", "overview", from, to, projectId, personId, departmentId] as const,
 }

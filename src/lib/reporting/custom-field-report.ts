@@ -1,15 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { resolveFormFieldTicketIds, type FormFieldFilter } from "@/lib/board-search";
-import type { ReportScope } from "@/lib/reporting/report-scope";
+import { reportScopeWhere, type ReportScope } from "@/lib/reporting/report-scope";
 
 export type CustomFieldBucket = { value: string; count: number };
-
-function scopeWhere(scope: ReportScope) {
-  if (scope.kind === "department") return { subDepartmentId: { in: scope.subDepartmentIds } };
-  if (scope.kind === "cross_department") return { tenantId: scope.tenantId };
-  return { id: "__none__" };
-}
 
 /**
  * RPT-04: a department's own custom report — group ticket counts by one
@@ -25,7 +19,7 @@ export async function computeCustomFieldReport(params: {
 }): Promise<CustomFieldBucket[]> {
   const tickets = await prisma.ticket.findMany({
     where: {
-      ...scopeWhere(params.scope),
+      ...reportScopeWhere(params.scope),
       deletedAt: null,
       createdAt: { gte: params.start, lt: params.end },
       intake: { isNot: null },

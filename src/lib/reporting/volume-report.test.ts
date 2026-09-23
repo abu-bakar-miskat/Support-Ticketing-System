@@ -15,13 +15,22 @@ beforeEach(() => {
 describe("computeVolumeReport", () => {
   it("scopes by subDepartmentIds for a department scope", async () => {
     mockGroupBy.mockResolvedValue([])
-    await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1", "t2"] }, new Date("2026-02-01"), new Date("2026-03-01"))
+    await computeVolumeReport(
+      { kind: "department", tenantId: "tenant-1", subDepartmentIds: ["t1", "t2"] },
+      new Date("2026-02-01"),
+      new Date("2026-03-01"),
+    )
     expect(mockGroupBy).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ subDepartmentId: { in: ["t1", "t2"] } }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "tenant-1",
+          subDepartmentId: { in: ["t1", "t2"] },
+        }),
+      }),
     )
   })
 
-  it("scopes by tenantId for a cross-department scope", async () => {
+  it("TC-039: tenant admin volume query is bound to that tenant id", async () => {
     mockGroupBy.mockResolvedValue([])
     await computeVolumeReport({ kind: "cross_department", tenantId: "tenant-1" }, new Date("2026-02-01"), new Date("2026-03-01"))
     expect(mockGroupBy).toHaveBeenCalledWith(
@@ -41,7 +50,11 @@ describe("computeVolumeReport", () => {
     mockGroupBy.mockResolvedValue([])
     const start = new Date("2026-02-01T00:00:00.000Z")
     const end = new Date("2026-03-01T00:00:00.000Z")
-    const result = await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1"] }, start, end)
+    const result = await computeVolumeReport(
+      { kind: "department", tenantId: "tenant-1", subDepartmentIds: ["t1"] },
+      start,
+      end,
+    )
     expect(result.range).toEqual({ start, end })
     expect(result.precedingRange.end).toEqual(start)
     expect(mockGroupBy).toHaveBeenCalledTimes(2)
@@ -52,7 +65,11 @@ describe("computeVolumeReport", () => {
       { category: "Bug", type: "Bug", _count: { _all: 5 } },
       { category: null, type: "Task", _count: { _all: 2 } },
     ] as never)
-    const result = await computeVolumeReport({ kind: "department", subDepartmentIds: ["t1"] }, new Date("2026-02-01"), new Date("2026-03-01"))
+    const result = await computeVolumeReport(
+      { kind: "department", tenantId: "tenant-1", subDepartmentIds: ["t1"] },
+      new Date("2026-02-01"),
+      new Date("2026-03-01"),
+    )
     expect(result.current).toEqual([
       { category: "Bug", type: "Bug", count: 5 },
       { category: "Uncategorized", type: "Task", count: 2 },

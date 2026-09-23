@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { precedingEquivalentRange } from "@/lib/reporting/date-range";
-import type { ReportScope } from "@/lib/reporting/report-scope";
+import { reportScopeWhere, type ReportScope } from "@/lib/reporting/report-scope";
 
 export type VolumeBucket = { category: string; type: string; count: number };
 export type VolumeReport = {
@@ -11,17 +11,11 @@ export type VolumeReport = {
   preceding: VolumeBucket[];
 };
 
-function scopeWhere(scope: ReportScope) {
-  if (scope.kind === "department") return { subDepartmentId: { in: scope.subDepartmentIds } };
-  if (scope.kind === "cross_department") return { tenantId: scope.tenantId };
-  return { id: "__none__" }; // matches nothing
-}
-
 async function fetchVolumeBuckets(scope: ReportScope, start: Date, end: Date): Promise<VolumeBucket[]> {
   const rows = await prisma.ticket.groupBy({
     by: ["category", "type"],
     where: {
-      ...scopeWhere(scope),
+      ...reportScopeWhere(scope),
       deletedAt: null,
       createdAt: { gte: start, lt: end },
     },

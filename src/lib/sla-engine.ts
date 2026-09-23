@@ -140,12 +140,38 @@ export async function resolveCalendarForTicket(
 }
 
 /**
+ * Resolves the SLA policies that apply to a ticket's department, honouring the
+ * department-overrides-tenant model: a department that has any enabled policies
+ * of its own uses only those; a department with none inherits the tenant-level
+ * defaults (policies with a null `departmentId`). This keeps the tenant policy
+ * unchanged and untouched for departments that have configured their own.
+ */
+async function resolveSlaPolicies(
+  tenantId: string,
+  departmentId: string,
+): Promise<SlaPolicyLike[]> {
+  const select = { id: true, conditions: true, firstResponseMins: true, resolutionMins: true } as const;
+  const deptPolicies = await prisma.slaPolicy.findMany({
+    where: { departmentId, enabled: true },
+    select,
+  });
+  if (deptPolicies.length > 0) return deptPolicies as SlaPolicyLike[];
+  // No department override → fall back to the tenant-level default policies.
+  const tenantPolicies = await prisma.slaPolicy.findMany({
+    where: { tenantId, departmentId: null, enabled: true },
+    select,
+  });
+  return tenantPolicies as SlaPolicyLike[];
+}
+
+/**
  * Starts first-response + resolution timers for a newly created ticket
- * (SLA-03), if a department SLA policy matches the submitted form values
- * (SLA-01/02). When `preferredPolicyId` is set (intake issue / request type),
- * that policy's targets are used directly — Jira-style goal for the chosen
- * request type. Best-effort — never throws, so a failure here can't block
- * ticket creation.
+ * (SLA-03), if an SLA policy matches the submitted form values (SLA-01/02).
+ * Policies resolve via {@link resolveSlaPolicies} — a department's own policies
+ * override the tenant-level defaults it otherwise inherits. When
+ * `preferredPolicyId` is set (intake issue / request type), that policy's
+ * targets are used directly — Jira-style goal for the chosen request type.
+ * Best-effort — never throws, so a failure here can't block ticket creation.
  */
 export async function startSlaTimers(
   ticketId: string,
@@ -158,8 +184,10 @@ export async function startSlaTimers(
 ): Promise<void> {
   try {
     if (preferredPolicyId) {
+      // A preferred policy may be department-owned or a tenant-level default;
+      // match within the ticket's tenant regardless of scope.
       const preferred = await prisma.slaPolicy.findFirst({
-        where: { id: preferredPolicyId, departmentId, enabled: true },
+        where: { id: preferredPolicyId, tenantId, enabled: true },
         select: { id: true, firstResponseMins: true, resolutionMins: true },
       });
       if (preferred) {
@@ -178,16 +206,12 @@ export async function startSlaTimers(
       }
     }
 
-    const policies = await prisma.slaPolicy.findMany({
-      // SLA policies are department-scoped; sub-departments inherit them.
-      // `subDepartmentId` on a policy is optional issue routing, not a filter.
-      where: {
-        departmentId,
-        enabled: true,
-      },
-      select: { id: true, conditions: true, firstResponseMins: true, resolutionMins: true },
-    });
-    const targets = selectSlaTargets(policies as SlaPolicyLike[], formValues);
+    // Department policies override the tenant-level defaults; a department with
+    // none inherits them (resolveSlaPolicies). Sub-departments inherit the
+    // department's policies — `subDepartmentId` on a policy is optional issue
+    // routing, not a filter.
+    const policies = await resolveSlaPolicies(tenantId, departmentId);
+    const targets = selectSlaTargets(policies, formValues);
     if (!targets) return;
 
     await prisma.slaTimer.create({

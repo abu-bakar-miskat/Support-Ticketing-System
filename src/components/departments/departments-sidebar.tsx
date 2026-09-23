@@ -9,6 +9,7 @@ import {
   History,
   Mail,
   Palette,
+  Timer,
   Users,
   X,
 } from "lucide-react";
@@ -54,6 +55,7 @@ export function DepartmentsSidebar({
 
   const navItems: NavItem[] = [
     { label: "Departments", href: "/departments", icon: DepartmentIcon },
+    { label: "SLA", href: "/departments/sla", icon: Timer },
     { label: "Users", href: "/departments/users", icon: Users },
     { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
     { label: "Audit Log", href: "/departments/activity", icon: History },

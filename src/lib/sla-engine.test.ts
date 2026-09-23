@@ -120,6 +120,57 @@ describe("startSlaTimers — SLA-01/02/03", () => {
     })
   })
 
+  it("uses the department's own policies and does not fall back to tenant defaults", async () => {
+    // Department has an enabled policy → override active. Only the dept query runs.
+    mockPolicyFindMany.mockResolvedValueOnce([
+      { id: "dept-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 30, resolutionMins: 240 },
+    ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", {}, now)
+
+    expect(mockPolicyFindMany).toHaveBeenCalledTimes(1)
+    expect(mockPolicyFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { departmentId: "dept-1", enabled: true } }),
+    )
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ policyId: "dept-p", firstResponseTargetMins: 30, resolutionTargetMins: 240 }),
+      }),
+    )
+  })
+
+  it("falls back to tenant-level defaults when the department has no policies", async () => {
+    // Dept query returns nothing → tenant-level (departmentId: null) query runs.
+    mockPolicyFindMany
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        { id: "tenant-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 90, resolutionMins: 600 },
+      ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", {}, now)
+
+    expect(mockPolicyFindMany).toHaveBeenCalledTimes(2)
+    expect(mockPolicyFindMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ where: { tenantId: "tenant-1", departmentId: null, enabled: true } }),
+    )
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ policyId: "tenant-p", firstResponseTargetMins: 90, resolutionTargetMins: 600 }),
+      }),
+    )
+  })
+
+  it("creates no timer when neither department nor tenant defaults exist", async () => {
+    mockPolicyFindMany.mockResolvedValue([] as never)
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", {})
+    expect(mockTimerCreate).not.toHaveBeenCalled()
+  })
+
   it("falls back to condition matching when preferredPolicyId is missing or disabled", async () => {
     mockPolicyFindFirst.mockResolvedValue(null as never)
     mockPolicyFindMany.mockResolvedValue([

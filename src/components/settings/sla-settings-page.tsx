@@ -73,10 +73,13 @@ export function SlaSettingsPage({
   departmentId,
   departmentName,
   subDepartments,
+  hideBackLink = false,
 }: {
   departmentId: string;
   departmentName: string;
   subDepartments?: SubDepartmentOption[];
+  /** Hide the "Back to departments" link when embedded (e.g. behind a picker). */
+  hideBackLink?: boolean;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
@@ -89,31 +92,41 @@ export function SlaSettingsPage({
 
   const subDeptList = subDepartments ?? [];
 
-  const loadSettings = () => {
+  useEffect(() => {
+    let cancelled = false;
     fetch(`/api/departments/${departmentId}/sla-settings`)
       .then(jsonOrThrow)
       .then((settingsRes) => {
+        if (cancelled) return;
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
       })
-      .catch((e) => setError(e.message));
-  };
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [departmentId]);
 
-  const loadPolicies = () => {
-    setPolicies(null);
+  useEffect(() => {
+    let cancelled = false;
     Promise.all([
       fetch(`/api/departments/${departmentId}/sla-policies`).then(jsonOrThrow),
       fetch(`/api/departments/${departmentId}/forms`).then(jsonOrThrow),
     ])
       .then(([policiesRes, formsRes]) => {
+        if (cancelled) return;
         setPolicies(policiesRes);
         setForms(formsRes);
       })
-      .catch((e) => setError(e.message));
-  };
-
-  useEffect(loadSettings, [departmentId]);
-  useEffect(loadPolicies, [departmentId]);
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [departmentId]);
 
   async function createPolicy(input: {
     name: string;
@@ -216,12 +229,14 @@ export function SlaSettingsPage({
 
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-      <Link
-        href="/settings/departments"
-        className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
-      >
-        <ArrowLeft className="size-3.5" /> Back to departments
-      </Link>
+      {!hideBackLink && (
+        <Link
+          href="/settings/departments"
+          className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
+        >
+          <ArrowLeft className="size-3.5" /> Back to departments
+        </Link>
+      )}
 
       <h1 className="sts-text-modal-title mb-1">SLA policies — {departmentName}</h1>
       <p className="mb-6 font-sans text-[12.5px] text-sts-muted">

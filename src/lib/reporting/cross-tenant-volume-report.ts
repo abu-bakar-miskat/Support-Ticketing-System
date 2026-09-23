@@ -7,6 +7,12 @@ export type TenantVolumeRow = {
   count: number;
 };
 
+export type TenantDepartmentRow = {
+  departmentId: string;
+  departmentName: string;
+  count: number;
+};
+
 export type TenantTicketRow = {
   id: string;
   tenantId: string;
@@ -55,6 +61,48 @@ export async function computeCrossTenantVolumeReport(
       count: counts.get(tenant.id) ?? 0,
     }))
     .sort((a, b) => b.count - a.count || a.tenantName.localeCompare(b.tenantName));
+}
+
+/**
+ * Department totals inside one tenant. Both the ticket group and the
+ * sub-department lookup are constrained to `tenantId`.
+ */
+export async function computeTenantDepartmentVolume(
+  tenantId: string,
+  start: Date,
+  end: Date,
+): Promise<TenantDepartmentRow[]> {
+  if (!tenantId) return [];
+
+  const rows = await prisma.ticket.groupBy({
+    by: ["subDepartmentId"],
+    where: { tenantId, ...windowWhere(start, end) },
+    _count: { _all: true },
+  });
+  if (rows.length === 0) return [];
+
+  const subDepartments = await prisma.subDepartment.findMany({
+    where: { id: { in: rows.map((row) => row.subDepartmentId) }, tenantId },
+    select: { id: true, departmentId: true, department: { select: { name: true } } },
+  });
+  const bySub = new Map(subDepartments.map((sub) => [sub.id, sub]));
+  const byDept = new Map<string, TenantDepartmentRow>();
+  for (const row of rows) {
+    const sub = bySub.get(row.subDepartmentId);
+    if (!sub?.departmentId) continue;
+    const existing = byDept.get(sub.departmentId);
+    if (existing) existing.count += row._count._all;
+    else {
+      byDept.set(sub.departmentId, {
+        departmentId: sub.departmentId,
+        departmentName: sub.department?.name ?? "Department",
+        count: row._count._all,
+      });
+    }
+  }
+  return [...byDept.values()].sort(
+    (a, b) => b.count - a.count || a.departmentName.localeCompare(b.departmentName),
+  );
 }
 
 /**

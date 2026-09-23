@@ -3,6 +3,7 @@ import { requireAuth, type AuthProfile } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
+import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
 import { normalizeStatus, UI_STATUS_DOT } from "@/components/board/board-types"
 import type {
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
 async function loadOverview(request: Request, profile: AuthProfile) {
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get("projectId") ?? "all"
+  const departmentId = searchParams.get("departmentId")
   // Per-person filtering is manager/admin-only; ignore the param for others.
   const canFilterByPerson = profile.role === "admin" || profile.role === "manager"
   const personId = canFilterByPerson ? (searchParams.get("personId") ?? "all") : "all"
@@ -45,10 +47,10 @@ async function loadOverview(request: Request, profile: AuthProfile) {
   )
 
   const deptScope = await getProfileDeptScope(profile)
-  // No dept scope (admin global) still bounds to the active tenant.
-  const subDepartmentFilter = deptScope
-    ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
-    : { tenantId: profile.activeTenantId ?? "__no_tenant__" }
+  // Department view ignores a client department id. Tenant view may narrow to
+  // one department, and that lookup is itself limited to the active tenant.
+  const analyticsScope = await resolveAnalyticsScope(profile, departmentId)
+  const subDepartmentFilter = analyticsScope.ticketWhere
   const projectFilter = projectId && projectId !== "all" ? { projectId } : {}
   // Person filter = tickets assigned to that person; every widget follows it.
   const personFilter = personId && personId !== "all" ? { assigneeId: personId } : {}
@@ -135,8 +137,8 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     prisma.subDepartmentStatus.findMany({
       where: {
         isComplete: true,
-        ...(deptScope
-          ? { subDepartmentId: { in: deptScope.subDepartmentIds } }
+        ...(analyticsScope.subDepartmentIds
+          ? { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] } }
           : { subDepartment: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }),
       },
       select: { subDepartmentId: true, label: true },
@@ -163,8 +165,8 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     ? await prisma.profile.findMany({
         where: {
           deletedAt: null,
-          ...(deptScope
-            ? { memberships: { some: { subDepartmentId: { in: deptScope.subDepartmentIds }, isActive: true } } }
+          ...(analyticsScope.subDepartmentIds
+            ? { memberships: { some: { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] }, isActive: true } } }
             : { tenantMemberships: { some: { tenantId: profile.activeTenantId ?? "__no_tenant__", isActive: true } } }),
         },
         select: { id: true, name: true, avatarUrl: true },

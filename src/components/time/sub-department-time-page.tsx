@@ -425,7 +425,12 @@ function CrossDeptPanel({ rows }: { rows: CrossDeptContribution[] }) {
   );
 }
 
-export function SubDepartmentTimePage() {
+export function SubDepartmentTimePage({
+  showDepartmentFilter = false,
+}: {
+  /** Tenant view: filter the tenant's departments. Department view omits this. */
+  showDepartmentFilter?: boolean;
+}) {
   const [presetId, setPresetId] = useState<PresetId | "custom">("30d");
   const [range, setRange] = useState<{ from: string; to: string }>(() =>
     presetRange("30d"),
@@ -456,6 +461,25 @@ export function SubDepartmentTimePage() {
   }, [queryClient]);
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [personFilter, setPersonFilter] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!showDepartmentFilter) return;
+    let cancelled = false;
+    fetch("/api/admin/departments")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows: { id: string; name: string }[]) => {
+        if (!cancelled) setDepartments(Array.isArray(rows) ? rows.map((row) => ({ id: row.id, name: row.name })) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setDepartments([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showDepartmentFilter]);
+
   const selectedLabel =
     presetId === "custom"
       ? formatRangeLabel(range.from, range.to)
@@ -465,12 +489,14 @@ export function SubDepartmentTimePage() {
     range.to,
     projectFilter,
     personFilter,
+    showDepartmentFilter ? departmentFilter : "all",
   );
   const { data: overview } = useReportsOverview(
     range.from,
     range.to,
     projectFilter,
     personFilter,
+    showDepartmentFilter ? departmentFilter : "all",
   );
   const projectOptions = overview?.projectOptions ?? [];
   const selectedProjectName =
@@ -487,10 +513,48 @@ export function SubDepartmentTimePage() {
         title="Reports"
         icon={ChartColumn}
         iconClassName="text-sts-blue"
-        description="Time and delivery across your sub department and projects — an overview of where the hours go."
+        description={
+          showDepartmentFilter
+            ? "Analytics for this tenant. Choose one department, or keep every department combined."
+            : "Time and delivery for this department."
+        }
         clampDescription
         actions={
         <div className="flex shrink-0 items-center gap-2">
+          {showDepartmentFilter && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              type="button"
+              className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
+            >
+              <span className="truncate">
+                {departmentFilter === "all"
+                  ? "All departments"
+                  : departments.find((dept) => dept.id === departmentFilter)?.name ?? "Department"}
+              </span>
+              <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="max-h-72 overflow-y-auto font-sans [&_[data-slot=dropdown-menu-item]]:text-[12.5px]"
+            >
+              <DropdownMenuItem onClick={() => setDepartmentFilter("all")} className="gap-2">
+                <span className="flex-1">All departments</span>
+                {departmentFilter === "all" && <Check className="size-3 text-sts-blue" />}
+              </DropdownMenuItem>
+              {departments.map((dept) => (
+                <DropdownMenuItem
+                  key={dept.id}
+                  onClick={() => setDepartmentFilter(dept.id)}
+                  className="gap-2"
+                >
+                  <span className="flex-1 truncate">{dept.name}</span>
+                  {departmentFilter === dept.id && <Check className="size-3 text-sts-blue" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          )}
           {/* Person filter — managers and admins only */}
           {canFilterByPerson && (
           <DropdownMenu>

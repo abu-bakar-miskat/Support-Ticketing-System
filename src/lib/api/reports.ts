@@ -44,9 +44,10 @@ export async function fetchSubDepartmentTimeReport(
   to: string,
   projectId = "all",
   personId = "all",
+  departmentId = "all",
 ): Promise<SubDepartmentTimeResponse> {
   const res = await fetch(
-    `/api/reports/sub-department-time?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}`,
+    `/api/reports/sub-department-time?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}&departmentId=${encodeURIComponent(departmentId)}`,
   )
   if (!res.ok) throw new Error("Failed to fetch subDepartment time report")
   return res.json()
@@ -115,9 +116,10 @@ export async function fetchReportsOverview(
   to: string,
   projectId = "all",
   personId = "all",
+  departmentId = "all",
 ): Promise<ReportsOverview> {
   const res = await fetch(
-    `/api/reports/overview?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}`,
+    `/api/reports/overview?from=${from}&to=${to}&projectId=${encodeURIComponent(projectId)}&personId=${encodeURIComponent(personId)}&departmentId=${encodeURIComponent(departmentId)}`,
   )
   if (!res.ok) throw new Error("Failed to fetch reports overview")
   return res.json()

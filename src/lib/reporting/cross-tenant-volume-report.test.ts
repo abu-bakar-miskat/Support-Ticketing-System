@@ -5,6 +5,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { groupBy: vi.fn(), findMany: vi.fn() },
     tenant: { findMany: vi.fn() },
+    subDepartment: { findMany: vi.fn() },
   },
 }))
 
@@ -12,11 +13,13 @@ import { prisma } from "@/lib/db"
 import {
   computeCrossTenantTicketDrilldown,
   computeCrossTenantVolumeReport,
+  computeTenantDepartmentVolume,
 } from "./cross-tenant-volume-report"
 
 const mockGroupBy = vi.mocked(prisma.ticket.groupBy)
 const mockTicketFindMany = vi.mocked(prisma.ticket.findMany)
 const mockTenantFindMany = vi.mocked(prisma.tenant.findMany)
+const mockSubDepartmentFindMany = vi.mocked(prisma.subDepartment.findMany)
 
 const start = new Date("2026-08-24T00:00:00.000Z")
 const end = new Date("2026-09-23T00:00:00.000Z")
@@ -49,6 +52,33 @@ describe("TC-038 computeCrossTenantVolumeReport", () => {
       { tenantId: "tenant-b", tenantName: "Beta", count: 1 },
       { tenantId: "tenant-c", tenantName: "Gamma", count: 0 },
     ])
+  })
+})
+
+describe("TC-038 computeTenantDepartmentVolume", () => {
+  it("groups a single tenant's tickets by department and keeps tenantId on both queries", async () => {
+    mockGroupBy.mockResolvedValue([
+      { subDepartmentId: "sub-a", _count: { _all: 2 } },
+      { subDepartmentId: "sub-b", _count: { _all: 1 } },
+    ] as never)
+    mockSubDepartmentFindMany.mockResolvedValue([
+      { id: "sub-a", departmentId: "dept-1", department: { name: "Support" } },
+      { id: "sub-b", departmentId: "dept-1", department: { name: "Support" } },
+    ] as never)
+
+    const result = await computeTenantDepartmentVolume("tenant-b", start, end)
+
+    expect(mockGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId: "tenant-b", deletedAt: null }),
+      }),
+    )
+    expect(mockSubDepartmentFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId: "tenant-b" }),
+      }),
+    )
+    expect(result).toEqual([{ departmentId: "dept-1", departmentName: "Support", count: 3 }])
   })
 })
 

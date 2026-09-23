@@ -5,6 +5,7 @@ import { canViewCrossTenantVolume } from "@/lib/reporting/report-scope";
 import {
   computeCrossTenantTicketDrilldown,
   computeCrossTenantVolumeReport,
+  computeTenantDepartmentVolume,
 } from "@/lib/reporting/cross-tenant-volume-report";
 import { runAsSystem } from "@/lib/request-scope";
 
@@ -40,14 +41,18 @@ export async function GET(request: NextRequest) {
 
   const tenantId = sp.get("tenantId");
   if (tenantId) {
-    const tickets = await runAsSystem(() =>
-      computeCrossTenantTicketDrilldown(tenantId, start, end),
+    const [tickets, departments] = await runAsSystem(() =>
+      Promise.all([
+        computeCrossTenantTicketDrilldown(tenantId, start, end),
+        computeTenantDepartmentVolume(tenantId, start, end),
+      ]),
     );
     return NextResponse.json({
       mode: "drilldown",
       range: { start, end },
       tenantId,
       tickets,
+      departments,
     });
   }
 

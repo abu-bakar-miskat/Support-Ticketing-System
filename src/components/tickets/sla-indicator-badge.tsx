@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 type SlaMetric = {
@@ -8,13 +8,21 @@ type SlaMetric = {
   elapsedMs: number
   targetMs: number
   remainingMs: number
+  /** Whether this metric's clock is counting right now (server truth at fetch time). */
+  running: boolean
 }
 
 type SlaIndicator = {
   firstResponse: SlaMetric
   resolution: SlaMetric
   overall: "ON_TRACK" | "AT_RISK" | "BREACHED"
+  /** Server instant the metrics were computed at; anchors the live countdown. */
+  asOf: string
 }
+
+/** Re-render cadence for the live countdown. The label is minute-granular, so a
+ * few seconds' lag is invisible; this only re-renders one tiny span. */
+const TICK_MS = 15_000
 
 const STATUS_STYLE: Record<SlaIndicator["overall"], { bg: string; text: string; label: string }> = {
   ON_TRACK: { bg: "bg-emerald-500/10 dark:bg-emerald-400/10", text: "text-emerald-700 dark:text-emerald-400", label: "On track" },
@@ -37,13 +45,22 @@ function formatDuration(ms: number): string {
 /** SLA-06: on-ticket indicator (ON_TRACK/AT_RISK/BREACHED) with remaining/overdue time. */
 export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string; size?: "sm" | "md" }) {
   const [indicator, setIndicator] = useState<SlaIndicator | null | undefined>(undefined)
+  // Client clock at the moment the current snapshot was received; the live
+  // countdown measures elapsed time from here rather than trusting `asOf`
+  // directly, so unsynced client/server clocks don't skew the number.
+  const anchorRef = useRef(0)
+  // Bumps to force a re-render so the interpolated time re-computes; value unused.
+  const [, tick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     fetch(`/api/tickets/${ticketId}/sla`)
       .then((res) => (res.ok ? res.json() : { indicator: null }))
       .then((data) => {
-        if (!cancelled) setIndicator(data.indicator ?? null)
+        if (!cancelled) {
+          anchorRef.current = Date.now()
+          setIndicator(data.indicator ?? null)
+        }
       })
       .catch(() => {
         if (!cancelled) setIndicator(null)
@@ -53,16 +70,28 @@ export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string;
     }
   }, [ticketId])
 
+  // Only tick while a metric's clock is actually moving; when everything is
+  // stopped or paused (outside hours / waiting on customer) we render statically.
+  const anyRunning = !!indicator && (indicator.firstResponse.running || indicator.resolution.running)
+  useEffect(() => {
+    if (!anyRunning) return
+    const id = setInterval(() => tick((t) => t + 1), TICK_MS)
+    return () => clearInterval(id)
+  }, [anyRunning])
+
   if (!indicator) return null
 
   const style = STATUS_STYLE[indicator.overall]
   // The tighter of the two live (not-yet-stopped) metrics drives the displayed time.
   const activeMetric =
     indicator.firstResponse.status === indicator.overall ? indicator.firstResponse : indicator.resolution
+  // Interpolate down from the snapshot only while this metric's clock is running.
+  const elapsedSinceFetch = activeMetric.running ? Date.now() - anchorRef.current : 0
+  const remainingMs = activeMetric.remainingMs - elapsedSinceFetch
   const timeLabel =
-    activeMetric.remainingMs >= 0
-      ? `${formatDuration(activeMetric.remainingMs)} left`
-      : `${formatDuration(activeMetric.remainingMs)} overdue`
+    remainingMs >= 0
+      ? `${formatDuration(remainingMs)} left`
+      : `${formatDuration(remainingMs)} overdue`
 
   return (
     <span

@@ -4,6 +4,8 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     department: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
+    intakeFormConfig: { findUnique: vi.fn() },
+    mailboxConnection: { findUnique: vi.fn() },
     assignmentRule: { findMany: vi.fn() },
     profile: { findUnique: vi.fn() },
     subDepartmentMembership: { findUnique: vi.fn() },
@@ -34,6 +36,7 @@ import { autoAssignTicket, recordAssignmentFailure } from "./assignment-engine"
 
 const mockDeptFind = vi.mocked(prisma.department.findUnique)
 const mockSubDepartmentFind = vi.mocked(prisma.subDepartment.findUnique)
+const mockFormFind = vi.mocked(prisma.intakeFormConfig.findUnique)
 const mockRulesFindMany = vi.mocked(prisma.assignmentRule.findMany)
 const mockProfileFind = vi.mocked(prisma.profile.findUnique)
 const mockMembershipFind = vi.mocked(prisma.subDepartmentMembership.findUnique)
@@ -228,6 +231,87 @@ describe("autoAssignTicket — ASG-01", () => {
         ],
       }),
     )
+  })
+})
+
+describe("autoAssignTicket — form ↔ sub-department precedence", () => {
+  it("no issue: the form's own method wins over the routed/default sub-department", async () => {
+    // MANUAL form + ROUND_ROBIN sub-department, not issue-routed → stays MANUAL.
+    mockFormFind.mockResolvedValue({ assignmentMethod: "MANUAL" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "ROUND_ROBIN", manualAssigneeIds: [] } as never)
+    const result = await autoAssignTicket({
+      departmentId: "d1",
+      teamId: "t1",
+      formValues: {},
+      excludeUserId: null,
+      formConfigId: "f1",
+      issueRouted: false,
+    })
+    expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
+  })
+
+  it("issue-routed: the concerned sub-department's method wins over the form", async () => {
+    // Same MANUAL form, but an issue chose this sub-department → ROUND_ROBIN wins.
+    mockFormFind.mockResolvedValue({ assignmentMethod: "MANUAL" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "ROUND_ROBIN", manualAssigneeIds: [] } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+    const result = await autoAssignTicket({
+      departmentId: "d1",
+      teamId: "t1",
+      formValues: {},
+      excludeUserId: null,
+      formConfigId: "f1",
+      issueRouted: true,
+    })
+    expect(result).toEqual({ assigneeId: "a", method: "ROUND_ROBIN", failed: false, nextRotaPointer: 1 })
+  })
+
+  it("issue-routed with a sub-department that has no method: falls back to the form's method", async () => {
+    mockFormFind.mockResolvedValue({ assignmentMethod: "MANUAL" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: null, manualAssigneeIds: [] } as never)
+    const result = await autoAssignTicket({
+      departmentId: "d1",
+      teamId: "t1",
+      formValues: {},
+      excludeUserId: null,
+      formConfigId: "f1",
+      issueRouted: true,
+    })
+    expect(result).toEqual({ assigneeId: null, method: "MANUAL", failed: false })
+  })
+
+  it("no issue with a form that has no method: falls back to the sub-department's method", async () => {
+    mockFormFind.mockResolvedValue({ assignmentMethod: null } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 1, assignmentMethod: "ROUND_ROBIN", manualAssigneeIds: [] } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }, { userId: "c" }])
+    const result = await autoAssignTicket({
+      departmentId: "d1",
+      teamId: "t1",
+      formValues: {},
+      excludeUserId: null,
+      formConfigId: "f1",
+      issueRouted: false,
+    })
+    expect(result).toEqual({ assigneeId: "b", method: "ROUND_ROBIN", failed: false, nextRotaPointer: 2 })
+  })
+
+  it("mailbox method always wins over both form and sub-department", async () => {
+    mockFormFind.mockResolvedValue({ assignmentMethod: "MANUAL" } as never)
+    mockSubDepartmentFind.mockResolvedValue({ rotaPointer: 0, assignmentMethod: "ROUND_ROBIN", manualAssigneeIds: [] } as never)
+    const mockMailboxFind = vi.mocked(prisma.mailboxConnection.findUnique)
+    mockMailboxFind.mockResolvedValue({ assignmentMethod: "WORKLOAD_BASED", manualAssigneeIds: [] } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "a" }, { userId: "b" }])
+    mockGetCounts.mockResolvedValue([{ userId: "a", count: 4 }, { userId: "b", count: 1 }])
+    const result = await autoAssignTicket({
+      departmentId: "d1",
+      teamId: "t1",
+      formValues: {},
+      excludeUserId: null,
+      formConfigId: "f1",
+      mailboxConnectionId: "mb1",
+      issueRouted: false,
+    })
+    expect(result).toEqual({ assigneeId: "b", method: "WORKLOAD_BASED", failed: false })
   })
 })
 

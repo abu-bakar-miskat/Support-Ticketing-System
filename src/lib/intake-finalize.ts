@@ -103,10 +103,14 @@ export async function createTicketFromPayload(
     priority: resolvedPriority,
     submitterName,
     title,
-    // No form-level autoAssign gate: the assignment engine resolves the method
-    // (sub-department → form → department) and honors a resolved MANUAL as a
-    // deliberate non-assignment. A "Manual" form no longer suppresses the
-    // routed sub-department's own auto-assignment method.
+    // issueRouted is true only when the selected issue (SLA policy) supplied the
+    // concerned sub-department. In that case the assignment engine lets that
+    // sub-department's method win over the form. When no issue drove routing
+    // (fallback/default sub-department), the form's own method wins instead — so
+    // a "Manual" form leaves the ticket unassigned as configured. The engine
+    // still always runs and honors a resolved MANUAL as a deliberate
+    // non-assignment (no form-level autoAssign gate).
+    issueRouted: routedSubDepartmentId !== null,
   })
 
   const { ticketId, replyToken } = await prisma.$transaction(async (tx) =>
@@ -182,7 +186,9 @@ export async function createTicketFromPayload(
   }
 
   for (const manager of prep.managers ?? []) {
-    createNotification({ recipientId: manager.id, type: "intake_manager_alert", ticketId, message: prep.title }).catch(() => undefined)
+    // `message` carries the ticket SOURCE (the support form's name) so the
+    // notification UI can render "New Ticket raised from the {form name}".
+    createNotification({ recipientId: manager.id, type: "intake_manager_alert", ticketId, message: form.name }).catch(() => undefined)
     if (manager.email && humanId) {
       sendIntakeManagerAlertEmail({
         to: manager.email,

@@ -363,6 +363,56 @@ describe("checkAndNotifySla — SLA-05/06/07", () => {
     )
   })
 
+  it("notifies assignee + managers with a resolution-specific message on resolution breach", async () => {
+    const now = new Date("2026-08-17T10:05:00.000Z") // 65 of 12 target mins = BREACHED
+    mockTimerFind.mockResolvedValue({
+      id: "timer-1",
+      tenantId: "tenant-1",
+      firstResponseTargetMins: 6,
+      resolutionTargetMins: 12,
+      firstResponseStartedAt: new Date("2026-08-17T09:00:00.000Z"),
+      firstResponseStoppedAt: new Date("2026-08-17T09:03:00.000Z"), // already answered, on-track
+      resolutionStartedAt: new Date("2026-08-17T09:00:00.000Z"),
+      resolutionStoppedAt: null,
+      firstResponseAtRiskNotifiedAt: null,
+      firstResponseBreachNotifiedAt: null,
+      resolutionAtRiskNotifiedAt: null,
+      resolutionBreachNotifiedAt: null,
+      ticket: ticketRelation,
+    } as never)
+    mockDeptFind.mockResolvedValue({ slaConfig: { pauseOutsideHours: false } } as never)
+    mockDeptManagers.mockResolvedValue([{ userId: "manager-1" }] as never)
+
+    await checkAndNotifySla("ticket-1", now)
+
+    expect(mockBreachCreate).toHaveBeenCalledWith({
+      data: {
+        ticketId: "ticket-1",
+        tenantId: "tenant-1",
+        timerId: "timer-1",
+        metric: "resolution",
+        targetMins: 12,
+        breachedAt: now,
+      },
+    })
+    // Notification only — the ticket must NOT be auto-escalated.
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientId: "assignee-1",
+        type: "sla_breach",
+        ticketId: "ticket-1",
+        message: "exceeded its Time to Resolution SLA",
+      }),
+    )
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientId: "manager-1",
+        type: "sla_breach",
+        message: "exceeded its Time to Resolution SLA",
+      }),
+    )
+  })
+
   it("does not re-notify once a threshold has already been flagged", async () => {
     const now = new Date("2026-08-17T09:48:00.000Z")
     mockTimerFind.mockResolvedValue({

@@ -79,8 +79,19 @@ export async function autoAssignTicket(params: {
    * when set. null/absent → no mailbox override.
    */
   mailboxConnectionId?: string | null;
+  /**
+   * True when an SLA-policy "issue" chose the concerned sub-department for this
+   * ticket. It flips form ↔ sub-department precedence:
+   *   • issue-routed → the routed sub-department's method wins over the form
+   *     (honor the concerned team's rota);
+   *   • not issue-routed → the FORM's own method wins over its fallback/default
+   *     sub-department (a MANUAL form stays manual instead of inheriting the
+   *     sub-department's auto method).
+   * Ignored when no form is involved (form method is null either way).
+   */
+  issueRouted?: boolean;
 }): Promise<AutoAssignResult> {
-  const { departmentId, teamId, formValues, excludeUserId, formConfigId, mailboxConnectionId } = params;
+  const { departmentId, teamId, formValues, excludeUserId, formConfigId, mailboxConnectionId, issueRouted = false } = params;
 
   const [department, subDepartment, form, mailbox] = await Promise.all([
     prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
@@ -92,22 +103,30 @@ export async function autoAssignTicket(params: {
       ? prisma.mailboxConnection.findUnique({ where: { id: mailboxConnectionId }, select: { assignmentMethod: true, manualAssigneeIds: true } })
       : Promise.resolve(null),
   ]);
-  // Precedence: mailbox (email) → sub-department (routing target) → form →
-  // department → ROUND_ROBIN. The ticket's sub-department method wins over a
-  // form override so "concerned sub-department" routing honors that team's rota.
+  // Precedence, highest first. Mailbox (email) always wins when set. The form ↔
+  // sub-department order then depends on how the ticket was routed:
+  //   • issue-routed → sub-department → form → department → ROUND_ROBIN
+  //     (an SLA "issue" chose the concerned sub-department, so that team's method
+  //      wins over the form override).
+  //   • not issue-routed → form → sub-department → department → ROUND_ROBIN
+  //     (the ticket landed in the form's fallback/default sub-department, so the
+  //      form's own method wins — a MANUAL form stays manual).
+  // Whichever of form/sub-department is empty is skipped, falling through to the
+  // department default and finally ROUND_ROBIN. manualAssigneeIds always comes
+  // from the sub-department here (a form has none of its own).
+  const subMethod = subDepartment?.assignmentMethod ?? null;
+  const formMethod = form?.assignmentMethod ?? null;
+  const [firstMethod, secondMethod] = issueRouted
+    ? [subMethod, formMethod]
+    : [formMethod, subMethod];
+
   let method: AssignmentMethod;
   let manualAssigneeIds: string[];
   if (mailbox?.assignmentMethod) {
     method = mailbox.assignmentMethod;
     manualAssigneeIds = mailbox.manualAssigneeIds;
-  } else if (subDepartment?.assignmentMethod) {
-    method = subDepartment.assignmentMethod;
-    manualAssigneeIds = subDepartment.manualAssigneeIds ?? [];
-  } else if (form?.assignmentMethod) {
-    method = form.assignmentMethod;
-    manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
   } else {
-    method = department?.assignmentMethod ?? "ROUND_ROBIN";
+    method = firstMethod ?? secondMethod ?? department?.assignmentMethod ?? "ROUND_ROBIN";
     manualAssigneeIds = subDepartment?.manualAssigneeIds ?? [];
   }
 

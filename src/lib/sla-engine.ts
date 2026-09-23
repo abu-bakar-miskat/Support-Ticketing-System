@@ -16,6 +16,7 @@ import {
   planReopen,
   DEFAULT_AT_RISK_PCT,
   type SlaIndicator,
+  type SlaIndicatorView,
   type SlaTimerState,
 } from "@/lib/sla-timer";
 import type { ConditionGroup } from "@/lib/rules-engine";
@@ -296,13 +297,73 @@ export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new
   return evaluateSlaIndicator(toTimerState(timer), now, calendar, slaConfig.atRiskPct, resolutionPauses);
 }
 
+/** How far ahead we probe to decide if a metric's clock is counting *right now*.
+ * A running metric's elapsed strictly increases across this window; a stopped or
+ * paused (outside-hours / waiting-for-customer) one does not. */
+const RUNNING_PROBE_MS = 1000;
+
+/**
+ * SLA-06 indicator enriched for live client-side countdown: same status/remaining
+ * as {@link getSlaIndicatorForTicket}, plus a per-metric `running` flag and the
+ * `asOf` instant. `running` is derived by re-evaluating the metric one second in
+ * the future — reusing the exact business-hours + waiting-for-customer math — so
+ * the client only ticks the number down while the server clock is actually moving.
+ */
+export async function getSlaIndicatorViewForTicket(
+  ticketId: string,
+  now: Date = new Date(),
+): Promise<SlaIndicatorView | null> {
+  const timer = await prisma.slaTimer.findUnique({
+    where: { ticketId },
+    include: { ticket: { select: { assigneeId: true, subDepartmentId: true, subDepartment: { select: { departmentId: true } } } } },
+  });
+  if (!timer) return null;
+
+  const departmentId = timer.ticket.subDepartment.departmentId;
+  const subDepartmentId = timer.ticket.subDepartmentId;
+  const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
+  const probeEnd = new Date(now.getTime() + RUNNING_PROBE_MS);
+  const calendar = await resolveCalendarForTicket(
+    { departmentId, subDepartmentId, assigneeId: timer.ticket.assigneeId },
+    rangeFrom,
+    probeEnd,
+  );
+  const { slaConfig } = await resolveSlaSettings(departmentId, subDepartmentId);
+  // Extend the pause window to the probe end so an open (still-ongoing)
+  // waiting-for-customer pause covers the probe interval, keeping a paused
+  // resolution metric from looking "running". Clamping in elapsedCountableMs
+  // means this extension never affects the elapsed measured at `now` itself.
+  const resolutionUntil = timer.resolutionStoppedAt ?? probeEnd;
+  const resolutionPauses = await loadResolutionPauseIntervals(
+    ticketId,
+    resolutionUntil,
+    slaConfig.pauseWhenWaitingForCustomer,
+  );
+
+  const state = toTimerState(timer);
+  const atNow = evaluateSlaIndicator(state, now, calendar, slaConfig.atRiskPct, resolutionPauses);
+  const atProbe = evaluateSlaIndicator(state, probeEnd, calendar, slaConfig.atRiskPct, resolutionPauses);
+
+  return {
+    firstResponse: { ...atNow.firstResponse, running: atProbe.firstResponse.remainingMs < atNow.firstResponse.remainingMs },
+    resolution: { ...atNow.resolution, running: atProbe.resolution.remainingMs < atNow.resolution.remainingMs },
+    overall: atNow.overall,
+    asOf: now.toISOString(),
+  };
+}
+
 /**
  * Checks a ticket's SLA state and fires at-risk/breach notifications the
  * first time each threshold is crossed (SLA-05), recording an immutable
  * SlaBreach row on breach (SLA-07). Deduplicated via the timer's
  * `*NotifiedAt` flags — safe to call repeatedly (on ticket read, or from the
- * cron sweep) without re-notifying. Never auto-escalates or changes ticket
- * status — notification only.
+ * cron sweep) without re-notifying.
+ *
+ * When the Time to First Response SLA is breached while no agent has yet made
+ * the required first response (`firstResponseStoppedAt === null`), the ticket
+ * is also auto-escalated: moved to the sub-department's "Escalated" status and
+ * labelled, recorded in the ActivityLog as an automation-sourced status change.
+ * Gated on the same `firstResponseBreachNotifiedAt` flag, so it fires once.
  */
 export async function checkAndNotifySla(ticketId: string, now: Date = new Date()): Promise<void> {
   try {
@@ -337,25 +398,33 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
     const indicator = evaluateSlaIndicator(toTimerState(timer), now, calendar, atRiskPct, resolutionPauses);
 
     const updates: Prisma.SlaTimerUpdateInput = {};
-    const breachRows: { metric: string; targetMins: number }[] = [];
-    // A first-time resolution breach auto-escalates the ticket (SLA-07).
-    let escalateForResolutionBreach = false;
+    const breachRows: { metric: SlaMetric; targetMins: number }[] = [];
+    // Per-metric notification events, so recipients get a message that names
+    // the specific SLA (Time to First Response vs Time to Resolution) and level.
+    const events: SlaNotifyEvent[] = [];
+    // Set when the Time to First Response SLA breaches while no agent has made
+    // the required first response — the trigger for automatic escalation below.
+    let firstResponseBreachedUnanswered = false;
 
     if (indicator.firstResponse.status !== "ON_TRACK" && timer.firstResponseStoppedAt === null) {
       if (indicator.firstResponse.status === "BREACHED" && timer.firstResponseBreachNotifiedAt === null) {
         updates.firstResponseBreachNotifiedAt = now;
         breachRows.push({ metric: "first_response", targetMins: timer.firstResponseTargetMins });
+        events.push({ metric: "first_response", level: "breach" });
+        firstResponseBreachedUnanswered = true;
       } else if (indicator.firstResponse.status === "AT_RISK" && timer.firstResponseAtRiskNotifiedAt === null) {
         updates.firstResponseAtRiskNotifiedAt = now;
+        events.push({ metric: "first_response", level: "at_risk" });
       }
     }
     if (indicator.resolution.status !== "ON_TRACK" && timer.resolutionStoppedAt === null) {
       if (indicator.resolution.status === "BREACHED" && timer.resolutionBreachNotifiedAt === null) {
         updates.resolutionBreachNotifiedAt = now;
         breachRows.push({ metric: "resolution", targetMins: timer.resolutionTargetMins });
-        escalateForResolutionBreach = true;
+        events.push({ metric: "resolution", level: "breach" });
       } else if (indicator.resolution.status === "AT_RISK" && timer.resolutionAtRiskNotifiedAt === null) {
         updates.resolutionAtRiskNotifiedAt = now;
+        events.push({ metric: "resolution", level: "at_risk" });
       }
     }
 
@@ -377,30 +446,53 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
       ),
     ]);
 
-    await notifyRecipients(ticketId, departmentId, timer.ticket.assigneeId, updates);
+    await notifyRecipients(ticketId, departmentId, timer.ticket.assigneeId, events);
 
-    // Resolution breach → auto-escalate the ticket to the sub-department's
-    // Escalated status, once, right after the breach is recorded. The DB
-    // trigger stamps the STATUS_CHANGED ActivityLog with this source so the UI
-    // renders it as an automation event. Dynamic import breaks the cycle
-    // (ticket-escalation → syncResolutionTimerOnClosedAtChange in this module).
-    if (escalateForResolutionBreach) {
-      const { escalateTicket } = await import("@/lib/ticket-escalation");
-      await escalateTicket(ticketId, {
-        activitySource: { source: "sla", event: "resolution_breach", targetMins: timer.resolutionTargetMins },
-      }).catch(() => undefined);
+    // Auto-escalate on a Time to First Response breach that went unanswered.
+    // Best-effort and idempotent: gated by the just-set `firstResponseBreachNotifiedAt`
+    // flag so it runs once, and `escalateTicket` no-ops if already escalated.
+    // Imported dynamically to avoid a static import cycle (ticket-escalation
+    // imports `syncResolutionTimerOnClosedAtChange` from this module). Runs in a
+    // system/automation context — no `actorId`/`timerActor`; `activitySource`
+    // marks the ActivityLog status change as SLA-driven automation.
+    if (firstResponseBreachedUnanswered) {
+      try {
+        const { escalateTicket } = await import("@/lib/ticket-escalation");
+        await escalateTicket(ticketId, {
+          activitySource: { kind: "sla_breach", metric: "first_response" },
+        });
+      } catch {
+        // best-effort — a failed escalation must not break the sweep
+      }
     }
   } catch {
     // best-effort
   }
 }
 
+type SlaMetric = "first_response" | "resolution";
+type SlaNotifyEvent = { metric: SlaMetric; level: "breach" | "at_risk" };
+
+const SLA_METRIC_LABEL: Record<SlaMetric, string> = {
+  first_response: "Time to First Response",
+  resolution: "Time to Resolution",
+};
+
+/**
+ * Notifies the assignee + department managers, one notification per SLA event,
+ * with a message naming the specific metric and level. The renderer
+ * (notify.ts, `sla_breach`/`sla_at_risk` cases) prefixes the ticket ref + title,
+ * so a resolution breach reads e.g. `ITS-16 "Login bug" exceeded its Time to
+ * Resolution SLA`.
+ */
 async function notifyRecipients(
   ticketId: string,
   departmentId: string,
   assigneeId: string | null,
-  updates: Prisma.SlaTimerUpdateInput,
+  events: SlaNotifyEvent[],
 ): Promise<void> {
+  if (events.length === 0) return;
+
   const recipientIds = new Set<string>();
   if (assigneeId) recipientIds.add(assigneeId);
   const managers = await prisma.departmentManager.findMany({
@@ -409,12 +501,16 @@ async function notifyRecipients(
   });
   for (const m of managers) recipientIds.add(m.userId);
 
-  const breached = "firstResponseBreachNotifiedAt" in updates || "resolutionBreachNotifiedAt" in updates;
-  const type = breached ? "sla_breach" : "sla_at_risk";
-  const message = breached ? "SLA breached" : "SLA at risk";
-
-  for (const recipientId of recipientIds) {
-    createNotification({ recipientId, type, ticketId, message }).catch(() => undefined);
+  for (const ev of events) {
+    const type = ev.level === "breach" ? "sla_breach" : "sla_at_risk";
+    const label = SLA_METRIC_LABEL[ev.metric];
+    const message =
+      ev.level === "breach"
+        ? `exceeded its ${label} SLA`
+        : `is at risk of breaching its ${label} SLA`;
+    for (const recipientId of recipientIds) {
+      createNotification({ recipientId, type, ticketId, message }).catch(() => undefined);
+    }
   }
 }
 

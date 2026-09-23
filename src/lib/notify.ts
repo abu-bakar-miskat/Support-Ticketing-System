@@ -228,6 +228,22 @@ async function buildAndBroadcast(
       body  = message ?? null
       break
 
+    case "sla_breach":
+    case "sla_at_risk": {
+      // `message` (from sla-engine) is the metric-specific predicate, e.g.
+      // "exceeded its Time to Resolution SLA". Prefix the ticket ref + title:
+      // `ITS-16 "Login bug" exceeded its Time to Resolution SLA`.
+      const subject = ticketRef
+        ? ticketName
+          ? `${ticketRef} "${ticketName}"`
+          : ticketRef
+        : ticketLabel
+      title = message
+        ? `${subject} ${message}`
+        : `${subject} ${type === "sla_breach" ? "breached its SLA" : "is at risk of breaching its SLA"}`
+      break
+    }
+
     default:
       title = message ? `${actorName} — ${message}` : `${actorName} sent a notification`
   }

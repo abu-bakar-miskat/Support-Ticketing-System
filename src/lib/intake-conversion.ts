@@ -113,6 +113,7 @@ export async function prepareConversion({
   priority,
   submitterName,
   title = "",
+  issueRouted = false,
 }: {
   formId: string;
   formName: string;
@@ -122,6 +123,9 @@ export async function prepareConversion({
   priority: TicketPriority;
   submitterName: string;
   title?: string;
+  // True when the sub-department was chosen by the selected SLA "issue" (vs the
+  // form's fallback/default). Controls form ↔ sub-department method precedence.
+  issueRouted?: boolean;
 }): Promise<ConversionPrep> {
   const subDepartment = await prisma.subDepartment.findUniqueOrThrow({
     where: { id: intakeSubDepartmentId },
@@ -155,14 +159,15 @@ export async function prepareConversion({
   let nextPointer = subDepartment.rotaPointer;
   let assignmentFailed = false;
 
-  // Tickets land in the (possibly SLA-routed) sub-department and are assigned
-  // using that sub-department's method among currently available members. The
-  // engine resolves the method with precedence sub-department → form →
-  // department, and treats a resolved MANUAL as an intentional non-assignment
-  // (no assignee, no failure). We must therefore always let it run: gating on
-  // the form's own autoAssign flag would let a "Manual" *form* suppress the
-  // *sub-department's* auto method for issue-routed tickets — the exact case
-  // where a ticket reached the right team but was never picked up.
+  // Tickets land in a sub-department and are assigned using the resolved method
+  // among currently available members. The engine's form ↔ sub-department
+  // precedence depends on issueRouted: an issue-routed ticket honors the
+  // concerned sub-department's method (over the form), while a ticket that fell
+  // back to the form's default sub-department honors the *form's* own method —
+  // so a "Manual" form stays manual. A resolved MANUAL is an intentional
+  // non-assignment (no assignee, no failure). We always let the engine run
+  // rather than gating on the form's autoAssign flag, so an issue-routed ticket
+  // still gets picked up by its team's auto method.
   const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]));
   const result = await autoAssignTicket({
     departmentId,
@@ -170,6 +175,7 @@ export async function prepareConversion({
     formValues,
     excludeUserId: managerId,
     formConfigId: formId,
+    issueRouted,
   });
   assigneeId = result.assigneeId;
   assignmentFailed = result.failed;

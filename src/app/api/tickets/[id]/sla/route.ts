@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getSlaIndicatorForTicket } from "@/lib/sla-engine"
+import { getSlaIndicatorViewForTicket } from "@/lib/sla-engine"
 import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/tickets/[id]/sla — the ticket's SLA indicator (SLA-06): status +
@@ -34,6 +34,6 @@ export async function GET(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
 
-  const indicator = await runAsSystem(() => getSlaIndicatorForTicket(ticketId))
+  const indicator = await runAsSystem(() => getSlaIndicatorViewForTicket(ticketId))
   return NextResponse.json({ indicator })
 }

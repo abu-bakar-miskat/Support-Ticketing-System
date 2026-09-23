@@ -42,6 +42,8 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   intake_manager_alert: { icon: Inbox,    color: "#0a76b9", label: "new support ticket"   },
   assignment_failed_alert: { icon: AlertTriangle, color: "#dc2626", label: "needs a manual assignee" },
   agreement_expiring: { icon: CalendarClock, color: "#d97706", label: "agreement expiring" },
+  sla_breach:     { icon: AlertTriangle,  color: "#dc2626", label: "Ticket breached the SLA"     },
+  sla_at_risk:    { icon: CalendarClock,  color: "#d97706", label: "Ticket is at risk of breaching SLA" },
 };
 
 // ── Single notification row ────────────────────────────────────────────────────
@@ -59,6 +61,10 @@ function NotifRow({
   const meta = TYPE_META[item.type] ?? TYPE_META.status_change;
   const Icon = meta.icon;
 
+  // SLA alerts are system-generated: lead with the ticket number, not "System".
+  const isSla = item.type === "sla_breach" || item.type === "sla_at_risk";
+  const subject = isSla ? (item.ticket?.humanId ?? item.actorName) : item.actorName;
+
   function handleClick() {
     onMarkRead(item.id);
     onClose();
@@ -69,9 +75,17 @@ function NotifRow({
     }
   }
 
-  // Build a one-line summary
+  // Intake alerts name their source (support form / shared mailbox), which is
+  // carried in `message`, e.g. "New Ticket raised from the IT Support Form".
+  const isIntakeAlert = item.type === "intake_manager_alert";
+  const intakeSource = isIntakeAlert ? item.message?.trim() : null;
+
+  // Build a one-line summary. SLA rows lead with the ticket number, so show
+  // just the title there instead of repeating "humanId · title".
   const summary = item.ticket
-    ? `${item.ticket.humanId} · ${item.ticket.title}`
+    ? isSla
+      ? item.ticket.title
+      : `${item.ticket.humanId} · ${item.ticket.title}`
     : item.message?.replace(/^(approved|rejected):\s*/i, "") ?? "";
 
   return (
@@ -107,8 +121,14 @@ function NotifRow({
           "font-sans text-[12px] leading-snug",
           item.unread ? "font-semibold text-sts-foreground" : "text-sts-muted",
         )}>
-          <span className="font-semibold">{item.actorName}</span>
-          {" "}{meta.label}
+          {isIntakeAlert && intakeSource ? (
+            <>New Ticket raised from the <span className="font-semibold">{intakeSource}</span></>
+          ) : (
+            <>
+              <span className="font-semibold">{subject}</span>
+              {" "}{meta.label}
+            </>
+          )}
         </p>
         {summary && (
           <p className="mt-0.5 truncate font-sans text-[11.5px] text-sts-subtle">

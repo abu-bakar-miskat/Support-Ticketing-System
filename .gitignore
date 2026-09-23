@@ -44,3 +44,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# SLA cron local artifacts (never commit)
+scripts/sla-cron.log
+scripts/run-sla-cron.sh

@@ -69,6 +69,20 @@ export type SlaIndicator = {
   overall: SlaStatus;
 };
 
+/** A metric result enriched with whether its clock is actively counting *right now*
+ * (i.e. not stopped, within business hours, and not in a waiting-for-customer pause),
+ * so a client can interpolate the remaining time live without re-fetching. */
+export type SlaMetricView = SlaMetricResult & { running: boolean };
+
+export type SlaIndicatorView = {
+  firstResponse: SlaMetricView;
+  resolution: SlaMetricView;
+  overall: SlaStatus;
+  /** Server instant the metrics were computed at (ISO). The client anchors its
+   * live countdown to this so drift stays bounded by network latency. */
+  asOf: string;
+};
+
 const SEVERITY: Record<SlaStatus, number> = { ON_TRACK: 0, AT_RISK: 1, BREACHED: 2 };
 
 /**

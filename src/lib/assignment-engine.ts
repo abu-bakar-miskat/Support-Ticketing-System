@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentFailedAlertEmail } from "@/lib/email";
 import { getEligibleMembers, getOpenTicketCounts, isMemberAvailableNow } from "@/lib/rota";
-import { pickRoundRobin, pickWorkload, type AssignmentRuleLike } from "@/lib/assignment";
+import { pickRoundRobin, pickWorkloadThreshold, type AssignmentRuleLike } from "@/lib/assignment";
 import { evaluateConditionGroup, type FormValues } from "@/lib/rules-engine";
 import type { AssignmentMethod } from "@/generated/prisma/enums";
 
@@ -94,8 +94,8 @@ export async function autoAssignTicket(params: {
   const { departmentId, teamId, formValues, excludeUserId, formConfigId, mailboxConnectionId, issueRouted = false } = params;
 
   const [department, subDepartment, form, mailbox] = await Promise.all([
-    prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true } }),
-    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true, manualAssigneeIds: true } }),
+    prisma.department.findUnique({ where: { id: departmentId }, select: { assignmentMethod: true, workloadThreshold: true } }),
+    prisma.subDepartment.findUnique({ where: { id: teamId }, select: { rotaPointer: true, assignmentMethod: true, manualAssigneeIds: true, workloadThreshold: true } }),
     formConfigId
       ? prisma.intakeFormConfig.findUnique({ where: { id: formConfigId }, select: { assignmentMethod: true } })
       : Promise.resolve(null),
@@ -206,11 +206,26 @@ export async function autoAssignTicket(params: {
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
       : { assigneeId: null, method, failed: true };
   } else {
-    // WORKLOAD_BASED — among currently available members only.
+    // WORKLOAD_BASED — among currently available members only. Rotate through
+    // members still under the workload threshold, falling back to the fewest
+    // open tickets once everyone is at/over it.
+    // The threshold follows the same dept/sub scope the method resolves to: a
+    // sub-department that sets its own method uses its own threshold; one that
+    // inherits uses the department's. (Form/mailbox method overrides carry no
+    // threshold of their own, so they fall back to these too.)
+    const workloadThreshold =
+      (subDepartment?.assignmentMethod != null
+        ? subDepartment?.workloadThreshold
+        : department?.workloadThreshold) ??
+      subDepartment?.workloadThreshold ??
+      department?.workloadThreshold ??
+      5;
     const eligible = await getEligibleMembers(teamId, excludeUserId);
     const counts = await getOpenTicketCounts(teamId, eligible.map((m) => m.userId));
-    const assigneeId = pickWorkload(counts);
-    result = assigneeId ? { assigneeId, method, failed: false } : { assigneeId: null, method, failed: true };
+    const picked = pickWorkloadThreshold(counts, workloadThreshold, subDepartment?.rotaPointer ?? 0);
+    result = picked
+      ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
+      : { assigneeId: null, method, failed: true };
   }
 
   logAssignmentOutcome({ departmentId, teamId, method, assigneeId: result.assigneeId, failed: result.failed });

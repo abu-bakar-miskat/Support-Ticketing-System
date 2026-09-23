@@ -22,13 +22,38 @@ export function pickRoundRobin(
 }
 
 /**
- * Lowest open-ticket count wins. Ties broken by input order (callers should
- * pass candidates pre-sorted, e.g. by joinedAt, for deterministic behavior).
- * Null when there are no candidates.
+ * Threshold-aware workload pick. `candidates` must be ordered consistently
+ * (e.g. by joinedAt) and `pointer` is an index into that list (relative to the
+ * candidate pool, matching pickRoundRobin's convention):
+ *   • While at least one member is under `threshold`, rotate through those
+ *     under-threshold members round-robin from `pointer`, so load spreads
+ *     evenly instead of always piling onto the single least-loaded agent.
+ *   • Once everyone is at/over `threshold`, fall back to the member with the
+ *     fewest open tickets (ties broken by input order).
+ * Returns the advanced pointer for the caller to persist, or null when there
+ * are no candidates.
  */
-export function pickWorkload(candidates: readonly { userId: string; count: number }[]): string | null {
-  if (candidates.length === 0) return null;
-  return candidates.reduce((a, b) => (a.count <= b.count ? a : b)).userId;
+export function pickWorkloadThreshold(
+  candidates: readonly { userId: string; count: number }[],
+  threshold: number,
+  pointer: number,
+): { userId: string; nextPointer: number } | null {
+  const n = candidates.length;
+  if (n === 0) return null;
+  const start = ((pointer % n) + n) % n;
+
+  for (let i = 0; i < n; i++) {
+    const idx = (start + i) % n;
+    if (candidates[idx].count < threshold) {
+      return { userId: candidates[idx].userId, nextPointer: (idx + 1) % n };
+    }
+  }
+
+  let minIdx = 0;
+  for (let i = 1; i < n; i++) {
+    if (candidates[i].count < candidates[minIdx].count) minIdx = i;
+  }
+  return { userId: candidates[minIdx].userId, nextPointer: (minIdx + 1) % n };
 }
 
 export type AssignmentRuleLike = {

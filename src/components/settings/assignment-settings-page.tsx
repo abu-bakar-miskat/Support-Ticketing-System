@@ -49,13 +49,6 @@ type MethodMeta = {
 
 const METHODS: MethodMeta[] = [
   {
-    value: "RULE_BASED",
-    label: "Rule-based",
-    description: "Conditions decide which specific agent gets each ticket.",
-    icon: Filter,
-    chip: "bg-sts-purple-tint text-sts-purple",
-  },
-  {
     value: "ROUND_ROBIN",
     label: "Round-robin",
     description: "Strict rotation through the sub department, in order.",
@@ -156,6 +149,10 @@ export function AssignmentSettingsPage({
   // `undefined` = still loading; `null` = "inherit from parent" (sub-dept only).
   const [method, setMethod] = useState<AssignmentMethod | null | undefined>(undefined);
   const [parentMethod, setParentMethod] = useState<AssignmentMethod | null>(null);
+  // WORKLOAD_BASED balancing threshold for the active scope, plus the parent
+  // department's — shown when a sub-department inherits a workload method.
+  const [threshold, setThreshold] = useState<number | null | undefined>(undefined);
+  const [parentThreshold, setParentThreshold] = useState<number | null>(null);
   const [rules, setRules] = useState<AssignmentRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -187,6 +184,7 @@ export function AssignmentSettingsPage({
   const load = () => {
     // Reset to loading state so a scope switch doesn't flash the old scope's data.
     setMethod(undefined);
+    setThreshold(undefined);
     setRules(null);
     setDepartmentFields([]);
     setExpandedRuleId(null);
@@ -197,6 +195,8 @@ export function AssignmentSettingsPage({
       .then(([settingsRes, rulesRes]) => {
         setMethod(settingsRes.assignmentMethod ?? null);
         setParentMethod(settingsRes.parentMethod ?? null);
+        setThreshold(settingsRes.workloadThreshold ?? null);
+        setParentThreshold(settingsRes.parentWorkloadThreshold ?? null);
         setRules(rulesRes);
       })
       .catch((e) => setError(e.message));
@@ -245,6 +245,31 @@ export function AssignmentSettingsPage({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update assignment method");
       setMethod(prev);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveThreshold(next: number) {
+    setError(null);
+    const prev = threshold;
+    setThreshold(next);
+    setSaving(true);
+    try {
+      await jsonOrThrow(
+        await fetch(`/api/departments/${departmentId}/assignment-settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            activeSubId
+              ? { workloadThreshold: next, subDepartmentId: activeSubId }
+              : { workloadThreshold: next },
+          ),
+        }),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update workload threshold");
+      setThreshold(prev);
     } finally {
       setSaving(false);
     }
@@ -410,6 +435,40 @@ export function AssignmentSettingsPage({
           )}
         </SectionCard>
 
+        {/* ── Workload threshold — shown when the active scope resolves to
+            WORKLOAD_BASED. Editable when this scope sets the method itself; a
+            sub-department that inherits a workload department shows the parent's
+            threshold read-only (edit it at the department level). ── */}
+        {method === "WORKLOAD_BASED" && (
+          <SectionCard
+            title="Workload threshold"
+            description="An agent is considered “at capacity” at this many open tickets. New tickets go to available agents still under it (spread evenly); once everyone is at or over it, the least-loaded agent gets the ticket."
+          >
+            {threshold === undefined ? (
+              <SkeletonRows count={1} height="h-9" />
+            ) : (
+              <ThresholdEditor
+                value={threshold ?? 5}
+                disabled={saving}
+                inputClass={inputClass}
+                onCommit={saveThreshold}
+              />
+            )}
+          </SectionCard>
+        )}
+        {method === null && activeSubId && parentMethod === "WORKLOAD_BASED" && (
+          <SectionCard
+            title="Workload threshold"
+            description="This sub-department inherits the department's workload method, so it balances against the department's threshold."
+          >
+            <p className="font-sans text-[12.5px] text-sts-muted">
+              Currently <span className="font-semibold text-sts-foreground">{parentThreshold ?? 5}</span> open
+              tickets. Change it on the department's assignment settings, or pick Workload-based above to set a
+              threshold just for this sub-department.
+            </p>
+          </SectionCard>
+        )}
+
         {/* ── Rule-based rules — shown at whichever scope's method is RULE_BASED.
             Department scope edits department-wide rules; sub-department scope
             edits that sub-department's own rules (both loaded via scopeQs). ── */}
@@ -505,6 +564,55 @@ export function AssignmentSettingsPage({
           </SectionCard>
         )}
       </div>
+    </div>
+  );
+}
+
+function ThresholdEditor({
+  value,
+  disabled,
+  inputClass,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  inputClass: string;
+  onCommit: (next: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+
+  // Keep the draft in sync when the persisted value changes (scope switch / save).
+  useEffect(() => setDraft(String(value)), [value]);
+
+  const commit = () => {
+    const parsed = Math.trunc(Number(draft));
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      setDraft(String(value)); // reject invalid input, restore last saved value
+      return;
+    }
+    const clamped = Math.min(parsed, 1000);
+    setDraft(String(clamped));
+    if (clamped !== value) onCommit(clamped);
+  };
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <input
+        type="number"
+        min={1}
+        max={1000}
+        step={1}
+        value={draft}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        aria-label="Workload threshold (open tickets)"
+        className={cn(inputClass, "w-24 disabled:opacity-60")}
+      />
+      <span className="font-sans text-[12px] text-sts-muted">open tickets per agent</span>
     </div>
   );
 }

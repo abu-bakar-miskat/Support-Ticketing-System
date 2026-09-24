@@ -51,6 +51,7 @@ export default async function PublicIntakeFormPage({
         department: {
           select: {
             id: true,
+            tenantId: true,
             name: true,
             slug: true,
             tenant: { select: { name: true, slug: true } },
@@ -88,16 +89,44 @@ export default async function PublicIntakeFormPage({
     visibleWhen: (f.visibleWhen as { fieldId: string; equals?: string; in?: string[] } | null) ?? null,
   }))
 
-  // The form's selectable "issues" are now its enabled SLA policies — each
-  // policy carries the name, priority, assignee pool and SLA targets a ticket
-  // inherits when the requester picks it (see lib/intake-finalize).
-  const issues = await runAsSystem(() =>
-    prisma.slaPolicy.findMany({
-      where: { formConfigId: id, enabled: true },
-      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true },
-    }),
-  )
+  // The form's selectable issues honour the two department SLA levels:
+  //   1. department-owned SLA issues from Settings → SLA (a sub-department is
+  //      selected on the policy); or, when none exist,
+  //   2. department-wide SLA issues from Departments → SLA (no sub-department).
+  // This form's own policies and unlinked department-wide policies are eligible;
+  // policies belonging to a sibling form are never shown. When both levels are
+  // empty, the form has no Issue type selector.
+  const issues = await runAsSystem(async () => {
+    const deptId = form.department.id
+    const orderBy = [{ order: "asc" as const }, { createdAt: "asc" as const }]
+    const select = { id: true, name: true } as const
+    const thisFormOrUnlinked = [{ formConfigId: id }, { formConfigId: null }]
+
+    // A Settings → SLA policy carries a routing sub-department. It overrides the
+    // broader department policy list rather than being combined with it.
+    const departmentOwned = await prisma.slaPolicy.findMany({
+      where: {
+        departmentId: deptId,
+        subDepartmentId: { not: null },
+        enabled: true,
+        OR: thisFormOrUnlinked,
+      },
+      orderBy,
+      select,
+    })
+    if (departmentOwned.length > 0) return departmentOwned
+
+    return prisma.slaPolicy.findMany({
+      where: {
+        departmentId: deptId,
+        subDepartmentId: null,
+        enabled: true,
+        OR: thisFormOrUnlinked,
+      },
+      orderBy,
+      select,
+    })
+  })
 
   const defaultFields = resolveIntakeDefaultFields(form.intakeDefaultFields)
 

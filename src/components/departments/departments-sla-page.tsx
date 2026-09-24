@@ -9,10 +9,12 @@ type DepartmentOption = { id: string; name: string; subDepartments: SubDepartmen
 
 /**
  * Department-wise SLA configuration for the tenant's Departments area. A tenant
- * admin picks a department, then configures its SLA per support form via the
- * shared {@link SlaSettingsPage}. A department's own policies override the
- * tenant-level defaults; a department with none inherits them (see
- * lib/sla-engine.ts `resolveSlaPolicies`).
+ * admin picks a department, then configures its department-level SLA per support
+ * form via the shared {@link SlaSettingsPage}. Sub-department-scoped SLA is
+ * managed separately on the department's own settings page; at run time a
+ * ticket's sub-department policies override these department-level ones, which
+ * override the tenant-level defaults (see lib/sla-engine.ts
+ * `resolveSlaPolicyTiers`).
  */
 export function DepartmentsSlaPage({ departments }: { departments: DepartmentOption[] }) {
   const [selectedId, setSelectedId] = useState<string>(departments[0]?.id ?? "");
@@ -53,6 +55,7 @@ export function DepartmentsSlaPage({ departments }: { departments: DepartmentOpt
           departmentName={selected.name}
           subDepartments={selected.subDepartments}
           hideBackLink
+          showSubDepartment={false}
         />
       )}
     </div>

@@ -85,7 +85,11 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
-  if (!(await departmentIdInScope(profile, id))) {
+  // Readable by operational members in scope OR by anyone who can administer the
+  // department's settings (tenant/dept admins) — the tenant-level Departments →
+  // SLA page configures departments other than the caller's active one, so the
+  // read gate must match the write gate (canAdminDeptSettings, used by POST).
+  if (!(await departmentIdInScope(profile, id)) && !canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

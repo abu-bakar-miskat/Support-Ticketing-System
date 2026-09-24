@@ -35,7 +35,10 @@ export async function createTicketFromPayload(
 ): Promise<{ ticketId: string; humanId: string | null }> {
   const form = await prisma.intakeFormConfig.findUnique({
     where: { id: formConfigId },
-    include: { fields: { orderBy: { order: "asc" } } },
+    include: {
+      fields: { orderBy: { order: "asc" } },
+      department: { select: { tenantId: true } },
+    },
   })
   if (!form) throw new Error(`Form ${formConfigId} not found`)
 
@@ -52,8 +55,21 @@ export async function createTicketFromPayload(
   let routedSubDepartmentId: string | null = null
 
   if (issueId) {
+    // The chosen issue may be authored on this form, or inherited from the
+    // department's / tenant's department-wide SLA policies (see the tier fallback
+    // in the form page + lib/sla-engine `resolveSlaPolicyTiers`). Accept any of
+    // those, scoped to this form's department/tenant so a crafted issueId can't
+    // pull in a policy from another department or tenant.
     const policy = await prisma.slaPolicy.findFirst({
-      where: { id: issueId, formConfigId },
+      where: {
+        id: issueId,
+        enabled: true,
+        OR: [
+          { formConfigId },
+          { departmentId: form.departmentId },
+          { departmentId: null, tenantId: form.department.tenantId },
+        ],
+      },
       select: {
         priority: true,
         resolutionMins: true,

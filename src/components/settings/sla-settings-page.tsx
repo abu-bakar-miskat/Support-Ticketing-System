@@ -74,12 +74,20 @@ export function SlaSettingsPage({
   departmentName,
   subDepartments,
   hideBackLink = false,
+  showSubDepartment = true,
 }: {
   departmentId: string;
   departmentName: string;
   subDepartments?: SubDepartmentOption[];
   /** Hide the "Back to departments" link when embedded (e.g. behind a picker). */
   hideBackLink?: boolean;
+  /**
+   * When false, this is the department-wide SLA surface: the sub-department
+   * column/field is hidden and only department-level policies (no
+   * `subDepartmentId`) are shown and created. Sub-department-scoped policies are
+   * managed on the department's own settings page instead.
+   */
+  showSubDepartment?: boolean;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
@@ -90,7 +98,8 @@ export function SlaSettingsPage({
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const subDeptList = subDepartments ?? [];
+  // Department-wide mode never surfaces sub-departments.
+  const subDeptList = showSubDepartment ? subDepartments ?? [] : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -215,9 +224,18 @@ export function SlaSettingsPage({
     });
   }
 
+  // In department-wide mode only department-level policies (no sub-department)
+  // are managed here; sub-department-scoped ones live on the sub-department page.
+  const visiblePolicies =
+    policies === null
+      ? null
+      : showSubDepartment
+        ? policies
+        : policies.filter((p) => !p.subDepartmentId);
+
   const policiesByForm = new Map<string, SlaPolicy[]>();
   const noFormPolicies: SlaPolicy[] = [];
-  for (const p of policies ?? []) {
+  for (const p of visiblePolicies ?? []) {
     if (p.formConfigId && forms.some((f) => f.id === p.formConfigId)) {
       const arr = policiesByForm.get(p.formConfigId) ?? [];
       arr.push(p);
@@ -240,9 +258,9 @@ export function SlaSettingsPage({
 
       <h1 className="sts-text-modal-title mb-1">SLA policies — {departmentName}</h1>
       <p className="mb-6 font-sans text-[12.5px] text-sts-muted">
-        Policies are configured at the department level; sub-departments inherit them. First-response
-        and resolution targets are matched against submitted form values. When several policies match,
-        the strictest target on each metric wins.
+        {showSubDepartment
+          ? "Policies are configured at the department level; sub-departments inherit them unless they have their own. First-response and resolution targets are matched against submitted form values. When several policies match, the strictest target on each metric wins."
+          : "Department-wide SLA policies. A ticket uses its sub-department's own policies when it has any; otherwise these department-level targets apply. First-response and resolution targets are matched against submitted form values. When several policies match, the strictest target on each metric wins."}
       </p>
 
       {error && (
@@ -254,16 +272,31 @@ export function SlaSettingsPage({
       <div className="mb-8">
         <div className="mb-3">
           <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
-          {policies !== null && (
+          {visiblePolicies !== null && (
             <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
-              {policies.length} {policies.length === 1 ? "policy" : "policies"} ·{" "}
-              {policies.filter((p) => p.enabled).length} active · grouped by support form
+              {visiblePolicies.length} {visiblePolicies.length === 1 ? "policy" : "policies"} ·{" "}
+              {visiblePolicies.filter((p) => p.enabled).length} active
+              {showSubDepartment ? " · grouped by support form" : ""}
             </p>
           )}
         </div>
 
-        {policies === null ? (
+        {visiblePolicies === null ? (
           <SkeletonRows count={3} height="h-44" />
+        ) : !showSubDepartment ? (
+          // Department-wide: one flat list of the department's SLA policies —
+          // not split by support form. Each policy is created directly under the
+          // department and applies to its forms via the SLA tier fallback.
+          <PolicyGroup
+            title={`${departmentName} SLA policies`}
+            policies={visiblePolicies}
+            subDepartments={subDeptList}
+            showSubDepartment={showSubDepartment}
+            onNewPolicy={() => setNewPolicyFor("")}
+            onSave={savePolicy}
+            onDelete={deletePolicy}
+            emptyHint="No SLA policies yet. Add one to set first-response and resolution targets for this department."
+          />
         ) : forms.length === 0 && noFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
             <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
@@ -282,6 +315,7 @@ export function SlaSettingsPage({
                 title={form.name}
                 policies={policiesByForm.get(form.id) ?? []}
                 subDepartments={subDeptList}
+                showSubDepartment={showSubDepartment}
                 onNewPolicy={() => setNewPolicyFor(form.id)}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
@@ -291,13 +325,15 @@ export function SlaSettingsPage({
 
             {noFormPolicies.length > 0 && (
               <PolicyGroup
-                title="Not linked to a form"
+                title="Department SLA"
                 policies={noFormPolicies}
                 subDepartments={subDeptList}
+                showSubDepartment={false}
                 onNewPolicy={() => setNewPolicyFor("")}
                 onSave={savePolicy}
                 onDelete={deletePolicy}
                 emptyHint=""
+                readOnly
               />
             )}
           </div>
@@ -407,6 +443,7 @@ export function SlaSettingsPage({
           creating={creating}
           forms={forms}
           subDepartments={subDeptList}
+          showSubDepartment={showSubDepartment}
           initialFormConfigId={newPolicyFor}
           onCancel={() => setNewPolicyFor(null)}
           onCreate={createPolicy}
@@ -420,18 +457,22 @@ function PolicyGroup({
   title,
   policies,
   subDepartments,
+  showSubDepartment,
   onNewPolicy,
   onSave,
   onDelete,
   emptyHint,
+  readOnly = false,
 }: {
   title: string;
   policies: SlaPolicy[];
   subDepartments: SubDepartmentOption[];
+  showSubDepartment: boolean;
   onNewPolicy: () => void;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   emptyHint: string;
+  readOnly?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
@@ -443,13 +484,15 @@ function PolicyGroup({
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onNewPolicy}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-        >
-          <Plus className="size-3.5" /> New policy
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={onNewPolicy}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+          >
+            <Plus className="size-3.5" /> New policy
+          </button>
+        )}
       </div>
 
       {policies.length === 0 ? (
@@ -464,7 +507,7 @@ function PolicyGroup({
             <thead>
               <tr className="border-b border-sts-card-border text-left font-sans text-[10.5px] font-medium uppercase tracking-wide text-sts-subtle">
                 <th className="px-2 py-2 font-medium">Issue</th>
-                <th className="px-2 py-2 font-medium">Sub-department</th>
+                {showSubDepartment && <th className="px-2 py-2 font-medium">Sub-department</th>}
                 <th className="px-2 py-2 font-medium">Priority goal</th>
                 <th className="px-2 py-2 font-medium">Time to first response</th>
                 <th className="px-2 py-2 font-medium">Time to resolution</th>
@@ -477,8 +520,10 @@ function PolicyGroup({
                   key={policy.id}
                   policy={policy}
                   subDepartments={subDepartments}
+                  showSubDepartment={showSubDepartment}
                   onSave={onSave}
                   onDelete={onDelete}
+                  readOnly={readOnly}
                 />
               ))}
             </tbody>
@@ -492,13 +537,17 @@ function PolicyGroup({
 function PolicyRow({
   policy,
   subDepartments,
+  showSubDepartment,
   onSave,
   onDelete,
+  readOnly = false,
 }: {
   policy: SlaPolicy;
   subDepartments: SubDepartmentOption[];
+  showSubDepartment: boolean;
   onSave: (id: string, patch: Partial<SlaPolicy>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState({
     name: policy.name,
@@ -559,26 +608,32 @@ function PolicyRow({
         <input
           value={draft.name}
           onChange={(e) => set("name", e.target.value)}
-          className="w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15"
+          readOnly={readOnly}
+          className={cn(
+            "w-full min-w-[140px] rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15",
+            readOnly && "cursor-default focus:border-sts-card-border focus:ring-0",
+          )}
         />
       </td>
-      <td className={cell}>
-        {subDepartments.length > 0 ? (
-          <div className="w-[150px]">
-            <SearchableSelect
-              value={draft.subDepartmentId ?? ""}
-              onChange={(v) => set("subDepartmentId", v || null)}
-              options={SUB_DEPT_OPTIONS(subDepartments)}
-              placeholder="None (form default)"
-              searchable={false}
-              size="sm"
-              aria-label="Sub-department concerned"
-            />
-          </div>
-        ) : (
-          <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
-        )}
-      </td>
+      {showSubDepartment && (
+        <td className={cell}>
+          {subDepartments.length > 0 ? (
+            <div className="w-[150px]">
+              <SearchableSelect
+                value={draft.subDepartmentId ?? ""}
+                onChange={(v) => set("subDepartmentId", v || null)}
+                options={SUB_DEPT_OPTIONS(subDepartments)}
+                placeholder="None (form default)"
+                searchable={false}
+                size="sm"
+                aria-label="Sub-department concerned"
+              />
+            </div>
+          ) : (
+            <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
+          )}
+        </td>
+      )}
       <td className={cell}>
         <div className="w-[130px]">
           <SearchableSelect
@@ -593,6 +648,7 @@ function PolicyRow({
             searchable={false}
             leadingDot
             size="sm"
+            disabled={readOnly}
             aria-label="Priority goal"
           />
         </div>
@@ -604,7 +660,8 @@ function PolicyRow({
             min={1}
             value={draft.firstResponseMins}
             onChange={(e) => set("firstResponseMins", Number(e.target.value))}
-            className={numCls}
+            readOnly={readOnly}
+            className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
           <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
         </div>
@@ -616,40 +673,43 @@ function PolicyRow({
             min={1}
             value={draft.resolutionMins}
             onChange={(e) => set("resolutionMins", Number(e.target.value))}
-            className={numCls}
+            readOnly={readOnly}
+            className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
           <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
         </div>
       </td>
       <td className={cell}>
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={save}
-            disabled={!canSave}
-            className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
-            title="Save changes"
-          >
-            <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            title="Delete policy"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-          <ConfirmDialog
-            open={confirmOpen}
-            onOpenChange={setConfirmOpen}
-            title="Delete SLA policy"
-            description={`Delete "${policy.name}"? Tickets it matches will no longer get its SLA targets. This can't be undone.`}
-            confirmLabel="Delete"
-            successMessage="Policy deleted"
-            onConfirm={() => onDelete(policy.id)}
-          />
-        </div>
+        {!readOnly && (
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={save}
+              disabled={!canSave}
+              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
+              title="Save changes"
+            >
+              <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              title="Delete policy"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+            <ConfirmDialog
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              title="Delete SLA policy"
+              description={`Delete "${policy.name}"? Tickets it matches will no longer get its SLA targets. This can't be undone.`}
+              confirmLabel="Delete"
+              successMessage="Policy deleted"
+              onConfirm={() => onDelete(policy.id)}
+            />
+          </div>
+        )}
       </td>
     </tr>
   );
@@ -660,6 +720,7 @@ function NewPolicyModal({
   creating,
   forms,
   subDepartments,
+  showSubDepartment,
   initialFormConfigId,
   onCancel,
   onCreate,
@@ -668,6 +729,7 @@ function NewPolicyModal({
   creating: boolean;
   forms: FormOption[];
   subDepartments: SubDepartmentOption[];
+  showSubDepartment: boolean;
   initialFormConfigId: string;
   onCancel: () => void;
   onCreate: (input: {
@@ -757,7 +819,7 @@ function NewPolicyModal({
             />
           </div>
 
-          {subDepartments.length > 0 && (
+          {showSubDepartment && subDepartments.length > 0 && (
             <div className="space-y-1.5">
               <label className="sts-text-label">Sub-department concerned (optional)</label>
               <SearchableSelect

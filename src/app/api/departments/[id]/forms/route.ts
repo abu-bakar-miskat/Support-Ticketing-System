@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { departmentIdInScope } from "@/lib/dept-scope"
+import { canAdminDeptSettings, departmentIdInScope } from "@/lib/dept-scope"
 
 /**
  * GET /api/departments/:id/forms — this department's intake forms, for the SLA
@@ -20,7 +20,9 @@ export async function GET(
   if (error) return error
 
   const { id } = await params
-  if (!(await departmentIdInScope(profile, id))) {
+  // Match the SLA settings/policies read gate: operational members in scope OR
+  // tenant/dept admins configuring another department via Departments → SLA.
+  if (!(await departmentIdInScope(profile, id)) && !canAdminDeptSettings(profile, id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

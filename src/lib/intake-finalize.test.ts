@@ -45,6 +45,7 @@ const deptForm = {
   autoAssign: true,
   schemaVersion: 1,
   fields: [],
+  department: { tenantId: "ten-1" },
 }
 
 const payload = {

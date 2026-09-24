@@ -47,7 +47,8 @@ export async function provisionDepartmentSupportTemplate(departmentId: string): 
   }
 
   await resolveSupportProjectForDepartment(departmentId);
-  await seedDefaultSlaPolicies(departmentId, dept.tenantId);
+  // Default priority-based SLA policies are intentionally NOT seeded — new
+  // tenants/departments start with no SLA policies (admins add their own).
   await seedSampleRules(departmentId, dept.tenantId);
 }
 

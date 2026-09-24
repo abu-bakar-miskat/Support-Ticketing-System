@@ -132,7 +132,7 @@ describe("startSlaTimers — SLA-01/02/03", () => {
 
     expect(mockPolicyFindMany).toHaveBeenCalledTimes(1)
     expect(mockPolicyFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { departmentId: "dept-1", enabled: true } }),
+      expect.objectContaining({ where: { departmentId: "dept-1", subDepartmentId: null, enabled: true } }),
     )
     expect(mockTimerCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -193,6 +193,84 @@ describe("startSlaTimers — SLA-01/02/03", () => {
           firstResponseTargetMins: 60,
           resolutionTargetMins: 240,
         }),
+      }),
+    )
+  })
+
+  it("uses the sub-department's own policy over the department-wide one", async () => {
+    // Tier 1: the ticket's sub-department has a matching policy → its targets win
+    // over the department-level tier that is also queried.
+    mockPolicyFindMany
+      .mockResolvedValueOnce([
+        { id: "sub-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 10, resolutionMins: 60 },
+      ] as never)
+      .mockResolvedValueOnce([
+        { id: "dept-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 30, resolutionMins: 240 },
+      ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", {}, now, "team-1")
+
+    expect(mockPolicyFindMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ where: { departmentId: "dept-1", subDepartmentId: "team-1", enabled: true } }),
+    )
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ policyId: "sub-p", firstResponseTargetMins: 10, resolutionTargetMins: 60 }),
+      }),
+    )
+  })
+
+  it("falls back to the department SLA when the sub-department has no policy", async () => {
+    // Tier 1 empty → tier 2 (department-level) is used.
+    mockPolicyFindMany
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        { id: "dept-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 30, resolutionMins: 240 },
+      ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", {}, now, "team-1")
+
+    expect(mockPolicyFindMany).toHaveBeenCalledTimes(2)
+    expect(mockPolicyFindMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ where: { departmentId: "dept-1", subDepartmentId: null, enabled: true } }),
+    )
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ policyId: "dept-p", firstResponseTargetMins: 30, resolutionTargetMins: 240 }),
+      }),
+    )
+  })
+
+  it("falls back to the department SLA when the sub-department's policy does not match the ticket", async () => {
+    // Tier 1 has a policy, but its conditions don't match → fall through to the
+    // department-level tier (user-chosen fallback behaviour).
+    mockPolicyFindMany
+      .mockResolvedValueOnce([
+        {
+          id: "sub-p",
+          conditions: { combinator: "AND", conditions: [{ fieldId: "priority", operator: "equals", value: "Urgent" }] },
+          firstResponseMins: 10,
+          resolutionMins: 60,
+        },
+      ] as never)
+      .mockResolvedValueOnce([
+        { id: "dept-p", conditions: { combinator: "AND", conditions: [] }, firstResponseMins: 30, resolutionMins: 240 },
+      ] as never)
+    mockTimerCreate.mockResolvedValue({} as never)
+
+    const now = new Date("2026-08-17T09:00:00.000Z")
+    await startSlaTimers("ticket-1", "tenant-1", "dept-1", { priority: "Low" }, now, "team-1")
+
+    expect(mockPolicyFindMany).toHaveBeenCalledTimes(2)
+    expect(mockTimerCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ policyId: "dept-p", firstResponseTargetMins: 30, resolutionTargetMins: 240 }),
       }),
     )
   })

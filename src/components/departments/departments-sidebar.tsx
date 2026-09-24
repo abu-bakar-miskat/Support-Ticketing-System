@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAppPathname } from "@/hooks/use-app-pathname";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
+  BarChart3,
   Bell,
   Building2,
   History,
@@ -54,6 +55,7 @@ export function DepartmentsSidebar({
 
   const navItems: NavItem[] = [
     { label: "Departments", href: "/departments", icon: DepartmentIcon },
+    { label: "Reports", href: "/departments/reports", icon: BarChart3 },
     { label: "Users", href: "/departments/users", icon: Users },
     { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
     { label: "Audit Log", href: "/departments/activity", icon: History },

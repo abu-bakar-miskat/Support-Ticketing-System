@@ -6,6 +6,7 @@ import { runAsSystem } from "@/lib/request-scope"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { appendTicketEvent, broadcastTicketEvent } from "@/lib/ticket-events"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 
 async function assertTimeTracking(profile: { activeTenantId?: string | null }) {
   if (!profile.activeTenantId) return null
@@ -192,6 +193,10 @@ export async function POST(request: NextRequest) {
         entry,
       ).catch(() => undefined),
     ])
+    // Any timer we auto-closed above may have pushed its ticket over estimate.
+    for (const c of closed) {
+      if (c.ticketId) await checkAndNotifyEstimateOverrun(c.ticketId)
+    }
     return NextResponse.json(entry, { status: 201 })
   }
 
@@ -243,6 +248,7 @@ export async function POST(request: NextRequest) {
       "stop",
       updated,
     ).catch(() => undefined)
+    if (running.ticketId) await checkAndNotifyEstimateOverrun(running.ticketId)
     return NextResponse.json(updated)
   }
 

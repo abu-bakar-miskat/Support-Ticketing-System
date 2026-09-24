@@ -244,6 +244,18 @@ async function buildAndBroadcast(
       break
     }
 
+    case "time_estimate_exceeded": {
+      // `message` is the predicate ("has exceeded its time estimate"); prefix
+      // the ticket ref + title → `ITS-16 "Login bug" has exceeded its time estimate`.
+      const subject = ticketRef
+        ? ticketName
+          ? `${ticketRef} "${ticketName}"`
+          : ticketRef
+        : ticketLabel
+      title = `${subject} ${message ?? "has exceeded its time estimate"}`
+      break
+    }
+
     default:
       title = message ? `${actorName} — ${message}` : `${actorName} sent a notification`
   }

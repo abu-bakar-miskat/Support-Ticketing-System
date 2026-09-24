@@ -11,6 +11,7 @@
  * rather than crediting a human — same pattern as lib/github/advance-status.ts.
  */
 import { prisma } from "@/lib/db"
+import { normalizeStatus } from "@/components/board/board-types"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
@@ -21,6 +22,19 @@ export const ESCALATED_LABEL = "Escalated"
 
 export function isEscalatedLabel(label: string): boolean {
   return /escalat/i.test(label)
+}
+
+/**
+ * De-escalation on active-work entry: when a ticket moves into "In Progress"
+ * (an agent has picked it up), drop the "Escalated" label so it no longer reads
+ * as needing attention. Pure — returns `labels` unchanged for any other target
+ * status. "In Progress" can never itself be an escalated status, so no extra
+ * guard is needed. Shared by every route that changes a ticket's status
+ * (`/status`, `/move`, generic `PATCH`).
+ */
+export function labelsAfterDeEscalation(labels: string[], toStatus: string): string[] {
+  if (normalizeStatus(toStatus) !== "In Progress") return labels
+  return labels.filter((label) => !isEscalatedLabel(label))
 }
 
 export interface EscalateTicketOptions {

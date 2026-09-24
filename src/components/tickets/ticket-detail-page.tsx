@@ -58,7 +58,6 @@ import {
   RefreshCw,
   MessageSquare,
   Mail,
-  ArrowUpRight,
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -3587,30 +3586,6 @@ export function TicketDetailPage({
                 onStatusChange={setLiveStatus}
                 disabled={!canChangeStatus}
               />
-              {canChangeStatus && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`/api/tickets/${dbId}/escalate`, { method: "POST" });
-                      if (!res.ok) {
-                        const body = await res.json().catch(() => ({}));
-                        throw new Error((body as { error?: string }).error ?? "Failed to escalate");
-                      }
-                      const data = await res.json() as { status: string; labels?: string[] };
-                      setLiveStatus(data.status);
-                      if (data.labels) setLiveLabels(data.labels);
-                      toast.success("Ticket escalated");
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Failed to escalate");
-                    }
-                  }}
-                  className="mt-1 inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] font-medium text-sts-muted hover:text-sts-foreground"
-                >
-                  <ArrowUpRight className="size-3.5" />
-                  Escalate
-                </button>
-              )}
             </div>
 
             {/* Priority */}
@@ -3650,24 +3625,26 @@ export function TicketDetailPage({
                 onAssigneeChange={handleAssigneeChange}
                 disabled={!canEditTicket}
               />
-              {canAssignToMe ? (
-                <button
-                  type="button"
-                  onClick={handleAssignToMe}
-                  className="flex items-center gap-1.5 self-start rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-blue transition-colors hover:bg-sts-surface"
-                >
-                  <UserPlus className="size-3.5" />
-                  Assign to me
-                </button>
-              ) : null}
-              <CoAssigneeSelect
-                ticketId={dbId}
-                coAssignees={liveCoAssignees}
-                subDepartmentMembers={subDepartmentMembers}
-                primaryAssigneeId={liveAssigneeId}
-                onCoAssigneesChange={handleCoAssigneesChange}
-                disabled={!canEditTicket}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <CoAssigneeSelect
+                  ticketId={dbId}
+                  coAssignees={liveCoAssignees}
+                  subDepartmentMembers={subDepartmentMembers}
+                  primaryAssigneeId={liveAssigneeId}
+                  onCoAssigneesChange={handleCoAssigneesChange}
+                  disabled={!canEditTicket}
+                />
+                {canAssignToMe ? (
+                  <button
+                    type="button"
+                    onClick={handleAssignToMe}
+                    className="flex items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-2 py-1 font-sans text-[11.5px] font-medium text-sts-blue transition-colors hover:bg-sts-surface"
+                  >
+                    <UserPlus className="size-3.5" />
+                    Assign to me
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* Module */}

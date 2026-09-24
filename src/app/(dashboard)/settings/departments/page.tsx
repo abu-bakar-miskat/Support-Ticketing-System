@@ -79,6 +79,7 @@ export default async function SettingsDepartmentsRoute() {
         where: { isActive: true, subDepartment: { departmentId: { in: deptIds } } },
         select: {
           userId: true,
+          role: true,
           subDepartment: { select: { id: true, name: true, departmentId: true } },
           user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
         },
@@ -86,12 +87,12 @@ export default async function SettingsDepartmentsRoute() {
     : [];
 
   // Group members by department, then by sub-department
-  const membersByDept = new Map<string, Map<string, { id: string; name: string; email: string; role: string; avatarUrl: string | null }>>();
-  const byDeptSub = new Map<string, Map<string, { name: string; members: Map<string, { id: string; name: string; email: string; role: string; avatarUrl: string | null }> }>>();
+  const membersByDept = new Map<string, Map<string, { role: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }>>();
+  const byDeptSub = new Map<string, Map<string, { name: string; members: Map<string, { role: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }> }>>();
   for (const m of memberships) {
     const dId = m.subDepartment.departmentId;
     const map = membersByDept.get(dId) ?? new Map();
-    map.set(m.userId, { ...m.user, avatarUrl: m.user.avatarUrl ?? null });
+    map.set(m.userId, { role: m.role, user: { ...m.user, avatarUrl: m.user.avatarUrl ?? null } });
     membersByDept.set(dId, map);
 
     const subMap = byDeptSub.get(dId) ?? new Map();
@@ -99,7 +100,7 @@ export default async function SettingsDepartmentsRoute() {
       name: m.subDepartment.name,
       members: new Map(),
     };
-    group.members.set(m.userId, { ...m.user, avatarUrl: m.user.avatarUrl ?? null });
+    group.members.set(m.userId, { role: m.role, user: { ...m.user, avatarUrl: m.user.avatarUrl ?? null } });
     subMap.set(m.subDepartment.id, group);
     byDeptSub.set(dId, subMap);
   }
@@ -115,7 +116,7 @@ export default async function SettingsDepartmentsRoute() {
         subDepartmentId: sub.id,
         subDepartmentName: sub.name,
         members: group
-          ? [...group.members.entries()].map(([uid, u]) => ({ userId: uid, user: u }))
+          ? [...group.members.entries()].map(([uid, m]) => ({ userId: uid, role: m.role, user: m.user }))
           : [],
       };
     });
@@ -142,9 +143,10 @@ export default async function SettingsDepartmentsRoute() {
         grantor: { id: g.grantor.id, name: g.grantor.name },
       })),
       directMembers: [],
-      nativeMembers: [...nativeMemberMap.entries()].map(([uid, u]) => ({
+      nativeMembers: [...nativeMemberMap.entries()].map(([uid, m]) => ({
         userId: uid,
-        user: u,
+        role: m.role,
+        user: m.user,
       })),
       membersBySubDepartment,
       memberIds: [...nativeMemberMap.keys()],

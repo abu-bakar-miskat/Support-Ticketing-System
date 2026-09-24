@@ -9,6 +9,7 @@ import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { broadcastProjectBoardsChange } from "@/lib/project-boards-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
+import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
@@ -98,12 +99,15 @@ export async function PATCH(
     )
   }
 
-  const nextLabels = labelsAfterStatusMove({
-    ticketLabels: ticket.labels,
-    priorLinkedLabels,
-    nextLinkedLabels,
-    chosenLabel: resolvedChosen,
-  })
+  const nextLabels = labelsAfterDeEscalation(
+    labelsAfterStatusMove({
+      ticketLabels: ticket.labels,
+      priorLinkedLabels,
+      nextLinkedLabels,
+      chosenLabel: resolvedChosen,
+    }),
+    status,
+  )
   const labelsChanged =
     nextLabels.length !== ticket.labels.length ||
     nextLabels.some((label) => !ticket.labels.includes(label)) ||

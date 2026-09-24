@@ -145,6 +145,7 @@ enum NotificationType {
   intake_manager_alert
   sla_at_risk
   sla_breach
+  time_estimate_exceeded
   assignment_failed_alert
   mailbox_connection_failed
   agreement_expiring
@@ -919,6 +920,9 @@ model Ticket {
   inProgressStartedAt   DateTime?
   resolutionDurationMins Int?
   resolvedWithinAllowed  Boolean?
+  // Set once total logged time (sum of TimeEntry.durationSecs) first crosses
+  // `estimatedTime`, so the "time exceeded estimate" alert fires only once.
+  estimateOverrunNotifiedAt DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?

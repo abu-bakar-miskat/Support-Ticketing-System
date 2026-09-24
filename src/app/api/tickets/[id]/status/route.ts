@@ -11,6 +11,7 @@ import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
+import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 
@@ -123,12 +124,15 @@ export async function PATCH(
     )
   }
 
-  const nextLabels = labelsAfterStatusMove({
-    ticketLabels: ticket.labels,
-    priorLinkedLabels,
-    nextLinkedLabels,
-    chosenLabel: resolvedChosen,
-  })
+  const nextLabels = labelsAfterDeEscalation(
+    labelsAfterStatusMove({
+      ticketLabels: ticket.labels,
+      priorLinkedLabels,
+      nextLinkedLabels,
+      chosenLabel: resolvedChosen,
+    }),
+    to,
+  )
   const labelsChanged =
     nextLabels.length !== ticket.labels.length ||
     nextLabels.some((label) => !ticket.labels.includes(label)) ||

@@ -82,6 +82,8 @@ export type AccessGrant = {
 
 export type NativeMember = {
   userId: string;
+  /** Sub-department-scoped role from SubDepartmentMembership (e.g. sub_manager), not the user's global profile role. */
+  role: string;
   user: { id: string; name: string; email: string; role: string; avatarUrl?: string | null };
 };
 
@@ -840,12 +842,12 @@ function DepartmentCard({
                             <div
                               key={`${group.subDepartmentId}-${m.userId}`}
                               className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card py-1 pl-1 pr-2"
-                              title={`${m.user.email} · ${m.user.role}`}
+                              title={`${m.user.email} · ${m.role.replace(/_/g, " ")}`}
                             >
                               <Avatar name={m.user.name} size={18} avatarUrl={m.user.avatarUrl ?? null} />
                               <span className="max-w-[7rem] truncate font-sans text-[11.5px] text-sts-foreground">{m.user.name}</span>
                               <span className="rounded-full bg-sts-surface px-1 py-0.5 font-sans text-[9.5px] capitalize text-sts-subtle">
-                                {m.user.role}
+                                {m.role.replace(/_/g, " ")}
                               </span>
                             </div>
                           ))}

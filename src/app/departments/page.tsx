@@ -59,7 +59,7 @@ export default async function DepartmentsPage() {
               _count: { select: { memberships: { where: { isActive: true } } } },
               memberships: {
                 where: { isActive: true },
-                select: { userId: true, user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
+                select: { userId: true, role: true, user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
               },
             },
           },
@@ -225,12 +225,12 @@ export default async function DepartmentsPage() {
       directMembers: [],
       nativeMembers: (() => {
         const seen = new Set<string>();
-        const result: { userId: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }[] = [];
+        const result: { userId: string; role: string; user: { id: string; name: string; email: string; role: string; avatarUrl: string | null } }[] = [];
         for (const subDepartment of d.subDepartments) {
           for (const ms of subDepartment.memberships) {
             if (!seen.has(ms.userId)) {
               seen.add(ms.userId);
-              result.push({ userId: ms.userId, user: { ...ms.user, avatarUrl: ms.user.avatarUrl ?? null } });
+              result.push({ userId: ms.userId, role: ms.role, user: { ...ms.user, avatarUrl: ms.user.avatarUrl ?? null } });
             }
           }
         }
@@ -241,6 +241,7 @@ export default async function DepartmentsPage() {
         subDepartmentName: sub.name,
         members: sub.memberships.map((ms) => ({
           userId: ms.userId,
+          role: ms.role,
           user: { ...ms.user, avatarUrl: ms.user.avatarUrl ?? null },
         })),
       })),

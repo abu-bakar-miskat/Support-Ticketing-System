@@ -12,6 +12,7 @@ import { assertAssigneeEligibleForTicket } from "@/lib/ticket-detail-data"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
+import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
@@ -357,6 +358,13 @@ export async function PATCH(
       if (stripped.length) {
         updateData.labels = base.filter((l) => !stripped.includes(l))
       }
+    }
+    // Starting active work de-escalates: drop the "Escalated" label on entry to
+    // In Progress, matching /status and /move.
+    const base = updateData.labels ?? ticket.labels
+    const deEscalated = labelsAfterDeEscalation(base, updateData.status as string)
+    if (deEscalated.length !== base.length) {
+      updateData.labels = deEscalated
     }
   }
 

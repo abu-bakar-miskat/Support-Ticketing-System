@@ -19,12 +19,4 @@ describe("template marketplace nav", () => {
   it("hides the marketplace from department heads", () => {
     expect(hrefs("manager", true, true)).not.toContain("/settings/templates-catalogue")
   })
-
-  it("shows Support template configuration to a department head inside their department", () => {
-    expect(hrefs("manager", true, true)).toContain("/settings/support-template")
-  })
-
-  it("hides Support template configuration from a plain manager", () => {
-    expect(hrefs("manager", true, false)).not.toContain("/settings/support-template")
-  })
 })

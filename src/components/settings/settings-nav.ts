@@ -111,13 +111,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "workflows",
       },
       {
-        label: "Support template",
-        href: "/settings/support-template",
-        departmentAdmin: true,
-        deptSpecific: true,
-        templateFeatureKey: "supportForm",
-      },
-      {
         label: "Support forms",
         href: "/settings/support-forms",
         departmentAdmin: true,

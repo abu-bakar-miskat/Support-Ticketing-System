@@ -131,6 +131,15 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         deptSpecific: true,
         templateFeatureKey: "slaPolicies",
       },
+      {
+        // Tenant-wide default SLA policies (admins, tenant view). Departments
+        // override these with their own policies under /settings/sla.
+        label: "SLA defaults",
+        href: "/settings/sla-defaults",
+        adminOnly: true,
+        tenantScoped: true,
+        templateFeatureKey: "slaPolicies",
+      },
       // {
       //   label: "Automation rules",
       //   href: "/settings/rules",

@@ -1334,14 +1334,20 @@ model SlaRule {
 
 // ─── SLA (slice 10) ─────────────────────────────────────────────────────────
 
-// Per-department SLA policy, matched against submitted form values (SLA-01/02).
-// `conditions` is a rules-engine `ConditionGroup` (see lib/rules-engine.ts); an
-// empty group matches unconditionally. Where multiple policies match a ticket,
+// SLA policy, matched against submitted form values (SLA-01/02). `conditions`
+// is a rules-engine `ConditionGroup` (see lib/rules-engine.ts); an empty group
+// matches unconditionally. Where multiple policies match a ticket,
 // lib/sla-policy-match.ts picks the most restrictive target per metric.
+//
+// Scope: a policy with a `departmentId` is a department policy; a policy with a
+// null `departmentId` is a tenant-level default. A department that has any of
+// its own enabled policies overrides the tenant defaults entirely; departments
+// with no policies of their own inherit the tenant defaults (see
+// lib/sla-engine.ts `resolveSlaPolicies`).
 model SlaPolicy {
   id                String   @id @default(cuid())
   tenantId          String
-  departmentId      String
+  departmentId      String?
   name              String
   conditions        Json
   firstResponseMins Int
@@ -1366,7 +1372,7 @@ model SlaPolicy {
   assigneeRotaPointer Int @default(0)
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department    Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
   timers        SlaTimer[]
   assignees     SlaPolicyAssignee[]

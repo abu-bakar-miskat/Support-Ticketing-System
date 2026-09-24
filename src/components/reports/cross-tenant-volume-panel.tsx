@@ -19,8 +19,162 @@ type TenantTicketRow = {
   humanId: string;
   title: string;
   status: string;
+  type?: string;
+  category?: string;
   createdAt: string;
 };
+
+type Slice = { label: string; count: number; color: string };
+
+const STATUS_COLOR: Record<string, string> = {
+  OPEN: "#94a3b8",
+  "TO DO": "#94a3b8",
+  "IN PROGRESS": "#0a76b9",
+  PAUSED: "#f59e0b",
+  ESCALATED: "#dc2626",
+  RESOLVED: "#16a34a",
+  LIVE: "#16a34a",
+  DONE: "#16a34a",
+  CLOSED: "#16a34a",
+  BLOCKED: "#dc2626",
+};
+const FALLBACK_COLORS = ["#7c3aed", "#0891b2", "#db2777", "#65a30d", "#ea580c", "#4f46e5"];
+
+function localDayKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function eachDay(startIso: string, endIso: string): string[] {
+  const days: string[] = [];
+  const cursor = new Date(startIso);
+  cursor.setHours(0, 0, 0, 0);
+  const end = new Date(endIso);
+  end.setHours(0, 0, 0, 0);
+  while (cursor <= end) {
+    days.push(localDayKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+function dayLabel(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function prettyLabel(value: string): string {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function countBy(rows: TenantTicketRow[], key: (row: TenantTicketRow) => string): { label: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const label = key(row).trim() || "Unknown";
+    map.set(label, (map.get(label) ?? 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+function statusSlices(rows: TenantTicketRow[]): Slice[] {
+  return countBy(rows, (row) => row.status || "Unknown").map((slice, index) => ({
+    ...slice,
+    color: STATUS_COLOR[slice.label.trim().toUpperCase()] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+  }));
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <div className="border-b border-sts-card-border px-4 py-2.5">
+      <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">{children}</p>
+    </div>
+  );
+}
+
+function Donut({ slices, total }: { slices: Slice[]; total: number }) {
+  const r = 36;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <svg viewBox="0 0 100 100" className="size-[148px] shrink-0 text-sts-foreground" role="img" aria-label="Status mix">
+      <circle cx="50" cy="50" r={r} fill="none" className="stroke-sts-surface" strokeWidth="12" />
+      {total > 0 &&
+        slices.map((slice) => {
+          const length = (slice.count / total) * circumference;
+          const gap = slices.length > 1 ? 1.5 : 0;
+          const dash = Math.max(0, length - gap);
+          const node = (
+            <circle
+              key={slice.label}
+              cx="50"
+              cy="50"
+              r={r}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth="12"
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-offset}
+              transform="rotate(-90 50 50)"
+            />
+          );
+          offset += length;
+          return node;
+        })}
+      <text x="50" y="48" textAnchor="middle" fill="currentColor" style={{ fontSize: 16, fontWeight: 650 }}>
+        {total}
+      </text>
+      <text x="50" y="61" textAnchor="middle" className="fill-sts-subtle" style={{ fontSize: 7, letterSpacing: 0.8 }}>
+        TICKETS
+      </text>
+    </svg>
+  );
+}
+
+function ShareBars({
+  rows,
+  color,
+}: {
+  rows: { label: string; count: number }[];
+  color?: string;
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.count));
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+  return (
+    <ul className="flex flex-col gap-3">
+      {rows.map((row, index) => {
+        const share = Math.round((row.count / Math.max(total, 1)) * 100);
+        return (
+          <li key={row.label}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-sans text-[12.5px] text-sts-foreground">{prettyLabel(row.label)}</span>
+              <span className="shrink-0 font-sans text-[11.5px] tabular-nums text-sts-subtle">
+                <span className="font-mono font-semibold text-sts-foreground">{row.count}</span>
+                <span className="ml-1.5">{share}%</span>
+              </span>
+            </div>
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-sts-surface">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.max(4, (row.count / max) * 100)}%`,
+                  backgroundColor: color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+                }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -52,6 +206,123 @@ function Stat({
       </p>
       <p className="mt-1.5 font-sans text-[11.5px] text-sts-muted">{detail}</p>
     </div>
+  );
+}
+
+function TenantCharts({
+  tickets,
+  departments,
+  start,
+  end,
+}: {
+  tickets: TenantTicketRow[];
+  departments: DepartmentRow[];
+  start: string;
+  end: string;
+}) {
+  const days = eachDay(start, end);
+  const byDay = new Map<string, number>();
+  for (const ticket of tickets) {
+    const key = localDayKey(new Date(ticket.createdAt));
+    byDay.set(key, (byDay.get(key) ?? 0) + 1);
+  }
+  const series = days.map((key) => ({ key, count: byDay.get(key) ?? 0 }));
+  const peak = series.reduce((best, day) => (day.count > best.count ? day : best), series[0]);
+  const maxDay = Math.max(1, ...series.map((day) => day.count));
+  const statuses = statusSlices(tickets);
+  const categories = countBy(tickets, (row) => row.category || "Uncategorized");
+  const types = countBy(tickets, (row) => row.type || "Unknown");
+  const mid = series[Math.floor(series.length / 2)];
+
+  return (
+    <>
+      <section className="rounded-xl border border-sts-card-border bg-sts-card">
+        <SectionTitle>CREATED OVER 30 DAYS</SectionTitle>
+        <div className="px-4 py-4">
+          <p className="mb-3 font-sans text-[12px] text-sts-muted">
+            {peak && peak.count > 0
+              ? `Busiest day ${dayLabel(peak.key)} · ${peak.count} ${peak.count === 1 ? "ticket" : "tickets"}`
+              : "No tickets in this window"}
+          </p>
+          <div className="flex h-36 items-end gap-[3px]" role="img" aria-label="Tickets created each day">
+            {series.map((day) => (
+              <div key={day.key} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${dayLabel(day.key)}: ${day.count}`}>
+                <div
+                  className="w-full rounded-sm bg-sts-blue"
+                  style={{
+                    height: day.count === 0 ? "2px" : `${Math.max(8, (day.count / maxDay) * 100)}%`,
+                    opacity: day.count === 0 ? 0.25 : 1,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between font-sans text-[11px] text-sts-subtle">
+            <span>{series[0] ? dayLabel(series[0].key) : ""}</span>
+            <span>{mid ? dayLabel(mid.key) : ""}</span>
+            <span>{series.at(-1) ? dayLabel(series.at(-1)!.key) : ""}</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid items-start gap-3 lg:grid-cols-2">
+        <section className="rounded-xl border border-sts-card-border bg-sts-card">
+          <SectionTitle>STATUS</SectionTitle>
+          <div className="flex flex-wrap items-center gap-5 px-4 py-4">
+            <Donut slices={statuses} total={tickets.length} />
+            <ul className="min-w-0 flex-1 space-y-2">
+              {statuses.map((slice) => (
+                <li key={slice.label} className="flex items-center gap-2">
+                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} />
+                  <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
+                    {prettyLabel(slice.label)}
+                  </span>
+                  <span className="font-mono text-[12px] tabular-nums text-sts-foreground">{slice.count}</span>
+                  <span className="w-9 text-right font-sans text-[11.5px] tabular-nums text-sts-subtle">
+                    {Math.round((slice.count / tickets.length) * 100)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-sts-card-border bg-sts-card">
+          <SectionTitle>DEPARTMENTS</SectionTitle>
+          <div className="px-4 py-4">
+            {departments.length === 0 ? (
+              <p className="font-sans text-[12.5px] text-sts-subtle">No department activity in this window.</p>
+            ) : (
+              <ShareBars
+                rows={departments.map((dept) => ({ label: dept.departmentName, count: dept.count }))}
+                color="var(--sts-blue)"
+              />
+            )}
+          </div>
+        </section>
+      </div>
+
+      {(categories.length > 1 || types.length > 1) && (
+        <div className="grid items-start gap-3 lg:grid-cols-2">
+          {categories.length > 1 && (
+            <section className="rounded-xl border border-sts-card-border bg-sts-card">
+              <SectionTitle>CATEGORY</SectionTitle>
+              <div className="px-4 py-4">
+                <ShareBars rows={categories} />
+              </div>
+            </section>
+          )}
+          {types.length > 1 && (
+            <section className="rounded-xl border border-sts-card-border bg-sts-card">
+              <SectionTitle>TYPE</SectionTitle>
+              <div className="px-4 py-4">
+                <ShareBars rows={types} />
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -116,7 +387,6 @@ export function CrossTenantVolumePanel() {
   const total = (tenants ?? []).reduce((sum, tenant) => sum + tenant.count, 0);
   const maxCount = Math.max(1, ...active.map((tenant) => tenant.count));
   const top = active[0];
-  const deptMax = Math.max(1, ...departments.map((dept) => dept.count));
 
   const tenantFilter = (
     <DropdownMenu>
@@ -149,7 +419,7 @@ export function CrossTenantVolumePanel() {
         title="Reports"
         icon={ChartColumn}
         iconClassName="text-sts-blue"
-        description="Ticket volume across every tenant for the last 30 days. Filter to one tenant to see its departments and tickets."
+        description="Ticket volume across every tenant for the last 30 days. Filter to one tenant to see how that volume breaks down."
         actions={tenantFilter}
       />
 
@@ -266,69 +536,24 @@ export function CrossTenantVolumePanel() {
             />
           </div>
 
-          <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,280px)_1fr]">
-            <section className="rounded-xl border border-sts-card-border bg-sts-card">
-              <div className="border-b border-sts-card-border px-4 py-2.5">
-                <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-                  DEPARTMENTS
-                </p>
-              </div>
-              <div className="px-4 py-3">
-                {loading && <p className="font-sans text-[12.5px] text-sts-subtle">Loading…</p>}
-                {!loading && departments.length === 0 && (
-                  <p className="font-sans text-[12.5px] text-sts-subtle">No department activity in this window.</p>
-                )}
-                {departments.length > 0 && (
-                  <ul className="flex flex-col gap-2.5">
-                    {departments.map((dept) => (
-                      <li key={dept.departmentId}>
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="truncate font-sans text-[12.5px] text-sts-foreground">{dept.departmentName}</span>
-                          <span className="font-mono text-[12px] tabular-nums text-sts-subtle">{dept.count}</span>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-sts-surface">
-                          <div
-                            className="h-full rounded-full bg-sts-blue"
-                            style={{ width: `${Math.max(4, (dept.count / deptMax) * 100)}%` }}
-                          />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-
-            <section className="min-w-0 rounded-xl border border-sts-card-border bg-sts-card">
-              <div className="border-b border-sts-card-border px-4 py-2.5">
-                <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-                  TICKETS · {selectedName.toUpperCase()}
-                </p>
-              </div>
-              {loading && <p className="px-4 py-6 font-sans text-[12.5px] text-sts-subtle">Loading…</p>}
-              {tickets && tickets.length === 0 && !loading && (
-                <p className="px-4 py-6 font-sans text-[12.5px] text-sts-subtle">No tickets in this window.</p>
-              )}
-              {tickets && tickets.length > 0 && (
-                <ul className="max-h-[520px] divide-y divide-sts-card-border/70 overflow-y-auto">
-                  {tickets.map((ticket) => (
-                    <li key={ticket.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="w-[72px] shrink-0 font-mono text-[11.5px] text-sts-id">{ticket.humanId}</span>
-                      <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
-                        {ticket.title}
-                      </span>
-                      <span className="hidden shrink-0 font-sans text-[11.5px] text-sts-subtle sm:inline">
-                        {new Date(ticket.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11px] text-sts-muted">
-                        {ticket.status}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
+          {loading && !tickets && (
+            <p className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-6 font-sans text-[12.5px] text-sts-subtle">
+              Loading…
+            </p>
+          )}
+          {tickets && tickets.length === 0 && !loading && (
+            <p className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-6 font-sans text-[12.5px] text-sts-subtle">
+              No tickets in this window.
+            </p>
+          )}
+          {tickets && tickets.length > 0 && (
+            <TenantCharts
+              tickets={tickets}
+              departments={departments}
+              start={start}
+              end={end}
+            />
+          )}
         </>
       )}
     </div>

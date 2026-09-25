@@ -13,16 +13,6 @@ const nextConfig: NextConfig = {
   // node_modules directly (avoids missing-font runtime errors in production).
   serverExternalPackages: ["pdfkit", "exceljs"],
   experimental: {
-    // Server Actions (e.g. the /login sign-in form) are CSRF-protected: Next
-    // rejects a request whose Origin doesn't match the host. New custom domains
-    // sit behind a proxy whose forwarded Host no longer matches the Origin Next
-    // derives, so the action 500s. Allowlist every domain the app is served on.
-    serverActions: {
-      allowedOrigins: [
-        "globalsupportportal.com",
-        "www.globalsupportportal.com",
-      ],
-    },
     staleTimes: {
       // Visited routes stay instant from the client router cache for 5 min —
       // matches react-query's staleTime; realtime subscriptions and background

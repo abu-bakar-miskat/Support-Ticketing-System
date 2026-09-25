@@ -37,7 +37,26 @@ function assertDatabaseUrl(connectionString: string) {
  * non-adapter Prisma tooling stays at 1 client. The `pg` Pool uses `poolMax()`.
  */
 export function normalizePoolerUrl(connectionString: string): string {
-  let url = connectionString;
+  let url = connectionString.trim();
+  // Dashboard env values can retain .env-style quotes. node-pg treats those
+  // as a relative URL and silently tries to connect to its fallback host "base".
+  if (
+    (url.startsWith('"') && url.endsWith('"')) ||
+    (url.startsWith("'") && url.endsWith("'"))
+  ) {
+    url = url.slice(1, -1).trim();
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // Never include the supplied value: it contains database credentials.
+    throw new Error("DATABASE_URL must contain only an absolute postgres:// or postgresql:// URL, without a DATABASE_URL= prefix.");
+  }
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol) || !parsed.hostname) {
+    throw new Error("DATABASE_URL must contain only an absolute postgres:// or postgresql:// URL, without a DATABASE_URL= prefix.");
+  }
+  assertDatabaseUrl(url);
 
   if (/pooler\.supabase\.com:5432\//.test(url)) {
     url = url.replace(

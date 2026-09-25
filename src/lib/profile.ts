@@ -9,6 +9,22 @@ import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
 import { runAsSystem } from "@/lib/request-scope"
+import {
+  evaluateAgreementValidity,
+  isAgreementEnforcementEnabled,
+  flagTenantAccessWithoutAgreement,
+  type AgreementTermLike,
+} from "@/lib/tenant-agreement-access"
+
+type TenantMembershipRow = {
+  tenantId: string
+  role: string
+  tenant: {
+    status: string
+    deletedAt: Date | null
+    agreements: AgreementTermLike[]
+  }
+}
 
 type AuthUser = {
   id: string
@@ -67,9 +83,18 @@ function loadProfileAndRelations(userId: string) {
       select: {
         tenantId: true,
         role: true,
-        tenant: { select: { status: true, deletedAt: true } },
+        tenant: {
+          select: {
+            status: true,
+            deletedAt: true,
+            // SA-02 agreement gate: pull every term so getProfile can decide
+            // whether a valid agreement currently covers the tenant. Cheap —
+            // a tenant has a handful of terms over its lifetime.
+            agreements: { select: { startDate: true, endDate: true, renewalStatus: true } },
+          },
+        },
       },
-    }).catch(() => [] as { tenantId: string; role: string; tenant: { status: string; deletedAt: Date | null } }[]),
+    }).catch(() => [] as TenantMembershipRow[]),
   ] as const),
   )
 }
@@ -205,16 +230,38 @@ const loadAuthedProfile = async (user: AuthUser) => {
     // True when the user belongs to at least one hub department
     const isHubMember = typedMemberships.some((m) => m.subDepartment?.department?.isHub === true)
 
-    const rawTenantMemberships = tenantRaw as {
-      tenantId: string
-      role: string
-      tenant: { status: string; deletedAt: Date | null }
-    }[]
+    const rawTenantMemberships = tenantRaw as TenantMembershipRow[]
+
+    // SA-02: when agreement enforcement is on, a tenant with no valid agreement
+    // is blocked exactly like a suspended one — and each attempt flags the
+    // Super Admins. Super-admins transcend tenant scope and are never gated
+    // this way (they need in to add/renew the agreement). Evaluated per request,
+    // so adding/renewing an agreement restores operations automatically.
+    const now = new Date()
+    const enforceAgreements =
+      !profile.isSuperAdmin && rawTenantMemberships.length > 0
+        ? await isAgreementEnforcementEnabled()
+        : false
+    const agreementBlocks = (t: TenantMembershipRow): boolean => {
+      if (!enforceAgreements) return false
+      const validity = evaluateAgreementValidity(t.tenant.agreements, now)
+      if (validity.valid) return false
+      // Fire-and-forget flag (throttled per tenant+user in the lib) so the hot
+      // read path is never blocked by the notification/audit writes.
+      void flagTenantAccessWithoutAgreement({
+        tenantId: t.tenantId,
+        userId: profile.id,
+        reason: validity.reason,
+        at: now,
+      }).catch(() => undefined)
+      return true
+    }
+
     // SA-01: a suspended/soft-deleted tenant's memberships don't count toward
     // access — filtered out here rather than in the query so a multi-tenant
     // user only loses the affected tenant(s), not their whole session.
     const tenantMemberships = rawTenantMemberships
-      .filter((t) => !tenantBlocksLogin(t.tenant))
+      .filter((t) => !tenantBlocksLogin(t.tenant) && !agreementBlocks(t))
       .map((t) => ({ tenantId: t.tenantId, role: t.role }))
     const tenantIds = tenantMemberships.map((t) => t.tenantId)
 

@@ -40,6 +40,15 @@ export type PlatformSettings = {
    * When false, Enable activates the template immediately.
    */
   templateEnablementRequiresApproval: boolean;
+  /**
+   * SA-02 enforcement (opt-in). When true, a tenant is only operational while a
+   * valid Agreement covers today: getProfile blocks members of any tenant whose
+   * agreement is missing/expired/invalid (like a suspension), and every blocked
+   * access attempt flags the Super Admins. Off by default so pre-existing
+   * tenants that predate the Agreement feature aren't locked out. See
+   * lib/tenant-agreement-access.
+   */
+  enforceTenantAgreements: boolean;
 };
 
 function allFeaturesEnabled(): Record<FeatureKey, boolean> {
@@ -57,6 +66,7 @@ export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
   otpEmailTemplate: null,
   templateEnablementRequiresApproval: false,
+  enforceTenantAgreements: false,
 };
 
 /** Coerce a stored JSON value into a validated OTP template, or null. */
@@ -94,6 +104,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     newTenantFeatureDefaults: parseFeatureDefaults(byKey.get("newTenantFeatureDefaults")),
     otpEmailTemplate: parseOtpTemplate(byKey.get("otpEmailTemplate")),
     templateEnablementRequiresApproval: byKey.get("templateEnablementRequiresApproval") === true,
+    enforceTenantAgreements: byKey.get("enforceTenantAgreements") === true,
   };
 }
 
@@ -121,6 +132,9 @@ export async function setPlatformSettings(
       key: "templateEnablementRequiresApproval",
       value: patch.templateEnablementRequiresApproval === true,
     });
+  }
+  if (patch.enforceTenantAgreements !== undefined) {
+    writes.push({ key: "enforceTenantAgreements", value: patch.enforceTenantAgreements === true });
   }
 
   await prisma.$transaction(

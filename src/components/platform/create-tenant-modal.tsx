@@ -12,6 +12,18 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import {
+  AGREEMENT_POLICY_TITLE,
+  AGREEMENT_POLICY_INTRO,
+  AGREEMENT_POLICY_SECTIONS,
+  AGREEMENT_POLICY_VERSION,
+} from "@/lib/agreement-policy";
+
+/** Local YYYY-MM-DD for a date, suitable for <input type="date"> value. */
+function toDateInput(d: Date): string {
+  const tzOffset = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+}
 
 type TenantTypeOption = {
   id: string;
@@ -38,6 +50,20 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchSeq = useRef(0);
   const [submitting, setSubmitting] = useState(false);
+
+  // Agreement (SA-02): the tenant is only operational while a valid agreement
+  // covers today, so we capture the term up front and require the Super Admin
+  // to read + accept the policy before the tenant can be created.
+  const today = new Date();
+  const oneYearOut = new Date(today);
+  oneYearOut.setFullYear(oneYearOut.getFullYear() + 1);
+  const [startDate, setStartDate] = useState(toDateInput(today));
+  const [endDate, setEndDate] = useState(toDateInput(oneYearOut));
+  const [accepted, setAccepted] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+
+  const datesValid = Boolean(startDate && endDate) && new Date(endDate) > new Date(startDate);
+  const canSubmit = Boolean(name.trim()) && datesValid && accepted && !submitting;
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +113,15 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
 
   async function handleSubmit(e?: React.SyntheticEvent) {
     e?.preventDefault();
-    if (!name.trim() || submitting) return;
+    if (!canSubmit) return;
+    if (!datesValid) {
+      toast.error("Agreement end date must be after the start date.");
+      return;
+    }
+    if (!accepted) {
+      toast.error("Please read and accept the tenant agreement first.");
+      return;
+    }
     setSubmitting(true);
 
     const createRes = await fetch("/api/admin/tenants", {
@@ -99,6 +133,22 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
     if (!createRes.ok) {
       setSubmitting(false);
       toast.error(created.error ?? "Failed to create tenant");
+      return;
+    }
+
+    // Record the accepted agreement term for the new tenant. Without this the
+    // tenant has no agreement and is non-operational when enforcement is on.
+    const agreementRes = await fetch(`/api/admin/tenants/${created.id}/agreements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate, endDate }),
+    });
+    if (!agreementRes.ok) {
+      const body = await agreementRes.json().catch(() => ({}));
+      setSubmitting(false);
+      toast.error(
+        `Tenant created, but recording the agreement failed: ${body.error ?? "unknown error"}. Add it from the tenant's Agreements tab.`,
+      );
       return;
     }
 
@@ -242,17 +292,123 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
 
+          <div className="space-y-3 rounded-[8px] border border-sts-card-border bg-sts-card/40 p-3">
+            <label className="font-sans text-[12.5px] font-medium text-sts-foreground">
+              Agreement
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="font-sans text-[11px] text-sts-subtle">Start date</label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-sans text-[11px] text-sts-subtle">End date</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+            </div>
+            {!datesValid && (startDate || endDate) && (
+              <p className="font-sans text-[11px] text-red-500">
+                End date must be after the start date.
+              </p>
+            )}
+
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+                className="mt-0.5 size-4 accent-[var(--sts-id)]"
+              />
+              <span className="font-sans text-[12px] text-sts-foreground">
+                I have read and accept the{" "}
+                <button
+                  type="button"
+                  onClick={() => setPolicyOpen(true)}
+                  className="font-medium text-[var(--sts-id)] underline underline-offset-2 hover:opacity-80"
+                >
+                  {AGREEMENT_POLICY_TITLE}
+                </button>
+                .
+              </span>
+            </label>
+          </div>
+
         </form>
 
         <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-sts-card-border px-[22px]">
           <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSubmit} disabled={submitting || !name.trim()}>
+          <Button type="button" onClick={handleSubmit} disabled={!canSubmit}>
             {submitting ? "Creating…" : "Create tenant"}
           </Button>
         </div>
       </div>
+
+      {policyOpen && (
+        <div className="sts-overlay-backdrop fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="sts-glass-panel flex max-h-[calc(85vh/var(--sts-font-scale,1))] w-full max-w-lg flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
+            <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
+              <h2 className="sts-text-modal-title">
+                {AGREEMENT_POLICY_TITLE}
+                <span className="ml-2 font-sans text-[11px] font-normal text-sts-subtle">
+                  v{AGREEMENT_POLICY_VERSION}
+                </span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPolicyOpen(false)}
+                className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <X size={17} strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">
+              <p className="font-sans text-[12.5px] leading-relaxed text-sts-muted">
+                {AGREEMENT_POLICY_INTRO}
+              </p>
+              {AGREEMENT_POLICY_SECTIONS.map((section) => (
+                <div key={section.heading} className="space-y-1">
+                  <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                    {section.heading}
+                  </h3>
+                  <p className="font-sans text-[12px] leading-relaxed text-sts-muted">
+                    {section.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex h-14 shrink-0 items-center justify-end gap-2 border-t border-sts-card-border px-[22px]">
+              <Button type="button" variant="outline" onClick={() => setPolicyOpen(false)}>
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setAccepted(true);
+                  setPolicyOpen(false);
+                }}
+              >
+                Accept agreement
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

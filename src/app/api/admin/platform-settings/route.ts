@@ -63,6 +63,16 @@ export async function PUT(request: Request) {
     patch.templateEnablementRequiresApproval = body.templateEnablementRequiresApproval
   }
 
+  if (body.enforceTenantAgreements !== undefined) {
+    if (typeof body.enforceTenantAgreements !== "boolean") {
+      return NextResponse.json(
+        { error: "enforceTenantAgreements must be a boolean" },
+        { status: 400 },
+      )
+    }
+    patch.enforceTenantAgreements = body.enforceTenantAgreements
+  }
+
   if (body.otpEmailTemplate !== undefined) {
     if (body.otpEmailTemplate === null) {
       patch.otpEmailTemplate = null // reset to built-in default

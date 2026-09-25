@@ -6,6 +6,7 @@ import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
 import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
 import { SUPPORT_TEMPLATE } from "@/lib/system-templates"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
+import { isAgreementEnforcementEnabled } from "@/lib/tenant-agreement-access"
 
 function slugify(name: string): string {
   return name
@@ -119,8 +120,25 @@ export async function POST(request: Request) {
     })
   }
 
+  // SA-02: a brand-new tenant has no Agreement yet. When agreement enforcement
+  // is on it is therefore non-operational — its members are blocked by
+  // getProfile until a Super Admin records a valid agreement. Surface that in
+  // the create response so the caller knows the next required step, rather than
+  // discovering a "blocked" tenant only when a member can't log in.
+  const requiresAgreement = await isAgreementEnforcementEnabled()
+
   return NextResponse.json(
-    { id: tenant.id, slug: tenant.slug, name: tenant.name, type: tenant.type, status: tenant.status, createdAt: tenant.createdAt },
+    {
+      id: tenant.id,
+      slug: tenant.slug,
+      name: tenant.name,
+      type: tenant.type,
+      status: tenant.status,
+      createdAt: tenant.createdAt,
+      // true → operations are blocked until an agreement is added at
+      // /api/admin/tenants/:id/agreements.
+      requiresAgreement,
+    },
     { status: 201 },
   )
 }

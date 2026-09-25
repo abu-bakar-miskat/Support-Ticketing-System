@@ -214,8 +214,16 @@ async function buildAndBroadcast(
       break
 
     case "agreement_expiring":
-      title = "Tenant agreement expiring soon"
-      body  = message ?? null
+      // Shared Super-Admin agreement channel. A `[access-blocked]` marker
+      // (see lib/tenant-agreement-access) flags an attempt to access a tenant
+      // without a valid agreement; anything else is an upcoming-expiry reminder.
+      if (message?.startsWith("[access-blocked]")) {
+        title = "Tenant blocked — no valid agreement"
+        body  = message.slice("[access-blocked] ".length)
+      } else {
+        title = "Tenant agreement expiring soon"
+        body  = message ?? null
+      }
       break
 
     case "template_request_submitted":

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -567,6 +567,34 @@ export function SettingsMembersPage({
     }
   }
 
+  // Group members department-wise. A member in several departments appears once
+  // under each. Members with no department fall into a trailing "No department" group.
+  const NO_DEPT = "__no_dept__";
+  const groups = useMemo(() => {
+    const map = new Map<string, { name: string; members: MemberRow[] }>();
+    for (const member of liveMembers) {
+      const entries = member.departments?.length
+        ? member.departments
+        : member.departmentId && member.department
+          ? [{ id: member.departmentId, name: member.department }]
+          : [];
+      const targets = entries.length ? entries : [{ id: NO_DEPT, name: "No department" }];
+      for (const dept of targets) {
+        const group = map.get(dept.id) ?? { name: dept.name, members: [] };
+        group.members.push(member);
+        map.set(dept.id, group);
+      }
+    }
+    return [...map.entries()]
+      .sort((a, b) => {
+        if (a[0] === NO_DEPT) return 1;
+        if (b[0] === NO_DEPT) return -1;
+        return a[1].name.localeCompare(b[1].name);
+      })
+      .map(([id, group]) => ({ id, ...group }));
+  }, [liveMembers]);
+  const colSpan = (isAdmin || isManager) ? 6 : 4;
+
   return (
     <>
       <ConfirmDialog
@@ -731,7 +759,7 @@ export function SettingsMembersPage({
           <TableBody>
             {liveMembers.length === 0 ? (
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                <TableCell colSpan={(isAdmin || isManager) ? 6 : 4} className="py-0">
+                <TableCell colSpan={colSpan} className="py-0">
                   <div className="flex h-[54px] items-center">
                     <span className="font-sans text-[11.5px] text-sts-muted">
                       No members yet
@@ -740,7 +768,19 @@ export function SettingsMembersPage({
                 </TableCell>
               </TableRow>
             ) : null}
-            {liveMembers.map((member) => {
+            {groups.map((group) => (
+              <Fragment key={group.id}>
+                <TableRow className="border-none hover:bg-transparent">
+                  <TableCell colSpan={colSpan} className="py-0">
+                    <div className="flex h-9 items-center gap-2 pt-2">
+                      <SectionLabel>{group.name}</SectionLabel>
+                      <span className="font-sans text-[11px] font-medium text-sts-subtle">
+                        ({group.members.length})
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+                {group.members.map((member) => {
               const role = currentRole(member);
               const departmentEntries = member.departments?.length
                 ? member.departments
@@ -762,7 +802,7 @@ export function SettingsMembersPage({
               });
               return (
                 <TableRow
-                  key={member.id}
+                  key={`${group.id}-${member.id}`}
                   className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"
                 >
                   {/* Member */}
@@ -1096,7 +1136,9 @@ export function SettingsMembersPage({
                   )}
                 </TableRow>
               );
-            })}
+                })}
+              </Fragment>
+            ))}
           </TableBody>
         </Table>
       </div>

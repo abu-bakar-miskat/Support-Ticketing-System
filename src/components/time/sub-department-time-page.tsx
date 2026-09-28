@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Check, Clock, TicketCheck, Layers, ChartColumn, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTicketsSubscription } from "@/lib/realtime";
-import { CustomReportBuilder } from "@/components/reports/custom-report-builder";
 import { ScheduledReports } from "@/components/reports/scheduled-reports";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -889,9 +888,6 @@ export function SubDepartmentTimePage({
           </div>
         </div>
       )}
-
-      {/* RPT-04: custom report builder over the selected range */}
-      <CustomReportBuilder from={range.from} to={range.to} />
 
       {/* RPT-06: periodic exportable reports (Project Admin only; self-hides otherwise) */}
       <ScheduledReports />

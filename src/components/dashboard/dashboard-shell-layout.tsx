@@ -8,6 +8,7 @@ import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
+import { getTenantBranding } from "@/lib/tenant-config";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
 
@@ -24,6 +25,12 @@ export async function DashboardShellLayout({ children }: { children: React.React
   try {
     profile = await getProfile();
   } catch (err) {
+    // Next signals control flow (dynamic-render bailout, redirect, notFound) by
+    // throwing errors carrying a `digest`. These MUST propagate — swallowing them
+    // defeats the bailout and, at build time, bakes the error page below into the
+    // static output. Only genuine failures fall through to the log + error screen.
+    const digest = (err as { digest?: unknown } | null)?.digest;
+    if (typeof digest === "string") throw err;
     // This catch is the only place the failure surfaces — without this log the
     // function logs contain nothing to diagnose the "Database unavailable" screen.
     console.error("[dashboard-layout] getProfile failed:", err);
@@ -96,6 +103,12 @@ export async function DashboardShellLayout({ children }: { children: React.React
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
+  // Show the active tenant's uploaded brand logo/name in the sidebar; falls back
+  // to the default product logo for unbranded tenants (resolver returns nulls).
+  const branding = profile.activeTenantId
+    ? await getTenantBranding(profile.activeTenantId)
+    : null;
+
   return (
     <>
       <TenantUrlGuard />
@@ -113,7 +126,13 @@ export async function DashboardShellLayout({ children }: { children: React.React
           role: m.role,
         }))}
       />
-      <DashboardLayout initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}>
+      <DashboardLayout
+        initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}
+        brandingName={branding?.displayName ?? null}
+        brandingLogoUrl={branding?.logoUrl ?? null}
+        brandingHideLogo={branding?.hideLogo ?? false}
+        brandingHideDisplayName={branding?.hideDisplayName ?? false}
+      >
         {children}
         <Suspense fallback={null}>
           <DeferredBadges profile={profile} activeDeptId={activeDeptId} />

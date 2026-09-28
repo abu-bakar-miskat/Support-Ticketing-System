@@ -329,7 +329,9 @@ describe("POST /api/webhooks/resend", () => {
     mockReceivingGet.mockResolvedValue({
       data: {
         ...fullEmail,
-        to: ["support@pengroup.com"],
+        // A forwarding provider may return its rewritten destination here;
+        // mailbox attribution must retain the original webhook envelope.
+        to: ["forwarded@inbound.pengroup.com"],
         subject: "Cannot access my account",
         text: null,
         html: "<p>I cannot sign in to my account.</p>",
@@ -345,6 +347,17 @@ describe("POST /api/webhooks/resend", () => {
         subject: "Cannot access my account",
         description: "<p>I cannot sign in to my account.</p>",
         mailboxConnectionId: "mailbox-1",
+      }),
+    )
+    expect(mockCreateMsg).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          rawPayload: expect.objectContaining({
+            to: ["forwarded@inbound.pengroup.com"],
+            envelopeTo: ["support@pengroup.com"],
+            mailboxConnectionId: "mailbox-1",
+          }),
+        }),
       }),
     )
   })

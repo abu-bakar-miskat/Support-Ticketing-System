@@ -67,9 +67,9 @@ export async function POST(
   }
 
   const verification = await checkDomainVerification(address)
-  if (verification.status !== "verified") {
+  if (verification.status !== "verified" || !verification.receivingEnabled) {
     return NextResponse.json(
-      { error: `The ${verification.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.` },
+      { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Enable receiving and verify its MX record first.` },
       { status: 400 },
     )
   }

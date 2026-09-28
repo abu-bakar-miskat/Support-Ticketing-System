@@ -461,16 +461,6 @@ export function SubDepartmentMailboxManager({
               ? "We couldn't load mailboxes. Refresh to try again."
               : `Connect a shared inbox so customer emails become ${prefix} tickets automatically.`}
           </p>
-          {canManage && !showConnect && !loadError && (
-            <button
-              type="button"
-              onClick={() => setShowConnect(true)}
-              className="mt-1 flex items-center gap-1.5 rounded-full bg-sts-blue px-3.5 py-2 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
-            >
-              <Plus className="size-3.5" />
-              Connect mailbox
-            </button>
-          )}
         </div>
       ) : (
         <ul className="flex flex-col gap-3">

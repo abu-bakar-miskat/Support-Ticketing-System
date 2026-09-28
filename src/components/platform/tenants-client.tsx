@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Building2,
   Layers,
+  Loader2,
   MoreHorizontal,
   Plus,
   RotateCcw,
@@ -15,9 +16,12 @@ import {
   PauseCircle,
   PlayCircle,
 } from "lucide-react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +80,7 @@ function TenantCard({
   onReactivate,
   onDelete,
   onRestore,
+  onPurge,
 }: {
   tenant: TenantRow;
   canManage: boolean;
@@ -90,6 +95,7 @@ function TenantCard({
   onReactivate: () => void;
   onDelete: () => void;
   onRestore: () => void;
+  onPurge: () => void;
 }) {
   const locked = tenant.deleted || tenant.status === "suspended";
 
@@ -150,10 +156,16 @@ function TenantCard({
                   </DropdownMenuItem>
                 ))}
               {tenant.deleted ? (
-                <DropdownMenuItem onClick={onRestore}>
-                  <RotateCcw className="size-3.5" />
-                  Restore
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={onRestore}>
+                    <RotateCcw className="size-3.5" />
+                    Restore
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onClick={onPurge}>
+                    <Trash2 className="size-3.5" />
+                    Delete permanently
+                  </DropdownMenuItem>
+                </>
               ) : (
                 <DropdownMenuItem variant="destructive" onClick={onDelete}>
                   <Trash2 className="size-3.5" />
@@ -198,6 +210,78 @@ function TenantCard({
   );
 }
 
+/**
+ * Irreversible hard-delete confirmation. Unlike the shared ConfirmDialog this
+ * requires the super-admin to type the tenant's slug before the button enables —
+ * a deliberate speed-bump because there is no restore after a purge.
+ */
+function PurgeDialog({
+  tenant,
+  onCancel,
+  onConfirm,
+}: {
+  tenant: TenantRow;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(false);
+  const matches = value.trim() === tenant.slug;
+
+  async function handleConfirm() {
+    if (!matches) return;
+    setLoading(true);
+    try {
+      await onConfirm();
+      onCancel();
+      toast.success("Tenant permanently deleted.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AlertDialog.Root open onOpenChange={(o) => { if (!o && !loading) onCancel(); }}>
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <AlertDialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+          <AlertDialog.Title className="sts-text-modal-title">
+            Permanently delete &ldquo;{tenant.name}&rdquo;?
+          </AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 font-sans text-[13px] text-sts-subtle">
+            This erases the tenant and <strong>all of its data</strong> — departments, tickets,
+            members, mailboxes and history. This cannot be undone. Type the slug{" "}
+            <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[12px] text-sts-foreground">
+              {tenant.slug}
+            </code>{" "}
+            to confirm.
+          </AlertDialog.Description>
+          <Input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={tenant.slug}
+            disabled={loading}
+            className="mt-4 h-9"
+            aria-label="Type the tenant slug to confirm"
+          />
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="outline" disabled={loading} onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button variant="destructive" disabled={loading || !matches} onClick={handleConfirm}>
+              {loading && <Loader2 className="animate-spin" />}
+              Delete permanently
+            </Button>
+          </div>
+        </AlertDialog.Popup>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
+  );
+}
+
 export function TenantsClient({
   tenants: initialTenants,
   canManage,
@@ -215,6 +299,7 @@ export function TenantsClient({
   const [confirmTarget, setConfirmTarget] = useState<{ action: "suspend" | "delete"; tenant: TenantRow } | null>(
     null,
   );
+  const [purgeTarget, setPurgeTarget] = useState<TenantRow | null>(null);
 
   const liveTenants = tenants.filter((t) => !t.deleted);
   const deletedTenants = tenants.filter((t) => t.deleted);
@@ -288,6 +373,19 @@ export function TenantsClient({
       throw new Error(body.error ?? "Failed to restore tenant");
     }
     setTenants((prev) => prev.map((t) => (t.id === tenantId ? { ...t, deleted: false } : t)));
+  }
+
+  async function purgeTenant(tenant: TenantRow) {
+    const res = await fetch(`/api/admin/tenants/${tenant.id}/purge`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmSlug: tenant.slug }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Failed to permanently delete tenant");
+    }
+    setTenants((prev) => prev.filter((t) => t.id !== tenant.id));
   }
 
   return (
@@ -370,6 +468,7 @@ export function TenantsClient({
                 onReactivate={() => setTenantStatus(t.id, "active")}
                 onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
                 onRestore={() => restoreTenant(t.id)}
+                onPurge={() => setPurgeTarget(t)}
               />
             ))}
           </ul>
@@ -402,6 +501,7 @@ export function TenantsClient({
                     onReactivate={() => setTenantStatus(t.id, "active")}
                     onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
                     onRestore={() => restoreTenant(t.id)}
+                    onPurge={() => setPurgeTarget(t)}
                   />
                 ))}
               </ul>
@@ -433,6 +533,14 @@ export function TenantsClient({
               ? setTenantStatus(confirmTarget.tenant.id, "suspended")
               : deleteTenant(confirmTarget.tenant.id)
           }
+        />
+      )}
+
+      {purgeTarget && (
+        <PurgeDialog
+          tenant={purgeTarget}
+          onCancel={() => setPurgeTarget(null)}
+          onConfirm={() => purgeTenant(purgeTarget)}
         />
       )}
 

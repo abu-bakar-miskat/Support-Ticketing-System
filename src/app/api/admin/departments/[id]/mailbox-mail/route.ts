@@ -3,26 +3,16 @@ import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { runAsSystem } from "@/lib/request-scope"
+import { mailboxConnectionIdsForMessage } from "@/lib/mailbox-mail"
 
 type Params = { params: Promise<{ id: string }> }
 
-function mailboxConnectionIdsForRecipients(
-  rawPayload: unknown,
-  connections: { id: string; address: string }[],
-): string[] {
-  if (!rawPayload || typeof rawPayload !== "object" || !("to" in rawPayload)) return []
-  const to = (rawPayload as { to?: unknown }).to
-  const recipients = (Array.isArray(to) ? to : [to])
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => (value.match(/<([^>]+)>/)?.[1] ?? value).trim().toLowerCase())
-  return connections.filter((connection) => recipients.includes(connection.address.toLowerCase())).map((connection) => connection.id)
-}
-
 // GET /api/admin/departments/[id]/mailbox-mail
-// Every email the department's mailbox connection(s) received, aggregated across
-// all of its sub-departments: inbound TicketMessages filed against the
-// department's tickets, plus auto-generated mail that never became a ticket
-// (MailSuppressionLog, keyed by mailboxConnectionId).
+// Every email that opened a ticket in the department, aggregated across all of
+// its sub-departments: the first inbound TicketMessage per ticket (the mail that
+// created it) — customer replies to an existing ticket are NOT listed, matching
+// the sub-department mailbox view. Plus auto-generated mail that never became a
+// ticket (MailSuppressionLog, keyed by mailboxConnectionId).
 export async function GET(_req: NextRequest, { params }: Params) {
   const { profile: caller, error } = await requireAdminOrManager()
   if (error) return error
@@ -55,8 +45,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const [messages, suppressed] = await runAsSystem(() => Promise.all([
     prisma.ticketMessage.findMany({
       where: { direction: "inbound", ticket: { subDepartment: { departmentId } } },
-      orderBy: { createdAt: "desc" },
-      take: 200,
+      // One row per ticket — its earliest inbound message, i.e. the email that
+      // opened the ticket. `distinct` keeps the first row seen per ticketId in
+      // the given order, so ticketId + createdAt asc yields the original mail and
+      // drops every later reply. Re-sorted to newest-first below for display.
+      orderBy: [{ ticketId: "asc" }, { createdAt: "asc" }],
+      distinct: ["ticketId"],
       select: {
         id: true,
         status: true,
@@ -87,9 +81,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
       : Promise.resolve([]),
   ]))
 
+  const sortedMessages = messages
+    .map((message) => ({
+      ...message,
+      mailboxConnectionIds: mailboxConnectionIdsForMessage(message.rawPayload, connections),
+    }))
+    .filter((message) => message.mailboxConnectionIds.length > 0)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 200)
+
   return NextResponse.json({
     connections,
-    messages: messages.map((m) => ({
+    messages: sortedMessages.map((m) => ({
       id: m.id,
       status: m.status,
       fromName: m.fromName,
@@ -99,7 +102,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       acceptedAt: m.acceptedAt,
       acceptedByName: m.acceptedBy?.name ?? null,
       subDepartmentId: m.ticket.subDepartmentId,
-      mailboxConnectionIds: mailboxConnectionIdsForRecipients(m.rawPayload, connections),
+      mailboxConnectionIds: m.mailboxConnectionIds,
       ticket: {
         id: m.ticket.id,
         title: m.ticket.title,

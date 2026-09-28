@@ -69,7 +69,7 @@ export function TenantStatusSummary() {
   const [sortBy, setSortBy] = useState<SortField>("tenantName");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [renewalFilter, setRenewalFilter] = useState<string>("");
-  const [tenantStatusFilter, setTenantStatusFilter] = useState<string>("");
+  const [tenantStatusFilter, setTenantStatusFilter] = useState<string>("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +122,13 @@ export function TenantStatusSummary() {
             <div className="flex items-center gap-1.5">
               <ListFilter className="size-3.5 text-sts-subtle" />
               <span className="font-sans text-[12px]">
-                {tenantStatusFilter === "active" ? "Active" : tenantStatusFilter === "suspended" ? "Suspended" : "All tenant statuses"}
+                {tenantStatusFilter === "active"
+                  ? "Active"
+                  : tenantStatusFilter === "suspended"
+                    ? "Suspended"
+                    : tenantStatusFilter === "deleted"
+                      ? "Deleted"
+                      : "All tenant statuses"}
               </span>
             </div>
           </SelectTrigger>
@@ -130,6 +136,7 @@ export function TenantStatusSummary() {
             <SelectItem value="__all__" className="font-sans text-[12.5px]">All tenant statuses</SelectItem>
             <SelectItem value="active" className="font-sans text-[12.5px]">Active</SelectItem>
             <SelectItem value="suspended" className="font-sans text-[12.5px]">Suspended</SelectItem>
+            <SelectItem value="deleted" className="font-sans text-[12.5px]">Deleted</SelectItem>
           </SelectContent>
         </Select>
         <Select value={renewalFilter || "__all__"} onValueChange={(v) => setRenewalFilter(v === "__all__" ? "" : v ?? "")}>
@@ -203,12 +210,18 @@ export function TenantStatusSummary() {
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 font-sans text-[11px] font-medium",
-                        r.tenantStatus === "suspended"
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : "bg-sts-green/10 text-sts-green",
+                        r.tenantStatus === "deleted"
+                          ? "bg-sts-red/10 text-sts-red"
+                          : r.tenantStatus === "suspended"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-sts-green/10 text-sts-green",
                       )}
                     >
-                      {r.tenantStatus === "suspended" ? "Suspended" : "Active"}
+                      {r.tenantStatus === "deleted"
+                        ? "Deleted"
+                        : r.tenantStatus === "suspended"
+                          ? "Suspended"
+                          : "Active"}
                     </span>
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">

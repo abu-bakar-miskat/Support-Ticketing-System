@@ -22,9 +22,45 @@ export type ManagedDomain = {
   id: string;
   name: string;
   status: DomainVerificationStatus;
+  region: string | null;
+  capabilities: { sending: string; receiving: string };
   createdAt: string | null;
   records: DomainDnsRecord[];
 };
+
+const RESEND_REGION = process.env.RESEND_REGION || "eu-west-1";
+
+function domainCapabilities(value: unknown): ManagedDomain["capabilities"] {
+  const capabilities = value && typeof value === "object"
+    ? value as { sending?: unknown; receiving?: unknown }
+    : {};
+  return {
+    sending: String(capabilities.sending ?? "disabled"),
+    receiving: String(capabilities.receiving ?? "disabled"),
+  };
+}
+
+/** Chooses the usable copy when Resend contains the same name in more than one region. */
+export function selectBestManagedDomain(domains: ManagedDomain[], name: string): ManagedDomain | undefined {
+  const clean = name.trim().toLowerCase();
+  const statusScore: Record<string, number> = {
+    verified: 30,
+    partially_verified: 20,
+    pending: 10,
+    not_started: 0,
+    failed: -10,
+    partially_failed: -10,
+  };
+  return domains
+    .filter((domain) => domain.name.toLowerCase() === clean)
+    .sort((a, b) => {
+      const score = (domain: ManagedDomain) =>
+        (domain.capabilities.receiving === "enabled" ? 100 : 0) +
+        (statusScore[domain.status] ?? 0) +
+        (domain.region === RESEND_REGION ? 2 : 0);
+      return score(b) - score(a);
+    })[0];
+}
 
 function toDnsRecords(records: unknown): DomainDnsRecord[] {
   if (!Array.isArray(records)) return [];
@@ -55,10 +91,11 @@ export type DomainVerificationStatus =
 export async function checkDomainVerification(email: string): Promise<{
   domain: string | null;
   status: DomainVerificationStatus;
+  receivingEnabled: boolean;
 }> {
   const domain = email.split("@")[1]?.trim().toLowerCase() || null;
-  if (!domain) return { domain: null, status: "unknown" };
-  if (!resend) return { domain, status: "not_configured" };
+  if (!domain) return { domain: null, status: "unknown", receivingEnabled: false };
+  if (!resend) return { domain, status: "not_configured", receivingEnabled: false };
 
   try {
     const { data } = await resend.domains.list();
@@ -66,12 +103,24 @@ export async function checkDomainVerification(email: string): Promise<{
     // old us-east-1 entry that was never verified plus a live eu-west-1 one).
     // list() returns them all, so match every copy and prefer the verified one
     // rather than whichever .find() happened to hit first.
-    const matches = (data?.data ?? []).filter((d) => d.name.toLowerCase() === domain);
-    if (matches.length === 0) return { domain, status: "unknown" };
-    const best = matches.find((d) => d.status === "verified") ?? matches[0];
-    return { domain, status: best.status };
+    const candidates: ManagedDomain[] = (data?.data ?? []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      region: d.region ?? null,
+      capabilities: domainCapabilities(d.capabilities),
+      createdAt: d.created_at ?? null,
+      records: [],
+    }));
+    const best = selectBestManagedDomain(candidates, domain);
+    if (!best) return { domain, status: "unknown", receivingEnabled: false };
+    return {
+      domain,
+      status: best.status,
+      receivingEnabled: best.capabilities.receiving === "enabled",
+    };
   } catch {
-    return { domain, status: "unknown" };
+    return { domain, status: "unknown", receivingEnabled: false };
   }
 }
 
@@ -97,6 +146,8 @@ export async function listManagedDomains(): Promise<ManagedDomain[] | DomainOpEr
       id: d.id,
       name: d.name,
       status: d.status,
+      region: d.region ?? null,
+      capabilities: domainCapabilities(d.capabilities),
       createdAt: d.created_at ?? null,
       records: [],
     }));
@@ -113,12 +164,18 @@ export async function createManagedDomain(name: string): Promise<ManagedDomain |
     return { error: "Enter a valid domain, e.g. mail.example.com" };
   }
   try {
-    const { data, error } = await resend.domains.create({ name: clean });
+    const { data, error } = await resend.domains.create({
+      name: clean,
+      region: RESEND_REGION as "us-east-1" | "eu-west-1" | "sa-east-1" | "ap-northeast-1",
+      capabilities: { sending: "enabled", receiving: "enabled" },
+    });
     if (error || !data) return { error: error?.message ?? "Failed to create the domain." };
     return {
       id: data.id,
       name: data.name,
       status: data.status,
+      region: data.region ?? RESEND_REGION,
+      capabilities: domainCapabilities(data.capabilities),
       createdAt: data.created_at ?? null,
       records: toDnsRecords(data.records),
     };
@@ -138,11 +195,28 @@ export async function getManagedDomain(id: string): Promise<ManagedDomain | Doma
       id: data.id,
       name: data.name,
       status: data.status,
+      region: data.region ?? null,
+      capabilities: domainCapabilities(data.capabilities),
       createdAt: data.created_at ?? null,
       records: toDnsRecords(data.records),
     };
   } catch {
     return { error: "Failed to reach Resend." };
+  }
+}
+
+/** Enables inbound delivery for an existing sending domain and returns the MX record to publish. */
+export async function enableManagedDomainReceiving(id: string): Promise<ManagedDomain | DomainOpError> {
+  if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
+  try {
+    const { error } = await resend.domains.update({
+      id,
+      capabilities: { sending: "enabled", receiving: "enabled" },
+    });
+    if (error) return { error: error.message };
+    return getManagedDomain(id);
+  } catch {
+    return { error: "Failed to enable receiving in Resend." };
   }
 }
 

@@ -1,0 +1,12 @@
+-- Drop the AuditEvent -> Tenant foreign key so AuditEvent.tenantId becomes a
+-- bare scalar (matching actorId / departmentId on the same table).
+--
+-- Why: AuditEvent rows are immutable — the DAT-05 trigger
+-- (reject_audit_event_mutation) blocks both UPDATE and DELETE. With a
+-- cascading FK, hard-deleting a Tenant tries to DELETE its audit rows and is
+-- rejected (P0001), so a tenant with any audit history could never be purged.
+-- A SET NULL action would instead try to UPDATE those rows — also rejected.
+-- Removing the FK lets the audit trail OUTLIVE the tenant it records: a purged
+-- tenant simply leaves audit rows whose tenantId no longer resolves. See
+-- lib/tenant-lifecycle.ts purgeTenant().
+ALTER TABLE "AuditEvent" DROP CONSTRAINT "AuditEvent_tenantId_fkey";

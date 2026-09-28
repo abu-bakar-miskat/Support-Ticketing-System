@@ -74,26 +74,37 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "desc" },
     take,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    include: { tenant: { select: { id: true, name: true } } },
   })
 
-  // actorId/targetId have no Prisma relation (same convention as
-  // Agreement.createdById, AuditEvent's own design) so resolve display names with
-  // a side lookup. Targets are only named for Profile-typed events (user
-  // management) — so "removed sub department member" shows WHO, not a raw id.
+  // actorId/targetId/tenantId have no Prisma relation (same convention as
+  // Agreement.createdById, AuditEvent's own design — tenantId lost its FK so
+  // audit rows can outlive a purged tenant) so resolve display names with side
+  // lookups. Targets are only named for Profile-typed events (user management)
+  // — so "removed sub department member" shows WHO, not a raw id.
   const actorIds = events.map((e) => e.actorId)
   const targetProfileIds = events.filter((e) => e.targetType === "Profile").map((e) => e.targetId)
-  const profiles = await prisma.profile.findMany({
-    where: { id: { in: [...new Set([...actorIds, ...targetProfileIds])] } },
-    select: { id: true, name: true, email: true },
-  })
+  const tenantIds = events.map((e) => e.tenantId).filter((id): id is string => id != null)
+  const [profiles, tenants] = await Promise.all([
+    prisma.profile.findMany({
+      where: { id: { in: [...new Set([...actorIds, ...targetProfileIds])] } },
+      select: { id: true, name: true, email: true },
+    }),
+    tenantIds.length > 0
+      ? prisma.tenant.findMany({
+          where: { id: { in: [...new Set(tenantIds)] } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+  ])
   const profileById = new Map(profiles.map((p) => [p.id, p]))
+  const tenantById = new Map(tenants.map((t) => [t.id, t]))
 
   return NextResponse.json({
     events: events.map((e) => ({
       ...e,
       actor: profileById.get(e.actorId) ?? null,
       target: e.targetType === "Profile" ? profileById.get(e.targetId) ?? null : null,
+      tenant: e.tenantId ? tenantById.get(e.tenantId) ?? null : null,
     })),
     nextCursor: events.length === take ? events[events.length - 1]?.id : null,
   })

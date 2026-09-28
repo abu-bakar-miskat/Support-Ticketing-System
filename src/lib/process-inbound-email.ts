@@ -188,6 +188,7 @@ export async function processInboundEmail(
   let ticket: MatchedTicket | null = null
   let submitterEmail: string | null = null
   let isNewTicket = false
+  let mailboxConnectionId: string | null = null
 
   const token = recipients.map(extractReplyToken).find(Boolean) ?? null
   if (token) {
@@ -289,6 +290,7 @@ export async function processInboundEmail(
     }
 
     const route = mailbox
+    mailboxConnectionId = route.id
 
     if (isSystem) {
       await logMailSuppression({
@@ -400,6 +402,12 @@ export async function processInboundEmail(
           from: email.from, to: email.to, subject: email.subject,
           text: email.text, html: email.html, headers, quotedText: quoted,
           resendEmailId: emailId,
+          // The webhook envelope is the source used to route direct mail. Keep
+          // it separately from the provider's fetched `to` field, which can be
+          // rewritten during forwarding. The resolved connection makes mailbox
+          // filtering unambiguous and excludes ordinary ticket replies.
+          envelopeTo: recipients,
+          mailboxConnectionId,
         },
         providerMessageId: normalizedMessageId,
         inReplyTo: headers["in-reply-to"] ?? null,

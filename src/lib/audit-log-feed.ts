@@ -225,9 +225,7 @@ function normalizeTicketRow(row: TicketRow): AuditLogEntry {
   };
 }
 
-type AdminRow = Prisma.AuditEventGetPayload<{
-  include: { tenant: { select: { id: true; name: true } } };
-}>;
+type AdminRow = Prisma.AuditEventGetPayload<object>;
 
 function normalizeAdminRow(row: AdminRow): AuditLogEntry {
   return {
@@ -235,10 +233,10 @@ function normalizeAdminRow(row: AdminRow): AuditLogEntry {
     source: "admin",
     action: row.action,
     createdAt: row.createdAt.toISOString(),
-    // Names resolved in a batch pass after slicing (actorId/targetId/departmentId
-    // have no Prisma relation on AuditEvent).
+    // Names resolved in a batch pass after slicing (actorId/targetId/tenantId/
+    // departmentId are all bare scalars with no Prisma relation on AuditEvent).
     actor: row.actorId ? { id: row.actorId, name: "", avatarUrl: null } : null,
-    tenant: row.tenant ? { id: row.tenant.id, name: row.tenant.name } : null,
+    tenant: row.tenantId ? { id: row.tenantId, name: "" } : null,
     department: row.departmentId ? { id: row.departmentId, name: "" } : null,
     ticket: null,
     metadata: null,
@@ -293,7 +291,6 @@ export async function buildAuditLogFeed(
             where: adminWhere!,
             orderBy: { createdAt: "desc" },
             take: PAGE_SIZE + 1,
-            include: { tenant: { select: { id: true, name: true } } },
           })
         : Promise.resolve([] as AdminRow[]),
     ]),
@@ -326,13 +323,15 @@ async function resolveAdminNames(entries: AuditLogEntry[]): Promise<void> {
 
   const profileIds = new Set<string>();
   const departmentIds = new Set<string>();
+  const tenantIds = new Set<string>();
   for (const e of adminEntries) {
     if (e.actor) profileIds.add(e.actor.id);
     if (e.target?.type === "Profile") profileIds.add(e.target.id);
     if (e.department) departmentIds.add(e.department.id);
+    if (e.tenant) tenantIds.add(e.tenant.id);
   }
 
-  const [profiles, departments] = await runAsSystem(() =>
+  const [profiles, departments, tenants] = await runAsSystem(() =>
     Promise.all([
       profileIds.size > 0
         ? prisma.profile.findMany({
@@ -346,11 +345,18 @@ async function resolveAdminNames(entries: AuditLogEntry[]): Promise<void> {
             select: { id: true, name: true },
           })
         : Promise.resolve([]),
+      tenantIds.size > 0
+        ? prisma.tenant.findMany({
+            where: { id: { in: [...tenantIds] } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
     ]),
   );
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
   const deptById = new Map(departments.map((d) => [d.id, d]));
+  const tenantById = new Map(tenants.map((t) => [t.id, t]));
 
   for (const e of adminEntries) {
     if (e.actor) {
@@ -364,6 +370,11 @@ async function resolveAdminNames(entries: AuditLogEntry[]): Promise<void> {
     }
     if (e.department) {
       e.department.name = deptById.get(e.department.id)?.name ?? "";
+    }
+    if (e.tenant) {
+      // A purged tenant leaves audit rows whose tenantId no longer resolves —
+      // fall back to a stable label rather than dropping the row.
+      e.tenant.name = tenantById.get(e.tenant.id)?.name ?? "(deleted tenant)";
     }
   }
 }

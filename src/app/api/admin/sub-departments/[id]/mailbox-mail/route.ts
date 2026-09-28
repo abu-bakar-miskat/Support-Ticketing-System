@@ -3,20 +3,9 @@ import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { runAsSystem } from "@/lib/request-scope"
+import { mailboxConnectionIdsForMessage } from "@/lib/mailbox-mail"
 
 type Params = { params: Promise<{ id: string }> }
-
-function mailboxConnectionIdsForRecipients(
-  rawPayload: unknown,
-  connections: { id: string; address: string }[],
-): string[] {
-  if (!rawPayload || typeof rawPayload !== "object" || !("to" in rawPayload)) return []
-  const to = (rawPayload as { to?: unknown }).to
-  const recipients = (Array.isArray(to) ? to : [to])
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => (value.match(/<([^>]+)>/)?.[1] ?? value).trim().toLowerCase())
-  return connections.filter((connection) => recipients.includes(connection.address.toLowerCase())).map((connection) => connection.id)
-}
 
 // GET /api/admin/sub-departments/[id]/mailbox-mail
 // The original email that opened each ticket in this sub-department (the first
@@ -92,6 +81,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   ]))
 
   const sortedMessages = messages
+    .map((message) => ({
+      ...message,
+      mailboxConnectionIds: mailboxConnectionIdsForMessage(message.rawPayload, connections),
+    }))
+    .filter((message) => message.mailboxConnectionIds.length > 0)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 200)
 
@@ -107,7 +101,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       acceptedAt: m.acceptedAt,
       acceptedByName: m.acceptedBy?.name ?? null,
       subDepartmentId: m.ticket.subDepartmentId,
-      mailboxConnectionIds: mailboxConnectionIdsForRecipients(m.rawPayload, connections),
+      mailboxConnectionIds: m.mailboxConnectionIds,
       ticket: {
         id: m.ticket.id,
         title: m.ticket.title,

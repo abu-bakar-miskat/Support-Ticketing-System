@@ -233,7 +233,6 @@ model Tenant {
   reportExportJobs ReportExportJob[]
   reportSchedules ReportSchedule[]
   featureFlags FeatureFlag[]
-  auditEvents AuditEvent[]
   agreements Agreement[]
   tenantTemplates  TenantTemplate[]
   templateRequests TemplateRequest[]
@@ -1628,7 +1627,13 @@ model FeatureFlag {
 model AuditEvent {
   id         String   @id @default(cuid())
   // Null for PLATFORM-level events that belong to no tenant (e.g. granting or
-  // revoking Profile.isSuperAdmin). Tenant-scoped events still carry the tenant.
+  // revoking Profile.isSuperAdmin). Tenant-scoped events carry the tenant id.
+  // Deliberately a bare scalar with NO FK relation (like `actorId` and
+  // `departmentId` below): AuditEvent rows are immutable (DAT-05 trigger blocks
+  // UPDATE *and* DELETE), so a cascading/set-null FK would make it impossible
+  // to ever hard-delete a tenant that has audit history. The audit trail is
+  // meant to OUTLIVE the tenant it records — a purged tenant just leaves rows
+  // whose tenantId no longer resolves, never an orphan-block. See purgeTenant.
   tenantId   String?
   // Department this event belongs to, when the action is scoped to one (e.g.
   // member restriction/role change within a department). Null for tenant-wide
@@ -1641,8 +1646,6 @@ model AuditEvent {
   before     Json?
   after      Json?
   createdAt  DateTime @default(now())
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([departmentId])

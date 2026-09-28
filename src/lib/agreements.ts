@@ -245,6 +245,7 @@ export async function listTenantAgreementSummaries(): Promise<TenantAgreementSum
         id: true,
         name: true,
         status: true,
+        deletedAt: true,
         createdAt: true,
         _count: { select: { departments: true } },
         agreements: {
@@ -281,7 +282,9 @@ export async function listTenantAgreementSummaries(): Promise<TenantAgreementSum
     return {
       tenantId: tenant.id,
       tenantName: tenant.name,
-      tenantStatus: tenant.status,
+      // Soft-delete takes precedence: a deleted tenant keeps status "active"/
+      // "suspended" on the row, but should surface as "deleted" here.
+      tenantStatus: tenant.deletedAt ? "deleted" : tenant.status,
       tenantCreatedAt: tenant.createdAt,
       agreementEndDate: current?.endDate ?? null,
       renewalStatus: current?.renewalStatus ?? null,

@@ -3,10 +3,12 @@ import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import {
   createManagedDomain,
+  enableManagedDomainReceiving,
   getManagedDomain,
   verifyManagedDomain,
   removeManagedDomain,
   listManagedDomains,
+  selectBestManagedDomain,
   type ManagedDomain,
   type DomainOpError,
 } from "@/lib/resend-domains";
@@ -170,7 +172,11 @@ export async function listTenantInUseDomains(tenantId: string): Promise<InUseDom
     runAsSystem(() => prisma.emailDomain.findMany({ where: { tenantId }, select: { name: true } })),
   ]);
   const statusByName = new Map<string, ManagedDomain["status"]>();
-  if (!("error" in all)) for (const d of all) statusByName.set(d.name.toLowerCase(), d.status);
+  if (!("error" in all)) {
+    for (const domain of usageByDomain.keys()) {
+      statusByName.set(domain, selectBestManagedDomain(all, domain)?.status ?? "unknown");
+    }
+  }
   const registeredNames = new Set(registeredRows.map((r) => r.name.toLowerCase()));
 
   return [...usageByDomain.entries()]
@@ -203,17 +209,26 @@ export async function listTenantDomains(tenantId: string): Promise<TenantDomain[
       rows.map((r) => r.subDepartmentId).filter((v): v is string => Boolean(v)),
     ),
   ]);
-  const statusById = new Map<string, ManagedDomain["status"]>();
-  if (!("error" in all)) for (const d of all) statusById.set(d.id, d.status);
+  // A domain name can exist in more than one Resend region (e.g. an old
+  // us-east-1 entry plus the live eu-west-1 one). Resolve status by NAME with
+  // selectBestManagedDomain — preferring the verified copy — rather than the
+  // single stored resendId, which may point at a region that never verified and
+  // would report a stale "not verified" here while the platform view (which
+  // lists every copy) shows the domain as verified. Ownership actions still key
+  // off the stored resendId (see `id` below), so this only affects display.
+  const allDomains = "error" in all ? [] : all;
 
   return rows.map((r) => {
     const deptName = r.departmentId ? labels.depts.get(r.departmentId) ?? null : null;
     const subName = r.subDepartmentId ? labels.subs.get(r.subDepartmentId) ?? null : null;
     const scopeLabel = subName ? `${deptName ?? "—"} › ${subName}` : deptName;
+    const managed = selectBestManagedDomain(allDomains, r.name);
     return {
       id: r.resendId,
       name: r.name,
-      status: statusById.get(r.resendId) ?? "unknown",
+      status: managed?.status ?? "unknown",
+      region: managed?.region ?? null,
+      capabilities: managed?.capabilities ?? { sending: "disabled", receiving: "disabled" },
       createdAt: r.createdAt.toISOString(),
       records: [],
       scopeLabel,
@@ -254,13 +269,19 @@ export async function addTenantDomain(
   // created it, never when we merely claimed a pre-existing one.
   let resendId: string;
   let createdNew = false;
-  const created = await createManagedDomain(clean);
-  if ("error" in created) {
-    const all = await listManagedDomains();
-    const match = "error" in all ? undefined : all.find((d) => d.name.toLowerCase() === clean);
-    if (!match) return created;
-    resendId = match.id;
+  const existingManaged = await listManagedDomains();
+  const existingMatch = "error" in existingManaged
+    ? undefined
+    : selectBestManagedDomain(existingManaged, clean);
+  if (existingMatch) {
+    resendId = existingMatch.id;
+    if (existingMatch.capabilities.receiving !== "enabled") {
+      const enabled = await enableManagedDomainReceiving(existingMatch.id);
+      if ("error" in enabled) return enabled;
+    }
   } else {
+    const created = await createManagedDomain(clean);
+    if ("error" in created) return created;
     resendId = created.id;
     createdNew = true;
   }
@@ -285,7 +306,16 @@ export async function addTenantDomain(
   // Return live status + records (the claim path has none from `created`).
   const domain = await getManagedDomain(resendId);
   if ("error" in domain) {
-    return { id: resendId, name: clean, status: "unknown", createdAt: null, records: [], scopeLabel: resolved.label };
+    return {
+      id: resendId,
+      name: clean,
+      status: "unknown",
+      region: null,
+      capabilities: { sending: "disabled", receiving: "disabled" },
+      createdAt: null,
+      records: [],
+      scopeLabel: resolved.label,
+    };
   }
   return { ...domain, scopeLabel: resolved.label };
 }

@@ -187,7 +187,7 @@ export function ReceivedMailPanel({
           <div>
             <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">Received mail</h2>
             <p className="font-sans text-[11.5px] text-sts-muted">
-              Every email these mailboxes received — filed tickets, mail awaiting review, and suppressed mail.
+              Email sent directly to these shared mailboxes — filed tickets, mail awaiting review, and suppressed mail.
             </p>
           </div>
         </div>

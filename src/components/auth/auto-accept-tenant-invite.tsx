@@ -63,30 +63,30 @@ export function AutoAcceptInvite({ acceptUrl }: { acceptUrl: string }) {
 
   if (error) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-        <div className="flex flex-col items-center gap-3 rounded-lg border p-6 shadow-sm">
-          <h1 className="text-xl font-semibold">Couldn&apos;t finish accepting</h1>
-          <p className="text-center text-sm text-muted-foreground">{error}</p>
-          <a
-            href="/"
-            className="mt-2 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Open dashboard
-          </a>
-        </div>
+      <div className="flex flex-col items-center">
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
+          Couldn&apos;t finish accepting
+        </h1>
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">{error}</p>
+        <a
+          href="/"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sts-blue px-4 py-2.5 text-[14px] font-medium text-white hover:opacity-90"
+        >
+          Open dashboard
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-      <div className="flex flex-col items-center gap-3 rounded-lg border p-6 shadow-sm">
-        <LoadingSpinner className="size-6 text-blue-600" />
-        <h1 className="text-xl font-semibold">Accepting invitation…</h1>
-        <p className="text-center text-sm text-muted-foreground">
-          Hang tight — we&apos;re attaching your account and opening your dashboard.
-        </p>
-      </div>
+    <div className="flex flex-col items-center">
+      <LoadingSpinner className="size-6 text-sts-blue" />
+      <h1 className="mt-3 text-center text-[18px] font-semibold text-sts-foreground">
+        Accepting invitation…
+      </h1>
+      <p className="mt-2 text-center text-[13.5px] text-sts-muted">
+        Hang tight — we&apos;re attaching your account and opening your dashboard.
+      </p>
     </div>
   );
 }

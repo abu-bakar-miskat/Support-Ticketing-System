@@ -88,7 +88,7 @@ export function renderInvite({
         message: escapeHtml(messageText),
         messageBlock,
         inviteUrl: url,
-        acceptInviteButton: button({ href: url, label: "Accept invitation", branding }),
+        acceptInviteButton: button({ href: url, label: "Go to Accept Invitation page", branding }),
         expiresAt: escapeHtml(expiryText),
         signature: sig.html,
       },
@@ -121,7 +121,7 @@ export function renderInvite({
     ${intro}
     ${messageHtml}
     ${infoHtml}
-    ${button({ href: url, label: "Accept invitation", branding })}
+    ${button({ href: url, label: "Go to Accept Invitation page", branding })}
     ${expiryLineHtml}
     <p style="margin:8px 0 0 0;color:#6b7280;font-size:13px;">This invitation was sent to ${email}. Sign in with your Microsoft work account to accept.</p>
     ${sig.html}
@@ -143,7 +143,7 @@ export function renderInvite({
     `SubDepartment: ${subDepartmentName}`,
     `Role: ${role}`,
     "",
-    `Accept invitation: ${url}`,
+    `Go to Accept Invitation page: ${url}`,
     "",
     `This invitation is valid for 1 day and expires on ${expiryText}. After that the link stops working and a new invitation is required.`,
     "",

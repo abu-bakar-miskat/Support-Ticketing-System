@@ -180,8 +180,9 @@ export async function POST(request: Request, { params }: Params) {
 
   // Best-effort: email the invitee so the 24h window + 12h reminder apply. The
   // accept link is still returned so a delivery failure never blocks the invite.
+  let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
   try {
-    await sendTenantInviteEmail({
+    const delivery = await sendTenantInviteEmail({
       to: email,
       inviterName: profile.name,
       inviterId: profile.id,
@@ -192,12 +193,14 @@ export async function POST(request: Request, { params }: Params) {
       inviteToken: token,
       expiresAt,
     })
+    emailDelivery = { status: "sent", via: delivery.via }
   } catch (err) {
     console.error("[tenant-members] failed to send invite email:", err)
+    emailDelivery = { status: "failed" }
   }
 
   return NextResponse.json(
-    { invited: true, email, role, acceptPath: `/tenant-invite/${token}` },
+    { invited: true, email, role, acceptPath: `/tenant-invite/${token}`, emailDelivery },
     { status: 201 },
   )
 }

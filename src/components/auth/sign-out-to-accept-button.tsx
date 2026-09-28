@@ -20,7 +20,7 @@ export function SignOutToAcceptButton({
     <button
       type="button"
       onClick={() => void onClick()}
-      className="mt-5 inline-block rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sts-blue px-4 py-2.5 text-[14px] font-medium text-white hover:opacity-90"
     >
       Sign out and continue as {invitedEmail}
     </button>

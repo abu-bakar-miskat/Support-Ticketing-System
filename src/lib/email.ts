@@ -541,7 +541,9 @@ export async function sendInviteEmail(args: {
   expiresAt: Date;
   isReminder?: boolean;
 }) {
-  if (!(await isAuthEmailConfigured())) return;
+  if (!(await isAuthEmailConfigured())) {
+    throw new Error("Authentication email is not configured");
+  }
   const config = await getEmailConfig(args.departmentId);
   const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const overrides = await getEmailTemplateOverrides(args.departmentId);
@@ -571,6 +573,7 @@ export async function sendInviteEmail(args: {
     console.error("[email] invite rejected:", result.error);
     throw new Error(result.error);
   }
+  return result;
 }
 
 /**
@@ -593,7 +596,9 @@ export async function sendTenantInviteEmail(args: {
   expiresAt: Date;
   isReminder?: boolean;
 }) {
-  if (!(await isAuthEmailConfigured())) return;
+  if (!(await isAuthEmailConfigured())) {
+    throw new Error("Authentication email is not configured");
+  }
   const config = await getEmailConfig(args.departmentId ?? undefined);
   const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const { subject, html, text } = renderTenantInvite({
@@ -620,6 +625,7 @@ export async function sendTenantInviteEmail(args: {
     console.error("[email] tenant invite rejected:", result.error);
     throw new Error(result.error);
   }
+  return result;
 }
 
 export async function sendMentionEmail(args: {

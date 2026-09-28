@@ -125,8 +125,9 @@ export async function POST(request: Request, { params }: Params) {
   // Email the invitee so the 24h clock and the 12h reminder have something to
   // reference. Delivery failure shouldn't lose the invite — the accept link is
   // still returned for manual sharing — so this is best-effort.
+  let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
   try {
-    await sendTenantInviteEmail({
+    const delivery = await sendTenantInviteEmail({
       to: email,
       inviterName: profile.name,
       inviterId: profile.id,
@@ -137,12 +138,14 @@ export async function POST(request: Request, { params }: Params) {
       inviteToken: invite.token,
       expiresAt: invite.expiresAt,
     })
+    emailDelivery = { status: "sent", via: delivery.via }
   } catch (err) {
     console.error("[tenant-invites] failed to send invite email:", err)
+    emailDelivery = { status: "failed" }
   }
 
   return NextResponse.json(
-    { ...invite, acceptPath: `/tenant-invite/${invite.token}` },
+    { ...invite, acceptPath: `/tenant-invite/${invite.token}`, emailDelivery },
     { status: 201 },
   )
 }

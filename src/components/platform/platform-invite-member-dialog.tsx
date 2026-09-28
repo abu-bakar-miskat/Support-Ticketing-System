@@ -52,6 +52,7 @@ export function PlatformInviteMemberDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [inviteDelivery, setInviteDelivery] = useState<"resend" | "mailpit" | "failed" | null>(null)
   const [copied, setCopied] = useState(false)
 
   const tenant = useMemo(() => tenants.find((t) => t.id === tenantId), [tenants, tenantId])
@@ -89,6 +90,7 @@ export function PlatformInviteMemberDialog({
     setSubDeptId("")
     setError(null)
     setInviteLink(null)
+    setInviteDelivery(null)
   }
 
   // Switching tenant invalidates every department/sub-department selection.
@@ -164,6 +166,7 @@ export function PlatformInviteMemberDialog({
     setBusy(true)
     setError(null)
     setInviteLink(null)
+    setInviteDelivery(null)
     const res = await fetch(`/api/admin/tenants/${tenantId}/members`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -181,6 +184,13 @@ export function PlatformInviteMemberDialog({
       router.refresh()
     } else if (body.invited) {
       setInviteLink(body.acceptPath)
+      setInviteDelivery(
+        body.emailDelivery?.status === "sent" && body.emailDelivery.via === "resend"
+          ? "resend"
+          : body.emailDelivery?.status === "sent" && body.emailDelivery.via === "mailpit"
+            ? "mailpit"
+            : "failed",
+      )
     }
   }
 
@@ -375,22 +385,38 @@ export function PlatformInviteMemberDialog({
               )}
 
               {inviteLink ? (
-                <div className="rounded-lg border border-sts-card-border bg-sts-surface p-2.5">
-                  <p className="font-sans text-[11px] text-sts-muted">Invitation link (share with the invitee):</p>
-                  <div className="mt-1 flex items-start gap-2">
-                    <code className="min-w-0 flex-1 break-all font-mono text-[11.5px] text-sts-foreground">
-                      {fullInviteLink}
-                    </code>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={copyInviteLink}
-                      className="shrink-0 gap-1.5"
-                    >
-                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copied ? "Copied" : "Copy link"}
-                    </Button>
+                <div className="space-y-2.5">
+                  <div
+                    className={cn(
+                      "rounded-lg border px-3 py-2 font-sans text-[12px]",
+                      inviteDelivery === "resend"
+                        ? "border-sts-green/30 bg-sts-green/10 text-sts-green"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-700",
+                    )}
+                  >
+                    {inviteDelivery === "resend"
+                      ? "Invite submitted to the email provider. If it is not in the inbox, check Junk or Microsoft 365 Quarantine."
+                      : inviteDelivery === "mailpit"
+                        ? "Development mode is active: the invite went to Mailpit, not the recipient's real inbox."
+                      : "The invite was created, but the email could not be sent. Copy and share the link below."}
+                  </div>
+                  <div className="rounded-lg border border-sts-card-border bg-sts-surface p-2.5">
+                    <p className="font-sans text-[11px] text-sts-muted">Invitation link (share with the invitee):</p>
+                    <div className="mt-1 flex items-start gap-2">
+                      <code className="min-w-0 flex-1 break-all font-mono text-[11.5px] text-sts-foreground">
+                        {fullInviteLink}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={copyInviteLink}
+                        className="shrink-0 gap-1.5"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? "Copied" : "Copy link"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (

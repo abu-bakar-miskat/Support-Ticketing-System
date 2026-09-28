@@ -426,6 +426,26 @@ export async function createTenantInvite(
   return res.json()
 }
 
+export async function deleteTenantInvite(tenantId: string, inviteId: string) {
+  const res = await fetch(`/api/admin/tenants/${tenantId}/invites/${inviteId}`, {
+    method: "DELETE",
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to delete invite")
+  }
+}
+
+export async function resendTenantInvite(tenantId: string, inviteId: string) {
+  const res = await fetch(`/api/admin/tenants/${tenantId}/invites/${inviteId}`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to resend invite")
+  }
+}
+
 export async function revokeDepartmentInvite(deptId: string, inviteId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/invites/${inviteId}`, {
     method: "DELETE",

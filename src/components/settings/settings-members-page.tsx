@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail } from "lucide-react";
+import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail, RefreshCw } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Table,
@@ -22,7 +22,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma/enums";
-import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, revokeDepartmentAccess } from "@/lib/api/admin";
+import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, revokeDepartmentAccess, deleteTenantInvite, resendTenantInvite } from "@/lib/api/admin";
 import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
@@ -49,6 +49,30 @@ export type MemberRow = {
   departments?: { id: string; name: string }[];
   memberships?: { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[];
 };
+
+export type InviteRow = {
+  id: string;
+  email: string;
+  role: Role;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  /** Human-readable "Invited to" target: "Tenant-wide", a department, or "Dept › Sub-dept" */
+  target: string | null;
+  invitedBy: string | null;
+  /** ISO timestamps */
+  createdAt: string;
+  expiresAt: string;
+};
+
+const INVITE_STATUS_STYLE: Record<InviteRow["status"], { label: string; className: string }> = {
+  pending: { label: "Pending", className: "bg-sts-blue/10 text-sts-blue" },
+  accepted: { label: "Accepted", className: "bg-sts-green/10 text-sts-green" },
+  expired: { label: "Expired", className: "bg-sts-surface text-sts-subtle" },
+  revoked: { label: "Revoked", className: "bg-red-500/10 text-red-500" },
+};
+
+function ROLE_LABEL(role: Role): string {
+  return ({ admin: "Admin", manager: "Manager", sub_manager: "Sub-manager", agent: "Agent" } as Record<string, string>)[role] ?? role;
+}
 
 const ROLE_OPTIONS_ADMIN: { value: Role; label: string }[] = [
   { value: "admin", label: "Admin" },
@@ -374,6 +398,7 @@ export function SettingsMembersPage({
   departmentId = null,
   departmentName = null,
   tenantId = null,
+  invites = [],
 }: {
   members: MemberRow[];
   isAdmin: boolean;
@@ -384,6 +409,7 @@ export function SettingsMembersPage({
   departmentId?: string | null;
   departmentName?: string | null;
   tenantId?: string | null;
+  invites?: InviteRow[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -402,11 +428,47 @@ export function SettingsMembersPage({
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [configMember, setConfigMember] = useState<MemberRow | null>(null);
+  const [liveInvites, setLiveInvites] = useState(invites);
+  // inviteId → "resend" | "delete" while that action is in flight
+  const [inviteBusy, setInviteBusy] = useState<Record<string, "resend" | "delete">>({});
+  const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<InviteRow | null>(null);
 
   // Sync liveMembers when the server re-renders after router.refresh()
   useEffect(() => {
     setLiveMembers(members);
   }, [members]);
+
+  useEffect(() => {
+    setLiveInvites(invites);
+  }, [invites]);
+
+  async function handleResendInvite(invite: InviteRow) {
+    if (!tenantId) return;
+    setInviteBusy((prev) => ({ ...prev, [invite.id]: "resend" }));
+    try {
+      await resendTenantInvite(tenantId, invite.id);
+      toast.success(`Invitation resent to ${invite.email}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to resend invite");
+    } finally {
+      setInviteBusy((prev) => { const n = { ...prev }; delete n[invite.id]; return n; });
+    }
+  }
+
+  async function handleDeleteInvite(invite: InviteRow) {
+    if (!tenantId) return;
+    setInviteBusy((prev) => ({ ...prev, [invite.id]: "delete" }));
+    try {
+      await deleteTenantInvite(tenantId, invite.id);
+      setLiveInvites((list) => list.filter((i) => i.id !== invite.id));
+      toast.success(`Invitation to ${invite.email} deleted`);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete invite");
+    } finally {
+      setInviteBusy((prev) => { const n = { ...prev }; delete n[invite.id]; return n; });
+    }
+  }
 
   function currentRole(m: MemberRow): Role {
     return localRoles[m.id] ?? m.role;
@@ -643,6 +705,18 @@ export function SettingsMembersPage({
             : undefined
         }
         onConfirm={async () => { if (confirmRemoveDept) await handleRemoveFromDept(confirmRemoveDept); }}
+      />
+      <ConfirmDialog
+        open={!!confirmDeleteInvite}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteInvite(null); }}
+        title="Delete invitation"
+        description={
+          confirmDeleteInvite
+            ? `Delete the pending invitation to ${confirmDeleteInvite.email}? The invite link will stop working. You can always send a new invite later.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={async () => { if (confirmDeleteInvite) await handleDeleteInvite(confirmDeleteInvite); }}
       />
 
     {addMemberOpen && (
@@ -1142,6 +1216,110 @@ export function SettingsMembersPage({
           </TableBody>
         </Table>
       </div>
+
+      {(isAdmin || isManager) && (
+        <div className="mt-2">
+          <div className="mb-3 flex items-baseline gap-2">
+            <h2 className="sts-text-admin-title text-[15px]">
+              Invited members
+              <span className="ml-2 font-sans text-[13px] font-normal text-sts-muted">
+                ({liveInvites.length})
+              </span>
+            </h2>
+            <p className="font-sans text-[12px] text-sts-muted">
+              People emailed an invite who haven&apos;t joined yet.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                  <TableHead className="h-8 w-[30%]"><SectionLabel>Email</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[24%]"><SectionLabel>Invited to</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[16%]"><SectionLabel>Invited</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
+                  <TableHead className="h-8 w-[92px] text-right"><SectionLabel>Actions</SectionLabel></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {liveInvites.length === 0 ? (
+                  <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                    <TableCell colSpan={6} className="py-0">
+                      <div className="flex h-[54px] items-center">
+                        <span className="font-sans text-[11.5px] text-sts-muted">No pending invitations</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  liveInvites.map((invite) => {
+                    const badge = INVITE_STATUS_STYLE[invite.status];
+                    const busy = inviteBusy[invite.id];
+                    return (
+                      <TableRow key={invite.id} className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                        <TableCell className="py-0">
+                          <div className="flex h-[54px] items-center gap-2">
+                            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-sts-surface text-sts-subtle">
+                              <Mail className="size-3.5" />
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate font-sans text-[13px] font-medium text-sts-foreground">{invite.email}</div>
+                              {invite.invitedBy && (
+                                <div className="truncate font-sans text-[11px] text-sts-muted">Invited by {invite.invitedBy}</div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-0">
+                          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 font-sans text-[11px] font-medium", ROLE_COLORS[invite.role] ?? "bg-sts-surface text-sts-subtle")}>
+                            {ROLE_LABEL(invite.role)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-0">
+                          <span className="font-sans text-[12.5px] text-sts-foreground">{invite.target ?? "—"}</span>
+                        </TableCell>
+                        <TableCell className="py-0">
+                          <span className="font-sans text-[12.5px] text-sts-muted">
+                            {new Date(invite.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-0">
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-sans text-[11px] font-medium", badge.className)}>
+                            {badge.label}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-0 pr-2 text-right">
+                          <div className="flex h-[54px] items-center justify-end gap-0.5">
+                            <button
+                              type="button"
+                              title="Resend invitation email"
+                              disabled={!!busy}
+                              onClick={() => handleResendInvite(invite)}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {busy === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete invitation"
+                              disabled={!!busy}
+                              onClick={() => setConfirmDeleteInvite(invite)}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/30"
+                            >
+                              {busy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );

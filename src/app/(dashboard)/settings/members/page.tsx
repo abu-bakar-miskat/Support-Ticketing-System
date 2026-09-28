@@ -280,6 +280,112 @@ export default async function SettingsMembersRoute() {
       )
     : null;
 
+  // ─── Invited members (TenantInvites) ────────────────────────────────────────
+  // People who were emailed an invite but aren't accounts yet. Shown with their
+  // lifecycle status so admins/managers can see who's still pending. Scoping
+  // mirrors the member-visibility rules above so each role only sees invites for
+  // departments/sub-departments they manage.
+  const inviteScopeDeptIds = new Set<string>();
+  const inviteScopeSubDeptIds = new Set<string>();
+  const seesAllTenantInvites = isAdmin && !activeDeptId;
+  if (isAdmin && activeDeptId) {
+    inviteScopeDeptIds.add(activeDeptId);
+  } else if (isManager) {
+    const managerDeptIds = profileScope
+      ? [profileScope.activeDeptId]
+      : [...(profile.managedDepartmentIds ?? []), ...(profile.grantedAccessDeptIds ?? [])];
+    for (const id of managerDeptIds) if (id) inviteScopeDeptIds.add(id);
+  } else if (isLead) {
+    const leadSubIds = profile.subDepartmentIds?.length
+      ? profile.subDepartmentIds
+      : profile.subDepartmentId ? [profile.subDepartmentId] : [];
+    for (const id of leadSubIds) inviteScopeSubDeptIds.add(id);
+  }
+
+  const rawInvites = await runAsSystem(() =>
+    (prisma.tenantInvite as any).findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        departmentIds: true,
+        subDepartmentId: true,
+        createdAt: true,
+        expiresAt: true,
+        acceptedAt: true,
+        revokedAt: true,
+        inviter: { select: { name: true } },
+      },
+    }),
+  ).catch((e: unknown) => { console.error("[members/page] tenantInvite query failed:", e); return [] as any[]; });
+
+  // Resolve department + sub-department names referenced by the invites so the
+  // "Invited to" column reads human names, not ids.
+  const inviteDeptIds = new Set<string>();
+  const inviteSubDeptIds = new Set<string>();
+  for (const inv of rawInvites as any[]) {
+    if (Array.isArray(inv.departmentIds)) for (const d of inv.departmentIds) if (typeof d === "string") inviteDeptIds.add(d);
+    if (inv.subDepartmentId) inviteSubDeptIds.add(inv.subDepartmentId);
+  }
+  const [inviteDepts, inviteSubDepts] = await Promise.all([
+    inviteDeptIds.size
+      ? runAsSystem(() => prisma.department.findMany({ where: { id: { in: [...inviteDeptIds] } }, select: { id: true, name: true } }))
+      : Promise.resolve([] as { id: string; name: string }[]),
+    inviteSubDeptIds.size
+      ? runAsSystem(() => prisma.subDepartment.findMany({ where: { id: { in: [...inviteSubDeptIds] } }, select: { id: true, name: true, departmentId: true } }))
+      : Promise.resolve([] as { id: string; name: string; departmentId: string }[]),
+  ]);
+  const deptNameById = new Map(inviteDepts.map((d) => [d.id, d.name]));
+  const subDeptById = new Map(inviteSubDepts.map((s) => [s.id, s]));
+
+  const now = Date.now();
+  const invites = (rawInvites as any[])
+    .filter((inv) => {
+      if (seesAllTenantInvites) return true;
+      const deptIds: string[] = Array.isArray(inv.departmentIds) ? inv.departmentIds.filter((d: unknown): d is string => typeof d === "string") : [];
+      if (deptIds.some((d) => inviteScopeDeptIds.has(d))) return true;
+      if (inv.subDepartmentId) {
+        if (inviteScopeSubDeptIds.has(inv.subDepartmentId)) return true;
+        const sub = subDeptById.get(inv.subDepartmentId);
+        if (sub && inviteScopeDeptIds.has(sub.departmentId)) return true;
+      }
+      return false;
+    })
+    .map((inv) => {
+      const status: "accepted" | "revoked" | "expired" | "pending" = inv.acceptedAt
+        ? "accepted"
+        : inv.revokedAt
+          ? "revoked"
+          : inv.expiresAt.getTime() < now
+            ? "expired"
+            : "pending";
+      const deptIds: string[] = Array.isArray(inv.departmentIds) ? inv.departmentIds.filter((d: unknown): d is string => typeof d === "string") : [];
+      let target: string | null = null;
+      if (inv.role === "admin") target = "Tenant-wide";
+      else if (inv.subDepartmentId) {
+        const sub = subDeptById.get(inv.subDepartmentId);
+        const deptName = sub ? deptNameById.get(sub.departmentId) : null;
+        target = sub ? (deptName ? `${deptName} › ${sub.name}` : sub.name) : null;
+      } else if (deptIds.length) {
+        target = deptIds.map((d) => deptNameById.get(d) ?? "").filter(Boolean).join(", ") || null;
+      }
+      return {
+        id: inv.id as string,
+        email: inv.email as string,
+        role: inv.role as MemberRow["role"],
+        status,
+        target,
+        invitedBy: inv.inviter?.name ?? null,
+        createdAt: inv.createdAt.toISOString(),
+        expiresAt: inv.expiresAt.toISOString(),
+      };
+    })
+    // Only surface invites still awaiting acceptance — accepted people already
+    // appear in the members table above; expired/revoked are noise here.
+    .filter((inv) => inv.status === "pending");
+
   const members: MemberRow[] = [
     ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null }) => {
       // Effective role = the higher of the global Profile.role and their highest
@@ -323,6 +429,7 @@ export default async function SettingsMembersRoute() {
       departmentId={activeDeptId}
       departmentName={activeDept?.name ?? null}
       tenantId={profile.activeTenantId ?? null}
+      invites={invites}
     />
   );
 }

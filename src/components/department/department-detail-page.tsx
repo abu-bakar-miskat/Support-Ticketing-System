@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DepartmentIconVisual } from "@/components/icons/department-icon-visual";
 import {
@@ -16,9 +15,10 @@ import {
   Clock,
   Loader2,
   Settings2,
-  Activity,
   BanIcon,
   Mail,
+  RotateCw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,6 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
-  UserPickerDropdown,
   type UserOption,
   type AccessGrant,
 } from "@/components/settings/settings-departments-page";
@@ -54,11 +53,11 @@ import {
   addAdminSubDepartmentMember,
   removeAdminSubDepartmentMember,
   revokeDepartmentInvite,
+  resendDepartmentInvite,
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
-import { AddMemberModal } from "@/components/settings/settings-members-page";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -236,8 +235,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
 
   const [managers, setManagers] = useState<ManagerRow[]>(data.managers);
   const [members, setMembers] = useState<MemberRow[]>(data.members);
-  // Read-only: still used to exclude existing guests from add/invite pickers.
-  const accessGrants = data.accessGrants;
   const [pendingInvites, setPendingInvites] = useState<DepartmentInviteRow[]>(data.pendingInvites);
   // Requests resolved in this session are hidden immediately; a router.refresh()
   // then drops them from `data.joinRequests` too. Deriving avoids mirroring props
@@ -252,13 +249,48 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   const [saving, setSaving] = useState<string | null>(null);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<MemberRow | null>(null);
   const [configMember, setConfigMember] = useState<MemberConfigTarget | null>(null);
+  // Per-invite in-flight action ("resend" | "delete") for spinner/disabled state.
+  const [inviteAction, setInviteAction] = useState<Record<string, "resend" | "delete">>({});
 
   useEffect(() => {
     setPendingInvites(data.pendingInvites);
   }, [data.pendingInvites]);
+
+  async function resendInvite(inv: DepartmentInviteRow) {
+    setInviteAction((prev) => ({ ...prev, [inv.id]: "resend" }));
+    try {
+      await resendDepartmentInvite(data.id, inv.id);
+      toast.success(`Invite resent to ${inv.email}.`);
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't resend the invite.");
+    } finally {
+      setInviteAction((prev) => {
+        const next = { ...prev };
+        delete next[inv.id];
+        return next;
+      });
+    }
+  }
+
+  async function deleteInvite(inv: DepartmentInviteRow) {
+    setInviteAction((prev) => ({ ...prev, [inv.id]: "delete" }));
+    try {
+      await revokeDepartmentInvite(data.id, inv.id);
+      setPendingInvites((prev) => prev.filter((p) => p.id !== inv.id));
+      toast.success(`Invite to ${inv.email} deleted.`);
+    } catch {
+      toast.error("Couldn't delete the invite.");
+    } finally {
+      setInviteAction((prev) => {
+        const next = { ...prev };
+        delete next[inv.id];
+        return next;
+      });
+    }
+  }
 
   async function resolveJoinRequest(reqRow: JoinRequestRow, action: "approve" | "reject") {
     // A team request approves directly (agent) via the sub-department endpoint; a
@@ -331,26 +363,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
   function refresh() {
     startTransition(() => router.refresh());
-  }
-
-  const managerIds = managers.map((m) => m.userId);
-
-  // Manager candidates: only people already connected to this department — native
-  // members or cross-access guests — not the whole organization.
-  const managerCandidates: UserOption[] = [
-    ...members.map((m) => ({ id: m.userId, name: m.name, email: m.email, role: m.role, avatarUrl: m.avatarUrl })),
-    ...accessGrants.map((g) => g.user),
-  ].filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i);
-
-  async function assignManager(u: UserOption) {
-    const created = await assignDepartmentManager(data.id, u.id).catch(() => null);
-    if (created) {
-      setManagers((prev) => [...prev.filter((m) => m.userId !== u.id), {
-        id: created.id, userId: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl ?? null, color: "", deptRole: "manager",
-      }]);
-      setMembers((prev) => prev.filter((m) => m.userId !== u.id));
-      refresh();
-    }
   }
 
   async function setManagerRole(userId: string, role: DeptRole) {
@@ -474,12 +486,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </span>
           </div>
         </div>
-        <Link
-          href="/department/activity"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-card px-3 py-1.5 font-sans text-[12.5px] font-medium text-sts-foreground transition-colors hover:bg-sts-bg"
-        >
-          <Activity className="size-3.5 shrink-0" /> Activity
-        </Link>
       </div>
 
       {/* Join requests */}
@@ -566,7 +572,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         icon={Shield}
         title="Managers"
         count={managers.length}
-        action={<UserPickerDropdown label="Assign manager" users={managerCandidates} excludeIds={managerIds} onSelect={assignManager} />}
       >
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[480px]">
@@ -640,34 +645,19 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         title="Sub-department members"
         count={members.length}
         action={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAddMemberModal(true)}
-              disabled={data.availableSubDepartments.length === 0}
-              title={
-                data.availableSubDepartments.length === 0
-                  ? "Create a sub-department before adding members"
-                  : "Add people who already have an account"
-              }
-              className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <UserPlus className="size-3" /> Add existing members
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowInviteModal(true)}
-              disabled={data.availableSubDepartments.length === 0}
-              title={
-                data.availableSubDepartments.length === 0
-                  ? "Create a sub-department before inviting"
-                  : "Send an email invite to someone without an account"
-              }
-              className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-3 font-sans text-[11.5px] font-medium text-sts-muted hover:border-sts-blue/40 hover:text-sts-blue transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Mail className="size-3" /> Invite new members
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            disabled={data.availableSubDepartments.length === 0}
+            title={
+              data.availableSubDepartments.length === 0
+                ? "Create a sub-department before inviting"
+                : "Send an email invite to someone without an account"
+            }
+            className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
+          >
+            <Mail className="size-3" /> Invite new members
+          </button>
         }
       >
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
@@ -821,22 +811,31 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </div>
       </Section>
 
-      {/* Pending invites */}
-      {pendingInvites.length > 0 && (
-        <Section icon={Clock} title="Pending invites" count={pendingInvites.length}>
-          <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-            <Table className="min-w-[640px]">
-              <TableHeader>
+      {/* Invited users */}
+      <Section icon={Clock} title="Invited users" count={pendingInvites.length}>
+        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+          <Table className="min-w-[760px]">
+            <TableHeader>
+              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                <TableHead className="h-8 w-[26%]"><SectionLabel>Email</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[15%]"><SectionLabel>SubDepartment</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[11%]"><SectionLabel>Role</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[12%]"><SectionLabel>Status</SectionLabel></TableHead>
+                <TableHead className="h-8"><SectionLabel>Expires</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[190px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingInvites.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableHead className="h-8 w-[28%]"><SectionLabel>Email</SectionLabel></TableHead>
-                  <TableHead className="h-8 w-[16%]"><SectionLabel>SubDepartment</SectionLabel></TableHead>
-                  <TableHead className="h-8 w-[12%]"><SectionLabel>Role</SectionLabel></TableHead>
-                  <TableHead className="h-8"><SectionLabel>Expires</SectionLabel></TableHead>
-                  <TableHead className="h-8 w-10" />
+                  <TableCell colSpan={6} className="py-0">
+                    <div className="flex h-[54px] items-center">
+                      <span className="font-sans text-[11.5px] text-sts-muted">No pending invites. Invite someone with “Invite new members”.</span>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInvites.map((inv) => (
+              ) : (
+                pendingInvites.map((inv) => (
                   <TableRow key={inv.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                     <TableCell className="py-0">
                       <div className="flex h-[54px] flex-col justify-center">
@@ -853,30 +852,60 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       </span>
                     </TableCell>
                     <TableCell className="py-0">
+                      {(() => {
+                        const expired = new Date(inv.expiresAt).getTime() <= Date.now();
+                        return (
+                          <span
+                            title={expired ? "Invite expired — resend to renew" : "Invite pending — awaiting sign-up"}
+                            className={cn(
+                              "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
+                              expired
+                                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                            )}
+                          >
+                            <span className={cn("size-1.5 rounded-full", expired ? "bg-red-500" : "bg-amber-500")} />
+                            {expired ? "Expired" : "Pending"}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell className="py-0">
                       <span className="font-sans text-[11.5px] text-sts-muted">
                         {new Date(inv.expiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                       </span>
                     </TableCell>
                     <TableCell className="py-0 text-right">
-                      <button
-                        type="button"
-                        title="Revoke invite"
-                        onClick={async () => {
-                          await revokeDepartmentInvite(data.id, inv.id).catch(() => null);
-                          setPendingInvites((prev) => prev.filter((p) => p.id !== inv.id));
-                        }}
-                        className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      >
-                        <X className="size-3.5" />
-                      </button>
+                      <div className="flex h-[54px] items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          title="Resend invite email"
+                          disabled={!!inviteAction[inv.id]}
+                          onClick={() => resendInvite(inv)}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-50"
+                        >
+                          {inviteAction[inv.id] === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
+                          Resend
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete invite"
+                          disabled={!!inviteAction[inv.id]}
+                          onClick={() => deleteInvite(inv)}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
+                        >
+                          {inviteAction[inv.id] === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                          Delete
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Section>
-      )}
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Section>
 
       {/* Super-Admin feature control — grant/revoke this department's features. */}
       {data.canControlFeatures && (
@@ -901,17 +930,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             setPendingInvites((prev) => [invite, ...prev.filter((p) => p.id !== invite.id)]);
           }}
           onClose={() => setShowInviteModal(false)}
-        />
-      )}
-
-      {showAddMemberModal && (
-        <AddMemberModal
-          departmentId={data.id}
-          availableSubDepartments={data.availableSubDepartments}
-          availableDepartments={[]}
-          isAdmin={data.isAdmin}
-          isManager={!data.isAdmin}
-          onClose={() => setShowAddMemberModal(false)}
         />
       )}
 

@@ -453,6 +453,16 @@ export async function revokeDepartmentInvite(deptId: string, inviteId: string) {
   if (!res.ok) throw new Error("Failed to revoke invite")
 }
 
+export async function resendDepartmentInvite(deptId: string, inviteId: string) {
+  const res = await fetch(`/api/admin/departments/${deptId}/invites/${inviteId}`, {
+    method: "POST",
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to resend invite")
+  }
+}
+
 // Removes a native member: deletes their SubDepartmentMembership rows for this department's subDepartments.
 export async function removeDepartmentMember(deptId: string, userId: string) {
   const res = await fetch(`/api/admin/departments/${deptId}/members`, {

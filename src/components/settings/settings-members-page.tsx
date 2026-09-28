@@ -94,6 +94,14 @@ const ROLE_COLORS: Record<string, string> = {
   agent: "bg-sts-surface text-sts-subtle",
 };
 
+// Short descriptions used by the role-first card grid in the Add-member modal
+// (mirrors the Invite-member modal's layout).
+const ROLE_CARD_HINTS: Record<string, string> = {
+  manager: "Manages a single department.",
+  sub_manager: "Leads a sub-department.",
+  agent: "Works tickets in a sub-department.",
+};
+
 function initials(name: string) {
   return name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
@@ -210,165 +218,177 @@ export function AddMemberModal({
     }
   }
 
+  const roleOptions: string[] = isAdmin
+    ? ["manager", "sub_manager", "agent"]
+    : ["sub_manager", "agent"];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop">
-      <div className="relative w-full max-w-[480px] mx-4 rounded-[6px] border border-sts-card-border bg-sts-card shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <span className="font-sans text-[14px] font-semibold text-sts-foreground">
-            Add existing members
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Add existing member</p>
+          <button type="button" onClick={onClose} aria-label="Close">
+            <X className="size-4 text-sts-muted" />
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 p-5">
+        <div className="flex flex-col gap-4 px-5 py-4">
+          {/* Member search */}
+          <div>
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Member</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
+              <input
+                ref={searchRef}
+                autoFocus
+                disabled={!effectiveDeptId}
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+                placeholder={effectiveDeptId ? "Search by name or email…" : "Select a department first…"}
+                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-2.5 font-sans text-[13px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-id disabled:opacity-50"
+              />
+              {searching && (
+                <Loader2 className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-sts-subtle" />
+              )}
+            </div>
+
+            {/* Selected user highlight */}
+            {selected && (
+              <div className="mt-1.5 flex items-center gap-2.5 rounded-lg border border-sts-blue/40 bg-sts-blue/5 px-3 py-2">
+                <UserAvatar name={selected.name} avatarUrl={selected.avatarUrl} size={26} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
+                    {selected.name}
+                  </p>
+                  <p className="truncate font-sans text-[11.5px] text-sts-subtle">{selected.email}</p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
+                    ROLE_COLORS[selected.role] ?? "bg-sts-surface text-sts-subtle",
+                  )}
+                >
+                  {selected.role}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Candidate results */}
+            {!selected && candidates.length > 0 && (
+              <div className="mt-1.5 max-h-[200px] overflow-y-auto rounded-lg border border-sts-card-border bg-sts-surface">
+                {candidates.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setSelected(c); setCandidates([]); setSearch(""); }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-sts-bg"
+                  >
+                    <UserAvatar name={c.name} avatarUrl={c.avatarUrl} size={26} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
+                        {c.name}
+                      </p>
+                      <p className="truncate font-sans text-[11.5px] text-sts-subtle">{c.email}</p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
+                        ROLE_COLORS[c.role] ?? "bg-sts-surface text-sts-subtle",
+                      )}
+                    >
+                      {c.role}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Role — mirrors the Invite modal's role card grid. */}
+          <div>
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Role</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {roleOptions.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={cn(
+                    "flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors",
+                    role === r
+                      ? "border-sts-blue bg-sts-blue/10"
+                      : "border-sts-card-border bg-sts-surface hover:border-sts-blue/40",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "font-sans text-[12.5px] font-semibold",
+                      role === r ? "text-sts-blue" : "text-sts-foreground",
+                    )}
+                  >
+                    {ROLE_LABEL(r as Role)}
+                  </span>
+                  <span className="font-sans text-[10.5px] text-sts-subtle">{ROLE_CARD_HINTS[r]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Department picker — only on the tenant-wide view (no fixed department) */}
           {!departmentId && (
-            <div className="flex flex-col gap-1">
-              <label className="font-sans text-[11.5px] text-sts-subtle">Department</label>
+            <div>
+              <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">Department</label>
               <SearchableSelect
                 value={selectedDeptId}
                 onChange={changeDepartment}
                 options={availableDepartments.map((d) => ({ value: d.id, label: d.name }))}
-                placeholder="— Select department —"
-                className="bg-sts-bg"
+                placeholder="Select a department…"
+                searchPlaceholder="Search departments…"
+                className="w-full bg-sts-surface"
                 aria-label="Department"
               />
             </div>
           )}
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
-            <input
-              ref={searchRef}
-              autoFocus
-              disabled={!effectiveDeptId}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
-              placeholder={effectiveDeptId ? "Search by name or email…" : "Select a department first…"}
-              className="h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg pl-8 pr-2.5 font-sans text-[12.5px] text-sts-foreground placeholder:text-sts-subtle outline-none focus:border-sts-blue/60 disabled:opacity-50"
+          {/* Sub-department */}
+          <div>
+            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+              Sub-department
+            </label>
+            <SearchableSelect
+              value={subDepartmentId}
+              onChange={setSubDepartmentId}
+              options={subDeptOptions.map((t) => ({ value: t.id, label: t.name }))}
+              placeholder={subDeptOptions.length === 0 ? "No sub departments available" : "Select a sub department…"}
+              searchPlaceholder="Search sub departments…"
+              emptyLabel="No sub departments available"
+              className="w-full bg-sts-surface"
+              aria-label="Sub-department"
             />
-            {searching && (
-              <Loader2 className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-sts-subtle" />
-            )}
           </div>
-
-          {/* Selected user highlight */}
-          {selected && (
-            <div className="flex items-center gap-2.5 rounded-[8px] border border-sts-blue/40 bg-sts-blue/5 px-3 py-2">
-              <UserAvatar name={selected.name} avatarUrl={selected.avatarUrl} size={26} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
-                  {selected.name}
-                </p>
-                <p className="truncate font-sans text-[11.5px] text-sts-subtle">{selected.email}</p>
-              </div>
-              <span
-                className={cn(
-                  "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
-                  ROLE_COLORS[selected.role] ?? "bg-sts-surface text-sts-subtle",
-                )}
-              >
-                {selected.role}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          )}
-
-          {/* Candidate results */}
-          {!selected && candidates.length > 0 && (
-            <div className="max-h-[200px] overflow-y-auto rounded-[8px] border border-sts-card-border bg-sts-bg">
-              {candidates.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => { setSelected(c); setCandidates([]); setSearch(""); }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-sts-surface"
-                >
-                  <UserAvatar name={c.name} avatarUrl={c.avatarUrl} size={26} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
-                      {c.name}
-                    </p>
-                    <p className="truncate font-sans text-[11.5px] text-sts-subtle">{c.email}</p>
-                  </div>
-                  <span
-                    className={cn(
-                      "shrink-0 inline-flex items-center rounded-full px-[7px] py-0.5 font-sans text-[11px] font-medium capitalize",
-                      ROLE_COLORS[c.role] ?? "bg-sts-surface text-sts-subtle",
-                    )}
-                  >
-                    {c.role}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Membership fields */}
-          {selected && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="font-sans text-[11.5px] text-sts-subtle">SubDepartment</label>
-                <SearchableSelect
-                  value={subDepartmentId}
-                  onChange={setSubDepartmentId}
-                  options={subDeptOptions.map((t) => ({ value: t.id, label: t.name }))}
-                  placeholder="— Select sub department —"
-                  className="bg-sts-bg"
-                  aria-label="SubDepartment"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="font-sans text-[11.5px] text-sts-subtle">Role</label>
-                <SearchableSelect
-                  value={role}
-                  onChange={setRole}
-                  options={
-                    isAdmin
-                      ? [
-                          { value: "agent", label: "Agent" },
-                          { value: "sub_manager", label: "Sub-manager" },
-                          { value: "manager", label: "Manager" },
-                        ]
-                      : [
-                          { value: "agent", label: "Agent" },
-                          { value: "sub_manager", label: "Sub-manager" },
-                        ]
-                  }
-                  searchable={false}
-                  className="bg-sts-bg"
-                  aria-label="Role"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Error */}
           {submitError && (
-            <p className="font-sans text-[12px] text-red-500">{submitError}</p>
+            <p className="font-sans text-[12px] text-red-500" role="alert">{submitError}</p>
           )}
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex justify-end gap-2 border-t border-sts-card-border pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="h-9 rounded-full border border-sts-card-border bg-sts-surface px-4 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
+              className="h-8 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
             >
               Cancel
             </button>
@@ -376,7 +396,7 @@ export function AddMemberModal({
               type="button"
               disabled={!selected || submitting}
               onClick={handleSubmit}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
             >
               {submitting && <Loader2 className="size-3.5 animate-spin" />}
               Add member

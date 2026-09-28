@@ -6,6 +6,7 @@ import { DepartmentsLayout } from "@/components/departments/departments-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
 import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
+import { getTenantBranding } from "@/lib/tenant-config";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -25,6 +26,10 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
   const cookieStore = await cookies();
   const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
 
+  const branding = profile.activeTenantId
+    ? await getTenantBranding(profile.activeTenantId)
+    : null;
+
   return (
     <>
       <TenantUrlGuard />
@@ -42,7 +47,13 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
           role: m.role,
         }))}
       />
-      <DepartmentsLayout initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}>
+      <DepartmentsLayout
+        initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}
+        brandingName={branding?.displayName ?? null}
+        brandingLogoUrl={branding?.logoUrl ?? null}
+        brandingHideLogo={branding?.hideLogo ?? false}
+        brandingHideDisplayName={branding?.hideDisplayName ?? false}
+      >
         {children}
       </DepartmentsLayout>
     </>

@@ -6,8 +6,9 @@
 //   1. create (or reuse) a confirmed Supabase auth user via the admin API
 //      (email_confirm: true — no confirmation email is sent),
 //   2. upsert the Profile row with that exact auth uuid, role "admin" and
-//      isSuperAdmin: true,
-//   3. upsert an admin membership in the primary "pen" tenant.
+//      isSuperAdmin: true.
+//
+// No Tenant or TenantMembership row is created — isSuperAdmin transcends tenants.
 //
 // Idempotent: safe to re-run. Run: npx tsx prisma/seed-super-admin.ts
 import "dotenv/config";
@@ -67,18 +68,12 @@ async function ensureAuthUser(email: string, name: string) {
 }
 
 async function main() {
-  // Ensure the primary "pen" tenant exists so the super-admin has a home tenant.
-  const tenant = await prisma.tenant.upsert({
-    where: { slug: "pen" },
-    update: {},
-    create: { slug: "pen", name: "PEN" },
-  });
-
   const { email, name } = SUPER_ADMIN;
   const { id, created } = await ensureAuthUser(email, name);
 
   // Promote to super-admin. `update` runs on re-seed so an existing agent/manager
-  // profile is elevated too.
+  // profile is elevated too. isSuperAdmin transcends tenants, so no Tenant or
+  // TenantMembership row is created here.
   await prisma.profile.upsert({
     where: { id },
     update: { email, name, role: "admin", isSuperAdmin: true, isActive: true },
@@ -92,18 +87,10 @@ async function main() {
     },
   });
 
-  await prisma.tenantMembership.upsert({
-    where: { tenantId_userId: { tenantId: tenant.id, userId: id } },
-    update: { role: "admin", isActive: true },
-    create: { tenantId: tenant.id, userId: id, role: "admin", isActive: true },
-  });
-
   console.log(
     `${created ? "＋ created" : "✓ exists "}  ${name.padEnd(22)} ${email}`,
   );
-  console.log(
-    `✓ Super-admin seeded into tenant "${tenant.name}" (isSuperAdmin: true).`,
-  );
+  console.log(`✓ Super-admin seeded (isSuperAdmin: true, no tenant created).`);
 }
 
 main()

@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { getBoardCards, getSubDepartmentBoardGroups } from "@/lib/board-data";
 import type { FormFieldFilter } from "@/lib/board-search";
 import { BoardPage } from "@/components/board/board-page";
 import { BoardPageSkeleton } from "@/components/skeletons/page-skeletons";
-import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
+import {
+  getProfileDeptScope,
+  getRequestSubDepartmentId,
+  resolveStatusSubDepartmentId,
+} from "@/lib/dept-scope";
 
 export const metadata = { title: "Board — Support Ticketing System" };
 
@@ -44,7 +47,7 @@ async function BoardData({
 }: {
   searchParams: Record<string, string | string[] | undefined>;
 }) {
-  const [profile, cookieStore] = await Promise.all([getProfile(), cookies()]);
+  const profile = await getProfile();
   if (!profile) redirect("/login");
 
   // FLT-05: a filtered/searched board view is bookmarkable/shareable — the
@@ -52,7 +55,6 @@ async function BoardData({
   // params only ever narrow the same scoped query built below (SD-06).
   const boardSearchParams = parseBoardSearchParams(searchParams);
 
-  const cookieSubDepartmentId = cookieStore.get("pen_active_team")?.value ?? null;
   const membershipIds = profile.subDepartmentIds ?? [];
 
   const isManager = profile.role === "manager";
@@ -61,10 +63,11 @@ async function BoardData({
     : undefined;
 
   const deptScope = await getProfileDeptScope(profile);
+  const requestSubDepartmentId = await getRequestSubDepartmentId(profile, deptScope);
 
   const statusSubDepartmentId = resolveStatusSubDepartmentId({
     deptScope,
-    cookieSubDepartmentId,
+    cookieSubDepartmentId: requestSubDepartmentId,
     membershipIds,
     primarySubDepartmentId: profile.subDepartmentId,
   });

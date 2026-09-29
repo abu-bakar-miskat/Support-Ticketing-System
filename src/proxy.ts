@@ -5,9 +5,14 @@ import {
   DEPT_SLUG_COOKIE,
   SUBDEPT_SLUG_COOKIE,
   TENANT_SCOPED_ROOTS,
+  X_TENANT_SLUG_HEADER,
+  X_DEPARTMENT_SLUG_HEADER,
+  X_SUBDEPARTMENT_SLUG_HEADER,
   isBareTenantScoped,
   isDeptScopedPath,
   isSubDeptScopedPath,
+  parseTenantPathContext,
+  type TenantPathContext,
 } from "@/lib/tenant-path";
 import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
 
@@ -15,6 +20,37 @@ import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
 function carryCookies(from: NextResponse, to: NextResponse): NextResponse {
   for (const c of from.cookies.getAll()) to.cookies.set(c);
   return to;
+}
+
+/** Only trust a referrer from this application when deriving API context. */
+function contextFromSameOriginReferrer(request: NextRequest): TenantPathContext | null {
+  const referrer = request.headers.get("referer");
+  if (!referrer) return null;
+  try {
+    const url = new URL(referrer);
+    if (url.origin !== request.nextUrl.origin) return null;
+    return parseTenantPathContext(url.pathname);
+  } catch {
+    return null;
+  }
+}
+
+/** Forward only server-derived scope headers. Incoming values are overwritten
+ * so callers cannot smuggle an unvalidated tenant context through the proxy. */
+function requestHeadersWithContext(
+  request: NextRequest,
+  context: TenantPathContext,
+): Headers {
+  const headers = new Headers(request.headers);
+  headers.set(X_TENANT_SLUG_HEADER, context.tenantSlug);
+  if (context.departmentSlug) headers.set(X_DEPARTMENT_SLUG_HEADER, context.departmentSlug);
+  else headers.delete(X_DEPARTMENT_SLUG_HEADER);
+  if (context.subDepartmentSlug) {
+    headers.set(X_SUBDEPARTMENT_SLUG_HEADER, context.subDepartmentSlug);
+  } else {
+    headers.delete(X_SUBDEPARTMENT_SLUG_HEADER);
+  }
+  return headers;
 }
 
 export async function proxy(request: NextRequest) {
@@ -107,11 +143,45 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Tenant name in the URL. Fully guarded on the slug cookie so existing sessions
-  // (no cookie) behave exactly as before — activates only once the slug cookie is
-  // set (login / tenant switch). The tenant-id cookie stays authoritative for
-  // data scoping; the slug is cosmetic and always forced to match it.
+  // A tenant slug in the URL is request-authoritative. Cookies are shared by all
+  // tabs, while the URL is not: /tenant-x/... must continue to mean tenant X
+  // after another tab enters tenant Y. Forward the URL context to Server
+  // Components and rewrite only the cosmetic prefix away.
   if (user && !isPublic) {
+    const urlContext = parseTenantPathContext(pathname);
+    if (urlContext) {
+      const url = request.nextUrl.clone();
+      // A tenant root is an overview, never an implicit department workspace.
+      // Keeping the two meanings separate removes the cookie-dependent
+      // /<tenant> → dashboard/platform ambiguity.
+      if (urlContext.internalPath === "/" && !urlContext.departmentSlug) {
+        url.pathname = `/${urlContext.tenantSlug}/departments`;
+        return carryCookies(supabaseResponse, NextResponse.redirect(url));
+      }
+      url.pathname = urlContext.internalPath;
+      const headers = requestHeadersWithContext(request, urlContext);
+      return carryCookies(
+        supabaseResponse,
+        NextResponse.rewrite(url, { request: { headers } }),
+      );
+    }
+
+    // Tenant-scoped API requests have no slug in their own URL. Same-origin
+    // browser fetches include the page URL as Referer, which preserves the tab's
+    // tenant context. Authorization still validates membership server-side.
+    if (pathname.startsWith("/api/")) {
+      const referrerContext = contextFromSameOriginReferrer(request);
+      if (referrerContext) {
+        const headers = requestHeadersWithContext(request, referrerContext);
+        return carryCookies(
+          supabaseResponse,
+          NextResponse.next({ request: { headers } }),
+        );
+      }
+    }
+
+    // Legacy/bare scoped URLs have no request-local tenant. Keep the cookie as
+    // a fallback solely to redirect them to a canonical tenant-prefixed URL.
     const tSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value || "";
     const dSlug = request.cookies.get(DEPT_SLUG_COOKIE)?.value || "";
     const sSlug = request.cookies.get(SUBDEPT_SLUG_COOKIE)?.value || "";

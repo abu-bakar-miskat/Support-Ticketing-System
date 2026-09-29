@@ -5,12 +5,31 @@ import { describe, it, expect, vi } from "vitest"
 vi.mock("@/lib/profile", () => ({ getProfile: vi.fn() }))
 vi.mock("@/lib/db", () => ({ prisma: {} }))
 
-import { departmentAdminScope, assertDepartmentAdmin, type AuthProfile } from "./auth"
+import { getProfile } from "@/lib/profile"
+import {
+  departmentAdminScope,
+  assertDepartmentAdmin,
+  requireAuth,
+  type AuthProfile,
+} from "./auth"
 import { canAdminDeptSettings } from "./dept-scope"
 
 function profile(p: Partial<AuthProfile>): AuthProfile {
   return { role: "agent", departmentAdminIds: [], ...p } as AuthProfile
 }
+
+describe("requireAuth tenant context", () => {
+  it("returns 404 for an inaccessible tenant encoded in the request URL", async () => {
+    vi.mocked(getProfile).mockResolvedValue(
+      profile({ tenantContextInvalid: true }) as never,
+    )
+
+    const result = await requireAuth()
+
+    expect(result.profile).toBeNull()
+    expect(result.error?.status).toBe(404)
+  })
+})
 
 describe("departmentAdminScope", () => {
   it("tenant admin is unrestricted (null)", () => {

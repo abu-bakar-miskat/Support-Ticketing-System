@@ -6,10 +6,10 @@ import { firstSegment, TENANT_SCOPED_ROOTS } from "@/lib/tenant-path";
 /**
  * Keeps the URL tenant slug and the active-tenant cookies aligned.
  *
- * When the path is `/nishan/departments` but cookies still point at another
- * org (e.g. VCAD), the URL wins: we switch into `nishan` and reload so the
- * page data matches the link. A plain GET never writes cookies, so a stale
- * heal request cannot overwrite a just-finished Enter.
+ * Tenant-prefixed URLs are resolved by the server proxy and are already
+ * request-authoritative. The client guard only upgrades legacy bare URLs; it
+ * must never rewrite shared cookies from a tenant tab because that would make
+ * several open tabs fight over one browser-wide value.
  */
 export function TenantUrlGuard() {
   const ran = useRef(false);
@@ -30,10 +30,10 @@ export function TenantUrlGuard() {
       // Platform / login / etc. — nothing to sync.
       if (!headIsTenantSlug && !bareScoped) return;
 
-      const qs = headIsTenantSlug
-        ? `?urlSlug=${encodeURIComponent(head)}`
-        : "";
-      const res = await fetch(`/api/active-tenant${qs}`, {
+      // The proxy has already derived this tab's tenant from the URL.
+      if (headIsTenantSlug) return;
+
+      const res = await fetch("/api/active-tenant", {
         credentials: "same-origin",
         cache: "no-store",
       }).catch(() => null);
@@ -46,17 +46,7 @@ export function TenantUrlGuard() {
       const slug = body?.tenant?.slug;
       if (!slug) return;
 
-      // Cookies were switched to match the URL — reload so server components
-      // re-read the new active tenant (otherwise the header still shows the
-      // previous org under the new slug).
-      if (body?.switched) {
-        window.location.reload();
-        return;
-      }
-
-      if (headIsTenantSlug && head === slug) return;
-
-      const rest = headIsTenantSlug ? segs.slice(1) : segs;
+      const rest = segs;
       const internal = rest.length === 0 ? "" : `/${rest.join("/")}`;
       const next = `/${slug}${internal}${search}${hash}`;
       if (next !== `${pathname}${search}${hash}`) {

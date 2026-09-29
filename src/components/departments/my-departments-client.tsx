@@ -38,12 +38,17 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
 
   async function enter() {
     setEntering(true);
-    await fetch("/api/active-dept", {
+    const res = await fetch("/api/active-dept", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deptId: dept.id }),
     });
-    window.location.href = "/";
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.tenantSlug || !body.slug) {
+      setEntering(false);
+      return;
+    }
+    window.location.href = `/${body.tenantSlug}/${body.slug}`;
   }
 
   return (

@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 const cookieStore = { get: vi.fn() }
+const headerStore = { get: vi.fn() }
 vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve(cookieStore),
+  headers: () => Promise.resolve(headerStore),
 }))
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -25,6 +27,7 @@ function setCookie(value: string | null) {
 beforeEach(() => {
   vi.clearAllMocks()
   setCookie(null)
+  headerStore.get.mockReturnValue(null)
 })
 
 describe("hasTenantAccess", () => {
@@ -42,6 +45,31 @@ describe("hasTenantAccess", () => {
 })
 
 describe("resolveActiveTenantId", () => {
+  it("prefers the accessible tenant encoded in this request's URL", async () => {
+    headerStore.get.mockReturnValue("tenant-two")
+    setCookie("t1")
+    mockTenantFindFirst.mockResolvedValue({ id: "t2" } as never)
+
+    const result = await resolveActiveTenantId({ tenantIds: ["t1", "t2"] })
+
+    expect(result).toBe("t2")
+    expect(mockTenantFindFirst).toHaveBeenCalledWith({
+      where: { slug: "tenant-two", deletedAt: null },
+      select: { id: true },
+    })
+  })
+
+  it("does not fall back to a cookie when the URL tenant is inaccessible", async () => {
+    headerStore.get.mockReturnValue("tenant-forbidden")
+    setCookie("t1")
+    mockTenantFindFirst.mockResolvedValue(null)
+
+    const result = await resolveActiveTenantId({ tenantIds: ["t1"] })
+
+    expect(result).toBeNull()
+    expect(mockTenantCount).not.toHaveBeenCalled()
+  })
+
   it("returns the cookie tenant when the member belongs to it", async () => {
     setCookie("t2")
     const result = await resolveActiveTenantId({ tenantIds: ["t1", "t2"] })

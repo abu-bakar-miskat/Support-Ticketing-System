@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { getBoardCards, getSubDepartmentBoardGroups } from "@/lib/board-data";
 import { TimelineViewPage } from "@/components/timeline/timeline-view-page";
-import { getProfileDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
+import {
+  getProfileDeptScope,
+  getRequestSubDepartmentId,
+  resolveStatusSubDepartmentId,
+} from "@/lib/dept-scope";
 import { TimelinePageSkeleton } from "@/components/skeletons/page-skeletons";
 
 export const metadata = { title: "Timeline — Support Ticketing System" };
@@ -13,8 +16,6 @@ async function TimelineData() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  const cookieStore = await cookies();
-  const cookieSubDepartmentId = cookieStore.get("pen_active_team")?.value ?? null;
   const membershipIds = profile.subDepartmentIds ?? [];
 
   const isManager = profile.role === "manager";
@@ -23,10 +24,11 @@ async function TimelineData() {
     : undefined;
 
   const deptScope = await getProfileDeptScope(profile);
+  const requestSubDepartmentId = await getRequestSubDepartmentId(profile, deptScope);
 
   resolveStatusSubDepartmentId({
     deptScope,
-    cookieSubDepartmentId,
+    cookieSubDepartmentId: requestSubDepartmentId,
     membershipIds,
     primarySubDepartmentId: profile.subDepartmentId,
   });

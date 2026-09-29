@@ -25,6 +25,12 @@ export type TenantProfileLike = {
   tenantIds?: string[];
 };
 
+export type ActiveTenantResolution = {
+  id: string | null;
+  requestedByUrl: boolean;
+  valid: boolean;
+};
+
 /** Cookie-only active tenant id (supports legacy id-only and `id|slug`). */
 export async function getActiveTenantCookie(): Promise<string | null> {
   const store = await cookies();
@@ -46,9 +52,9 @@ export function hasTenantAccess(
  *    so /wayne-enterprise/… never renders another org's data.
  *  - Else cookie tenant when valid, else first membership / oldest tenant.
  */
-export async function resolveActiveTenantId(
+export async function resolveActiveTenantContext(
   profile: TenantProfileLike,
-): Promise<string | null> {
+): Promise<ActiveTenantResolution> {
   const headerList = await headers();
   const urlSlug = (headerList.get(X_TENANT_SLUG_HEADER) ?? "").trim().toLowerCase();
   if (urlSlug) {
@@ -57,8 +63,9 @@ export async function resolveActiveTenantId(
       select: { id: true },
     });
     if (bySlug && hasTenantAccess(profile, bySlug.id)) {
-      return bySlug.id;
+      return { id: bySlug.id, requestedByUrl: true, valid: true };
     }
+    return { id: null, requestedByUrl: true, valid: false };
   }
 
   const cookieTenant = await getActiveTenantCookie();
@@ -67,19 +74,29 @@ export async function resolveActiveTenantId(
   if (profile.isSuperAdmin) {
     if (cookieTenant) {
       const exists = await prisma.tenant.count({ where: { id: cookieTenant } });
-      if (exists > 0) return cookieTenant;
+      if (exists > 0) return { id: cookieTenant, requestedByUrl: false, valid: true };
     }
-    if (memberTenantIds.length > 0) return memberTenantIds[0];
+    if (memberTenantIds.length > 0) {
+      return { id: memberTenantIds[0]!, requestedByUrl: false, valid: true };
+    }
     const first = await prisma.tenant.findFirst({
       where: { deletedAt: null },
       orderBy: { createdAt: "asc" },
       select: { id: true },
     });
-    return first?.id ?? null;
+    return { id: first?.id ?? null, requestedByUrl: false, valid: true };
   }
 
-  if (cookieTenant && memberTenantIds.includes(cookieTenant)) return cookieTenant;
-  return memberTenantIds[0] ?? null;
+  if (cookieTenant && memberTenantIds.includes(cookieTenant)) {
+    return { id: cookieTenant, requestedByUrl: false, valid: true };
+  }
+  return { id: memberTenantIds[0] ?? null, requestedByUrl: false, valid: true };
+}
+
+export async function resolveActiveTenantId(
+  profile: TenantProfileLike,
+): Promise<string | null> {
+  return (await resolveActiveTenantContext(profile)).id;
 }
 
 /** True when a department belongs to the given tenant. */

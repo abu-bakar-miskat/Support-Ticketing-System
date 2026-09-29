@@ -1,16 +1,17 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
-import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DepartmentsLayout } from "@/components/departments/departments-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
 import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
+import { getProfileDeptScope } from "@/lib/dept-scope";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
+  if (profile.tenantContextInvalid) notFound();
 
   const memberships = profile.memberships ?? [];
   const hasTenantMembership = (profile.tenantMemberships ?? []).length > 0;
@@ -23,8 +24,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
     redirect("/onboarding");
   }
 
-  const cookieStore = await cookies();
-  const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
+  const activeDeptId = (await getProfileDeptScope(profile))?.activeDeptId ?? null;
 
   const branding = profile.activeTenantId
     ? await getTenantBranding(profile.activeTenantId)

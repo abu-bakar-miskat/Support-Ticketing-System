@@ -1,7 +1,11 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { getProfileDeptScope, getPersonalTaskDeptScope, resolveStatusSubDepartmentId } from "@/lib/dept-scope";
+import {
+  getProfileDeptScope,
+  getPersonalTaskDeptScope,
+  getRequestSubDepartmentId,
+  resolveStatusSubDepartmentId,
+} from "@/lib/dept-scope";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { assignedProjectsInDeptWhere } from "@/lib/cross-access";
 import {
@@ -92,18 +96,17 @@ async function collectTasksMetaData(
   profile: Profile,
   activeDeptId?: string | null,
 ): Promise<TasksMetaResponse> {
-  const cookieStore = await cookies();
-  const cookieSubDepartmentId = cookieStore.get("pen_active_team")?.value ?? null;
   const membershipIds = profile.subDepartmentIds ?? [];
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
 
   const deptScope = await getProfileDeptScope(profile);
+  const requestSubDepartmentId = await getRequestSubDepartmentId(profile, deptScope);
 
   const statusSubDepartmentId = resolveStatusSubDepartmentId({
     deptScope,
-    cookieSubDepartmentId,
+    cookieSubDepartmentId: requestSubDepartmentId,
     membershipIds,
     primarySubDepartmentId: profile.subDepartmentId,
   });

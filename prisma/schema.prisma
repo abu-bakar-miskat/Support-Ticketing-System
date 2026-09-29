@@ -374,8 +374,8 @@ model Department {
   name              String
   // URL slug for the department, unique WITHIN a tenant (see @@unique below) so
   // different tenants may reuse department names. Used for /<tenant>/<dept>/…
-  // routing. Nullable while backfilling; resolved from name.
-  slug              String?
+  // routing.
+  slug              String
   // Template (development | support | hub | …). Drives per-type settings/UI.
   // `isHub` is kept in sync (isHub == (type == "hub")). See lib/department-types.
   type              String               @default("development")

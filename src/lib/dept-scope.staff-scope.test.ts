@@ -3,9 +3,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const mockGet = vi.fn();
+const mockHeaderGet = vi.fn();
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({
     get: mockGet,
+  })),
+  headers: vi.fn(async () => ({
+    get: mockHeaderGet,
   })),
 }));
 
@@ -13,6 +17,12 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     department: {
       findUnique: vi.fn(async () => ({ isHub: false })),
+      findFirst: vi.fn(async ({ where }: { where: { OR: Array<{ slug?: string }> } }) =>
+        where.OR.some((condition) => condition.slug === "support")
+          ? { id: "dept-support" }
+          : null,
+      ),
+      count: vi.fn(async () => 1),
     },
     projectMember: {
       findMany: vi.fn(async () => []),
@@ -37,9 +47,34 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 beforeEach(() => {
   vi.clearAllMocks();
   mockGet.mockReturnValue({ value: "dept-web" });
+  mockHeaderGet.mockReturnValue(null);
 });
 
 describe("getProfileDeptScope — staff native department visits", () => {
+  it("prefers the department encoded in the request URL over the cookie", async () => {
+    mockHeaderGet.mockReturnValue("support");
+
+    const scope = await getProfileDeptScope({
+      id: "admin-1",
+      role: "admin",
+      activeTenantId: "tenant-1",
+    });
+
+    expect(scope?.activeDeptId).toBe("dept-support");
+  });
+
+  it("fails closed for an unknown department encoded in the request URL", async () => {
+    mockHeaderGet.mockReturnValue("missing");
+
+    const scope = await getProfileDeptScope({
+      id: "admin-1",
+      role: "admin",
+      activeTenantId: "tenant-1",
+    });
+
+    expect(scope).toBeNull();
+  });
+
   it("does not treat Web Development as cross-access when user has a subDepartment there", async () => {
     const scope = await getProfileDeptScope({
       id: "user-1",

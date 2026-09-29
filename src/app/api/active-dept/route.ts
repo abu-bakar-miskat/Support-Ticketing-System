@@ -16,10 +16,16 @@ export async function POST(request: NextRequest) {
   // RoleAssignment can lag right after entering a tenant, which used to 403 the
   // Manage button and bounce the user straight back to /departments.
   let deptSlug = "";
+  let tenantSlug = "";
   if (deptId) {
     const dept = await prisma.department.findUnique({
       where: { id: deptId },
-      select: { id: true, slug: true, tenantId: true },
+      select: {
+        id: true,
+        slug: true,
+        tenantId: true,
+        tenant: { select: { slug: true } },
+      },
     });
     if (!dept) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -32,10 +38,11 @@ export async function POST(request: NextRequest) {
     if (!viaScope && !viaTenantAdmin && !viaManaged && !profile.isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    deptSlug = dept.slug ?? "";
+    deptSlug = dept.slug;
+    tenantSlug = dept.tenant.slug;
   }
 
-  const res = NextResponse.json({ ok: true, slug: deptSlug });
+  const res = NextResponse.json({ ok: true, slug: deptSlug, tenantSlug });
   res.cookies.set("pen_active_dept", deptId ?? "", {
     httpOnly: true,
     path: "/",

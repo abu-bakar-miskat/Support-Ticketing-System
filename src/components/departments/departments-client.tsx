@@ -95,7 +95,9 @@ export function DepartmentsClient({
       body: JSON.stringify({ deptId }),
     });
     if (!res.ok) return;
-    window.location.assign("/");
+    const body = await res.json().catch(() => ({}));
+    if (!body.tenantSlug || !body.slug) return;
+    window.location.assign(`/${body.tenantSlug}/${body.slug}`);
   }
 
   return (

@@ -14,6 +14,9 @@ export async function requireAuth() {
   if (!profile) {
     return { profile: null, error: unauthorized() };
   }
+  if (profile.tenantContextInvalid) {
+    return { profile: null, error: notFound("Tenant not found.") };
+  }
   return { profile, error: null };
 }
 
@@ -21,6 +24,9 @@ export async function requireAdmin(message = "Only admins can do this.") {
   const profile = await getProfile();
   if (!profile) {
     return { profile: null, error: unauthorized() };
+  }
+  if (profile.tenantContextInvalid) {
+    return { profile: null, error: notFound("Tenant not found.") };
   }
   // Platform super-admins supersede tenant/department admins everywhere.
   if (profile.role !== "admin" && !profile.isSuperAdmin) {
@@ -36,6 +42,9 @@ export async function requireAdminOrManager(
   if (!profile) {
     return { profile: null, isAdmin: false, error: unauthorized() };
   }
+  if (profile.tenantContextInvalid) {
+    return { profile: null, isAdmin: false, error: notFound("Tenant not found.") };
+  }
   if (profile.role !== "admin" && profile.role !== "manager" && !profile.isSuperAdmin) {
     return { profile: null, isAdmin: false, error: forbidden(message) };
   }
@@ -49,6 +58,9 @@ export async function requireSuperAdmin(
   const profile = await getProfile();
   if (!profile) {
     return { profile: null, error: unauthorized() };
+  }
+  if (profile.tenantContextInvalid) {
+    return { profile: null, error: notFound("Tenant not found.") };
   }
   if (!profile.isSuperAdmin) {
     return { profile: null, error: forbidden(message) };

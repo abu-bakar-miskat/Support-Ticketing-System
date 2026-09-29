@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       departments: {
         create: {
           name: SUPPORT_TEMPLATE.name,
+          slug: SUPPORT_TEMPLATE.slug,
           type: SUPPORT_TEMPLATE.departmentType,
           templateSlug: SUPPORT_TEMPLATE.slug,
           featureKeys: SUPPORT_TEMPLATE.featureKeys,

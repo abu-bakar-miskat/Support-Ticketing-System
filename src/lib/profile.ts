@@ -4,7 +4,7 @@ import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/db"
 import { reconcileProfileOnLogin } from "@/lib/reconcile-profile-on-login"
-import { resolveActiveTenantId, getActiveTenantCookie } from "@/lib/tenant-scope"
+import { resolveActiveTenantContext, getActiveTenantCookie } from "@/lib/tenant-scope"
 import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path"
 import { deriveEffectiveRole, type ScopeRow } from "@/lib/role-assignment"
 import { tenantBlocksLogin } from "@/lib/tenant-lifecycle"
@@ -111,11 +111,12 @@ export const getProfile = cache(async () => {
       .findMany({ where: { userId: devId, isActive: true }, select: { tenantId: true, role: true } })
       .catch(() => [] as { tenantId: string; role: string }[])
     const devTenantIds = devTenants.map((t) => t.tenantId)
-    const devActiveTenantId = await resolveActiveTenantId({
+    const devTenantContext = await resolveActiveTenantContext({
       id: devId,
       isSuperAdmin: true,
       tenantIds: devTenantIds,
     })
+    const devActiveTenantId = devTenantContext.id
     return {
       id: devId,
       email: "dev@local.test",
@@ -143,6 +144,7 @@ export const getProfile = cache(async () => {
       tenantMemberships: devTenants,
       tenantIds: devTenantIds,
       activeTenantId: devActiveTenantId,
+      tenantContextInvalid: !devTenantContext.valid,
     }
   }
 
@@ -271,11 +273,12 @@ const loadAuthedProfile = async (user: AuthUser) => {
       return null
     }
 
-    const activeTenantId = await resolveActiveTenantId({
+    const tenantContext = await resolveActiveTenantContext({
       id: profile.id,
       isSuperAdmin: profile.isSuperAdmin,
       tenantIds,
     })
+    const activeTenantId = tenantContext.id
 
     // Tenant isolation: a user's admin/manager power applies only inside the
     // tenant they're currently acting in. `managedDepartmentIds`,
@@ -371,5 +374,6 @@ const loadAuthedProfile = async (user: AuthUser) => {
       tenantMemberships,
       tenantIds,
       activeTenantId,
+      tenantContextInvalid: !tenantContext.valid,
     }
 }

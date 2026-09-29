@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest"
 
-vi.mock("next/headers", () => ({ cookies: () => Promise.resolve({ get: () => undefined }) }))
+vi.mock("next/headers", () => ({
+  cookies: () => Promise.resolve({ get: () => undefined }),
+  headers: () => Promise.resolve({ get: () => null }),
+}))
 vi.mock("@/lib/db", () => ({ prisma: {} }))
 vi.mock("@/lib/support-project", () => ({ isNativeDeptMemberOrManager: () => false }))
 vi.mock("@/lib/tenant-scope", () => ({

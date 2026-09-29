@@ -7,11 +7,15 @@
  *                                managers/staff. USE THIS in all pages.
  */
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { isNativeDeptMemberOrManager } from "@/lib/support-project";
 import { resolveActiveTenantId, departmentInTenant } from "@/lib/tenant-scope";
 import { runAsSystem } from "@/lib/request-scope";
+import {
+  X_DEPARTMENT_SLUG_HEADER,
+  X_SUBDEPARTMENT_SLUG_HEADER,
+} from "@/lib/tenant-path";
 
 export type DeptScope = {
   activeDeptId: string;
@@ -35,6 +39,10 @@ export type ProfileLike = {
   role: string;
   subDepartmentId?: string | null;
   subDepartmentIds?: string[];
+  memberships?: Array<{
+    role?: string;
+    subDepartment?: { department?: { id: string } | null } | null;
+  }>;
   managedDepartmentIds?: string[];
   grantedAccessDeptIds?: string[];
   /** Subset of grantedAccessDeptIds where the DepartmentAccess grant has fullAccess: true */
@@ -65,6 +73,39 @@ export async function resolveProfileActiveTenantId(
 ): Promise<string | null> {
   if (profile.activeTenantId !== undefined) return profile.activeTenantId;
   return resolveActiveTenantId(profile);
+}
+
+/**
+ * Resolve the active sub-department for this request. A slug carried by the
+ * tab's URL wins; the shared cookie remains a fallback for legacy bare URLs.
+ */
+export async function getRequestSubDepartmentId(
+  profile: ProfileLike,
+  deptScope?: DeptScope,
+): Promise<string | null> {
+  const [headerStore, cookieStore] = await Promise.all([headers(), cookies()]);
+  const requestedSlug = (
+    headerStore.get(X_SUBDEPARTMENT_SLUG_HEADER) ?? ""
+  ).trim().toLowerCase();
+
+  if (requestedSlug) {
+    const scope = deptScope === undefined ? await getProfileDeptScope(profile) : deptScope;
+    if (scope?.activeDeptId) {
+      const requested = await prisma.subDepartment.findFirst({
+        where: {
+          departmentId: scope.activeDeptId,
+          slug: requestedSlug,
+          ...(scope.subDepartmentIds.length > 0
+            ? { id: { in: scope.subDepartmentIds } }
+            : {}),
+        },
+        select: { id: true },
+      });
+      if (requested) return requested.id;
+    }
+  }
+
+  return cookieStore.get("pen_active_team")?.value ?? null;
 }
 
 async function buildScope(deptId: string, profile?: ProfileLike): Promise<DeptScope> {
@@ -685,8 +726,34 @@ export const getProfileDeptScope = cache(async function getProfileDeptScope(
 async function resolveDeptScopeInner(
   profile: ProfileLike,
 ): Promise<DeptScope> {
-  const cookieStore = await cookies();
-  const cookieDeptId = cookieStore.get("pen_active_dept")?.value || null;
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const requestedDeptSlug = (
+    headerStore.get(X_DEPARTMENT_SLUG_HEADER) ?? ""
+  ).trim().toLowerCase();
+
+  // The department encoded in this tab's URL wins over the browser-wide
+  // cookie. Bound the lookup to the already validated active tenant so the
+  // same department slug in another tenant can never cross scopes.
+  const requestedDepartment =
+    requestedDeptSlug && profile.activeTenantId
+      ? await prisma.department.findFirst({
+          where: {
+            tenantId: profile.activeTenantId,
+            OR: [
+              { slug: requestedDeptSlug },
+              { id: requestedDeptSlug },
+            ],
+          },
+          select: { id: true },
+        })
+      : null;
+  // An explicit URL department must never fall back to a cookie or a user's
+  // first department. That would render a different workspace under this URL.
+  if (requestedDeptSlug && !requestedDepartment) return null;
+  const cookieDeptId =
+    requestedDeptSlug
+      ? requestedDepartment!.id
+      : cookieStore.get("pen_active_dept")?.value ?? null;
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
@@ -702,8 +769,8 @@ async function resolveDeptScopeInner(
     const granted = profile.grantedAccessDeptIds ?? [];
 
     // Also allow depts the manager belongs to as a subDepartment member
-    const memberDeptIds: string[] = ((profile as any).memberships ?? [])
-      .map((m: any) => m.subDepartment?.department?.id)
+    const memberDeptIds: string[] = (profile.memberships ?? [])
+      .map((membership) => membership.subDepartment?.department?.id)
       .filter((id: unknown): id is string => typeof id === "string");
 
     const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
@@ -713,6 +780,7 @@ async function resolveDeptScopeInner(
     const nativeIds = new Set([...managed, ...memberDeptIds, ...fullAccessGranted]);
 
     if (allowed.length === 0) {
+      if (requestedDeptSlug) return null;
       // Manager with no assigned departments — fall back to their subDepartment's dept
       return getSubDepartmentDeptScope(profile);
     }
@@ -722,6 +790,8 @@ async function resolveDeptScopeInner(
       return buildScopeForDept(cookieDeptId, profile, !nativeIds.has(cookieDeptId));
     }
 
+    if (requestedDeptSlug) return null;
+
     // Stale/missing cookie → auto-use first managed dept (preferred), then membership dept
     const fallbackDeptId = managed[0] ?? allowed[0];
     return buildScopeForDept(fallbackDeptId, profile, !nativeIds.has(fallbackDeptId));
@@ -730,8 +800,8 @@ async function resolveDeptScopeInner(
   // Lead / staff — native depts (sub-department memberships) vs cross-access grants
   const granted = profile.grantedAccessDeptIds ?? [];
   const fullAccessGranted = profile.fullAccessGrantedDeptIds ?? [];
-  const memberDeptIds: string[] = ((profile as any).memberships ?? [])
-    .map((m: any) => m.subDepartment?.department?.id)
+  const memberDeptIds: string[] = (profile.memberships ?? [])
+    .map((membership) => membership.subDepartment?.department?.id)
     .filter((id: unknown): id is string => typeof id === "string");
 
   const nativeIds = new Set([...memberDeptIds, ...fullAccessGranted]);
@@ -754,6 +824,7 @@ async function resolveDeptScopeInner(
     if (cookieDeptId && allowed.includes(cookieDeptId)) {
       return buildScopeForDept(cookieDeptId, profile, !nativeIds.has(cookieDeptId));
     }
+    if (requestedDeptSlug) return null;
     if (primaryScope) return primaryScope;
     const fallbackDeptId = memberDeptIds[0] ?? granted[0];
     if (fallbackDeptId) {
@@ -762,6 +833,7 @@ async function resolveDeptScopeInner(
   }
 
   // Single native department — scope to their active subDepartment's department
+  if (requestedDepartment && !memberDeptIds.includes(requestedDepartment.id)) return null;
   return getSubDepartmentDeptScope(profile);
 }
 

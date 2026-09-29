@@ -15,6 +15,11 @@ export const TENANT_SLUG_COOKIE = "pen_active_tenant_slug";
 /** Request header set by proxy when the public URL carries a tenant slug. */
 export const X_TENANT_SLUG_HEADER = "x-tenant-slug";
 
+/** Request-scoped department/sub-department context derived from the public
+ * URL. Unlike cookies, these values remain independent between browser tabs. */
+export const X_DEPARTMENT_SLUG_HEADER = "x-department-slug";
+export const X_SUBDEPARTMENT_SLUG_HEADER = "x-subdepartment-slug";
+
 /** Cookie mirroring the active department's slug — the second URL segment for
  *  department-scoped pages (/<tenant>/<dept>/board). Set wherever the active
  *  department cookie (pen_active_dept) is set. */
@@ -117,6 +122,102 @@ export const TENANT_SCOPED_ROOTS = new Set([
   "time",
   "timeline",
 ]);
+
+/** Top-level application routes which can contain names also used by tenant
+ * routes (for example /platform/settings) but are never tenant prefixes. */
+const NON_TENANT_PREFIXES = new Set([
+  "api",
+  "auth",
+  "invite",
+  "login",
+  "offline",
+  "onboarding",
+  "platform",
+  "screen",
+  "support",
+  "tenant-invite",
+]);
+
+export type TenantPathContext = {
+  tenantSlug: string;
+  departmentSlug: string | null;
+  subDepartmentSlug: string | null;
+  /** The real App Router path after removing cosmetic scope segments. */
+  internalPath: string;
+};
+
+/**
+ * Parse a public tenant URL into the request context and internal App Router
+ * path it represents.
+ *
+ * Examples:
+ *   /acme/departments            -> tenant acme, /departments
+ *   /acme/support/board          -> tenant acme, dept support, /board
+ *   /acme/support/triage/board   -> plus sub-dept triage, /board
+ *
+ * Bare internal routes such as /departments deliberately return null; those
+ * continue to use the legacy cookie fallback and canonical redirect.
+ */
+export function parseTenantPathContext(pathname: string): TenantPathContext | null {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 1) {
+    const tenantSlug = segments[0]!.trim().toLowerCase();
+    if (!tenantSlug || NON_TENANT_PREFIXES.has(tenantSlug) || TENANT_SCOPED_ROOTS.has(tenantSlug)) {
+      return null;
+    }
+    return {
+      tenantSlug,
+      departmentSlug: null,
+      subDepartmentSlug: null,
+      internalPath: "/",
+    };
+  }
+
+  const rootIndex = segments.findIndex((segment) => TENANT_SCOPED_ROOTS.has(segment));
+  if (rootIndex === -1 && segments.length === 2) {
+    const tenantSlug = segments[0]!.trim().toLowerCase();
+    const departmentSlug = segments[1]!.trim().toLowerCase();
+    if (
+      !tenantSlug ||
+      !departmentSlug ||
+      NON_TENANT_PREFIXES.has(tenantSlug)
+    ) {
+      return null;
+    }
+    return {
+      tenantSlug,
+      departmentSlug,
+      subDepartmentSlug: null,
+      internalPath: "/",
+    };
+  }
+  if (rootIndex <= 0) return null;
+
+  const root = segments[rootIndex]!;
+  const tenantSlug = segments[0]?.trim().toLowerCase() ?? "";
+  if (!tenantSlug || NON_TENANT_PREFIXES.has(tenantSlug)) return null;
+
+  const tenantLevel = TENANT_LEVEL_ROOTS.has(root);
+  // Tenant-level routes have exactly one cosmetic prefix. Department routes
+  // may additionally carry department and sub-department slugs.
+  if (tenantLevel && rootIndex !== 1) return null;
+  if (!tenantLevel && rootIndex > 3) return null;
+
+  const departmentSlug = !tenantLevel && rootIndex >= 2
+    ? (segments[1]?.trim().toLowerCase() || null)
+    : null;
+  const subDepartmentSlug =
+    !tenantLevel && rootIndex >= 3 && SUBDEPT_SCOPED_ROOTS.has(root)
+      ? (segments[2]?.trim().toLowerCase() || null)
+      : null;
+
+  return {
+    tenantSlug,
+    departmentSlug,
+    subDepartmentSlug,
+    internalPath: `/${segments.slice(rootIndex).join("/")}`,
+  };
+}
 
 /** First path segment (""/"board"/…) of a pathname. */
 export function firstSegment(pathname: string): string {

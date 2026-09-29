@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Role } from "@/generated/prisma/enums";
-import { cookies } from "next/headers";
 import { getProfile } from "@/lib/profile";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { UserHydrator } from "@/components/providers/user-hydrator";
@@ -11,6 +11,8 @@ import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
+import { getProfileDeptScope } from "@/lib/dept-scope";
+import { X_DEPARTMENT_SLUG_HEADER } from "@/lib/tenant-path";
 
 async function DeferredBadges({ profile, activeDeptId }: { profile: AuthProfile; activeDeptId: string | null }) {
   const badges = await getDashboardBadgesData(profile).catch((error) => {
@@ -81,6 +83,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
   }
 
   if (!profile) redirect("/login");
+  if (profile.tenantContextInvalid) notFound();
 
   // Dashboard layout sends agents/sub_managers with zero sub-department
   // memberships to /onboarding. Tenant membership alone is enough to stay in
@@ -100,8 +103,10 @@ export async function DashboardShellLayout({ children }: { children: React.React
 
   // Seed sidebar role/memberships from the profile so Home is usable immediately.
   // Full project lists still load in the background via `/api/dashboard/layout`.
-  const cookieStore = await cookies();
-  const activeDeptId = cookieStore.get("pen_active_dept")?.value || null;
+  const deptScope = await getProfileDeptScope(profile);
+  const requestedDeptSlug = (await headers()).get(X_DEPARTMENT_SLUG_HEADER);
+  if (requestedDeptSlug && !deptScope) notFound();
+  const activeDeptId = deptScope?.activeDeptId ?? null;
 
   // Show the active tenant's uploaded brand logo/name in the sidebar; falls back
   // to the default product logo for unbranded tenants (resolver returns nulls).

@@ -26,6 +26,17 @@ const STATUSES = [
   { label: "Live", color: "#22c55e", order: 2, isComplete: true },
 ]
 
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/[\s-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "dept"
+  )
+}
+
 async function seedTenant(opts: {
   slug: string
   name: string
@@ -55,7 +66,9 @@ async function seedTenant(opts: {
   })
 
   const dept = (await prisma.department.findFirst({ where: { name: opts.deptName, tenantId: tenant.id } }))
-    ?? (await prisma.department.create({ data: { name: opts.deptName, tenantId: tenant.id } }))
+    ?? (await prisma.department.create({
+      data: { name: opts.deptName, slug: slugify(opts.deptName), tenantId: tenant.id },
+    }))
 
   const subDepartment = await prisma.subDepartment.upsert({
     where: { prefix: opts.subDepartmentPrefix },

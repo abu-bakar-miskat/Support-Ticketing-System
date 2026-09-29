@@ -13,6 +13,9 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel?: string;
   successMessage?: string;
+  /** Optional extra content rendered between the description and the buttons
+   * (e.g. an options checkbox). */
+  children?: React.ReactNode;
   onConfirm: () => Promise<void>;
 }
 
@@ -23,6 +26,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Delete",
   successMessage,
+  children,
   onConfirm,
 }: ConfirmDialogProps) {
   const [loading, setLoading] = useState(false);
@@ -51,6 +55,7 @@ export function ConfirmDialog({
           <AlertDialog.Description className="mt-2 font-sans text-[13px] text-sts-subtle">
             {description}
           </AlertDialog.Description>
+          {children && <div className="mt-4">{children}</div>}
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="outline" disabled={loading} onClick={() => onOpenChange(false)}>
               Cancel

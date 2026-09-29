@@ -23,7 +23,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { profile, error } = await requireAdmin();
@@ -33,7 +33,9 @@ export async function DELETE(
   if (!tenantId) return NextResponse.json({ error: "Domain not found" }, { status: 404 });
 
   const { id } = await params;
-  const result = await removeTenantDomain(tenantId, id);
+  // Default to also deregistering from Resend; the client opts out with ?resend=false.
+  const deleteFromResend = req.nextUrl.searchParams.get("resend") !== "false";
+  const result = await removeTenantDomain(tenantId, id, { deleteFromResend });
   if (result === null) return NextResponse.json({ error: "Domain not found" }, { status: 404 });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json({ ok: true });

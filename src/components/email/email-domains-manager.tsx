@@ -172,6 +172,7 @@ export function EmailDomainsManager({
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
+  const [deleteFromResend, setDeleteFromResend] = useState(true);
   const [error, setError] = useState<string | null>(loadError);
   const [status, setStatus] = useState<string | null>(null);
   const addCardRef = useRef<HTMLDivElement>(null);
@@ -309,7 +310,9 @@ export function EmailDomainsManager({
     if (!removing) return;
     setError(null);
     setStatus(null);
-    const res = await fetch(`${apiBase}/${removing.id}`, { method: "DELETE" });
+    const res = await fetch(`${apiBase}/${removing.id}?resend=${deleteFromResend}`, {
+      method: "DELETE",
+    });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? "Failed to remove the domain");
     setDomains((ds) => ds.filter((d) => d.id !== removing.id));
@@ -500,7 +503,10 @@ export function EmailDomainsManager({
                         disabled={busy}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (d.id) setRemoving({ id: d.id, name: d.name });
+                          if (d.id) {
+                            setDeleteFromResend(true);
+                            setRemoving({ id: d.id, name: d.name });
+                          }
                         }}
                         className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
@@ -606,13 +612,32 @@ export function EmailDomainsManager({
         title="Remove domain?"
         description={
           removing
-            ? `Remove ${removing.name}? Any mailbox that sends from this domain will stop working, and the domain is deregistered from Resend.`
+            ? `Remove ${removing.name}? Any mailbox that sends from this domain will stop working.${
+                deleteFromResend
+                  ? " The domain is also deregistered from Resend."
+                  : " The domain stays registered in Resend and only the local record is removed."
+              }`
             : ""
         }
         confirmLabel="Remove"
         successMessage={removing ? `${removing.name} removed.` : undefined}
         onConfirm={performRemove}
-      />
+      >
+        {allowRemove ? (
+        <label className="flex cursor-pointer items-start gap-2 font-sans text-[12px] text-sts-muted">
+          <input
+            type="checkbox"
+            checked={deleteFromResend}
+            onChange={(e) => setDeleteFromResend(e.target.checked)}
+            className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-sts-blue"
+          />
+          <span>
+            Also delete from Resend. Leave unchecked to remove only the local record and keep the
+            domain registered in Resend.
+          </span>
+        </label>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }

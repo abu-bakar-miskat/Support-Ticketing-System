@@ -371,15 +371,20 @@ export async function verifyTenantDomain(
   return { ...domain, scopeLabel: await labelForRow(row) };
 }
 
-/** Removes the domain from Resend and drops the ownership row. */
+/** Drops the ownership row, and — when `deleteFromResend` is set — also
+ * deregisters the domain from the (account-wide) Resend account. With it off,
+ * the domain stays registered in Resend and only the local record is removed. */
 export async function removeTenantDomain(
   tenantId: string,
   resendId: string,
+  { deleteFromResend = true }: { deleteFromResend?: boolean } = {},
 ): Promise<{ ok: true } | DomainOpError | null> {
   const row = await ownedRow(tenantId, resendId);
   if (!row) return null;
-  const removed = await removeManagedDomain(resendId);
-  if ("error" in removed) return removed;
+  if (deleteFromResend) {
+    const removed = await removeManagedDomain(resendId);
+    if ("error" in removed) return removed;
+  }
   await runAsSystem(() => prisma.emailDomain.delete({ where: { id: row.id } })).catch(() => undefined);
   return { ok: true };
 }

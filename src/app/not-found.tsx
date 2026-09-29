@@ -26,7 +26,7 @@ export default function NotFound() {
           <span
             className="select-none font-sans text-[108px] font-semibold leading-none tracking-tight"
             style={{
-              background: "linear-gradient(135deg, #0a76b9 0%, #06476f 100%)",
+              background: "linear-gradient(135deg, var(--sts-accent) 0%, color-mix(in srgb, var(--sts-accent) 72%, black) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -36,7 +36,7 @@ export default function NotFound() {
             404
           </span>
           {/* Underline accent */}
-          <span className="mt-1 block h-1 w-12 rounded-full bg-[#0a76b9] opacity-60" />
+          <span className="mt-1 block h-1 w-12 rounded-full bg-sts-accent opacity-60" />
         </div>
 
         {/* Message */}
@@ -55,7 +55,7 @@ export default function NotFound() {
         <div className="flex w-full flex-col gap-3">
           <Link
             href="/"
-            className="flex h-10 w-full items-center justify-center rounded-full bg-[#0a76b9] font-sans text-[13.5px] font-medium text-white transition-colors hover:bg-[#0967a0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a76b9]/60"
+            className="flex h-10 w-full items-center justify-center rounded-full bg-sts-accent font-sans text-[13.5px] font-medium text-white transition-colors hover:bg-sts-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
           >
             Back to dashboard
           </Link>

@@ -6,7 +6,7 @@ import { runAsSystem } from "@/lib/request-scope";
 import { listScopeDomainRequests } from "@/lib/email-domain-requests";
 import { DepartmentMailboxesPage } from "@/components/department/department-mailboxes-page";
 
-export const metadata = { title: "Shared Mailboxes — Support Ticketing System" };
+export const metadata = { title: "Shared Mailboxes — Global Support Portal" };
 
 export default async function DepartmentMailboxesRoute() {
   const profile = await getProfile();

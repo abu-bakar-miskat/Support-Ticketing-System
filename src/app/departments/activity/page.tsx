@@ -6,7 +6,7 @@ import { resolveActivityScope } from "@/lib/activity-scope";
 import { AuditLog } from "@/components/audit/audit-log";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Audit Log — Support Ticketing System" };
+export const metadata = { title: "Audit Log — Global Support Portal" };
 
 export default async function Page() {
   const profile = await getProfile();

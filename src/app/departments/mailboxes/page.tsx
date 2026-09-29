@@ -8,7 +8,7 @@ import {
   type DepartmentMailboxUsage,
 } from "@/components/departments/departments-mailboxes";
 
-export const metadata = { title: "Mailboxes — Departments — Support Ticketing System" };
+export const metadata = { title: "Mailboxes — Departments — Global Support Portal" };
 
 export default async function DepartmentsMailboxesRoute() {
   const profile = await getProfile();

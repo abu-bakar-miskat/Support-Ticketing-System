@@ -4,7 +4,7 @@ Repository review: 5 September 2026. This is a concise overview of the source co
 
 ## Purpose and technology
 
-PEN Ticketing System is a multi-tenant support and work-management application. Organizations manage departments, sub-departments, projects, and tickets within one platform.
+Global Support Portal is a multi-tenant support and work-management application. Organizations manage departments, sub-departments, projects, and tickets within one platform.
 
 Features include Kanban boards, subtickets, sprints, modules, development/QA time tracking, public support forms, customer email conversations, automatic assignment, SLA monitoring, workflow rules, reports, notifications, and GitHub integration. Additional modules cover recruitment/video screening, tenant agreements, branding, and feature templates.
 

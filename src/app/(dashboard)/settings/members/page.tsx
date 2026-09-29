@@ -10,7 +10,7 @@ import {
   type MemberRow,
 } from "@/components/settings/settings-members-page";
 
-export const metadata = { title: "Members — Support Ticketing System" };
+export const metadata = { title: "Members — Global Support Portal" };
 
 export default async function SettingsMembersRoute() {
   const profile = await getProfile();

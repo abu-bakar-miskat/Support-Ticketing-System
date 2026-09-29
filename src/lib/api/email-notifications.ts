@@ -144,13 +144,7 @@ export type EmailBrandingFields = {
   useLogo: boolean;
   pageBackground: string;
   hideFooter: boolean;
-  helpHeading: string;
-  helpMessage: string;
-  supportEmail: string;
-  hideHelp: boolean;
   hideSignature: boolean;
-  confidentialityNotice: string;
-  hideConfidentiality: boolean;
 };
 
 export type EmailBrandingInfo = {

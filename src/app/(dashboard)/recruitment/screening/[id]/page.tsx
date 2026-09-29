@@ -14,7 +14,7 @@ import { CompleteButton } from "./complete-button"
 import { FlagButton } from "./flag-button"
 import { RejectButton } from "./reject-button"
 
-export const metadata = { title: "Screening review — Support Ticketing System" }
+export const metadata = { title: "Screening review — Global Support Portal" }
 
 const FLAG_LABEL: Record<string, string> = {
   contradicts_cv: "Contradicts CV",

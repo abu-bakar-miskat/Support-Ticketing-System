@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { ManagerDashboardPage } from "@/components/manager/manager-dashboard-page";
 
-export const metadata = { title: "Manager Dashboard — Support Ticketing System" };
+export const metadata = { title: "Manager Dashboard — Global Support Portal" };
 
 export default async function ManagerPage() {
   const profile = await getProfile();

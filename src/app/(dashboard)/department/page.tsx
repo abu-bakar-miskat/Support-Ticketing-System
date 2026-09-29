@@ -9,7 +9,7 @@ import {
   type DepartmentDetailData,
 } from "@/components/department/department-detail-page";
 
-export const metadata = { title: "Department — Support Ticketing System" };
+export const metadata = { title: "Department — Global Support Portal" };
 
 export default async function DepartmentRoute() {
   const profile = await getProfile();

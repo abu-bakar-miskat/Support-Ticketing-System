@@ -10,7 +10,7 @@ import {
 } from "@/components/recruitment/recruitment-page"
 import type { Field, Candidate } from "@/components/recruitment/cells"
 
-export const metadata = { title: "Recruitment — Support Ticketing System" }
+export const metadata = { title: "Recruitment — Global Support Portal" }
 
 export default async function RecruitmentRoute({
   searchParams,

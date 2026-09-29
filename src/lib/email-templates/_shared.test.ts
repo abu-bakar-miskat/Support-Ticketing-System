@@ -188,58 +188,13 @@ describe("layout — full branding reaches the email body", () => {
     expect(html).toContain("Sales team footer");
   });
 
-  it("renders the default Need Help block with the default support email", () => {
+  it("never renders a Need Help support block", () => {
     const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>" });
-    expect(html).toContain("Need Help?");
-    expect(html).toContain("support@penglobalbd.com");
-  });
-
-  it("lets branding customize the Need Help heading, message, and email", () => {
-    const html = layout({
-      heading: "Hi",
-      bodyHtml: "<p>x</p>",
-      branding: {
-        helpHeading: "Questions?",
-        helpMessage: "Email our team at",
-        supportEmail: "care@acme.com",
-      },
-    });
-    expect(html).toContain("Questions?");
-    expect(html).toContain("Email our team at");
-    expect(html).toContain("care@acme.com");
     expect(html).not.toContain("Need Help?");
-    expect(html).not.toContain("support@penglobalbd.com");
   });
 
-  it("omits the Need Help block entirely when hideHelp is set", () => {
-    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>", branding: { hideHelp: true } });
-    expect(html).not.toContain("Need Help?");
-    expect(html).not.toContain("support@penglobalbd.com");
-  });
-
-  it("shows the default confidentiality notice when the notice is enabled", () => {
-    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>", showConfidentialityNotice: true });
-    expect(html).toContain("This email and any attachments are confidential");
-  });
-
-  it("uses a custom confidentiality notice when branding sets one", () => {
-    const html = layout({
-      heading: "Hi",
-      bodyHtml: "<p>x</p>",
-      showConfidentialityNotice: true,
-      branding: { confidentialityNotice: "Do not forward this message." },
-    });
-    expect(html).toContain("Do not forward this message.");
-    expect(html).not.toContain("This email and any attachments are confidential");
-  });
-
-  it("omits the confidentiality notice when hideConfidentiality is set, even without a signature", () => {
-    const html = layout({
-      heading: "Hi",
-      bodyHtml: "<p>x</p>",
-      showConfidentialityNotice: true,
-      branding: { hideConfidentiality: true },
-    });
+  it("never renders a confidentiality notice", () => {
+    const html = layout({ heading: "Hi", bodyHtml: "<p>x</p>" });
     expect(html).not.toContain("This email and any attachments are confidential");
   });
 });
@@ -315,6 +270,6 @@ describe("layout — footerOverride precedence", () => {
 
   it("falls back to the platform default when neither is set", () => {
     const html = layout({ heading: "H", bodyHtml: "<p>B</p>" });
-    expect(html).toContain("Support Ticketing System. This is an automated message.");
+    expect(html).toContain("Global Support Portal. This is an automated message.");
   });
 });

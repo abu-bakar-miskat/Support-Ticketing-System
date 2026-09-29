@@ -7,7 +7,7 @@ import { getTenantConfig } from "@/lib/tenant-config";
 import { SettingsEmailPage } from "@/components/settings/settings-email-page";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "Email settings — Support Ticketing System" };
+export const metadata = { title: "Email settings — Global Support Portal" };
 
 function asConfigObject(
   value: unknown,
@@ -92,13 +92,7 @@ export default async function SettingsEmailRoute() {
         useLogo: emailConfig.useLogo,
         pageBackground: emailConfig.pageBackground,
         hideFooter: emailConfig.hideFooter,
-        helpHeading: emailConfig.helpHeading,
-        helpMessage: emailConfig.helpMessage,
-        supportEmail: emailConfig.supportEmail,
-        hideHelp: emailConfig.hideHelp,
         hideSignature: emailConfig.hideSignature,
-        confidentialityNotice: emailConfig.confidentialityNotice,
-        hideConfidentiality: emailConfig.hideConfidentiality,
       }}
     />
   );

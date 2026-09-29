@@ -10,7 +10,7 @@ import {
   type PendingRequest,
 } from "@/components/settings/settings-sub-departments-page";
 
-export const metadata = { title: "Sub Departments — Support Ticketing System" };
+export const metadata = { title: "Sub Departments — Global Support Portal" };
 
 export default async function SubDepartmentsPage() {
   const profile = await getProfile();

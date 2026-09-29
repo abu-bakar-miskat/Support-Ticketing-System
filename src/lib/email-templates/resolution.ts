@@ -51,7 +51,7 @@ export function renderResolution({
   const body = `
     <p style="margin:0 0 16px 0;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">Your request <strong>${title}</strong>, submitted via <strong>${form}</strong>, has been resolved.</p>
-    <p style="margin:24px 0 0 0;color:#6b7280;">Thank you for reaching out. — PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">Thank you for reaching out. — Global Support Portal</p>
   `;
 
   const text = [
@@ -59,7 +59,7 @@ export function renderResolution({
     "",
     `Your request "${ticketTitle}", submitted via ${formName}, has been resolved.`,
     "",
-    "Thank you for reaching out. — PEN Support",
+    "Thank you for reaching out. — Global Support Portal",
   ].join("\n");
 
   return {

@@ -1,6 +1,6 @@
 # Project Structure & Routing Proposal
 
-> Target: a **scalable, fast** architecture for the PEN Support Ticketing System (Next.js 16 App Router, React 19, Prisma 7, Supabase, TanStack Query, Zustand).
+> Target: a **scalable, fast** architecture for the Global Support Portal (Next.js 16 App Router, React 19, Prisma 7, Supabase, TanStack Query, Zustand).
 >
 > Status: proposal / migration guide. Nothing here changes runtime behavior — it is a **file-organization** refactor plus routing conventions.
 

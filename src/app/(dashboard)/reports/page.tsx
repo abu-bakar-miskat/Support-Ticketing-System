@@ -4,7 +4,7 @@ import { SubDepartmentTimePage } from "@/components/time/sub-department-time-pag
 import { OpsReportPanels } from "@/components/reports/ops-report-panels";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 
-export const metadata = { title: "Reports — Support Ticketing System" };
+export const metadata = { title: "Reports — Global Support Portal" };
 
 export default async function ReportsPage() {
   const profile = await getProfile();

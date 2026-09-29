@@ -7,7 +7,7 @@ import { listCatalogueForTenant } from "@/lib/template-catalogue";
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates";
 import { SettingsDepartmentsPage, type DepartmentRow, type TemplateOption } from "@/components/settings/settings-departments-page";
 
-export const metadata = { title: "Departments — Support Ticketing System" };
+export const metadata = { title: "Departments — Global Support Portal" };
 
 export default async function SettingsDepartmentsRoute() {
   const profile = await getProfile();

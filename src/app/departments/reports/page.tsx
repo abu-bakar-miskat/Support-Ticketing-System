@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { SubDepartmentTimePage } from "@/components/time/sub-department-time-page";
 
-export const metadata = { title: "Reports — Departments — Support Ticketing System" };
+export const metadata = { title: "Reports — Departments — Global Support Portal" };
 
 export default async function DepartmentsReportsPage() {
   const profile = await getProfile();

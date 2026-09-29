@@ -2,7 +2,7 @@ import { WifiOff } from "lucide-react";
 import { OfflineRetry } from "@/components/pwa/offline-retry";
 
 export const metadata = {
-  title: "Offline — Support Ticketing System",
+  title: "Offline — Global Support Portal",
 };
 
 export default function OfflinePage() {

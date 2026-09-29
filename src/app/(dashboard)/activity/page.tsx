@@ -6,7 +6,7 @@ import { buildActivityPageData } from "@/lib/activity-feed-data";
 import { ActivityPage } from "@/components/activity/activity-page";
 import { ActivityPageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Activity — Support Ticketing System" };
+export const metadata = { title: "Activity — Global Support Portal" };
 
 async function ActivityData({
   searchParams,

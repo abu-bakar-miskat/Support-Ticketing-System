@@ -52,7 +52,7 @@ export function renderStatusChanged({
   const body = `
     <p style="margin:0 0 16px 0;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">The status of your request <strong>${title}</strong> (${form}) changed from <strong>${from}</strong> to <strong>${to}</strong>.</p>
-    <p style="margin:24px 0 0 0;color:#6b7280;">We'll keep you posted. — PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">We'll keep you posted. — Global Support Portal</p>
   `;
 
   const text = [
@@ -60,7 +60,7 @@ export function renderStatusChanged({
     "",
     `The status of your request "${ticketTitle}" (${formName}) changed from ${previousStatus} to ${newStatus}.`,
     "",
-    "We'll keep you posted. — PEN Support",
+    "We'll keep you posted. — Global Support Portal",
   ].join("\n");
 
   return {

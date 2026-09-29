@@ -6,7 +6,7 @@ import { getAllQuestions } from "@/lib/screening/question-bank"
 import { PageHeader } from "@/components/ui/page-header"
 import { QuestionsEditor } from "./questions-editor"
 
-export const metadata = { title: "Screening questions — Support Ticketing System" }
+export const metadata = { title: "Screening questions — Global Support Portal" }
 
 export default async function ScreeningQuestionsPage() {
   const profile = await getProfile()

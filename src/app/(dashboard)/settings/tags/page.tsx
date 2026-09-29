@@ -9,7 +9,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "Tags & labels — Support Ticketing System" };
+export const metadata = { title: "Tags & labels — Global Support Portal" };
 
 export default async function SettingsTagsRoute() {
   const profile = await getProfile();

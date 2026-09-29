@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { SettingsAppearancePage } from "@/components/settings/settings-appearance-page";
 import { parseFontSize } from "@/lib/font-size";
 
-export const metadata = { title: "Appearance — Support Ticketing System" };
+export const metadata = { title: "Appearance — Global Support Portal" };
 
 function readFontSizePref(preferences: unknown) {
   if (!preferences || typeof preferences !== "object" || Array.isArray(preferences)) {

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const ALT = "Support Ticketing System";
+const ALT = "Global Support Portal";
 
 /** Full stacked brand lockup (icon + wordmark), with a light variant for dark surfaces. */
 export function PenLogo({ className }: { className?: string }) {

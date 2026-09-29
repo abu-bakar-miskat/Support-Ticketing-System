@@ -1,4 +1,4 @@
-# PEN Ticketing System
+# Global Support Portal
 
 An internal development ticketing and project management platform built for the PEN organisation. Teams create and track tickets through a defined workflow, collaborate via comments and @mentions, attach files, log time, and receive real-time notifications — all behind Microsoft Entra ID SSO so access is restricted to org accounts only.
 

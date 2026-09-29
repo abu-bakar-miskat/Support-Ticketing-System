@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { getSubDepartmentAboutData } from "@/lib/sub-department-access";
 import { SubDepartmentAbout } from "@/components/sub-departments/sub-department-about";
 
-export const metadata = { title: "About Sub Department — Support Ticketing System" };
+export const metadata = { title: "About Sub Department — Global Support Portal" };
 
 export default async function Page({
   params,

@@ -28,7 +28,7 @@ vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email-config", () => ({
   RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({
-    fromName: "Support Ticketing System",
+    fromName: "Global Support Portal",
     fromEmail: "support@pengroup.com",
   }),
 }))

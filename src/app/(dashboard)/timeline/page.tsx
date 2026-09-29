@@ -10,7 +10,7 @@ import {
 } from "@/lib/dept-scope";
 import { TimelinePageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Timeline — Support Ticketing System" };
+export const metadata = { title: "Timeline — Global Support Portal" };
 
 async function TimelineData() {
   const profile = await getProfile();

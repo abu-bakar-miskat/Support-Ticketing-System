@@ -6,7 +6,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope";
 import { checkIsCrossAccessDept } from "@/lib/auth";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "Workflows & statuses — Support Ticketing System" };
+export const metadata = { title: "Workflows & statuses — Global Support Portal" };
 
 export default async function SettingsWorkflowsRoute() {
   const profile = await getProfile();

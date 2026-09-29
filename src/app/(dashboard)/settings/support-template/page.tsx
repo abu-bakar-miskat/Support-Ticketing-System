@@ -8,7 +8,7 @@ import { SupportTemplateConfig } from "@/components/settings/support-template-co
 
 export const dynamic = "force-dynamic"
 
-export const metadata = { title: "Support template — Support Ticketing System" }
+export const metadata = { title: "Support template — Global Support Portal" }
 
 export default async function SupportTemplateSettingsPage() {
   const profile = await getProfile()

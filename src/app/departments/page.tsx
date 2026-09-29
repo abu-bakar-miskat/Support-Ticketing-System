@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
     tenantName = readTenantBranding(tenant?.branding).displayName ?? tenant?.name ?? null;
   }
   return {
-    title: tenantName ? `${tenantName} · Departments` : "Departments — Support Ticketing System",
+    title: tenantName ? `${tenantName} · Departments` : "Departments — Global Support Portal",
   };
 }
 

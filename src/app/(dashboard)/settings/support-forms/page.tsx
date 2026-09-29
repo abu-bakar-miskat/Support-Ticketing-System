@@ -15,7 +15,7 @@ import {
   type SubDepartmentOption,
 } from "@/components/settings/settings-intake-forms-page"
 
-export const metadata = { title: "Support forms — Support Ticketing System" }
+export const metadata = { title: "Support forms — Global Support Portal" }
 
 export default async function SettingsIntakeFormsRoute() {
   const profile = await getProfile()

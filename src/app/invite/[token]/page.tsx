@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/auth/submit-button";
 import { sendInviteLoginCode } from "@/lib/auth/invite-code-action";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Invitation — Support Ticketing System" };
+export const metadata = { title: "Invitation — Global Support Portal" };
 
 type PageProps = {
   params: Promise<{ token: string }>;

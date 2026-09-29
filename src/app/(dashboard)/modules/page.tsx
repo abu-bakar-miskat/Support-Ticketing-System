@@ -6,7 +6,7 @@ import { canAccessModulesArea, canManageModules } from "@/lib/module-permissions
 import { runAsSystem } from "@/lib/request-scope";
 import { ModulesPage } from "@/components/modules/modules-page";
 
-export const metadata = { title: "Modules — Support Ticketing System" };
+export const metadata = { title: "Modules — Global Support Portal" };
 
 export default async function Page() {
   const profile = await getProfile();

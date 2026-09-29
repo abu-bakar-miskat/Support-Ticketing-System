@@ -66,7 +66,6 @@ export function renderAssignment({
       fallbackSubject: defaultSubject,
       fallbackHeading: "A ticket was assigned to you",
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     });
   }
 
@@ -79,7 +78,7 @@ export function renderAssignment({
 
   const heading = "A ticket was assigned to you";
   const body = `
-    <p style="margin:0 0 16px 0;font-weight:600;color:#06446a;">Hi ${name},</p>
+    <p style="margin:0 0 16px 0;font-weight:600;color:#4a3b33;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">You've been assigned to a new ticket.</p>
     ${infoHtml}
     ${button({ href: url, label: "View ticket", branding })}
@@ -103,7 +102,6 @@ export function renderAssignment({
       bodyHtml: body,
       preheader: `${assignedByName} assigned ${humanId} to you`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     }),
     text,
   };

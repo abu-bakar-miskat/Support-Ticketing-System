@@ -4,7 +4,7 @@ import { resolveSubDepartmentByName } from "@/lib/sub-department-access";
 import { listScopeDomainRequests } from "@/lib/email-domain-requests";
 import { SubDepartmentMailboxManager } from "@/components/sub-departments/sub-department-mailbox";
 
-export const metadata = { title: "Mailbox — Support Ticketing System" };
+export const metadata = { title: "Mailbox — Global Support Portal" };
 
 export default async function Page({
   params,

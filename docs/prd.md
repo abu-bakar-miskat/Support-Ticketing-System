@@ -1,4 +1,4 @@
-# PRD — Support Ticketing System Phase 1: Internal Dev Ticketing System
+# PRD — Global Support Portal Phase 1: Internal Dev Ticketing System
 
 ## Problem Statement
 

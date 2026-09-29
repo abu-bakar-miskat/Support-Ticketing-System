@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       <p style="margin:0 0 16px 0;">Hi ${name},</p>
       <p style="margin:0 0 24px 0;">This is a test message confirming that Resend is connected and your email branding renders correctly. If you can read this, you're all set.</p>
       ${button({ href: BASE_URL, label: "Open PEN", branding })}
-      <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+      <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
     `,
   });
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     to,
     subject: "Test email — PEN helpdesk",
     html,
-    text: `Hi ${firstName(profile.name ?? "there")},\n\nThis is a test message confirming that Resend is connected. If you can read this, you're all set.\n\n— PEN Support`,
+    text: `Hi ${firstName(profile.name ?? "there")},\n\nThis is a test message confirming that Resend is connected. If you can read this, you're all set.\n\n— Global Support Portal`,
     replyTo: config.replyTo || undefined,
   });
 

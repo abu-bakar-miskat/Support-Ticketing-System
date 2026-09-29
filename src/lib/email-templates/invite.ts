@@ -71,7 +71,7 @@ export function renderInvite({
   const sig = signatureBlock(signature);
   const messageText = (message ?? "").trim();
   const messageHtml = messageText
-    ? `<div style="margin:0 0 24px 0;padding:14px 16px;background:#f8fafc;border-left:3px solid #0a76b9;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(messageText)}</div>`
+    ? `<div style="margin:0 0 24px 0;padding:14px 16px;background:#fdf4f1;border-left:3px solid #ef4b23;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(messageText)}</div>`
     : "";
   const messageBlock = messageHtml;
 
@@ -99,7 +99,6 @@ export function renderInvite({
         ? "Your invitation is still waiting"
         : "You're invited to join a department",
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     });
   }
 
@@ -114,8 +113,8 @@ export function renderInvite({
     ? "Your invitation is still waiting"
     : "You're invited to join a department";
   const intro = isReminder
-    ? `<p style="margin:0 0 24px 0;">Just a reminder — <strong>${inviter}</strong> invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department, and your invitation hasn't been accepted yet.</p>`
-    : `<p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on Support Ticketing System as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>`;
+    ? `<p style="margin:0 0 24px 0;">Just a reminder — <strong>${inviter}</strong> invited you to join <strong>${dept}</strong> on Global Support Portal as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department, and your invitation hasn't been accepted yet.</p>`
+    : `<p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${dept}</strong> on Global Support Portal as <strong>${roleLabel}</strong> on the <strong>${subDepartment}</strong> sub department.</p>`;
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
     ${intro}
@@ -131,8 +130,8 @@ export function renderInvite({
     `Hello,`,
     "",
     isReminder
-      ? `Just a reminder — ${inviterName} invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment, and your invitation hasn't been accepted yet.`
-      : `${inviterName} has invited you to join ${departmentName} on Support Ticketing System as ${role} on the ${subDepartmentName} subDepartment.`,
+      ? `Just a reminder — ${inviterName} invited you to join ${departmentName} on Global Support Portal as ${role} on the ${subDepartmentName} subDepartment, and your invitation hasn't been accepted yet.`
+      : `${inviterName} has invited you to join ${departmentName} on Global Support Portal as ${role} on the ${subDepartmentName} subDepartment.`,
   ];
   if (messageText) {
     textParts.push("", messageText);
@@ -163,7 +162,6 @@ export function renderInvite({
         ? `Your invitation to ${departmentName} expires ${expiryText}`
         : `${inviterName} invited you to ${departmentName}`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     }),
     text: textParts.join("\n"),
   };

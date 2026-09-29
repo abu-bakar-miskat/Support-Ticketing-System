@@ -5,7 +5,7 @@ import { canAdminDeptSettings } from "@/lib/dept-scope";
 import { runAsSystem } from "@/lib/request-scope";
 import { DepartmentMailboxPage } from "@/components/settings/department-mailbox-page";
 
-export const metadata = { title: "Mailbox — Support Ticketing System" };
+export const metadata = { title: "Mailbox — Global Support Portal" };
 
 export default async function DepartmentMailboxRoute({
   params,

@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { IntakeSubmissionDetailView } from "@/components/settings/intake-submission-detail-view"
 
-export const metadata = { title: "Submission — Support Ticketing System" }
+export const metadata = { title: "Submission — Global Support Portal" }
 
 export default async function SettingsIntakeSubmissionDetailRoute({
   params,

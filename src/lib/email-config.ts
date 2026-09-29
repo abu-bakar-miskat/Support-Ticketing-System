@@ -9,10 +9,6 @@ import {
   BODY_TEXT_COLOR,
   PAGE_BG,
   DEFAULT_HEADER_TITLE,
-  DEFAULT_HELP_HEADING,
-  DEFAULT_HELP_MESSAGE,
-  DEFAULT_SUPPORT_EMAIL,
-  CONFIDENTIALITY_NOTICE,
 } from "@/lib/email-templates/_shared";
 import { tenantEmailConfigForDepartment } from "@/lib/tenant-config";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -34,20 +30,8 @@ export type EmailBranding = {
   pageBackground: string;
   /** When true, the footer line is omitted from the email entirely. */
   hideFooter: boolean;
-  /** Heading of the "Need Help?" support block. */
-  helpHeading: string;
-  /** Lead-in text before the support email in the help block. */
-  helpMessage: string;
-  /** Support email shown in the help block. */
-  supportEmail: string;
-  /** When true, the entire "Need Help?" support block is omitted. */
-  hideHelp: boolean;
   /** When true, the sender's personal signature is omitted from outgoing email. */
   hideSignature: boolean;
-  /** Confidentiality/legal notice text shown near the foot of the email. */
-  confidentialityNotice: string;
-  /** When true, the confidentiality notice is never shown. */
-  hideConfidentiality: boolean;
 };
 
 export type EmailConfig = {
@@ -87,11 +71,11 @@ function defaultFromEmail(): string {
 }
 
 export const DEFAULT_FOOTER_TEXT =
-  "© {year} Support Ticketing System. This is an automated message.";
+  "© {year} Global Support Portal. This is an automated message.";
 
 export function emailConfigDefaults(): EmailConfig {
   return {
-    fromName: "Support Ticketing System",
+    fromName: "Global Support Portal",
     fromEmail: defaultFromEmail(),
     replyTo: "",
     notifyAssignment: true,
@@ -113,13 +97,7 @@ export function emailConfigDefaults(): EmailConfig {
     useLogo: false,
     pageBackground: PAGE_BG,
     hideFooter: false,
-    helpHeading: DEFAULT_HELP_HEADING,
-    helpMessage: DEFAULT_HELP_MESSAGE,
-    supportEmail: DEFAULT_SUPPORT_EMAIL,
-    hideHelp: false,
     hideSignature: false,
-    confidentialityNotice: CONFIDENTIALITY_NOTICE,
-    hideConfidentiality: false,
   };
 }
 
@@ -391,14 +369,10 @@ const BRANDING_KEYS = [
   "linkColor",
   "headerTitle",
   "pageBackground",
-  "helpHeading",
-  "helpMessage",
-  "supportEmail",
-  "confidentialityNotice",
 ] as const;
 
 /** Branding keys stored as booleans (handled separately from the string keys above). */
-const BRANDING_BOOL_KEYS = ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const;
+const BRANDING_BOOL_KEYS = ["useLogo", "hideFooter", "hideSignature"] as const;
 
 /** Parses a department's branding override out of its raw `emailConfig` JSON value. */
 export function readBrandingOverride(emailConfig: unknown): Partial<EmailBranding> {
@@ -550,7 +524,7 @@ export async function getEmailConfig(
   return config;
 }
 
-/** The Resend `from` header, e.g. `Support Ticketing System <onboarding@mail.pengroup.com>`. */
+/** The Resend `from` header, e.g. `Global Support Portal <onboarding@mail.pengroup.com>`. */
 export function fromHeader(config: EmailConfig): string {
   return `${config.fromName} <${config.fromEmail}>`;
 }
@@ -567,13 +541,7 @@ export function brandingFrom(config: EmailConfig): EmailBranding {
     useLogo: config.useLogo,
     pageBackground: config.pageBackground,
     hideFooter: config.hideFooter,
-    helpHeading: config.helpHeading,
-    helpMessage: config.helpMessage,
-    supportEmail: config.supportEmail,
-    hideHelp: config.hideHelp,
     hideSignature: config.hideSignature,
-    confidentialityNotice: config.confidentialityNotice,
-    hideConfidentiality: config.hideConfidentiality,
   };
 }
 

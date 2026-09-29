@@ -45,7 +45,7 @@ export function renderTicketTransferred({
     <p style="margin:0 0 24px 0;">${escapeHtml(transferredByName)} transferred a ticket from <strong>${escapeHtml(fromSubDepartmentName)}</strong> to <strong>${escapeHtml(toSubDepartmentName)}</strong>.</p>
     ${summaryTable(infoRows)}
     ${button({ href: url, label: "View ticket", branding })}
-    <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
   `;
 
   const text = [
@@ -55,7 +55,7 @@ export function renderTicketTransferred({
     "",
     `View ticket: ${url}`,
     "",
-    "— PEN Support",
+    "— Global Support Portal",
   ].join("\n");
 
   return {

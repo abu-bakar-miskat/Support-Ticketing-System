@@ -9,7 +9,7 @@ import { timeAgo, isToday } from "@/lib/format";
 import { InboxPageSkeleton } from "@/components/skeletons/page-skeletons";
 import { ticketPayloadInScope, resolveNotificationScope, joinRequestInDeptScope } from "@/lib/notification-scope";
 
-export const metadata = { title: "Inbox — Support Ticketing System" };
+export const metadata = { title: "Inbox — Global Support Portal" };
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin",

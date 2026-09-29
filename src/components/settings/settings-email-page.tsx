@@ -326,20 +326,14 @@ export type EmailBrandingValues = {
   useLogo: boolean;
   pageBackground: string;
   hideFooter: boolean;
-  helpHeading: string;
-  helpMessage: string;
-  supportEmail: string;
-  hideHelp: boolean;
   hideSignature: boolean;
-  confidentialityNotice: string;
-  hideConfidentiality: boolean;
 };
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 /** A hex color, or blank (meaning "inherit the layout default"). */
 const OPTIONAL_HEX_RE = /^(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}))?$/;
 
-const BRANDING_DEFAULT_HEADER_TITLE = "Support Ticketing System";
+const BRANDING_DEFAULT_HEADER_TITLE = "Global Support Portal";
 
 /**
  * A unique key per scope option. A department and its sub-departments can share
@@ -382,13 +376,7 @@ function EmailBrandingCard({
   const [useLogo, setUseLogo] = useState(workspaceDefaults.useLogo);
   const [pageBackground, setPageBackground] = useState(workspaceDefaults.pageBackground);
   const [hideFooter, setHideFooter] = useState(workspaceDefaults.hideFooter);
-  const [helpHeading, setHelpHeading] = useState(workspaceDefaults.helpHeading);
-  const [helpMessage, setHelpMessage] = useState(workspaceDefaults.helpMessage);
-  const [supportEmail, setSupportEmail] = useState(workspaceDefaults.supportEmail);
-  const [hideHelp, setHideHelp] = useState(workspaceDefaults.hideHelp);
   const [hideSignature, setHideSignature] = useState(workspaceDefaults.hideSignature);
-  const [confidentialityNotice, setConfidentialityNotice] = useState(workspaceDefaults.confidentialityNotice);
-  const [hideConfidentiality, setHideConfidentiality] = useState(workspaceDefaults.hideConfidentiality);
   const [saved, setSaved] = useState<EmailBrandingValues>(workspaceDefaults);
   const [hasOverride, setHasOverride] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -418,13 +406,7 @@ function EmailBrandingCard({
           useLogo: data.override.useLogo ?? data.defaults.useLogo,
           pageBackground: data.override.pageBackground ?? data.defaults.pageBackground,
           hideFooter: data.override.hideFooter ?? data.defaults.hideFooter,
-          helpHeading: data.override.helpHeading ?? data.defaults.helpHeading,
-          helpMessage: data.override.helpMessage ?? data.defaults.helpMessage,
-          supportEmail: data.override.supportEmail ?? data.defaults.supportEmail,
-          hideHelp: data.override.hideHelp ?? data.defaults.hideHelp,
           hideSignature: data.override.hideSignature ?? data.defaults.hideSignature,
-          confidentialityNotice: data.override.confidentialityNotice ?? data.defaults.confidentialityNotice,
-          hideConfidentiality: data.override.hideConfidentiality ?? data.defaults.hideConfidentiality,
         };
         setBrandColor(effective.brandColor);
         setHeaderColor(effective.headerColor);
@@ -436,13 +418,7 @@ function EmailBrandingCard({
         setUseLogo(effective.useLogo);
         setPageBackground(effective.pageBackground);
         setHideFooter(effective.hideFooter);
-        setHelpHeading(effective.helpHeading);
-        setHelpMessage(effective.helpMessage);
-        setSupportEmail(effective.supportEmail);
-        setHideHelp(effective.hideHelp);
         setHideSignature(effective.hideSignature);
-        setConfidentialityNotice(effective.confidentialityNotice);
-        setHideConfidentiality(effective.hideConfidentiality);
         setSaved(effective);
         setHasOverride(data.hasOverride);
       })
@@ -468,13 +444,7 @@ function EmailBrandingCard({
     useLogo !== saved.useLogo ||
     pageBackground !== saved.pageBackground ||
     hideFooter !== saved.hideFooter ||
-    helpHeading !== saved.helpHeading ||
-    helpMessage !== saved.helpMessage ||
-    supportEmail !== saved.supportEmail ||
-    hideHelp !== saved.hideHelp ||
-    hideSignature !== saved.hideSignature ||
-    confidentialityNotice !== saved.confidentialityNotice ||
-    hideConfidentiality !== saved.hideConfidentiality;
+    hideSignature !== saved.hideSignature;
   const validColor = HEX_RE.test(brandColor.trim());
   const validHeader = HEX_RE.test(headerColor.trim());
   const validBodyText = HEX_RE.test(bodyTextColor.trim());
@@ -488,7 +458,7 @@ function EmailBrandingCard({
   // Mirror the email's footer resolution: hidden → nothing; blank → the default; else the text.
   const previewFooter = hideFooter
     ? ""
-    : (footerText.trim() || "© {year} Support Ticketing System. This is an automated message.").replace(
+    : (footerText.trim() || "© {year} Global Support Portal. This is an automated message.").replace(
         /\{year\}/g,
         String(year),
       );
@@ -503,13 +473,7 @@ function EmailBrandingCard({
     setUseLogo(v.useLogo);
     setPageBackground(v.pageBackground);
     setHideFooter(v.hideFooter);
-    setHelpHeading(v.helpHeading);
-    setHelpMessage(v.helpMessage);
-    setSupportEmail(v.supportEmail);
-    setHideHelp(v.hideHelp);
     setHideSignature(v.hideSignature);
-    setConfidentialityNotice(v.confidentialityNotice);
-    setHideConfidentiality(v.hideConfidentiality);
   }
 
   async function save() {
@@ -531,13 +495,7 @@ function EmailBrandingCard({
         useLogo,
         pageBackground: pageBackground.trim(),
         hideFooter,
-        helpHeading: helpHeading.trim(),
-        helpMessage: helpMessage.trim(),
-        supportEmail: supportEmail.trim(),
-        hideHelp,
         hideSignature,
-        confidentialityNotice: confidentialityNotice.trim(),
-        hideConfidentiality,
       };
       await setEmailBranding(departmentId, next, subDepartmentId);
       setSaved(next);
@@ -844,7 +802,7 @@ function EmailBrandingCard({
               value={footerText}
               onChange={(e) => setFooterText(e.target.value)}
               disabled={loading || hideFooter}
-              placeholder="© {year} Support Ticketing System. This is an automated message."
+              placeholder="© {year} Global Support Portal. This is an automated message."
               className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
             />
             <p className="font-sans text-[11px] text-sts-subtle">
@@ -858,60 +816,6 @@ function EmailBrandingCard({
                 </>
               )}
             </p>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="sts-text-label">“Need Help?” section</label>
-              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
-                <input
-                  type="checkbox"
-                  checked={!hideHelp}
-                  onChange={(e) => setHideHelp(!e.target.checked)}
-                  disabled={loading}
-                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
-                />
-                Show section
-              </label>
-            </div>
-            {hideHelp ? (
-              <p className="font-sans text-[11px] text-sts-subtle">
-                The help section is hidden — it won’t appear in emails.
-              </p>
-            ) : (
-              <>
-                <input
-                  value={helpHeading}
-                  onChange={(e) => setHelpHeading(e.target.value)}
-                  disabled={loading}
-                  placeholder="Need Help?"
-                  aria-label="Help section heading"
-                  className="h-9 w-full rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] font-medium text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    value={helpMessage}
-                    onChange={(e) => setHelpMessage(e.target.value)}
-                    disabled={loading}
-                    placeholder="Please reach out to us at"
-                    aria-label="Help section message"
-                    className="h-9 w-full min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-                  />
-                  <input
-                    value={supportEmail}
-                    onChange={(e) => setSupportEmail(e.target.value)}
-                    disabled={loading}
-                    placeholder="support@penglobalbd.com"
-                    aria-label="Support email"
-                    className="h-9 w-full min-w-0 max-w-[200px] rounded-md border border-sts-card-border bg-sts-bg px-3 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-                  />
-                </div>
-                <p className="font-sans text-[11px] text-sts-subtle">
-                  Heading, message, and the support email shown near the foot of
-                  every email. The email address uses the accent color.
-                </p>
-              </>
-            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -929,43 +833,6 @@ function EmailBrandingCard({
               When on, the sender’s personal signature (set in their own
               settings) is appended to outgoing emails. Turn off to omit it.
             </p>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-md border border-sts-card-border bg-sts-bg/40 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="sts-text-label">Confidentiality notice</label>
-              <label className="flex cursor-pointer items-center gap-1.5 font-sans text-[11px] text-sts-muted">
-                <input
-                  type="checkbox"
-                  checked={!hideConfidentiality}
-                  onChange={(e) => setHideConfidentiality(!e.target.checked)}
-                  disabled={loading}
-                  className="h-3.5 w-3.5 cursor-pointer accent-sts-blue disabled:opacity-50"
-                />
-                Show notice
-              </label>
-            </div>
-            {hideConfidentiality ? (
-              <p className="font-sans text-[11px] text-sts-subtle">
-                The confidentiality notice is hidden — it won’t appear in emails.
-              </p>
-            ) : (
-              <>
-                <textarea
-                  value={confidentialityNotice}
-                  onChange={(e) => setConfidentialityNotice(e.target.value)}
-                  disabled={loading}
-                  rows={4}
-                  placeholder="This email and any attachments are confidential…"
-                  className="w-full resize-y rounded-md border border-sts-card-border bg-sts-bg px-3 py-2 font-sans text-[12.5px] leading-relaxed text-sts-foreground outline-none focus:border-sts-blue disabled:opacity-50"
-                />
-                <p className="font-sans text-[11px] text-sts-subtle">
-                  The legal/confidentiality paragraph near the foot of the email.
-                  It appears only when the sender has no personal signature. Leave
-                  blank to use the default text.
-                </p>
-              </>
-            )}
           </div>
         </div>
 
@@ -1025,23 +892,6 @@ function EmailBrandingCard({
                 >
                   View ticket
                 </span>
-                {!hideHelp ? (
-                  <div
-                    className="mt-4 font-sans text-[10.5px] leading-relaxed"
-                    style={{ color: validBodyText ? bodyTextColor : "#06476f" }}
-                  >
-                    <p className="font-semibold">{helpHeading.trim() || "Need Help?"}</p>
-                    <p>
-                      {helpMessage.trim() || "Please reach out to us at"}{" "}
-                      <span
-                        className="font-semibold"
-                        style={{ color: validLink ? effectiveLinkColor : "#0269af" }}
-                      >
-                        {supportEmail.trim() || "support@penglobalbd.com"}
-                      </span>
-                    </p>
-                  </div>
-                ) : null}
                 {previewFooter ? (
                   <p className="mt-4 border-t border-gray-200 pt-2 font-sans text-[10px] text-gray-400">
                     {previewFooter}
@@ -1114,7 +964,7 @@ export function SettingsEmailPage({
   isAdmin = true,
   isManager = false,
   departments = [],
-  fromName = "Support Ticketing System",
+  fromName = "Global Support Portal",
   fromEmail = DEFAULT_FROM_EMAIL,
   branding,
 }: {

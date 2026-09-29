@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { normalizeSignaturePrefs } from "@/lib/signature-prefs";
 import { SettingsProfilePage } from "@/components/settings/settings-profile-page";
 
-export const metadata = { title: "Settings — Support Ticketing System" };
+export const metadata = { title: "Settings — Global Support Portal" };
 
 export default async function SettingsPage() {
   const profile = await getProfile();

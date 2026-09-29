@@ -6,7 +6,7 @@ import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { RulesSettingsPage } from "@/components/settings/rules-settings-page";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "Automation rules — Support Ticketing System" };
+export const metadata = { title: "Automation rules — Global Support Portal" };
 
 export default async function DepartmentRulesSettingsRoute({
   params,

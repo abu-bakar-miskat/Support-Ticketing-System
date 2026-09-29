@@ -55,7 +55,6 @@ export function renderMention({
       fallbackSubject: `You were mentioned in "${ticketTitle}"`,
       fallbackHeading: "You were mentioned in a ticket",
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     });
   }
 
@@ -88,7 +87,6 @@ export function renderMention({
       bodyHtml: body,
       preheader: `You were mentioned in "${ticketTitle}"`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     }),
     text,
   };

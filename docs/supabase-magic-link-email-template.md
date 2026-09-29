@@ -6,7 +6,7 @@
 > Keep this document only for deployments that intentionally restore magic-link login.
 
 Branded one-click sign-in email for Supabase Auth (magic link flow).
-Matches the PEN Support Ticketing System email system (`src/lib/email-templates/_shared.ts`):
+Matches the Global Support Portal email system (`src/lib/email-templates/_shared.ts`):
 navy header, white card, brand-blue heading, and the "Need Help?" footer block.
 
 ## Where this goes
@@ -52,7 +52,7 @@ Supabase drop the `next`/redirect and the link fails.
 <!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#f8f8fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937;">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">Sign in to PEN Support — your one-click link is inside.</div>
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">Sign in to Global Support Portal — your one-click link is inside.</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8fc;padding:32px 16px;">
       <tr>
         <td align="center">
@@ -68,7 +68,7 @@ Supabase drop the `next`/redirect and the link fails.
             <!-- Body -->
             <tr>
               <td style="background:#ffffff;border-radius:0 0 8px 8px;padding:36px 40px;">
-                <h1 style="margin:0 0 20px 0;font-size:26px;line-height:1.3;font-weight:700;color:#0a76b9;text-align:left;">Sign in to PEN Support</h1>
+                <h1 style="margin:0 0 20px 0;font-size:26px;line-height:1.3;font-weight:700;color:#0a76b9;text-align:left;">Sign in to Global Support Portal</h1>
 
                 <div style="font-size:15px;line-height:1.6;color:#06476f;">
                   <p style="margin:0 0 24px 0;">Click the button below to finish signing in. The link stays valid for the next few minutes and can be used once.</p>
@@ -77,7 +77,7 @@ Supabase drop the `next`/redirect and the link fails.
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px 0;">
                     <tr>
                       <td align="center" style="padding:12px 0 20px 0;">
-                        <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 36px;background:#43b5e8;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">Sign in to PEN Support</a>
+                        <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 36px;background:#43b5e8;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">Sign in to Global Support Portal</a>
                       </td>
                     </tr>
                     <tr>
@@ -89,7 +89,7 @@ Supabase drop the `next`/redirect and the link fails.
                   </table>
 
                   <p style="margin:0 0 4px 0;color:#6b7280;">Didn't request this? You can safely ignore this email — no changes will be made to your account without this link.</p>
-                  <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+                  <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
                 </div>
 
                 <div style="height:1px;background:#d3d3fa;margin:28px 0 20px 0;"></div>
@@ -108,7 +108,7 @@ Supabase drop the `next`/redirect and the link fails.
             </tr>
             <tr>
               <td align="center" style="padding:0 32px;font-size:12px;line-height:1.5;color:#6b7280;">
-                &copy; 2026 Support Ticketing System. This is an automated message.
+                &copy; 2026 Global Support Portal. This is an automated message.
               </td>
             </tr>
           </table>
@@ -128,7 +128,7 @@ Supabase's plain-text alternative isn't configurable per-template in the dashboa
 but if you send magic links through a custom SMTP hook, use this as the text part:
 
 ```text
-Sign in to PEN Support
+Sign in to Global Support Portal
 
 Click the link below to finish signing in:
 
@@ -140,14 +140,14 @@ anyone with the link can sign in until it expires.
 Didn't request this? You can safely ignore this email.
 
 Need help? Contact support@penglobalbd.com
-— PEN Support
+— Global Support Portal
 ```
 
 ## Notes
 
 - **Colors** are pulled from `src/lib/email-templates/_shared.ts` — header `#022941`,
   heading `#0a76b9`, body text `#06476f`, accent `#43b5e8`, hairline `#d3d3fa`, page `#f8f8fc`.
-- **No logo image** — the header is a text wordmark (`PEN Support`), so nothing external
+- **No logo image** — the header is a text wordmark (`Global Support Portal`), so nothing external
   loads and there's no image to be blocked or to trip spam heuristics.
 - **Plain link fallback:** the raw `{{ .ConfirmationURL }}` is printed under the button so
   the email still works in clients that suppress styled buttons.

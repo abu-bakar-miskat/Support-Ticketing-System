@@ -1,4 +1,4 @@
-# PEN Ticketing System — UI/UX Redesign (Figma)
+# Global Support Portal — UI/UX Redesign (Figma)
 
 **Date:** 2026-07-02
 **Deliverable:** A Figma file ("PEN Ticketing — UI Redesign") on Dumitru's Figma account containing a mini design system and high-fidelity mockups of the core screens. This is a design artifact, not a code change.

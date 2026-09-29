@@ -5,7 +5,7 @@ import { getProfileDeptScope, canAdminDeptSettings } from "@/lib/dept-scope";
 import { SlaSettingsPage } from "@/components/settings/sla-settings-page";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "SLA policies — Support Ticketing System" };
+export const metadata = { title: "SLA policies — Global Support Portal" };
 
 export default async function SettingsSlaRoute() {
   const profile = await getProfile();

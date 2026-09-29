@@ -5,7 +5,7 @@ import { renderOtpEmail } from "@/lib/email-templates/otp";
 import { isAuthEmailConfigured, sendAuthEmail } from "@/lib/email-transport";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
-const DEFAULT_FROM = "PEN Support <onboarding@mail.pengroup.com>";
+const DEFAULT_FROM = "Global Support Portal <onboarding@mail.pengroup.com>";
 // Server-side backstop for the 90s resend cooldown enforced in the UI. Keeps a
 // user (or a bypassed client) from hammering the mail server with back-to-back
 // code requests.

@@ -15,7 +15,7 @@ const SAMPLE_TICKET_URL = `${BASE_URL}/tickets/sample`;
 /** Placeholder background on the sample CTA button. The template preview swaps this
  * for the scope's accent color so the preview matches a real send (which builds the
  * button via `button({ branding })`). Keep it in sync with the markup below. */
-export const SAMPLE_BUTTON_BG = "#06476f";
+export const SAMPLE_BUTTON_BG = "#ef4b23";
 const SAMPLE_BUTTON = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0;"><tr><td align="center" style="border-radius:6px;background:${SAMPLE_BUTTON_BG};"><a href="${SAMPLE_TICKET_URL}" style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">View ticket</a></td></tr></table>`;
 const SAMPLE_SIGNATURE = `<div style="margin:24px 0 0 0;">${DUMMY_SIGNATURE_HTML}</div>`;
 const SAMPLE_SUMMARY_TABLE = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin:16px 0;"><tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:12px 16px;font-weight:500;color:#6b7280;font-size:14px;">Name</td><td style="padding:12px 16px;color:#1f2937;font-size:14px;">Jamie Chen</td></tr></table>`;
@@ -75,7 +75,7 @@ export const DEFAULT_TEMPLATES: Record<EmailTemplateKey, TemplateDefault> = {
       subDepartmentName: "Platform",
       role: "Agent",
       message: "Looking forward to having you on the subDepartment.",
-      messageBlock: `<div style="margin:0 0 24px 0;padding:14px 16px;background:#f8fafc;border-left:3px solid #0a76b9;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;">Looking forward to having you on the subDepartment.</div>`,
+      messageBlock: `<div style="margin:0 0 24px 0;padding:14px 16px;background:#fdf4f1;border-left:3px solid #ef4b23;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;">Looking forward to having you on the subDepartment.</div>`,
       inviteUrl: `${BASE_URL}/invite/sample`,
       acceptInviteButton: SAMPLE_BUTTON.replace("View ticket", "Go to Accept Invitation page").replace(SAMPLE_TICKET_URL, `${BASE_URL}/invite/sample`),
       signature: SAMPLE_SIGNATURE,
@@ -134,7 +134,7 @@ export const DEFAULT_TEMPLATES: Record<EmailTemplateKey, TemplateDefault> = {
     description: "Sent to the submitter when their ticket is resolved.",
     subject: "Your request has been resolved — {{formName}}",
     heading: "Your request has been resolved",
-    bodyHtml: `<p style="margin:0 0 16px 0;">Hi {{submitterFirstName}},</p>\n<p style="margin:0 0 24px 0;">Your request <strong>{{ticketTitle}}</strong>, submitted via <strong>{{formName}}</strong>, has been resolved.</p>\n<p style="margin:24px 0 0 0;color:#6b7280;">Thank you for reaching out. — PEN Support</p>`,
+    bodyHtml: `<p style="margin:0 0 16px 0;">Hi {{submitterFirstName}},</p>\n<p style="margin:0 0 24px 0;">Your request <strong>{{ticketTitle}}</strong>, submitted via <strong>{{formName}}</strong>, has been resolved.</p>\n<p style="margin:24px 0 0 0;color:#6b7280;">Thank you for reaching out. — Global Support Portal</p>`,
     placeholders: ["submitterName", "submitterFirstName", "formName", "ticketTitle"],
     sample: {
       submitterName: "Morgan Lee",

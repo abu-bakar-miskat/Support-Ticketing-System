@@ -35,7 +35,7 @@ export function renderAssignmentFailedAlert({
 
   const heading = "A ticket couldn't be auto-assigned";
   const body = `
-    <p style="margin:0 0 16px 0;font-weight:600;color:#06446a;">Hi ${name},</p>
+    <p style="margin:0 0 16px 0;font-weight:600;color:#4a3b33;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">No eligible agent was found for ticket ${id} — it's been left unassigned and needs a manual assignee.</p>
     ${summaryTable(infoRows)}
     ${button({ href: url, label: "View ticket", branding })}

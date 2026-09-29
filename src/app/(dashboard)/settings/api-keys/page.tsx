@@ -10,7 +10,7 @@ import {
 import type { ApiKeyScope } from "@/generated/prisma/enums"
 import { runAsSystem } from "@/lib/request-scope"
 
-export const metadata = { title: "API keys — Support Ticketing System" }
+export const metadata = { title: "API keys — Global Support Portal" }
 
 const SCOPE_LABELS: Record<ApiKeyScope, string> = {
   read: "read",

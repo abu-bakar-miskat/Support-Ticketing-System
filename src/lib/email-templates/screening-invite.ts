@@ -1,13 +1,13 @@
 import { BASE_URL, button, escapeHtml, ensureAbsoluteUrl, layout, type Branding } from "./_shared";
 
 /**
- * Screening emails match the candidate-facing /screen page (PEN pink on dark
- * navy) rather than the workspace's ticket-email branding — spread this over
- * `brandingFrom(config)` so logo/footer still follow workspace settings.
+ * Screening emails use the PEN brand tangerine on a warm dark header, matching
+ * the workspace's ticket-email branding — spread this over `brandingFrom(config)`
+ * so logo/footer still follow workspace settings.
  */
 export const SCREENING_BRAND_COLORS: Pick<Branding, "brandColor" | "headerColor"> = {
-  brandColor: "#FF379E",
-  headerColor: "#030A2E",
+  brandColor: "#ef4b23",
+  headerColor: "#331a0e",
 };
 
 /**

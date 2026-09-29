@@ -59,9 +59,8 @@ export function renderCustomerReply({
       },
       fallbackSubject: `Re: ${ticketTitle}`,
       fallbackHeading: "A reply to your request",
-      preheader: `Reply from PEN Support about ${title}`,
+      preheader: `Reply from Global Support Portal about ${title}`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     });
   }
 
@@ -88,9 +87,8 @@ export function renderCustomerReply({
     html: layout({
       heading,
       bodyHtml: body,
-      preheader: `Reply from PEN Support about ${title}`,
+      preheader: `Reply from Global Support Portal about ${title}`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     }),
     text,
   };

@@ -43,7 +43,7 @@ export function renderIntakeManagerAlert({
 
   const heading = "A new ticket needs your department's attention";
   const body = `
-    <p style="margin:0 0 16px 0;font-weight:600;color:#06446a;">Hi ${name},</p>
+    <p style="margin:0 0 16px 0;font-weight:600;color:#4a3b33;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">A new ticket was auto-created from the "${form}" support form.</p>
     ${summaryTable(infoRows)}
     ${button({ href: url, label: "View ticket", branding })}

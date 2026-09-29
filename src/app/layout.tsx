@@ -21,12 +21,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Support Ticketing System",
+  title: "Global Support Portal",
   description: "Track, prioritize, and resolve support tickets",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Support Ticketing System",
+    title: "Global Support Portal",
   },
   icons: {
     icon: [

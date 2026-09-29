@@ -49,7 +49,7 @@ export function PlatformSidebar() {
             title="Expand sidebar"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/support-icon.png" alt="Support Ticketing System" width={40} height={40} className="size-10 dark:hidden" />
+            <img src="/images/support-icon.png" alt="Global Support Portal" width={40} height={40} className="size-10 dark:hidden" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/support-icon-white.png" alt="" width={40} height={40} className="hidden size-10 dark:block" />
           </button>
@@ -58,7 +58,7 @@ export function PlatformSidebar() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/support-logo-horizontal.png"
-              alt="Support Ticketing System"
+              alt="Global Support Portal"
               height={56}
               className="h-14 w-auto max-w-[150px] object-contain dark:hidden"
             />

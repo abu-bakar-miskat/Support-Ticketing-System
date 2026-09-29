@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
 import { SettingsNotionImportPage } from "@/components/settings/settings-notion-import-page"
 
-export const metadata = { title: "Import from Notion — Support Ticketing System" }
+export const metadata = { title: "Import from Notion — Global Support Portal" }
 
 export default async function SettingsImportRoute() {
   const profile = await getProfile()

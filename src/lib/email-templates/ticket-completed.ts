@@ -75,7 +75,7 @@ export function renderTicketCompleted({
     <p style="margin:0 0 24px 0;">The following ticket has been marked as complete.</p>
     ${summaryTable(infoRows)}
     ${button({ href: url, label: "View ticket", branding })}
-    <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
   `;
 
   const text = [
@@ -85,7 +85,7 @@ export function renderTicketCompleted({
     "",
     `View ticket: ${url}`,
     "",
-    "— PEN Support",
+    "— Global Support Portal",
   ].join("\n");
 
   return {

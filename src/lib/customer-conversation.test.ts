@@ -43,7 +43,7 @@ describe("buildReplyToAddress / extractReplyToken round-trip", () => {
     const { generateReplyToken, buildReplyToAddress, extractReplyToken } =
       await load(DOMAIN);
     const token = generateReplyToken();
-    const addr = `"PEN Support" <${buildReplyToAddress(token)}>`;
+    const addr = `"Global Support Portal" <${buildReplyToAddress(token)}>`;
     expect(extractReplyToken(addr)).toBe(token);
   });
 

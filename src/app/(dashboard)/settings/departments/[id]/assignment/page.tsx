@@ -6,7 +6,7 @@ import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { AssignmentSettingsPage } from "@/components/settings/assignment-settings-page";
 import { runAsSystem } from "@/lib/request-scope";
 
-export const metadata = { title: "Assignment methods — Support Ticketing System" };
+export const metadata = { title: "Assignment methods — Global Support Portal" };
 
 export default async function DepartmentAssignmentSettingsRoute({
   params,

@@ -480,7 +480,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           <div className="flex items-center gap-1.5"><Kbd keys={["↵"]} /><span className="font-sans text-[11.5px] text-sts-subtle">select</span></div>
           <div className="flex items-center gap-1.5"><Kbd keys={["⌘","K"]} /><span className="font-sans text-[11.5px] text-sts-subtle">toggle</span></div>
           <span className="flex-1" />
-          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">Support Ticketing System</span>
+          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">Global Support Portal</span>
         </div>
       </div>
     </div>

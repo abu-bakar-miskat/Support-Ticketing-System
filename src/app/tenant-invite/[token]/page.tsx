@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
-export const metadata = { title: "Invitation — Support Ticketing System" }
+export const metadata = { title: "Invitation — Global Support Portal" }
 
 const STATUS_MESSAGE: Record<string, string> = {
   revoked: "This invitation has been revoked.",

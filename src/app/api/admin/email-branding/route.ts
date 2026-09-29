@@ -57,13 +57,7 @@ export async function GET(request: NextRequest) {
       useLogo: override.useLogo ?? null,
       pageBackground: override.pageBackground ?? null,
       hideFooter: override.hideFooter ?? null,
-      helpHeading: override.helpHeading ?? null,
-      helpMessage: override.helpMessage ?? null,
-      supportEmail: override.supportEmail ?? null,
-      hideHelp: override.hideHelp ?? null,
       hideSignature: override.hideSignature ?? null,
-      confidentialityNotice: override.confidentialityNotice ?? null,
-      hideConfidentiality: override.hideConfidentiality ?? null,
     },
     hasOverride: Object.keys(override).length > 0,
   });
@@ -109,15 +103,15 @@ export async function PUT(request: NextRequest) {
     }
     branding[key] = value;
   }
-  // Optional free-text fields (header wordmark + "Need Help?" block).
-  for (const key of ["headerTitle", "helpHeading", "helpMessage", "supportEmail", "confidentialityNotice"] as const) {
+  // Optional free-text fields (header wordmark).
+  for (const key of ["headerTitle"] as const) {
     if (body?.[key] === undefined) continue;
     if (typeof body[key] !== "string") {
       return NextResponse.json({ error: `${key} must be a string` }, { status: 400 });
     }
     branding[key] = (body[key] as string).trim();
   }
-  for (const key of ["useLogo", "hideFooter", "hideHelp", "hideSignature", "hideConfidentiality"] as const) {
+  for (const key of ["useLogo", "hideFooter", "hideSignature"] as const) {
     if (body?.[key] === undefined) continue;
     if (typeof body[key] !== "boolean") {
       return NextResponse.json({ error: `${key} must be a boolean` }, { status: 400 });

@@ -84,7 +84,7 @@ export function renderIntakeConfirmation({
     <p style="margin:0 0 ${referenceLine ? "16" : "24"}px 0;">Thanks for reaching out. We've got your <strong>${form}</strong> submission and someone from the PEN subDepartment will follow up soon.</p>
     ${referenceLine}
     ${summaryRows.length > 0 ? `<h2 style="margin:24px 0 8px 0;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Submission summary</h2>${summaryHtml}` : ""}
-    <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
   `;
 
   const textRows = summaryRows
@@ -100,7 +100,7 @@ export function renderIntakeConfirmation({
     "Submission summary:",
     ...textRows,
     "",
-    "— PEN Support",
+    "— Global Support Portal",
   ].join("\n");
 
   return {

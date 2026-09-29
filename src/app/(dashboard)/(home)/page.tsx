@@ -10,7 +10,7 @@ import {
 } from "@/lib/tenant-path";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Home — Support Ticketing System" };
+export const metadata = { title: "Home — Global Support Portal" };
 
 export default async function HomePage() {
   const profile = await getProfile();

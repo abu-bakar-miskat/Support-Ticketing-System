@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Support Ticketing System",
-    short_name: "Support",
+    name: "Global Support Portal",
+    short_name: "Support Portal",
     description: "Track, prioritize, and resolve support tickets",
     start_url: "/",
     scope: "/",

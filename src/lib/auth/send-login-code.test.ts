@@ -25,7 +25,7 @@ describe("sendLoginCode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-test-key");
-    vi.stubEnv("RESEND_FROM_EMAIL", "PEN Support <login@example.com>");
+    vi.stubEnv("RESEND_FROM_EMAIL", "Global Support Portal <login@example.com>");
     isAuthEmailConfigured.mockResolvedValue(true);
     generateLink.mockResolvedValue({
       data: { properties: { email_otp: "12345678", verification_type: "magiclink" } },
@@ -46,7 +46,7 @@ describe("sendLoginCode", () => {
     expect(sendAuthEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "new.member@example.com",
-        from: "PEN Support <login@example.com>",
+        from: "Global Support Portal <login@example.com>",
         text: expect.stringContaining("12345678"),
       }),
     );

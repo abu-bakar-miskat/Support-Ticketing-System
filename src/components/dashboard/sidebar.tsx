@@ -606,7 +606,7 @@ export function Sidebar({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/support-icon.png"
-                alt="Support Ticketing System"
+                alt="Global Support Portal"
                 width={40}
                 height={40}
                 className="size-10 dark:hidden"
@@ -655,7 +655,7 @@ export function Sidebar({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/support-logo-horizontal.png"
-                alt="Support Ticketing System"
+                alt="Global Support Portal"
                 height={56}
                 className="h-14 w-auto max-w-[150px] object-contain dark:hidden"
               />

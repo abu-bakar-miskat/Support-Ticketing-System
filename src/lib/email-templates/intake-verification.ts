@@ -21,7 +21,7 @@ export function renderIntakeVerification({
     <p style="margin:0 0 20px 0;">Almost there — please confirm this email address to submit your <strong>${form}</strong> request. Your ticket is created only after you confirm.</p>
     ${button({ href, label: "Confirm & submit my ticket", branding })}
     <p style="margin:20px 0 0 0;color:#6b7280;">This link expires in 24 hours. If you didn't make this request, you can safely ignore this email.</p>
-    <p style="margin:24px 0 0 0;color:#6b7280;">— PEN Support</p>
+    <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
   `;
 
   const text = [
@@ -33,7 +33,7 @@ export function renderIntakeVerification({
     "",
     "This link expires in 24 hours. If you didn't make this request, you can safely ignore this email.",
     "",
-    "— PEN Support",
+    "— Global Support Portal",
   ].join("\n");
 
   return {

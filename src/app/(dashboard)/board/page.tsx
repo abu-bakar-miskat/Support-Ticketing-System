@@ -11,7 +11,7 @@ import {
   resolveStatusSubDepartmentId,
 } from "@/lib/dept-scope";
 
-export const metadata = { title: "Board — Support Ticketing System" };
+export const metadata = { title: "Board — Global Support Portal" };
 
 function parseFormFieldFilters(sp: Record<string, string | string[] | undefined>): FormFieldFilter[] | undefined {
   const raw = sp.ff;

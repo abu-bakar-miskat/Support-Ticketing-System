@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { TenantSlaSettingsPage } from "@/components/settings/tenant-sla-settings-page";
 
-export const metadata = { title: "SLA defaults — Support Ticketing System" };
+export const metadata = { title: "SLA defaults — Global Support Portal" };
 
 export default async function SettingsSlaDefaultsRoute() {
   const profile = await getProfile();

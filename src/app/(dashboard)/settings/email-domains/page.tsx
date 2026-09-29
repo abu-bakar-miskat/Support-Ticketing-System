@@ -4,7 +4,7 @@ import { listTenantDomains, listTenantDepartmentScopes } from "@/lib/email-domai
 import { listPendingDomainRequests } from "@/lib/email-domain-requests";
 import { SettingsEmailDomains } from "@/components/settings/settings-email-domains";
 
-export const metadata = { title: "Email domains — Support Ticketing System" };
+export const metadata = { title: "Email domains — Global Support Portal" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsEmailDomainsRoute() {

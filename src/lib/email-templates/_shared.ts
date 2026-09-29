@@ -1,4 +1,4 @@
-export const BRAND = "#0a76b9";
+export const BRAND = "#ef4b23";
 export const BASE_URL = (() => {
   const raw = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketing-system.pengroup.com";
   const trimmed = raw.trim().replace(/\/+$/, "");
@@ -11,18 +11,15 @@ export const BASE_URL = (() => {
 // heuristics, which is why this must not live on Supabase storage.
 export const LOGO_URL = `${BASE_URL}/images/support-logo-horizontal-white.png`;
 
-export const HEADER_BG = "#022941";
-export const BODY_TEXT_COLOR = "#06476f";
-export const LINK_COLOR = "#0269af";
+export const HEADER_BG = "#331a0e";
+export const BODY_TEXT_COLOR = "#4a3b33";
+export const LINK_COLOR = "#c0371a";
 /** Outer page background behind the email card. */
-export const PAGE_BG = "#f8f8fc";
+export const PAGE_BG = "#faf5f3";
 /** Default wordmark shown in the email header bar. */
-export const DEFAULT_HEADER_TITLE = "Support Ticketing System";
-const BORDER_COLOR = "#d3d3fa";
-/** Defaults for the "Need Help?" support block near the foot of every email. */
+export const DEFAULT_HEADER_TITLE = "Global Support Portal";
+/** Support email shown in the default signature card. */
 export const DEFAULT_SUPPORT_EMAIL = "support@penglobalbd.com";
-export const DEFAULT_HELP_HEADING = "Need Help?";
-export const DEFAULT_HELP_MESSAGE = "Please reach out to us at";
 const SUPPORT_EMAIL = DEFAULT_SUPPORT_EMAIL;
 
 const SIGNATURE_ICON_BASE_URL = `${BASE_URL}/images/signature-icons`;
@@ -57,7 +54,7 @@ function signatureContactRow(iconFile: string, alt: string, text: string): strin
 export const DUMMY_SIGNATURE_HTML = `<div style="padding:18px 0 0 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-top:1px solid #e5e7eb;padding-top:16px;">
   <tr>
-    <td style="padding:0 0 4px 0;font-size:16px;font-weight:600;color:#06446a;">${DUMMY_NAME}</td>
+    <td style="padding:0 0 4px 0;font-size:16px;font-weight:600;color:#4a3b33;">${DUMMY_NAME}</td>
   </tr>
   <tr>
     <td style="padding:0 0 14px 0;font-size:13px;color:${SIGNATURE_TEXT_COLOR};">${DUMMY_TITLE}</td>
@@ -67,7 +64,7 @@ export const DUMMY_SIGNATURE_HTML = `<div style="padding:18px 0 0 0;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding-right:16px;border-right:1px solid #e5e7eb;vertical-align:middle;">
-            <span style="display:inline-block;max-width:110px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.3;font-weight:700;color:#06446a;">Support Ticketing System</span>
+            <span style="display:inline-block;max-width:110px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.3;font-weight:700;color:#4a3b33;">Global Support Portal</span>
           </td>
           <td style="padding-left:16px;vertical-align:middle;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;border-spacing:0 8px;">
@@ -82,14 +79,6 @@ export const DUMMY_SIGNATURE_HTML = `<div style="padding:18px 0 0 0;">
     </td>
   </tr>
 </table></div>`;
-
-/** Default confidentiality/legal notice shown near the foot of an email when the
- * sender has no personal signature (and the notice hasn't been hidden). */
-export const CONFIDENTIALITY_NOTICE =
-  "This email and any attachments are confidential and may contain privileged or legally protected information. " +
-  "If you are not the intended recipient, any dissemination, distribution, or copying of this email is strictly " +
-  "prohibited. If you have received this email in error, please notify the sender immediately and delete it from " +
-  "your system. Thank you.";
 
 /** Per-workspace branding overrides applied to a rendered email. */
 export type Branding = {
@@ -112,18 +101,6 @@ export type Branding = {
   /** When true, the footer line is omitted entirely (distinct from an empty
    * `footerText`, which falls back to the default footer). */
   hideFooter?: boolean;
-  /** Heading of the "Need Help?" support block. Falls back to {@link DEFAULT_HELP_HEADING}. */
-  helpHeading?: string;
-  /** Lead-in text before the support email. Falls back to {@link DEFAULT_HELP_MESSAGE}. */
-  helpMessage?: string;
-  /** Support email shown (in accent) in the help block. Falls back to {@link DEFAULT_SUPPORT_EMAIL}. */
-  supportEmail?: string;
-  /** When true, the entire "Need Help?" support block is omitted. */
-  hideHelp?: boolean;
-  /** Confidentiality/legal notice text. Falls back to {@link CONFIDENTIALITY_NOTICE}. */
-  confidentialityNotice?: string;
-  /** When true, the confidentiality notice is never shown (even without a signature). */
-  hideConfidentiality?: boolean;
 };
 
 /** Resolves the effective color used for body links/inline accents: an explicit
@@ -223,7 +200,7 @@ export function normalizeTemplateBodyHtml(bodyHtml: string, branding?: Branding)
 }
 
 /** Email-safe, table-based CTA button with inline styles. */
-const BUTTON_BG = "#43b5e8";
+const BUTTON_BG = "#ef4b23";
 
 export function button({
   href,
@@ -249,10 +226,8 @@ export function badge(text: string, color: string): string {
   return `<span style="display:inline-block;padding:4px 12px;background:${color};color:#ffffff;border-radius:12px;font-size:13px;font-weight:600;">${escapeHtml(text)}</span>`;
 }
 
-/** Sign-off block: a user's rendered signature card if set, else nothing — the confidentiality
- * notice (shown only when no real signature is present) takes its place in the layout.
- * `hasSignature` tells the caller whether a real personal signature was used, so it can
- * decide whether that notice belongs in the layout. */
+/** Sign-off block: a user's rendered signature card if set, else nothing.
+ * `hasSignature` tells the caller whether a real personal signature was used. */
 export function signatureBlock(
   signature: { html: string; text: string } | null | undefined,
 ): { html: string; text: string; hasSignature: boolean } {
@@ -265,7 +240,7 @@ export function signatureBlock(
   }
   return {
     html: "",
-    text: CONFIDENTIALITY_NOTICE,
+    text: "",
     hasSignature: false,
   };
 }
@@ -322,7 +297,6 @@ export function renderWithOverride({
   fallbackHeading,
   preheader,
   branding,
-  showConfidentialityNotice,
 }: {
   override: { subject?: string; heading?: string; bodyHtml?: string; footerText?: string };
   placeholders: Record<string, string>;
@@ -330,7 +304,6 @@ export function renderWithOverride({
   fallbackHeading: string;
   preheader?: string;
   branding?: Branding;
-  showConfidentialityNotice?: boolean;
 }): { subject: string; html: string; text: string } {
   const subject = applyPlaceholders(override.subject || fallbackSubject, placeholders);
   const heading = applyPlaceholders(override.heading || fallbackHeading, placeholders);
@@ -344,7 +317,7 @@ export function renderWithOverride({
   const footerOverride = override.footerText ? applyPlaceholders(override.footerText, placeholders) : undefined;
   return {
     subject,
-    html: layout({ heading, bodyHtml, preheader: preheader ?? subject, branding, showConfidentialityNotice, footerOverride }),
+    html: layout({ heading, bodyHtml, preheader: preheader ?? subject, branding, footerOverride }),
     text: stripHtml(bodyHtml),
   };
 }
@@ -354,21 +327,18 @@ export function layout({
   bodyHtml,
   preheader = "",
   branding,
-  showConfidentialityNotice = true,
   footerOverride,
 }: {
   heading: string;
   bodyHtml: string;
   preheader?: string;
   branding?: Branding;
-  showConfidentialityNotice?: boolean;
   /** DS-05/06: a specific template's own footer, taking precedence over `branding.footerText`. */
   footerOverride?: string;
 }): string {
   const brand = branding?.brandColor || BRAND;
   const headerBg = branding?.headerColor || HEADER_BG;
   const bodyText = branding?.bodyTextColor?.trim() || BODY_TEXT_COLOR;
-  const linkColor = resolveLinkColor(branding);
   const pageBg = branding?.pageBackground?.trim() || PAGE_BG;
   const headerTitle = escapeHtml(branding?.headerTitle?.trim() || DEFAULT_HEADER_TITLE);
   // Header shows the logo image only when opted in AND a logo URL is set; otherwise
@@ -386,19 +356,8 @@ export function layout({
   const rawFooter =
     footerOverride ||
     branding?.footerText ||
-    (branding?.hideFooter ? "" : `© ${year} Support Ticketing System. This is an automated message.`);
+    (branding?.hideFooter ? "" : `© ${year} Global Support Portal. This is an automated message.`);
   const footer = rawFooter.replace(/\{year\}/g, String(year));
-  // "Need Help?" support block — editable heading/message/email, or hidden entirely.
-  const showHelp = !branding?.hideHelp;
-  const helpHeading = escapeHtml(branding?.helpHeading?.trim() || DEFAULT_HELP_HEADING);
-  const helpMessage = escapeHtml(branding?.helpMessage?.trim() || DEFAULT_HELP_MESSAGE);
-  const supportEmail = escapeHtml(branding?.supportEmail?.trim() || DEFAULT_SUPPORT_EMAIL);
-  // Confidentiality notice: editable text, and hideable regardless of the caller's
-  // signature-driven `showConfidentialityNotice` flag.
-  const showNotice = showConfidentialityNotice && !branding?.hideConfidentiality;
-  const confidentialityNotice = escapeHtml(
-    branding?.confidentialityNotice?.trim() || CONFIDENTIALITY_NOTICE,
-  );
   const preheaderHtml = preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(
         preheader,
@@ -423,24 +382,10 @@ export function layout({
                 <div style="font-size:15px;line-height:1.6;color:${bodyText};">
                   ${normalizedBodyHtml}
                 </div>
-                ${showNotice
-                  ? `<div style="height:1px;background:${BORDER_COLOR};margin:28px 0 20px 0;"></div>
-                <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;">${confidentialityNotice}</p>`
-                  : ""}
               </td>
             </tr>
           </table>
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin-top:32px;">
-            ${showHelp
-              ? `<tr>
-              <td style="padding:0 32px 20px 32px;font-size:15px;line-height:1.5;color:${bodyText};">
-                <p style="margin:0 0 8px 0;font-weight:600;">${helpHeading}</p>
-                <!-- Plain text, not a mailto: link — penglobalbd.com doesn't match the
-                     mail.pengroup.com sending domain and linked mismatches trip spam filters. -->
-                <p style="margin:0;">${helpMessage} <span style="color:${linkColor};font-weight:600;">${supportEmail}</span></p>
-              </td>
-            </tr>`
-              : ""}
             ${footer
               ? `<tr>
               <td align="center" style="padding:0 32px;font-size:12px;line-height:1.5;color:#6b7280;">

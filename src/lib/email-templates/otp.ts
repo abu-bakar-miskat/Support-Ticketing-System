@@ -20,8 +20,8 @@ export type OtpEmailTemplate = { subject: string; bodyHtml: string };
  * contained code delivery). `{{code}}` marks where the sign-in code is injected.
  */
 export const OTP_DEFAULT: OtpEmailTemplate = {
-  subject: "Your PEN Support sign-in code",
-  bodyHtml: `<!doctype html><html><body style="margin:0;padding:32px 16px;background:#f8f8fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#06476f"><table role="presentation" width="100%"><tr><td align="center"><table role="presentation" width="560" style="max-width:560px;width:100%"><tr><td style="padding:24px 30px;background:#022941;border-radius:8px 8px 0 0;color:#fff;font-size:20px;font-weight:700">PEN <span style="color:#43b5e8">Support</span></td></tr><tr><td style="padding:36px 40px;background:#fff;border-radius:0 0 8px 8px"><h1 style="margin:0 0 16px;color:#0a76b9;font-size:25px">Your sign-in code</h1><p style="margin:0 0 24px;font-size:15px;line-height:1.6">Enter this code on the sign-in page:</p><p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:7px;color:#022941">{{code}}</p><p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6">The code expires in a few minutes. If you did not request it, you can ignore this email.</p></td></tr></table></td></tr></table></body></html>`,
+  subject: "Your Global Support Portal sign-in code",
+  bodyHtml: `<!doctype html><html><body style="margin:0;padding:32px 16px;background:#faf5f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#4a3b33"><table role="presentation" width="100%"><tr><td align="center"><table role="presentation" width="560" style="max-width:560px;width:100%"><tr><td style="padding:24px 30px;background:#331a0e;border-radius:8px 8px 0 0;color:#fff;font-size:20px;font-weight:700">PEN <span style="color:#fb7a56">Support</span></td></tr><tr><td style="padding:36px 40px;background:#fff;border-radius:0 0 8px 8px"><h1 style="margin:0 0 16px;color:#ef4b23;font-size:25px">Your sign-in code</h1><p style="margin:0 0 24px;font-size:15px;line-height:1.6">Enter this code on the sign-in page:</p><p style="margin:0 0 24px;font-size:32px;font-weight:700;letter-spacing:7px;color:#331a0e">{{code}}</p><p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6">The code expires in a few minutes. If you did not request it, you can ignore this email.</p></td></tr></table></td></tr></table></body></html>`,
 };
 
 /**
@@ -35,6 +35,6 @@ export function renderOtpEmail(
   const subject = override?.subject?.trim() || OTP_DEFAULT.subject;
   const bodyHtml = override?.bodyHtml?.trim() || OTP_DEFAULT.bodyHtml;
   const html = applyPlaceholders(bodyHtml, { code: escapeHtml(code) });
-  const text = `Your PEN Support sign-in code is: ${code}\n\nThe code expires in a few minutes. If you did not request it, you can ignore this email.`;
+  const text = `Your Global Support Portal sign-in code is: ${code}\n\nThe code expires in a few minutes. If you did not request it, you can ignore this email.`;
   return { subject, html, text };
 }

@@ -2056,10 +2056,10 @@ export function ProjectProfilePage({
 
   useEffect(() => {
     if (data?.project.name) {
-      document.title = `${data.project.name} — Support Ticketing System`;
+      document.title = `${data.project.name} — Global Support Portal`;
     }
     return () => {
-      document.title = "Support Ticketing System";
+      document.title = "Global Support Portal";
     };
   }, [data?.project.name]);
 

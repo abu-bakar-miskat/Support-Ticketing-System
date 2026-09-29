@@ -21,7 +21,7 @@ export function renderMailboxConnectionFailedAlert({
 
   const heading = "A mailbox connection needs attention";
   const body = `
-    <p style="margin:0 0 16px 0;font-weight:600;color:#06446a;">Hi ${name},</p>
+    <p style="margin:0 0 16px 0;font-weight:600;color:#4a3b33;">Hi ${name},</p>
     <p style="margin:0 0 24px 0;">The mailbox connection for <strong>${escapeHtml(address)}</strong> failed its health check and new mail may not be creating tickets until this is resolved.</p>
     ${summaryTable(infoRows)}
   `;

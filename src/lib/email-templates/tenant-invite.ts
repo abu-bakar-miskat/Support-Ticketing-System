@@ -56,7 +56,7 @@ export function renderTenantInvite({
 
   const messageText = (message ?? "").trim();
   const messageHtml = messageText
-    ? `<div style="margin:0 0 24px 0;padding:14px 16px;background:#f8fafc;border-left:3px solid #0a76b9;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(messageText)}</div>`
+    ? `<div style="margin:0 0 24px 0;padding:14px 16px;background:#fdf4f1;border-left:3px solid #ef4b23;border-radius:4px;color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(messageText)}</div>`
     : "";
 
   const infoHtml = summaryTable([
@@ -68,8 +68,8 @@ export function renderTenantInvite({
     ? "Your invitation is still waiting"
     : "You're invited to join an organization";
   const intro = isReminder
-    ? `<p style="margin:0 0 24px 0;">Just a reminder — <strong>${inviter}</strong> invited you to join <strong>${tenant}</strong> on Support Ticketing System as <strong>${roleText}</strong>, and your invitation hasn't been accepted yet.</p>`
-    : `<p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${tenant}</strong> on Support Ticketing System as <strong>${roleText}</strong>.</p>`;
+    ? `<p style="margin:0 0 24px 0;">Just a reminder — <strong>${inviter}</strong> invited you to join <strong>${tenant}</strong> on Global Support Portal as <strong>${roleText}</strong>, and your invitation hasn't been accepted yet.</p>`
+    : `<p style="margin:0 0 24px 0;"><strong>${inviter}</strong> has invited you to join <strong>${tenant}</strong> on Global Support Portal as <strong>${roleText}</strong>.</p>`;
 
   const body = `
     <p style="margin:0 0 16px 0;">Hello,</p>
@@ -86,8 +86,8 @@ export function renderTenantInvite({
     "Hello,",
     "",
     isReminder
-      ? `Just a reminder — ${inviterName} invited you to join ${tenantName} on Support Ticketing System as ${roleLabel(role)}, and your invitation hasn't been accepted yet.`
-      : `${inviterName} has invited you to join ${tenantName} on Support Ticketing System as ${roleLabel(role)}.`,
+      ? `Just a reminder — ${inviterName} invited you to join ${tenantName} on Global Support Portal as ${roleLabel(role)}, and your invitation hasn't been accepted yet.`
+      : `${inviterName} has invited you to join ${tenantName} on Global Support Portal as ${roleLabel(role)}.`,
   ];
   if (messageText) textParts.push("", messageText);
   textParts.push(
@@ -115,7 +115,6 @@ export function renderTenantInvite({
         ? `Your invitation to ${tenantName} expires ${expiryText}`
         : `${inviterName} invited you to ${tenantName}`,
       branding,
-      showConfidentialityNotice: !sig.hasSignature,
     }),
     text: textParts.join("\n"),
   };

@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/profile";
 import { TasksPage } from "@/components/tasks/tasks-page";
 import { cookies } from "next/headers";
 
-export const metadata = { title: "Tasks — Support Ticketing System" };
+export const metadata = { title: "Tasks — Global Support Portal" };
 
 export default async function TasksRoute() {
   const profile = await getProfile();

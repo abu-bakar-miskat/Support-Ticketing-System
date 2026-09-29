@@ -11,7 +11,7 @@ import { canManageProjects, canManageProjectLifecycle } from "@/lib/project-perm
 import { parsePinnedProjectIds } from "@/lib/pinned-projects-prefs";
 import { ProjectsPageSkeleton } from "@/components/skeletons/page-skeletons";
 
-export const metadata = { title: "Projects — Support Ticketing System" };
+export const metadata = { title: "Projects — Global Support Portal" };
 
 async function ProjectsData() {
   const profile = await getProfile();

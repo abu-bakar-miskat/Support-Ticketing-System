@@ -26,7 +26,7 @@ import {
 } from "./email-transport";
 
 const message = {
-  from: "PEN Support <noreply@example.com>",
+  from: "Global Support Portal <noreply@example.com>",
   to: "anyone@example.com",
   subject: "Test",
   html: "<p>hi</p>",

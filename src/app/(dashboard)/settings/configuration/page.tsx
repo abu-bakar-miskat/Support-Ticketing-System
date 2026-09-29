@@ -4,7 +4,7 @@ import { getTenantConfig } from "@/lib/tenant-config";
 import { SettingsTimeTrackingConfigurationPage } from "@/components/settings/settings-time-tracking-page";
 
 export const metadata = {
-  title: "Configuration — Time tracking — Settings — Support Ticketing System",
+  title: "Configuration — Time tracking — Settings — Global Support Portal",
 };
 
 function asConfigObject(

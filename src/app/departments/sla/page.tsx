@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getProfile } from "@/lib/profile";
 import { DepartmentsSlaPage } from "@/components/departments/departments-sla-page";
 
-export const metadata = { title: "SLA — Departments — Support Ticketing System" };
+export const metadata = { title: "SLA — Departments — Global Support Portal" };
 
 export default async function DepartmentsSlaRoute() {
   const profile = await getProfile();

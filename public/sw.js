@@ -1,4 +1,4 @@
-const CACHE = "pen-shell-v4";
+const CACHE = "pen-shell-v6";
 const OFFLINE_URL = "/offline";
 const NOTIFICATION_ICON = "/android-chrome-192x192.png";
 

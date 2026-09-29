@@ -205,7 +205,7 @@ function SidebarNavLink({
           prefetch={true}
           className={cn(
             "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
-            active && "bg-sts-blue/10 font-semibold text-sts-blue",
+            active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
           )}
           style={{ height: "28px" }}
         >
@@ -244,7 +244,7 @@ function SidebarNavLink({
       className={cn(
         "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
         collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "bg-sts-blue/10 font-semibold text-sts-blue",
+        active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
       )}
     >
       <span className="relative shrink-0">

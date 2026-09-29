@@ -1,7 +1,12 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
-import { listManagedDomains, type DomainOpError, type ManagedDomain } from "@/lib/resend-domains";
+import {
+  listManagedDomains,
+  selectBestManagedDomain,
+  type DomainOpError,
+  type ManagedDomain,
+} from "@/lib/resend-domains";
 
 /**
  * Returns only Resend domains that belong to this application. The Resend API
@@ -28,5 +33,23 @@ export async function listProjectManagedDomains(): Promise<ManagedDomain[] | Dom
     if (domain) projectDomainNames.add(domain);
   }
 
-  return managedDomains.filter((domain) => projectDomainNames.has(domain.name.trim().toLowerCase()));
+  const projectDomains = managedDomains.filter((domain) =>
+    projectDomainNames.has(domain.name.trim().toLowerCase()),
+  );
+
+  // Resend can hold the same domain name in more than one region (e.g. a stale
+  // us-east-1 copy left over before the eu-west-1 migration, still "failed" with
+  // receiving off). Returning every copy let the UI collapse them by name
+  // last-wins, arbitrarily surfacing the dead copy — showing it as unverified
+  // and pointing the receiving toggle at the wrong registration. Collapse each
+  // name to its best (verified / receiving-enabled) copy, the same way send-side
+  // verification checks already do.
+  const bestByName = new Map<string, ManagedDomain>();
+  for (const domain of projectDomains) {
+    const key = domain.name.trim().toLowerCase();
+    if (bestByName.has(key)) continue;
+    const best = selectBestManagedDomain(projectDomains, domain.name);
+    if (best) bestByName.set(key, best);
+  }
+  return [...bestByName.values()];
 }

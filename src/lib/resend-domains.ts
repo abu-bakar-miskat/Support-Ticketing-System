@@ -205,19 +205,30 @@ export async function getManagedDomain(id: string): Promise<ManagedDomain | Doma
   }
 }
 
-/** Enables inbound delivery for an existing sending domain and returns the MX record to publish. */
-export async function enableManagedDomainReceiving(id: string): Promise<ManagedDomain | DomainOpError> {
+/** Turns inbound delivery on or off for an existing sending domain. Enabling
+ * makes Resend expose the MX (Receiving) record to publish; disabling drops it,
+ * so the domain can still send but stops receiving replies at the provider.
+ * Returns the re-fetched domain so the caller sees the new capabilities. */
+export async function setManagedDomainReceiving(
+  id: string,
+  enabled: boolean,
+): Promise<ManagedDomain | DomainOpError> {
   if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
   try {
     const { error } = await resend.domains.update({
       id,
-      capabilities: { sending: "enabled", receiving: "enabled" },
+      capabilities: { sending: "enabled", receiving: enabled ? "enabled" : "disabled" },
     });
     if (error) return { error: error.message };
     return getManagedDomain(id);
   } catch {
-    return { error: "Failed to enable receiving in Resend." };
+    return { error: `Failed to ${enabled ? "enable" : "disable"} receiving in Resend.` };
   }
+}
+
+/** Enables inbound delivery for an existing sending domain and returns the MX record to publish. */
+export async function enableManagedDomainReceiving(id: string): Promise<ManagedDomain | DomainOpError> {
+  return setManagedDomainReceiving(id, true);
 }
 
 /** Asks Resend to re-scan DNS for the domain. Returns nothing meaningful on

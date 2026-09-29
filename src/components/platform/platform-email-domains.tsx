@@ -28,6 +28,7 @@ export function PlatformEmailDomains({
             initialDomains={initialDomains}
             loadError={loadError}
             allowRemove={false}
+            allowEnableReceiving
           />
         </div>
       </div>

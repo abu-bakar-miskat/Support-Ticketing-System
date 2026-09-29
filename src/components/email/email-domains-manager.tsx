@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -42,6 +43,9 @@ export type ManagerDomain = {
   status: string;
   createdAt: string | null;
   records: ManagerDnsRecord[];
+  /** Sending/receiving state from Resend — receiving must be "enabled" for the
+   * domain to expose its MX (Receiving) record. */
+  capabilities?: { sending: string; receiving: string };
   /** Department / sub-department this domain is assigned to (tenant view). */
   scopeLabel?: string | null;
 };
@@ -132,6 +136,7 @@ type MergedRow = {
   id: string | null;
   status: string;
   records: ManagerDnsRecord[];
+  capabilities?: { sending: string; receiving: string };
   scopeLabel: string | null;
   usedBy: string[];
 };
@@ -150,6 +155,7 @@ export function EmailDomainsManager({
   departments,
   inUseDomains = [],
   allowRemove = true,
+  allowEnableReceiving = false,
 }: {
   apiBase: string;
   initialDomains: ManagerDomain[];
@@ -162,6 +168,11 @@ export function EmailDomainsManager({
   /** When false, the Delete button is hidden for verified domains (but still
    * shown for unverified ones). Defaults to true (always show). */
   allowRemove?: boolean;
+  /** When true, domains registered for sending only (receiving disabled in
+   * Resend) show an "Enable receiving" button that turns on inbound delivery so
+   * the MX record appears. Requires an `POST :id/enable-receiving` endpoint —
+   * only the super-admin platform base has one, so defaults to false. */
+  allowEnableReceiving?: boolean;
 }) {
   const requiresScope = Array.isArray(departments) && departments.length > 0;
   const [domains, setDomains] = useState<ManagerDomain[]>(initialDomains);
@@ -192,6 +203,7 @@ export function EmailDomainsManager({
         id: d.id,
         status: d.status,
         records: d.records,
+        capabilities: d.capabilities,
         scopeLabel: d.scopeLabel ?? null,
         usedBy: [],
       });
@@ -300,6 +312,32 @@ export function EmailDomainsManager({
         body.domain.status === "verified"
           ? `${body.domain.name} is verified — addresses on it can now be connected.`
           : `Re-checked ${body.domain.name}. DNS can take up to a few hours to propagate.`,
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function setReceiving(id: string, enabled: boolean) {
+    setBusyId(id);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch(`${apiBase}/${id}/enable-receiving`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? `Failed to ${enabled ? "enable" : "disable"} receiving`);
+        return;
+      }
+      upsertDomain(body.domain);
+      setStatus(
+        enabled
+          ? `Receiving enabled for ${body.domain.name} — publish the new MX record below, then click Verify.`
+          : `Receiving disabled for ${body.domain.name} — this domain will no longer receive email.`,
       );
     } finally {
       setBusyId(null);
@@ -436,6 +474,16 @@ export function EmailDomainsManager({
             const busy = d.id !== null && busyId === d.id;
             const pending = d.status !== "verified";
             const clickable = d.registered && d.id !== null;
+            // Receiving off in Resend ⇒ no MX record is returned, so the domain
+            // can send but never receive replies. Prefer the explicit capability
+            // flag; fall back to "records loaded but none is the MX/Receiving
+            // record" for older payloads that don't carry capabilities.
+            const receivingDisabled = d.capabilities
+              ? d.capabilities.receiving !== "enabled"
+              : d.records.length > 0 &&
+                !d.records.some((r) => r.type === "MX" || r.record === "Receiving");
+            const showReceivingToggle =
+              allowEnableReceiving && d.registered && d.id !== null;
             return (
               <div
                 key={d.name}
@@ -588,6 +636,43 @@ export function EmailDomainsManager({
                       <p className="font-sans text-[12.5px] text-sts-muted">
                         {d.status === "verified" ? "This domain is verified. No action needed." : "Loading DNS records…"}
                       </p>
+                    )}
+
+                    {showReceivingToggle && (
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Mail className="size-3.5 text-sts-muted" />
+                            <span className="font-sans text-[13px] font-medium text-sts-foreground">
+                              Email receiving
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide",
+                                busy
+                                  ? "bg-sts-surface text-sts-subtle"
+                                  : receivingDisabled
+                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                                    : "bg-sts-green/15 text-sts-green",
+                              )}
+                            >
+                              {busy ? "Saving…" : receivingDisabled ? "Off" : "On"}
+                            </span>
+                          </div>
+                          <p className="mt-1 font-sans text-[12px] text-sts-muted">
+                            {receivingDisabled
+                              ? "Inbound delivery is off — this domain can send but won't receive replies. Turn it on to publish the MX record above and verify."
+                              : "Inbound delivery is on. Turning it off stops this domain from receiving email into tickets (the MX record is dropped in Resend)."}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={!receivingDisabled}
+                          disabled={busy}
+                          onCheckedChange={(checked) => d.id && setReceiving(d.id, checked)}
+                          size="sm"
+                          aria-label="Toggle email receiving"
+                        />
+                      </div>
                     )}
 
                     <div className="mt-4 flex items-center gap-2">

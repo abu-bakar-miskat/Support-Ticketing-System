@@ -320,18 +320,45 @@ export async function addTenantDomain(
   return { ...domain, scopeLabel: resolved.label };
 }
 
-/** Resolves ownership: returns the row (id + stored scope) if `resendId` belongs
- * to `tenantId`, else null. */
-async function ownedRow(
-  tenantId: string,
-  resendId: string,
-): Promise<{ id: string; departmentId: string | null; subDepartmentId: string | null } | null> {
+type OwnedRow = {
+  id: string;
+  name: string;
+  resendId: string;
+  departmentId: string | null;
+  subDepartmentId: string | null;
+};
+
+/** Resolves ownership: returns the row (id + name + stored scope) if `resendId`
+ * belongs to `tenantId`, else null. */
+async function ownedRow(tenantId: string, resendId: string): Promise<OwnedRow | null> {
   return runAsSystem(() =>
     prisma.emailDomain.findFirst({
       where: { tenantId, resendId },
-      select: { id: true, departmentId: true, subDepartmentId: true },
+      select: { id: true, name: true, resendId: true, departmentId: true, subDepartmentId: true },
     }),
   );
+}
+
+/** Fetches the live Resend domain (with DNS records) for an owned row, tolerating
+ * a stale stored `resendId`. Resend domains occasionally get re-created in another
+ * region and receive a NEW id, which leaves our stored `resendId` pointing at a
+ * now-deleted copy — a direct get() then 404s even though the domain is live under
+ * a different id (this is what made the DNS records spin on "Loading…"). When the
+ * direct lookup fails, fall back to resolving the live copy by NAME (the same
+ * logic `listTenantDomains` already uses for display) and self-heal the stored
+ * `resendId` so ownership actions (verify / receiving / remove) work again. */
+async function liveDomainForRow(row: OwnedRow): Promise<ManagedDomain | DomainOpError> {
+  const direct = await getManagedDomain(row.resendId);
+  if (!("error" in direct)) return direct;
+  const all = await listManagedDomains();
+  const best = "error" in all ? undefined : selectBestManagedDomain(all, row.name);
+  if (!best) return direct; // genuinely gone from Resend — surface the original error
+  if (best.id !== row.resendId) {
+    await runAsSystem(() =>
+      prisma.emailDomain.update({ where: { id: row.id }, data: { resendId: best.id } }),
+    ).catch(() => undefined);
+  }
+  return getManagedDomain(best.id);
 }
 
 /** Display label for a stored scope, resolving department / sub-department names. */
@@ -352,7 +379,7 @@ export async function getTenantDomain(
 ): Promise<TenantDomain | DomainOpError | null> {
   const row = await ownedRow(tenantId, resendId);
   if (!row) return null;
-  const domain = await getManagedDomain(resendId);
+  const domain = await liveDomainForRow(row);
   if ("error" in domain) return domain;
   return { ...domain, scopeLabel: await labelForRow(row) };
 }
@@ -364,9 +391,13 @@ export async function verifyTenantDomain(
 ): Promise<TenantDomain | DomainOpError | null> {
   const row = await ownedRow(tenantId, resendId);
   if (!row) return null;
-  const verified = await verifyManagedDomain(resendId);
+  // Resolve (and self-heal) the live id first — a stale stored id would 404 the
+  // verify call the same way it 404s the record fetch.
+  const current = await liveDomainForRow(row);
+  if ("error" in current) return current;
+  const verified = await verifyManagedDomain(current.id);
   if ("error" in verified) return verified;
-  const domain = await getManagedDomain(resendId);
+  const domain = await getManagedDomain(current.id);
   if ("error" in domain) return domain;
   return { ...domain, scopeLabel: await labelForRow(row) };
 }

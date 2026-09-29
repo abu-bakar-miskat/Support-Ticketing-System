@@ -68,6 +68,41 @@ describe("tenant request context in proxy", () => {
     expect(response.headers.get("x-middleware-request-x-department-slug")).toBe("support");
   });
 
+  it("rewrites a complete department task URL with URL-derived scope", async () => {
+    const request = new NextRequest("http://localhost/nova-pathways/support/tasks", {
+      headers: {
+        cookie: "pen_active_tenant_slug=tenant-z; pen_active_dept_slug=finance",
+      },
+    });
+
+    const response = await proxy(request);
+
+    expect(response.headers.get("x-middleware-rewrite")).toBe("http://localhost/tasks");
+    expect(response.headers.get("x-middleware-request-x-tenant-slug")).toBe(
+      "nova-pathways",
+    );
+    expect(response.headers.get("x-middleware-request-x-department-slug")).toBe(
+      "support",
+    );
+  });
+
+  it("redirects an incomplete department route instead of using department cookies", async () => {
+    const request = new NextRequest("http://localhost/nova-pathways/tasks", {
+      headers: {
+        cookie:
+          "pen_active_tenant_slug=nova-pathways; pen_active_dept_slug=support; pen_active_dept=dept-1",
+      },
+    });
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/nova-pathways/departments",
+    );
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
   it("redirects a tenant root to its department overview", async () => {
     const response = await proxy(new NextRequest("http://localhost/tenant-x"));
 

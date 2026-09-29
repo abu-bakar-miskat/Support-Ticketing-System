@@ -12,6 +12,7 @@ import {
   isDeptScopedPath,
   isSubDeptScopedPath,
   parseTenantPathContext,
+  tenantWithMissingDepartment,
   type TenantPathContext,
 } from "@/lib/tenant-path";
 import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
@@ -148,6 +149,16 @@ export async function proxy(request: NextRequest) {
   // after another tab enters tenant Y. Forward the URL context to Server
   // Components and rewrite only the cosmetic prefix away.
   if (user && !isPublic) {
+    // A department-scoped route must name its department in the URL. Do not
+    // infer it from browser-wide cookies: they can be stale or changed by a
+    // different tab, causing the same URL to render different departments.
+    const incompleteTenantSlug = tenantWithMissingDepartment(pathname);
+    if (incompleteTenantSlug) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${incompleteTenantSlug}/departments`;
+      return carryCookies(supabaseResponse, NextResponse.redirect(url));
+    }
+
     const urlContext = parseTenantPathContext(pathname);
     if (urlContext) {
       const url = request.nextUrl.clone();

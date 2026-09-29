@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseTenantPathContext } from "./tenant-path";
+import {
+  parseTenantPathContext,
+  TENANT_LEVEL_ROOTS,
+  TENANT_SCOPED_ROOTS,
+  tenantWithMissingDepartment,
+} from "./tenant-path";
 
 describe("parseTenantPathContext", () => {
   it("keeps tenant-level URLs independent from the active cookie", () => {
@@ -48,5 +53,27 @@ describe("parseTenantPathContext", () => {
     expect(parseTenantPathContext("/departments")).toBeNull();
     expect(parseTenantPathContext("/platform/settings")).toBeNull();
     expect(parseTenantPathContext("/api/tickets")).toBeNull();
+  });
+
+  it("rejects tenant URLs that omit the required department", () => {
+    const departmentRoots = [...TENANT_SCOPED_ROOTS].filter(
+      (root) => !TENANT_LEVEL_ROOTS.has(root),
+    );
+    for (const root of departmentRoots) {
+      expect(parseTenantPathContext(`/nova-pathways/${root}`)).toBeNull();
+      expect(tenantWithMissingDepartment(`/nova-pathways/${root}`)).toBe(
+        "nova-pathways",
+      );
+    }
+
+    expect(parseTenantPathContext("/nova-pathways/tasks/task-1")).toBeNull();
+    expect(tenantWithMissingDepartment("/nova-pathways/tasks/task-1")).toBe(
+      "nova-pathways",
+    );
+  });
+
+  it("does not flag complete department or tenant-level URLs", () => {
+    expect(tenantWithMissingDepartment("/nova-pathways/support/tasks")).toBeNull();
+    expect(tenantWithMissingDepartment("/nova-pathways/departments")).toBeNull();
   });
 });

@@ -109,14 +109,48 @@ type NavItem = {
 };
 
 const navViews: NavItem[] = [
-  { label: "Board", href: "/board", icon: Columns3, templateFeatureKey: "board" },
-  { label: "Timeline", href: "/timeline", icon: GanttChart, hideForSupport: true, templateFeatureKey: "timeline" },
-  { label: "Modules", href: "/modules", icon: Blocks, requiresModulesAccess: true, hideForSupport: true, templateFeatureKey: "modules" },
-  { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports", hideForAgent: true },
-  { label: "Calendar", href: "/calendar", icon: CalendarDays, templateFeatureKey: "calendar" },
+  {
+    label: "Board",
+    href: "/board",
+    icon: Columns3,
+    templateFeatureKey: "board",
+  },
+  {
+    label: "Timeline",
+    href: "/timeline",
+    icon: GanttChart,
+    hideForSupport: true,
+    templateFeatureKey: "timeline",
+  },
+  {
+    label: "Modules",
+    href: "/modules",
+    icon: Blocks,
+    requiresModulesAccess: true,
+    hideForSupport: true,
+    templateFeatureKey: "modules",
+  },
+  {
+    label: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    templateFeatureKey: "reports",
+    hideForAgent: true,
+  },
+  {
+    label: "Calendar",
+    href: "/calendar",
+    icon: CalendarDays,
+    templateFeatureKey: "calendar",
+  },
   { label: "My Profile", href: "/profile", icon: UserRound },
   { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Help Center", href: "/docs", icon: BookOpen, templateFeatureKey: "helpCenter" },
+  {
+    label: "Help Center",
+    href: "/docs",
+    icon: BookOpen,
+    templateFeatureKey: "helpCenter",
+  },
 ];
 
 function isFeatureVisible(
@@ -262,13 +296,7 @@ function DeptContextLabel({
   );
 }
 
-function DeptContextIcon({
-  name,
-  id,
-}: {
-  name: string;
-  id: string;
-}) {
+function DeptContextIcon({ name, id }: { name: string; id: string }) {
   const Icon = getDepartmentIcon(name, id);
   return (
     <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-sts-blue/10">
@@ -326,7 +354,9 @@ export function Sidebar({
   } = useDashboardContext();
   const pathname = useAppPathname();
   const router = useRouter();
-  const [switchingSubDepartment, setSwitchingSubDepartment] = useState<string | null>(null);
+  const [switchingSubDepartment, setSwitchingSubDepartment] = useState<
+    string | null
+  >(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [switchingDept, setSwitchingDept] = useState(false);
   const { pins, togglePin } = usePinnedProjects(initialPins);
@@ -401,7 +431,9 @@ export function Sidebar({
     "hover:border-sts-card-border hover:bg-sts-surface data-popup-open:border-sts-card-border data-popup-open:bg-sts-surface",
   );
 
-  const activeSubDepartment = subDepartments.find((t) => t.id === activeSubDepartmentId) ?? subDepartments[0];
+  const activeSubDepartment =
+    subDepartments.find((t) => t.id === activeSubDepartmentId) ??
+    subDepartments[0];
   const isAdmin = userRole === "admin";
   const isManager = userRole === "manager";
   const isSubManager = userRole === "sub_manager";
@@ -422,42 +454,56 @@ export function Sidebar({
   // `?? ""` only guards the type — this block renders solely when activeDept is set.
   const deptHeaderName = staffDeptName ?? activeDept?.name ?? "";
   const deptHeaderId = staffDeptId ?? activeDept?.id ?? "";
-  // Admin with no dept selected = on the dept overview page, not in a workspace
-  const isAdminGlobalView = isAdmin && !activeDeptId;
   const isCollapsed = collapsed && !isDrawer;
 
   const hasMultiDeptAccess = !isAdmin && allDepts.length > 1;
 
-  const navMainBase: NavItem[] = isAdminGlobalView
+  const navMainBase: NavItem[] = isCrossAccessDept
     ? [
-        { label: "Departments", href: "/departments", icon: DepartmentIcon },
-        { label: "Reports", href: "/reports", icon: BarChart3, templateFeatureKey: "reports" },
-        {
-          label: "Notifications",
-          href: "/inbox",
-          icon: Bell,
-          badge: notifCount ?? undefined,
-        },
-        { label: "Settings", href: "/settings", icon: Settings },
-      ]
-    : isCrossAccessDept
-      ? [
           ...(hasMultiDeptAccess && !isAgent
-            ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
+            ? [
+                {
+                  label: "My Departments",
+                  href: "/departments",
+                  icon: DepartmentIcon,
+                },
+              ]
             : []),
-          { label: "Tasks", href: "/tasks", icon: ListChecks, templateFeatureKey: "tasks" },
-          { label: "Projects", href: "/projects", icon: Layers, templateFeatureKey: "projects" },
+          {
+            label: "Tasks",
+            href: "/tasks",
+            icon: ListChecks,
+            templateFeatureKey: "tasks",
+          },
+          {
+            label: "Projects",
+            href: "/projects",
+            icon: Layers,
+            templateFeatureKey: "projects",
+          },
           {
             label: "Notifications",
             href: "/inbox",
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity", hideForAgent: true },
+          {
+            label: "Activity",
+            href: "/activity",
+            icon: Activity,
+            templateFeatureKey: "activity",
+            hideForAgent: true,
+          },
         ]
       : [
           ...(hasMultiDeptAccess && !isAgent
-            ? [{ label: "My Departments", href: "/departments", icon: DepartmentIcon }]
+            ? [
+                {
+                  label: "My Departments",
+                  href: "/departments",
+                  icon: DepartmentIcon,
+                },
+              ]
             : []),
           {
             label: "Home",
@@ -473,24 +519,60 @@ export function Sidebar({
               ? undefined
               : myTasksCount || undefined,
           },
-          { label: "Projects", href: "/projects", icon: Layers, templateFeatureKey: "projects" },
+          {
+            label: "Projects",
+            href: "/projects",
+            icon: Layers,
+            templateFeatureKey: "projects",
+          },
           {
             label: "Notifications",
             href: "/inbox",
             icon: Bell,
             badge: notifCount ?? undefined,
           },
-          { label: "My Time", href: "/time", icon: Clock, templateFeatureKey: "myTime" },
-          { label: "Activity", href: "/activity", icon: Activity, templateFeatureKey: "activity", hideForAgent: true },
+          {
+            label: "My Time",
+            href: "/time",
+            icon: Clock,
+            templateFeatureKey: "myTime",
+          },
+          {
+            label: "Activity",
+            href: "/activity",
+            icon: Activity,
+            templateFeatureKey: "activity",
+            hideForAgent: true,
+          },
           ...(isAdmin || isManager
             ? [
-                { label: "Members", href: "/department", icon: UsersRound, templateFeatureKey: "members" as const },
-                { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "sharedMailboxes" as const },
-                { label: "Sub Departments", href: "/sub-departments", icon: Network, templateFeatureKey: "subDepartmentReports" as const },
+                {
+                  label: "Members",
+                  href: "/department",
+                  icon: UsersRound,
+                  templateFeatureKey: "members" as const,
+                },
+                {
+                  label: "Shared Mailboxes",
+                  href: "/mailboxes",
+                  icon: Inbox,
+                  templateFeatureKey: "sharedMailboxes" as const,
+                },
+                {
+                  label: "Sub Departments",
+                  href: "/sub-departments",
+                  icon: Network,
+                  templateFeatureKey: "subDepartmentReports" as const,
+                },
               ]
             : isSubManager
               ? [
-                  { label: "Shared Mailboxes", href: "/mailboxes", icon: Inbox, templateFeatureKey: "sharedMailboxes" as const },
+                  {
+                    label: "Shared Mailboxes",
+                    href: "/mailboxes",
+                    icon: Inbox,
+                    templateFeatureKey: "sharedMailboxes" as const,
+                  },
                 ]
               : []),
         ];
@@ -549,7 +631,9 @@ export function Sidebar({
                     height={36}
                     className={cn(
                       "w-auto shrink-0 object-contain",
-                      brandingHideDisplayName ? "h-11 max-w-[150px]" : "h-9 max-w-[72px]",
+                      brandingHideDisplayName
+                        ? "h-11 max-w-[150px]"
+                        : "h-9 max-w-[72px]",
                     )}
                   />
                 ) : (
@@ -662,7 +746,9 @@ export function Sidebar({
                   className={cn(
                     deptContextClassName,
                     switchingDept && "opacity-60",
-                    isCollapsed ? "justify-center p-2" : "items-center gap-2 px-2.5 py-2",
+                    isCollapsed
+                      ? "justify-center p-2"
+                      : "items-center gap-2 px-2.5 py-2",
                   )}
                 >
                   <DeptContextIcon name={deptHeaderName} id={deptHeaderId} />
@@ -718,7 +804,9 @@ export function Sidebar({
               <div
                 className={cn(
                   deptContextClassName,
-                  isCollapsed ? "justify-center p-2" : "items-center gap-2 px-2.5 py-2",
+                  isCollapsed
+                    ? "justify-center p-2"
+                    : "items-center gap-2 px-2.5 py-2",
                 )}
                 title={
                   isCollapsed
@@ -737,7 +825,7 @@ export function Sidebar({
             )}
           </div>
         )}
-        {isSuperAdmin && isAdminGlobalView && (
+        {isSuperAdmin && !activeDeptId && (
           <Link
             href="/platform"
             title={isCollapsed ? "Platform" : undefined}
@@ -748,11 +836,13 @@ export function Sidebar({
           >
             <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
             {!isCollapsed && (
-              <span className="font-sans text-[11.5px] font-medium">Platform</span>
+              <span className="font-sans text-[11.5px] font-medium">
+                Platform
+              </span>
             )}
           </Link>
         )}
-        {isAdmin && isAdminGlobalView && (
+        {isAdmin && !activeDeptId && (
           <div
             className={cn(
               "flex items-center rounded-md bg-sts-surface",
@@ -778,7 +868,9 @@ export function Sidebar({
           <div
             className={cn(
               deptContextClassName,
-              isCollapsed ? "justify-center p-2" : "items-center gap-2 px-2.5 py-2",
+              isCollapsed
+                ? "justify-center p-2"
+                : "items-center gap-2 px-2.5 py-2",
             )}
             title={
               isCollapsed
@@ -803,34 +895,35 @@ export function Sidebar({
 
         {/* Personal nav items — not department-scoped */}
         {navMain
-          .filter((item) => isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
+          .filter((item) =>
+            isFeatureVisible(item.templateFeatureKey, activeFeatureKeys),
+          )
           .filter((item) => isPathEnabledByFlags(item.href, platformFlags))
           .filter((item) => !(item.hideForAgent && isAgent))
           .map((item) => {
-          const active =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
-          const onQuickAdd =
-            item.label === "Tasks"
-              ? onCreateTask
-              : item.label === "Projects" && isPrivileged
-                ? () => setShowCreateProject(true)
-                : undefined;
-          return (
-            <SidebarNavLink
-              key={item.href}
-              item={item}
-              active={active}
-              collapsed={isCollapsed}
-              onQuickAdd={onQuickAdd}
-            />
-          );
-        })}
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            const onQuickAdd =
+              item.label === "Tasks"
+                ? onCreateTask
+                : item.label === "Projects" && isPrivileged
+                  ? () => setShowCreateProject(true)
+                  : undefined;
+            return (
+              <SidebarNavLink
+                key={item.href}
+                item={item}
+                active={active}
+                collapsed={isCollapsed}
+                onQuickAdd={onQuickAdd}
+              />
+            );
+          })}
 
         {/* Pinned projects */}
-        {!isAdminGlobalView &&
-          !isCollapsed &&
+        {!isCollapsed &&
           (() => {
             const sorted = sidebarProjectPool
               .filter((p) => pins.has(p.id))
@@ -941,25 +1034,22 @@ export function Sidebar({
             );
           })()}
 
-        {!isAdminGlobalView && (
-          <>
-            <div className="h-3.5" />
-            {!isCollapsed && (
-              <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-                VIEWS
-              </p>
-            )}
-            <div className="h-1" />
-          </>
+        <div className="h-3.5" />
+        {!isCollapsed && (
+          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
+            VIEWS
+          </p>
         )}
+        <div className="h-1" />
 
-        {!isAdminGlobalView &&
-          navViews
+        {navViews
             .filter((item) => {
-              if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys)) return false;
+              if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
+                return false;
               if (!isPathEnabledByFlags(item.href, platformFlags)) return false;
               if (item.hideForAgent && isAgent) return false;
-              if (item.requiresDeptAdmin && !canAdminActiveDeptSettings) return false;
+              if (item.requiresDeptAdmin && !canAdminActiveDeptSettings)
+                return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
               // Per-department-type interface: support departments hide dev-planning
               // views (Timeline, Modules) and surface Support forms; other types
@@ -1003,7 +1093,9 @@ export function Sidebar({
       {/* Create Project Modal */}
       {showCreateProject &&
         (() => {
-          const userSubDepartment = subDepartments.find((t) => t.id === user?.subDepartmentId);
+          const userSubDepartment = subDepartments.find(
+            (t) => t.id === user?.subDepartmentId,
+          );
           // Lock to active dept for everyone when in a dept context; non-admins always locked to their dept
           const lockedDeptId =
             activeDeptId ??

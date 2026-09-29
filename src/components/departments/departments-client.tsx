@@ -3,7 +3,7 @@
 import Link from "next/link";
 import {
   Users, FolderKanban, LayoutList,
-  Settings, Mail, Shield,
+  Mail, Shield,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
@@ -122,13 +122,6 @@ export function DepartmentsClient({
                     }))}
                   />
                 )}
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground"
-                >
-                  <Settings className="size-3.5" />
-                  Settings
-                </Link>
               </div>
             }
             className="mb-4"

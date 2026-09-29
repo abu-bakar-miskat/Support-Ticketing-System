@@ -199,9 +199,14 @@ export function parseTenantPathContext(pathname: string): TenantPathContext | nu
 
   const tenantLevel = TENANT_LEVEL_ROOTS.has(root);
   // Tenant-level routes have exactly one cosmetic prefix. Department routes
-  // may additionally carry department and sub-department slugs.
+  // require a department prefix and may additionally carry a sub-department
+  // slug only for roots that support one. Never accept /<tenant>/<root> for a
+  // department route: doing so leaves department resolution to shared cookies.
   if (tenantLevel && rootIndex !== 1) return null;
-  if (!tenantLevel && rootIndex > 3) return null;
+  if (!tenantLevel) {
+    const maxRootIndex = SUBDEPT_SCOPED_ROOTS.has(root) ? 3 : 2;
+    if (rootIndex < 2 || rootIndex > maxRootIndex) return null;
+  }
 
   const departmentSlug = !tenantLevel && rootIndex >= 2
     ? (segments[1]?.trim().toLowerCase() || null)
@@ -217,6 +222,28 @@ export function parseTenantPathContext(pathname: string): TenantPathContext | nu
     subDepartmentSlug,
     internalPath: `/${segments.slice(rootIndex).join("/")}`,
   };
+}
+
+/**
+ * Return the tenant slug when a URL puts a department-scoped root directly
+ * after the tenant (for example /acme/tasks). This is an incomplete public URL,
+ * not a legacy bare route: the missing department must not be guessed from a
+ * browser-wide cookie.
+ */
+export function tenantWithMissingDepartment(pathname: string): string | null {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length < 2 || !isDeptScopedRoot(segments[1]!)) return null;
+
+  const tenantSlug = segments[0]!.trim().toLowerCase();
+  if (
+    !tenantSlug ||
+    NON_TENANT_PREFIXES.has(tenantSlug) ||
+    TENANT_SCOPED_ROOTS.has(tenantSlug)
+  ) {
+    return null;
+  }
+
+  return tenantSlug;
 }
 
 /** First path segment (""/"board"/…) of a pathname. */

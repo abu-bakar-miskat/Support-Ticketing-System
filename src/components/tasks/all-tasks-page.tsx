@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { X, Search, ChevronDown, Loader2, Users, ListTodo, Bookmark, Trash2, Plus, Check, Download, CalendarClock } from "lucide-react";
+import { X, Search, ChevronDown, Loader2, Users, ListTodo, CalendarClock } from "lucide-react";
 import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
@@ -15,20 +15,11 @@ import type { SubDepartmentStatusConfig } from "@/components/board/board-types";
 import { TaskListRow, TaskListHead } from "@/components/tasks/task-list-table";
 import { ALL_TASKS_COLGROUP, TASK_TABLE_CLASS } from "@/components/tasks/task-list-cells";
 import { TasksTableSkeleton } from "@/components/skeletons/page-skeletons";
-import { useInfiniteAllTasks, type InfiniteAllTasksFilters } from "@/hooks/queries/use-tasks";
-import { buildTicketExportUrl, type ExportFormat } from "@/lib/api/tasks";
+import { useInfiniteAllTasks } from "@/hooks/queries/use-tasks";
 import { smartAssignTickets } from "@/lib/api/admin";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
 import { BulkAssignModal } from "@/components/tickets/bulk-assign-modal";
-import {
-  fetchSavedViews,
-  createSavedView,
-  deleteSavedView,
-  type SavedView,
-  type SavedViewFilters,
-} from "@/lib/api/saved-views";
 import { toast } from "sonner";
-import { toastError } from "@/lib/toast-error";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -63,22 +54,6 @@ function toggle(set: Set<string>, id: string): Set<string> {
 // Intake/Manual are mutually exclusive — selecting one replaces the other.
 function toggleExclusive(set: Set<string>, id: string): Set<string> {
   return set.has(id) ? new Set() : new Set([id]);
-}
-
-// Order- and empty-insensitive serialization so we can tell whether the live
-// filters still match a saved view (to keep its highlight in sync).
-function canonFilters(f: SavedViewFilters): string {
-  const norm: Record<string, unknown> = {};
-  for (const key of Object.keys(f).sort()) {
-    const val = (f as Record<string, unknown>)[key];
-    if (val === undefined || val === "") continue;
-    if (Array.isArray(val)) {
-      if (val.length) norm[key] = [...val].sort();
-    } else {
-      norm[key] = val;
-    }
-  }
-  return JSON.stringify(norm);
 }
 
 function moduleFilterLabel(
@@ -133,194 +108,6 @@ function PageSizeSelector({
         </PopoverContent>
       </Popover>
     </div>
-  );
-}
-
-// ── Saved Views Menu ──────────────────────────────────────────────────────────
-
-function SavedViewsMenu({
-  views,
-  activeViewId,
-  hasFilters,
-  onApply,
-  onSaveNew,
-  onDelete,
-}: {
-  views: SavedView[];
-  activeViewId: string | null;
-  hasFilters: boolean;
-  onApply: (view: SavedView) => void;
-  onSaveNew: (name: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-
-  function submitNew() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSaveNew(trimmed);
-    setName("");
-    setNaming(false);
-    setOpen(false);
-  }
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) {
-          setNaming(false);
-          setName("");
-        }
-      }}
-    >
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
-        <Bookmark className="size-3.5" />
-        <span className="hidden sm:inline">Views</span>
-        {views.length > 0 && (
-          <span className="rounded-full bg-sts-surface px-1.5 text-[10.5px] font-semibold text-sts-subtle">
-            {views.length}
-          </span>
-        )}
-        <ChevronDown className="size-3 shrink-0" />
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={6}
-        className="w-64 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
-      >
-        {views.length === 0 ? (
-          <p className="px-3 py-2 font-sans text-[11.5px] text-sts-subtle">
-            No saved views yet. Set some filters, then save this view.
-          </p>
-        ) : (
-          <div className="max-h-64 overflow-y-auto">
-            {views.map((view) => (
-              <div
-                key={view.id}
-                className="group flex items-center gap-1 rounded-md pr-1 transition-colors hover:bg-sts-surface"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    onApply(view);
-                    setOpen(false);
-                  }}
-                  className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground"
-                >
-                  {view.id === activeViewId ? (
-                    <Check className="size-3.5 shrink-0 text-sts-id" />
-                  ) : (
-                    <Bookmark className="size-3.5 shrink-0 text-sts-subtle" />
-                  )}
-                  <span className="truncate">{view.name}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(view.id)}
-                  aria-label={`Delete view ${view.name}`}
-                  className="shrink-0 rounded p-1 text-sts-subtle opacity-0 transition-opacity hover:text-sts-red group-hover:opacity-100"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="my-1 h-px bg-sts-card-border" />
-
-        {naming ? (
-          <div className="flex items-center gap-1 p-1">
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitNew();
-                if (e.key === "Escape") setNaming(false);
-              }}
-              placeholder="View name…"
-              className="h-8 min-w-0 flex-1 rounded-md border border-sts-card-border bg-transparent px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
-            />
-            <button
-              type="button"
-              onClick={submitNew}
-              disabled={!name.trim()}
-              className="flex h-8 shrink-0 items-center rounded-full bg-sts-blue px-2.5 font-sans text-[12px] font-semibold text-white disabled:opacity-40"
-            >
-              Save
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setNaming(true)}
-            disabled={!hasFilters}
-            className="flex w-full items-center gap-2 rounded-full px-3 py-1.5 font-sans text-[12px] text-sts-id transition-colors hover:bg-sts-blue-tint disabled:cursor-not-allowed disabled:text-sts-subtle disabled:hover:bg-transparent"
-          >
-            <Plus className="size-3.5" />
-            {hasFilters ? "Save current filters as view" : "Set filters to save a view"}
-          </button>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ── Export Menu ────────────────────────────────────────────────────────────────
-
-const EXPORT_OPTIONS: { format: ExportFormat; label: string }[] = [
-  { format: "excel", label: "Excel (.xlsx)" },
-  { format: "pdf", label: "PDF (.pdf)" },
-  { format: "csv", label: "CSV (.csv)" },
-];
-
-function ExportMenu({ filters }: { filters: InfiniteAllTasksFilters }) {
-  const [open, setOpen] = useState(false);
-
-  function handleExport(format: ExportFormat) {
-    const url = buildTicketExportUrl(filters, format);
-    const a = document.createElement("a");
-    a.href = url;
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setOpen(false);
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-sts-card-border bg-transparent px-3 font-sans text-[12px] whitespace-nowrap text-sts-muted transition-colors hover:border-sts-id hover:text-sts-foreground">
-        <Download className="size-3.5" />
-        <span className="hidden sm:inline">Export</span>
-        <ChevronDown className="size-3 shrink-0" />
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={6}
-        className="w-48 rounded-xl border border-sts-card-border bg-sts-bg p-1.5 shadow-xl"
-      >
-        <p className="px-3 pb-1.5 pt-1 font-sans text-[11px] text-sts-subtle">
-          Export current filters
-        </p>
-        {EXPORT_OPTIONS.map((opt) => (
-          <button
-            key={opt.format}
-            type="button"
-            onClick={() => handleExport(opt.format)}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:bg-sts-surface"
-          >
-            <Download className="size-3.5 shrink-0 text-sts-subtle" />
-            {opt.label}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
   );
 }
 
@@ -391,88 +178,8 @@ export function AllTasksPage({
     staleTime: 5 * 60 * 1000,
   });
 
-  // ── Saved views ──────────────────────────────────────────────────────────────
-  const { data: savedViews = [] } = useQuery({
-    queryKey: ["saved-views"],
-    queryFn: fetchSavedViews,
-    staleTime: 5 * 60 * 1000,
-  });
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(null);
-
   // Debounce search — only the debounced value goes to the API
   const search = useDebounce(rawSearch, 500);
-
-  // The subset of filter state that a saved view persists.
-  const currentFilters: SavedViewFilters = useMemo(
-    () => ({
-      status: selStatus.size ? [...selStatus] : undefined,
-      priority: selPriority.size ? [...selPriority] : undefined,
-      projectId: selProject.size ? [...selProject] : undefined,
-      subDepartmentId: selSubDepartment.size ? [...selSubDepartment] : undefined,
-      assigneeId: selPeople.size ? [...selPeople] : undefined,
-      moduleId: selModule.size ? [...selModule] : undefined,
-      labels: selLabels.size ? [...selLabels] : undefined,
-      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual" | "mailbox") : undefined,
-      sort: sortKey,
-      search: search || undefined,
-      dateFrom: dateRange?.from ?? undefined,
-      dateTo: dateRange?.to ?? undefined,
-      targetDateFrom: targetRange?.from ?? undefined,
-      targetDateTo: targetRange?.to ?? undefined,
-    }),
-    [selStatus, selPriority, selProject, selSubDepartment, selPeople, selModule, selLabels, selSource, sortKey, search, dateRange, targetRange],
-  );
-
-  function applySavedView(view: SavedView) {
-    const f = view.filters;
-    setSelStatus(new Set(f.status ?? []));
-    setSelPriority(new Set(f.priority ?? []));
-    setSelProject(new Set(f.projectId ?? []));
-    // The All Tasks picker is single-select. Older saved views may contain
-    // multiple sub-departments from the previous multi-select UI, so retain
-    // the first selection when restoring one.
-    setSelSubDepartment(new Set(f.subDepartmentId?.slice(0, 1) ?? []));
-    setSelPeople(new Set(f.assigneeId ?? []));
-    setSelModule(new Set(f.moduleId ?? []));
-    setSelLabels(new Set(f.labels ?? []));
-    setSelSource(new Set(f.source ? [f.source] : []));
-    setSortKey((f.sort as SortKey) ?? "created");
-    setRawSearch(f.search ?? "");
-    setDateRange(f.dateFrom && f.dateTo ? { from: f.dateFrom, to: f.dateTo } : null);
-    setTargetRange(f.targetDateFrom && f.targetDateTo ? { from: f.targetDateFrom, to: f.targetDateTo } : null);
-    setSelectedViewId(view.id);
-  }
-
-  async function handleSaveView(name: string) {
-    try {
-      const views = await createSavedView(name, currentFilters);
-      queryClient.setQueryData(["saved-views"], views);
-      const created = views.find((v) => v.name.toLowerCase() === name.toLowerCase());
-      if (created) setSelectedViewId(created.id);
-      toast.success(`View "${name}" saved`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save view");
-    }
-  }
-
-  async function handleDeleteView(id: string) {
-    try {
-      const views = await deleteSavedView(id);
-      queryClient.setQueryData(["saved-views"], views);
-      if (selectedViewId === id) setSelectedViewId(null);
-    } catch (err) {
-      toastError("Failed to delete view", err);
-    }
-  }
-
-  // Highlight the active view only while the live filters still match it —
-  // derived so editing a filter silently clears the highlight (no effect).
-  const activeViewId = useMemo(() => {
-    if (!selectedViewId) return null;
-    const active = savedViews.find((v) => v.id === selectedViewId);
-    if (!active) return null;
-    return canonFilters(active.filters) === canonFilters(currentFilters) ? selectedViewId : null;
-  }, [selectedViewId, savedViews, currentFilters]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -533,7 +240,6 @@ export function AllTasksPage({
     [data],
   );
   const isPrivileged = data?.pages[0]?.isPrivileged ?? false;
-  const canExport = data?.pages[0]?.canExport ?? false;
   const serverTotal = data?.pages[data.pages.length - 1]?.total ?? 0;
   // Bulk-select checkboxes are only useful for the Unassigned tab (bulk-assign workflow)
   const showBulkSelect = isPrivileged && unassignedOnly;
@@ -715,7 +421,6 @@ export function AllTasksPage({
     setSelSource(new Set());
     setDateRange(null);
     setTargetRange(null);
-    setSelectedViewId(null);
   }
 
   // ── Stats line ─────────────────────────────────────────────────────────────
@@ -914,17 +619,6 @@ export function AllTasksPage({
               />
 
               <FilterVisibilityMenu filters={toggleableFilters} visibility={filterVisibility} />
-
-              <SavedViewsMenu
-                views={savedViews}
-                activeViewId={activeViewId}
-                hasFilters={!!hasFilters}
-                onApply={applySavedView}
-                onSaveNew={handleSaveView}
-                onDelete={handleDeleteView}
-              />
-
-              {canExport && <ExportMenu filters={filters} />}
 
               {hasFilters && (
                 <button

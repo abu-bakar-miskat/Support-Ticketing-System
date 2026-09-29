@@ -122,14 +122,14 @@ const navViews: NavItem[] = [
     hideForSupport: true,
     templateFeatureKey: "timeline",
   },
-  {
-    label: "Modules",
-    href: "/modules",
-    icon: Blocks,
-    requiresModulesAccess: true,
-    hideForSupport: true,
-    templateFeatureKey: "modules",
-  },
+  // {
+  //   label: "Modules",
+  //   href: "/modules",
+  //   icon: Blocks,
+  //   requiresModulesAccess: true,
+  //   hideForSupport: true,
+  //   templateFeatureKey: "modules",
+  // },
   {
     label: "Reports",
     href: "/reports",

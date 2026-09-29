@@ -174,7 +174,7 @@ export function InviteMemberDialog({
           setOpen(true)
         }}
         className={cn(
-          "flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-foreground",
+          "flex items-center gap-1.5 rounded-full border border-transparent bg-primary bg-[image:var(--sts-primary-gradient)] px-3 py-1.5 font-sans text-[12px] text-primary-foreground transition-[filter] hover:brightness-110",
           triggerClassName,
         )}
       >

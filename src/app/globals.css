@@ -35,11 +35,11 @@
   --sts-foreground: #1f2937;
   --sts-muted: #6b7280;
   --sts-subtle: #9ca3af;
-  --sts-surface: #f4f5f7;
-  --sts-blue: #0a76b9;
+  --sts-surface: #f3f4f6;
+  --sts-blue: #2563eb;
   --sts-blue-fg: #ffffff;
-  --sts-blue-tint: #e8f2fb;
-  --sts-id: #0a76b9;
+  --sts-blue-tint: #eff4ff;
+  --sts-id: #2563eb;
   --sts-red: #dc2626;
   --sts-red-tint: #fef2f2;
   --sts-green: #16a34a;
@@ -154,380 +154,190 @@
     --font-serif: "Lora Variable", ui-serif, Georgia, serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
     --font-display: "Fraunces Variable", "Lora Variable", ui-serif, Georgia, serif;
-    /* Clean light theme with soft frosted panels over the ambient wash. */
-    --sts-bg: #fbfbfa;
+    /* Clean light theme with frosted-glass panels over an ambient gradient wash:
+       translucent cards + backdrop blur read as glass against the gradient. */
+    --sts-bg: #f7f8fa;
     --sts-card-solid: #ffffff;
     --sts-bg-tint: rgba(0, 0, 0, 0.02);
-    --sts-glass-blur: 16px;
-    --sts-glass-saturate: 1.18;
+    --sts-glass-blur: 14px;
+    --sts-glass-saturate: 1.15;
     --sts-glass-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.55),
-      0 8px 28px rgba(16, 35, 52, 0.04);
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 4px 20px rgba(16, 24, 40, 0.05);
     --sts-glass-highlight: rgba(255, 255, 255, 0.5);
     --sts-card: rgba(255, 255, 255, 0.72);
-    --sts-card-border: #ececec;
-    --sts-foreground: #1f2430;
-    --sts-muted: #5b6472;
-    --sts-subtle: #8a909c;
-    --sts-button: #1f2430;
+    --sts-card-border: #e5e7eb;
+    --sts-foreground: #111827;
+    --sts-muted: #4b5563;
+    --sts-subtle: #6b7280;
+    --sts-button: #2563eb;
     --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #f4f5f6;
-    --sts-secondary-fg: #1f2430;
-    --sts-accent: #0a76b9;
-    /* Default: no gradient, primary buttons stay solid. Themes may override. */
+    --sts-secondary-bg: #f3f4f6;
+    --sts-secondary-fg: #111827;
+    --sts-accent: #2563eb;
+    /* Flat primary buttons — no gradient. */
     --sts-primary-gradient: linear-gradient(var(--primary), var(--primary));
-    --sts-card-shadow: none;
-    --sts-blue: #0a76b9;
+    --sts-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    --sts-blue: #2563eb;
     --sts-blue-fg: #ffffff;
-    --sts-blue-tint: #eaf3fb;
-    --sts-surface: #f4f5f6;
-    --sts-settings-subnav: #f7f7f6;
+    --sts-blue-tint: #eff4ff;
+    --sts-surface: #f3f4f6;
+    --sts-settings-subnav: #f3f4f6;
     --sts-settings-subnav-active: #ffffff;
-    --sts-id: #0a76b9;
+    --sts-id: #2563eb;
     --sts-red: #dc2626;
-    --sts-red-tint: #fdf0f0;
+    --sts-red-tint: #fef2f2;
     --sts-green: #16a34a;
-    --sts-green-tint: #edf9f1;
+    --sts-green-tint: #f0fdf4;
     --sts-purple: #7c3aed;
-    --sts-purple-tint: #f0ebff;
-    /* Quiet frosted diagonal wash (body + .sts-ambient-bg). */
+    --sts-purple-tint: #f5f3ff;
+    /* Soft diagonal gradient wash (body + .sts-ambient-bg) so glass panels read. */
     --sts-bg-gradient:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
-        color-mix(in srgb, #ffffff 42%, transparent) 45%,
-        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
+        color-mix(in srgb, var(--sts-accent) 9%, transparent) 0%,
+        transparent 45%,
+        color-mix(in srgb, var(--sts-blue) 7%, transparent) 100%
       ),
       radial-gradient(
         70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
+        color-mix(in srgb, var(--sts-accent) 8%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
         64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 4%, transparent) 0%,
+        color-mix(in srgb, var(--sts-blue) 7%, transparent) 0%,
         transparent 74%
       ),
       var(--sts-bg);
-    --background: oklch(0.978 0.005 75);
-    --foreground: oklch(0.18 0.04 230);
-    --card: rgba(253, 251, 246, 0.9);
-    --card-foreground: oklch(0.18 0.04 230);
-    --popover: rgba(253, 251, 248, 0.97);
-    --popover-foreground: oklch(0.18 0.04 230);
-    --primary: oklch(0.28 0.07 230);
+    --background: oklch(0.975 0.003 247);
+    --foreground: oklch(0.21 0.02 258);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.21 0.02 258);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.21 0.02 258);
+    --primary: oklch(0.55 0.22 263);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.956 0.006 75);
-    --secondary-foreground: oklch(0.28 0.07 230);
-    --muted: oklch(0.956 0.006 75);
-    --muted-foreground: oklch(0.5 0.03 230);
-    --accent: oklch(0.956 0.006 75);
-    --accent-foreground: oklch(0.28 0.07 230);
+    --secondary: oklch(0.968 0.004 247);
+    --secondary-foreground: oklch(0.21 0.02 258);
+    --muted: oklch(0.968 0.004 247);
+    --muted-foreground: oklch(0.5 0.02 258);
+    --accent: oklch(0.968 0.004 247);
+    --accent-foreground: oklch(0.21 0.02 258);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.906 0.008 75);
-    --input: oklch(0.8 0.012 75);
-    --ring: oklch(0.65 0.06 230);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --border: oklch(0.922 0.004 258);
+    --input: oklch(0.87 0.005 258);
+    --ring: oklch(0.55 0.22 263);
+    --chart-1: oklch(0.55 0.22 263);
+    --chart-2: oklch(0.65 0.17 250);
+    --chart-3: oklch(0.72 0.13 200);
+    --chart-4: oklch(0.7 0.15 160);
+    --chart-5: oklch(0.65 0.2 25);
     --sts-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --sts-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
     --sts-duration-fast: 150ms;
     --sts-duration-normal: 250ms;
     --sts-duration-slow: 420ms;
-    --radius: 0.375rem;
-    --sidebar: oklch(0.966 0.006 75);
-    --sidebar-foreground: oklch(0.18 0.04 230);
-    --sidebar-primary: oklch(0.28 0.07 230);
+    --radius: 0.5rem;
+    --sidebar: oklch(0.985 0.002 247);
+    --sidebar-foreground: oklch(0.21 0.02 258);
+    --sidebar-primary: oklch(0.55 0.22 263);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.948 0.008 75);
-    --sidebar-accent-foreground: oklch(0.28 0.07 230);
-    --sidebar-border: oklch(0.906 0.008 75);
-    --sidebar-ring: oklch(0.65 0.06 230);
+    --sidebar-accent: oklch(0.968 0.004 247);
+    --sidebar-accent-foreground: oklch(0.21 0.02 258);
+    --sidebar-border: oklch(0.922 0.004 258);
+    --sidebar-ring: oklch(0.55 0.22 263);
   }
 
   html.dark,
   html[data-theme="dark"] {
-    --sts-card-solid: #202630;
-    --sts-bg: oklch(0.2077 0.0398 265.7549);
+    /* Clean dark theme with frosted-glass panels over an ambient gradient wash:
+       translucent slate cards + backdrop blur read as glass against the gradient. */
+    --sts-card-solid: #1e293b;
+    --sts-bg: #0f172a;
     --sts-bg-tint: rgba(255, 255, 255, 0.02);
-    --sts-glass-blur: 18px;
-    --sts-glass-saturate: 1.22;
-    --sts-glass-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 10px 32px rgba(0, 0, 0, 0.28);
-    --sts-glass-highlight: rgba(255, 255, 255, 0.08);
-    --sts-card: rgba(33, 39, 52, 0.68);
-    --sts-card-border: #2c313c;
-    --sts-foreground: #f0eee6;
-    --sts-muted: #b7b4a9;
-    --sts-subtle: #a8a5a0;
-    --sts-button: #f0eee6;
-    --sts-button-fg: #30302d;
-    --sts-secondary-bg: #262c38;
-    --sts-secondary-fg: #f0eee6;
-    --sts-accent: oklch(0.7729 0.1535 163.2231);
-    --sts-card-shadow: none;
-    /* Action / semantic tokens — dark overrides */
-    --sts-blue: oklch(0.7729 0.1535 163.2231);
-    /* Bright cyan/teal fills need dark ink — white-on-sky fails contrast */
-    --sts-blue-fg: #111827;
-    --sts-blue-tint: rgba(44, 58, 68, 0.55);
-    --sts-surface: rgb(40, 48, 58);
-    --sts-settings-subnav: rgba(36, 42, 52, 0.78);
-    --sts-settings-subnav-active: rgba(48, 56, 68, 0.95);
-
-    --sts-id: oklch(0.7729 0.1535 163.2231);
-    --sts-red: #ec8a82;
-    --sts-red-tint: #3a2b29;
-    --sts-green: #5cc88a;
-    --sts-green-tint: #1a3028;
-    --sts-purple: #b69cf0;
-    --sts-purple-tint: #352f44;
-    /* Quiet frosted diagonal in dark — accent stays soft so glass can read. */
-    --sts-bg-gradient:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--sts-accent) 7%, transparent) 0%,
-        color-mix(in srgb, #ffffff 4%, transparent) 45%,
-        color-mix(in srgb, var(--sts-blue) 5%, transparent) 100%
-      ),
-      radial-gradient(
-        70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%,
-        transparent 72%
-      ),
-      radial-gradient(
-        64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 5%, transparent) 0%,
-        transparent 74%
-      ),
-      var(--sts-bg);
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: rgba(32, 38, 48, 0.92);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: rgba(28, 34, 44, 0.97);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(0.4461 0.0263 256.8018);
-    --input: oklch(0.4461 0.0263 256.8018);
-    --ring: oklch(0.7729 0.1535 163.2231);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
-  }
-
-  /* ── AMOLED — true blacks, electric cyan for punch ── */
-  :root[data-theme="amoled"] {
-    --sts-bg: #000000;
-    --sts-card-solid: #000000;
-    --sts-bg-tint: rgba(8, 8, 8, 0.4);
-    --sts-glass-blur: 18px;
+    --sts-glass-blur: 16px;
     --sts-glass-saturate: 1.2;
     --sts-glass-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 10px 32px rgba(0, 0, 0, 0.45);
+      0 6px 24px rgba(0, 0, 0, 0.32);
     --sts-glass-highlight: rgba(255, 255, 255, 0.06);
-    --sts-card: rgba(10, 10, 10, 0.72);
-    --sts-card-border: #1a1a1a;
-    --sts-foreground: #f5f5f6;
-    --sts-muted: #bfbfc2;
-    --sts-subtle: #a6a6a9;
-    --sts-button: #ff5c30;
+    --sts-card: rgba(30, 41, 59, 0.62);
+    --sts-card-border: #334155;
+    --sts-foreground: #f1f5f9;
+    --sts-muted: #a3aec0;
+    --sts-subtle: #8b95a6;
+    --sts-button: #3b82f6;
     --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #0e0e0e;
-    --sts-secondary-fg: #f0f0f0;
-    --sts-accent: #ff5c30;
-    /* Brave-style red → orange gradient for primary buttons. */
-    --sts-primary-gradient: linear-gradient(120deg, #f5401f 0%, #fb542b 100%);
-    --sts-card-shadow: none;
-    --sts-blue: #ff5c30;
+    --sts-secondary-bg: #1e293b;
+    --sts-secondary-fg: #f1f5f9;
+    --sts-accent: #3b82f6;
+    --sts-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    /* Action / semantic tokens — dark overrides */
+    --sts-blue: #3b82f6;
     --sts-blue-fg: #ffffff;
-    --sts-blue-tint: rgba(90, 35, 18, 0.5);
-    --sts-surface: rgb(12, 12, 12);
-    --sts-settings-subnav: rgba(6, 6, 6, 0.85);
-    --sts-settings-subnav-active: rgba(16, 16, 16, 0.98);
-    --sts-id: #ff5c30;
-    --sts-red: #ff6b6b;
-    --sts-red-tint: #280a0a;
-    --sts-green: #00e676;
-    --sts-green-tint: #002a14;
-    --sts-purple: #e040fb;
-    --sts-purple-tint: #20003a;
-    /* Quiet frosted diagonal on true black. */
+    --sts-blue-tint: rgba(59, 130, 246, 0.16);
+    --sts-surface: #26334a;
+    --sts-settings-subnav: #172033;
+    --sts-settings-subnav-active: #1e293b;
+
+    --sts-id: #60a5fa;
+    --sts-red: #f87171;
+    --sts-red-tint: rgba(248, 113, 113, 0.14);
+    --sts-green: #4ade80;
+    --sts-green-tint: rgba(74, 222, 128, 0.14);
+    --sts-purple: #a78bfa;
+    --sts-purple-tint: rgba(167, 139, 250, 0.14);
+    /* Soft diagonal gradient wash (body + .sts-ambient-bg) so glass panels read. */
     --sts-bg-gradient:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%,
-        color-mix(in srgb, #ffffff 3%, transparent) 45%,
-        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
+        color-mix(in srgb, var(--sts-accent) 12%, transparent) 0%,
+        transparent 45%,
+        color-mix(in srgb, var(--sts-blue) 9%, transparent) 100%
       ),
       radial-gradient(
         70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
+        color-mix(in srgb, var(--sts-accent) 10%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
         64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 4%, transparent) 0%,
+        color-mix(in srgb, var(--sts-blue) 8%, transparent) 0%,
         transparent 74%
       ),
       var(--sts-bg);
-    --background: oklch(0 0 0);
-    --foreground: oklch(0.98 0 0);
-    --card: rgba(12, 12, 12, 0.96);
-    --card-foreground: oklch(0.98 0 0);
-    --popover: rgba(8, 8, 8, 0.98);
-    --popover-foreground: oklch(0.96 0 0);
-    --primary: oklch(0.68 0.19 38);
-    /* White ink for contrast on the red → orange primary-button gradient. */
-    --primary-foreground: oklch(0.99 0 0);
-    --secondary: oklch(0.14 0 0);
-    --secondary-foreground: oklch(0.96 0 0);
-    --muted: oklch(0.14 0 0);
-    --muted-foreground: oklch(0.75 0 0);
-    --accent: oklch(0.14 0 0);
-    --accent-foreground: oklch(0.96 0 0);
-    --destructive: oklch(0.7 0.22 22);
-    --border: oklch(0.2 0 0);
-    --input: oklch(0.2 0 0);
-    --ring: oklch(0.68 0.19 38);
-    --sidebar: oklch(0.08 0 0);
-    --sidebar-foreground: oklch(0.96 0 0);
-    --sidebar-primary: oklch(0.68 0.19 38);
-    --sidebar-primary-foreground: oklch(0.99 0 0);
-    --sidebar-accent: oklch(0.14 0 0);
-    --sidebar-accent-foreground: oklch(0.96 0 0);
-    --sidebar-border: oklch(1 0 0 / 6%);
-    --sidebar-ring: oklch(0.62 0 0);
-  }
-
-  /* ── Tangerine — cool grey-blue base, warm orange accent (tweakcn) ── */
-  :root[data-theme="tangerine"] {
-    /* Soft frosted panels; tangerine orange kept as the accent. */
-    --sts-bg: #f6f7f9;
-    --sts-card-solid: #ffffff;
-    --sts-bg-tint: rgba(0, 0, 0, 0.02);
-    --sts-glass-blur: 16px;
-    --sts-glass-saturate: 1.18;
-    --sts-glass-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.55),
-      0 8px 28px rgba(16, 35, 52, 0.04);
-    --sts-glass-highlight: rgba(255, 255, 255, 0.5);
-    --sts-card: rgba(255, 255, 255, 0.72);
-    --sts-card-border: #e8e9ec;
-    --sts-foreground: #2c2f36;
-    --sts-muted: #5b6472;
-    --sts-subtle: #8a909c;
-    --sts-button: #ef4b23;
-    --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #f1f2f5;
-    --sts-secondary-fg: #2c2f36;
-    --sts-accent: #ef4b23;
-    /* Brave-style red → orange gradient for primary buttons. */
-    --sts-primary-gradient: linear-gradient(120deg, #f5401f 0%, #fb542b 100%);
-    --sts-card-shadow: none;
-    --sts-blue: #ef4b23;
-    --sts-blue-fg: #ffffff;
-    --sts-blue-tint: #fdeae3;
-    --sts-surface: #f1f2f5;
-    --sts-settings-subnav: #f4f5f7;
-    --sts-settings-subnav-active: #ffffff;
-    --sts-id: #ef4b23;
-    --sts-red: #d84040;
-    --sts-red-tint: #fff0ee;
-    --sts-green: #2e9e5c;
-    --sts-green-tint: #edf7f2;
-    --sts-purple: #6858c0;
-    --sts-purple-tint: #eeecf8;
-    /* Quiet frosted diagonal; tangerine accent stays whisper-soft. */
-    --sts-bg-gradient:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
-        color-mix(in srgb, #ffffff 42%, transparent) 45%,
-        color-mix(in srgb, var(--sts-blue) 4%, transparent) 100%
-      ),
-      radial-gradient(
-        70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 4%, transparent) 0%,
-        transparent 72%
-      ),
-      radial-gradient(
-        64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 3%, transparent) 0%,
-        transparent 74%
-      ),
-      var(--sts-bg);
-    --background: oklch(0.9383 0.0042 236.4993);
-    --foreground: oklch(0.3211 0 0);
-    --card: oklch(1.0000 0 0);
-    --card-foreground: oklch(0.3211 0 0);
-    --popover: oklch(1.0000 0 0);
-    --popover-foreground: oklch(0.3211 0 0);
-    --primary: oklch(0.62 0.19 33);
-    --primary-foreground: oklch(1.0000 0 0);
-    --secondary: oklch(0.9670 0.0029 264.5419);
-    --secondary-foreground: oklch(0.4461 0.0263 256.8018);
-    --muted: oklch(0.9846 0.0017 247.8389);
-    --muted-foreground: oklch(0.5510 0.0234 264.3637);
-    --accent: oklch(0.9119 0.0222 243.8174);
-    --accent-foreground: oklch(0.3791 0.1378 265.5222);
-    --destructive: oklch(0.6368 0.2078 25.3313);
-    --border: oklch(0.9022 0.0052 247.8822);
-    --input: oklch(0.82 0.008 264.5420);
-    --ring: oklch(0.62 0.19 33);
-    --chart-1: oklch(0.7156 0.0605 248.6845);
-    --chart-2: oklch(0.7875 0.0917 35.9616);
-    --chart-3: oklch(0.5778 0.0759 254.1573);
-    --chart-4: oklch(0.5016 0.0849 259.4902);
-    --chart-5: oklch(0.4241 0.0952 264.0306);
-    --sidebar: oklch(0.9030 0.0046 258.3257);
-    --sidebar-foreground: oklch(0.3211 0 0);
-    --sidebar-primary: oklch(0.62 0.19 33);
-    --sidebar-primary-foreground: oklch(1.0000 0 0);
-    --sidebar-accent: oklch(0.9119 0.0222 243.8174);
-    --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
-    --sidebar-border: oklch(0.9276 0.0058 264.5313);
-    --sidebar-ring: oklch(0.62 0.19 33);
-  }
-
-  /* Brave-style red → orange gradient on the accent CTA buttons/links.
-     These use the --sts-blue token (orange in tangerine, sky-blue in amoled)
-     as a background-color, so we layer the gradient image on top. Scoped to
-     real controls to avoid tinting icon chips, badges, etc. */
-  :root[data-theme="tangerine"] :is(button, a, [role="button"]).bg-sts-blue,
-  :root[data-theme="tangerine"] :is(button, a, [role="button"]).bg-sts-blue\/90,
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue,
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90 {
-    background-image: var(--sts-primary-gradient);
-  }
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue,
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90,
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue *,
-  html[data-theme="amoled"] :is(button, a, [role="button"]).bg-sts-blue\/90 * {
-    color: #fff;
+    --background: oklch(0.22 0.03 258);
+    --foreground: oklch(0.97 0.005 258);
+    --card: oklch(0.28 0.03 258);
+    --card-foreground: oklch(0.97 0.005 258);
+    --popover: oklch(0.28 0.03 258);
+    --popover-foreground: oklch(0.97 0.005 258);
+    --primary: oklch(0.62 0.19 260);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.32 0.03 258);
+    --secondary-foreground: oklch(0.97 0.005 258);
+    --muted: oklch(0.32 0.03 258);
+    --muted-foreground: oklch(0.72 0.03 258);
+    --accent: oklch(0.32 0.03 258);
+    --accent-foreground: oklch(0.97 0.005 258);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(0.37 0.03 258);
+    --input: oklch(0.37 0.03 258);
+    --ring: oklch(0.62 0.19 260);
+    --chart-1: oklch(0.62 0.19 260);
+    --chart-2: oklch(0.7 0.15 220);
+    --chart-3: oklch(0.75 0.13 190);
+    --chart-4: oklch(0.72 0.15 160);
+    --chart-5: oklch(0.68 0.19 25);
+    --sidebar: oklch(0.2 0.03 258);
+    --sidebar-foreground: oklch(0.97 0.005 258);
+    --sidebar-primary: oklch(0.62 0.19 260);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.32 0.03 258);
+    --sidebar-accent-foreground: oklch(0.97 0.005 258);
+    --sidebar-border: oklch(0.37 0.03 258);
+    --sidebar-ring: oklch(0.62 0.19 260);
   }
 
   * {
@@ -1393,53 +1203,27 @@
   }
 }
 
-/* ── Animated gradient border for board cards ──────────────────────────────── */
-
-@property --card-border-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes card-border-spin {
-  to {
-    --card-border-angle: 360deg;
-  }
-}
+/* ── Board cards — flat hover (quiet border + subtle lift) ──────────────────── */
 
 .board-card {
   border-radius: 0.5rem;
   border: 1px solid var(--sts-card-border);
   background-color: var(--sts-card);
-  transition: box-shadow 0.2s ease;
+  transition:
+    border-color var(--sts-duration-fast) ease,
+    box-shadow var(--sts-duration-normal) var(--sts-ease-out);
 }
 
 .board-card:hover {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--sts-card-solid), var(--sts-card-solid)) padding-box,
-    conic-gradient(
-        from var(--card-border-angle),
-        var(--sts-blue) 0%,
-        var(--sts-purple) 30%,
-        #06b6d4 55%,
-        var(--sts-purple) 75%,
-        var(--sts-blue) 100%
-      )
-      border-box;
-  animation: card-border-spin 2.5s linear infinite;
-  box-shadow:
-    0 0 10px color-mix(in srgb, var(--sts-blue) 20%, transparent),
-    0 2px 6px rgba(0, 0, 0, 0.06);
+  border-color: color-mix(in srgb, var(--sts-accent) 45%, var(--sts-card-border));
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.08);
 }
 
 .dark .board-card:hover {
-  box-shadow:
-    0 0 12px color-mix(in srgb, var(--sts-blue) 35%, transparent),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* ── Toast notification animated outline ─────────────────────────────────────── */
+/* ── Toast notification — quiet accent outline on enter ─────────────────────── */
 
 @keyframes sts-toast-pulse {
   0%,
@@ -1449,14 +1233,13 @@
   45% {
     box-shadow:
       var(--sts-card-shadow),
-      0 0 0 3px var(--sts-accent),
-      0 0 18px 6px color-mix(in srgb, var(--sts-accent) 40%, transparent);
+      0 0 0 2px color-mix(in srgb, var(--sts-accent) 60%, transparent);
   }
 }
 
 .sts-toast-enter {
   /* Base shadow without !important so the animation can override it */
   box-shadow: var(--sts-card-shadow);
-  /* 4 pulses × 700 ms each = 2.8 s of visible ring, then settles */
-  animation: sts-toast-pulse 700ms ease-in-out 4;
+  /* 2 gentle pulses, then settles */
+  animation: sts-toast-pulse 700ms ease-in-out 2;
 }

@@ -59,10 +59,12 @@ import { toastError, getErrorMessage } from "@/lib/toast-error";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { BoardFilterBar } from "@/components/board/board-filter-bar";
 import {
+  FilterVisibilityMenu,
   SortDropdown,
   type SortKey,
 } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedBoardFilters } from "@/hooks/use-persisted-board-filters";
+import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { sortCards } from "@/lib/sort-cards";
 import type { UserListPerson } from "@/lib/user-list-person";
 import {
@@ -995,6 +997,25 @@ export function BoardPage({
   const modules = useMemo(() => collectModules(scopedCards), [scopedCards]);
   const availableLabels = useMemo(() => collectLabels(scopedCards), [scopedCards]);
 
+  // ── Toggleable filters (drives the "Filters" show/hide menu) ────────────────
+  const filterVisibility = usePersistedHiddenFilters("board");
+  const toggleableFilters = useMemo(
+    () =>
+      [
+        canFilterByAssignee ? { id: "assignee", label: "Assignee" } : null,
+        subDepartmentBoardGroups.length > 1 ? { id: "subDepartment", label: "Sub-department" } : null,
+        projects.length > 0 ? { id: "project", label: "Project" } : null,
+        modules.length > 0 ? { id: "module", label: "Module" } : null,
+        { id: "priority", label: "Priority" },
+        { id: "dueDate", label: "Due date" },
+        { id: "targetDate", label: "Target date" },
+        { id: "intake", label: "Intake source" },
+        { id: "status", label: "Status" },
+        { id: "labels", label: "Labels" },
+      ].filter((f): f is { id: string; label: string } => f !== null),
+    [canFilterByAssignee, subDepartmentBoardGroups.length, projects.length, modules.length],
+  );
+
   // Validate against the filter dropdown's projects, including the merged board.
   useEffect(() => {
     if (!filtersReady) return;
@@ -1187,11 +1208,14 @@ export function BoardPage({
                 hasActiveFilters={hasActiveFilters}
                 onClearFilters={clearFilters}
                 assigneeCounts={assigneeCounts}
+                isFilterVisible={filterVisibility.isVisible}
                 className="w-max"
               />
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <FilterVisibilityMenu filters={toggleableFilters} visibility={filterVisibility} />
+
               <SortDropdown
                 value={sortKey}
                 onChange={(v) => setSortKey(v as SortKey)}

@@ -6,7 +6,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { X, Search, ChevronDown, Loader2, Users, ListTodo, Bookmark, Trash2, Plus, Check, Download, CalendarClock } from "lucide-react";
-import { FilterDropdown, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -377,6 +378,8 @@ export function AllTasksPage({
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
+  // ── Filter visibility (persisted per user) ──────────────────────────────────
+  const filterVisibility = usePersistedHiddenFilters(unassignedOnly ? "all-tasks-unassigned" : "all-tasks");
   // ── Bulk selection ──────────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -580,6 +583,26 @@ export function AllTasksPage({
     }),
   );
 
+  // ── Toggleable filters (drives the "Filters" show/hide menu) ────────────────
+  const showSubDeptFilter = canFilterBySubDepartment && availableSubDepartments.length > 1;
+  const toggleableFilters = useMemo(
+    () =>
+      [
+        { id: "status", label: "Status" },
+        { id: "priority", label: "Priority" },
+        { id: "project", label: "Project" },
+        showSubDeptFilter ? { id: "subDepartment", label: "Sub-department" } : null,
+        !unassignedOnly ? { id: "people", label: "People" } : null,
+        moduleOptions.length > 0 ? { id: "module", label: "Module" } : null,
+        labelOptions.length > 0 ? { id: "labels", label: "Labels" } : null,
+        { id: "source", label: "Source" },
+        { id: "dateRange", label: "Created date" },
+        { id: "targetRange", label: "Target date" },
+      ].filter((f): f is { id: string; label: string } => f !== null),
+    [showSubDeptFilter, unassignedOnly, moduleOptions.length, labelOptions.length],
+  );
+  const showFilter = filterVisibility.isVisible;
+
   // ── Color map for rendering rows ───────────────────────────────────────────
   const colorMap = useMemo(
     () => Object.fromEntries(subDepartmentStatuses.map((s) => [s.label, s.color])),
@@ -768,28 +791,34 @@ export function AllTasksPage({
 
               <div className="hidden h-5 w-px shrink-0 bg-sts-card-border sm:block" />
 
-              <FilterDropdown
-                label="Status"
-                options={statusOptions}
-                selected={selStatus}
-                onToggle={(id) => setSelStatus(toggle(selStatus, id))}
-                onClear={() => setSelStatus(new Set())}
-              />
-              <FilterDropdown
-                label="Priority"
-                options={PRIORITY_OPTIONS}
-                selected={selPriority}
-                onToggle={(id) => setSelPriority(toggle(selPriority, id))}
-                onClear={() => setSelPriority(new Set())}
-              />
-              <FilterDropdown
-                label="Project"
-                options={projectOptions}
-                selected={selProject}
-                onToggle={(id) => setSelProject(toggle(selProject, id))}
-                onClear={() => setSelProject(new Set())}
-              />
-              {canFilterBySubDepartment && availableSubDepartments.length > 1 && (
+              {showFilter("status") && (
+                <FilterDropdown
+                  label="Status"
+                  options={statusOptions}
+                  selected={selStatus}
+                  onToggle={(id) => setSelStatus(toggle(selStatus, id))}
+                  onClear={() => setSelStatus(new Set())}
+                />
+              )}
+              {showFilter("priority") && (
+                <FilterDropdown
+                  label="Priority"
+                  options={PRIORITY_OPTIONS}
+                  selected={selPriority}
+                  onToggle={(id) => setSelPriority(toggle(selPriority, id))}
+                  onClear={() => setSelPriority(new Set())}
+                />
+              )}
+              {showFilter("project") && (
+                <FilterDropdown
+                  label="Project"
+                  options={projectOptions}
+                  selected={selProject}
+                  onToggle={(id) => setSelProject(toggle(selProject, id))}
+                  onClear={() => setSelProject(new Set())}
+                />
+              )}
+              {showFilter("subDepartment") && canFilterBySubDepartment && availableSubDepartments.length > 1 && (
                 <Select
                   value={selectedSubDepartment?.id ?? ALL_SUB_DEPARTMENTS_VALUE}
                   onValueChange={(value) =>
@@ -821,7 +850,7 @@ export function AllTasksPage({
                   </SelectContent>
                 </Select>
               )}
-              {!unassignedOnly && (
+              {showFilter("people") && !unassignedOnly && (
                 <FilterDropdown
                   label="People"
                   options={peopleOptions}
@@ -830,7 +859,7 @@ export function AllTasksPage({
                   onClear={() => setSelPeople(new Set())}
                 />
               )}
-              {moduleOptions.length > 0 && (
+              {showFilter("module") && moduleOptions.length > 0 && (
                 <FilterDropdown
                   label="Module"
                   options={moduleOptions}
@@ -839,7 +868,7 @@ export function AllTasksPage({
                   onClear={() => setSelModule(new Set())}
                 />
               )}
-              {labelOptions.length > 0 && (
+              {showFilter("labels") && labelOptions.length > 0 && (
                 <FilterDropdown
                   label="Labels"
                   options={labelOptions}
@@ -848,26 +877,32 @@ export function AllTasksPage({
                   onClear={() => setSelLabels(new Set())}
                 />
               )}
-              <FilterDropdown
-                label="Source"
-                options={SOURCE_OPTIONS}
-                selected={selSource}
-                onToggle={(id) => setSelSource(toggleExclusive(selSource, id))}
-                onClear={() => setSelSource(new Set())}
-              />
-              <DateRangeDropdown
-                value={dateRange}
-                onChange={setDateRange}
-                onClear={() => setDateRange(null)}
-              />
-              <DateRangeDropdown
-                value={targetRange}
-                onChange={setTargetRange}
-                onClear={() => setTargetRange(null)}
-                placeholder="Target date"
-                icon={CalendarClock}
-                future
-              />
+              {showFilter("source") && (
+                <FilterDropdown
+                  label="Source"
+                  options={SOURCE_OPTIONS}
+                  selected={selSource}
+                  onToggle={(id) => setSelSource(toggleExclusive(selSource, id))}
+                  onClear={() => setSelSource(new Set())}
+                />
+              )}
+              {showFilter("dateRange") && (
+                <DateRangeDropdown
+                  value={dateRange}
+                  onChange={setDateRange}
+                  onClear={() => setDateRange(null)}
+                />
+              )}
+              {showFilter("targetRange") && (
+                <DateRangeDropdown
+                  value={targetRange}
+                  onChange={setTargetRange}
+                  onClear={() => setTargetRange(null)}
+                  placeholder="Target date"
+                  icon={CalendarClock}
+                  future
+                />
+              )}
 
               <div className="hidden flex-1 lg:block" />
 
@@ -877,6 +912,8 @@ export function AllTasksPage({
                 value={sortKey}
                 onChange={(v) => setSortKey(v as SortKey)}
               />
+
+              <FilterVisibilityMenu filters={toggleableFilters} visibility={filterVisibility} />
 
               <SavedViewsMenu
                 views={savedViews}

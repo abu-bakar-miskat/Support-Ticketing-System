@@ -38,7 +38,8 @@ import { PriorityPill } from "@/components/board/priority-indicator";
 import { StatusPill } from "@/components/board/status-pill";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { DrawerLink } from "@/components/tickets/drawer-link";
-import { FilterDropdown, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { collectModules } from "@/components/board/board-filters";
 import { TagPill } from "@/components/board/tag-pill";
 
@@ -997,6 +998,22 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
     return opts;
   }, [sortedStatuses, extraStatusLabels, counts]);
 
+  // ── Toggleable filters (drives the "Filters" show/hide menu) ────────────────
+  const filterVisibility = usePersistedHiddenFilters("my-tasks");
+  const showFilter = filterVisibility.isVisible;
+  const toggleableFilters = useMemo(
+    () =>
+      [
+        statusFilterOptions.length > 0 ? { id: "status", label: "Status" } : null,
+        { id: "project", label: "Project" },
+        moduleOptions.length > 0 ? { id: "module", label: "Module" } : null,
+        { id: "priority", label: "Priority" },
+        { id: "due", label: "Due date" },
+        { id: "labels", label: "Labels" },
+      ].filter((f): f is { id: string; label: string } => f !== null),
+    [statusFilterOptions.length, moduleOptions.length],
+  );
+
   // Stable date boundaries — recomputed once per mount, not on every render.
   // These were previously bare `new Date()` calls whose object identity changed
   // every render, defeating the filteredTasks useMemo entirely.
@@ -1161,7 +1178,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               )}
             </p>
 
-            {statusFilterOptions.length > 0 && (
+            {showFilter("status") && statusFilterOptions.length > 0 && (
               <FilterDropdown
                 label="Status"
                 options={statusFilterOptions}
@@ -1176,20 +1193,22 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 onClear={() => setFilterStatus(new Set())}
               />
             )}
-            <FilterDropdown
-              label="Project"
-              options={projectOptions.map((p) => ({ id: p, label: p }))}
-              selected={filterProject}
-              onToggle={(id) =>
-                setFilterProject((prev) => {
-                  const n = new Set(prev);
-                  n.has(id) ? n.delete(id) : n.add(id);
-                  return n;
-                })
-              }
-              onClear={() => setFilterProject(new Set())}
-            />
-            {moduleOptions.length > 0 && (
+            {showFilter("project") && (
+              <FilterDropdown
+                label="Project"
+                options={projectOptions.map((p) => ({ id: p, label: p }))}
+                selected={filterProject}
+                onToggle={(id) =>
+                  setFilterProject((prev) => {
+                    const n = new Set(prev);
+                    n.has(id) ? n.delete(id) : n.add(id);
+                    return n;
+                  })
+                }
+                onClear={() => setFilterProject(new Set())}
+              />
+            )}
+            {showFilter("module") && moduleOptions.length > 0 && (
               <FilterDropdown
                 label="Module"
                 options={moduleOptions.map((m) => ({ id: m.id, label: m.name }))}
@@ -1204,57 +1223,64 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 onClear={() => setFilterModule(new Set())}
               />
             )}
-            <FilterDropdown
-              label="Priority"
-              options={[
-                { id: "urgent", label: "Urgent", color: "#ff4500" },
-                { id: "critical", label: "Critical", color: "#dc2626" },
-                { id: "high", label: "High", color: "#f97316" },
-                { id: "medium", label: "Medium", color: "#ec4899" },
-                { id: "low", label: "Low", color: "#94a3b8" },
-              ]}
-              selected={filterPriority}
-              onToggle={(id) =>
-                setFilterPriority((prev) => {
-                  const n = new Set(prev);
-                  n.has(id) ? n.delete(id) : n.add(id);
-                  return n;
-                })
-              }
-              onClear={() => setFilterPriority(new Set())}
-            />
-            <FilterDropdown
-              label="Due date"
-              options={[
-                { id: "overdue", label: "Overdue" },
-                { id: "today", label: "Due today" },
-                { id: "this_week", label: "This week" },
-                { id: "this_month", label: "This month" },
-                { id: "no_due", label: "No due date" },
-              ]}
-              selected={filterDue}
-              onToggle={(id) =>
-                setFilterDue((prev) => {
-                  const n = new Set(prev);
-                  n.has(id) ? n.delete(id) : n.add(id);
-                  return n;
-                })
-              }
-              onClear={() => setFilterDue(new Set())}
-            />
-            <FilterDropdown
-              label="Labels"
-              options={labelOptions.map((l) => ({ id: l, label: l }))}
-              selected={filterLabels}
-              onToggle={(id) =>
-                setFilterLabels((prev) => {
-                  const n = new Set(prev);
-                  n.has(id) ? n.delete(id) : n.add(id);
-                  return n;
-                })
-              }
-              onClear={() => setFilterLabels(new Set())}
-            />
+            {showFilter("priority") && (
+              <FilterDropdown
+                label="Priority"
+                options={[
+                  { id: "urgent", label: "Urgent", color: "#ff4500" },
+                  { id: "critical", label: "Critical", color: "#dc2626" },
+                  { id: "high", label: "High", color: "#f97316" },
+                  { id: "medium", label: "Medium", color: "#ec4899" },
+                  { id: "low", label: "Low", color: "#94a3b8" },
+                ]}
+                selected={filterPriority}
+                onToggle={(id) =>
+                  setFilterPriority((prev) => {
+                    const n = new Set(prev);
+                    n.has(id) ? n.delete(id) : n.add(id);
+                    return n;
+                  })
+                }
+                onClear={() => setFilterPriority(new Set())}
+              />
+            )}
+            {showFilter("due") && (
+              <FilterDropdown
+                label="Due date"
+                options={[
+                  { id: "overdue", label: "Overdue" },
+                  { id: "today", label: "Due today" },
+                  { id: "this_week", label: "This week" },
+                  { id: "this_month", label: "This month" },
+                  { id: "no_due", label: "No due date" },
+                ]}
+                selected={filterDue}
+                onToggle={(id) =>
+                  setFilterDue((prev) => {
+                    const n = new Set(prev);
+                    n.has(id) ? n.delete(id) : n.add(id);
+                    return n;
+                  })
+                }
+                onClear={() => setFilterDue(new Set())}
+              />
+            )}
+            {showFilter("labels") && (
+              <FilterDropdown
+                label="Labels"
+                options={labelOptions.map((l) => ({ id: l, label: l }))}
+                selected={filterLabels}
+                onToggle={(id) =>
+                  setFilterLabels((prev) => {
+                    const n = new Set(prev);
+                    n.has(id) ? n.delete(id) : n.add(id);
+                    return n;
+                  })
+                }
+                onClear={() => setFilterLabels(new Set())}
+              />
+            )}
+            <FilterVisibilityMenu filters={toggleableFilters} visibility={filterVisibility} />
             {activeExtraFilters > 0 && (
               <button
                 type="button"

@@ -579,6 +579,8 @@ type Props = {
   hasActiveFilters: boolean;
   onClearFilters: () => void;
   assigneeCounts: { me: number; all: number; unassigned: number };
+  /** Returns false for filters the user has hidden via the "Filters" menu. Defaults to all visible. */
+  isFilterVisible?: (id: string) => boolean;
   className?: string;
 };
 
@@ -625,8 +627,10 @@ export function BoardFilterBar({
   hasActiveFilters,
   onClearFilters,
   assigneeCounts,
+  isFilterVisible,
   className,
 }: Props) {
+  const isVisible = isFilterVisible ?? (() => true);
   const peopleOptions = [
     { value: "me", label: "Me", count: assigneeCounts.me },
     ...(isPrivileged
@@ -687,16 +691,18 @@ export function BoardFilterBar({
 
       {/* People */}
       {isPrivileged ? (
-        <SearchableSelect
-          value={assigneeFilter}
-          onChange={onAssigneeFilterChange}
-          options={peopleOptions}
-          aria-label="Filter by assignee"
-          icon={Users}
-          size="sm"
-          highlightWhenSet={assigneeFilter !== "all"}
-          className="w-auto max-w-[11rem] shrink-0"
-        />
+        isVisible("assignee") && (
+          <SearchableSelect
+            value={assigneeFilter}
+            onChange={onAssigneeFilterChange}
+            options={peopleOptions}
+            aria-label="Filter by assignee"
+            icon={Users}
+            size="sm"
+            highlightWhenSet={assigneeFilter !== "all"}
+            className="w-auto max-w-[11rem] shrink-0"
+          />
+        )
       ) : (
         <div className="flex h-7 items-center gap-1 rounded-full border border-sts-blue/30 bg-sts-blue-tint px-2 font-sans text-[11.5px] text-sts-foreground">
           <UserAvatar
@@ -712,7 +718,7 @@ export function BoardFilterBar({
       )}
 
       {/* SubDepartment */}
-      {subDepartmentOptions.length > 1 && (
+      {isVisible("subDepartment") && subDepartmentOptions.length > 1 && (
         <SearchableSelect
           value={view === "list" ? listSubDepartmentFilter : activeSubDepartmentId}
           onChange={view === "list" ? onListSubDepartmentFilterChange : onSubDepartmentChange}
@@ -726,7 +732,7 @@ export function BoardFilterBar({
       )}
 
       {/* Project */}
-      {projects.length > 0 && (
+      {isVisible("project") && projects.length > 0 && (
         <SearchableSelect
           value={projectFilter}
           onChange={onProjectFilterChange}
@@ -743,7 +749,7 @@ export function BoardFilterBar({
       )}
 
       {/* Module */}
-      {modules.length > 0 && (
+      {isVisible("module") && modules.length > 0 && (
         <SearchableSelect
           value={moduleFilter}
           onChange={onModuleFilterChange}
@@ -760,60 +766,72 @@ export function BoardFilterBar({
       )}
 
       {/* Priority */}
-      <SearchableSelect
-        value={priorityFilter}
-        onChange={(v) => onPriorityFilterChange(v as PriorityFilter)}
-        options={PRIORITY_OPTIONS}
-        aria-label="Filter by priority"
-        icon={Flag}
-        size="sm"
-        highlightWhenSet={priorityFilter !== "all"}
-        className="w-auto max-w-[10rem] shrink-0"
-      />
+      {isVisible("priority") && (
+        <SearchableSelect
+          value={priorityFilter}
+          onChange={(v) => onPriorityFilterChange(v as PriorityFilter)}
+          options={PRIORITY_OPTIONS}
+          aria-label="Filter by priority"
+          icon={Flag}
+          size="sm"
+          highlightWhenSet={priorityFilter !== "all"}
+          className="w-auto max-w-[10rem] shrink-0"
+        />
+      )}
 
       {/* Due date — presets + custom range in one control */}
-      <HybridDueDateFilter
-        dateFilter={dateFilter}
-        onDateFilterChange={onDateFilterChange}
-        dueRange={dueRange}
-        onDueRangeChange={onDueRangeChange}
-      />
+      {isVisible("dueDate") && (
+        <HybridDueDateFilter
+          dateFilter={dateFilter}
+          onDateFilterChange={onDateFilterChange}
+          dueRange={dueRange}
+          onDueRangeChange={onDueRangeChange}
+        />
+      )}
 
       {/* Target date — per-person estimate target, matches any assignee */}
-      <HybridDueDateFilter
-        variant="target"
-        dateFilter={targetDateFilter}
-        onDateFilterChange={onTargetDateFilterChange}
-        dueRange={targetRange}
-        onDueRangeChange={onTargetRangeChange}
-      />
+      {isVisible("targetDate") && (
+        <HybridDueDateFilter
+          variant="target"
+          dateFilter={targetDateFilter}
+          onDateFilterChange={onTargetDateFilterChange}
+          dueRange={targetRange}
+          onDueRangeChange={onTargetRangeChange}
+        />
+      )}
 
       {/* Intake source */}
-      <SearchableSelect
-        value={intakeFilter}
-        onChange={(v) => onIntakeFilterChange(v as IntakeFilter)}
-        options={INTAKE_OPTIONS}
-        aria-label="Filter by support source"
-        icon={Inbox}
-        size="sm"
-        highlightWhenSet={intakeFilter !== "all"}
-        className="w-auto max-w-[10rem] shrink-0"
-      />
+      {isVisible("intake") && (
+        <SearchableSelect
+          value={intakeFilter}
+          onChange={(v) => onIntakeFilterChange(v as IntakeFilter)}
+          options={INTAKE_OPTIONS}
+          aria-label="Filter by support source"
+          icon={Inbox}
+          size="sm"
+          highlightWhenSet={intakeFilter !== "all"}
+          className="w-auto max-w-[10rem] shrink-0"
+        />
+      )}
 
       {/* Status */}
-      <StatusMultiSelect
-        value={statusFilter}
-        onChange={onStatusFilterChange}
-        options={availableStatuses}
-      />
+      {isVisible("status") && (
+        <StatusMultiSelect
+          value={statusFilter}
+          onChange={onStatusFilterChange}
+          options={availableStatuses}
+        />
+      )}
 
       {/* Labels */}
-      <LabelMultiSelect
-        value={labelFilter}
-        onChange={onLabelFilterChange}
-        options={availableLabels}
-        active={labelFilter.length > 0}
-      />
+      {isVisible("labels") && (
+        <LabelMultiSelect
+          value={labelFilter}
+          onChange={onLabelFilterChange}
+          options={availableLabels}
+          active={labelFilter.length > 0}
+        />
+      )}
 
       {hasActiveFilters && (
         <button

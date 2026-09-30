@@ -35,8 +35,8 @@ export default async function PlatformUsersPage() {
     loadAuditFilterOptions(),
   ])
 
-  // Platform Users directory excludes super admins — those live under Administrators.
-  const members = users.filter((u) => !u.isSuperAdmin)
+  // Directory lists everyone; super admins are surfaced with their own filter.
+  const members = users
   const tenants: InviteTenant[] = tenantRows
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Crown, Search, ScrollText, Trash2, Users } from "lucide-react";
+import { Building2, Crown, Search, ScrollText, ShieldCheck, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,18 +29,19 @@ type UserRow = {
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   manager: "Manager",
-  sub_manager: "Lead",
+  sub_manager: "Sub-manager",
   agent: "Agent",
 };
 
-// Super admins are excluded from this directory, so the role filter only covers
-// the tenant-scoped roles.
-type RoleFilter = "all" | "admin" | "manager" | "sub_manager" | "agent";
+// Super admins get their own filter; the tenant-scoped role filters exclude them
+// so each person falls into exactly one bucket.
+type RoleFilter = "all" | "super_admin" | "admin" | "manager" | "sub_manager" | "agent";
 const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "super_admin", label: "Super admin" },
   { id: "admin", label: "Admin" },
   { id: "manager", label: "Manager" },
-  { id: "sub_manager", label: "Sub Manager" },
+  { id: "sub_manager", label: "Sub-manager" },
   { id: "agent", label: "Agent" },
 ];
 
@@ -48,14 +49,16 @@ function matchesRoleFilter(u: UserRow, f: RoleFilter): boolean {
   switch (f) {
     case "all":
       return true;
+    case "super_admin":
+      return u.isSuperAdmin === true;
     case "admin":
-      return u.role === "admin";
+      return !u.isSuperAdmin && u.role === "admin";
     case "manager":
-      return u.role === "manager";
+      return !u.isSuperAdmin && u.role === "manager";
     case "sub_manager":
-      return u.role === "sub_manager";
+      return !u.isSuperAdmin && u.role === "sub_manager";
     case "agent":
-      return u.role === "agent";
+      return !u.isSuperAdmin && u.role === "agent";
   }
 }
 
@@ -137,13 +140,14 @@ export function PlatformUsers({
   const roleCounts = useMemo(() => {
     const counts: Record<RoleFilter, number> = {
       all: users.length,
+      super_admin: 0,
       admin: 0,
       manager: 0,
       sub_manager: 0,
       agent: 0,
     };
     for (const u of users) {
-      for (const f of ["admin", "manager", "sub_manager", "agent"] as RoleFilter[]) {
+      for (const f of ["super_admin", "admin", "manager", "sub_manager", "agent"] as RoleFilter[]) {
         if (matchesRoleFilter(u, f)) counts[f] += 1;
       }
     }
@@ -156,7 +160,7 @@ export function PlatformUsers({
         <PageHeader
           icon={Users}
           title="Platform users"
-          description="All members across the platform, excluding super admins. Use Administrators to manage platform-level access."
+          description="All members across the platform. Use Administrators to manage platform-level access."
           actions={<PlatformInviteMemberDialog tenants={tenants} />}
         />
 
@@ -218,6 +222,12 @@ export function PlatformUsers({
                         </span>
                         {user.id === currentUserId && (
                           <span className="font-sans text-[11px] text-sts-subtle">(you)</span>
+                        )}
+                        {user.isSuperAdmin && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-sts-purple/10 px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-purple">
+                            <ShieldCheck className="size-2.5" />
+                            Super admin
+                          </span>
                         )}
                         {roleLabel && (
                           <span className="rounded-full bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">

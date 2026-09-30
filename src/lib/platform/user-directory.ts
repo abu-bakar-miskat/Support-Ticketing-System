@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { deriveEffectiveRole } from "@/lib/role-assignment"
 
 export type PlatformDirectoryUser = {
   id: string
@@ -30,6 +31,11 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
       avatarUrl: true,
       role: true,
       isSuperAdmin: true,
+      // Canonical role lives in RoleAssignment (SRS D-06), not the legacy
+      // Profile.role column — scoped role changes never write Profile.role, so
+      // it goes stale (e.g. a sub-department lead still reads "agent" there).
+      // Derive the effective role from these instead. See lib/role-assignment.
+      roleAssignments: { select: { role: true, scopeType: true, scopeId: true } },
       subDepartment: {
         select: { name: true, department: { select: { id: true, name: true } } },
       },
@@ -93,7 +99,7 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
       name: r.name,
       email: r.email,
       avatarUrl: r.avatarUrl,
-      role: r.role,
+      role: deriveEffectiveRole(r.roleAssignments),
       isSuperAdmin: r.isSuperAdmin,
       tenants: [...new Set(r.tenantMemberships.map((t) => t.tenant.name))],
       departments: [...deptMap.values()]

@@ -273,7 +273,9 @@ export function PlatformSettingsAdmin({
   const [resettingOtp, setResettingOtp] = useState(false);
 
   const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
-  const otpPreviewHtml = otpBodyHtml.replaceAll("{{code}}", "123456");
+  const otpPreviewHtml = otpBodyHtml
+    .replaceAll("{{code}}", "123456")
+    .replaceAll("{{platformName}}", platformName.trim() || "Global Support Portal");
 
   async function saveOtp() {
     setSavingOtp(true);
@@ -406,7 +408,7 @@ export function PlatformSettingsAdmin({
                   value={platformName}
                   onChange={(e) => setPlatformName(e.target.value)}
                   className="mt-1 h-9 w-full"
-                  placeholder="Support Platform"
+                  placeholder="Global Support Portal"
                 />
               </div>
               <div className="flex flex-col gap-[5px]">
@@ -654,7 +656,9 @@ export function PlatformSettingsAdmin({
               <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
                 The passwordless sign-in code email, sent to everyone across the platform. Use{" "}
                 <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{code}}"}</code>{" "}
-                where the numeric code should appear.
+                where the numeric code should appear, and{" "}
+                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{platformName}}"}</code>{" "}
+                for the company name.
               </p>
             </div>
           </div>

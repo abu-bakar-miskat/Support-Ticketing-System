@@ -32,7 +32,7 @@ describe("sendLoginCode", () => {
       error: null,
     });
     sendAuthEmail.mockResolvedValue({ ok: true, id: "email-1", via: "resend" });
-    getPlatformSettings.mockResolvedValue({ otpEmailTemplate: null });
+    getPlatformSettings.mockResolvedValue({ otpEmailTemplate: null, platformName: "Acme Support" });
   });
 
   it("sends only the numeric OTP and never includes a magic link", async () => {
@@ -46,18 +46,21 @@ describe("sendLoginCode", () => {
     expect(sendAuthEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "new.member@example.com",
-        from: "Global Support Portal <login@example.com>",
+        from: "Acme Support <login@example.com>",
         text: expect.stringContaining("12345678"),
       }),
     );
     const message = sendAuthEmail.mock.calls[0][0];
     expect(message.html).toContain("12345678");
+    expect(message.subject).toContain("Acme Support");
+    expect(message.html).toContain("Acme Support");
     expect(message.html).not.toContain("ConfirmationURL");
     expect(message.html).not.toContain("href=");
   });
 
   it("uses the super-admin OTP override when one is set", async () => {
     getPlatformSettings.mockResolvedValue({
+      platformName: "Acme Support",
       otpEmailTemplate: {
         subject: "Custom sign-in subject",
         bodyHtml: "<p>Your code is {{code}}</p>",

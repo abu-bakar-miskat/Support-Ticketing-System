@@ -57,7 +57,6 @@ import {
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
-import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -449,6 +448,134 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
     return localRoles[m.userId] ?? m.role;
   }
 
+  // One member row inside a sub-department group. `currentSubId` is the group the
+  // row is rendered under, so the "Other sub-departments" column can hide the
+  // current team and only show the member's *other* memberships (plus the Add
+  // dropdown, which still offers every team they aren't already in).
+  function renderMemberRow(m: MemberRow, currentSubId: string) {
+    const role = currentRole(m);
+    const memberships = m.subDepartmentMemberships ?? [];
+    const otherMemberships = memberships.filter((s) => s.subDepartmentId !== currentSubId);
+    return (
+      <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
+        <TableCell className="py-0">
+          <div className="flex h-[54px] items-center gap-2.5">
+            <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={28} />
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
+              {m.isActive === false && (
+                <span title="Excluded from assignment" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  <BanIcon className="size-2.5" />
+                  No assign
+                </span>
+              )}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="py-0">
+          <span className="font-sans text-[11.5px] text-sts-muted">{m.email}</span>
+        </TableCell>
+        <TableCell className="py-0">
+          <RoleDropdown
+            role={role}
+            options={data.isAdmin ? ROLE_OPTIONS_ADMIN : ROLE_OPTIONS_MANAGER}
+            saving={saving === m.userId}
+            onChange={(v) => handleRoleChange(m.userId, v)}
+          />
+        </TableCell>
+        <TableCell className="py-0">
+          <div className="flex h-[54px] items-center gap-1 flex-wrap">
+            <SubDepartmentAddDropdown
+              subDepartments={data.availableSubDepartments.filter((s) => !memberships.some((ms) => ms.subDepartmentId === s.id))}
+              saving={saving === m.userId}
+              onAdd={(v) => handleAddToSubDepartment(m, v)}
+            />
+            {otherMemberships.length === 0 ? (
+              <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
+            ) : (
+              otherMemberships.map((s) => (
+                <span key={s.subDepartmentId} className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
+                  {s.subDepartmentName}
+                  <button
+                    type="button"
+                    title={`Remove from ${s.subDepartmentName}`}
+                    disabled={saving === m.userId}
+                    onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
+                    className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="py-0">
+          <div className="flex h-[54px] items-center">
+            {(() => {
+              // Invite is "accepted" only when the member has at least one
+              // sub-department membership and every one is active (isActive).
+              // A pending (isActive: false) membership means they haven't
+              // accepted yet — this is what login/ticket-creation require.
+              const accepted = memberships.length > 0 && memberships.every((s) => s.accepted !== false);
+              return (
+                <span
+                  title={accepted ? "Invite accepted" : "Invite pending — member hasn't accepted yet"}
+                  className={cn(
+                    "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
+                    accepted
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                  )}
+                >
+                  <span className={cn("size-1.5 rounded-full", accepted ? "bg-green-500" : "bg-amber-500")} />
+                  {accepted ? "Accepted" : "Pending"}
+                </span>
+              );
+            })()}
+          </div>
+        </TableCell>
+        <TableCell className="py-0">
+          <div className="flex h-[54px] items-center">
+            <button
+              type="button"
+              onClick={() => handleToggleActive(m)}
+              className={cn(
+                "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium transition-colors",
+                m.isActive !== false
+                  ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
+                  : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400",
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", m.isActive !== false ? "bg-green-500" : "bg-red-500")} />
+              {m.isActive !== false ? "Active" : "Inactive"}
+            </button>
+          </div>
+        </TableCell>
+        <TableCell className="py-0 text-right">
+          <div className="flex h-[54px] items-center justify-end gap-0.5">
+            <button
+              type="button"
+              title="Configure availability"
+              onClick={() => setConfigMember(toConfigTarget(m))}
+              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <Settings2 className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmRemoveMember(m)}
+              title="Remove from department"
+              className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto px-6 py-8 sm:px-10 lg:px-12">
       {/* Header */}
@@ -660,155 +787,60 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </button>
         }
       >
-        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-          <Table className="min-w-[720px]">
-            <TableHeader>
-              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                <TableHead className="h-8 w-[26%]"><SectionLabel>Name</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>SubDepartments</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[110px]"><SectionLabel>Invite</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
-                <TableHead className="h-8 w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {members.length === 0 ? (
-                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={7} className="py-0">
-                    <div className="flex h-[54px] items-center">
-                      <span className="font-sans text-[11.5px] text-sts-muted">No sub-department members yet. Invite people into a sub-department.</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                members.map((m) => {
-                  const role = currentRole(m);
-                  const memberships = m.subDepartmentMemberships ?? [];
-                  return (
-                    <TableRow key={m.userId} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
-                      <TableCell className="py-0">
-                        <div className="flex h-[54px] items-center gap-2.5">
-                          <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.userId} size={28} />
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{m.name}</span>
-                            {m.isActive === false && (
-                              <span title="Excluded from assignment" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-red-100 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                                <BanIcon className="size-2.5" />
-                                No assign
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <span className="font-sans text-[11.5px] text-sts-muted">{m.email}</span>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <RoleDropdown
-                          role={role}
-                          options={data.isAdmin ? ROLE_OPTIONS_ADMIN : ROLE_OPTIONS_MANAGER}
-                          saving={saving === m.userId}
-                          onChange={(v) => handleRoleChange(m.userId, v)}
-                        />
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <div className="flex h-[54px] items-center gap-1 flex-wrap">
-                          <SubDepartmentAddDropdown
-                            subDepartments={data.availableSubDepartments.filter((s) => !memberships.some((ms) => ms.subDepartmentId === s.id))}
-                            saving={saving === m.userId}
-                            onAdd={(v) => handleAddToSubDepartment(m, v)}
-                          />
-                          {memberships.length === 0 ? (
-                            <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
-                          ) : (
-                            memberships.map((s) => (
-                              <span key={s.subDepartmentId} className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                                {s.subDepartmentName}
-                                <button
-                                  type="button"
-                                  title={`Remove from ${s.subDepartmentName}`}
-                                  disabled={saving === m.userId}
-                                  onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
-                                  className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
-                                >
-                                  <X className="size-3" />
-                                </button>
-                              </span>
-                            ))
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <div className="flex h-[54px] items-center">
-                          {(() => {
-                            // Invite is "accepted" only when the member has at least one
-                            // sub-department membership and every one is active (isActive).
-                            // A pending (isActive: false) membership means they haven't
-                            // accepted yet — this is what login/ticket-creation require.
-                            const accepted = memberships.length > 0 && memberships.every((s) => s.accepted !== false);
-                            return (
-                              <span
-                                title={accepted ? "Invite accepted" : "Invite pending — member hasn't accepted yet"}
-                                className={cn(
-                                  "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
-                                  accepted
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-                                )}
-                              >
-                                <span className={cn("size-1.5 rounded-full", accepted ? "bg-green-500" : "bg-amber-500")} />
-                                {accepted ? "Accepted" : "Pending"}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-0">
-                        <div className="flex h-[54px] items-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleActive(m)}
-                            className={cn(
-                              "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium transition-colors",
-                              m.isActive !== false
-                                ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
-                                : "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400",
-                            )}
-                          >
-                            <span className={cn("size-1.5 rounded-full", m.isActive !== false ? "bg-green-500" : "bg-red-500")} />
-                            {m.isActive !== false ? "Active" : "Inactive"}
-                          </button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-0 text-right">
-                        <div className="flex h-[54px] items-center justify-end gap-0.5">
-                          <button
-                            type="button"
-                            title="Configure availability"
-                            onClick={() => setConfigMember(toConfigTarget(m))}
-                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Settings2 className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmRemoveMember(m)}
-                            title="Remove from department"
-                            className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {data.availableSubDepartments.length === 0 ? (
+          <div className="rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] py-5">
+            <span className="font-sans text-[11.5px] text-sts-muted">No sub-departments yet. Create a sub-department, then invite people into it.</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {data.availableSubDepartments.map((sub) => {
+              // A member belongs to this group if they hold a membership in this
+              // sub-department. Members in several sub-departments appear under each.
+              const groupMembers = members.filter((m) =>
+                (m.subDepartmentMemberships ?? []).some((s) => s.subDepartmentId === sub.id),
+              );
+              return (
+                <div key={sub.id} className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 px-0.5">
+                    <Users className="size-3.5 text-sts-subtle" />
+                    <h3 className="font-sans text-[13px] font-semibold text-sts-foreground">{sub.name}</h3>
+                    <span className="font-sans text-[11.5px] text-sts-subtle">
+                      {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+                    <Table className="min-w-[720px]">
+                      <TableHeader>
+                        <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                          <TableHead className="h-8 w-[26%]"><SectionLabel>Name</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
+                          <TableHead className="h-8"><SectionLabel>Other sub-departments</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[110px]"><SectionLabel>Invite</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {groupMembers.length === 0 ? (
+                          <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                            <TableCell colSpan={7} className="py-0">
+                              <div className="flex h-[54px] items-center">
+                                <span className="font-sans text-[11.5px] text-sts-muted">No members in this sub-department yet.</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          groupMembers.map((m) => renderMemberRow(m, sub.id))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Section>
 
       {/* Invited users */}
@@ -906,21 +938,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </Table>
         </div>
       </Section>
-
-      {/* Super-Admin feature control — grant/revoke this department's features. */}
-      {data.canControlFeatures && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Settings2 className="size-4 text-sts-muted" />
-            <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
-              Features <span className="font-normal text-sts-subtle">(super admin)</span>
-            </h2>
-          </div>
-          <div className="rounded-[6px] border border-sts-card-border bg-sts-card p-[22px]">
-            <DepartmentFeaturesPanel departmentId={data.id} />
-          </div>
-        </div>
-      )}
 
       {showInviteModal && (
         <InviteByEmailModal

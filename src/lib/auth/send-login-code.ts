@@ -5,7 +5,22 @@ import { renderOtpEmail } from "@/lib/email-templates/otp";
 import { isAuthEmailConfigured, sendAuthEmail } from "@/lib/email-transport";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
-const DEFAULT_FROM = "Global Support Portal <onboarding@mail.pengroup.com>";
+const DEFAULT_FROM = "onboarding@mail.pengroup.com";
+
+/**
+ * Build the `From` header so the company/platform name is the sender's display
+ * name, keeping the configured email address. Accepts either a bare address
+ * (`x@y.com`) or a full `Name <x@y.com>` value and rewrites only the name.
+ */
+function withSenderName(from: string, name: string): string {
+  const match = from.match(/<([^>]+)>/);
+  const address = (match ? match[1] : from).trim();
+  const display = name.trim();
+  if (!display) return address;
+  // RFC 5322: quote the display name if it contains characters that need it.
+  const safeDisplay = /[",<>@]/.test(display) ? `"${display.replace(/"/g, '\\"')}"` : display;
+  return `${safeDisplay} <${address}>`;
+}
 // Server-side backstop for the 90s resend cooldown enforced in the UI. Keeps a
 // user (or a bypassed client) from hammering the mail server with back-to-back
 // code requests.
@@ -47,10 +62,10 @@ export async function sendLoginCode(email: string): Promise<SendLoginCodeResult>
     return { error: "Could not generate a sign-in code. Please try again." };
   }
 
-  const { otpEmailTemplate } = await getPlatformSettings();
-  const mail = renderOtpEmail(code, otpEmailTemplate);
+  const { otpEmailTemplate, platformName } = await getPlatformSettings();
+  const mail = renderOtpEmail(code, platformName, otpEmailTemplate);
   const result = await sendAuthEmail({
-    from: process.env.RESEND_FROM_EMAIL || DEFAULT_FROM,
+    from: withSenderName(process.env.RESEND_FROM_EMAIL || DEFAULT_FROM, platformName),
     to: email,
     subject: mail.subject,
     html: mail.html,

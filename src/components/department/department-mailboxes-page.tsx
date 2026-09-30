@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
+  CornerDownRight,
   Copy,
+  Gauge,
+  ListChecks,
   Loader2,
   Mail,
   Pencil,
@@ -12,7 +15,9 @@ import {
   Power,
   RefreshCw,
   Trash2,
+  UserCog,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -20,6 +25,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -89,6 +95,42 @@ const ASSIGNMENT_METHOD_LABEL: Record<AssignmentMethod, string> = {
   MANUAL: "Manual",
   MANUAL_SELECT: "Manual user",
 };
+
+const ASSIGNMENT_METHOD_META: Record<
+  AssignmentMethod,
+  { icon: LucideIcon; className: string; description: string }
+> = {
+  RULE_BASED: {
+    icon: ListChecks,
+    className: "text-violet-600 dark:text-violet-400",
+    description: "Route by matching rules",
+  },
+  ROUND_ROBIN: {
+    icon: RefreshCw,
+    className: "text-sky-600 dark:text-sky-400",
+    description: "Cycle evenly across the team",
+  },
+  WORKLOAD_BASED: {
+    icon: Gauge,
+    className: "text-amber-600 dark:text-amber-400",
+    description: "Send to the least-loaded agent",
+  },
+  MANUAL: {
+    icon: UserCog,
+    className: "text-emerald-600 dark:text-emerald-400",
+    description: "Leave unassigned for pickup",
+  },
+  MANUAL_SELECT: {
+    icon: UserCog,
+    className: "text-teal-600 dark:text-teal-400",
+    description: "Route to chosen members",
+  },
+};
+
+// Methods offered in the mailbox picker (rule-based + manual-user are hidden).
+const SELECTABLE_ASSIGNMENT_METHODS = (
+  Object.keys(ASSIGNMENT_METHOD_LABEL) as AssignmentMethod[]
+).filter((m) => m !== "RULE_BASED" && m !== "MANUAL_SELECT");
 
 type SubDepartmentMember = {
   id: string;
@@ -524,20 +566,27 @@ export function DepartmentMailboxesPage({
                           {c.failureCount} failed check{c.failureCount === 1 ? "" : "s"}
                         </span>
                       )}
-                      <span className="flex items-center gap-1">
-                        Assignment:{" "}
-                        <span className="font-medium text-sts-foreground">
-                          {ASSIGNMENT_METHOD_LABEL[c.assignmentMethod ?? inheritedMethod(c.subDepartmentId)]}
-                        </span>
-                        {c.assignmentMethod === null ? (
-                          <span className="text-sts-subtle">(inherited)</span>
-                        ) : (
-                          c.assignmentMethod === "MANUAL_SELECT" && (
-                            <span className="text-sts-subtle">
-                              · {c.manualAssigneeIds.length} member{c.manualAssigneeIds.length === 1 ? "" : "s"}
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-sts-subtle">Assignment</span>
+                        {(() => {
+                          const effective = c.assignmentMethod ?? inheritedMethod(c.subDepartmentId);
+                          const em = ASSIGNMENT_METHOD_META[effective];
+                          const EmIcon = em.icon;
+                          return (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-sts-card-border bg-sts-surface px-1.5 py-0.5 font-medium text-sts-foreground">
+                              <EmIcon className={cn("size-3", em.className)} />
+                              {ASSIGNMENT_METHOD_LABEL[effective]}
+                              {c.assignmentMethod === null && (
+                                <span className="text-[10px] font-normal text-sts-subtle">· inherited</span>
+                              )}
+                              {c.assignmentMethod === "MANUAL_SELECT" && (
+                                <span className="text-[10px] font-normal text-sts-subtle">
+                                  · {c.manualAssigneeIds.length} member{c.manualAssigneeIds.length === 1 ? "" : "s"}
+                                </span>
+                              )}
                             </span>
-                          )
-                        )}
+                          );
+                        })()}
                         {canManage && editingAssignmentId !== c.id && (
                           <button
                             type="button"
@@ -621,19 +670,55 @@ export function DepartmentMailboxesPage({
                         <SelectTrigger
                           size="sm"
                           aria-label="Assignment method"
-                          className="h-7 border-sts-blue/40 bg-sts-surface px-2 text-[12px] text-sts-foreground"
+                          className="h-8 min-w-52 gap-2 rounded-lg border-sts-blue/30 bg-sts-surface px-2.5 text-[12px] text-sts-foreground shadow-sm transition-colors hover:border-sts-blue/60"
                         >
-                          <SelectValue />
+                          <SelectValue>
+                            {(value: string) => {
+                              if (value === "INHERIT") {
+                                const m = inheritedMethod(c.subDepartmentId);
+                                return (
+                                  <span className="flex items-center gap-1.5">
+                                    <CornerDownRight className="size-3.5 text-sts-subtle" />
+                                    <span className="text-sts-muted">Inherit</span>
+                                    <span className="text-sts-subtle">· {ASSIGNMENT_METHOD_LABEL[m]}</span>
+                                  </span>
+                                );
+                              }
+                              const meta = ASSIGNMENT_METHOD_META[value as AssignmentMethod];
+                              const Icon = meta.icon;
+                              return (
+                                <span className="flex items-center gap-1.5">
+                                  <Icon className={cn("size-3.5", meta.className)} />
+                                  <span className="font-medium">{ASSIGNMENT_METHOD_LABEL[value as AssignmentMethod]}</span>
+                                </span>
+                              );
+                            }}
+                          </SelectValue>
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="INHERIT" className="text-[12px]">
-                            Inherit · {ASSIGNMENT_METHOD_LABEL[inheritedMethod(c.subDepartmentId)]}
+                        <SelectContent className="min-w-64 p-1">
+                          <SelectItem value="INHERIT" className="items-start gap-2 py-1.5 text-[12px]">
+                            <CornerDownRight className="mt-0.5 size-4 shrink-0 text-sts-subtle" />
+                            <span className="flex min-w-0 flex-col gap-0.5">
+                              <span className="font-medium text-sts-foreground">Inherit</span>
+                              <span className="text-[11px] whitespace-normal text-sts-subtle">
+                                Sub-department default · {ASSIGNMENT_METHOD_LABEL[inheritedMethod(c.subDepartmentId)]}
+                              </span>
+                            </span>
                           </SelectItem>
-                          {Object.entries(ASSIGNMENT_METHOD_LABEL).map(([value, label]) => (
-                            <SelectItem key={value} value={value} className="text-[12px]">
-                              {label}
-                            </SelectItem>
-                          ))}
+                          <SelectSeparator />
+                          {SELECTABLE_ASSIGNMENT_METHODS.map((value) => {
+                            const meta = ASSIGNMENT_METHOD_META[value];
+                            const Icon = meta.icon;
+                            return (
+                              <SelectItem key={value} value={value} className="items-start gap-2 py-1.5 text-[12px]">
+                                <Icon className={cn("mt-0.5 size-4 shrink-0", meta.className)} />
+                                <span className="flex min-w-0 flex-col gap-0.5">
+                                  <span className="font-medium text-sts-foreground">{ASSIGNMENT_METHOD_LABEL[value]}</span>
+                                  <span className="text-[11px] whitespace-normal text-sts-subtle">{meta.description}</span>
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                       <button
@@ -641,18 +726,20 @@ export function DepartmentMailboxesPage({
                         onClick={() => saveAssignmentMethod(c)}
                         disabled={savingAssignment}
                         title="Save assignment method"
-                        className="rounded-full p-1 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
+                        aria-label="Save assignment method"
+                        className="flex size-8 items-center justify-center rounded-lg bg-sts-green text-white shadow-sm transition-colors hover:bg-sts-green/90 disabled:opacity-50"
                       >
-                        {savingAssignment ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                        {savingAssignment ? <Loader2 className="size-4 animate-spin" strokeWidth={2.75} /> : <Check className="size-4" strokeWidth={2.75} />}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
                         disabled={savingAssignment}
                         title="Cancel"
-                        className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
+                        aria-label="Cancel"
+                        className="flex size-8 items-center justify-center rounded-lg border border-sts-card-border bg-sts-surface text-sts-muted shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-900/20"
                       >
-                        <X className="size-3.5" />
+                        <X className="size-4" strokeWidth={2.75} />
                       </button>
                     </div>
 

@@ -179,26 +179,43 @@ async function sendViaResend(message: OutboundEmail): Promise<SendOutboundResult
 }
 
 /**
- * Whether authentication-related mail (OTP, invites) should go to Mailpit.
- * Driven by the platform `devMode` setting.
+ * In LOCAL development, Mailpit routing is opt-in via the `ALLOW_MAILPIT` env
+ * flag. Only the exact value `true` (case-insensitive) enables it; unset, empty,
+ * or anything else keeps mail on the real provider (Resend). This flag has no
+ * effect outside `next dev` — deployed environments use the platform `devMode`
+ * setting instead (see below).
  */
-export async function isAuthEmailDevMode(): Promise<boolean> {
+function isMailpitAllowed(): boolean {
+  return process.env.ALLOW_MAILPIT?.trim().toLowerCase() === "true";
+}
+
+/**
+ * Resolve whether mail should be diverted to Mailpit.
+ *
+ * - Local dev (`NODE_ENV=development`): driven solely by `ALLOW_MAILPIT`, so a
+ *   developer machine never touches the shared DB flag to decide.
+ * - Deployed (preview/prod): driven by the platform `devMode` setting, exactly
+ *   as before — the Settings → Email delivery mode toggle still controls it.
+ */
+async function shouldUseMailpit(): Promise<boolean> {
+  if (process.env.NODE_ENV === "development") {
+    return isMailpitAllowed();
+  }
   const { devMode } = await getPlatformSettings();
   return devMode;
+}
+
+/** Whether authentication-related mail (OTP, invites) should go to Mailpit. */
+export async function isAuthEmailDevMode(): Promise<boolean> {
+  return shouldUseMailpit();
 }
 
 /**
  * Whether ALL outbound mail (ticket confirmations, assignments, replies, …)
  * should be diverted to Mailpit instead of the real recipient.
- *
- * Driven solely by the platform `devMode` flag, identical to auth email. When
- * delivery mode is Production (`devMode` off) NOTHING is diverted to Mailpit —
- * not even on a local `next dev` machine. Turn `devMode` on to route mail to the
- * shared Mailpit inbox while developing.
  */
 export async function isOutboundEmailDevMode(): Promise<boolean> {
-  const { devMode } = await getPlatformSettings();
-  return devMode;
+  return shouldUseMailpit();
 }
 
 /**

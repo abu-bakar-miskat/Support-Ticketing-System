@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Ban, Check, ChevronDown, Inbox, Mail, X } from "lucide-react";
+import { AtSign, Ban, Check, ChevronDown, Inbox, Layers, Mail, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { createMailboxMailSubscription } from "@/lib/realtime";
 
@@ -192,19 +200,50 @@ export function ReceivedMailPanel({
           </div>
         </div>
         {mailboxes.length > 0 && (
-          <label className="flex shrink-0 items-center gap-2 font-sans text-[11.5px] text-sts-muted">
+          <div className="flex shrink-0 items-center gap-2 font-sans text-[11.5px] text-sts-muted">
             <span className="hidden sm:inline">Mailbox</span>
-            <select
+            <Select
               value={selectedMailbox}
-              onChange={(e) => { setSelectedMailbox(e.target.value); setExpandedId(null); }}
-              className="h-8 max-w-[220px] rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/50"
+              onValueChange={(v) => { if (v) { setSelectedMailbox(v); setExpandedId(null); } }}
             >
-              <option value={ALL_MAILBOXES}>All mailboxes</option>
-              {mailboxes.map((m) => (
-                <option key={m.id} value={m.id}>{m.address}</option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger
+                size="sm"
+                aria-label="Filter by mailbox"
+                className="h-8 max-w-[240px] gap-2 rounded-lg border-sts-card-border bg-sts-surface px-2.5 text-[12px] text-sts-foreground shadow-sm transition-colors hover:border-sts-blue/50"
+              >
+                <SelectValue>
+                  {(value: string) =>
+                    value === ALL_MAILBOXES ? (
+                      <span className="flex items-center gap-1.5">
+                        <Layers className="size-3.5 text-sts-muted" />
+                        <span className="font-medium">All mailboxes</span>
+                      </span>
+                    ) : (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <AtSign className="size-3.5 shrink-0 text-sts-blue" />
+                        <span className="truncate font-medium">
+                          {mailboxes.find((m) => m.id === value)?.address ?? value}
+                        </span>
+                      </span>
+                    )
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="w-auto min-w-56 max-w-[min(90vw,420px)] p-1">
+                <SelectItem value={ALL_MAILBOXES} className="gap-2 text-[12px]">
+                  <Layers className="size-4 shrink-0 text-sts-muted" />
+                  <span className="font-medium text-sts-foreground">All mailboxes</span>
+                </SelectItem>
+                {mailboxes.length > 0 && <SelectSeparator />}
+                {mailboxes.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="items-start gap-2 text-[12px]">
+                    <AtSign className="mt-0.5 size-4 shrink-0 text-sts-blue" />
+                    <span className="min-w-0 break-all whitespace-normal text-sts-foreground">{m.address}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
 

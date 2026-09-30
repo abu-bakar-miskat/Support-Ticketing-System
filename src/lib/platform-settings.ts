@@ -60,7 +60,7 @@ function defaultNewTenantFeatureDefaults(): Record<FeatureKey, boolean> {
 }
 
 export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
-  platformName: "Support Platform",
+  platformName: "Global Support Portal",
   supportEmail: "",
   devMode: false,
   newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),

@@ -9,6 +9,9 @@ export type PlatformDirectoryUser = {
   role: string
   isSuperAdmin: boolean
   tenants: string[]
+  // Names of the tenants this user is Admin of (TENANT-scoped `admin` role
+  // assignment). A user can belong to several tenants but administer only some.
+  adminTenants: string[]
   departments: {
     id: string
     name: string
@@ -59,6 +62,14 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
     orderBy: { name: "asc" },
   })
 
+  // TENANT-scoped role assignments store the tenant id in scopeId; map those to
+  // names so we can label each Admin with the tenant(s) they administer.
+  const tenantNameById = new Map(
+    (await prisma.tenant.findMany({ where: { deletedAt: null }, select: { id: true, name: true } })).map(
+      (t) => [t.id, t.name] as const,
+    ),
+  )
+
   return rows.map((r) => {
     // Aggregate every department this user touches (primary subDepartment, extra subDepartment
     // memberships, direct membership, or management) into one de-duplicated list.
@@ -102,6 +113,14 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
       role: deriveEffectiveRole(r.roleAssignments),
       isSuperAdmin: r.isSuperAdmin,
       tenants: [...new Set(r.tenantMemberships.map((t) => t.tenant.name))],
+      adminTenants: [
+        ...new Set(
+          r.roleAssignments
+            .filter((a) => a.scopeType === "TENANT" && a.role === "admin" && a.scopeId)
+            .map((a) => tenantNameById.get(a.scopeId!))
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ].sort((a, b) => a.localeCompare(b)),
       departments: [...deptMap.values()]
         .map((d) => ({
           id: d.id,

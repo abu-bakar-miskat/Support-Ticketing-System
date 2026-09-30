@@ -23,6 +23,7 @@ type UserRow = {
   role?: string;
   isSuperAdmin?: boolean;
   tenants?: string[];
+  adminTenants?: string[];
   departments?: DeptInfo[];
 };
 
@@ -212,6 +213,12 @@ export function PlatformUsers({
               filteredUsers.map((user) => {
                 const roleLabel = user.role ? ROLE_LABELS[user.role] ?? user.role : null;
                 const userTenants = user.tenants ?? [];
+                const adminTenants = user.adminTenants ?? [];
+                // For tenant admins, name the tenant(s) they administer right on the badge.
+                const adminBadgeLabel =
+                  user.role === "admin" && adminTenants.length > 0
+                    ? `Admin · ${adminTenants.join(", ")}`
+                    : roleLabel;
                 return (
                   <div key={user.id} className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-sts-surface/50">
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} size={28} />
@@ -229,9 +236,9 @@ export function PlatformUsers({
                             Super admin
                           </span>
                         )}
-                        {roleLabel && (
+                        {adminBadgeLabel && (
                           <span className="rounded-full bg-sts-blue-tint px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-blue">
-                            {roleLabel}
+                            {adminBadgeLabel}
                           </span>
                         )}
                       </div>

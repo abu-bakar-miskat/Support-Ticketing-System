@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail, RefreshCw } from "lucide-react";
+import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail, RefreshCw, SlidersHorizontal, Building2, Layers, ShieldCheck } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Table,
@@ -452,6 +452,11 @@ export function SettingsMembersPage({
   // inviteId → "resend" | "delete" while that action is in flight
   const [inviteBusy, setInviteBusy] = useState<Record<string, "resend" | "delete">>({});
   const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<InviteRow | null>(null);
+  // Filter bar — "" means "all". Department also accepts the NO_DEPT sentinel to
+  // isolate people who belong to no department at all.
+  const [filterDept, setFilterDept] = useState("");
+  const [filterSubDept, setFilterSubDept] = useState("");
+  const [filterRole, setFilterRole] = useState<"" | Role>("");
 
   // Sync liveMembers when the server re-renders after router.refresh()
   useEffect(() => {
@@ -649,17 +654,90 @@ export function SettingsMembersPage({
     }
   }
 
+  const NO_DEPT = "__no_dept__";
+
+  // A member's departments, normalized (falls back to the single department fields).
+  const deptEntriesOf = (m: MemberRow) =>
+    m.departments?.length
+      ? m.departments
+      : m.departmentId && m.department
+        ? [{ id: m.departmentId, name: m.department }]
+        : [];
+  // Every sub-department id a member belongs to.
+  const subDeptIdsOf = (m: MemberRow) => {
+    const ids = new Set<string>();
+    for (const ms of m.memberships ?? []) ids.add(ms.subDepartmentId);
+    if (m.subDepartmentId) ids.add(m.subDepartmentId);
+    return ids;
+  };
+
+  // Filter dropdown options, derived from the members actually on the page so the
+  // lists reflect reality even for roles without availableDepartments seeded.
+  const deptFilterOptions = useMemo(() => {
+    const byId = new Map<string, string>();
+    let hasNoDept = false;
+    for (const m of liveMembers) {
+      const entries = deptEntriesOf(m);
+      if (entries.length === 0) hasNoDept = true;
+      for (const d of entries) byId.set(d.id, d.name);
+    }
+    const opts = [
+      { value: "", label: "All departments" },
+      ...[...byId.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([id, name]) => ({ value: id, label: name })),
+    ];
+    if (hasNoDept) opts.push({ value: NO_DEPT, label: "No department" });
+    return opts;
+  }, [liveMembers]);
+
+  const subDeptFilterOptions = useMemo(() => {
+    const byId = new Map<string, { name: string; deptId: string | null }>();
+    for (const m of liveMembers) {
+      for (const ms of m.memberships ?? []) {
+        byId.set(ms.subDepartmentId, { name: ms.subDepartmentName, deptId: ms.departmentId });
+      }
+    }
+    let entries = [...byId.entries()];
+    // Scope to the chosen department (unless filtering for "no department").
+    if (filterDept && filterDept !== NO_DEPT) {
+      entries = entries.filter(([, v]) => v.deptId === filterDept);
+    }
+    entries.sort((a, b) => a[1].name.localeCompare(b[1].name));
+    return [
+      { value: "", label: "All sub-departments" },
+      ...entries.map(([id, v]) => ({ value: id, label: v.name })),
+    ];
+  }, [liveMembers, filterDept]);
+
+  const roleFilterOptions = [{ value: "", label: "All roles" }, ...ROLE_OPTIONS_ADMIN];
+  const hasActiveFilter = filterDept !== "" || filterSubDept !== "" || filterRole !== "";
+  const clearFilters = () => { setFilterDept(""); setFilterSubDept(""); setFilterRole(""); };
+
+  // Apply the filter bar to the member list before grouping.
+  const filteredMembers = useMemo(() => {
+    return liveMembers.filter((m) => {
+      if (filterRole && currentRole(m) !== filterRole) return false;
+      if (filterDept) {
+        const entries = deptEntriesOf(m);
+        if (filterDept === NO_DEPT) {
+          if (entries.length > 0) return false;
+        } else if (!entries.some((d) => d.id === filterDept)) {
+          return false;
+        }
+      }
+      if (filterSubDept && !subDeptIdsOf(m).has(filterSubDept)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveMembers, filterDept, filterSubDept, filterRole, localRoles]);
+
   // Group members department-wise. A member in several departments appears once
   // under each. Members with no department fall into a trailing "No department" group.
-  const NO_DEPT = "__no_dept__";
   const groups = useMemo(() => {
     const map = new Map<string, { name: string; members: MemberRow[] }>();
-    for (const member of liveMembers) {
-      const entries = member.departments?.length
-        ? member.departments
-        : member.departmentId && member.department
-          ? [{ id: member.departmentId, name: member.department }]
-          : [];
+    for (const member of filteredMembers) {
+      const entries = deptEntriesOf(member);
       const targets = entries.length ? entries : [{ id: NO_DEPT, name: "No department" }];
       for (const dept of targets) {
         const group = map.get(dept.id) ?? { name: dept.name, members: [] };
@@ -667,14 +745,19 @@ export function SettingsMembersPage({
         map.set(dept.id, group);
       }
     }
-    return [...map.entries()]
+    let result = [...map.entries()]
       .sort((a, b) => {
         if (a[0] === NO_DEPT) return 1;
         if (b[0] === NO_DEPT) return -1;
         return a[1].name.localeCompare(b[1].name);
       })
       .map(([id, group]) => ({ id, ...group }));
-  }, [liveMembers]);
+    // When a specific department is selected, collapse to just that group so a
+    // member's *other* departments don't show alongside it.
+    if (filterDept) result = result.filter((g) => g.id === filterDept);
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredMembers, filterDept]);
   const colSpan = (isAdmin || isManager) ? 6 : 4;
 
   return (
@@ -781,12 +864,12 @@ export function SettingsMembersPage({
     )}
 
     <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="sts-text-admin-title">
             Members
             <span className="ml-2 font-sans text-[13px] font-normal text-sts-muted">
-              ({liveMembers.length})
+              ({hasActiveFilter ? `${filteredMembers.length} of ${liveMembers.length}` : liveMembers.length})
             </span>
           </h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
@@ -826,7 +909,67 @@ export function SettingsMembersPage({
         <p className="font-sans text-[12px] text-red-500">{error}</p>
       )}
 
-      <div className="overflow-x-auto rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+      {liveMembers.length > 0 && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-[10px] border border-sts-card-border bg-sts-card px-3 py-2.5">
+          <span className="inline-flex items-center gap-1.5 pr-1 font-sans text-[11.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+            <SlidersHorizontal className="size-3.5" />
+            Filter
+          </span>
+          <SearchableSelect
+            value={filterDept}
+            onChange={(v) => { setFilterDept(v); setFilterSubDept(""); }}
+            options={deptFilterOptions}
+            placeholder="All departments"
+            searchPlaceholder="Search departments…"
+            icon={Building2}
+            className="w-[190px] bg-sts-surface"
+            highlightWhenSet
+            aria-label="Filter by department"
+          />
+          {/* Sub-department is meaningful only within a single department, so it
+              only appears once a specific department is chosen. */}
+          {filterDept && filterDept !== NO_DEPT && (
+            <SearchableSelect
+              value={filterSubDept}
+              onChange={setFilterSubDept}
+              options={subDeptFilterOptions}
+              placeholder="All sub-departments"
+              searchPlaceholder="Search sub-departments…"
+              icon={Layers}
+              className="w-[200px] bg-sts-surface"
+              highlightWhenSet
+              aria-label="Filter by sub-department"
+            />
+          )}
+          <SearchableSelect
+            value={filterRole}
+            onChange={(v) => setFilterRole(v as "" | Role)}
+            options={roleFilterOptions}
+            placeholder="All roles"
+            icon={ShieldCheck}
+            className="w-[150px] bg-sts-surface"
+            highlightWhenSet
+            aria-label="Filter by role"
+          />
+          {hasActiveFilter && (
+            <>
+              <span className="font-sans text-[11.5px] text-sts-subtle">
+                {filteredMembers.length} of {liveMembers.length}
+              </span>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto inline-flex h-8 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:border-sts-muted hover:text-sts-foreground"
+              >
+                <X className="size-3.5" />
+                Clear
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="shrink-0 overflow-x-auto rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
@@ -851,12 +994,12 @@ export function SettingsMembersPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {liveMembers.length === 0 ? (
+            {groups.length === 0 ? (
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableCell colSpan={colSpan} className="py-0">
                   <div className="flex h-[54px] items-center">
                     <span className="font-sans text-[11.5px] text-sts-muted">
-                      No members yet
+                      {liveMembers.length === 0 ? "No members yet" : "No members match these filters"}
                     </span>
                   </div>
                 </TableCell>
@@ -1238,7 +1381,7 @@ export function SettingsMembersPage({
       </div>
 
       {(isAdmin || isManager) && (
-        <div className="mt-2">
+        <div className="mt-2 shrink-0">
           <div className="mb-3 flex items-baseline gap-2">
             <h2 className="sts-text-admin-title text-[15px]">
               Invited members

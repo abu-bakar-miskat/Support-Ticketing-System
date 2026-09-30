@@ -31,15 +31,16 @@ export async function POST(request: Request) {
   const config = await getEmailConfig();
   const branding = brandingFrom(config);
   const name = escapeHtml(firstName(profile.name ?? "there"));
+  const brandName = branding.headerTitle?.trim() || "Global Support Portal";
 
   const html = layout({
     heading: "Your email settings are working",
-    preheader: "Test email from your PEN helpdesk",
+    preheader: `Test email from your ${brandName} helpdesk`,
     branding,
     bodyHtml: `
       <p style="margin:0 0 16px 0;">Hi ${name},</p>
       <p style="margin:0 0 24px 0;">This is a test message confirming that Resend is connected and your email branding renders correctly. If you can read this, you're all set.</p>
-      ${button({ href: BASE_URL, label: "Open PEN", branding })}
+      ${button({ href: BASE_URL, label: `Open ${escapeHtml(brandName)}`, branding })}
       <p style="margin:24px 0 0 0;color:#6b7280;">— Global Support Portal</p>
     `,
   });
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   const result = await resend.emails.send({
     from: fromHeader(config),
     to,
-    subject: "Test email — PEN helpdesk",
+    subject: `Test email — ${brandName} helpdesk`,
     html,
     text: `Hi ${firstName(profile.name ?? "there")},\n\nThis is a test message confirming that Resend is connected. If you can read this, you're all set.\n\n— Global Support Portal`,
     replyTo: config.replyTo || undefined,

@@ -222,6 +222,21 @@ export async function removeAdminDeptMember(deptId: string, userId: string) {
   if (!res.ok) throw new Error("Failed to remove department member")
 }
 
+// Remove a user from an entire tenant/workspace (all department + sub-department
+// ties within it) while keeping their account. Distinct from deleteAdminUser,
+// which soft-deletes the profile itself.
+export async function removeAdminTenantMember(tenantId: string, userId: string) {
+  const res = await fetch(`/api/admin/tenants/${tenantId}/members`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  })
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error(json.error ?? "Failed to remove member from tenant")
+  }
+}
+
 export async function getAdminDepartments(): Promise<AdminDepartment[]> {
   const res = await fetch("/api/admin/departments")
   if (!res.ok) throw new Error("Failed to fetch departments")

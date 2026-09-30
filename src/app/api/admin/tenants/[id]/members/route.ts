@@ -278,11 +278,23 @@ export async function DELETE(request: Request, { params }: Params) {
     where: { tenantId_userId: { tenantId, userId } },
     select: { role: true },
   })
-  if (!membership) return NextResponse.json({ ok: true })
 
   // Removing a tenant member is a privileged access change — record it in the
   // same transaction so the removal never lands without an audit trail.
+  // Drop EVERY tie the user has within this tenant (not just the TenantMembership
+  // row): sub-department memberships, department manager/member/access grants, and
+  // project memberships all live under tenant-scoped parents, so a bare
+  // TenantMembership delete would leave the user still surfacing on the members
+  // roster (which unions sub-department memberships) and holding stale access. The
+  // Profile itself is kept — this removes them from THIS tenant only, not globally.
   await prisma.$transaction(async (tx) => {
+    await (tx.subDepartmentMembership as any).deleteMany({ where: { userId, subDepartment: { tenantId } } })
+    await tx.departmentManager.deleteMany({ where: { userId, department: { tenantId } } })
+    await tx.departmentMember.deleteMany({ where: { userId, department: { tenantId } } })
+    await tx.departmentAccess.deleteMany({ where: { userId, department: { tenantId } } })
+    await (tx.projectMember as any).deleteMany({ where: { userId, project: { tenantId } } })
+    // Clear the primary sub-department pointer if it lived in this tenant.
+    await tx.profile.updateMany({ where: { id: userId, subDepartment: { tenantId } }, data: { subDepartmentId: null } })
     await tx.tenantMembership.deleteMany({ where: { tenantId, userId } })
     await recordAuditEvent({
       tenantId,
@@ -290,7 +302,7 @@ export async function DELETE(request: Request, { params }: Params) {
       action: "TENANT_MEMBER_REMOVED",
       targetType: "Profile",
       targetId: userId,
-      before: { role: membership.role },
+      before: { role: membership?.role ?? null },
       after: null,
       client: tx,
     })

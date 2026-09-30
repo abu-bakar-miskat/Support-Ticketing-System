@@ -12,8 +12,9 @@ async function assertDeptScope(deptId: string, caller: AuthProfile): Promise<Nex
   return null
 }
 
-// DELETE — remove a user from all subDepartments in a specific department only.
-// Other department memberships, cross-access grants, and manager roles are untouched.
+// DELETE — remove a user from a specific department: their sub-department
+// memberships, direct membership, AND manager assignment for THIS department.
+// Other departments, and cross-access grants, are untouched.
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -55,6 +56,16 @@ export async function DELETE(
     // Remove only this department's direct relationship; other departments remain intact.
     await tx.departmentMember.deleteMany({ where: { userId, departmentId: deptId } })
 
+    // A manager/department-admin is tied to a department via DepartmentManager,
+    // not a sub-department membership — so without this, "remove from department"
+    // is a no-op for them and the member reappears on reload. Drop only this
+    // department's assignment; syncUserRoleAssignments below rebuilds their scope.
+    const removedManager = await tx.departmentManager.findFirst({
+      where: { userId, departmentId: deptId },
+      select: { role: true },
+    })
+    await tx.departmentManager.deleteMany({ where: { userId, departmentId: deptId } })
+
     // 2. If profile.teamId was in this dept, point it to the next remaining active subDepartment
     //    (from any other department) rather than nulling it out entirely.
     const remaining = await tx.subDepartmentMembership.findFirst({
@@ -75,7 +86,7 @@ export async function DELETE(
       action: "DEPARTMENT_MEMBER_REMOVED",
       targetType: "Profile",
       targetId: userId,
-      before: { subDepartments: removedMemberships },
+      before: { subDepartments: removedMemberships, managerRole: removedManager?.role ?? null },
       after: null,
       client: tx,
     })

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail, RefreshCw, SlidersHorizontal, Building2, Layers, ShieldCheck } from "lucide-react";
+import { Loader2, MoreHorizontal, Trash2, X, Plus, Search, Settings2, BanIcon, ChevronDown, Mail, RefreshCw, SlidersHorizontal, Building2, Layers, ShieldCheck, UserMinus } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   Table,
@@ -22,7 +22,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma/enums";
-import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, addAdminSubDepartmentMember, revokeDepartmentAccess, deleteTenantInvite, resendTenantInvite } from "@/lib/api/admin";
+import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, removeAdminDeptMember, removeAdminTenantMember, addAdminSubDepartmentMember, revokeDepartmentAccess, deleteTenantInvite, resendTenantInvite } from "@/lib/api/admin";
 import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ export type MemberRow = {
   timezone?: string | null;
   /** Profile-level active/inactive flag — applies to all roles */
   isActive?: boolean;
+  /** Platform super-admin — surfaced with a badge so admins can spot elevated access */
+  isSuperAdmin?: boolean;
   /** True when this person is from another department with a cross-access grant */
   isCrossAccess?: boolean;
   /** Per-team doNotAssign flags (used inside Configure Schedule panel) */
@@ -444,6 +446,7 @@ export function SettingsMembersPage({
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
+  const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<MemberRow | null>(null);
   const [liveMembers, setLiveMembers] = useState(members);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -609,6 +612,13 @@ export function SettingsMembersPage({
     startTransition(() => router.refresh());
   }
 
+  async function handleRemoveFromTenant(member: MemberRow) {
+    if (!tenantId) return;
+    await removeAdminTenantMember(tenantId, member.id);
+    setLiveMembers((prev) => prev.filter((m) => m.id !== member.id));
+    startTransition(() => router.refresh());
+  }
+
   async function handleRoleChange(memberId: string, newRole: Role) {
     setLocalRoles((prev) => ({ ...prev, [memberId]: newRole }));
     setSaving(memberId);
@@ -765,15 +775,28 @@ export function SettingsMembersPage({
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
-        title="Delete member"
+        title="Delete permanently"
         description={
           confirmDelete
-            ? `Remove ${confirmDelete.name} from the workspace? Their tickets and comments will be preserved but marked as deactivated. This cannot be undone.`
+            ? `Permanently delete ${confirmDelete.name}'s account? Their tickets and comments are preserved but the account is deactivated everywhere. This cannot be undone.`
             : ""
         }
-        confirmLabel="Delete"
-        successMessage={confirmDelete ? `${confirmDelete.name} has been removed` : undefined}
+        confirmLabel="Delete permanently"
+        successMessage={confirmDelete ? `${confirmDelete.name} has been deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
+      />
+      <ConfirmDialog
+        open={!!confirmRemoveTenant}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveTenant(null); }}
+        title="Remove from tenant"
+        description={
+          confirmRemoveTenant
+            ? `Remove ${confirmRemoveTenant.name} from this workspace? They'll lose access to every department and sub-department here, but their account and past tickets are kept and you can re-add them later.`
+            : ""
+        }
+        confirmLabel="Remove"
+        successMessage={confirmRemoveTenant ? `${confirmRemoveTenant.name} removed from the workspace` : undefined}
+        onConfirm={async () => { if (confirmRemoveTenant) await handleRemoveFromTenant(confirmRemoveTenant); }}
       />
       <ConfirmDialog
         open={!!confirmRemoveSubDepartment}
@@ -1030,10 +1053,24 @@ export function SettingsMembersPage({
               // that department's sub-departments (all of them, if the member is in several).
               const memberDeptIds = new Set(departmentEntries.map((d) => d.id));
               const hasDeptTags = availableSubDepartments.some((sd) => sd.departmentId != null);
+              // A sub-department only makes sense within one of the member's
+              // departments. When sub-departments are department-tagged, a member
+              // with no department has no valid sub-department to add — so the
+              // list is empty and the "Add" control is disabled (below), rather
+              // than offering every department's sub-departments indiscriminately.
+              //
+              // For a member with no saved department the Department dropdown acts
+              // as a filter: picking one there (held in local state) narrows the
+              // addable sub-departments so a home can be chosen — adding the
+              // sub-department is what actually assigns the department.
+              const scopeDeptIds = memberDeptIds.size > 0
+                ? memberDeptIds
+                : (() => { const id = currentDepartmentId(member); return id ? new Set([id]) : new Set<string>(); })();
+              const canAddSubDepartment = !hasDeptTags || scopeDeptIds.size > 0;
               const addableSubDepartments = availableSubDepartments.filter((subDepartment) => {
                 if (member.memberships?.some((membership) => membership.subDepartmentId === subDepartment.id)) return false;
-                if (hasDeptTags && memberDeptIds.size > 0) {
-                  return subDepartment.departmentId != null && memberDeptIds.has(subDepartment.departmentId);
+                if (hasDeptTags) {
+                  return scopeDeptIds.size > 0 && subDepartment.departmentId != null && scopeDeptIds.has(subDepartment.departmentId);
                 }
                 return true;
               });
@@ -1051,6 +1088,18 @@ export function SettingsMembersPage({
                           <p className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                             {member.name}
                           </p>
+                          {member.isSuperAdmin && (
+                            <span title="Platform super-admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-purple/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-purple">
+                              <ShieldCheck className="size-2.5" />
+                              Super admin
+                            </span>
+                          )}
+                          {!member.isSuperAdmin && role === "admin" && (
+                            <span title="Tenant admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-blue/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-blue">
+                              <ShieldCheck className="size-2.5" />
+                              Admin
+                            </span>
+                          )}
                           {member.isCrossAccess && (
                             <span className="shrink-0 inline-flex items-center rounded-full bg-amber-100 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                               Guest
@@ -1197,8 +1246,9 @@ export function SettingsMembersPage({
                       {(isAdmin || isManager) && !member.isCrossAccess && (
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            disabled={saving === member.id}
-                            className="inline-flex h-[26px] items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2 font-sans text-[11.5px] text-sts-muted outline-none hover:border-sts-blue/50 hover:text-sts-foreground disabled:opacity-60"
+                            disabled={saving === member.id || !canAddSubDepartment}
+                            title={!canAddSubDepartment ? "Assign a department first" : undefined}
+                            className="inline-flex h-[26px] items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2 font-sans text-[11.5px] text-sts-muted outline-none hover:border-sts-blue/50 hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <Plus className="size-3" /> Add
                           </DropdownMenuTrigger>
@@ -1355,6 +1405,16 @@ export function SettingsMembersPage({
                                   {member.isCrossAccess ? "Revoke department access" : "Remove from department"}
                                 </DropdownMenuItem>
                               )}
+                              {isAdmin && !member.isCrossAccess && tenantId && (
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  className="gap-2 font-sans text-xs"
+                                  onClick={() => setConfirmRemoveTenant(member)}
+                                >
+                                  <UserMinus className="size-3.5" />
+                                  Remove from tenant
+                                </DropdownMenuItem>
+                              )}
                               {isAdmin && !member.isCrossAccess && (
                                 <DropdownMenuItem
                                   variant="destructive"
@@ -1362,7 +1422,7 @@ export function SettingsMembersPage({
                                   onClick={() => setConfirmDelete(member)}
                                 >
                                   <Trash2 className="size-3.5" />
-                                  Delete from workspace
+                                  Delete permanently
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

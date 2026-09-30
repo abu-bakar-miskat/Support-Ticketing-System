@@ -13,6 +13,17 @@ import {
 export const metadata = { title: "Members — Global Support Portal" };
 
 export default async function SettingsMembersRoute() {
+  return MembersPageView();
+}
+
+/**
+ * Shared members roster. `forceTenantWide` renders the whole-tenant view even
+ * when a department cookie is active — used by the org-level
+ * `/departments/users` page, which is a tenant-wide roster (its "Members" stat
+ * counts the whole org) and must not inherit a stale `pen_active_dept` cookie
+ * left over from entering a single department's workspace.
+ */
+export async function MembersPageView({ forceTenantWide = false }: { forceTenantWide?: boolean } = {}) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
@@ -23,8 +34,10 @@ export default async function SettingsMembersRoute() {
   // Admin + manager + lead can access members
   if (!isAdmin && !isManager && !isLead) redirect("/settings");
 
-  // Profile-aware scope — always derives the correct dept for managers
-  const profileScope = await getProfileDeptScope(profile);
+  // Profile-aware scope — always derives the correct dept for managers.
+  // On the org-level roster (forceTenantWide) we ignore the dept cookie so the
+  // full tenant is shown; admins get every member, managers every dept they own.
+  const profileScope = forceTenantWide ? null : await getProfileDeptScope(profile);
   // Admins default to the global view (all members). Only scope to a department
   // when one is explicitly active via the dept cookie.
   const activeDeptId = profileScope?.activeDeptId ?? null;
@@ -236,6 +249,32 @@ export default async function SettingsMembersRoute() {
       membershipsByUser.set(m.userId, memberships);
     }
   }
+
+  // Managers link to departments through DepartmentManager rows, not
+  // sub-department memberships (admins/managers can't be sub-department members).
+  // Without merging these in, a manager with no sub-department membership renders
+  // under "No department" even though they manage one — which looked like a failed
+  // save when moving/assigning them to a department.
+  const managedProfileIds = profiles.map((p: { id: string }) => p.id);
+  if (managedProfileIds.length > 0) {
+    const managerRows = await prisma.departmentManager
+      .findMany({
+        where: { userId: { in: managedProfileIds }, department: { tenantId } },
+        select: { userId: true, department: { select: { id: true, name: true } } },
+      })
+      .catch((e: unknown) => { console.error("[members/page] departmentManager query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; });
+    for (const row of managerRows) {
+      if (!row.department?.id) continue;
+      const departments = departmentsByUser.get(row.userId) ?? [];
+      if (!departments.some((d) => d.id === row.department.id)) {
+        departments.push({ id: row.department.id, name: row.department.name });
+        departmentsByUser.set(row.userId, departments);
+      }
+      if (!deptByUser.has(row.userId)) deptByUser.set(row.userId, row.department.name);
+      if (!deptIdByUser.has(row.userId)) deptIdByUser.set(row.userId, row.department.id);
+    }
+  }
+
   // Fetch cross-access users for the active department and append them with an indicator
   let crossAccessRows: MemberRow[] = [];
   if (activeDeptId) {
@@ -387,7 +426,7 @@ export default async function SettingsMembersRoute() {
     .filter((inv) => inv.status === "pending");
 
   const members: MemberRow[] = [
-    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null }) => {
+    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null; isSuperAdmin?: boolean | null }) => {
       // Effective role = the higher of the global Profile.role and their highest
       // sub-department membership role (see ROLE_RANK note above).
       const membershipRole = membershipRoleByUser.get(p.id);
@@ -405,6 +444,7 @@ export default async function SettingsMembersRoute() {
       location: p.location ?? null,
       timezone: p.timezone ?? null,
       isActive: p.isActive ?? true,
+      isSuperAdmin: p.isSuperAdmin ?? false,
       subDepartments: subDepartmentsByUser.get(p.id) ?? [],
       subDepartmentId: p.subDepartmentId ?? subDepartmentIdByUser.get(p.id) ?? null,
       department: deptByUser.get(p.id) ?? null,

@@ -11,7 +11,7 @@ const PLATFORM_NAV = [
   { label: "Tenants", href: "/platform", icon: Building2 },
   { label: "Reports", href: "/platform/reports", icon: BarChart3 },
   { label: "Tenant Types", href: "/platform/tenant-types", icon: Tags },
-  { label: "Templates", href: "/platform/templates", icon: LayoutTemplate },
+  { label: "Feature templates", href: "/platform/templates", icon: LayoutTemplate },
   { label: "Feature approvals", href: "/platform/feature-approvals", icon: ClipboardCheck },
   { label: "Audit Log", href: "/platform/activity", icon: History },
   { label: "Email Domains", href: "/platform/email-domains", icon: Globe },

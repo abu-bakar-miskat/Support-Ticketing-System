@@ -125,6 +125,17 @@ export function isMarketplaceFeatureKey(value: unknown): value is MarketplaceFea
   return typeof value === "string" && MARKETPLACE_FEATURE_KEY_SET.has(value);
 }
 
+/** Stored on Department.featureKeys when a feature template has been approved. */
+export function templateGrantToken(templateId: string): string {
+  return `template:${templateId}`;
+}
+
+export function templateIdFromGrantToken(value: unknown): string | null {
+  if (typeof value !== "string" || !value.startsWith("template:")) return null;
+  const id = value.slice("template:".length);
+  return id.length > 0 ? id : null;
+}
+
 /** Features that stay available without a marketplace grant. */
 export const ALWAYS_ON_FEATURE_KEYS: TemplateFeatureKey[] = TEMPLATE_FEATURE_KEYS.filter(
   (key) => !MARKETPLACE_FEATURE_KEY_SET.has(key),

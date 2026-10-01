@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { badRequest } from "@/lib/api-response";
-import { requestDepartmentFeature } from "@/lib/feature-marketplace";
+import { requestDepartmentFeature, requestDepartmentTemplate } from "@/lib/feature-marketplace";
 
 /** Tenant admin or department manager asks for one marketplace feature. */
 export async function POST(req: NextRequest) {
@@ -18,17 +18,28 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const departmentId = typeof body.departmentId === "string" ? body.departmentId : "";
+  const templateId = typeof body.templateId === "string" ? body.templateId : "";
   const featureKey = typeof body.featureKey === "string" ? body.featureKey : "";
-  if (!departmentId || !featureKey) return badRequest("departmentId and featureKey are required");
+  if (!departmentId || (!templateId && !featureKey)) {
+    return badRequest("departmentId and a template or feature are required");
+  }
 
   try {
-    const request = await requestDepartmentFeature({
-      tenantId,
-      departmentId,
-      featureKey,
-      requestedById: profile.id,
-      message: typeof body.message === "string" ? body.message : undefined,
-    });
+    const request = templateId
+      ? await requestDepartmentTemplate({
+          tenantId,
+          departmentId,
+          templateId,
+          requestedById: profile.id,
+          message: typeof body.message === "string" ? body.message : undefined,
+        })
+      : await requestDepartmentFeature({
+          tenantId,
+          departmentId,
+          featureKey,
+          requestedById: profile.id,
+          message: typeof body.message === "string" ? body.message : undefined,
+        });
     return NextResponse.json({ id: request.id, status: request.status });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 409 });

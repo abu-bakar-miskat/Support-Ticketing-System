@@ -10,6 +10,14 @@ export type MarketplaceFeature = {
   group: string;
 };
 
+export type MarketplaceTemplate = {
+  id: string;
+  name: string;
+  description: string | null;
+  features: { key: string; label: string }[];
+  status: MarketplaceFeatureStatus;
+};
+
 export type PendingFeatureRequest = {
   id: string;
   featureKey: string;

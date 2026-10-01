@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { TemplatesCatalogueAdmin } from "@/components/platform/templates-catalogue-admin"
+import { ensureAvailableFeatureTemplates } from "@/lib/template-catalogue"
 
 export const dynamic = "force-dynamic"
 
@@ -10,29 +11,12 @@ export default async function TemplatesCataloguePage() {
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
-  const [templateRows, requestRows] = await Promise.all([
-    prisma.template.findMany({
-      orderBy: { order: "asc" },
-      include: {
-        features: { select: { key: true } },
-        _count: { select: { tenantTemplates: { where: { status: "ACTIVE" } } } },
-      },
-    }),
-    prisma.templateRequest.findMany({
-      where: { status: "PENDING" },
-      orderBy: { requestedAt: "asc" },
-      include: {
-        tenant: { select: { id: true, name: true, slug: true } },
-        template: { select: { id: true, name: true } },
-      },
-    }),
-  ])
+  await ensureAvailableFeatureTemplates(profile.id)
 
-  const requesterIds = [...new Set(requestRows.map((r) => r.requestedById))]
-  const requesters = requesterIds.length
-    ? await prisma.profile.findMany({ where: { id: { in: requesterIds } }, select: { id: true, name: true, email: true } })
-    : []
-  const requesterById = new Map(requesters.map((r) => [r.id, r]))
+  const templateRows = await prisma.template.findMany({
+    orderBy: { order: "asc" },
+    include: { features: { select: { key: true } } },
+  })
 
   const templates = templateRows.map((t) => ({
     id: t.id,
@@ -41,17 +25,8 @@ export default async function TemplatesCataloguePage() {
     description: t.description,
     isActive: t.isActive,
     featureKeys: t.features.map((f) => f.key),
-    activeTenantCount: t._count.tenantTemplates,
+    activeTenantCount: 0,
   }))
 
-  const requests = requestRows.map((r) => ({
-    id: r.id,
-    tenant: r.tenant,
-    template: r.template,
-    message: r.message,
-    requestedAt: r.requestedAt.toISOString(),
-    requestedBy: requesterById.get(r.requestedById) ?? null,
-  }))
-
-  return <TemplatesCatalogueAdmin initialTemplates={templates} initialRequests={requests} />
+  return <TemplatesCatalogueAdmin initialTemplates={templates} />
 }

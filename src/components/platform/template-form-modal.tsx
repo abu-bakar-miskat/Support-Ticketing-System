@@ -181,9 +181,9 @@ export function TemplateFormModal({
           <div className="space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
               <div>
-                <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Feature gates</label>
+                <label className="font-sans text-[12.5px] font-medium text-sts-foreground">Features</label>
                 <p className="font-sans text-[11px] text-sts-subtle">
-                  {featureKeys.size} of {ALL_FEATURE_KEYS.length} selected
+                  {featureKeys.size} of {ALL_FEATURE_KEYS.length} selected. This name and these features are what a department sees in the Features marketplace.
                 </p>
               </div>
               <label className="flex shrink-0 cursor-pointer items-center gap-1.5 font-sans text-[11.5px] font-medium text-sts-foreground">

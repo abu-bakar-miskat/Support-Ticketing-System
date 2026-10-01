@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
-import { listMarketplaceForDepartment } from "@/lib/feature-marketplace";
+import { listMarketplaceTemplates } from "@/lib/feature-marketplace";
 import { FeaturesMarketplacePage } from "@/components/settings/features-marketplace-page";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +17,14 @@ export default async function FeaturesSettingsPage() {
   const departmentId = (await getProfileDeptScope(profile))?.activeDeptId ?? null;
   if (!departmentId) redirect("/departments");
 
-  const marketplace = await listMarketplaceForDepartment(departmentId);
+  const marketplace = await listMarketplaceTemplates(departmentId);
   if (!marketplace) redirect("/departments");
 
   return (
     <FeaturesMarketplacePage
       departmentId={marketplace.departmentId}
       departmentName={marketplace.departmentName}
-      initialFeatures={marketplace.features}
+      initialTemplates={marketplace.templates}
       canRequest={canRequest}
     />
   );

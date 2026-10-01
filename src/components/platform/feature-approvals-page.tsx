@@ -38,9 +38,9 @@ export function FeatureApprovalsPage({ initialRequests }: { initialRequests: Pen
       <div>
         <h1 className="sts-text-admin-title">Feature approvals</h1>
         <p className="mt-[3px] max-w-2xl font-sans text-[13px] text-sts-muted">
-          Tenant admins and managers request optional features for a department.
-          Approving turns it on for that department and notifies them. Declining
-          notifies them with the reason.
+          Tenant admins and managers request a feature template for a department.
+          Approving turns that template’s features on and notifies the department.
+          Declining notifies them with the reason.
         </p>
       </div>
 

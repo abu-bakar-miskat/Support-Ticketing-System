@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import {
   LayoutTemplate,
   Plus,
-  Check,
-  X,
   Archive,
   Pencil,
   Trash2,
@@ -14,7 +12,6 @@ import {
   Search,
   Users,
   Layers,
-  Building2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -35,35 +32,21 @@ type TemplateRow = {
   activeTenantCount: number;
 };
 
-type RequestRow = {
-  id: string;
-  tenant: { id: string; name: string; slug: string };
-  template: { id: string; name: string };
-  message: string | null;
-  requestedAt: string;
-  requestedBy: { id: string; name: string | null; email: string } | null;
-};
-
 type StatusFilter = "all" | "active" | "archived";
 type SortKey = "name" | "tenants" | "features";
 
 export function TemplatesCatalogueAdmin({
   initialTemplates,
-  initialRequests,
 }: {
   initialTemplates: TemplateRow[];
-  initialRequests: RequestRow[];
 }) {
   const [templates, setTemplates] = useState(initialTemplates);
-  const [requests, setRequests] = useState(initialRequests);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<TemplateRow | null>(null);
-  const [rejecting, setRejecting] = useState<RequestRow | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
 
   // List controls
   const [query, setQuery] = useState("");
@@ -130,43 +113,13 @@ export function TemplatesCatalogueAdmin({
     setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, isActive: false } : t)));
   }
 
-  async function reviewRequest(requestId: string, decision: "APPROVED" | "REJECTED", reviewNote?: string) {
-    setBusy(requestId);
-    setError(null);
-    const res = await fetch(`/api/admin/template-requests/${requestId}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, reviewNote }),
-    });
-    setBusy(null);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to review request");
-      return;
-    }
-    setRequests((prev) => prev.filter((r) => r.id !== requestId));
-    setRejecting(null);
-    setRejectReason("");
-    if (decision === "APPROVED") {
-      setTemplates((prev) =>
-        prev.map((t) => {
-          const req = initialRequests.find((r) => r.id === requestId);
-          if (req && t.id === req.template.id) return { ...t, activeTenantCount: t.activeTenantCount + 1 };
-          return t;
-        }),
-      );
-    }
-  }
-
   // Summary stats across all templates (unfiltered).
   const stats = useMemo(() => {
     const active = templates.filter((t) => t.isActive);
     const archived = templates.filter((t) => !t.isActive);
-    const tenantGrants = active.reduce((sum, t) => sum + t.activeTenantCount, 0);
     return {
       activeCount: active.length,
       archivedCount: archived.length,
-      tenantGrants,
     };
   }, [templates]);
 
@@ -213,8 +166,8 @@ export function TemplatesCatalogueAdmin({
         <div className="flex items-start justify-between gap-4">
           <PageHeader
             icon={LayoutTemplate}
-            title="Template Catalogue"
-            description="Bundle settings sections into named templates. Tenants can run several templates at once and request new ones; requests land below for approval."
+            title="Feature templates"
+            description="Name a template and choose its features. Active templates show up in each department’s Features marketplace, where a tenant admin or manager can request one."
           />
           <Button size="lg" onClick={openCreateModal} className="mt-1 shrink-0">
             <Plus className="size-4" />
@@ -225,62 +178,12 @@ export function TemplatesCatalogueAdmin({
         {/* Summary stats */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard icon={Layers} label="Active templates" value={stats.activeCount} />
-          <StatCard icon={Building2} label="Tenant activations" value={stats.tenantGrants} />
           <StatCard icon={Archive} label="Archived" value={stats.archivedCount} />
-          <StatCard icon={Users} label="Pending requests" value={requests.length} />
         </div>
 
         {error && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
             {error}
-          </div>
-        )}
-
-        {/* Pending requests */}
-        {requests.length > 0 && (
-          <div className="mt-8">
-            <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
-              Pending approval ({requests.length})
-            </h2>
-            <ul className="mt-3 flex flex-col gap-2">
-              {requests.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sts-card-border bg-sts-card p-3 shadow-sts-card"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-sans text-[13px] text-sts-foreground">
-                      <span className="font-semibold">{r.tenant.name}</span> requested{" "}
-                      <span className="font-semibold">{r.template.name}</span>
-                    </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
-                      {r.requestedBy?.name ?? r.requestedBy?.email ?? "Unknown"} ·{" "}
-                      {new Date(r.requestedAt).toLocaleDateString()}
-                      {r.message ? ` — "${r.message}"` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy === r.id}
-                      onClick={() => {
-                        setRejecting(r);
-                        setRejectReason("");
-                        setError(null);
-                      }}
-                    >
-                      <X className="size-3.5" />
-                      Reject
-                    </Button>
-                    <Button size="sm" disabled={busy === r.id} onClick={() => reviewRequest(r.id, "APPROVED")}>
-                      <Check className="size-3.5" />
-                      Approve
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 
@@ -321,7 +224,6 @@ export function TemplatesCatalogueAdmin({
               onChange={(v) => setSortKey(v as SortKey)}
               options={[
                 { value: "name", label: "Sort: Name" },
-                { value: "tenants", label: "Sort: Most tenants" },
                 { value: "features", label: "Sort: Most features" },
               ]}
             />
@@ -336,7 +238,7 @@ export function TemplatesCatalogueAdmin({
               <p className="mt-3 font-sans text-[13px] font-medium text-sts-foreground">No templates match</p>
               <p className="mt-1 font-sans text-[12px] text-sts-subtle">
                 {templates.length === 0
-                  ? "Create your first template to start bundling settings sections."
+                  ? "Create a feature template. Its name and features appear in the department Features marketplace."
                   : "Try clearing the search or filters."}
               </p>
             </div>
@@ -389,47 +291,6 @@ export function TemplatesCatalogueAdmin({
         />
       )}
 
-      {rejecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop p-4">
-          <div className="sts-glass-panel w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
-            <h2 className="sts-text-modal-title">Reject template request</h2>
-            <p className="mt-2 font-sans text-[13px] text-sts-subtle">
-              {rejecting.tenant.name}&apos;s request for {rejecting.template.name} will be marked Rejected. The
-              template stays inactive, and the Tenant Admin is notified with this reason.
-            </p>
-            <label className="mt-4 flex flex-col gap-1.5 font-sans text-[13px] font-medium text-sts-foreground">
-              Reason
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2 font-sans text-[13px] font-normal text-sts-foreground outline-none"
-                placeholder="Why this request is rejected"
-              />
-            </label>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                disabled={busy === rejecting.id}
-                onClick={() => {
-                  setRejecting(null);
-                  setRejectReason("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={busy === rejecting.id || !rejectReason.trim()}
-                onClick={() => reviewRequest(rejecting.id, "REJECTED", rejectReason.trim())}
-              >
-                Reject
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <ConfirmDialog
         open={deletingTemplate !== null}
         onOpenChange={(open) => {
@@ -438,7 +299,7 @@ export function TemplatesCatalogueAdmin({
         title="Delete template"
         description={
           deletingTemplate
-            ? `"${deletingTemplate.name}" will be archived and removed from the catalogue. Tenants that already have it active keep their access, and this can be restored later.`
+            ? `"${deletingTemplate.name}" will be archived and removed from the Features marketplace. Departments that already have it keep those features, and this can be restored later.`
             : ""
         }
         confirmLabel="Delete"
@@ -667,7 +528,7 @@ function TemplateCard({
       <div className="mt-3 flex items-center gap-1.5 border-t border-sts-card-border/60 pt-3 font-sans text-[11.5px] text-sts-subtle">
         {t.isActive ? (
           <span>
-            {t.activeTenantCount} tenant{t.activeTenantCount === 1 ? "" : "s"} active
+            Available in the Features marketplace
           </span>
         ) : (
           <span className="flex items-center gap-1 text-sts-muted">

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
+import { useFeatureEnabled } from "@/components/dashboard/dashboard-context";
 import Link from "next/link";
 import { useDrag, useDrop } from "react-dnd";
 import { BoardDndProvider } from "@/components/board/board-dnd-provider";
@@ -837,6 +838,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const [localTasks, setLocalTasks] = useState<BoardCardData[]>(initialTasks);
   const [sortKey, setSortKey] = useState<SortKey>("created");
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
+  const boardEnabled = useFeatureEnabled("board");
+  const viewMode = boardEnabled ? view : "list";
   const [page, setPage] = useState(1);
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
   // Managers see a subDepartment review/PR list — kept collapsed by default and below
@@ -1303,7 +1306,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
           <div className="flex shrink-0 items-center gap-2">
             <SortDropdown value={sortKey} onChange={(v) => setSortKey(v as SortKey)} />
 
-            {view === "board" && (
+            {viewMode === "board" && (
               <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
@@ -1325,6 +1328,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               </div>
             )}
 
+            {boardEnabled && (
             <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               <button
                 type="button"
@@ -1332,7 +1336,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 aria-label="List view"
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
-                  view === "list"
+                  viewMode === "list"
                     ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
@@ -1346,7 +1350,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 aria-label="Board view"
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
-                  view === "board"
+                  viewMode === "board"
                     ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
@@ -1355,13 +1359,14 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 <span className="hidden sm:inline">Board</span>
               </button>
             </div>
+            )}
           </div>
         </div>
       </div>{/* end shrink-0 header */}
 
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-hidden">
-        {view === "list" ? (
+        {viewMode === "list" ? (
           <div className="h-full min-h-0 overflow-x-auto overflow-y-auto">
             {/* Unified tasks + subtasks table — the manager's own work first */}
             <table className={MY_TASKS_TABLE_CLASS}>

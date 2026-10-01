@@ -19,6 +19,7 @@ import {
   formatStageRange,
 } from "@/lib/project-lifecycle";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
+import { useFeatureEnabled } from "@/components/dashboard/dashboard-context";
 import type { ProjectDetailsResponse } from "@/lib/api/projects";
 import { updateProjectBoards } from "@/lib/api/projects";
 import { toast } from "sonner";
@@ -2215,6 +2216,8 @@ function ProjectProfilePageInner({
     "board",
     ["board", "list"] as const,
   );
+  const boardEnabled = useFeatureEnabled("board");
+  const boardViewMode = boardEnabled ? boardView : "list";
   const boardScrollerRef = useRef<HTMLDivElement | null>(null);
   const [boardMenu, setBoardMenu] = useState<{
     subDepartmentId: string;
@@ -2734,6 +2737,7 @@ function ProjectProfilePageInner({
             )}
             {tab.startsWith("subDepartment:") && (
               <div className="mb-2 flex items-center gap-2">
+                {boardEnabled && (
                 <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                   {(["board", "list"] as const).map((v) => (
                     <button
@@ -2743,7 +2747,7 @@ function ProjectProfilePageInner({
                       aria-label={v === "board" ? "Board view" : "List view"}
                       className={cn(
                         "flex h-full items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
-                        boardView === v
+                        boardViewMode === v
                           ? "bg-sts-blue-tint font-semibold text-sts-id"
                           : "text-sts-muted hover:text-sts-foreground",
                       )}
@@ -2759,7 +2763,8 @@ function ProjectProfilePageInner({
                     </button>
                   ))}
                 </div>
-                {boardView === "board" && (
+                )}
+                {boardViewMode === "board" && (
                   <div className="flex h-7 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                     <button
                       type="button"
@@ -2888,7 +2893,7 @@ function ProjectProfilePageInner({
                     ? allProjectAssignees
                     : g.subDepartmentMembersForCreate
                 }
-                externalView={boardView}
+                externalView={boardViewMode}
                 scrollerRef={tab === subDepartmentTab ? boardScrollerRef : undefined}
                 boardFilters={tab === subDepartmentTab ? boardFilters : undefined}
                 supportProject={isSupport}

@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
+import { createClient } from "@/lib/supabase/client";
+import { createNotificationsBroadcastSubscription } from "@/lib/realtime";
+import { useAuthStore } from "@/store";
 
 const PLATFORM_NAV = [
   { label: "Tenants", href: "/platform", icon: Building2 },
@@ -27,10 +31,41 @@ const PLATFORM_NAV = [
  * /settings/*. Shares the collapse-state hook and user menu with the main
  * dashboard sidebar (components/dashboard/sidebar.tsx) for a consistent feel.
  */
-export function PlatformSidebar() {
+export function PlatformSidebar({ pendingFeatureRequests }: { pendingFeatureRequests: number }) {
   const pathname = usePathname();
   const { collapsed, toggle, ready } = useSidebarState();
   const isCollapsed = ready && collapsed;
+  const userId = useAuthStore((s) => s.user?.id ?? "");
+  const [pendingCount, setPendingCount] = useState(pendingFeatureRequests);
+
+  useEffect(() => {
+    setPendingCount(pendingFeatureRequests);
+  }, [pendingFeatureRequests]);
+
+  const seenRequestIds = useRef(new Set<string>());
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    return createNotificationsBroadcastSubscription(supabase, userId, (payload) => {
+      if (payload.type !== "feature_request_submitted" || seenRequestIds.current.has(payload.id)) return;
+      seenRequestIds.current.add(payload.id);
+      setPendingCount((count) => count + 1);
+    });
+  }, [userId]);
+
+  useEffect(() => {
+    function refresh() {
+      if (document.visibilityState === "hidden") return;
+      fetch("/api/admin/feature-requests/count")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((body: { count?: number } | null) => {
+          if (typeof body?.count === "number") setPendingCount(body.count);
+        })
+        .catch(() => undefined);
+    }
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
+  }, []);
 
   return (
     <aside
@@ -96,6 +131,7 @@ export function PlatformSidebar() {
         {PLATFORM_NAV.map((item) => {
           const active = item.href === "/platform" ? pathname === "/platform" : pathname.startsWith(item.href);
           const Icon = item.icon;
+          const badge = item.href === "/platform/feature-approvals" && pendingCount > 0 ? pendingCount : null;
           return (
             <Link
               key={item.href}
@@ -109,8 +145,20 @@ export function PlatformSidebar() {
                   : "font-normal text-sts-muted hover:bg-sts-blue-tint/50 hover:text-sts-foreground",
               )}
             >
-              <Icon className="size-4 shrink-0" />
+              <span className="relative shrink-0">
+                <Icon className="size-4" />
+                {isCollapsed && badge != null && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 font-sans text-[11.5px] font-medium text-white">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </span>
               {!isCollapsed && <span className="truncate">{item.label}</span>}
+              {!isCollapsed && badge != null && (
+                <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 font-sans text-[11.5px] font-medium text-white">
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              )}
             </Link>
           );
         })}

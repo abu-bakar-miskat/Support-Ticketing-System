@@ -8,12 +8,18 @@ import { NotificationSidebar } from "@/components/dashboard/notification-sidebar
 /** Sidebar + top bar chrome for the platform (Super Admin) section, parallel
  * to DashboardLayout's Sidebar + TopBar but without the per-tenant dashboard
  * providers/state that don't apply outside tenant chrome. */
-export function PlatformShell({ children }: { children: React.ReactNode }) {
+export function PlatformShell({
+  children,
+  pendingFeatureRequests,
+}: {
+  children: React.ReactNode;
+  pendingFeatureRequests: number;
+}) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <PlatformSidebar />
+      <PlatformSidebar pendingFeatureRequests={pendingFeatureRequests} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <PlatformTopBar onNotifClick={() => setNotifOpen(true)} />
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

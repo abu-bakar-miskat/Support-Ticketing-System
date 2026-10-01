@@ -3,6 +3,7 @@ import type { Role } from "@/generated/prisma/enums"
 import { getProfile } from "@/lib/profile"
 import { UserHydrator } from "@/components/providers/user-hydrator"
 import { PlatformShell } from "@/components/platform/platform-shell"
+import { countPendingFeatureRequests } from "@/lib/feature-marketplace"
 
 export const dynamic = "force-dynamic"
 
@@ -17,6 +18,8 @@ export default async function TenantsLayout({ children }: { children: React.Reac
   const profile = await getProfile()
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
+
+  const pendingFeatureRequests = await countPendingFeatureRequests().catch(() => 0)
 
   return (
     <>
@@ -34,7 +37,7 @@ export default async function TenantsLayout({ children }: { children: React.Reac
           role: m.role,
         }))}
       />
-      <PlatformShell>{children}</PlatformShell>
+      <PlatformShell pendingFeatureRequests={pendingFeatureRequests}>{children}</PlatformShell>
     </>
   )
 }

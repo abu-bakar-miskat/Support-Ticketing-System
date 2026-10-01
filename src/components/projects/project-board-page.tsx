@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
+import { useFeatureEnabled } from "@/components/dashboard/dashboard-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { ticketKeys } from "@/hooks/queries/keys";
 import Link from "next/link";
@@ -968,7 +969,8 @@ export function ProjectBoardPage({
   }, [initialCards]);
 
   const [internalView, setInternalView] = usePersistedView(VIEW_KEYS.boardLayout, "board", ["board", "list"] as const);
-  const view = externalView ?? internalView;
+  const boardEnabled = useFeatureEnabled("board");
+  const view = boardEnabled ? (externalView ?? internalView) : "list";
   const setView = externalView === undefined ? setInternalView : () => {};
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
   const [createSubFor, setCreateSubFor] = useState<{ parentId: string; parentHumanId: string } | null>(null);
@@ -1240,7 +1242,7 @@ export function ProjectBoardPage({
           </div>
         </div>
 
-        {externalView === undefined && (
+        {boardEnabled && externalView === undefined && (
           <div className={cn("flex shrink-0 items-center gap-2 px-4 sm:px-6 xl:px-8", view === "board" ? "mb-3 sm:mb-4" : "mb-0 border-b border-sts-card-border pb-2 pt-2")}>
             <div className="flex h-7 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               {(["board", "list"] as const).map((v) => (

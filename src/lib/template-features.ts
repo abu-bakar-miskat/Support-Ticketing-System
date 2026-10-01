@@ -110,11 +110,15 @@ export const MARKETPLACE_FEATURE_KEYS = [
   "subDepartmentReports",
   "calendar",
   "sharedMailboxes",
+  "board",
+  "activity",
   "tagsLabels",
   "workflows",
   "ticketTemplates",
   "assignmentMethods",
   "apiKeys",
+  "slaPolicies",
+  "supportForm",
 ] as const;
 
 export type MarketplaceFeatureKey = (typeof MARKETPLACE_FEATURE_KEYS)[number];
@@ -147,11 +151,15 @@ export const MARKETPLACE_FEATURE_DESCRIPTIONS: Record<MarketplaceFeatureKey, str
   subDepartmentReports: "Sub-department list and management.",
   calendar: "Department calendar.",
   sharedMailboxes: "Shared mailboxes for email intake.",
+  board: "Work tickets in columns by status.",
+  activity: "A log of changes across the department.",
   tagsLabels: "Tags and labels on tickets.",
   workflows: "Workflows and ticket statuses.",
   ticketTemplates: "Reusable ticket templates.",
   assignmentMethods: "Rules that assign tickets automatically.",
   apiKeys: "API keys for this department.",
+  slaPolicies: "Response and resolution time targets.",
+  supportForm: "Public forms people use to submit requests.",
 };
 
 /** Checklist groups for the department grant panel and the marketplace. */
@@ -159,12 +167,12 @@ export const MARKETPLACE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGri
   {
     label: "Sidebar",
     icon: LayoutGrid,
-    keys: ["timeline", "reports", "subDepartmentReports", "calendar", "sharedMailboxes"],
+    keys: ["timeline", "reports", "subDepartmentReports", "calendar", "sharedMailboxes", "board", "activity"],
   },
   {
     label: "Configuration settings",
     icon: Wrench,
-    keys: ["tagsLabels", "workflows", "ticketTemplates", "assignmentMethods", "apiKeys"],
+    keys: ["tagsLabels", "workflows", "ticketTemplates", "assignmentMethods", "apiKeys", "slaPolicies", "supportForm"],
   },
 ];
 
@@ -215,7 +223,9 @@ const FEATURE_PATH_ENTRIES: [prefix: string, key: TemplateFeatureKey][] = [
   ["/settings/members", "members"],
   ["/settings/projects", "projects"],
   ["/settings/rules", "automationRules"],
+  ["/settings/sla-defaults", "slaPolicies"],
   ["/settings/sla", "slaPolicies"],
+  ["/settings/support-forms", "supportForm"],
   ["/settings/tags", "tagsLabels"],
   ["/settings/templates", "ticketTemplates"],
   ["/settings/workflows", "workflows"],

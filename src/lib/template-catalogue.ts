@@ -5,6 +5,7 @@ import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
 import {
   ALWAYS_ON_FEATURE_KEYS,
+  MARKETPLACE_FEATURE_KEYS,
   TEMPLATE_FEATURE_KEYS,
   grantedMarketplaceFeatures,
   isMarketplaceFeatureKey,
@@ -97,10 +98,11 @@ export async function hasTemplateFeature(tenantId: string, key: TemplateFeatureK
  * Effective features for the sidebar, settings nav, and route guard.
  *
  * No active department → the tenant's template set (or everything).
- * A legacy department (`featureKeys` null) keeps that same set.
+ * A legacy department (`featureKeys` null) already has every marketplace
+ * feature, on top of that tenant set, so an Enabled package is usable.
  * A department with an explicit grant list uses always-on features plus the
- * marketplace features a super admin has approved. Approval is enough — a
- * granted feature is not stripped because a template omitted it.
+ * marketplace features that are on. A grant is enough — it is not stripped
+ * because a tenant template omitted it.
  */
 export async function getEffectiveFeatureKeys(
   tenantId: string | null | undefined,
@@ -110,7 +112,10 @@ export async function getEffectiveFeatureKeys(
   if (!departmentId) return tenantSet;
 
   const deptSet = await getDepartmentActiveFeatureKeys(departmentId);
-  if (deptSet === "ALL") return tenantSet;
+  if (deptSet === "ALL") {
+    if (tenantSet === "ALL") return "ALL";
+    return new Set<TemplateFeatureKey>([...tenantSet, ...MARKETPLACE_FEATURE_KEYS]);
+  }
   return deptSet;
 }
 

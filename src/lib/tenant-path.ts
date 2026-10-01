@@ -51,8 +51,14 @@ export function parseActiveTenantCookie(
  * only the tenant slug (/<tenant>/departments), never a department slug.
  * Everything else in TENANT_SCOPED_ROOTS is department-scoped
  * (/<tenant>/<dept>/board).
+ *
+ * `profile` and `docs` are intentionally NOT here: although their content is
+ * user/tenant-level, they stay within the active department's URL
+ * (/<tenant>/<dept>/profile) so navigating to them from a workspace keeps the
+ * department context in the URL and sidebar. The dept segment is cosmetic —
+ * both resolve to the same internal /profile and /docs pages.
  */
-export const TENANT_LEVEL_ROOTS = new Set(["departments", "profile", "docs"]);
+export const TENANT_LEVEL_ROOTS = new Set(["departments"]);
 
 /**
  * Paths that also carry the active sub-department slug

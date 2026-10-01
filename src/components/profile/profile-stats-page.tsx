@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
-  Clock,
   MessageSquare,
   Activity,
   GitPullRequest,
@@ -18,6 +17,13 @@ import {
   Users,
   Globe,
   Trash2,
+  Inbox,
+  CircleDot,
+  CalendarClock,
+  Ban,
+  Plus,
+  CalendarDays,
+  Mail,
 } from "lucide-react";
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { cn } from "@/lib/utils";
@@ -303,10 +309,13 @@ function TicketSlideOver({
 
 // ── Small UI pieces ────────────────────────────────────────────────────────────
 
-function MetricButton({
+function MetricTile({
   label,
   value,
   hint,
+  Icon,
+  iconClass,
+  iconBg,
   accent,
   onClick,
   active,
@@ -314,6 +323,9 @@ function MetricButton({
   label: string;
   value: number;
   hint?: string;
+  Icon: React.ElementType;
+  iconClass: string;
+  iconBg: string;
   accent?: string;
   onClick: () => void;
   active?: boolean;
@@ -322,28 +334,81 @@ function MetricButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 rounded-full border px-3 py-3 text-center transition-colors",
+        "group flex flex-col items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-all",
         active
-          ? "border-sts-blue bg-sts-blue-tint"
-          : "border-sts-card-border bg-sts-card hover:border-sts-blue/30",
+          ? "border-sts-blue bg-sts-blue-tint shadow-sts-card"
+          : "border-sts-card-border bg-sts-card hover:border-sts-blue/40 hover:shadow-sts-card",
       )}
     >
-      <span
-        className={cn(
-          "font-sans text-[22px] font-bold leading-none tabular-nums",
-          accent ?? "text-sts-foreground",
+      <div className="flex w-full items-center justify-between">
+        <span
+          className={cn(
+            "flex size-7 items-center justify-center rounded-lg transition-colors",
+            iconBg,
+          )}
+        >
+          <Icon className={cn("size-3.5", iconClass)} />
+        </span>
+        {hint && (
+          <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[11px] font-semibold tabular-nums text-sts-muted">
+            {hint}
+          </span>
         )}
-      >
-        {value}
-      </span>
-      <span className="font-sans text-[11.5px] font-semibold text-sts-foreground">
-        {label}
-      </span>
-      {hint && (
-        <span className="font-sans text-[11.5px] text-sts-subtle">{hint}</span>
-      )}
+      </div>
+      <div>
+        <span
+          className={cn(
+            "block font-sans text-[24px] font-bold leading-none tabular-nums",
+            accent ?? "text-sts-foreground",
+          )}
+        >
+          {value}
+        </span>
+        <span className="mt-1 block font-sans text-[12px] font-medium text-sts-muted">
+          {label}
+        </span>
+      </div>
     </button>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  sub,
+  pct,
+  barClass,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  pct?: number;
+  barClass?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.6px] text-sts-subtle">
+        {label}
+      </p>
+      <p className="font-sans text-[20px] font-bold leading-none tabular-nums text-sts-foreground">
+        {value}
+      </p>
+      {pct !== undefined ? (
+        <div className="h-1.5 overflow-hidden rounded-full bg-sts-surface">
+          <div
+            className={cn("h-full rounded-full transition-all", barClass ?? "bg-sts-blue")}
+            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+          />
+        </div>
+      ) : (
+        <div className="h-1.5" />
+      )}
+      {sub && (
+        <p className="font-sans text-[11px] text-sts-subtle">{sub}</p>
+      )}
+    </div>
   );
 }
 
@@ -598,17 +663,10 @@ function profileSubtitle(
   }
 
   const parts: string[] = [];
-  if (viewingOther) parts.push("Activity overview");
-  else if (isOwnProfile) parts.push("Your activity");
-
-  if (stats.urgentTotal > 0) {
-    parts.push(`${stats.urgentCompleted}/${stats.urgentTotal} urgent tasks done`);
-  }
-  if (stats.onTimeTotal > 0) {
-    parts.push(`${stats.onTimeRate}% on time`);
-  } else if (stats.avgCompletionDays !== null) {
-    parts.push(`avg ${stats.avgCompletionDays}d to complete`);
-  }
+  parts.push(viewingOther ? "Activity overview" : "Your activity");
+  parts.push(
+    `${stats.completed} of ${stats.total} ticket${stats.total !== 1 ? "s" : ""} done`,
+  );
   if (stats.projectCount > 0) {
     parts.push(`${stats.projectCount} project${stats.projectCount !== 1 ? "s" : ""}`);
   }
@@ -652,6 +710,61 @@ export function ProfileStatsPage({
   const homeDepts = byDepartment.filter((d) => d.isHome);
   const outsideDepts = byDepartment.filter((d) => !d.isHome);
 
+  const perfStats: {
+    label: string;
+    value: string;
+    sub?: string;
+    pct?: number;
+    barClass?: string;
+  }[] = [];
+  if (stats.total > 0) {
+    perfStats.push({
+      label: "Completion",
+      value: `${stats.completionRate}%`,
+      sub: `${stats.completed} of ${stats.total} done`,
+      pct: stats.completionRate,
+      barClass: "bg-sts-green",
+    });
+  }
+  if (stats.onTimeTotal > 0) {
+    perfStats.push({
+      label: "On time",
+      value: `${stats.onTimeRate}%`,
+      sub: `${stats.onTimeCompleted} of ${stats.onTimeTotal} on time`,
+      pct: stats.onTimeRate,
+      barClass: "bg-sts-blue",
+    });
+  }
+  if (stats.urgentTotal > 0) {
+    perfStats.push({
+      label: "Urgent done",
+      value: `${stats.urgentRate}%`,
+      sub: `${stats.urgentCompleted} of ${stats.urgentTotal} urgent`,
+      pct: stats.urgentRate,
+      barClass: "bg-sts-red",
+    });
+  }
+  if (stats.avgCycleDays !== null) {
+    perfStats.push({
+      label: "Avg cycle",
+      value: `${stats.avgCycleDays}d`,
+      sub: "start to done",
+    });
+  } else if (stats.avgCompletionDays !== null) {
+    perfStats.push({
+      label: "Avg to done",
+      value: `${stats.avgCompletionDays}d`,
+      sub: "from assignment",
+    });
+  }
+  if (timeLogged.totalSecs > 0) {
+    perfStats.push({
+      label: "Time logged",
+      value: timeLogged.totalLabel,
+      sub: "this period",
+    });
+  }
+
   return (
     <>
       {activeSlide && (
@@ -666,11 +779,11 @@ export function ProfileStatsPage({
         {/* Header */}
         <div className="sts-page-header shrink-0 border-b border-sts-card-border bg-sts-card">
           <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-start gap-3.5">
               <AvatarVisual
                 name={profile.name}
                 avatarUrl={profile.avatarUrl}
-                size={40}
+                size={48}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -686,16 +799,34 @@ export function ProfileStatsPage({
                 <p className="mt-0.5 sts-text-page-desc">
                   {profileSubtitle(stats, isOwnProfile, viewingOther)}
                 </p>
-                {(profile.subDepartmentName || profile.homeDepartmentNames.length > 0) && (
-                  <p className="mt-1 sts-text-page-desc text-sts-subtle">
-                    {profile.homeDepartmentNames.length > 0 &&
-                      profile.homeDepartmentNames.join(", ")}
-                    {profile.subDepartmentName &&
-                      (profile.homeDepartmentNames.length > 0
-                        ? ` · ${profile.subDepartmentName}`
-                        : profile.subDepartmentName)}
-                  </p>
-                )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-sts-subtle">
+                  {(profile.homeDepartmentNames.length > 0 ||
+                    profile.subDepartmentName) && (
+                    <span className="flex items-center gap-1">
+                      <DepartmentIcon className="size-3 text-sts-subtle" />
+                      {[
+                        ...profile.homeDepartmentNames,
+                        profile.subDepartmentName,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                  {isOwnProfile && profile.email && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="size-3 text-sts-subtle" />
+                      {profile.email}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="size-3 text-sts-subtle" />
+                    Joined{" "}
+                    {new Date(profile.memberSince).toLocaleDateString(undefined, {
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
               </div>
             </div>
             <Suspense>
@@ -712,73 +843,91 @@ export function ProfileStatsPage({
         <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           <div className="sts-page-pad flex flex-col gap-4 lg:flex-1 lg:overflow-y-auto">
             {/* Ticket counts — tap to see list */}
-            <div className="flex flex-wrap gap-2">
-              <MetricButton
+            <div
+              className="grid gap-2.5"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(134px, 1fr))" }}
+            >
+              <MetricTile
                 label="Assigned"
                 value={stats.total}
+                Icon={Inbox}
+                iconClass="text-sts-muted"
+                iconBg="bg-sts-surface"
                 onClick={() => setSlide("total")}
                 active={activeSlide === "total"}
               />
-              <MetricButton
+              <MetricTile
                 label="Done"
                 value={stats.completed}
                 hint={`${stats.completionRate}%`}
+                Icon={CheckCircle2}
+                iconClass="text-sts-green"
+                iconBg="bg-sts-green/10"
                 accent="text-sts-green"
                 onClick={() => setSlide("completed")}
                 active={activeSlide === "completed"}
               />
-              <MetricButton
+              <MetricTile
                 label="In progress"
                 value={stats.inProgress}
+                Icon={CircleDot}
+                iconClass="text-sts-blue"
+                iconBg="bg-sts-blue/10"
                 onClick={() => setSlide("inProgress")}
                 active={activeSlide === "inProgress"}
               />
-              <MetricButton
+              <MetricTile
                 label="Overdue"
                 value={stats.overdue}
+                Icon={CalendarClock}
+                iconClass={stats.overdue > 0 ? "text-sts-red" : "text-sts-muted"}
+                iconBg={stats.overdue > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
                 accent={stats.overdue > 0 ? "text-sts-red" : undefined}
                 onClick={() => setSlide("overdue")}
                 active={activeSlide === "overdue"}
               />
-              <MetricButton
+              <MetricTile
                 label="Blocked"
                 value={stats.blocked}
+                Icon={Ban}
+                iconClass={stats.blocked > 0 ? "text-sts-red" : "text-sts-muted"}
+                iconBg={stats.blocked > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
                 accent={stats.blocked > 0 ? "text-sts-red" : undefined}
                 onClick={() => setSlide("blocked")}
                 active={activeSlide === "blocked"}
               />
               {isManager && (
-                <MetricButton
+                <MetricTile
                   label="In review"
                   value={stats.review}
+                  Icon={GitPullRequest}
+                  iconClass="text-sts-purple"
+                  iconBg="bg-sts-purple/10"
                   onClick={() => setSlide("review")}
                   active={activeSlide === "review"}
                 />
               )}
-              <MetricButton
+              <MetricTile
                 label="Created"
                 value={stats.created}
+                Icon={Plus}
+                iconClass="text-sts-blue"
+                iconBg="bg-sts-blue/10"
                 onClick={() => setSlide("created")}
                 active={activeSlide === "created"}
               />
             </div>
 
-            {/* Time logged */}
-            {timeLogged.totalSecs > 0 && (
-              <div className="grid grid-cols-1 gap-3">
-                <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5">
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <Clock className="size-3.5 text-sts-blue" />
-                    <p className="font-sans text-[11.5px] font-semibold tracking-[0.8px] text-sts-subtle">
-                      TIME LOGGED
-                    </p>
-                  </div>
-                  <p className="font-mono text-[26px] font-semibold tabular-nums text-sts-foreground">
-                    {timeLogged.totalLabel}
-                  </p>
-                  <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
-                    Logged in this period
-                  </p>
+            {/* Performance summary */}
+            {perfStats.length > 0 && (
+              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+                <p className="mb-4 font-sans text-[13px] font-semibold text-sts-foreground">
+                  Performance
+                </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {perfStats.map((s) => (
+                    <MiniStat key={s.label} {...s} />
+                  ))}
                 </div>
               </div>
             )}

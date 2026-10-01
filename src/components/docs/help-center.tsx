@@ -10,14 +10,12 @@ import {
   Bell,
   Bot,
   Boxes,
-  BriefcaseBusiness,
   Building2,
   CalendarDays,
   CalendarRange,
   ChevronDown,
   CircleAlert,
   CircleUser,
-  Download,
   FileText,
   FolderKanban,
   Gauge,
@@ -83,8 +81,9 @@ const GROUPS: { id: HelpGroup; label: string; managerOnly?: boolean }[] = [
 ];
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
-function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agent" | "all" }) {
+function RoleBadge({ role }: { role: "super_admin" | "admin" | "manager" | "sub_manager" | "agent" | "all" }) {
   const styles: Record<string, string> = {
+    super_admin: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
     admin: "bg-sts-blue/15 text-sts-blue",
     manager: "bg-purple-500/15 text-purple-500",
     sub_manager: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -92,6 +91,7 @@ function RoleBadge({ role }: { role: "admin" | "manager" | "sub_manager" | "agen
     all: "bg-sts-blue/10 text-sts-id",
   };
   const labels: Record<string, string> = {
+    super_admin: "Super admin",
     admin: "Admin",
     manager: "Manager",
     sub_manager: "Sub-manager",
@@ -159,7 +159,7 @@ function FeatureCard({
   icon: LucideIcon;
   title: string;
   description: string;
-  roles?: Array<"admin" | "manager" | "sub_manager" | "agent" | "all">;
+  roles?: Array<"super_admin" | "admin" | "manager" | "sub_manager" | "agent" | "all">;
 }) {
   return (
     <div className="rounded-xl border border-sts-card-border bg-sts-surface p-4 transition-colors hover:border-sts-blue/30">
@@ -221,9 +221,11 @@ const SECTIONS: HelpSection[] = [
     body: (
       <>
         <P>
-          This is your sub department&apos;s ticketing &amp; delivery platform: it runs support intake, ticket
-          tracking, project/sprint/module planning, time logging, recruitment, and reporting — all
-          scoped by <strong>department</strong>.
+          This is <strong>Global Support Portal</strong> — your organisation&apos;s ticketing &amp; delivery
+          platform: support intake, ticket tracking, project &amp; sprint planning, time logging, shared
+          mailboxes, SLAs, and reporting. Work is organised as
+          <strong> Organisation → Departments → Sub-departments (teams)</strong>, and most views are scoped
+          to the <strong>department</strong> you&apos;re currently in.
         </P>
         <Subhead>How this Help Center is organised</Subhead>
         <Bullets
@@ -235,6 +237,36 @@ const SECTIONS: HelpSection[] = [
           ]}
         />
         <InfoBox type="tip">Use the search box (top-left) to jump to any topic or FAQ.</InfoBox>
+      </>
+    ),
+  },
+  {
+    id: "structure",
+    title: "Organisation, departments & teams",
+    icon: Building2,
+    group: "start",
+    keywords: "organisation organization tenant department sub department team hierarchy structure support development hub platform super admin scope all departments",
+    summary: "How the organisation, departments, sub-departments and the active-department scope fit together.",
+    body: (
+      <>
+        <P>Everything lives at one of three levels:</P>
+        <Bullets
+          items={[
+            <><strong>Organisation</strong> — the whole workspace (your tenant), with its own branding, members, email domains and settings.</>,
+            <><strong>Departments</strong> — units inside the organisation (e.g. Support, Development). Each has a <strong>type</strong> — <em>Support</em>, <em>Development</em>, or <em>Hub</em> — which tailors the tools and views it gets.</>,
+            <><strong>Sub-departments (teams)</strong> — the squads inside a department that own tickets, boards and workflows.</>,
+          ]}
+        />
+        <P>
+          Almost every view is scoped to the <strong>active department</strong> you pick in the sidebar.
+          Admins can step out to an <strong>All Departments</strong> organisation view; everyone else
+          switches between the departments they belong to via <strong>My Departments</strong>.
+        </P>
+        <InfoBox type="info">
+          Department type matters: <strong>Support</strong> departments surface support forms &amp; shared
+          mailboxes and hide dev-planning views like Timeline; <strong>Development</strong> departments show
+          the full planning toolset; <strong>Hub</strong> departments give cross-department oversight.
+        </InfoBox>
       </>
     ),
   },
@@ -269,18 +301,20 @@ const SECTIONS: HelpSection[] = [
       <>
         <P>
           Almost everything is scoped to the <strong>active department</strong> you pick in the sidebar
-          — boards, tasks, calendar, and reports all re-scope when you switch. Use the department
-          switcher at the top of the sidebar (My Departments) to change it.
+          — boards, tasks, calendar, and reports all re-scope when you switch. Switch from the context
+          header at the top of the sidebar; admins can jump out to the <strong>All Departments</strong>
+          organisation view.
         </P>
         <Subhead>Sidebar layout</Subhead>
         <Bullets
           items={[
-            <><strong>Workspace</strong> — Home, Tasks, Projects, Notifications, My Time, Activity, and (for managers) Members, SubDepartment Reports, Recruitment.</>,
-            <><strong>Views</strong> — Board, Timeline, Modules, Reports, Calendar, My Profile, Settings, Help Center (department-scoped).</>,
+            <><strong>Workspace</strong> — My Departments, Home, Tasks, Projects, Notifications, My Time, Activity, and (for managers/admins) Members, Shared Mailboxes, and Sub Departments.</>,
+            <><strong>Views</strong> — Board, Timeline, Reports, Calendar, My Profile, Settings, and Help Center.</>,
             <><strong>Pinned projects</strong> — quick links you manage yourself.</>,
+            <><strong>Platform</strong> — super-admins get a Platform link to manage every organisation.</>,
           ]}
         />
-        <InfoBox type="info">Cross-access guests see a reduced set (Board, Modules, Reports) for departments they were granted into.</InfoBox>
+        <InfoBox type="info">What you see adapts to your role and your department&apos;s type — e.g. Timeline is hidden in Support departments, and cross-access guests see a reduced set (Board, plus Reports where granted).</InfoBox>
       </>
     ),
   },
@@ -455,7 +489,7 @@ const SECTIONS: HelpSection[] = [
     body: (
       <>
         <P>Track effort per ticket with the timer or by logging entries manually. Time is split into <strong>Development</strong> and <strong>QA</strong> so reports can separate them, and estimates let you compare planned vs. actual.</P>
-        <InfoBox type="info">Admins can require time-entry approvals above a threshold (Settings → Approvals).</InfoBox>
+        <InfoBox type="info">Admins can require sign-off on time entries above an hours threshold before they count, and you&apos;re notified once logged time passes a ticket&apos;s estimate.</InfoBox>
       </>
     ),
   },
@@ -489,8 +523,8 @@ const SECTIONS: HelpSection[] = [
     title: "Projects (tabs & structure)",
     icon: FolderKanban,
     group: "delivery",
-    keywords: "projects grouping members standard support pinned domain tabs overview all tasks sprints board assets modules stages",
-    summary: "The project detail page, its tabs, and where modules/sprints/stages live.",
+    keywords: "projects grouping members standard support pinned domain tabs overview all tasks sprints board assets stages",
+    summary: "The project detail page, its tabs, and where sprints/stages live.",
     body: (
       <>
         <P>Projects group related work and the people delivering it. Tickets belong to a project; projects belong to a department/subDepartment. Support submissions land in a department&apos;s support project automatically. Pin projects to the sidebar for quick access.</P>
@@ -505,29 +539,10 @@ const SECTIONS: HelpSection[] = [
           ]}
         />
         <InfoBox type="info">
-          Three things people look for &quot;inside a project&quot;: <strong>Sprints</strong> live on the project&apos;s Sprints tab;
-          <strong> Modules</strong> are created from the Modules view and attached to the project; <strong>Stages</strong> (board columns)
-          are the sub department&apos;s workflow statuses set in Settings → Workflows. See the Modules, Sprints, and &quot;Custom stages&quot; sections.
+          Two things people look for &quot;inside a project&quot;: <strong>Sprints</strong> live on the project&apos;s Sprints tab;
+          <strong> Stages</strong> (board columns) are the sub department&apos;s workflow statuses set in Settings → Workflows &amp; statuses.
+          See the Sprints and &quot;Custom stages&quot; sections.
         </InfoBox>
-      </>
-    ),
-  },
-  {
-    id: "modules",
-    title: "Modules (creating them)",
-    icon: Boxes,
-    group: "delivery",
-    keywords: "modules epics grouping rollup progress create new module dialog enable assign tickets",
-    summary: "Break a project into modules (epics) with roll-up progress.",
-    body: (
-      <>
-        <P>Modules break a project into larger buckets (like epics); each rolls up the progress of its tickets.</P>
-        <Subhead>Create a module</Subhead>
-        <Step number={1} title="Open the Modules view">Go to <strong>Modules</strong> in the sidebar (Views).</Step>
-        <Step number={2} title="Click “New module”">Fill in the <strong>Project</strong> it belongs to, a <strong>name</strong> (e.g. Payments, Onboarding), and an optional description.</Step>
-        <Step number={3} title="Module system turns on">If the project didn&apos;t use modules yet, creating one enables the module system for that project automatically.</Step>
-        <Step number={4} title="Add tickets to it">Open tickets (or the board/list) and set their <strong>Module</strong> field — tickets aren&apos;t added during module creation.</Step>
-        <InfoBox type="info">The Modules view is available where the module system is enabled for your access.</InfoBox>
       </>
     ),
   },
@@ -625,10 +640,10 @@ const SECTIONS: HelpSection[] = [
     summary: "Add people, set roles/schedules, and manage department access.",
     body: (
       <>
-        <P>Manage the people in your department (Settings → Members, and the Members page):</P>
+        <P>Manage the people in your department from the <strong>Members</strong> page (sidebar → Members):</P>
         <Bullets
           items={[
-            "Invite by email; set roles (managers can assign Lead/Staff, admins any role).",
+            "Invite by email and set each person's role (Sub-manager or Agent for team members).",
             "Per-member schedule: working days, work hours, timezone, and per-team “do not assign”.",
             "Mark members active/inactive.",
             "Grant cross-department access (temporary with expiry, or permanent) and revoke it.",
@@ -649,7 +664,7 @@ const SECTIONS: HelpSection[] = [
     summary: "SubDepartments, their statuses/workflow, and GitHub PR→status mapping.",
     body: (
       <>
-        <Subhead>Sub departments (Settings → Sub departments &amp; roles)</Subhead>
+        <Subhead>Sub departments (sidebar → Sub Departments)</Subhead>
         <Bullets
           items={[
             "Name, unique prefix (used in ticket IDs like WEB-123), and color.",
@@ -657,7 +672,7 @@ const SECTIONS: HelpSection[] = [
             "Members and leads; pending join requests.",
           ]}
         />
-        <Subhead>Workflows &amp; statuses (Settings → Workflows)</Subhead>
+        <Subhead>Workflows &amp; statuses (Settings → Workflows &amp; statuses)</Subhead>
         <Bullets
           items={[
             "Create/reorder statuses per sub department; set colors.",
@@ -679,12 +694,12 @@ const SECTIONS: HelpSection[] = [
     summary: "Create and configure departments, managers, and access.",
     body: (
       <>
-        <P>Departments are the top-level unit (Settings → Departments). Admins see all; managers see their own.</P>
+        <P>Departments sit under your organisation (<strong>Settings → Departments</strong>, in the All Departments view). Admins manage all of them; managers see their own.</P>
         <Bullets
           items={[
-            "Create/rename departments; assign or remove department managers.",
-            "Add direct (native) members; grant/revoke cross-access to other departments (with optional expiry).",
-            "Scope project access (whole workspace or specific projects).",
+            <>Create a department and pick a <strong>type</strong> — <strong>Support</strong>, <strong>Development</strong>, or <strong>Hub</strong> — which sets the tools and views it gets.</>,
+            "Rename departments; assign or remove department managers.",
+            "Add members; grant/revoke cross-access to other departments (with optional expiry).",
             "Hub departments provide cross-department oversight.",
           ]}
         />
@@ -810,23 +825,75 @@ const SECTIONS: HelpSection[] = [
     ),
   },
   {
-    id: "recruitment",
-    title: "Recruitment",
-    icon: BriefcaseBusiness,
+    id: "branding",
+    title: "Organisation branding",
+    icon: Palette,
     group: "managers",
     managerOnly: true,
-    keywords: "recruitment hiring candidates pipeline boards fields stats history kanban",
-    summary: "A candidate pipeline (boards, fields, stats) for hiring.",
+    keywords: "branding logo display name accent color colour organisation tenant appearance white label",
+    summary: "Give the workspace your organisation's logo, name and accent colour.",
     body: (
       <>
-        <P>Recruitment is a Notion-style hiring pipeline for managers/admins:</P>
+        <P>Admins brand the whole workspace from <strong>Settings → Branding</strong> (shown in the All Departments view):</P>
         <Bullets
           items={[
-            "Boards with customizable columns/fields for your hiring stages.",
-            "Candidates move through the pipeline; track their fields and history.",
-            "Stats and history views for the pipeline.",
+            "Upload a logo and set the display name shown in the sidebar.",
+            "Choose an accent colour used across the UI.",
+            "Optionally hide the logo or the name so the other fills the space.",
           ]}
         />
+      </>
+    ),
+  },
+  {
+    id: "email-domains",
+    title: "Email domains",
+    icon: Mail,
+    group: "managers",
+    managerOnly: true,
+    keywords: "email domain sending verify dns from address deliverability tenant organisation sender",
+    summary: "Register and verify the domains your organisation sends email from.",
+    body: (
+      <>
+        <P>Admins register sending domains under <strong>Settings → Email domains</strong> (All Departments view). Verified domains let tickets, confirmations and replies send from your own addresses instead of a shared default.</P>
+        <InfoBox type="info">Verification uses DNS records; until a domain verifies, mail falls back to the platform default sender.</InfoBox>
+      </>
+    ),
+  },
+  {
+    id: "template-marketplace",
+    title: "Template Marketplace (features)",
+    icon: Boxes,
+    group: "managers",
+    managerOnly: true,
+    keywords: "template marketplace catalogue features enable adopt tenant toggle feature keys",
+    summary: "Turn whole features on or off for your organisation.",
+    body: (
+      <>
+        <P>The feature set each department sees is driven by the templates your organisation has adopted. Admins manage this from <strong>Settings → Template Marketplace</strong>.</P>
+        <InfoBox type="info">If a sidebar item or settings page you expect is missing, the matching template may not be adopted yet — an admin can enable it here. Organisations that haven&apos;t adopted any template see everything by default.</InfoBox>
+      </>
+    ),
+  },
+  {
+    id: "mailboxes",
+    title: "Shared mailboxes (inbound email)",
+    icon: Inbox,
+    group: "managers",
+    managerOnly: true,
+    keywords: "shared mailbox inbound email ticket connect address sub department assignment round robin workload rule route support inbox",
+    summary: "Turn an email inbox into tickets, routed to a sub-department.",
+    body: (
+      <>
+        <P>Connect a shared email address (sidebar → <strong>Shared Mailboxes</strong>) so inbound email becomes tickets automatically.</P>
+        <Bullets
+          items={[
+            "Each mailbox targets a sub-department and opens a ticket per new email thread.",
+            <>Pick how arrivals are assigned — <strong>Round-robin</strong>, <strong>Workload-based</strong>, <strong>Rule-based</strong>, or <strong>Manual</strong>.</>,
+            "Replies on the ticket go back to the sender, keeping the thread together.",
+          ]}
+        />
+        <InfoBox type="tip">Shared mailboxes pair with verified Email domains and are most common in Support departments.</InfoBox>
       </>
     ),
   },
@@ -858,7 +925,7 @@ const SECTIONS: HelpSection[] = [
     icon: KeyRound,
     group: "managers",
     managerOnly: true,
-    keywords: "integrations api keys github pull request claude ai connector mcp scope read write admin notion import",
+    keywords: "integrations api keys github pull request claude ai connector mcp scope read write admin",
     summary: "GitHub PR linking, API keys, and the Claude AI connector.",
     body: (
       <>
@@ -876,39 +943,24 @@ const SECTIONS: HelpSection[] = [
     ),
   },
   {
-    id: "notion-import",
-    title: "Import from Notion",
-    icon: Download,
-    group: "managers",
-    managerOnly: true,
-    keywords: "import notion oauth database map fields projects tickets migrate",
-    summary: "Bring projects/tickets in from a Notion database.",
-    body: (
-      <>
-        <Step number={1} title="Connect">Authorize your Notion account (Settings → Import).</Step>
-        <Step number={2} title="Configure">Pick a Notion database and map fields (name, description, status, assignee, dates, labels) and a target subDepartment.</Step>
-        <Step number={3} title="Import">Run it; you&apos;ll see how many projects/tickets were created or skipped, plus any errors.</Step>
-      </>
-    ),
-  },
-  {
     id: "admin-advanced",
-    title: "SLA, approvals & routing",
+    title: "SLA policies & targets",
     icon: Gauge,
     group: "managers",
     managerOnly: true,
-    keywords: "sla service level response resolution approvals time tracking routing rules admin phase 2",
-    summary: "Admin-only policies (some are Phase-2 previews).",
+    keywords: "sla service level agreement response resolution target priority timer business hours pause overrun breach escalation approvals",
+    summary: "Response/resolution targets per priority, with live SLA timers.",
     body: (
       <>
+        <Subhead>SLA defaults &amp; per-department policies</Subhead>
         <Bullets
           items={[
-            <><strong>SLA policies</strong> (Settings → SLA) — first-response &amp; resolution targets per priority. Admin-only; preview.</>,
-            <><strong>Time-tracking approvals</strong> (Settings → Approvals) — require sign-off above an hours threshold. Admin-only.</>,
-            <><strong>Routing rules</strong> (Settings → Routing) — auto-route incoming requests by sender/subject/body to a sub department/priority. Admin-only; preview.</>,
+            <><strong>SLA defaults</strong> (Settings → SLA defaults, All Departments view) — organisation-wide first-response &amp; resolution targets per priority.</>,
+            <><strong>SLA policies</strong> (Settings → SLA policies, inside a department) — a department can override the defaults with its own targets.</>,
           ]}
         />
-        <InfoBox type="info">SLA and Routing are configuration previews (Phase 2) — the screens show the intended setup.</InfoBox>
+        <P>Each ticket runs a live <strong>SLA timer</strong>. Timers pause outside configured business hours and while a ticket waits on the customer, and managers are alerted as a target nears or breaches.</P>
+        <InfoBox type="info">Related: admins can require sign-off on time entries above an hours threshold, and assignees/managers are notified once logged time exceeds a ticket&apos;s estimate.</InfoBox>
       </>
     ),
   },
@@ -918,15 +970,19 @@ const SECTIONS: HelpSection[] = [
     icon: Shield,
     group: "managers",
     managerOnly: true,
-    keywords: "roles permissions admin manager lead staff access matrix capabilities",
-    summary: "What each role can see and do.",
+    keywords: "roles permissions super admin platform tenant admin organisation manager sub-manager lead agent staff access scope capabilities",
+    summary: "The five access tiers, from platform super-admin down to agent.",
     body: (
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FeatureCard icon={Shield} title="Admin" description="Full access across all departments and every settings section, including SLA, approvals, routing." roles={["admin"]} />
-        <FeatureCard icon={Users} title="Manager" description="Oversees assigned departments — members, sub departments, intake, calendar, recruitment, email, and reports." roles={["manager"]} />
-        <FeatureCard icon={CircleUser} title="Sub-manager" description="Elevated within their own sub department; can manage its members/workflow and edit any ticket on it." roles={["sub_manager"]} />
-        <FeatureCard icon={ListTodo} title="Agent" description="Works tickets they're assigned/created within their sub departments; personal settings only." roles={["agent"]} />
-      </div>
+      <>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FeatureCard icon={Building2} title="Super admin" description="Platform operator. Works across every organisation from the Platform area — tenants, agreements, templates and global settings." roles={["super_admin"]} />
+          <FeatureCard icon={Shield} title="Admin (organisation)" description="Runs one organisation: its departments, members, branding, email domains, SLA defaults and integrations. Scoped to that tenant only." roles={["admin"]} />
+          <FeatureCard icon={Users} title="Manager" description="Oversees assigned departments — members, sub departments, intake, mailboxes, calendar, email, and reports." roles={["manager"]} />
+          <FeatureCard icon={CircleUser} title="Sub-manager" description="Elevated within their own sub department; can manage its members/workflow and edit any ticket on it." roles={["sub_manager"]} />
+          <FeatureCard icon={ListTodo} title="Agent" description="Works tickets they're assigned/created within their sub departments; personal settings only." roles={["agent"]} />
+        </div>
+        <InfoBox type="info">&quot;Admin&quot; here means your <strong>organisation</strong> admin (one tenant). The <strong>super admin</strong> is a platform-wide operator and the only role that spans multiple organisations.</InfoBox>
+      </>
     ),
   },
 
@@ -1039,9 +1095,9 @@ const FAQS: FaqItem[] = [
   },
   {
     id: "faq-sprint",
-    q: "How do I create a sprint, module, or stage?",
-    keywords: "create sprint module stage column status project board how",
-    a: <P><strong>Sprints</strong>: project → Sprints tab → New sprint. <strong>Modules</strong>: Modules view → New module (pick the project). <strong>Stages</strong> (board columns): they&apos;re the sub department&apos;s workflow statuses in Settings → Workflows. See the Modules, Sprints, and Custom stages sections.</P>,
+    q: "How do I create a sprint or a board stage?",
+    keywords: "create sprint stage column status project board how",
+    a: <P><strong>Sprints</strong>: project → Sprints tab → New sprint. <strong>Stages</strong> (board columns): they&apos;re the sub department&apos;s workflow statuses in Settings → Workflows &amp; statuses. See the Sprints and Custom stages sections.</P>,
   },
   {
     id: "faq-columns",

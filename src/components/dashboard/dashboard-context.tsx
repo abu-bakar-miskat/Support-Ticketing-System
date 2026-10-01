@@ -58,3 +58,8 @@ export function useDashboardContext(): DashboardContextValue {
   if (!ctx) throw new Error("useDashboardContext must be used within DashboardProvider");
   return ctx;
 }
+
+export function useFeatureEnabled(key: TemplateFeatureKey): boolean {
+  const { activeFeatureKeys } = useDashboardContext();
+  return activeFeatureKeys === "ALL" || activeFeatureKeys.includes(key);
+}

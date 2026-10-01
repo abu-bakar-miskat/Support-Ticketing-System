@@ -1089,7 +1089,7 @@ export function SettingsMembersPage({
                             {member.name}
                           </p>
                           {member.isSuperAdmin && (
-                            <span title="Platform super-admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-purple/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-purple">
+                            <span title="Platform super-admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-red/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-red">
                               <ShieldCheck className="size-2.5" />
                               Super admin
                             </span>
@@ -1097,7 +1097,17 @@ export function SettingsMembersPage({
                           {!member.isSuperAdmin && role === "admin" && (
                             <span title="Tenant admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-blue/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-blue">
                               <ShieldCheck className="size-2.5" />
-                              Admin
+                              Tenant Admin
+                            </span>
+                          )}
+                          {!member.isSuperAdmin && role === "manager" && (
+                            <span title="Department manager" className="shrink-0 inline-flex items-center rounded-full bg-sts-purple/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-purple">
+                              Manager
+                            </span>
+                          )}
+                          {!member.isSuperAdmin && role === "sub_manager" && (
+                            <span title="Sub-department manager" className="shrink-0 inline-flex items-center rounded-full bg-sts-green/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-green">
+                              Sub-manager
                             </span>
                           )}
                           {member.isCrossAccess && (

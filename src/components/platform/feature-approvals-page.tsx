@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Clock, Layers, Loader2, UserRound } from "lucide-react";
+import { Building2, CheckCheck, Clock, Layers, Loader2, UserRound } from "lucide-react";
 import { TemplatePreview } from "@/components/settings/feature-preview";
 import type { PendingFeatureRequest } from "@/lib/feature-marketplace-types";
 
@@ -52,8 +52,14 @@ export function FeatureApprovalsPage({ initialRequests }: { initialRequests: Pen
       )}
 
       {requests.length === 0 ? (
-        <div className="rounded-lg border border-sts-card-border bg-sts-card px-4 py-6 font-sans text-[13px] text-sts-muted">
-          No feature requests waiting.
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-sts-card-border bg-sts-card/40 px-6 py-16 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-sts-blue-tint text-sts-blue">
+            <CheckCheck className="size-6" />
+          </div>
+          <p className="mt-4 font-sans text-[14px] font-semibold text-sts-foreground">All caught up</p>
+          <p className="mt-1 max-w-sm font-sans text-[12.5px] leading-snug text-sts-muted">
+            No feature requests are waiting for review. New requests from tenant admins and managers will show up here.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

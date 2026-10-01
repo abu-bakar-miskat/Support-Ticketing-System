@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getProfile } from "@/lib/profile";
+import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path";
 import type { ProfileMembership } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
@@ -313,8 +315,28 @@ export default async function DepartmentsPage() {
 
   const allIds = [...new Set([...managedIds, ...grantedIds, ...membershipDeptIds])];
 
-  // Only one (or zero) accessible department — no need for a picker page
-  if (allIds.length <= 1) redirect("/");
+  // Exactly one accessible department — skip the picker and drop the user
+  // straight into that department's workspace. Redirect to the dept-scoped
+  // URL (/<tenant>/<dept>), NOT to "/": a bare "/" has no department in the
+  // URL, and when the active-department cookie is missing/stale the proxy
+  // bounces "/" → /<tenant> → /<tenant>/departments, landing back here and
+  // redirecting to "/" again — an infinite loop (clearing cookies only masked
+  // it by re-seeding a valid cookie). Carrying the dept slug in the URL makes
+  // the destination resolve without any cookie dependency.
+  if (allIds.length === 1) {
+    const headerStore = await headers();
+    const tenantSlug = headerStore.get(X_TENANT_SLUG_HEADER);
+    const onlyDept = await runAsSystem(() =>
+      prisma.department.findUnique({
+        where: { id: allIds[0]! },
+        select: { slug: true },
+      }),
+    );
+    if (tenantSlug && onlyDept?.slug) redirect(`/${tenantSlug}/${onlyDept.slug}`);
+    redirect("/");
+  }
+  // Zero accessible departments — render the (empty) picker instead of
+  // redirecting to "/", which would re-enter the proxy ↔ departments loop.
 
   // Explicitly bound to the caller's accessible dept ids + tenant; run
   // unscoped to skip the per-query scope waterfall.

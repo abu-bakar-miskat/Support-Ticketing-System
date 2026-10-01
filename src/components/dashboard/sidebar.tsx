@@ -568,6 +568,12 @@ export function Sidebar({
             : isSubManager
               ? [
                   {
+                    label: "Members",
+                    href: "/department",
+                    icon: UsersRound,
+                    templateFeatureKey: "members" as const,
+                  },
+                  {
                     label: "Shared Mailboxes",
                     href: "/mailboxes",
                     icon: Inbox,

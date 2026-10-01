@@ -99,6 +99,11 @@ export type DepartmentDetailData = {
   memberCount: number;
   managerCount: number;
   isAdmin: boolean;
+  /**
+   * Viewer is a sub-manager. They see the managers list read-only (can't remove a
+   * manager) and may only remove agents — never a fellow sub-manager — from a team.
+   */
+  isSubManager: boolean;
   /** Super Admin — may grant/revoke this department's features. */
   canControlFeatures: boolean;
   availableSubDepartments: { id: string; name: string }[];
@@ -135,23 +140,33 @@ function Section({
   count,
   action,
   children,
+  hideTitle,
 }: {
   icon: React.ElementType;
   title: string;
   count: number;
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** Drop the title/count heading (keeps any action). Used for the sub-manager's
+   *  single-team roster, where the per-team header already names the group. */
+  hideTitle?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 text-sts-muted" />
-        <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
-          {title} <span className="font-normal text-sts-subtle">({count})</span>
-        </h2>
-        <span className="flex-1" />
-        {action}
-      </div>
+      {(!hideTitle || action) && (
+        <div className="flex items-center gap-2">
+          {!hideTitle && (
+            <>
+              <Icon className="size-4 text-sts-muted" />
+              <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+                {title} <span className="font-normal text-sts-subtle">({count})</span>
+              </h2>
+            </>
+          )}
+          <span className="flex-1" />
+          {action}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -501,14 +516,18 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             >
               <Settings2 className="size-3.5" />
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirmRemoveMember(m)}
-              title="Remove from department"
-              className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <X className="size-3.5" />
-            </button>
+            {/* A sub-manager may remove only agents (with confirmation) — never a
+                fellow sub-manager. Admins/managers can remove anyone. */}
+            {(!data.isSubManager || role === "agent") && (
+              <button
+                type="button"
+                onClick={() => setConfirmRemoveMember(m)}
+                title="Remove from department"
+                className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
         </TableCell>
       </TableRow>
@@ -552,6 +571,19 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowInviteModal(true)}
+          disabled={data.availableSubDepartments.length === 0}
+          title={
+            data.availableSubDepartments.length === 0
+              ? "Create a sub-department before inviting"
+              : "Send an email invite to someone without an account"
+          }
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
+        >
+          <Mail className="size-4" /> Invite new members
+        </button>
       </div>
 
       {/* Join requests */}
@@ -670,24 +702,27 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       <span className="font-sans text-[11.5px] text-sts-subtle">{m.email}</span>
                     </TableCell>
                     <TableCell className="py-0 text-right">
-                      <div className="flex h-[54px] items-center justify-end gap-0.5">
-                        <button
-                          type="button"
-                          title="Configure availability"
-                          onClick={() => setConfigMember(toConfigTarget(m))}
-                          className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                        >
-                          <Settings2 className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeManager(m.userId)}
-                          title="Remove manager"
-                          className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
+                      {/* Sub-managers see the managers list read-only — no config or remove. */}
+                      {!data.isSubManager && (
+                        <div className="flex h-[54px] items-center justify-end gap-0.5">
+                          <button
+                            type="button"
+                            title="Configure availability"
+                            onClick={() => setConfigMember(toConfigTarget(m))}
+                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                          >
+                            <Settings2 className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeManager(m.userId)}
+                            title="Remove manager"
+                            className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -702,21 +737,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         icon={Users}
         title="Sub-department members"
         count={members.length}
-        action={
-          <button
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-            disabled={data.availableSubDepartments.length === 0}
-            title={
-              data.availableSubDepartments.length === 0
-                ? "Create a sub-department before inviting"
-                : "Send an email invite to someone without an account"
-            }
-            className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
-          >
-            <Mail className="size-3" /> Invite new members
-          </button>
-        }
+        hideTitle={data.isSubManager}
       >
         {data.availableSubDepartments.length === 0 ? (
           <div className="rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] py-5">

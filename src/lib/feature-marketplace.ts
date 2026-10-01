@@ -574,6 +574,10 @@ export async function requestDepartmentFeature(params: {
   return request;
 }
 
+export async function countPendingFeatureRequests(): Promise<number> {
+  return prisma.featureRequest.count({ where: { status: "PENDING" } });
+}
+
 export async function listPendingFeatureRequests(): Promise<PendingFeatureRequest[]> {
   const rows = await prisma.featureRequest.findMany({
     where: { status: "PENDING" },

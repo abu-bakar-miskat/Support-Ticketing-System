@@ -25,7 +25,7 @@ import type { TemplateRequestStatus } from "@/generated/prisma/enums";
  *
  * `null` featureKeys = legacy department → "ALL" (marketplace features included).
  * An array grants only the marketplace keys it lists. Everything else
- * (tasks, board, members, …) stays on. An empty array — what a new
+ * (tasks, members, …) stays on. An empty array — what a new
  * department is created with — means none of the marketplace features.
  * Resilient to the column not existing yet: fails open to "ALL".
  */

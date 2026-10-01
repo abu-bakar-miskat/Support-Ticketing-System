@@ -24,6 +24,9 @@ describe("always-on features", () => {
     expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("reports");
     expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("timeline");
     expect(ALWAYS_ON_FEATURE_KEYS).toContain("tasks");
-    expect(ALWAYS_ON_FEATURE_KEYS).toContain("board");
+    expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("board");
+    expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("activity");
+    expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("slaPolicies");
+    expect(ALWAYS_ON_FEATURE_KEYS).not.toContain("supportForm");
   });
 });

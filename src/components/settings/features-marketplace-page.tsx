@@ -8,14 +8,18 @@ import {
   BarChart3,
   CalendarDays,
   Check,
+  ClipboardList,
   Clock,
+  Columns3,
   FileStack,
   GanttChart,
+  History,
   Inbox,
   KeyRound,
   Loader2,
   Network,
   Tags,
+  Timer,
   UserRoundCheck,
   Workflow,
   X,
@@ -36,11 +40,15 @@ const FEATURE_ICONS: Record<string, LucideIcon> = {
   subDepartmentReports: Network,
   calendar: CalendarDays,
   sharedMailboxes: Inbox,
+  board: Columns3,
+  activity: History,
   tagsLabels: Tags,
   workflows: Workflow,
   ticketTemplates: FileStack,
   assignmentMethods: UserRoundCheck,
   apiKeys: KeyRound,
+  slaPolicies: Timer,
+  supportForm: ClipboardList,
 };
 
 const GALLERY_CATEGORIES = [
@@ -614,6 +622,52 @@ function PreviewGraphic({ featureKey }: { featureKey: string | null }) {
           <span className="block h-1.5 w-8 rounded-full bg-sts-foreground/20" />
           <span className="mt-1 block h-1 w-5 rounded-full bg-sts-blue/70" />
         </span>
+      </div>
+    );
+  }
+  if (featureKey === "board") {
+    return (
+      <div className="flex w-full max-w-52 gap-1.5">
+        {["To do", "Doing", "Done"].map((label) => (
+          <div key={label} className="flex flex-1 flex-col gap-1 rounded-md bg-sts-card/80 p-1.5">
+            <span className="font-sans text-[10px] text-sts-muted">{label}</span>
+            <span className="h-6 rounded-sm bg-sts-blue/25" />
+            <span className="h-6 rounded-sm bg-sts-foreground/10" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (featureKey === "activity") {
+    return (
+      <div className="flex w-full max-w-48 flex-col gap-1.5">
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="flex items-center gap-2">
+            <span className="size-3 shrink-0 rounded-full bg-sts-blue/70" />
+            <span className="h-1.5 flex-1 rounded-full bg-sts-foreground/15" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (featureKey === "slaPolicies") {
+    return (
+      <div className="flex w-full max-w-44 flex-col gap-2">
+        <div className="h-2 overflow-hidden rounded-full bg-sts-foreground/10">
+          <div className="h-full w-2/3 rounded-full bg-sts-blue" />
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-sts-foreground/10">
+          <div className="h-full w-1/3 rounded-full bg-sts-blue/60" />
+        </div>
+      </div>
+    );
+  }
+  if (featureKey === "supportForm") {
+    return (
+      <div className="w-full max-w-40 rounded-lg bg-sts-card px-3 py-2.5 shadow-sm">
+        <div className="h-1.5 w-16 rounded-full bg-sts-blue" />
+        <div className="mt-2 h-5 rounded-md border border-sts-card-border" />
+        <div className="mt-1.5 h-5 rounded-md border border-sts-card-border" />
       </div>
     );
   }

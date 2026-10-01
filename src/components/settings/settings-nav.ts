@@ -15,6 +15,8 @@ export type SettingsNavItem = {
   departmentAdmin?: true;
   /** Admins and managers see this item; staff do not */
   managerOnly?: true;
+  /** Hidden from sub-managers even when otherwise visible (e.g. managerOnly items) */
+  hideForSubManager?: true;
   /** Hidden for cross-department-access outsiders — department-specific management only */
   deptSpecific?: true;
   /** Tenant-level setting — shown only in tenant view (no active department), hidden inside a department */
@@ -77,6 +79,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         href: "/settings/features",
         managerOnly: true,
         deptSpecific: true,
+        hideForSubManager: true,
       },
     ],
   },
@@ -103,6 +106,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         managerOnly: true,
         deptSpecific: true,
         templateFeatureKey: "ticketTemplates",
+        hideForSubManager: true,
       },
       {
         label: "Workflows & statuses",
@@ -147,6 +151,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         managerOnly: true,
         deptSpecific: true,
         templateFeatureKey: "assignmentMethods",
+        hideForSubManager: true,
       },
     ],
   },
@@ -214,6 +219,7 @@ export function getFilteredNav(
         if (item.managerOnly) return isAdmin || isManager || isLead;
         return true;
       })
+      .filter((item) => !(isLead && item.hideForSubManager))
       .filter((item) => {
         // Cross-access outsiders only see personal settings, not department-specific ones
         if (isCrossAccess && item.deptSpecific) return false;

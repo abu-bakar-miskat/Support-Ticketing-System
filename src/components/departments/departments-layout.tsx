@@ -74,7 +74,9 @@ export function DepartmentsLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
-    placeholderData: EMPTY,
+    initialDataUpdatedAt: initialLayoutData ? 0 : undefined,
+    refetchOnMount: "always",
+    placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });
 

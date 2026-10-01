@@ -77,6 +77,12 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         href: "/settings/templates-catalogue",
         adminOnly: true,
       },
+      {
+        label: "Features marketplace",
+        href: "/settings/features",
+        adminOnly: true,
+        deptSpecific: true,
+      },
     ],
   },
   {

@@ -45,12 +45,11 @@ export async function PUT(request: Request) {
     patch.devMode = body.devMode
   }
 
-  if (body.newTenantFeatureDefaults !== undefined) {
-    if (typeof body.newTenantFeatureDefaults !== "object" || body.newTenantFeatureDefaults === null) {
-      return NextResponse.json({ error: "newTenantFeatureDefaults must be an object" }, { status: 400 })
+  if (body.newDepartmentFeatureDefaults !== undefined) {
+    if (typeof body.newDepartmentFeatureDefaults !== "object" || body.newDepartmentFeatureDefaults === null) {
+      return NextResponse.json({ error: "newDepartmentFeatureDefaults must be an object" }, { status: 400 })
     }
-    // parseFeatureDefaults in the lib validates/whitelists keys — pass through.
-    patch.newTenantFeatureDefaults = body.newTenantFeatureDefaults
+    patch.newDepartmentFeatureDefaults = body.newDepartmentFeatureDefaults
   }
 
   if (body.templateEnablementRequiresApproval !== undefined) {

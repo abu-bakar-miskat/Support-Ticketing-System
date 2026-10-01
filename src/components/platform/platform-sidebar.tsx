@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3 } from "lucide-react";
+import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
@@ -12,6 +12,7 @@ const PLATFORM_NAV = [
   { label: "Reports", href: "/platform/reports", icon: BarChart3 },
   { label: "Tenant Types", href: "/platform/tenant-types", icon: Tags },
   { label: "Templates", href: "/platform/templates", icon: LayoutTemplate },
+  { label: "Feature approvals", href: "/platform/feature-approvals", icon: ClipboardCheck },
   { label: "Audit Log", href: "/platform/activity", icon: History },
   { label: "Email Domains", href: "/platform/email-domains", icon: Globe },
   { label: "Settings", href: "/platform/settings", icon: Settings },

@@ -236,6 +236,16 @@ async function buildAndBroadcast(
       body  = message ?? null
       break
 
+    case "feature_request_submitted":
+      title = "New feature request"
+      body  = message ?? null
+      break
+
+    case "feature_request_reviewed":
+      title = "Feature request reviewed"
+      body  = message ?? null
+      break
+
     case "sla_breach":
     case "sla_at_risk": {
       // `message` (from sla-engine) is the metric-specific predicate, e.g.

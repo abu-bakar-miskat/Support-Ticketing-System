@@ -444,5 +444,22 @@ export async function getLayoutSeedFromProfile(
     }
   }
 
-  return layoutSeedFromProfile(profile, activeDeptId, known);
+  const seed = layoutSeedFromProfile(profile, activeDeptId, known);
+  // The seed is what the sidebar renders before `/api/dashboard/layout` returns.
+  // Leaving this as "ALL" showed every nav item even when the department's
+  // feature allowlist had revoked some of them.
+  try {
+    const activeFeatureKeySet = await getEffectiveFeatureKeys(
+      profile.activeTenantId,
+      activeDeptId,
+    );
+    return {
+      ...seed,
+      activeFeatureKeys:
+        activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet),
+    };
+  } catch (err) {
+    console.error("[layout-seed] Could not resolve feature keys", err);
+    return seed;
+  }
 }

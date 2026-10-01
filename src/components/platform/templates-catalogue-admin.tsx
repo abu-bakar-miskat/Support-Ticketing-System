@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TemplateFormModal } from "@/components/platform/template-form-modal";
 import { cn } from "@/lib/utils";
 import { TEMPLATE_FEATURE_LABELS, TEMPLATE_FEATURE_GROUPS, type TemplateFeatureKey } from "@/lib/template-features";
+import { featureIcon, TemplatePreview } from "@/components/settings/feature-preview";
 import { isSystemTemplateSlug } from "@/lib/system-templates";
 
 type TemplateRow = {
@@ -432,37 +433,39 @@ function TemplateCard({
   onRestore: () => void;
 }) {
   const isSystem = isSystemTemplateSlug(t.slug);
+  const extraFeatures = t.featureKeys.filter(
+    (key) => (TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key) !== t.name,
+  );
   return (
     <li
       className={cn(
-        "flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card",
+        "group flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50",
         !t.isActive && "opacity-75",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate font-sans text-[14.5px] font-semibold text-sts-foreground">
-              {t.name}
+      {/* Preview header — same gradient graphic as the Features marketplace */}
+      <div className="relative h-28 border-b border-sts-card-border">
+        <TemplatePreview featureKeys={t.featureKeys} />
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
+          {isSystem && (
+            <span className="rounded-full bg-sts-card/90 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-muted shadow-sm">
+              System
             </span>
-            {isSystem && (
-              <span className="shrink-0 rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
-                System
-              </span>
-            )}
-          </span>
-          <span className="font-sans text-[11px] text-sts-subtle">
-            {t.featureKeys.length} feature{t.featureKeys.length === 1 ? "" : "s"}
-          </span>
+          )}
+          {!t.isActive && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sts-card/90 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-muted shadow-sm">
+              <Archive className="size-3" /> Archived
+            </span>
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="absolute top-2 right-2 flex items-center gap-1">
           {t.isActive ? (
             <>
               <button
                 type="button"
                 aria-label="Edit template"
                 onClick={onEdit}
-                className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground"
               >
                 <Pencil className="size-3.5" />
               </button>
@@ -470,7 +473,7 @@ function TemplateCard({
                 <span
                   aria-label="System template — can't be deleted"
                   title="System template — can't be deleted"
-                  className="flex size-7 items-center justify-center rounded-md text-sts-subtle"
+                  className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-subtle shadow-sm"
                 >
                   <Lock className="size-3.5" />
                 </span>
@@ -480,7 +483,7 @@ function TemplateCard({
                   aria-label="Delete template"
                   disabled={busy}
                   onClick={onDelete}
-                  className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -492,44 +495,49 @@ function TemplateCard({
               aria-label="Restore template"
               disabled={busy}
               onClick={onRestore}
-              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground disabled:opacity-50"
             >
               <RotateCcw className="size-3.5" />
             </button>
           )}
         </div>
       </div>
-      {t.description && <p className="mt-1 font-sans text-[12px] text-sts-muted">{t.description}</p>}
-      <div className="mt-2 flex flex-col gap-2">
-        {TEMPLATE_FEATURE_GROUPS.map((group) => {
-          const groupKeys = group.keys.filter((key) => t.featureKeys.includes(key));
-          if (groupKeys.length === 0) return null;
-          const Icon = group.icon;
-          return (
-            <div key={group.label}>
-              <div className="flex items-center gap-1 font-sans text-[10px] font-semibold tracking-[0.5px] text-sts-subtle uppercase">
-                <Icon className="size-3 text-sts-subtle" />
-                {group.label}
-              </div>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {groupKeys.map((key) => (
-                  <span
-                    key={key}
-                    className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue"
-                  >
-                    {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
-                  </span>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-3 flex items-center gap-1.5 border-t border-sts-card-border/60 pt-3 font-sans text-[11.5px] text-sts-subtle">
-        {t.isActive ? (
-          <span>
-            Available in the Features marketplace
+
+      {/* Body */}
+      <div className="flex flex-1 flex-col gap-1 px-4 py-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="min-w-0 truncate font-sans text-[14px] font-semibold text-sts-foreground">
+            {t.name}
           </span>
+          <span className="shrink-0 font-sans text-[11px] text-sts-subtle">
+            {t.featureKeys.length} feature{t.featureKeys.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {t.description && (
+          <p className="line-clamp-2 font-sans text-[12.5px] leading-snug text-sts-muted">{t.description}</p>
+        )}
+        {extraFeatures.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {extraFeatures.map((key) => {
+              const Icon = featureIcon(key);
+              return (
+                <span
+                  key={key}
+                  className="inline-flex items-center gap-1 rounded-md bg-sts-surface px-1.5 py-0.5 font-sans text-[11px] text-sts-muted"
+                >
+                  <Icon className="size-3 text-sts-blue" />
+                  {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer status */}
+      <div className="border-t border-sts-card-border/60 px-4 py-3 font-sans text-[11.5px] text-sts-subtle">
+        {t.isActive ? (
+          <span>Available in the Features marketplace</span>
         ) : (
           <span className="flex items-center gap-1 text-sts-muted">
             <Archive className="size-3" /> Archived

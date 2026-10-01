@@ -21,6 +21,8 @@ export type MarketplaceTemplate = {
 export type PendingFeatureRequest = {
   id: string;
   featureKey: string;
+  /** The template's feature keys (or the single requested key), for the preview graphic. */
+  featureKeys: string[];
   featureLabel: string;
   featureDescription: string | null;
   message: string | null;

@@ -620,9 +620,13 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
       : isMarketplaceFeatureKey(row.featureKey)
         ? MARKETPLACE_FEATURE_DESCRIPTIONS[row.featureKey]
         : null;
+    const featureKeys = template
+      ? template.features.map((feature) => feature.key)
+      : [row.featureKey];
     return {
     id: row.id,
     featureKey: row.featureKey,
+    featureKeys,
     featureLabel,
     featureDescription,
     message: row.message,

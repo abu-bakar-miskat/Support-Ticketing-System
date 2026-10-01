@@ -9,6 +9,7 @@ import {
   TEMPLATE_FEATURE_KEYS,
   grantedMarketplaceFeatures,
   isMarketplaceFeatureKey,
+  isStaleBuiltinFeatureDescription,
   templateIdFromGrantToken,
   type TemplateFeatureKey,
 } from "@/lib/template-features";
@@ -421,8 +422,19 @@ export async function archiveTemplate(id: string) {
  */
 export async function ensureAvailableFeatureTemplates(createdById: string) {
   for (const tpl of AVAILABLE_FEATURE_TEMPLATES) {
-    const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } });
-    if (existing) continue;
+    const existing = await prisma.template.findUnique({
+      where: { slug: tpl.slug },
+      select: { id: true, description: true },
+    });
+    if (existing) {
+      if (isStaleBuiltinFeatureDescription(tpl.slug, existing.description, tpl.description)) {
+        await prisma.template.update({
+          where: { id: existing.id },
+          data: { description: tpl.description },
+        });
+      }
+      continue;
+    }
     await prisma.template.create({
       data: {
         name: tpl.name,

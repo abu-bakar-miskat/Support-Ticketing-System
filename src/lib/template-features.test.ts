@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ALWAYS_ON_FEATURE_KEYS, grantedMarketplaceFeatures } from "./template-features";
+import {
+  ALWAYS_ON_FEATURE_KEYS,
+  featureTemplateCardText,
+  featureTemplateNarrative,
+  grantedMarketplaceFeatures,
+  isStaleBuiltinFeatureDescription,
+} from "./template-features";
 
 describe("grantedMarketplaceFeatures", () => {
   it("treats a missing allowlist as every marketplace feature already on", () => {
@@ -16,6 +22,36 @@ describe("grantedMarketplaceFeatures", () => {
       "reports",
       "timeline",
     ]);
+  });
+});
+
+describe("featureTemplateNarrative", () => {
+  it("gives a built-in template a use case and a feature explanation", () => {
+    const narrative = featureTemplateNarrative({
+      description: "API keys for this department.",
+      features: [{ key: "apiKeys", label: "API keys" }],
+    });
+    expect(narrative.customDescription).toBeNull();
+    expect(narrative.useCases).toEqual([
+      expect.objectContaining({ key: "apiKeys", text: expect.stringMatching(/Claude/) }),
+    ]);
+    expect(narrative.included[0]?.explanation).toEqual(expect.stringMatching(/Read-only/));
+    expect(featureTemplateCardText(narrative)).toBe(narrative.useCases[0]?.text);
+  });
+
+  it("keeps an author-written description", () => {
+    const narrative = featureTemplateNarrative({
+      description: "Keys for the billing integration only.",
+      features: [{ key: "apiKeys", label: "API keys" }],
+    });
+    expect(narrative.customDescription).toBe("Keys for the billing integration only.");
+    expect(featureTemplateCardText(narrative)).toBe("Keys for the billing integration only.");
+  });
+
+  it("refreshes only the old one-line seed", () => {
+    expect(isStaleBuiltinFeatureDescription("apiKeys", "API keys for this department.", "Read-only keys.")).toBe(true);
+    expect(isStaleBuiltinFeatureDescription("apiKeys", "Keys for the billing integration only.", "Read-only keys.")).toBe(false);
+    expect(isStaleBuiltinFeatureDescription("support", "API keys for this department.", "Read-only keys.")).toBe(false);
   });
 });
 

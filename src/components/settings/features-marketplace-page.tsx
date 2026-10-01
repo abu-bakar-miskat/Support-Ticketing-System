@@ -8,9 +8,9 @@ import { Check, Clock, Loader2, Tags, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  MARKETPLACE_FEATURE_DESCRIPTIONS,
   MARKETPLACE_FEATURE_GROUPS,
-  isMarketplaceFeatureKey,
+  featureTemplateCardText,
+  featureTemplateNarrative,
 } from "@/lib/template-features";
 import { FEATURE_ICONS, TemplatePreview } from "@/components/settings/feature-preview";
 import type { MarketplaceTemplate } from "@/lib/feature-marketplace-types";
@@ -201,11 +201,7 @@ export function FeaturesMarketplacePage({
                   <div className="flex items-start justify-between gap-3 px-6 pt-5">
                     <div className="min-w-0">
                       <Dialog.Title className="sts-text-modal-title">{shown.name}</Dialog.Title>
-                      {shown.description && (
-                        <Dialog.Description className="mt-1.5 font-sans text-[13px] leading-relaxed text-sts-muted">
-                          {shown.description}
-                        </Dialog.Description>
-                      )}
+                      <TemplateSummary template={shown} />
                     </div>
                     <button
                       type="button"
@@ -233,36 +229,7 @@ export function FeaturesMarketplacePage({
                   </div>
 
                   <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-6">
-                    <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
-                      Included
-                    </h2>
-                    <ul className="mt-2 flex flex-col gap-2">
-                      {shown.features.length === 0 ? (
-                        <li className="font-sans text-[13px] text-sts-muted">This template has no features yet.</li>
-                      ) : (
-                        shown.features.map((feature) => {
-                          const Icon = FEATURE_ICONS[feature.key] ?? Tags;
-                          const blurb = featureBlurb(feature.key, shown.description);
-                          return (
-                            <li key={feature.key} className="flex items-start gap-3 rounded-xl bg-sts-surface px-3 py-2.5">
-                              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-                                <Icon className="size-4" />
-                              </span>
-                              <span className="min-w-0">
-                                <span className="block font-sans text-[13px] font-medium text-sts-foreground">
-                                  {feature.label}
-                                </span>
-                                {blurb && (
-                                  <span className="mt-0.5 block font-sans text-[12px] leading-snug text-sts-muted">
-                                    {blurb}
-                                  </span>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })
-                      )}
-                    </ul>
+                    <IncludedFeatures template={shown} />
                   </div>
                 </div>
               </>
@@ -330,9 +297,7 @@ function TemplateCard({
       </div>
       <div className="flex flex-1 flex-col gap-1 px-4 py-3">
         <div className="font-sans text-[14px] font-semibold text-sts-foreground">{template.name}</div>
-        {template.description && (
-          <p className="line-clamp-2 font-sans text-[12.5px] leading-snug text-sts-muted">{template.description}</p>
-        )}
+        <TemplateCardBlurb template={template} />
         {extraFeatures.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {extraFeatures.map((feature) => {
@@ -442,10 +407,86 @@ function StatusBadge({ status }: { status: MarketplaceTemplate["status"] }) {
   return null;
 }
 
-function featureBlurb(key: string, templateDescription: string | null): string | null {
-  if (!isMarketplaceFeatureKey(key)) return null;
-  const blurb = MARKETPLACE_FEATURE_DESCRIPTIONS[key];
-  if (templateDescription && blurb.trim().toLowerCase() === templateDescription.trim().toLowerCase()) return null;
-  return blurb;
+function TemplateSummary({ template }: { template: MarketplaceTemplate }) {
+  const narrative = featureTemplateNarrative(template);
+  const useCase = narrative.useCases.length === 1 ? narrative.useCases[0].text : null;
+  if (!narrative.customDescription && !useCase) return null;
+  return (
+    <Dialog.Description className="mt-3">
+      {narrative.customDescription && (
+        <span className="block font-sans text-[13px] leading-relaxed text-sts-muted">
+          {narrative.customDescription}
+        </span>
+      )}
+      {useCase && (
+        <span className={narrative.customDescription ? "mt-3 block" : "block"}>
+          <span className="block font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
+            Use case
+          </span>
+          <span className="mt-1 block font-sans text-[13px] leading-relaxed text-sts-foreground">
+            {useCase}
+          </span>
+        </span>
+      )}
+    </Dialog.Description>
+  );
+}
+
+function IncludedFeatures({ template }: { template: MarketplaceTemplate }) {
+  const narrative = featureTemplateNarrative(template);
+  return (
+    <>
+      {narrative.useCases.length > 1 && (
+        <div className="mb-5">
+          <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
+            Use case
+          </h2>
+          <ul className="mt-2 flex flex-col gap-2">
+            {narrative.useCases.map((item) => (
+              <li key={item.key} className="font-sans text-[13px] leading-relaxed text-sts-foreground">
+                <span className="font-medium">{item.label}. </span>
+                <span className="text-sts-muted">{item.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
+        Included
+      </h2>
+      <ul className="mt-2 flex flex-col gap-2">
+        {narrative.included.length === 0 ? (
+          <li className="font-sans text-[13px] text-sts-muted">This template has no features yet.</li>
+        ) : (
+          narrative.included.map((feature) => {
+            const Icon = FEATURE_ICONS[feature.key] ?? Tags;
+            return (
+              <li key={feature.key} className="flex items-start gap-3 rounded-xl bg-sts-surface px-3 py-2.5">
+                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-sans text-[13px] font-medium text-sts-foreground">
+                    {feature.label}
+                  </span>
+                  {feature.explanation && (
+                    <span className="mt-0.5 block font-sans text-[12px] leading-snug text-sts-muted">
+                      {feature.explanation}
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </>
+  );
+}
+
+function TemplateCardBlurb({ template }: { template: MarketplaceTemplate }) {
+  const text = featureTemplateCardText(featureTemplateNarrative(template));
+  if (!text) return null;
+  return <p className="line-clamp-3 font-sans text-[12.5px] leading-snug text-sts-muted">{text}</p>;
 }
 

@@ -11,6 +11,7 @@ import {
   MARKETPLACE_FEATURE_GROUPS,
   MARKETPLACE_FEATURE_KEYS,
   TEMPLATE_FEATURE_LABELS,
+  featureTemplateNarrative,
   grantedMarketplaceFeatures,
   isMarketplaceFeatureKey,
   templateGrantToken,
@@ -615,11 +616,20 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
       : isMarketplaceFeatureKey(row.featureKey)
         ? TEMPLATE_FEATURE_LABELS[row.featureKey]
         : row.featureKey;
-    const featureDescription = template
-      ? template.features.map((feature) => isTemplateFeatureLabel(feature.key)).join(", ") || template.description
-      : isMarketplaceFeatureKey(row.featureKey)
-        ? MARKETPLACE_FEATURE_DESCRIPTIONS[row.featureKey]
-        : null;
+    const narrative = featureTemplateNarrative({
+      description: template?.description ?? null,
+      features: template
+        ? template.features.map((feature) => ({
+            key: feature.key,
+            label: isTemplateFeatureLabel(feature.key),
+          }))
+        : [{ key: row.featureKey, label: featureLabel }],
+    });
+    const featureDescription =
+      narrative.useCases.map((item) => item.text).join(" ") ||
+      narrative.customDescription ||
+      narrative.included.map((item) => item.explanation).filter((text): text is string => !!text).join(" ") ||
+      null;
     const featureKeys = template
       ? template.features.map((feature) => feature.key)
       : [row.featureKey];

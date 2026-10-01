@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { ProfileStatsPage } from "@/components/profile/profile-stats-page"
 import { fetchProfileStats } from "@/lib/profile-stats"
@@ -41,8 +41,13 @@ async function ProfileData({
   })
 
   if (!result.ok) {
-    if (result.status === 403) redirect("/profile")
-    redirect("/profile")
+    // A forbidden/not-found request for *someone else's* profile falls back to
+    // the viewer's own paramless profile. But when the viewer's OWN profile
+    // fails (targetId === profile.id, e.g. a missing Profile row → 404) we are
+    // already at that paramless URL — redirecting to "/profile" again would
+    // reload-loop forever — so surface a 404 instead.
+    if (sp.userId && sp.userId !== profile.id) redirect("/profile")
+    notFound()
   }
 
   return (

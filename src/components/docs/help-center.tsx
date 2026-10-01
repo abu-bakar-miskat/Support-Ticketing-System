@@ -862,16 +862,16 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "template-marketplace",
-    title: "Template Marketplace (features)",
+    title: "Features marketplace",
     icon: Boxes,
     group: "managers",
     managerOnly: true,
-    keywords: "template marketplace catalogue features enable adopt tenant toggle feature keys",
-    summary: "Turn whole features on or off for your organisation.",
+    keywords: "features marketplace request approve timeline reports calendar mailboxes templates",
+    summary: "Request optional department features for a Super Admin to approve.",
     body: (
       <>
-        <P>The feature set each department sees is driven by the templates your organisation has adopted. Admins manage this from <strong>Settings → Template Marketplace</strong>.</P>
-        <InfoBox type="info">If a sidebar item or settings page you expect is missing, the matching template may not be adopted yet — an admin can enable it here. Organisations that haven&apos;t adopted any template see everything by default.</InfoBox>
+        <P>Optional features such as Timeline, Reports, and Ticket Templates start from the defaults a Super Admin set for new departments. Admins request more from <strong>Settings → Features marketplace</strong>. The feature appears in that department after a Super Admin approves it.</P>
+        <InfoBox type="info">If a sidebar item or settings page you expect is missing, it may still be waiting on approval. Everything outside the marketplace stays available.</InfoBox>
       </>
     ),
   },

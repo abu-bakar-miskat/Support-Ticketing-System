@@ -7,9 +7,11 @@ import {
   ALWAYS_ON_FEATURE_KEYS,
   TEMPLATE_FEATURE_KEYS,
   grantedMarketplaceFeatures,
+  isMarketplaceFeatureKey,
+  templateIdFromGrantToken,
   type TemplateFeatureKey,
 } from "@/lib/template-features";
-import { SYSTEM_TEMPLATES } from "@/lib/system-templates";
+import { AVAILABLE_FEATURE_TEMPLATES, SYSTEM_TEMPLATES } from "@/lib/system-templates";
 import { templateRequestReviewedMessage } from "@/lib/template-request-messages";
 import type { TemplateRequestStatus } from "@/generated/prisma/enums";
 
@@ -38,7 +40,23 @@ export async function getDepartmentActiveFeatureKeys(
   const granted = grantedMarketplaceFeatures(dept?.featureKeys);
   if (granted === "ALL") return "ALL";
 
-  return new Set<TemplateFeatureKey>([...ALWAYS_ON_FEATURE_KEYS, ...granted]);
+  const templateIds = Array.isArray(dept?.featureKeys)
+    ? dept.featureKeys.map(templateIdFromGrantToken).filter((id): id is string => id !== null)
+    : [];
+  const fromTemplates = templateIds.length
+    ? await runAsSystem(() =>
+        prisma.templateFeature.findMany({
+          where: { templateId: { in: templateIds } },
+          select: { key: true },
+        }),
+      ).catch(() => [])
+    : [];
+
+  return new Set<TemplateFeatureKey>([
+    ...ALWAYS_ON_FEATURE_KEYS,
+    ...granted,
+    ...fromTemplates.map((row) => row.key).filter(isMarketplaceFeatureKey),
+  ]);
 }
 
 /**
@@ -358,6 +376,28 @@ export async function setTemplateFeatures(templateId: string, featureKeys: Templ
     prisma.templateFeature.deleteMany({ where: { templateId } }),
     prisma.templateFeature.createMany({ data: featureKeys.map((key) => ({ templateId, key })) }),
   ]);
+  await syncGrantedTemplateFeatures(templateId, featureKeys);
+}
+
+/** Departments that already have this template pick up newly added marketplace features. */
+async function syncGrantedTemplateFeatures(templateId: string, featureKeys: TemplateFeatureKey[]) {
+  const token = `template:${templateId}`;
+  const marketplaceKeys = featureKeys.filter(isMarketplaceFeatureKey);
+  if (marketplaceKeys.length === 0) return;
+  const departments = await prisma.department.findMany({
+    select: { id: true, featureKeys: true },
+  });
+  for (const dept of departments) {
+    if (!Array.isArray(dept.featureKeys) || !dept.featureKeys.includes(token)) continue;
+    const current = grantedMarketplaceFeatures(dept.featureKeys);
+    if (current === "ALL") continue;
+    const missing = marketplaceKeys.filter((key) => !current.includes(key));
+    if (missing.length === 0) continue;
+    await prisma.department.update({
+      where: { id: dept.id },
+      data: { featureKeys: [...dept.featureKeys, ...missing] },
+    });
+  }
 }
 
 export async function archiveTemplate(id: string) {
@@ -370,6 +410,26 @@ export async function archiveTemplate(id: string) {
  * ones and re-syncs features/name/description on existing ones, keeping them
  * active. Additive only — never deletes. Safe to run on every deploy/boot.
  */
+/**
+ * Create any built-in feature template that is not in the catalogue yet.
+ * Existing rows are left alone, so a renamed or re-featured template stays as edited.
+ */
+export async function ensureAvailableFeatureTemplates(createdById: string) {
+  for (const tpl of AVAILABLE_FEATURE_TEMPLATES) {
+    const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } });
+    if (existing) continue;
+    await prisma.template.create({
+      data: {
+        name: tpl.name,
+        slug: tpl.slug,
+        description: tpl.description,
+        createdById,
+        features: { create: tpl.featureKeys.map((key) => ({ key })) },
+      },
+    });
+  }
+}
+
 export async function ensureSystemTemplates(createdById: string) {
   for (const tpl of SYSTEM_TEMPLATES) {
     const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } });

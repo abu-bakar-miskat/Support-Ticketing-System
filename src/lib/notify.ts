@@ -237,7 +237,7 @@ async function buildAndBroadcast(
       break
 
     case "feature_request_submitted":
-      title = "New feature request"
+      title = "Feature approval request"
       body  = message ?? null
       break
 

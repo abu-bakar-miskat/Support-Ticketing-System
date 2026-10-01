@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { ensureAvailableFeatureTemplates, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
 import { isSystemTemplateSlug, SYSTEM_TEMPLATES } from "@/lib/system-templates";
@@ -309,7 +310,7 @@ export async function requestDepartmentTemplate(params: {
     }),
     prisma.department.findUnique({
       where: { id: params.departmentId },
-      select: { id: true, tenantId: true, name: true, featureKeys: true },
+      select: { id: true, tenantId: true, name: true, featureKeys: true, tenant: { select: { name: true } } },
     }),
   ]);
   if (!template || !template.isActive || isSystemTemplateSlug(template.slug)) {
@@ -343,17 +344,19 @@ export async function requestDepartmentTemplate(params: {
     },
   });
 
-  const superAdmins = await prisma.profile.findMany({
-    where: { isSuperAdmin: true, isActive: true },
-    select: { id: true },
-  });
+  const superAdmins = await runAsSystem(() =>
+    prisma.profile.findMany({
+      where: { isSuperAdmin: true, isActive: true },
+      select: { id: true },
+    }),
+  );
   await Promise.all(
     superAdmins.map((admin) =>
       createNotification({
         recipientId: admin.id,
         actorId: params.requestedById,
         type: "feature_request_submitted",
-        message: `${dept.name} requested the ${template.name} feature template.`,
+        message: `${dept.tenant.name} requested approval to enable ${template.name} for ${dept.name}.`,
       }),
     ),
   );
@@ -526,7 +529,7 @@ export async function requestDepartmentFeature(params: {
   const featureKey = params.featureKey;
   const dept = await prisma.department.findUnique({
     where: { id: params.departmentId },
-    select: { id: true, tenantId: true, name: true, featureKeys: true },
+    select: { id: true, tenantId: true, name: true, featureKeys: true, tenant: { select: { name: true } } },
   });
   if (!dept || dept.tenantId !== params.tenantId) throw new Error("Department not found");
 
@@ -551,17 +554,19 @@ export async function requestDepartmentFeature(params: {
   });
 
   const label = TEMPLATE_FEATURE_LABELS[featureKey];
-  const superAdmins = await prisma.profile.findMany({
-    where: { isSuperAdmin: true, isActive: true },
-    select: { id: true },
-  });
+  const superAdmins = await runAsSystem(() =>
+    prisma.profile.findMany({
+      where: { isSuperAdmin: true, isActive: true },
+      select: { id: true },
+    }),
+  );
   await Promise.all(
     superAdmins.map((admin) =>
       createNotification({
         recipientId: admin.id,
         actorId: params.requestedById,
         type: "feature_request_submitted",
-        message: `${dept.name} requested ${label}.`,
+        message: `${dept.tenant.name} requested approval to enable ${label} for ${dept.name}.`,
       }),
     ),
   );

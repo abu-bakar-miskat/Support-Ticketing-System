@@ -84,15 +84,11 @@ export function PlatformSettingsAdmin({
   const [departmentDefaults, setDepartmentDefaults] = useState<Record<MarketplaceFeatureKey, boolean>>(
     initialSettings.newDepartmentFeatureDefaults,
   );
-  const [approvalRequired, setApprovalRequired] = useState(
-    initialSettings.templateEnablementRequiresApproval,
-  );
   const [savingGeneral, setSavingGeneral] = useState(false);
 
   const generalDirty =
     platformName !== baseline.platformName ||
     supportEmail !== baseline.supportEmail ||
-    approvalRequired !== baseline.templateEnablementRequiresApproval ||
     JSON.stringify(departmentDefaults) !== JSON.stringify(baseline.newDepartmentFeatureDefaults);
 
   async function saveGeneral() {
@@ -107,7 +103,6 @@ export function PlatformSettingsAdmin({
           platformName,
           supportEmail,
           newDepartmentFeatureDefaults: departmentDefaults,
-          templateEnablementRequiresApproval: approvalRequired,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -120,7 +115,6 @@ export function PlatformSettingsAdmin({
       setSupportEmail(body.supportEmail);
       setDevMode(Boolean(body.devMode));
       setDepartmentDefaults(body.newDepartmentFeatureDefaults);
-      setApprovalRequired(Boolean(body.templateEnablementRequiresApproval));
       setBaseline(body as PlatformSettings);
       setStatus("Platform settings saved");
     } finally {
@@ -466,27 +460,6 @@ export function PlatformSettingsAdmin({
                     aria-label="Toggle email dev mode"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Template enablement governance */}
-            <div className="border-t border-sts-card-border px-[22px] py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                    Template enablement approval
-                  </h3>
-                  <p className="mt-1 font-sans text-[12px] text-sts-muted">
-                    When on, a Tenant Admin enable request stays Pending Approval and inactive until a Super Admin
-                    approves it. When off, Enable activates the template immediately.
-                  </p>
-                </div>
-                <Switch
-                  checked={approvalRequired}
-                  onCheckedChange={setApprovalRequired}
-                  size="sm"
-                  aria-label="Require approval to enable a template"
-                />
               </div>
             </div>
 

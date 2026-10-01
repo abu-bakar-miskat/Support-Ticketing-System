@@ -242,7 +242,7 @@ async function buildAndBroadcast(
       break
 
     case "feature_request_reviewed":
-      title = "Feature request reviewed"
+      title = message?.startsWith("Rejected") ? "Feature request rejected" : "Feature request approved"
       body  = message ?? null
       break
 

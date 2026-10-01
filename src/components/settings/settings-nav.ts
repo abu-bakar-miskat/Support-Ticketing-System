@@ -73,14 +73,9 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         tenantScoped: true,
       },
       {
-        label: "Template Marketplace",
-        href: "/settings/templates-catalogue",
-        adminOnly: true,
-      },
-      {
         label: "Features marketplace",
         href: "/settings/features",
-        adminOnly: true,
+        managerOnly: true,
         deptSpecific: true,
       },
     ],

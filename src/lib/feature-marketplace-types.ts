@@ -14,6 +14,7 @@ export type PendingFeatureRequest = {
   id: string;
   featureKey: string;
   featureLabel: string;
+  featureDescription: string | null;
   message: string | null;
   requestedAt: string;
   tenant: { id: string; name: string };

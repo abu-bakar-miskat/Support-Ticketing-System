@@ -79,7 +79,13 @@ export async function setTenantDepartmentFeatures(params: {
           status: "PENDING",
           ...(params.key ? { featureKey: params.key } : {}),
         },
-        select: { id: true, featureKey: true, requestedById: true, department: { select: { name: true } } },
+        select: {
+          id: true,
+          featureKey: true,
+          departmentId: true,
+          requestedById: true,
+          department: { select: { name: true } },
+        },
       })
     : [];
 
@@ -131,11 +137,12 @@ export async function setTenantDepartmentFeatures(params: {
       const label = isMarketplaceFeatureKey(row.featureKey)
         ? TEMPLATE_FEATURE_LABELS[row.featureKey]
         : row.featureKey;
-      return createNotification({
-        recipientId: row.requestedById,
+      return notifyDepartmentFeatureReview({
+        tenantId: params.tenantId,
+        departmentId: row.departmentId,
+        requesterId: row.requestedById,
         actorId: params.actorId,
-        type: "feature_request_reviewed",
-        message: `${label} is now available in ${row.department.name}.`,
+        message: `Approved: ${label} is now available in ${row.department.name}.`,
       });
     }),
   );
@@ -253,6 +260,9 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
     featureLabel: isMarketplaceFeatureKey(row.featureKey)
       ? TEMPLATE_FEATURE_LABELS[row.featureKey]
       : row.featureKey,
+    featureDescription: isMarketplaceFeatureKey(row.featureKey)
+      ? MARKETPLACE_FEATURE_DESCRIPTIONS[row.featureKey]
+      : null,
     message: row.message,
     requestedAt: row.requestedAt.toISOString(),
     tenant: row.tenant,
@@ -309,12 +319,48 @@ export async function reviewFeatureRequest(params: {
   const label = TEMPLATE_FEATURE_LABELS[featureKey];
   const message =
     params.decision === "APPROVED"
-      ? `${label} is now available in ${request.department.name}.`
-      : `${label} was declined for ${request.department.name}.${params.reviewNote?.trim() ? ` ${params.reviewNote.trim()}` : ""}`;
-  await createNotification({
-    recipientId: request.requestedById,
+      ? `Approved: ${label} is now available in ${request.department.name}.`
+      : `Rejected: ${label} was declined for ${request.department.name}.${params.reviewNote?.trim() ? ` ${params.reviewNote.trim()}` : ""}`;
+  await notifyDepartmentFeatureReview({
+    tenantId: request.tenantId,
+    departmentId: request.departmentId,
+    requesterId: request.requestedById,
     actorId: params.reviewedById,
-    type: "feature_request_reviewed",
     message,
   });
+}
+
+/** Requester, department managers, and tenant admins hear the outcome. */
+async function notifyDepartmentFeatureReview(params: {
+  tenantId: string;
+  departmentId: string;
+  requesterId: string;
+  actorId: string;
+  message: string;
+}) {
+  const [managers, admins] = await Promise.all([
+    prisma.departmentManager.findMany({
+      where: { departmentId: params.departmentId },
+      select: { userId: true },
+    }),
+    prisma.tenantMembership.findMany({
+      where: { tenantId: params.tenantId, role: "admin", isActive: true },
+      select: { userId: true },
+    }),
+  ]);
+  const recipientIds = new Set<string>([
+    params.requesterId,
+    ...managers.map((row) => row.userId),
+    ...admins.map((row) => row.userId),
+  ]);
+  await Promise.all(
+    [...recipientIds].map((recipientId) =>
+      createNotification({
+        recipientId,
+        actorId: params.actorId,
+        type: "feature_request_reviewed",
+        message: params.message,
+      }),
+    ),
+  );
 }

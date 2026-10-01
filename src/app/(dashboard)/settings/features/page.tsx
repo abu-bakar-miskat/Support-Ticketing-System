@@ -10,7 +10,9 @@ export const metadata = { title: "Features marketplace — Global Support Portal
 export default async function FeaturesSettingsPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "admin" && !profile.isSuperAdmin) redirect("/settings");
+  const canRequest =
+    !profile.isSuperAdmin && (profile.role === "admin" || profile.role === "manager");
+  if (!canRequest && !profile.isSuperAdmin) redirect("/settings");
 
   const departmentId = (await getProfileDeptScope(profile))?.activeDeptId ?? null;
   if (!departmentId) redirect("/departments");
@@ -23,6 +25,7 @@ export default async function FeaturesSettingsPage() {
       departmentId={marketplace.departmentId}
       departmentName={marketplace.departmentName}
       initialFeatures={marketplace.features}
+      canRequest={canRequest}
     />
   );
 }

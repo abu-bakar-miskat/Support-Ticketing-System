@@ -10,10 +10,12 @@ export function FeaturesMarketplacePage({
   departmentId,
   departmentName,
   initialFeatures,
+  canRequest,
 }: {
   departmentId: string;
   departmentName: string;
   initialFeatures: MarketplaceFeature[];
+  canRequest: boolean;
 }) {
   const router = useRouter();
   const [features, setFeatures] = useState(initialFeatures);
@@ -50,8 +52,9 @@ export function FeaturesMarketplacePage({
       <div>
         <h1 className="sts-text-admin-title">Features marketplace</h1>
         <p className="mt-[3px] max-w-2xl font-sans text-[13px] text-sts-muted">
-          Optional features for {departmentName}. Request one and a super admin
-          approves it before this department can see or use it.
+          {canRequest
+            ? `Optional features for ${departmentName}. Request one and a super admin approves it before this department can see or use it.`
+            : `Optional features enabled for ${departmentName}. Requests are approved from Feature approvals.`}
         </p>
       </div>
 
@@ -87,10 +90,12 @@ export function FeaturesMarketplacePage({
                       {feature.description}
                     </p>
                   </div>
-                  {feature.status === "enabled" ? (
-                    <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 font-sans text-[11.5px] font-medium text-emerald-700 dark:text-emerald-400">
-                      <Check className="size-3" /> Enabled
-                    </span>
+                  {feature.status === "enabled" || !canRequest ? (
+                    feature.status === "enabled" ? (
+                      <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 font-sans text-[11.5px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <Check className="size-3" /> Enabled
+                      </span>
+                    ) : null
                   ) : feature.status === "pending" ? (
                     <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2.5 font-sans text-[11.5px] font-medium text-amber-700 dark:text-amber-400">
                       <Clock className="size-3" /> Pending

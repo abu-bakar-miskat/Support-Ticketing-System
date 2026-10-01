@@ -3,12 +3,15 @@ import { requireAuth } from "@/lib/auth";
 import { badRequest } from "@/lib/api-response";
 import { requestDepartmentFeature } from "@/lib/feature-marketplace";
 
-/** Tenant admin asks for one marketplace feature on the active department. */
+/** Tenant admin or department manager asks for one marketplace feature. */
 export async function POST(req: NextRequest) {
   const { profile, error } = await requireAuth();
   if (error) return error;
-  if (profile.role !== "admin" && !profile.isSuperAdmin) {
-    return NextResponse.json({ error: "Only a tenant admin can request a feature." }, { status: 403 });
+  if (profile.isSuperAdmin) {
+    return NextResponse.json({ error: "Super admins approve feature requests." }, { status: 403 });
+  }
+  if (profile.role !== "admin" && profile.role !== "manager") {
+    return NextResponse.json({ error: "Only a tenant admin or manager can request a feature." }, { status: 403 });
   }
   const tenantId = profile.activeTenantId;
   if (!tenantId) return badRequest("No active organization");

@@ -42,6 +42,7 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   intake_manager_alert: { icon: Inbox,    color: "#0a76b9", label: "new support ticket"   },
   assignment_failed_alert: { icon: AlertTriangle, color: "#dc2626", label: "needs a manual assignee" },
   agreement_expiring: { icon: CalendarClock, color: "#d97706", label: "agreement expiring" },
+  feature_request_submitted: { icon: GitPullRequest, color: "#f84201", label: "requested feature approval" },
   sla_breach:     { icon: AlertTriangle,  color: "#dc2626", label: "Ticket breached the SLA"     },
   sla_at_risk:    { icon: CalendarClock,  color: "#d97706", label: "Ticket is at risk of breaching SLA" },
 };
@@ -68,7 +69,9 @@ function NotifRow({
   function handleClick() {
     onMarkRead(item.id);
     onClose();
-    if (item.ticket) {
+    if (item.type === "feature_request_submitted") {
+      router.push("/platform/feature-approvals");
+    } else if (item.ticket) {
       router.push(`/tickets/${item.ticket.dbId}`);
     } else if (item.joinRequest) {
       router.push("/settings/sub-departments");

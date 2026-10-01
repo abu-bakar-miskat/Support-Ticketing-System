@@ -96,8 +96,6 @@ type NavItem = {
   icon: LucideIcon;
   badge?: number;
   requiresModulesAccess?: boolean;
-  /** Hidden in support departments (dev-planning views). */
-  hideForSupport?: boolean;
   /** Only shown in support departments. */
   supportOnly?: boolean;
   /** Hidden unless the tenant's active templates include this feature key (Template Catalogue) */
@@ -119,7 +117,6 @@ const navViews: NavItem[] = [
     label: "Timeline",
     href: "/timeline",
     icon: GanttChart,
-    hideForSupport: true,
     templateFeatureKey: "timeline",
   },
   // {
@@ -1057,11 +1054,7 @@ export function Sidebar({
               if (item.requiresDeptAdmin && !canAdminActiveDeptSettings)
                 return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
-              // Per-department-type interface: support departments hide dev-planning
-              // views (Timeline, Modules) and surface Support forms; other types
-              // hide the support-only item.
               const isSupportDept = activeDeptType === "support";
-              if (item.hideForSupport && isSupportDept) return false;
               if (item.supportOnly && !isSupportDept) return false;
               if (isCrossAccessDept) {
                 // Full-access guests can also see Reports (read-only, dept-wide).

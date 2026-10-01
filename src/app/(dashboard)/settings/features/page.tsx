@@ -26,6 +26,7 @@ export default async function FeaturesSettingsPage() {
       departmentName={marketplace.departmentName}
       initialTemplates={marketplace.templates}
       canRequest={canRequest}
+      canEnable={profile.isSuperAdmin}
     />
   );
 }

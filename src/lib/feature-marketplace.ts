@@ -1,8 +1,10 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { runAsSystem } from "@/lib/request-scope";
 import { recordAuditEvent } from "@/lib/audit-log";
-import { ensureAvailableFeatureTemplates } from "@/lib/template-catalogue";
+import { ensureAvailableFeatureTemplates, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
+import { isSystemTemplateSlug, SYSTEM_TEMPLATES } from "@/lib/system-templates";
 import { createNotification } from "@/lib/notify";
 import {
   MARKETPLACE_FEATURE_DESCRIPTIONS,
@@ -41,6 +43,46 @@ async function grantDepartmentTemplate(
   await tx.department.update({
     where: { id: departmentId },
     data: { featureKeys: [...nextFeatures, ...extras, token] },
+  });
+}
+
+async function revokeDepartmentTemplate(
+  tx: Prisma.TransactionClient,
+  departmentId: string,
+  templateId: string,
+  keys: MarketplaceFeatureKey[],
+) {
+  const dept = await tx.department.findUnique({
+    where: { id: departmentId },
+    select: { featureKeys: true },
+  });
+  if (!dept) throw new Error("Department not found");
+  const token = templateGrantToken(templateId);
+  const current = explicitMarketplaceKeys(dept.featureKeys);
+  const otherTokens = Array.isArray(dept.featureKeys)
+    ? dept.featureKeys.filter(
+        (value): value is string =>
+          typeof value === "string" && templateIdFromGrantToken(value) !== null && value !== token,
+      )
+    : [];
+  const otherIds = otherTokens
+    .map(templateIdFromGrantToken)
+    .filter((id): id is string => id !== null);
+  const keptByOthers = new Set<MarketplaceFeatureKey>();
+  if (otherIds.length > 0) {
+    const rows = await tx.templateFeature.findMany({
+      where: { templateId: { in: otherIds } },
+      select: { key: true },
+    });
+    for (const row of rows) {
+      if (isMarketplaceFeatureKey(row.key)) keptByOthers.add(row.key);
+    }
+  }
+  const remove = new Set(keys);
+  const nextFeatures = current.filter((key) => !remove.has(key) || keptByOthers.has(key));
+  await tx.department.update({
+    where: { id: departmentId },
+    data: { featureKeys: [...nextFeatures, ...otherTokens] },
   });
 }
 
@@ -183,6 +225,16 @@ function departmentHasTemplate(featureKeys: unknown, templateId: string): boolea
   return featureKeys.includes(templateGrantToken(templateId));
 }
 
+/** True when every marketplace feature in the package is already on for this department. */
+function packageAlreadyEnabled(
+  active: Awaited<ReturnType<typeof getDepartmentActiveFeatureKeys>>,
+  featureKeys: string[],
+): boolean {
+  if (active === "ALL") return true;
+  const required = featureKeys.filter(isMarketplaceFeatureKey);
+  return required.length > 0 && required.every((key) => active.has(key));
+}
+
 /** Active feature templates, and whether this department already has each one. */
 export async function listMarketplaceTemplates(departmentId: string): Promise<{
   departmentId: string;
@@ -203,7 +255,9 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
 
   const [templates, pending] = await Promise.all([
     prisma.template.findMany({
-      where: { isActive: true },
+      // Support is the old whole-tenant template. Marketplace templates are
+      // pre-built feature packages a department can request.
+      where: { isActive: true, slug: { notIn: SYSTEM_TEMPLATES.map((template) => template.slug) } },
       orderBy: { order: "asc" },
       include: { features: { select: { key: true } } },
     }),
@@ -215,24 +269,26 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
   const pendingIds = new Set(
     pending.map((row) => templateIdFromGrantToken(row.featureKey)).filter((id): id is string => id !== null),
   );
+  const active = await getDepartmentActiveFeatureKeys(departmentId);
 
   return {
     departmentId: dept.id,
     departmentName: dept.name,
-    templates: templates.map((template) => ({
-      id: template.id,
-      name: template.name,
-      description: template.description,
-      features: template.features.map((feature) => ({
-        key: feature.key,
-        label: isTemplateFeatureLabel(feature.key),
-      })),
-      status: departmentHasTemplate(dept.featureKeys, template.id)
-        ? "enabled"
-        : pendingIds.has(template.id)
-          ? "pending"
-          : "available",
-    })),
+    templates: templates.map((template) => {
+      const featureKeys = template.features.map((feature) => feature.key);
+      const enabled =
+        departmentHasTemplate(dept.featureKeys, template.id) || packageAlreadyEnabled(active, featureKeys);
+      return {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        features: template.features.map((feature) => ({
+          key: feature.key,
+          label: isTemplateFeatureLabel(feature.key),
+        })),
+        status: enabled ? "enabled" : pendingIds.has(template.id) ? "pending" : "available",
+      };
+    }),
   };
 }
 
@@ -250,16 +306,25 @@ export async function requestDepartmentTemplate(params: {
   const [template, dept] = await Promise.all([
     prisma.template.findUnique({
       where: { id: params.templateId },
-      select: { id: true, name: true, isActive: true },
+      select: { id: true, name: true, slug: true, isActive: true, features: { select: { key: true } } },
     }),
     prisma.department.findUnique({
       where: { id: params.departmentId },
-      select: { id: true, tenantId: true, name: true, featureKeys: true },
+      select: { id: true, tenantId: true, name: true, featureKeys: true, tenant: { select: { name: true } } },
     }),
   ]);
-  if (!template || !template.isActive) throw new Error("That template isn't available");
+  if (!template || !template.isActive || isSystemTemplateSlug(template.slug)) {
+    throw new Error("That template isn't available");
+  }
   if (!dept || dept.tenantId !== params.tenantId) throw new Error("Department not found");
-  if (departmentHasTemplate(dept.featureKeys, template.id)) {
+  const active = await getDepartmentActiveFeatureKeys(dept.id);
+  if (
+    departmentHasTemplate(dept.featureKeys, template.id) ||
+    packageAlreadyEnabled(
+      active,
+      template.features.map((feature) => feature.key),
+    )
+  ) {
     throw new Error("This department already has that template");
   }
   const token = templateGrantToken(template.id);
@@ -279,22 +344,146 @@ export async function requestDepartmentTemplate(params: {
     },
   });
 
-  const superAdmins = await prisma.profile.findMany({
-    where: { isSuperAdmin: true, isActive: true },
-    select: { id: true },
-  });
+  const superAdmins = await runAsSystem(() =>
+    prisma.profile.findMany({
+      where: { isSuperAdmin: true, isActive: true },
+      select: { id: true },
+    }),
+  );
   await Promise.all(
     superAdmins.map((admin) =>
       createNotification({
         recipientId: admin.id,
         actorId: params.requestedById,
         type: "feature_request_submitted",
-        message: `${dept.name} requested the ${template.name} feature template.`,
+        message: `${dept.tenant.name} requested approval to enable ${template.name} for ${dept.name}.`,
       }),
     ),
   );
 
   return request;
+}
+
+/** Super admin turns a feature template on for one department, without a request. */
+export async function enableDepartmentTemplate(params: {
+  departmentId: string;
+  templateId: string;
+  actorId: string;
+}) {
+  const [template, dept] = await Promise.all([
+    prisma.template.findUnique({
+      where: { id: params.templateId },
+      select: { id: true, name: true, slug: true, isActive: true, features: { select: { key: true } } },
+    }),
+    prisma.department.findUnique({
+      where: { id: params.departmentId },
+      select: { id: true, tenantId: true, name: true, featureKeys: true },
+    }),
+  ]);
+  if (!template || !template.isActive || isSystemTemplateSlug(template.slug)) {
+    throw new Error("That template isn't available");
+  }
+  if (!dept) throw new Error("Department not found");
+
+  const keys = template.features.map((feature) => feature.key).filter(isMarketplaceFeatureKey);
+  const active = await getDepartmentActiveFeatureKeys(dept.id);
+  if (departmentHasTemplate(dept.featureKeys, template.id) || packageAlreadyEnabled(active, keys)) {
+    throw new Error("This department already has that template");
+  }
+
+  const token = templateGrantToken(template.id);
+  const pending = await prisma.featureRequest.findMany({
+    where: { departmentId: dept.id, featureKey: token, status: "PENDING" },
+    select: { id: true, requestedById: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await grantDepartmentTemplate(tx, dept.id, template.id, keys);
+    if (pending.length > 0) {
+      await tx.featureRequest.updateMany({
+        where: { id: { in: pending.map((row) => row.id) } },
+        data: {
+          status: "APPROVED",
+          reviewedById: params.actorId,
+          reviewedAt: new Date(),
+        },
+      });
+    }
+  });
+
+  await recordAuditEvent({
+    tenantId: dept.tenantId,
+    departmentId: dept.id,
+    actorId: params.actorId,
+    action: "FEATURE_TEMPLATE_ENABLED",
+    targetType: "Template",
+    targetId: template.id,
+    after: { departmentId: dept.id, featureKeys: keys },
+  });
+
+  const message = `Approved: ${template.name} is now available in ${dept.name}.`;
+  const requesterIds = pending.length > 0 ? pending.map((row) => row.requestedById) : [params.actorId];
+  await Promise.all(
+    requesterIds.map((requesterId) =>
+      notifyDepartmentFeatureReview({
+        tenantId: dept.tenantId,
+        departmentId: dept.id,
+        requesterId,
+        actorId: params.actorId,
+        message,
+      }),
+    ),
+  );
+}
+
+/** Super admin turns a feature template off for one department. */
+export async function disableDepartmentTemplate(params: {
+  departmentId: string;
+  templateId: string;
+  actorId: string;
+}) {
+  const [template, dept] = await Promise.all([
+    prisma.template.findUnique({
+      where: { id: params.templateId },
+      select: { id: true, name: true, slug: true, isActive: true, features: { select: { key: true } } },
+    }),
+    prisma.department.findUnique({
+      where: { id: params.departmentId },
+      select: { id: true, tenantId: true, name: true, featureKeys: true },
+    }),
+  ]);
+  if (!template || !template.isActive || isSystemTemplateSlug(template.slug)) {
+    throw new Error("That template isn't available");
+  }
+  if (!dept) throw new Error("Department not found");
+
+  const keys = template.features.map((feature) => feature.key).filter(isMarketplaceFeatureKey);
+  const active = await getDepartmentActiveFeatureKeys(dept.id);
+  if (!departmentHasTemplate(dept.featureKeys, template.id) && !packageAlreadyEnabled(active, keys)) {
+    throw new Error("This department does not have that template");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await revokeDepartmentTemplate(tx, dept.id, template.id, keys);
+  });
+
+  await recordAuditEvent({
+    tenantId: dept.tenantId,
+    departmentId: dept.id,
+    actorId: params.actorId,
+    action: "FEATURE_TEMPLATE_DISABLED",
+    targetType: "Template",
+    targetId: template.id,
+    after: { departmentId: dept.id, featureKeys: keys },
+  });
+
+  await notifyDepartmentFeatureReview({
+    tenantId: dept.tenantId,
+    departmentId: dept.id,
+    requesterId: params.actorId,
+    actorId: params.actorId,
+    message: `Disabled: ${template.name} is no longer available in ${dept.name}.`,
+  });
 }
 
 export async function listMarketplaceForDepartment(departmentId: string) {
@@ -340,7 +529,7 @@ export async function requestDepartmentFeature(params: {
   const featureKey = params.featureKey;
   const dept = await prisma.department.findUnique({
     where: { id: params.departmentId },
-    select: { id: true, tenantId: true, name: true, featureKeys: true },
+    select: { id: true, tenantId: true, name: true, featureKeys: true, tenant: { select: { name: true } } },
   });
   if (!dept || dept.tenantId !== params.tenantId) throw new Error("Department not found");
 
@@ -365,17 +554,19 @@ export async function requestDepartmentFeature(params: {
   });
 
   const label = TEMPLATE_FEATURE_LABELS[featureKey];
-  const superAdmins = await prisma.profile.findMany({
-    where: { isSuperAdmin: true, isActive: true },
-    select: { id: true },
-  });
+  const superAdmins = await runAsSystem(() =>
+    prisma.profile.findMany({
+      where: { isSuperAdmin: true, isActive: true },
+      select: { id: true },
+    }),
+  );
   await Promise.all(
     superAdmins.map((admin) =>
       createNotification({
         recipientId: admin.id,
         actorId: params.requestedById,
         type: "feature_request_submitted",
-        message: `${dept.name} requested ${label}.`,
+        message: `${dept.tenant.name} requested approval to enable ${label} for ${dept.name}.`,
       }),
     ),
   );

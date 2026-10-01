@@ -64,10 +64,6 @@ async function jsonOrThrow(res: Response) {
   return res.json();
 }
 
-const SUB_DEPT_OPTIONS = (subDepartments: SubDepartmentOption[]) => [
-  { value: "", label: "None (form default)" },
-  ...subDepartments.map((s) => ({ value: s.id, label: s.name })),
-];
 
 export function SlaSettingsPage({
   departmentId,
@@ -549,7 +545,13 @@ function PolicyRow({
   onDelete: (id: string) => Promise<void>;
   readOnly?: boolean;
 }) {
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<{
+    name: string;
+    priority: Priority | null;
+    firstResponseMins: number | "";
+    resolutionMins: number | "";
+    subDepartmentId: string | null;
+  }>({
     name: policy.name,
     priority: policy.priority,
     firstResponseMins: policy.firstResponseMins,
@@ -570,12 +572,16 @@ function PolicyRow({
     draft.resolutionMins !== policy.resolutionMins ||
     draft.subDepartmentId !== policy.subDepartmentId;
 
+  // Sub-department is required whenever the department has sub-departments to
+  // pick from (mirrors the create path).
+  const subDepartmentRequired = showSubDepartment && subDepartments.length > 0;
   const canSave =
     dirty &&
     !saving &&
     draft.name.trim().length > 0 &&
-    draft.firstResponseMins > 0 &&
-    draft.resolutionMins > 0;
+    Number(draft.firstResponseMins) > 0 &&
+    Number(draft.resolutionMins) > 0 &&
+    (!subDepartmentRequired || Boolean(draft.subDepartmentId));
 
   async function save() {
     if (!canSave) return;
@@ -584,8 +590,8 @@ function PolicyRow({
       const patch: Partial<SlaPolicy> = {
         name: draft.name.trim(),
         priority: draft.priority,
-        firstResponseMins: draft.firstResponseMins,
-        resolutionMins: draft.resolutionMins,
+        firstResponseMins: Number(draft.firstResponseMins),
+        resolutionMins: Number(draft.resolutionMins),
       };
       if (draft.subDepartmentId) {
         patch.subDepartmentId = draft.subDepartmentId;
@@ -622,8 +628,8 @@ function PolicyRow({
               <SearchableSelect
                 value={draft.subDepartmentId ?? ""}
                 onChange={(v) => set("subDepartmentId", v || null)}
-                options={SUB_DEPT_OPTIONS(subDepartments)}
-                placeholder="None (form default)"
+                options={subDepartments.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Select a sub-department"
                 searchable={false}
                 size="sm"
                 aria-label="Sub-department concerned"
@@ -658,12 +664,15 @@ function PolicyRow({
           <input
             type="number"
             min={1}
+            placeholder="e.g. 60"
             value={draft.firstResponseMins}
-            onChange={(e) => set("firstResponseMins", Number(e.target.value))}
+            onChange={(e) => set("firstResponseMins", e.target.value === "" ? "" : Number(e.target.value))}
             readOnly={readOnly}
             className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
+          {draft.firstResponseMins !== "" && (
+            <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
+          )}
         </div>
       </td>
       <td className={cell}>
@@ -671,12 +680,15 @@ function PolicyRow({
           <input
             type="number"
             min={1}
+            placeholder="e.g. 480"
             value={draft.resolutionMins}
-            onChange={(e) => set("resolutionMins", Number(e.target.value))}
+            onChange={(e) => set("resolutionMins", e.target.value === "" ? "" : Number(e.target.value))}
             readOnly={readOnly}
             className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
+          {draft.resolutionMins !== "" && (
+            <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
+          )}
         </div>
       </td>
       <td className={cell}>
@@ -744,8 +756,8 @@ function NewPolicyModal({
   const formConfigId = initialFormConfigId;
   const [name, setName] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
-  const [firstResponseMins, setFirstResponseMins] = useState(60);
-  const [resolutionMins, setResolutionMins] = useState(480);
+  const [firstResponseMins, setFirstResponseMins] = useState<number | "">("");
+  const [resolutionMins, setResolutionMins] = useState<number | "">("");
   const [subDepartmentId, setSubDepartmentId] = useState("");
 
   useEffect(() => {
@@ -759,15 +771,23 @@ function NewPolicyModal({
   const submit = () =>
     onCreate({
       name: name.trim(),
-      firstResponseMins,
-      resolutionMins,
+      firstResponseMins: Number(firstResponseMins),
+      resolutionMins: Number(resolutionMins),
       formConfigId: formConfigId || null,
       priority: priority || null,
       subDepartmentId: subDepartmentId || null,
     });
 
   const formName = forms.find((f) => f.id === formConfigId)?.name ?? null;
-  const canSubmit = name.trim().length > 0 && firstResponseMins > 0 && resolutionMins > 0 && !creating;
+  // Sub-department is required whenever the department has sub-departments to pick
+  // from. Departments with none fall back to department-level policies.
+  const subDepartmentRequired = showSubDepartment && subDepartments.length > 0;
+  const canSubmit =
+    name.trim().length > 0 &&
+    Number(firstResponseMins) > 0 &&
+    Number(resolutionMins) > 0 &&
+    (!subDepartmentRequired || subDepartmentId.length > 0) &&
+    !creating;
 
   const fieldCls =
     "h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30";
@@ -821,19 +841,18 @@ function NewPolicyModal({
 
           {showSubDepartment && subDepartments.length > 0 && (
             <div className="space-y-1.5">
-              <label className="sts-text-label">Sub-department concerned (optional)</label>
+              <label className="sts-text-label">Sub-department concerned</label>
               <SearchableSelect
                 value={subDepartmentId}
                 onChange={(v) => setSubDepartmentId(v ?? "")}
-                options={SUB_DEPT_OPTIONS(subDepartments)}
-                placeholder="None (form default)"
+                options={subDepartments.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Select a sub-department"
                 searchable={false}
                 size="md"
                 aria-label="Sub-department concerned"
               />
               <p className="font-sans text-[11px] text-sts-subtle">
-                When set, tickets for this issue land in that sub-department. Otherwise the form or
-                department default applies.
+                Tickets for this issue land in the selected sub-department.
               </p>
             </div>
           )}
@@ -866,11 +885,14 @@ function NewPolicyModal({
               <input
                 type="number"
                 min={1}
+                placeholder="e.g. 60"
                 value={firstResponseMins}
-                onChange={(e) => setFirstResponseMins(Number(e.target.value))}
+                onChange={(e) => setFirstResponseMins(e.target.value === "" ? "" : Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(firstResponseMins)}</p>
+              {firstResponseMins !== "" && (
+                <p className="font-sans text-[11px] text-sts-subtle">{formatMins(firstResponseMins)}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="sts-text-label flex items-center gap-1.5">
@@ -879,11 +901,14 @@ function NewPolicyModal({
               <input
                 type="number"
                 min={1}
+                placeholder="e.g. 480"
                 value={resolutionMins}
-                onChange={(e) => setResolutionMins(Number(e.target.value))}
+                onChange={(e) => setResolutionMins(e.target.value === "" ? "" : Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(resolutionMins)}</p>
+              {resolutionMins !== "" && (
+                <p className="font-sans text-[11px] text-sts-subtle">{formatMins(resolutionMins)}</p>
+              )}
             </div>
           </div>
         </div>

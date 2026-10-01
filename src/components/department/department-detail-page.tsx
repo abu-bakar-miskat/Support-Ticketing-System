@@ -46,7 +46,6 @@ import {
   type MemberConfigTarget,
 } from "@/components/settings/member-config-panel";
 import {
-  assignDepartmentManager,
   removeDepartmentManager,
   removeDepartmentMember,
   updateAdminUser,
@@ -60,8 +59,7 @@ import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type DeptRole = "admin" | "manager";
-type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; deptRole?: DeptRole; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[] };
+type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[] };
 
 type MemberRow = {
   userId: string;
@@ -100,7 +98,6 @@ export type DepartmentDetailData = {
   memberCount: number;
   managerCount: number;
   isAdmin: boolean;
-  canGrantAdmin: boolean;
   /** Super Admin — may grant/revoke this department's features. */
   canControlFeatures: boolean;
   availableSubDepartments: { id: string; name: string }[];
@@ -128,52 +125,6 @@ const ROLE_COLORS: Record<string, string> = {
   sub_manager: "bg-sts-green/10 text-sts-green",
   agent: "bg-sts-surface text-sts-subtle",
 };
-
-// Department-scoped Admin vs Manager control (role-hierarchy.md). Editable only
-// for a tenant admin / department Admin (canEdit); otherwise a static badge. An
-// Admin holds admin-only settings power for this department; a Manager is
-// operational only.
-function DeptRoleToggle({
-  role,
-  canEdit,
-  onChange,
-}: {
-  role: DeptRole;
-  canEdit: boolean;
-  onChange: (role: DeptRole) => void;
-}) {
-  if (!canEdit) {
-    return (
-      <span
-        className={cn(
-          "inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize",
-          ROLE_COLORS[role] ?? ROLE_COLORS.manager,
-        )}
-      >
-        {role}
-      </span>
-    );
-  }
-  return (
-    <div className="inline-flex rounded-md border border-sts-card-border p-0.5">
-      {(["manager", "admin"] as const).map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onChange(opt)}
-          className={cn(
-            "rounded px-2 py-0.5 font-sans text-[11px] font-medium capitalize transition-colors",
-            role === opt
-              ? "bg-sts-id text-white"
-              : "text-sts-muted hover:text-sts-foreground",
-          )}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ── Section shell ────────────────────────────────────────────────────────────
 
@@ -362,19 +313,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
   function refresh() {
     startTransition(() => router.refresh());
-  }
-
-  async function setManagerRole(userId: string, role: DeptRole) {
-    // Optimistic; revert on failure (e.g. a manager forbidden from granting admin).
-    const prevRole = managers.find((m) => m.userId === userId)?.deptRole ?? "manager";
-    if (prevRole === role) return;
-    setManagers((prev) => prev.map((m) => (m.userId === userId ? { ...m, deptRole: role } : m)));
-    try {
-      await assignDepartmentManager(data.id, userId, role);
-      refresh();
-    } catch {
-      setManagers((prev) => prev.map((m) => (m.userId === userId ? { ...m, deptRole: prevRole } : m)));
-    }
   }
 
   async function removeManager(userId: string) {
@@ -706,14 +644,13 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableHead className="h-8 w-[45%]"><SectionLabel>Name</SectionLabel></TableHead>
                 <TableHead className="h-8"><SectionLabel>Email</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>Role</SectionLabel></TableHead>
                 <TableHead className="h-8 w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {managers.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={4} className="py-0">
+                  <TableCell colSpan={3} className="py-0">
                     <div className="flex h-[54px] items-center">
                       <span className="font-sans text-[11.5px] text-sts-muted">No managers assigned yet</span>
                     </div>
@@ -730,13 +667,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                     </TableCell>
                     <TableCell className="py-0">
                       <span className="font-sans text-[11.5px] text-sts-subtle">{m.email}</span>
-                    </TableCell>
-                    <TableCell className="py-0">
-                      <DeptRoleToggle
-                        role={m.deptRole ?? "manager"}
-                        canEdit={data.canGrantAdmin}
-                        onChange={(r) => setManagerRole(m.userId, r)}
-                      />
                     </TableCell>
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-0.5">

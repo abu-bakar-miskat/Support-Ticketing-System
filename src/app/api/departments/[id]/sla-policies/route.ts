@@ -58,7 +58,11 @@ function isConditionGroup(value: unknown): value is ConditionGroup {
   }
 }
 
-/** Validate that `subDepartmentId` (if given) belongs to department `id`. */
+/**
+ * Validate `subDepartmentId` for department `id`. A sub-department is REQUIRED
+ * whenever the department has any; departments with none create department-level
+ * policies (subDepartmentId null).
+ */
 async function resolveSubDepartmentScope(
   departmentId: string,
   raw: string | null | undefined,
@@ -71,6 +75,15 @@ async function resolveSubDepartmentScope(
     })
     if (!sub) {
       return { error: NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 }) }
+    }
+  } else {
+    // No sub-department supplied — only allowed when the department has none.
+    const hasSubDepartments = await prisma.subDepartment.findFirst({
+      where: { departmentId },
+      select: { id: true },
+    })
+    if (hasSubDepartments) {
+      return { error: NextResponse.json({ error: "subDepartmentId is required" }, { status: 400 }) }
     }
   }
   return { subDepartmentId }
@@ -164,8 +177,8 @@ export async function POST(
   const dept = await prisma.department.findUnique({ where: { id }, select: { tenantId: true } })
   if (!dept) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
-  // Optional per-issue "concerned" sub-department (ticket routing). Not a policy
-  // scope — policies are always department-owned; sub-departments inherit them.
+  // Per-issue "concerned" sub-department (ticket routing). Required when the
+  // department has sub-departments; policies remain department-owned regardless.
   const concerned = await resolveSubDepartmentScope(id, body.subDepartmentId as string | undefined)
   if ("error" in concerned) return concerned.error
 

@@ -182,11 +182,6 @@ export default async function DepartmentRoute() {
     isAdmin,
     availableSubDepartments,
     allUsers: allUsers.map((u) => ({ ...u, avatarUrl: u.avatarUrl ?? null })),
-    // Whether the viewer may grant/revoke the department-Admin role here — a
-    // tenant admin or an Admin of this department (role-hierarchy.md). Managers
-    // may add Managers/Agents but not Admins, so the toggle is hidden for them.
-    canGrantAdmin:
-      profile.role === "admin" || (profile.departmentAdminIds ?? []).includes(activeDeptId),
     // Super Admins control any department's feature allowlist (role-hierarchy.md).
     canControlFeatures: profile.isSuperAdmin,
     managers: managers.map((m) => ({
@@ -198,7 +193,6 @@ export default async function DepartmentRoute() {
       color: avatarColorFor(m.user.name),
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,
-      deptRole: m.role === "admin" ? "admin" as const : "manager" as const,
       subDepartmentMemberships: subDepartmentMembershipsByUser.get(m.userId) ?? [],
     })),
     members: [...memberProfilesById.values()].map((p) => ({

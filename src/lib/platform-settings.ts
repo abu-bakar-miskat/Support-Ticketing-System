@@ -1,6 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { PLATFORM_FEATURE_KEYS, isFeatureKey, type FeatureKey } from "@/lib/feature-keys";
+import {
+  MARKETPLACE_FEATURE_KEYS,
+  isMarketplaceFeatureKey,
+  type MarketplaceFeatureKey,
+} from "@/lib/template-features";
 import type { OtpEmailTemplate } from "@/lib/email-templates/otp";
 
 /**
@@ -22,11 +26,11 @@ export type PlatformSettings = {
    */
   devMode: boolean;
   /**
-   * Feature defaults applied when a NEW tenant is created. A key set to false
-   * seeds a disabled FeatureFlag row for that tenant at creation time (existing
-   * tenants are untouched — feature flags are fail-open, see lib/feature-flags).
+   * Marketplace features a new department is created with. Keys set to true are
+   * written onto Department.featureKeys at creation. Existing departments are
+   * not changed. Keys left off stay requestable from the Features marketplace.
    */
-  newTenantFeatureDefaults: Record<FeatureKey, boolean>;
+  newDepartmentFeatureDefaults: Record<MarketplaceFeatureKey, boolean>;
   /**
    * Super-admin override for the OTP sign-in email (subject + full body HTML,
    * `{{code}}` placeholder). `null` means "use the built-in OTP_DEFAULT". OTP is
@@ -51,19 +55,18 @@ export type PlatformSettings = {
   enforceTenantAgreements: boolean;
 };
 
-function allFeaturesEnabled(): Record<FeatureKey, boolean> {
-  return Object.fromEntries(PLATFORM_FEATURE_KEYS.map((k) => [k, true])) as Record<FeatureKey, boolean>;
-}
-
-function defaultNewTenantFeatureDefaults(): Record<FeatureKey, boolean> {
-  return allFeaturesEnabled();
+function defaultNewDepartmentFeatureDefaults(): Record<MarketplaceFeatureKey, boolean> {
+  return Object.fromEntries(MARKETPLACE_FEATURE_KEYS.map((key) => [key, false])) as Record<
+    MarketplaceFeatureKey,
+    boolean
+  >;
 }
 
 export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   platformName: "Global Support Portal",
   supportEmail: "",
   devMode: false,
-  newTenantFeatureDefaults: defaultNewTenantFeatureDefaults(),
+  newDepartmentFeatureDefaults: defaultNewDepartmentFeatureDefaults(),
   otpEmailTemplate: null,
   templateEnablementRequiresApproval: false,
   enforceTenantAgreements: false,
@@ -78,12 +81,12 @@ function parseOtpTemplate(value: unknown): OtpEmailTemplate | null {
   return { subject, bodyHtml };
 }
 
-/** Coerce a stored JSON value into a validated feature-defaults map. */
-function parseFeatureDefaults(value: unknown): Record<FeatureKey, boolean> {
-  const result = defaultNewTenantFeatureDefaults();
+/** Coerce a stored JSON value into the department-creation feature defaults. */
+function parseDepartmentFeatureDefaults(value: unknown): Record<MarketplaceFeatureKey, boolean> {
+  const result = defaultNewDepartmentFeatureDefaults();
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (isFeatureKey(k) && typeof v === "boolean") result[k] = v;
+    for (const [key, enabled] of Object.entries(value as Record<string, unknown>)) {
+      if (isMarketplaceFeatureKey(key) && typeof enabled === "boolean") result[key] = enabled;
     }
   }
   return result;
@@ -101,7 +104,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     platformName: typeof platformName === "string" && platformName.trim() ? platformName : PLATFORM_SETTINGS_DEFAULTS.platformName,
     supportEmail: typeof supportEmail === "string" ? supportEmail : PLATFORM_SETTINGS_DEFAULTS.supportEmail,
     devMode: typeof devMode === "boolean" ? devMode : PLATFORM_SETTINGS_DEFAULTS.devMode,
-    newTenantFeatureDefaults: parseFeatureDefaults(byKey.get("newTenantFeatureDefaults")),
+    newDepartmentFeatureDefaults: parseDepartmentFeatureDefaults(byKey.get("newDepartmentFeatureDefaults")),
     otpEmailTemplate: parseOtpTemplate(byKey.get("otpEmailTemplate")),
     templateEnablementRequiresApproval: byKey.get("templateEnablementRequiresApproval") === true,
     enforceTenantAgreements: byKey.get("enforceTenantAgreements") === true,
@@ -120,8 +123,11 @@ export async function setPlatformSettings(
   if (patch.platformName !== undefined) writes.push({ key: "platformName", value: patch.platformName.trim() });
   if (patch.supportEmail !== undefined) writes.push({ key: "supportEmail", value: patch.supportEmail.trim() });
   if (patch.devMode !== undefined) writes.push({ key: "devMode", value: patch.devMode });
-  if (patch.newTenantFeatureDefaults !== undefined) {
-    writes.push({ key: "newTenantFeatureDefaults", value: parseFeatureDefaults(patch.newTenantFeatureDefaults) });
+  if (patch.newDepartmentFeatureDefaults !== undefined) {
+    writes.push({
+      key: "newDepartmentFeatureDefaults",
+      value: parseDepartmentFeatureDefaults(patch.newDepartmentFeatureDefaults),
+    });
   }
   if (patch.otpEmailTemplate !== undefined) {
     // null clears the override (falls back to OTP_DEFAULT at render time).
@@ -150,8 +156,8 @@ export async function setPlatformSettings(
   return getPlatformSettings();
 }
 
-/** Feature keys a newly-created tenant should have DISABLED (default-off). */
-export async function newTenantDisabledFeatureKeys(): Promise<FeatureKey[]> {
-  const { newTenantFeatureDefaults } = await getPlatformSettings();
-  return PLATFORM_FEATURE_KEYS.filter((k) => newTenantFeatureDefaults[k] === false);
+/** Marketplace features to grant when a department is created. */
+export async function defaultDepartmentFeatureKeys(): Promise<MarketplaceFeatureKey[]> {
+  const { newDepartmentFeatureDefaults } = await getPlatformSettings();
+  return MARKETPLACE_FEATURE_KEYS.filter((key) => newDepartmentFeatureDefaults[key]);
 }

@@ -52,6 +52,7 @@ export const TENANT_SCOPED_MODELS = [
   "agreement",
   "tenantTemplate",
   "templateRequest",
+  "featureRequest",
   "slaTimer",
   "slaBreach",
   "ruleExecutionLog",

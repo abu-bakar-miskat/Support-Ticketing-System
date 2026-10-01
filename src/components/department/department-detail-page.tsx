@@ -56,6 +56,7 @@ import {
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
+import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -868,6 +869,20 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </Table>
         </div>
       </Section>
+
+      {data.canControlFeatures && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Settings2 className="size-4 text-sts-muted" />
+            <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+              Features <span className="font-normal text-sts-subtle">(super admin)</span>
+            </h2>
+          </div>
+          <div className="rounded-[6px] border border-sts-card-border bg-sts-card p-[22px]">
+            <DepartmentFeaturesPanel departmentId={data.id} />
+          </div>
+        </div>
+      )}
 
       {showInviteModal && (
         <InviteByEmailModal

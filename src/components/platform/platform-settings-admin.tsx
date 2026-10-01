@@ -26,23 +26,12 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { PLATFORM_FEATURE_KEYS, type FeatureKey } from "@/lib/feature-keys";
+import {
+  MARKETPLACE_FEATURE_KEYS,
+  TEMPLATE_FEATURE_LABELS,
+  type MarketplaceFeatureKey,
+} from "@/lib/template-features";
 import { cn } from "@/lib/utils";
-
-const FEATURE_LABELS: Record<FeatureKey, string> = {
-  mailboxConnections: "Mailbox connections",
-  bulkReassign: "Bulk reassignment",
-  customReports: "Custom / cross-department reporting",
-  slaPolicies: "SLA policies",
-  assignmentRules: "Auto-assignment rules",
-  intakeForms: "Public intake forms",
-  recruitment: "Recruitment boards",
-  timeTracking: "Time tracking",
-};
-
-/** Feature keys shown as toggles on this page. `recruitment` is intentionally
- * hidden here while its flag/path-gating stays defined in feature-keys.ts. */
-const VISIBLE_FEATURE_KEYS = PLATFORM_FEATURE_KEYS.filter((k) => k !== "recruitment");
 
 type TenantOption = { id: string; name: string; slug: string; status: string };
 type Overview = {
@@ -56,7 +45,7 @@ type PlatformSettings = {
   platformName: string;
   supportEmail: string;
   devMode: boolean;
-  newTenantFeatureDefaults: Record<FeatureKey, boolean>;
+  newDepartmentFeatureDefaults: Record<MarketplaceFeatureKey, boolean>;
   templateEnablementRequiresApproval: boolean;
 };
 type OtpTemplate = { subject: string; bodyHtml: string };
@@ -92,8 +81,8 @@ export function PlatformSettingsAdmin({
   const [supportEmail, setSupportEmail] = useState(initialSettings.supportEmail);
   const [devMode, setDevMode] = useState(initialSettings.devMode);
   const [savingDevMode, setSavingDevMode] = useState(false);
-  const [tenantDefaults, setTenantDefaults] = useState<Record<FeatureKey, boolean>>(
-    initialSettings.newTenantFeatureDefaults,
+  const [departmentDefaults, setDepartmentDefaults] = useState<Record<MarketplaceFeatureKey, boolean>>(
+    initialSettings.newDepartmentFeatureDefaults,
   );
   const [approvalRequired, setApprovalRequired] = useState(
     initialSettings.templateEnablementRequiresApproval,
@@ -104,7 +93,7 @@ export function PlatformSettingsAdmin({
     platformName !== baseline.platformName ||
     supportEmail !== baseline.supportEmail ||
     approvalRequired !== baseline.templateEnablementRequiresApproval ||
-    JSON.stringify(tenantDefaults) !== JSON.stringify(baseline.newTenantFeatureDefaults);
+    JSON.stringify(departmentDefaults) !== JSON.stringify(baseline.newDepartmentFeatureDefaults);
 
   async function saveGeneral() {
     setSavingGeneral(true);
@@ -117,7 +106,7 @@ export function PlatformSettingsAdmin({
         body: JSON.stringify({
           platformName,
           supportEmail,
-          newTenantFeatureDefaults: tenantDefaults,
+          newDepartmentFeatureDefaults: departmentDefaults,
           templateEnablementRequiresApproval: approvalRequired,
         }),
       });
@@ -130,7 +119,7 @@ export function PlatformSettingsAdmin({
       setPlatformName(body.platformName);
       setSupportEmail(body.supportEmail);
       setDevMode(Boolean(body.devMode));
-      setTenantDefaults(body.newTenantFeatureDefaults);
+      setDepartmentDefaults(body.newDepartmentFeatureDefaults);
       setApprovalRequired(Boolean(body.templateEnablementRequiresApproval));
       setBaseline(body as PlatformSettings);
       setStatus("Platform settings saved");
@@ -175,7 +164,7 @@ export function PlatformSettingsAdmin({
 
   // ── Per-tenant configuration ─────────────────────────────────────────────────
   const [tenantId, setTenantId] = useState<string>(tenants[0]?.id ?? "");
-  const [flags, setFlags] = useState<Record<FeatureKey, boolean> | null>(null);
+  const [flags, setFlags] = useState<Record<MarketplaceFeatureKey, boolean> | null>(null);
   const [loadingFlags, setLoadingFlags] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
 
@@ -187,11 +176,11 @@ export function PlatformSettingsAdmin({
     async function load() {
       setLoadingFlags(true);
       try {
-        const res = await fetch(`/api/admin/feature-flags?tenantId=${tenantId}`).then((r) => r.json());
+        const res = await fetch(`/api/admin/tenants/${tenantId}/department-features`).then((r) => r.json());
         if (cancelled) return;
-        setFlags(res.flags ?? null);
+        setFlags(res.features ?? null);
       } catch {
-        if (!cancelled) setError("Failed to load feature flags for this tenant");
+        if (!cancelled) setError("Failed to load department features for this tenant");
       } finally {
         if (!cancelled) setLoadingFlags(false);
       }
@@ -202,38 +191,46 @@ export function PlatformSettingsAdmin({
     };
   }, [tenantId]);
 
-  async function writeFlag(key: FeatureKey, enabled: boolean) {
-    const res = await fetch("/api/admin/feature-flags", {
+  async function writeFeatures(body: { key?: MarketplaceFeatureKey; all?: boolean; enabled: boolean }) {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/department-features`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenantId, key, enabled }),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error();
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error ?? "Failed to update department features");
+    return payload.features as Record<MarketplaceFeatureKey, boolean>;
   }
 
-  async function toggleFlag(key: FeatureKey, enabled: boolean) {
+  async function toggleFlag(key: MarketplaceFeatureKey, enabled: boolean) {
     setError(null);
     setFlags((prev) => (prev ? { ...prev, [key]: enabled } : prev));
     try {
-      await writeFlag(key, enabled);
+      const features = await writeFeatures({ key, enabled });
+      setFlags(features);
     } catch {
       setFlags((prev) => (prev ? { ...prev, [key]: !enabled } : prev));
-      setError("Failed to update feature flag");
+      setError("Failed to update department features");
     }
   }
 
   async function setAllFlags(enabled: boolean) {
     if (!flags) return;
+    if (MARKETPLACE_FEATURE_KEYS.every((key) => flags[key] === enabled)) return;
     setError(null);
-    const changed = PLATFORM_FEATURE_KEYS.filter((k) => flags[k] !== enabled);
-    if (changed.length === 0) return;
     const prev = flags;
-    setFlags(Object.fromEntries(PLATFORM_FEATURE_KEYS.map((k) => [k, enabled])) as Record<FeatureKey, boolean>);
+    setFlags(
+      Object.fromEntries(MARKETPLACE_FEATURE_KEYS.map((key) => [key, enabled])) as Record<
+        MarketplaceFeatureKey,
+        boolean
+      >,
+    );
     try {
-      await Promise.all(changed.map((k) => writeFlag(k, enabled)));
+      const features = await writeFeatures({ all: true, enabled });
+      setFlags(features);
     } catch {
       setFlags(prev);
-      setError("Failed to update some feature flags");
+      setError("Failed to update department features");
     }
   }
 
@@ -344,7 +341,7 @@ export function PlatformSettingsAdmin({
         <PageHeader
           icon={SettingsIcon}
           title="Platform settings"
-          description="Global platform configuration, new-tenant defaults, and per-tenant feature control. Changes are recorded in the Activity Log."
+          description="Global platform configuration, defaults for new departments, and per-tenant department features. Changes are recorded in the Activity Log."
         />
 
         {(error || status) && (
@@ -396,7 +393,7 @@ export function PlatformSettingsAdmin({
           <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
             <div className="border-b border-sts-card-border px-[22px] py-4">
               <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Global settings</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Platform-wide identity and new-tenant defaults.</p>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Platform-wide identity and defaults for new departments.</p>
             </div>
 
             {/* Identity */}
@@ -493,20 +490,27 @@ export function PlatformSettingsAdmin({
               </div>
             </div>
 
-            {/* New-tenant defaults */}
+            {/* Features a new department is created with */}
             <div className="border-t border-sts-card-border px-[22px] py-5">
-              <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">New-tenant feature defaults</h3>
+              <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                Default features for new departments
+              </h3>
               <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                Features toggled off here start disabled for tenants created afterwards. Existing tenants are unaffected.
+                Switched on here, a feature is available as soon as any department is created.
+                Switched off, a tenant admin requests it from the Features marketplace. Existing
+                departments are unchanged.
               </p>
               <div className="mt-3 flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
-                {VISIBLE_FEATURE_KEYS.map((key) => (
+                {MARKETPLACE_FEATURE_KEYS.map((key) => (
                   <div key={key} className="flex items-center justify-between gap-3 py-2.5">
-                    <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
+                    <span className="font-sans text-[13px] text-sts-foreground">{TEMPLATE_FEATURE_LABELS[key]}</span>
                     <Switch
-                      checked={tenantDefaults[key]}
-                      onCheckedChange={(checked) => setTenantDefaults((d) => ({ ...d, [key]: checked }))}
+                      checked={departmentDefaults[key]}
+                      onCheckedChange={(checked) =>
+                        setDepartmentDefaults((current) => ({ ...current, [key]: checked }))
+                      }
                       size="sm"
+                      aria-label={`${TEMPLATE_FEATURE_LABELS[key]} on new departments`}
                     />
                   </div>
                 ))}
@@ -530,7 +534,7 @@ export function PlatformSettingsAdmin({
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sts-card-border px-[22px] py-4">
               <div className="min-w-0">
                 <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Per-tenant configuration</h2>
-                <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Feature flags and lifecycle status for one tenant.</p>
+                <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Department features and lifecycle status for one tenant.</p>
               </div>
               {tenants.length > 0 && (
                 <Select value={tenantId} onValueChange={(v) => v && setTenantId(v)}>
@@ -598,10 +602,15 @@ export function PlatformSettingsAdmin({
                   </div>
                 </div>
 
-                {/* Feature flags */}
+                {/* Department features for this tenant */}
                 <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Feature flags</h3>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Department features</h3>
+                      <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                        Applies to every department in this tenant. Switched off, a tenant admin can still request it.
+                      </p>
+                    </div>
                     <div className="flex gap-1.5">
                       <button
                         type="button"
@@ -627,14 +636,15 @@ export function PlatformSettingsAdmin({
                         <Loader2 className="size-4 animate-spin text-sts-muted" />
                       </div>
                     )}
-                    {VISIBLE_FEATURE_KEYS.map((key) => (
+                    {MARKETPLACE_FEATURE_KEYS.map((key) => (
                       <div key={key} className="flex items-center justify-between gap-3 py-2.5">
-                        <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
+                        <span className="font-sans text-[13px] text-sts-foreground">{TEMPLATE_FEATURE_LABELS[key]}</span>
                         <Switch
-                          checked={flags ? flags[key] : true}
+                          checked={flags ? flags[key] : false}
                           disabled={loadingFlags || !flags}
                           onCheckedChange={(checked) => toggleFlag(key, checked)}
                           size="sm"
+                          aria-label={`${TEMPLATE_FEATURE_LABELS[key]} for this tenant`}
                         />
                       </div>
                     ))}

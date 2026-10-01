@@ -120,7 +120,12 @@ export function DashboardLayout({
       return r.json() as Promise<LayoutData>;
     },
     staleTime: 60_000,
+    // Seed paints immediately (including the department feature allowlist).
+    // Treat it as stale so the full layout still loads — global refetchOnMount
+    // is false, and fresh initialData would otherwise stick at "every feature".
     initialData: initialLayoutData,
+    initialDataUpdatedAt: initialLayoutData ? 0 : undefined,
+    refetchOnMount: "always",
     placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });

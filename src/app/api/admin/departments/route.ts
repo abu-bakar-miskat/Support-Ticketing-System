@@ -4,6 +4,7 @@ import { requireAdmin } from "../_guard"
 import { isValidDepartmentType } from "@/lib/department-types"
 import { departmentTypeForTemplateSlug } from "@/lib/system-templates"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
+import { defaultDepartmentFeatureKeys } from "@/lib/platform-settings"
 import { runWithScope } from "@/lib/request-scope"
 import type { Prisma } from "@/generated/prisma/client"
 
@@ -71,18 +72,16 @@ export async function POST(request: Request) {
   }
   const type = departmentTypeForTemplateSlug(selected)
 
-  // Seed the department's controllable feature allowlist from the chosen
-  // template's features. Left null (uncontrolled → all features) when the
-  // selection isn't a catalogue template.
+  // Remember which catalogue template the department was created from.
+  // Marketplace features come from the super-admin "new department" defaults,
+  // not from the template. Anything left off can be requested later.
   let templateSlug: string | null = null
-  let featureKeys: string[] | null = null
   const tpl = await prisma.template.findUnique({
     where: { slug: selected },
-    select: { slug: true, features: { select: { key: true } } },
+    select: { slug: true },
   })
   if (tpl) {
     templateSlug = tpl.slug
-    featureKeys = tpl.features.map((f) => f.key)
   } else if (!isValidDepartmentType(selected)) {
     return NextResponse.json({ error: "Template not found" }, { status: 400 })
   }
@@ -91,6 +90,8 @@ export async function POST(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "No active tenant" }, { status: 400 })
   }
+
+  const featureKeys = await defaultDepartmentFeatureKeys()
 
   // Keep isHub in sync so the existing hub-scope logic keeps working. The board
   // (five status-typed default columns) is created atomically with the
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
           type,
           templateSlug,
           slug,
-          ...(featureKeys ? { featureKeys } : {}),
+          featureKeys,
           isHub: type === "hub",
           // Departments are operational immediately — no manual setup-review gate.
           setupCompletedAt: new Date(),

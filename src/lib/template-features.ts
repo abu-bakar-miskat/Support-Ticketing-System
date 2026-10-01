@@ -99,6 +99,79 @@ export const TEMPLATE_FEATURE_LABELS: Record<TemplateFeatureKey, string> = {
   helpCenter: "Help Center",
 };
 
+/**
+ * Opt-in features. A new department is created without them. A tenant admin
+ * requests one from the Features marketplace; it appears in the department
+ * only after a super admin approves (or grants it directly).
+ */
+export const MARKETPLACE_FEATURE_KEYS = [
+  "timeline",
+  "reports",
+  "subDepartmentReports",
+  "calendar",
+  "sharedMailboxes",
+  "tagsLabels",
+  "workflows",
+  "ticketTemplates",
+  "assignmentMethods",
+  "apiKeys",
+] as const;
+
+export type MarketplaceFeatureKey = (typeof MARKETPLACE_FEATURE_KEYS)[number];
+
+const MARKETPLACE_FEATURE_KEY_SET = new Set<string>(MARKETPLACE_FEATURE_KEYS);
+
+export function isMarketplaceFeatureKey(value: unknown): value is MarketplaceFeatureKey {
+  return typeof value === "string" && MARKETPLACE_FEATURE_KEY_SET.has(value);
+}
+
+/** Features that stay available without a marketplace grant. */
+export const ALWAYS_ON_FEATURE_KEYS: TemplateFeatureKey[] = TEMPLATE_FEATURE_KEYS.filter(
+  (key) => !MARKETPLACE_FEATURE_KEY_SET.has(key),
+);
+
+export const MARKETPLACE_FEATURE_DESCRIPTIONS: Record<MarketplaceFeatureKey, string> = {
+  timeline: "Plan and schedule work on a timeline.",
+  reports: "Department reports and exports.",
+  subDepartmentReports: "Sub-department list and management.",
+  calendar: "Department calendar.",
+  sharedMailboxes: "Shared mailboxes for email intake.",
+  tagsLabels: "Tags and labels on tickets.",
+  workflows: "Workflows and ticket statuses.",
+  ticketTemplates: "Reusable ticket templates.",
+  assignmentMethods: "Rules that assign tickets automatically.",
+  apiKeys: "API keys for this department.",
+};
+
+/** Checklist groups for the department grant panel and the marketplace. */
+export const MARKETPLACE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; keys: MarketplaceFeatureKey[] }[] = [
+  {
+    label: "Sidebar",
+    icon: LayoutGrid,
+    keys: ["timeline", "reports", "subDepartmentReports", "calendar", "sharedMailboxes"],
+  },
+  {
+    label: "Configuration settings",
+    icon: Wrench,
+    keys: ["tagsLabels", "workflows", "ticketTemplates", "assignmentMethods", "apiKeys"],
+  },
+];
+
+/**
+ * `null` featureKeys is a legacy department created before marketplace grants:
+ * every marketplace feature is already on. An array is the explicit grant list
+ * (new departments start at []).
+ */
+export function grantedMarketplaceFeatures(raw: unknown): MarketplaceFeatureKey[] | "ALL" {
+  if (raw == null) return "ALL";
+  if (!Array.isArray(raw)) return [];
+  const keys: MarketplaceFeatureKey[] = [];
+  for (const key of raw) {
+    if (isMarketplaceFeatureKey(key) && !keys.includes(key)) keys.push(key);
+  }
+  return keys;
+}
+
 /** Section grouping for the checklist in the Template Catalogue create/edit UI and cards. */
 export const TEMPLATE_FEATURE_GROUPS: { label: string; icon: typeof LayoutGrid; keys: TemplateFeatureKey[] }[] = [
   {

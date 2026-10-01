@@ -151,6 +151,8 @@ enum NotificationType {
   agreement_expiring
   template_request_submitted
   template_request_reviewed
+  feature_request_submitted
+  feature_request_reviewed
   ticket_transferred
   domain_request_submitted
   domain_request_reviewed
@@ -236,6 +238,7 @@ model Tenant {
   agreements Agreement[]
   tenantTemplates  TenantTemplate[]
   templateRequests TemplateRequest[]
+  featureRequests  FeatureRequest[]
   ruleExecutionLogs RuleExecutionLog[]
   emailDomains EmailDomain[]
   emailDomainRequests EmailDomainRequest[]
@@ -382,11 +385,10 @@ model Department {
   // Slug of the catalogue Template a department was created from (board type +
   // the initial seed for featureKeys). Reference only.
   templateSlug      String?
-  // Effective feature-key allowlist for THIS department, controllable per
-  // department by a Super Admin (grant/revoke). Seeded from templateSlug's
-  // template at creation. `null` = uncontrolled → every feature visible
-  // (fail-open); a JSON string[] = exactly those features are enabled, and the
-  // department + its sub-departments reflect it everywhere. See
+  // Marketplace features granted to THIS department (timeline, reports, …).
+  // `null` = legacy department, every marketplace feature already on.
+  // `[]` = a new department, none of them — a tenant admin requests one and a
+  // super admin approves it. Other features are always available. See
   // getDepartmentActiveFeatureKeys.
   featureKeys       Json?
   isHub             Boolean              @default(false)
@@ -432,6 +434,7 @@ model Department {
   assignmentRules   AssignmentRule[]
   rules             Rule[]
   mailboxConnections MailboxConnection[]
+  featureRequests    FeatureRequest[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1802,6 +1805,36 @@ model TemplateRequest {
 
   @@index([tenantId, status])
   @@index([templateId, status])
+}
+
+enum FeatureRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A tenant admin's request to turn on one marketplace feature for a department.
+// Stays pending until a super admin approves; approval writes the key onto
+// Department.featureKeys.
+model FeatureRequest {
+  id            String               @id @default(cuid())
+  tenantId      String
+  departmentId  String
+  featureKey    String
+  status        FeatureRequestStatus @default(PENDING)
+  message       String?
+  requestedById String               @db.Uuid
+  requestedAt   DateTime             @default(now())
+  reviewedById  String?              @db.Uuid
+  reviewedAt    DateTime?
+  reviewNote    String?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([departmentId, status])
+  @@index([status])
 }
 
 // One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).

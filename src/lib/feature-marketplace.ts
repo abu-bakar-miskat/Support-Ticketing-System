@@ -418,7 +418,7 @@ export async function enableDepartmentTemplate(params: {
     action: "FEATURE_TEMPLATE_ENABLED",
     targetType: "Template",
     targetId: template.id,
-    after: { departmentId: dept.id, featureKeys: keys },
+    after: { departmentId: dept.id, departmentName: dept.name, featureKeys: keys, templateName: template.name },
   });
 
   const message = `Approved: ${template.name} is now available in ${dept.name}.`;
@@ -474,7 +474,7 @@ export async function disableDepartmentTemplate(params: {
     action: "FEATURE_TEMPLATE_DISABLED",
     targetType: "Template",
     targetId: template.id,
-    after: { departmentId: dept.id, featureKeys: keys },
+    after: { departmentId: dept.id, departmentName: dept.name, featureKeys: keys, templateName: template.name },
   });
 
   await notifyDepartmentFeatureReview({
@@ -688,7 +688,12 @@ export async function reviewFeatureRequest(params: {
     action: params.decision === "APPROVED" ? "FEATURE_REQUEST_APPROVED" : "FEATURE_REQUEST_REJECTED",
     targetType: "FeatureRequest",
     targetId: request.id,
-    after: { featureKey, reviewNote: params.reviewNote ?? null },
+    after: {
+      featureKey,
+      templateName: template?.name ?? null,
+      departmentName: request.department.name,
+      reviewNote: params.reviewNote ?? null,
+    },
   });
 
   const label = template

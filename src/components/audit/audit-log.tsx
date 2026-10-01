@@ -33,6 +33,7 @@ import {
   type ActivityAction,
 } from "@/components/audit/ticket-action-meta";
 import { adminActionMeta, humanizeAction, ChangeDiff } from "@/components/audit/admin-action-meta";
+import { auditTargetTypeLabel } from "@/lib/audit-display";
 import type { AuditLogEntry, AuditScopeKind, AuditFilterOption } from "@/lib/audit-log-types";
 
 // ── Date range presets ──────────────────────────────────────────────────────
@@ -231,8 +232,8 @@ function AdminRow({ entry, showTenant, showDepartment }: { entry: AuditLogEntry;
 
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <ScopeChips entry={entry} showTenant={showTenant} showDepartment={showDepartment} />
-          <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id">
-            {target.type}
+          <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold text-sts-id">
+            {auditTargetTypeLabel(target.type)}
           </span>
           {target.name ? (
             <span

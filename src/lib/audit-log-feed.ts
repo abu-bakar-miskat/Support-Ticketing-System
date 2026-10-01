@@ -8,6 +8,8 @@ import { resolveActivityScope } from "@/lib/activity-scope";
 import { resolveUserScope } from "@/lib/role-assignment";
 import type { AuthProfile } from "@/lib/auth";
 import type { AuditLogEntry, AuditScopeKind, AuditSource } from "@/lib/audit-log-types";
+import { auditTargetName, presentAuditPayload } from "@/lib/audit-display";
+import { loadAuditLookups } from "@/lib/audit-display-data";
 
 export type AuditFeedFilters = {
   source?: AuditSource | null;
@@ -376,6 +378,28 @@ async function resolveAdminNames(entries: AuditLogEntry[]): Promise<void> {
       // fall back to a stable label rather than dropping the row.
       e.tenant.name = tenantById.get(e.tenant.id)?.name ?? "(deleted tenant)";
     }
+  }
+
+  const lookups = await runAsSystem(() =>
+    loadAuditLookups(
+      adminEntries.map((e) => ({
+        targetType: e.target?.type ?? "",
+        targetId: e.target?.id ?? "",
+        before: e.before,
+        after: e.after,
+      })),
+    ),
+  );
+  for (const department of deptById.values()) lookups.departments.set(department.id, department.name);
+  for (const e of adminEntries) {
+    if (e.target && e.target.type !== "Profile") {
+      e.target.name = auditTargetName(
+        { targetType: e.target.type, targetId: e.target.id, before: e.before, after: e.after },
+        lookups,
+      );
+    }
+    e.before = presentAuditPayload(e.before, lookups);
+    e.after = presentAuditPayload(e.after, lookups);
   }
 }
 

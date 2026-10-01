@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auditFieldLabel } from "@/lib/audit-display";
 
 // Presentation metadata + change-diff rendering for admin `AuditEvent` rows.
 // Shared by the platform audit log and the unified audit feed.
@@ -98,6 +99,7 @@ function formatValue(v: unknown): string {
   if (v === null) return "—";
   if (typeof v === "string") return v.length ? v : '""';
   if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v) && v.every((item) => typeof item === "string")) return v.join(", ");
   return JSON.stringify(v);
 }
 
@@ -132,8 +134,8 @@ export function ChangeDiff({ before, after }: { before: unknown; after: unknown 
               i > 0 && "border-t border-sts-card-border/60",
             )}
           >
-            <span className="truncate font-mono text-[11px] text-sts-subtle" title={k}>{k}</span>
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-mono text-[11px]">
+            <span className="truncate font-sans text-[11px] text-sts-subtle" title={auditFieldLabel(k)}>{auditFieldLabel(k)}</span>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 font-sans text-[11px]">
               <span className="break-all text-sts-muted line-through decoration-sts-red/50">
                 {formatValue(before[k])}
               </span>
@@ -159,8 +161,8 @@ export function ChangeDiff({ before, after }: { before: unknown; after: unknown 
               i > 0 && "border-t border-sts-card-border/60",
             )}
           >
-            <span className="truncate font-mono text-[11px] text-sts-subtle" title={k}>{k}</span>
-            <span className="min-w-0 break-all font-mono text-[11px] text-sts-foreground">{formatValue(v)}</span>
+            <span className="truncate font-sans text-[11px] text-sts-subtle" title={auditFieldLabel(k)}>{auditFieldLabel(k)}</span>
+            <span className="min-w-0 break-all font-sans text-[11px] text-sts-foreground">{formatValue(v)}</span>
           </div>
         ))}
       </div>

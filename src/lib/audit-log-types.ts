@@ -30,7 +30,7 @@ export type AuditTicketRef = {
 export type AuditTargetRef = {
   type: string;
   id: string;
-  /** Resolved display name for Profile-typed targets; null otherwise. */
+  /** Resolved display name (a person, template, or feature). Null when unknown. */
   name: string | null;
 };
 

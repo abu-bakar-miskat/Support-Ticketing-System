@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth } from "@/lib/auth"
 import { resolveUserScope } from "@/lib/role-assignment"
+import { runAsSystem } from "@/lib/request-scope"
+import { auditTargetName, presentAuditPayload } from "@/lib/audit-display"
+import { loadAuditLookups } from "@/lib/audit-display-data"
 
 const MAX_TAKE = 200
 
@@ -98,14 +101,25 @@ export async function GET(request: NextRequest) {
   ])
   const profileById = new Map(profiles.map((p) => [p.id, p]))
   const tenantById = new Map(tenants.map((t) => [t.id, t]))
+  const lookups = await runAsSystem(() => loadAuditLookups(events))
 
   return NextResponse.json({
-    events: events.map((e) => ({
-      ...e,
-      actor: profileById.get(e.actorId) ?? null,
-      target: e.targetType === "Profile" ? profileById.get(e.targetId) ?? null : null,
-      tenant: e.tenantId ? tenantById.get(e.tenantId) ?? null : null,
-    })),
+    events: events.map((e) => {
+      const named = auditTargetName(e, lookups)
+      return {
+        ...e,
+        before: presentAuditPayload(e.before, lookups),
+        after: presentAuditPayload(e.after, lookups),
+        actor: profileById.get(e.actorId) ?? null,
+        target:
+          e.targetType === "Profile"
+            ? profileById.get(e.targetId) ?? null
+            : named
+              ? { id: e.targetId, name: named, email: null }
+              : null,
+        tenant: e.tenantId ? tenantById.get(e.tenantId) ?? null : null,
+      }
+    }),
     nextCursor: events.length === take ? events[events.length - 1]?.id : null,
   })
 }

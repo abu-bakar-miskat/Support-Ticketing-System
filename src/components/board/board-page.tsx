@@ -654,12 +654,15 @@ type Props = {
   cards: BoardCardData[];
   subDepartmentBoardGroups: SubDepartmentBoardGroup[];
   defaultSubDepartmentId?: string | null;
+  /** Preset filters from the department's operation template. */
+  lists?: { name: string; statuses: string[] }[];
 };
 
 export function BoardPage({
   cards: initialCards,
   subDepartmentBoardGroups,
   defaultSubDepartmentId,
+  lists = [],
 }: Props) {
   const currentUser = useCurrentUser();
   const currentUserId = currentUser?.id ?? "";
@@ -1252,6 +1255,30 @@ export function BoardPage({
               </div>
             </div>
           </div>
+          {lists.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <ListChip
+                active={statusFilter.length === 0}
+                onClick={() => setStatusFilter([])}
+              >
+                All
+              </ListChip>
+              {lists.map((list) => {
+                const active =
+                  statusFilter.length === list.statuses.length &&
+                  list.statuses.every((status) => statusFilter.includes(status));
+                return (
+                  <ListChip
+                    key={list.name}
+                    active={active}
+                    onClick={() => setStatusFilter(active ? [] : list.statuses)}
+                  >
+                    {list.name}
+                  </ListChip>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1282,5 +1309,30 @@ export function BoardPage({
         </div>
       </div>
     </BoardDndProvider>
+  );
+}
+
+function ListChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-7 items-center rounded-full px-3 font-sans text-[12px] font-medium transition-colors",
+        active
+          ? "bg-sts-blue text-white dark:text-gray-900"
+          : "border border-sts-card-border bg-sts-card text-sts-muted hover:text-sts-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

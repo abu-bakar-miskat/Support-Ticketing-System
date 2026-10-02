@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth";
 import { badRequest, notFound } from "@/lib/api-response";
-import { disableDepartmentTemplate, enableDepartmentTemplate } from "@/lib/feature-marketplace";
+import {
+  disableDepartmentFeature,
+  disableDepartmentTemplate,
+  enableDepartmentFeature,
+  enableDepartmentTemplate,
+} from "@/lib/feature-marketplace";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -16,9 +21,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!templateId) return badRequest("templateId is required");
 
   const enabled = body.enabled !== false;
+  const featureKey = typeof body.featureKey === "string" ? body.featureKey : "";
 
   try {
-    if (enabled) {
+    if (featureKey) {
+      const change = { departmentId: id, templateId, featureKey, actorId: profile!.id };
+      if (enabled) await enableDepartmentFeature(change);
+      else await disableDepartmentFeature(change);
+    } else if (enabled) {
       await enableDepartmentTemplate({
         departmentId: id,
         templateId,

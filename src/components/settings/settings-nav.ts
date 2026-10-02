@@ -75,10 +75,10 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         tenantScoped: true,
       },
       {
-        label: "Features marketplace",
+        label: "Feature marketplace",
         href: "/settings/features",
         managerOnly: true,
-        deptSpecific: true,
+        tenantScoped: true,
         hideForSubManager: true,
       },
     ],

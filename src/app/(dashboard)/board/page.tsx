@@ -10,6 +10,7 @@ import {
   getRequestSubDepartmentId,
   resolveStatusSubDepartmentId,
 } from "@/lib/dept-scope";
+import { operationTemplateForDepartment } from "@/lib/operation-board";
 
 export const metadata = { title: "Board — Global Support Portal" };
 
@@ -100,12 +101,16 @@ async function BoardData({
     ? deptScope.subDepartmentIds
     : membershipIds;
   const subDepartmentBoardGroups = await getSubDepartmentBoardGroups(cards, forceSubDepartmentIds);
+  const operation = deptScope?.activeDeptId
+    ? await operationTemplateForDepartment(deptScope.activeDeptId).catch(() => null)
+    : null;
 
   return (
     <BoardPage
       cards={cards}
       subDepartmentBoardGroups={subDepartmentBoardGroups}
       defaultSubDepartmentId={statusSubDepartmentId}
+      lists={operation?.lists}
     />
   );
 }

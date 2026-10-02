@@ -65,6 +65,7 @@ type SeedStatusTx = {
 export async function seedSubDepartmentStatuses(
   tx: SeedStatusTx,
   subDepartmentId: string,
+  statuses: readonly { label: string; color: string; order: number; isComplete: boolean }[] = DEFAULT_SUB_DEPARTMENT_STATUSES,
 ): Promise<void> {
   const existing = await tx.subDepartmentStatus.findFirst({
     where: { subDepartmentId },
@@ -72,7 +73,7 @@ export async function seedSubDepartmentStatuses(
   });
   if (existing) return;
   await tx.subDepartmentStatus.createMany({
-    data: DEFAULT_SUB_DEPARTMENT_STATUSES.map((s) => ({
+    data: statuses.map((s) => ({
       subDepartmentId,
       label: s.label,
       color: s.color,

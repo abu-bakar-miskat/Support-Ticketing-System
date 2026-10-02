@@ -12,9 +12,10 @@ export type MarketplaceFeature = {
 
 export type MarketplaceTemplate = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
-  features: { key: string; label: string }[];
+  features: { key: string; label: string; status: MarketplaceFeatureStatus }[];
   status: MarketplaceFeatureStatus;
 };
 

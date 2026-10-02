@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { requireAdminOrManager, managerDeptScope } from "@/lib/auth"
 import { departmentTenantId } from "@/lib/tenant-scope"
 import { seedSubDepartmentStatuses } from "@/lib/board-columns"
+import { operationTemplateForDepartment } from "@/lib/operation-board"
 import { runAsSystem } from "@/lib/request-scope"
 
 /** URL-safe slug from a name (mirrors scripts/backfill-subdepartment-slugs.ts). */
@@ -131,7 +132,8 @@ export async function POST(request: Request) {
     // Seed the default statuses (OPEN/IN PROGRESS/PAUSED/ESCALATED/RESOLVED) so
     // a new sub-department mirrors the department's default board until it's
     // given its own. Idempotent + best-effort — never fails sub-department creation.
-    await seedSubDepartmentStatuses(prisma, subDepartment.id).catch((e) =>
+    const operation = await operationTemplateForDepartment(departmentId).catch(() => null)
+    await seedSubDepartmentStatuses(prisma, subDepartment.id, operation?.statuses).catch((e) =>
       console.error("[POST /api/admin/sub-departments] default statuses seed failed:", e),
     )
     // Note: support intake forms are no longer auto-created here. Admins/managers

@@ -4,39 +4,53 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "@base-ui/react/dialog";
-import { Check, Clock, Loader2, Tags, X } from "lucide-react";
+import {
+  Building2,
+  Check,
+  Clock,
+  DollarSign,
+  Infinity as InfinityIcon,
+  Loader2,
+  Megaphone,
+  MessageSquare,
+  Monitor,
+  Paperclip,
+  Pencil,
+  Settings,
+  Tags,
+  UserRound,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  MARKETPLACE_FEATURE_GROUPS,
-  featureTemplateCardText,
-  featureTemplateNarrative,
-} from "@/lib/template-features";
+import { featureTemplateNarrative } from "@/lib/template-features";
 import { FEATURE_ICONS, TemplatePreview } from "@/components/settings/feature-preview";
-import type { MarketplaceTemplate } from "@/lib/feature-marketplace-types";
+import { operationTemplateBySlug } from "@/lib/operation-templates";
+import type { MarketplaceFeatureStatus, MarketplaceTemplate } from "@/lib/feature-marketplace-types";
 
-const GALLERY_CATEGORIES = [
-  {
-    id: "views",
-    label: "Views",
-    keys: MARKETPLACE_FEATURE_GROUPS.find((group) => group.label === "Sidebar")?.keys ?? [],
-  },
-  {
-    id: "configuration",
-    label: "Configuration",
-    keys: MARKETPLACE_FEATURE_GROUPS.find((group) => group.label === "Configuration settings")?.keys ?? [],
-  },
-] as const;
+const OPERATION_ICONS: Record<string, LucideIcon> = {
+  "op-software-development": InfinityIcon,
+  "op-marketing": Megaphone,
+  "op-design": Pencil,
+  "op-sales": Building2,
+  "op-operations": Settings,
+  "op-service-management": MessageSquare,
+  "op-human-resources": UserRound,
+  "op-legal": Paperclip,
+  "op-it-operations": Monitor,
+  "op-finance": DollarSign,
+};
 
 export function FeaturesMarketplacePage({
-  departmentId,
-  departmentName,
+  tenantId,
+  tenantName,
   initialTemplates,
   canRequest,
   canEnable,
 }: {
-  departmentId: string;
-  departmentName: string;
+  tenantId: string;
+  tenantName: string;
   initialTemplates: MarketplaceTemplate[];
   canRequest: boolean;
   canEnable: boolean;
@@ -47,19 +61,13 @@ export function FeaturesMarketplacePage({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [category, setCategory] = useState<(typeof GALLERY_CATEGORIES)[number]["id"] | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = templates.find((template) => template.id === selectedId) ?? null;
   const shownRef = useRef(selected);
   if (selected) shownRef.current = selected;
   const shown = selected ?? shownRef.current;
-  const visible = templates.filter((template) => {
-    if (category === "all") return true;
-    const group = GALLERY_CATEGORIES.find((item) => item.id === category);
-    if (!group) return true;
-    return template.features.some((feature) => (group.keys as readonly string[]).includes(feature.key));
-  });
+  const operations = templates.filter((template) => operationTemplateBySlug(template.slug));
 
   async function requestTemplate(template: MarketplaceTemplate) {
     setBusy(template.id);
@@ -68,7 +76,7 @@ export function FeaturesMarketplacePage({
     const res = await fetch("/api/feature-requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ departmentId, templateId: template.id }),
+      body: JSON.stringify({ templateId: template.id }),
     });
     const body = await res.json().catch(() => ({}));
     setBusy(null);
@@ -87,7 +95,7 @@ export function FeaturesMarketplacePage({
     setBusy(template.id);
     setError(null);
     setNotice(null);
-    const res = await fetch(`/api/admin/departments/${departmentId}/feature-templates`, {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/feature-templates`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ templateId: template.id }),
@@ -99,9 +107,13 @@ export function FeaturesMarketplacePage({
       return;
     }
     setTemplates((prev) =>
-      prev.map((item) => (item.id === template.id ? { ...item, status: "enabled" } : item)),
+      prev.map((item) =>
+        item.id === template.id
+          ? { ...item, status: "enabled", features: item.features.map((feature) => ({ ...feature, status: "enabled" })) }
+          : item,
+      ),
     );
-    setNotice(`${template.name} is enabled for ${departmentName}.`);
+    setNotice(`${template.name} is enabled for ${tenantName}.`);
     await queryClient.invalidateQueries({ queryKey: ["dashboard", "layout"] });
     router.refresh();
   }
@@ -110,7 +122,7 @@ export function FeaturesMarketplacePage({
     setBusy(template.id);
     setError(null);
     setNotice(null);
-    const res = await fetch(`/api/admin/departments/${departmentId}/feature-templates`, {
+    const res = await fetch(`/api/admin/tenants/${tenantId}/feature-templates`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ templateId: template.id, enabled: false }),
@@ -122,9 +134,80 @@ export function FeaturesMarketplacePage({
       return;
     }
     setTemplates((prev) =>
-      prev.map((item) => (item.id === template.id ? { ...item, status: "available" } : item)),
+      prev.map((item) =>
+        item.id === template.id
+          ? { ...item, status: "available", features: item.features.map((feature) => ({ ...feature, status: "available" })) }
+          : item,
+      ),
     );
-    setNotice(`${template.name} is disabled for ${departmentName}.`);
+    setNotice(`${template.name} is disabled for ${tenantName}.`);
+    await queryClient.invalidateQueries({ queryKey: ["dashboard", "layout"] });
+    router.refresh();
+  }
+
+  function patchFeature(templateId: string, featureKey: string, status: MarketplaceFeatureStatus) {
+    setTemplates((prev) =>
+      prev.map((item) => {
+        if (item.id !== templateId) return item;
+        const features = item.features.map((feature) =>
+          feature.key === featureKey ? { ...feature, status } : feature,
+        );
+        const allOn = features.length > 0 && features.every((feature) => feature.status === "enabled");
+        return {
+          ...item,
+          features,
+          status: allOn ? "enabled" : item.status === "enabled" ? "available" : item.status,
+        };
+      }),
+    );
+  }
+
+  async function requestFeature(template: MarketplaceTemplate, featureKey: string, label: string) {
+    setBusy(`${template.id}:${featureKey}`);
+    setError(null);
+    setNotice(null);
+    const res = await fetch("/api/feature-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ featureKey }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) {
+      setError(body.error ?? "Couldn't send that request");
+      return;
+    }
+    patchFeature(template.id, featureKey, "pending");
+    setNotice(`${label} is waiting for a super admin to approve it.`);
+    router.refresh();
+  }
+
+  async function setFeatureEnabled(
+    template: MarketplaceTemplate,
+    featureKey: string,
+    label: string,
+    enabled: boolean,
+  ) {
+    setBusy(`${template.id}:${featureKey}`);
+    setError(null);
+    setNotice(null);
+    const res = await fetch(`/api/admin/tenants/${tenantId}/feature-templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ templateId: template.id, featureKey, enabled }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) {
+      setError(body.error ?? (enabled ? "Couldn't enable that feature" : "Couldn't disable that feature"));
+      return;
+    }
+    patchFeature(template.id, featureKey, enabled ? "enabled" : "available");
+    setNotice(
+      enabled
+        ? `${label} is enabled for ${tenantName}.`
+        : `${label} is disabled for ${tenantName}.`,
+    );
     await queryClient.invalidateQueries({ queryKey: ["dashboard", "layout"] });
     router.refresh();
   }
@@ -132,23 +215,12 @@ export function FeaturesMarketplacePage({
   return (
     <div className="flex flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div>
-        <h1 className="sts-text-admin-title">Features marketplace</h1>
+        <h1 className="sts-text-admin-title">Feature marketplace</h1>
         <p className="mt-[3px] max-w-2xl font-sans text-[13px] text-sts-muted">
           {canEnable
-            ? `Pre-built packages for ${departmentName}. Enable a package to turn it on for this department, or disable one that is already on.`
-            : `Pre-built packages for ${departmentName}. Packages this department already has show Enabled. Request the rest and a super admin approves it before this department can use those features.`}
+            ? `Operation setups for ${tenantName}. Open one to turn its features on or off for every department. Enabling its board also sets up that operation's statuses and lists.`
+            : `Operation setups for ${tenantName}. Open one and request the features this organization needs. A super admin approves each one before any department can use it.`}
         </p>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        <CategoryChip active={category === "all"} onClick={() => setCategory("all")}>
-          All
-        </CategoryChip>
-        {GALLERY_CATEGORIES.map((item) => (
-          <CategoryChip key={item.id} active={category === item.id} onClick={() => setCategory(item.id)}>
-            {item.label}
-          </CategoryChip>
-        ))}
       </div>
 
       {error && !selected && (
@@ -162,27 +234,17 @@ export function FeaturesMarketplacePage({
         </div>
       )}
 
-      {templates.length === 0 ? (
+      {operations.length === 0 ? (
         <div className="rounded-lg border border-sts-card-border bg-sts-card px-4 py-6 font-sans text-[13px] text-sts-muted">
-          No feature templates have been published yet.
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="rounded-lg border border-sts-card-border bg-sts-card px-4 py-6 font-sans text-[13px] text-sts-muted">
-          No templates in this group.
+          No operation templates have been published yet.
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((template) => (
-            <TemplateCard
+          {operations.map((template) => (
+            <OperationCard
               key={template.id}
               template={template}
-              canRequest={canRequest}
-              canEnable={canEnable}
-              busy={busy === template.id}
               onOpen={() => setSelectedId(template.id)}
-              onRequest={() => requestTemplate(template)}
-              onEnable={() => enableTemplate(template)}
-              onDisable={() => disableTemplate(template)}
             />
           ))}
         </div>
@@ -191,46 +253,57 @@ export function FeaturesMarketplacePage({
       <Dialog.Root open={selected != null} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
         <Dialog.Portal>
           <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
-          <Dialog.Popup className="sts-glass-panel fixed top-1/2 left-1/2 z-50 grid max-h-[min(640px,calc(100vh-2rem))] w-[min(820px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-sts-card-border shadow-2xl transition-none md:grid-cols-[280px_1fr]">
+          <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[min(760px,calc(100vh-2rem))] w-[min(860px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-[var(--sts-card-solid)] shadow-2xl">
             {shown && (
               <>
-                <div className="relative min-h-44 border-b border-sts-card-border md:min-h-full md:border-r md:border-b-0">
-                  <TemplatePreview featureKeys={shown.features.map((feature) => feature.key)} />
-                </div>
-                <div className="flex min-h-0 flex-col">
-                  <div className="flex items-start justify-between gap-3 px-6 pt-5">
+                <div className="flex items-start justify-between gap-3 px-5 pt-5">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <OperationMark slug={shown.slug} />
                     <div className="min-w-0">
                       <Dialog.Title className="sts-text-modal-title">{shown.name}</Dialog.Title>
                       <TemplateSummary template={shown} />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(null)}
-                      className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-                      aria-label="Close"
-                    >
-                      <X className="size-4" />
-                    </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+                    aria-label="Close"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
 
-                  <div className="px-6 pt-4">
-                    <TemplateAction
-                      template={shown}
-                      canRequest={canRequest}
-                      canEnable={canEnable}
-                      busy={busy === shown.id}
-                      onRequest={() => requestTemplate(shown)}
-                      onEnable={() => enableTemplate(shown)}
-                      onDisable={() => disableTemplate(shown)}
-                    />
-                    {error && (
-                      <p className="mt-3 font-sans text-[12.5px] text-destructive">{error}</p>
-                    )}
-                  </div>
+                <OperationSetup template={shown} />
 
-                  <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-6">
-                    <IncludedFeatures template={shown} />
-                  </div>
+                <div className="flex items-center justify-between gap-3 px-5 pt-5">
+                  <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
+                    Features
+                  </h2>
+                  <TemplateAction
+                    template={shown}
+                    canRequest={canRequest}
+                    canEnable={canEnable}
+                    busy={busy === shown.id}
+                    onRequest={() => requestTemplate(shown)}
+                    onEnable={() => enableTemplate(shown)}
+                    onDisable={() => disableTemplate(shown)}
+                  />
+                </div>
+                {error && (
+                  <p className="px-5 pt-2 font-sans text-[12.5px] text-destructive">{error}</p>
+                )}
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-5">
+                  <IncludedFeatures
+                    template={shown}
+                    canRequest={canRequest}
+                    canEnable={canEnable}
+                    busy={busy}
+                    onRequest={(featureKey, label) => requestFeature(shown, featureKey, label)}
+                    onEnable={(featureKey, label) => setFeatureEnabled(shown, featureKey, label, true)}
+                    onDisable={(featureKey, label) => setFeatureEnabled(shown, featureKey, label, false)}
+                  />
                 </div>
               </>
             )}
@@ -241,95 +314,51 @@ export function FeaturesMarketplacePage({
   );
 }
 
-function CategoryChip({
-  active,
-  onClick,
-  children,
+function OperationCard({
+  template,
+  onOpen,
 }: {
-  active: boolean;
-  onClick: () => void;
-  children: string;
+  template: MarketplaceTemplate;
+  onOpen: () => void;
 }) {
+  const Icon = OPERATION_ICONS[template.slug] ?? Tags;
+  const operation = operationTemplateBySlug(template.slug);
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-7 items-center rounded-full px-3 font-sans text-[12px] font-medium transition-colors",
-        active
-          ? "bg-sts-blue text-white dark:text-gray-900"
-          : "border border-sts-card-border bg-sts-card text-sts-muted hover:text-sts-foreground",
-      )}
+      onClick={onOpen}
+      className="flex flex-col items-start gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
     >
-      {children}
-    </button>
-  );
-}
-
-function TemplateCard({
-  template,
-  canRequest,
-  canEnable,
-  busy,
-  onOpen,
-  onRequest,
-  onEnable,
-  onDisable,
-}: {
-  template: MarketplaceTemplate;
-  canRequest: boolean;
-  canEnable: boolean;
-  busy: boolean;
-  onOpen: () => void;
-  onRequest: () => void;
-  onEnable: () => void;
-  onDisable: () => void;
-}) {
-  const extraFeatures = template.features.filter((feature) => feature.label !== template.name);
-  return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card text-left transition-colors hover:border-sts-blue/50">
-      <button type="button" onClick={onOpen} className="flex flex-1 flex-col text-left">
-      <div className="relative h-28 border-b border-sts-card-border">
-        <TemplatePreview featureKeys={template.features.map((feature) => feature.key)} />
-        <div className="absolute top-2.5 right-2.5">
-          <StatusBadge status={template.status} />
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-1 px-4 py-3">
-        <div className="font-sans text-[14px] font-semibold text-sts-foreground">{template.name}</div>
-        <TemplateCardBlurb template={template} />
-        {extraFeatures.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {extraFeatures.map((feature) => {
-              const Icon = FEATURE_ICONS[feature.key] ?? Tags;
+      <span className="flex w-full items-center gap-3">
+        <Icon className="size-4 shrink-0 text-sts-blue" strokeWidth={2} />
+        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-semibold tracking-wide text-sts-foreground uppercase">
+          {template.name}
+        </span>
+        {template.status === "enabled" && <Check className="size-3.5 shrink-0 text-emerald-600" />}
+        {template.status === "pending" && <Clock className="size-3.5 shrink-0 text-amber-600" />}
+      </span>
+      {operation && (
+        <span className="flex flex-wrap gap-1.5">
+            {operation.featureKeys.map((key) => {
+              const FeatureIcon = FEATURE_ICONS[key] ?? Tags;
+              const feature = template.features.find((item) => item.key === key);
+              const on = feature?.status === "enabled";
               return (
                 <span
-                  key={feature.key}
-                  className="inline-flex items-center gap-1 rounded-md bg-sts-surface px-1.5 py-0.5 font-sans text-[11px] text-sts-muted"
+                  key={key}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11px]",
+                    on ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-sts-surface text-sts-muted",
+                  )}
                 >
-                  <Icon className="size-3 text-sts-blue" />
-                  {feature.label}
+                  <FeatureIcon className={cn("size-3", on ? "text-emerald-600" : "text-sts-blue")} />
+                  {feature?.label ?? key}
                 </span>
               );
             })}
-          </div>
-        )}
-      </div>
-      </button>
-      {(template.status !== "enabled" || canEnable) && (
-        <div className="px-4 pb-3">
-          <TemplateAction
-            template={template}
-            canRequest={canRequest}
-            canEnable={canEnable}
-            busy={busy}
-            onRequest={onRequest}
-            onEnable={onEnable}
-            onDisable={onDisable}
-          />
-        </div>
+        </span>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -351,45 +380,191 @@ function TemplateAction({
   onDisable: () => void;
 }) {
   if (template.status === "enabled") {
+    if (!canEnable) return null;
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 font-sans text-[12.5px] font-medium text-emerald-700 dark:text-emerald-400">
-          <Check className="size-3.5" /> Enabled
-        </span>
-        {canEnable && (
-          <Button variant="outline" disabled={busy} onClick={onDisable}>
-            {busy && <Loader2 className="animate-spin" />}
-            Disable
-          </Button>
-        )}
-      </div>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={onDisable}>
+        {busy && <Loader2 className="animate-spin" />}
+        Disable all
+      </Button>
     );
   }
   if (canEnable) {
     return (
-      <Button disabled={busy} onClick={onEnable}>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={onEnable}>
         {busy && <Loader2 className="animate-spin" />}
-        Enable
+        Enable all
       </Button>
     );
   }
   if (template.status === "pending") {
     return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-amber-500/10 px-3 font-sans text-[12.5px] font-medium text-amber-700 dark:text-amber-400">
-        <Clock className="size-3.5" /> Pending
+      <span className="inline-flex h-7 items-center gap-1 rounded-full bg-amber-500/10 px-2.5 font-sans text-[12px] font-medium text-amber-700 dark:text-amber-400">
+        <Clock className="size-3" /> Pending
       </span>
     );
   }
   if (!canRequest) return null;
   return (
-    <Button disabled={busy} onClick={onRequest}>
+    <Button variant="ghost" size="sm" disabled={busy} onClick={onRequest}>
+      {busy && <Loader2 className="animate-spin" />}
+      Request all
+    </Button>
+  );
+}
+
+function OperationMark({ slug }: { slug: string }) {
+  const Icon = OPERATION_ICONS[slug] ?? Tags;
+  return (
+    <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+      <Icon className="size-4" strokeWidth={2} />
+    </span>
+  );
+}
+
+function OperationSetup({ template }: { template: MarketplaceTemplate }) {
+  const operation = operationTemplateBySlug(template.slug);
+  if (!operation) return null;
+  return (
+    <div className="mx-5 mt-4 flex flex-col gap-2 rounded-xl bg-sts-surface px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {operation.statuses.map((status) => (
+          <span key={status.label} className="inline-flex items-center gap-1.5 font-sans text-[12px] text-sts-foreground">
+            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
+            {status.label}
+          </span>
+        ))}
+      </div>
+      <p className="font-sans text-[12px] text-sts-muted">
+        <span className="text-sts-subtle">Lists. </span>
+        {operation.lists.map((list) => list.name).join(" · ")}
+      </p>
+    </div>
+  );
+}
+
+function TemplateSummary({ template }: { template: MarketplaceTemplate }) {
+  const operation = operationTemplateBySlug(template.slug);
+  const text = operation?.useCase ?? featureTemplateNarrative(template).customDescription;
+  if (!text) return null;
+  return (
+    <Dialog.Description className="mt-0.5 font-sans text-[13px] leading-snug text-sts-muted">
+      {text}
+    </Dialog.Description>
+  );
+}
+
+function FeatureAction({
+  status,
+  canRequest,
+  canEnable,
+  busy,
+  onRequest,
+  onEnable,
+  onDisable,
+}: {
+  status: MarketplaceFeatureStatus;
+  canRequest: boolean;
+  canEnable: boolean;
+  busy: boolean;
+  onRequest: () => void;
+  onEnable: () => void;
+  onDisable: () => void;
+}) {
+  if (status === "enabled") {
+    if (!canEnable) return null;
+    return (
+      <Button variant="outline" size="sm" disabled={busy} onClick={onDisable}>
+        {busy && <Loader2 className="animate-spin" />}
+        Disable
+      </Button>
+    );
+  }
+  if (status === "pending") return null;
+  if (canEnable) {
+    return (
+      <Button size="sm" disabled={busy} onClick={onEnable}>
+        {busy && <Loader2 className="animate-spin" />}
+        Enable
+      </Button>
+    );
+  }
+  if (!canRequest) return null;
+  return (
+    <Button size="sm" disabled={busy} onClick={onRequest}>
       {busy && <Loader2 className="animate-spin" />}
       Request
     </Button>
   );
 }
 
-function StatusBadge({ status }: { status: MarketplaceTemplate["status"] }) {
+function IncludedFeatures({
+  template,
+  canRequest,
+  canEnable,
+  busy,
+  onRequest,
+  onEnable,
+  onDisable,
+}: {
+  template: MarketplaceTemplate;
+  canRequest: boolean;
+  canEnable: boolean;
+  busy: string | null;
+  onRequest: (featureKey: string, label: string) => void;
+  onEnable: (featureKey: string, label: string) => void;
+  onDisable: (featureKey: string, label: string) => void;
+}) {
+  const narrative = featureTemplateNarrative(template);
+  if (narrative.included.length === 0) {
+    return <p className="font-sans text-[13px] text-sts-muted">This operation has no features yet.</p>;
+  }
+  return (
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {narrative.included.map((feature) => {
+        const status = template.features.find((item) => item.key === feature.key)?.status ?? "available";
+        const featureBusy = busy === `${template.id}:${feature.key}`;
+        return (
+          <li
+            key={feature.key}
+            className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card"
+          >
+            <div className="relative h-28 border-b border-sts-card-border">
+              <TemplatePreview featureKeys={[feature.key]} />
+              {status !== "available" && (
+                <div className="absolute top-2.5 right-2.5">
+                  <FeatureStatusBadge status={status} />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-1 flex-col gap-1 px-4 py-3">
+              <div className="font-sans text-[14px] font-semibold text-sts-foreground">{feature.label}</div>
+              {feature.explanation && (
+                <p className="line-clamp-3 font-sans text-[12.5px] leading-snug text-sts-muted">
+                  {feature.explanation}
+                </p>
+              )}
+            </div>
+            {(status === "available" || (status === "enabled" && canEnable)) && (
+              <div className="px-4 pb-3">
+                <FeatureAction
+                  status={status}
+                  canRequest={canRequest}
+                  canEnable={canEnable}
+                  busy={featureBusy}
+                  onRequest={() => onRequest(feature.key, feature.label)}
+                  onEnable={() => onEnable(feature.key, feature.label)}
+                  onDisable={() => onDisable(feature.key, feature.label)}
+                />
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function FeatureStatusBadge({ status }: { status: MarketplaceFeatureStatus }) {
   if (status === "enabled") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-sts-card/90 px-2 py-0.5 font-sans text-[11px] font-medium text-emerald-700 shadow-sm dark:text-emerald-400">
@@ -407,86 +582,4 @@ function StatusBadge({ status }: { status: MarketplaceTemplate["status"] }) {
   return null;
 }
 
-function TemplateSummary({ template }: { template: MarketplaceTemplate }) {
-  const narrative = featureTemplateNarrative(template);
-  const useCase = narrative.useCases.length === 1 ? narrative.useCases[0].text : null;
-  if (!narrative.customDescription && !useCase) return null;
-  return (
-    <Dialog.Description className="mt-3">
-      {narrative.customDescription && (
-        <span className="block font-sans text-[13px] leading-relaxed text-sts-muted">
-          {narrative.customDescription}
-        </span>
-      )}
-      {useCase && (
-        <span className={narrative.customDescription ? "mt-3 block" : "block"}>
-          <span className="block font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
-            Use case
-          </span>
-          <span className="mt-1 block font-sans text-[13px] leading-relaxed text-sts-foreground">
-            {useCase}
-          </span>
-        </span>
-      )}
-    </Dialog.Description>
-  );
-}
-
-function IncludedFeatures({ template }: { template: MarketplaceTemplate }) {
-  const narrative = featureTemplateNarrative(template);
-  return (
-    <>
-      {narrative.useCases.length > 1 && (
-        <div className="mb-5">
-          <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
-            Use case
-          </h2>
-          <ul className="mt-2 flex flex-col gap-2">
-            {narrative.useCases.map((item) => (
-              <li key={item.key} className="font-sans text-[13px] leading-relaxed text-sts-foreground">
-                <span className="font-medium">{item.label}. </span>
-                <span className="text-sts-muted">{item.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <h2 className="font-sans text-[11px] font-semibold tracking-wide text-sts-subtle uppercase">
-        Included
-      </h2>
-      <ul className="mt-2 flex flex-col gap-2">
-        {narrative.included.length === 0 ? (
-          <li className="font-sans text-[13px] text-sts-muted">This template has no features yet.</li>
-        ) : (
-          narrative.included.map((feature) => {
-            const Icon = FEATURE_ICONS[feature.key] ?? Tags;
-            return (
-              <li key={feature.key} className="flex items-start gap-3 rounded-xl bg-sts-surface px-3 py-2.5">
-                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-                  <Icon className="size-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-sans text-[13px] font-medium text-sts-foreground">
-                    {feature.label}
-                  </span>
-                  {feature.explanation && (
-                    <span className="mt-0.5 block font-sans text-[12px] leading-snug text-sts-muted">
-                      {feature.explanation}
-                    </span>
-                  )}
-                </span>
-              </li>
-            );
-          })
-        )}
-      </ul>
-    </>
-  );
-}
-
-function TemplateCardBlurb({ template }: { template: MarketplaceTemplate }) {
-  const text = featureTemplateCardText(featureTemplateNarrative(template));
-  if (!text) return null;
-  return <p className="line-clamp-3 font-sans text-[12.5px] leading-snug text-sts-muted">{text}</p>;
-}
 

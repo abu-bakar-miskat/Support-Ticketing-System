@@ -10,6 +10,7 @@ import {
   History,
   Mail,
   Palette,
+  Store,
   Timer,
   Users,
   X,
@@ -47,7 +48,8 @@ export function DepartmentsSidebar({
   brandingHideLogo = false,
   brandingHideDisplayName = false,
 }: DepartmentsSidebarProps) {
-  const { isSuperAdmin, inboxCount } = useDashboardContext();
+  const { isSuperAdmin, inboxCount, userRole } = useDashboardContext();
+  const canSeeFeatures = isSuperAdmin || userRole === "admin" || userRole === "manager";
   const pathname = useAppPathname();
   const href = useTenantHref();
   const storeCount = useNotificationStore((s) => s.unreadCount);
@@ -60,6 +62,9 @@ export function DepartmentsSidebar({
     { label: "SLA", href: "/departments/sla", icon: Timer },
     { label: "Users", href: "/departments/users", icon: Users },
     { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
+    ...(canSeeFeatures
+      ? [{ label: "Feature marketplace", href: "/departments/features", icon: Store }]
+      : []),
     { label: "Audit Log", href: "/departments/activity", icon: History },
     {
       label: "Notifications",

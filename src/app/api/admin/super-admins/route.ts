@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireSuperAdmin } from "@/lib/auth"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { ensureConfirmedAuthUser } from "@/lib/auth/ensure-auth-user"
 
 /**
  * Platform Settings > Administrators — manage who carries Profile.isSuperAdmin
@@ -31,24 +32,69 @@ export async function POST(request: NextRequest) {
   if (!userId && !email) {
     return NextResponse.json({ error: "userId or email is required" }, { status: 400 })
   }
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
+  }
 
-  // Super-admin is a platform-wide flag on an existing Profile, and a Profile
-  // only exists once its owner has signed in (id is the Supabase auth uid).
-  // So an invite-by-email can only be granted to someone who already has an
-  // account — there's nothing to flag before that.
+  // Super-admin is a platform-wide flag on Profile. An invite by email for
+  // someone who has never signed in creates that account (auth user + Profile)
+  // so they can sign in afterwards with the role already set.
   const user = await prisma.profile.findFirst({
     where: userId ? { id: userId } : { email },
-    select: { id: true, deletedAt: true, isSuperAdmin: true },
+    select: { id: true, deletedAt: true, isSuperAdmin: true, email: true },
   })
-  if (!user || user.deletedAt) {
-    return NextResponse.json(
-      {
-        error: email
-          ? "No account exists for this email yet. They must sign in once before they can be made a super admin."
-          : "User not found",
-      },
-      { status: 404 },
-    )
+  if (userId && (!user || user.deletedAt)) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 })
+  }
+
+  if (!user) {
+    const name = email.split("@")[0] || email
+    let authUserId: string
+    try {
+      authUserId = (await ensureConfirmedAuthUser(email, name)).id
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create an account for this email"
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+
+    try {
+      const admin = await prisma.$transaction(async (tx) => {
+        const created = await tx.profile.create({
+          data: {
+            id: authUserId,
+            email,
+            name,
+            role: "admin",
+            isSuperAdmin: true,
+            isActive: true,
+          },
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        })
+        await recordAuditEvent({
+          tenantId: null,
+          actorId: profile!.id,
+          action: "SUPER_ADMIN_GRANTED",
+          targetType: "Profile",
+          targetId: created.id,
+          before: null,
+          after: { isSuperAdmin: true, created: true },
+          client: tx,
+        })
+        return created
+      })
+      return NextResponse.json({ admin, created: true })
+    } catch (err) {
+      // A concurrent invite can win the unique email. Surface that instead of a 500.
+      const again = await prisma.profile.findFirst({
+        where: { email },
+        select: { id: true },
+      })
+      if (!again) throw err
+      return NextResponse.json(
+        { error: "An account for this email was just created. Try again." },
+        { status: 409 },
+      )
+    }
   }
 
   // Privileged-access change + its audit record are written together: if the
@@ -56,7 +102,7 @@ export async function POST(request: NextRequest) {
   const admin = await prisma.$transaction(async (tx) => {
     const updated = await tx.profile.update({
       where: { id: user.id },
-      data: { isSuperAdmin: true },
+      data: { isSuperAdmin: true, deletedAt: null, isActive: true },
       select: { id: true, name: true, email: true, avatarUrl: true },
     })
     await recordAuditEvent({
@@ -65,13 +111,13 @@ export async function POST(request: NextRequest) {
       action: "SUPER_ADMIN_GRANTED",
       targetType: "Profile",
       targetId: user.id,
-      before: { isSuperAdmin: user.isSuperAdmin },
+      before: { isSuperAdmin: user.isSuperAdmin, deletedAt: user.deletedAt },
       after: { isSuperAdmin: true },
       client: tx,
     })
     return updated
   })
-  return NextResponse.json({ admin })
+  return NextResponse.json({ admin, created: false })
 }
 
 export async function DELETE(request: NextRequest) {

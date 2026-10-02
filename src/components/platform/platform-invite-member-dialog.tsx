@@ -29,10 +29,11 @@ const roleLabel = (r: string) =>
         : r.charAt(0).toUpperCase() + r.slice(1)
 
 /**
- * Platform-level invite: a super-admin picks any tenant, then any role /
- * department / sub-department within it. Existing users are added instantly; a
- * new email gets an invitation link. Posts to the same tenant members endpoint
- * as the tenant-scoped InviteMemberDialog, but with a tenant selector on top.
+ * Platform-level invite: a super-admin picks a role, then any tenant /
+ * department / sub-department it needs. Existing users are added instantly; a
+ * new email gets an invitation link (or, for Super Admin, a new account with
+ * that role). Tenant roles post to the tenant members endpoint; Super Admin
+ * posts to /api/admin/super-admins.
  */
 export function PlatformInviteMemberDialog({
   tenants,
@@ -115,8 +116,8 @@ export function PlatformInviteMemberDialog({
     const value = email.trim()
     if (!value) return
 
-    // Super-admin is granted platform-wide to an existing account — no tenant
-    // or department scope, a different endpoint from tenant members.
+    // Super-admin is platform-wide — no tenant or department. A new email gets
+    // an account created with that role; an existing account is granted it.
     if (isSuperAdmin) {
       setBusy(true)
       setError(null)
@@ -131,7 +132,11 @@ export function PlatformInviteMemberDialog({
         setError(body.error ?? "Failed to grant super-admin access")
         return
       }
-      toast.success(`${body.admin?.name || value} is now a super admin.`)
+      toast.success(
+        body.created
+          ? `${body.admin?.name || value} was added as a super admin. They can sign in with this email.`
+          : `${body.admin?.name || value} is now a super admin.`,
+      )
       setOpen(false)
       router.refresh()
       return
@@ -287,7 +292,7 @@ export function PlatformInviteMemberDialog({
                 {isSuperAdmin && (
                   <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">
                     Grants platform-wide access to manage every tenant, template, and feature flag.
-                    The person must already have an account (signed in at least once).
+                    A new email is added as a super admin and can sign in with a code sent to that address.
                   </p>
                 )}
               </div>
@@ -425,7 +430,7 @@ export function PlatformInviteMemberDialog({
                     Cancel
                   </Button>
                   <Button type="submit" size="lg" disabled={busy || !email.trim() || (needsTenant && !tenantId)}>
-                    {busy ? (isSuperAdmin ? "Granting…" : "Adding…") : isSuperAdmin ? "Grant super admin" : "Add member"}
+                    {busy ? "Adding…" : isSuperAdmin ? "Add super admin" : "Add member"}
                   </Button>
                 </div>
               )}

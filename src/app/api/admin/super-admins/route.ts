@@ -1,8 +1,10 @@
+import { randomBytes } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireSuperAdmin } from "@/lib/auth"
 import { recordAuditEvent } from "@/lib/audit-log"
-import { ensureConfirmedAuthUser } from "@/lib/auth/ensure-auth-user"
+import { sendSuperAdminInviteEmail } from "@/lib/email"
+import { INVITE_TTL_MS } from "@/lib/invites/constants"
 
 /**
  * Platform Settings > Administrators — manage who carries Profile.isSuperAdmin
@@ -36,65 +38,51 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
   }
 
-  // Super-admin is a platform-wide flag on Profile. An invite by email for
-  // someone who has never signed in creates that account (auth user + Profile)
-  // so they can sign in afterwards with the role already set.
   const user = await prisma.profile.findFirst({
     where: userId ? { id: userId } : { email },
-    select: { id: true, deletedAt: true, isSuperAdmin: true, email: true },
+    select: { id: true, deletedAt: true, isSuperAdmin: true },
   })
-  if (userId && (!user || user.deletedAt)) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 })
-  }
-
-  if (!user) {
-    const name = email.split("@")[0] || email
-    let authUserId: string
-    try {
-      authUserId = (await ensureConfirmedAuthUser(email, name)).id
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create an account for this email"
-      return NextResponse.json({ error: message }, { status: 400 })
+  if (!user || user.deletedAt) {
+    // Grant-by-id can only elevate someone who already has an account.
+    if (userId || !email) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    try {
-      const admin = await prisma.$transaction(async (tx) => {
-        const created = await tx.profile.create({
-          data: {
-            id: authUserId,
-            email,
-            name,
-            role: "admin",
-            isSuperAdmin: true,
-            isActive: true,
-          },
-          select: { id: true, name: true, email: true, avatarUrl: true },
-        })
-        await recordAuditEvent({
-          tenantId: null,
-          actorId: profile!.id,
-          action: "SUPER_ADMIN_GRANTED",
-          targetType: "Profile",
-          targetId: created.id,
-          before: null,
-          after: { isSuperAdmin: true, created: true },
-          client: tx,
-        })
-        return created
-      })
-      return NextResponse.json({ admin, created: true })
-    } catch (err) {
-      // A concurrent invite can win the unique email. Surface that instead of a 500.
-      const again = await prisma.profile.findFirst({
-        where: { email },
-        select: { id: true },
-      })
-      if (!again) throw err
-      return NextResponse.json(
-        { error: "An account for this email was just created. Try again." },
-        { status: 409 },
-      )
+    // New email: do not create an auth user or Profile. Store the invite and
+    // email the accept link. The account is created when they accept and sign in.
+    const dup = await prisma.superAdminInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true },
+    })
+    if (dup) {
+      return NextResponse.json({ error: "A pending invite already exists for this email" }, { status: 409 })
     }
+
+    const token = randomBytes(32).toString("hex")
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS)
+    await prisma.superAdminInvite.create({
+      data: { token, email, invitedBy: profile!.id, expiresAt },
+    })
+
+    let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
+    try {
+      const delivery = await sendSuperAdminInviteEmail({
+        to: email,
+        inviterName: profile!.name,
+        inviterId: profile!.id,
+        inviteToken: token,
+        expiresAt,
+      })
+      emailDelivery = { status: "sent", via: delivery.via }
+    } catch (err) {
+      console.error("[super-admins] failed to send invite email:", err)
+      emailDelivery = { status: "failed" }
+    }
+
+    return NextResponse.json(
+      { invited: true, email, acceptPath: `/super-admin-invite/${token}`, emailDelivery },
+      { status: 201 },
+    )
   }
 
   // Privileged-access change + its audit record are written together: if the
@@ -102,7 +90,7 @@ export async function POST(request: NextRequest) {
   const admin = await prisma.$transaction(async (tx) => {
     const updated = await tx.profile.update({
       where: { id: user.id },
-      data: { isSuperAdmin: true, deletedAt: null, isActive: true },
+      data: { isSuperAdmin: true },
       select: { id: true, name: true, email: true, avatarUrl: true },
     })
     await recordAuditEvent({
@@ -111,13 +99,13 @@ export async function POST(request: NextRequest) {
       action: "SUPER_ADMIN_GRANTED",
       targetType: "Profile",
       targetId: user.id,
-      before: { isSuperAdmin: user.isSuperAdmin, deletedAt: user.deletedAt },
+      before: { isSuperAdmin: user.isSuperAdmin },
       after: { isSuperAdmin: true },
       client: tx,
     })
     return updated
   })
-  return NextResponse.json({ admin, created: false })
+  return NextResponse.json({ admin })
 }
 
 export async function DELETE(request: NextRequest) {

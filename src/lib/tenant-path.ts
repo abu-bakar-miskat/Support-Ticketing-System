@@ -142,6 +142,7 @@ const NON_TENANT_PREFIXES = new Set([
   "screen",
   "support",
   "tenant-invite",
+  "super-admin-invite",
 ]);
 
 export type TenantPathContext = {

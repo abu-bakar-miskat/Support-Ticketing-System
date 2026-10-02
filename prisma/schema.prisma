@@ -368,6 +368,25 @@ model TenantInvite {
   @@index([expiresAt])
 }
 
+// Pending platform super-admin invitation. No Profile or auth user exists until
+// the invitee accepts and signs in; accepting sets Profile.isSuperAdmin.
+model SuperAdminInvite {
+  id             String    @id @default(cuid())
+  token          String    @unique
+  email          String
+  invitedBy      String    @db.Uuid
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  reminderSentAt DateTime?
+
+  inviter Profile @relation("SuperAdminInvitesSent", fields: [invitedBy], references: [id])
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 // ─── Org Structure ────────────────────────────────────────────────────────────
 
 model Department {
@@ -678,6 +697,7 @@ model Profile {
   holidays              MemberHoliday[]
   tenantMemberships     TenantMembership[]  @relation("TenantMemberships")
   tenantInvitesSent     TenantInvite[]      @relation("TenantInvitesSent")
+  superAdminInvitesSent SuperAdminInvite[]  @relation("SuperAdminInvitesSent")
   roleAssignments       RoleAssignment[]    @relation("UserRoleAssignments")
 
   @@index([name])

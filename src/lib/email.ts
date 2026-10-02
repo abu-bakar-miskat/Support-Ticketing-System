@@ -10,6 +10,7 @@ import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed
 import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-connection-failed-alert";
 import { renderInvite } from "./email-templates/invite";
 import { renderTenantInvite } from "./email-templates/tenant-invite";
+import { renderSuperAdminInvite } from "./email-templates/super-admin-invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
 import { renderStatusChanged } from "./email-templates/status-changed";
@@ -623,6 +624,42 @@ export async function sendTenantInviteEmail(args: {
   });
   if (!result.ok) {
     console.error("[email] tenant invite rejected:", result.error);
+    throw new Error(result.error);
+  }
+  return result;
+}
+
+/** Platform super-admin invitation. No account exists until the link is accepted. */
+export async function sendSuperAdminInviteEmail(args: {
+  to: string;
+  inviterName: string;
+  inviterId: string;
+  inviteToken: string;
+  expiresAt: Date;
+}) {
+  if (!(await isAuthEmailConfigured())) {
+    throw new Error("Authentication email is not configured");
+  }
+  const config = await getEmailConfig();
+  const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
+  const { subject, html, text } = renderSuperAdminInvite({
+    inviteeEmail: args.to,
+    inviterName: args.inviterName,
+    inviteToken: args.inviteToken,
+    expiresAt: args.expiresAt,
+    signature,
+    branding: brandingFrom(config),
+  });
+  const result = await sendAuthEmail({
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+  if (!result.ok) {
+    console.error("[email] super-admin invite rejected:", result.error);
     throw new Error(result.error);
   }
   return result;

@@ -65,13 +65,18 @@ async function requestLoginCode(formData: FormData) {
   // applies whether or not they already have a Profile (e.g. an existing
   // member invited to a second department).
   const now = new Date();
-  const [tenantInvite, departmentInvite] = await Promise.all([
+  const [tenantInvite, departmentInvite, superAdminInvite] = await Promise.all([
     prisma.tenantInvite.findFirst({
       where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
       select: { token: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.departmentInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
+      select: { token: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.superAdminInvite.findFirst({
       where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: now } },
       select: { token: true },
       orderBy: { createdAt: "desc" },
@@ -83,11 +88,14 @@ async function requestLoginCode(formData: FormData) {
   if (departmentInvite && next !== `/invite/${departmentInvite.token}`) {
     redirect(`/invite/${departmentInvite.token}`);
   }
+  if (superAdminInvite && next !== `/super-admin-invite/${superAdminInvite.token}`) {
+    redirect(`/super-admin-invite/${superAdminInvite.token}`);
+  }
 
   // No sign-in code for an email with no workspace account and no pending
   // invite either — surface an invitation prompt instead of letting Supabase
   // silently create a new auth user with no matching Profile.
-  if (!tenantInvite && !departmentInvite) {
+  if (!tenantInvite && !departmentInvite && !superAdminInvite) {
     const profile = await prisma.profile.findUnique({
       where: { email },
       select: { id: true },

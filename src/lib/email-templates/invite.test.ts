@@ -92,5 +92,6 @@ describe("isGenericLandingPath", () => {
     expect(isGenericLandingPath("/uchiha-clan/tech-support/manager")).toBe(false);
     expect(isGenericLandingPath("/uchiha-clan/tech-support/tasks")).toBe(false);
     expect(isGenericLandingPath("/invite/abc")).toBe(false);
+    expect(isGenericLandingPath("/super-admin-invite/abc")).toBe(false);
   });
 });

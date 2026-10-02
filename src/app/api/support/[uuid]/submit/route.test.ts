@@ -193,10 +193,10 @@ describe("POST /api/support/[uuid]/submit — trusted submitters", () => {
   })
 })
 
-describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () => {
+describe("POST /api/support/[uuid]/submit — customer confirmation", () => {
   // These cover the direct-creation path taken when confirmation email is
   // unavailable/disabled for the department (nothing to confirm), where the
-  // ticket is created inline and its confirmation thread is bootstrapped.
+  // ticket is created inline and its confirmation email is sent.
   beforeEach(() => {
     mockSendVerification.mockResolvedValue({ ok: false, skipped: true } as never)
   })
@@ -213,21 +213,11 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
     )
   })
 
-  it("persists the confirmation as an outbound TicketMessage when providerMessageId is returned", async () => {
+  it("does not add the automatic confirmation email to the ticket conversation", async () => {
     await POST(makeRequest(validBody), { params })
 
-    expect(mockCreateMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          ticketId: "ticket-1",
-          direction: "outbound",
-          status: "trusted",
-          authorProfileId: null,
-          providerMessageId: "provider-confirm-id",
-          bodyHtml: "Hi Jane, we got your request.",
-        }),
-      }),
-    )
+    expect(mockSendConfirmation).toHaveBeenCalledOnce()
+    expect(mockCreateMessage).not.toHaveBeenCalled()
   })
 
   it("omits the token when form disallows customer replies", async () => {
@@ -239,7 +229,7 @@ describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () 
     )
   })
 
-  it("does not create a TicketMessage when the send returns no providerMessageId", async () => {
+  it("does not add an unsent confirmation to the ticket conversation", async () => {
     mockSendConfirmation.mockResolvedValue({
       providerMessageId: null,
       providerEmailId: null,

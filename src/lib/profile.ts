@@ -42,6 +42,24 @@ const profileInflight = globalForProfile.profileInflight ?? new Map()
 globalForProfile.profileByUserId = profileByUserId
 globalForProfile.profileInflight = profileInflight
 
+/**
+ * Drop every cached profile for a user. Must be called after any write that
+ * changes a field getProfile() returns (name, timezone, avatar, preferences,
+ * …) — otherwise a subsequent router.refresh() re-reads the stale cached copy
+ * for up to PROFILE_TTL_MS and the change appears not to have saved. The cache
+ * key is `${userId}::${slug}::${cookieTenant}`, so we clear every tenant-scoped
+ * entry for this user (see activeTenantCacheKey).
+ */
+export function invalidateProfileCache(userId: string): void {
+  const prefix = `${userId}::`
+  for (const key of profileByUserId.keys()) {
+    if (key.startsWith(prefix)) profileByUserId.delete(key)
+  }
+  for (const key of profileInflight.keys()) {
+    if (key.startsWith(prefix)) profileInflight.delete(key)
+  }
+}
+
 export type ProfileMembership = {
   subDepartmentId: string
   role: string

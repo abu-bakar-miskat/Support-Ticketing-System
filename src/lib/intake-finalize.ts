@@ -3,7 +3,7 @@ import { TicketPriority } from "@/generated/prisma/client"
 import { sendIntakeConfirmationEmail, sendAssignmentEmail, sendIntakeManagerAlertEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
-import { RESEND_RECEIVING_ENABLED, getEmailConfig } from "@/lib/email-config"
+import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
 import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { recordAssignmentFailure } from "@/lib/assignment-engine"
@@ -223,7 +223,7 @@ export async function createTicketFromPayload(
 
   const emailSummary = responses.filter((r) => r.value && r.value.trim()).map((r) => ({ label: r.label, value: r.value }))
   const useToken = RESEND_RECEIVING_ENABLED && form.allowCustomerReplies
-  const sent = await sendIntakeConfirmationEmail({
+  await sendIntakeConfirmationEmail({
     to: submitterEmail,
     submitterName,
     submitterEmail,
@@ -237,28 +237,7 @@ export async function createTicketFromPayload(
     subDepartmentId: prep.intakeSubDepartmentId,
   }).catch((err) => {
     console.error("[intake] confirmation email failed:", err)
-    return { providerMessageId: null, providerEmailId: null, bodyText: "" }
   })
-
-  // Persist so inbound replies thread and MAIL-03 bounce events can attach to this ticket.
-  if (sent.providerMessageId) {
-    const config = await getEmailConfig(form.departmentId, prep.intakeSubDepartmentId)
-    await prisma.ticketMessage.create({
-      data: {
-        ticketId,
-        direction: "outbound",
-        status: "trusted",
-        authorProfileId: null,
-        fromName: config.fromName,
-        fromEmail: config.fromEmail,
-        bodyHtml: sent.bodyText,
-        providerMessageId: sent.providerMessageId,
-        rawPayload: sent.providerEmailId
-          ? { providerEmailId: sent.providerEmailId }
-          : undefined,
-      },
-    }).catch((err) => console.error("[intake] confirmation message persist failed:", err))
-  }
 
   return { ticketId, humanId }
 }

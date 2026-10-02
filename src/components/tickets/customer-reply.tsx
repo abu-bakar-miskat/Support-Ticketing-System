@@ -143,6 +143,8 @@ export type MessageData = {
   notes?: MessageNote[];
   deliveryStatus?: string | null;
   deliveryError?: string | null;
+  /** Present on a successful outbound send so the ticket header updates immediately. */
+  ticketStatus?: string;
 };
 
 type PendingAttachment = {

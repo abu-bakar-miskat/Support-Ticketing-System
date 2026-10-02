@@ -9,6 +9,7 @@ import {
   messageIdLookupVariants,
   normalizeHeaderKeys,
 } from "@/lib/inbound-email"
+import { syncWorkTimerWithLatestConversation } from "@/lib/timer-conversation-sync"
 
 // How far back to look for missed emails (7 days)
 const LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
@@ -55,6 +56,13 @@ export async function POST(
 
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
+
+  // Reconciliation also heals a timer event missed by this app instance. This
+  // matters in local/shared-DB development where another instance may have
+  // stored the inbound message before the local server was running.
+  await syncWorkTimerWithLatestConversation(ticketId).catch((err) =>
+    console.error("[reconcile] failed to sync conversation timer:", err),
+  )
 
   const resend = getResendClient()
   if (!resend) {

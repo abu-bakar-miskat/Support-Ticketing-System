@@ -17,11 +17,13 @@ import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
 import { classifyAttachment, INBOUND_MAX_BYTES } from "@/lib/message-attachments"
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
 import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
 import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
+import { normalizeStatus } from "@/components/board/board-types"
 
 // Re-exported for existing call sites (webhook route, reconcile route) — the
 // implementation lives in lib/resend-client.ts so lib/mail-providers/resend-provider.ts
@@ -32,6 +34,7 @@ type MatchedTicket = {
   id: string
   title: string
   ticketNumber: number
+  status: string
   assigneeId: string | null
   creatorId: string
   subDepartmentId: string
@@ -198,7 +201,7 @@ export async function processInboundEmail(
         submitterEmail: true,
         ticket: {
           select: {
-            id: true, title: true, ticketNumber: true,
+            id: true, title: true, ticketNumber: true, status: true,
             assigneeId: true, creatorId: true, subDepartmentId: true,
             subDepartment: { select: { prefix: true } },
           },
@@ -223,7 +226,7 @@ export async function processInboundEmail(
         select: {
           ticket: {
             select: {
-              id: true, title: true, ticketNumber: true,
+              id: true, title: true, ticketNumber: true, status: true,
               assigneeId: true, creatorId: true, subDepartmentId: true,
               subDepartment: { select: { prefix: true } },
               intake: { select: { submitterEmail: true } },
@@ -250,7 +253,7 @@ export async function processInboundEmail(
           subDepartment: { prefix: { equals: ref.prefix, mode: "insensitive" } },
         },
         select: {
-          id: true, title: true, ticketNumber: true,
+          id: true, title: true, ticketNumber: true, status: true,
           assigneeId: true, creatorId: true, subDepartmentId: true,
           subDepartment: { select: { prefix: true } },
           intake: { select: { submitterEmail: true } },
@@ -356,6 +359,7 @@ export async function processInboundEmail(
       id: createdTicket.id,
       title: email.subject?.trim() || `Email from ${fromName || fromEmail}`,
       ticketNumber: createdTicket.ticketNumber,
+      status: "OPEN",
       assigneeId: createdTicket.assigneeId,
       creatorId: createdTicket.creatorId,
       subDepartmentId: route.subDepartmentId,
@@ -423,6 +427,18 @@ export async function processInboundEmail(
     return false
   }
 
+  // Resume work immediately after the inbound message commits. Keep this ahead
+  // of attachment downloads, mailbox broadcasts, and notifications so those
+  // slower side effects cannot delay the assignee's timer.
+  if (!isSystem && !isNewTicket && messageStatus === "trusted") {
+    if (!throttled && normalizeStatus(ticket.status) !== "In Progress") {
+      await maybeReopenTicket(ticket.id, ticket.subDepartmentId, ticket.creatorId)
+    }
+    await syncWorkTimerWithConversation(ticket.id, "inbound").catch((err) =>
+      console.error("[inbound] failed to resume work timer:", err),
+    )
+  }
+
   // Store attachments before broadcasting so the realtime payload carries them —
   // the client appends the broadcast directly with no refetch, so an empty list
   // here would hide inbound images until a manual reload.
@@ -468,11 +484,9 @@ export async function processInboundEmail(
   // createTicketFromInboundEmail — a "customer replied"/reopen notification
   // for its own first message would be redundant (and reopen never applies
   // to a ticket that was just created).
-  if (isSystem || throttled || isNewTicket) return true
+  if (isSystem || isNewTicket) return true
 
-  if (messageStatus === "trusted") {
-    await maybeReopenTicket(ticket.id, ticket.subDepartmentId, ticket.creatorId)
-  }
+  if (throttled) return true
 
   if (messageStatus === "quarantined") {
     await notifyQuarantinedReply({

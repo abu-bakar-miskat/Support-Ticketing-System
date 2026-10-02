@@ -89,15 +89,18 @@ export function SubDepartmentTodaySection({ members }: { members: MemberWorkload
       id="subDepartment"
       icon={Users}
       accent="#0a76b9"
-      title="SubDepartment today"
+      title="Team workload"
       aside={
-        <span className="flex items-center gap-3 font-sans text-[10px] text-sts-subtle">
-          <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#0a76b9]" />active</span>
-          <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#ef4444]" />late</span>
-          <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#7c3aed]" />review</span>
+        <span className="font-sans text-[11px] text-sts-subtle">
+          {working.length} active · {idle.length} available
         </span>
       }
     >
+      <div className="flex items-center gap-4 border-b border-sts-card-border bg-sts-surface/35 px-4 py-2 font-sans text-[10px] text-sts-subtle">
+        <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#0a76b9]" />active</span>
+        <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#ef4444]" />late</span>
+        <span className="flex items-center gap-1"><span className="block size-[6px] rounded-[2px] bg-[#7c3aed]" />review</span>
+      </div>
       <div className="max-h-[min(420px,48vh)] overflow-y-auto overscroll-contain">
         {working.map((m) => <MemberRow key={m.id} m={m} max={max} />)}
 

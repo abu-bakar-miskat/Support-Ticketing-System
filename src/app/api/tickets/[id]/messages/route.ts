@@ -8,6 +8,8 @@ import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
 import { normalizeStatus } from "@/components/board/board-types"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
+import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -284,16 +286,33 @@ export async function POST(
   // Auto-move to In Progress — awaited before responding so the DB change is
   // committed before the response is sent, ensuring postgres_changes picks it up.
   const inProgressStatus = await inProgressStatusPromise
+  let ticketStatus = ticket.status
   if (inProgressStatus) {
     // Attribute the reopen to the agent who replied (via the GUC the
     // ActivityLog trigger reads) rather than falling back to the creator.
-    await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
-      await tx.ticket.update({
-        where: { id: ticketId },
-        data: { status: inProgressStatus.label, ...(labelsChanged ? { labels: nextLabels } : {}) },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: { status: inProgressStatus.label, ...(labelsChanged ? { labels: nextLabels } : {}) },
+        })
       })
-    }).catch(() => undefined)
+      ticketStatus = inProgressStatus.label
+
+      // Follow the same work-timer rule as a manual move to In Progress. The
+      // conversation sync below then immediately pauses it because this outbound
+      // reply leaves the ticket Waiting for customer.
+      await startTimerOnStatusChange(ticketId, ticketStatus, {
+        id: profile.id,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+      }).catch((err) => console.error("[messages] failed to start work timer:", err))
+    } catch (err) {
+      // The email and conversation row already exist at this point. Do not turn
+      // a workflow-sync failure into a retry that could send the email twice.
+      console.error("[messages] failed to move ticket to In Progress:", err)
+    }
   } else {
     // Touch the ticket row so the existing Ticket-UPDATE realtime subscription
     // fires even when no status change occurs — that's what refreshes the
@@ -303,6 +322,12 @@ export async function POST(
       data: { updatedAt: new Date(), ...(labelsChanged ? { labels: nextLabels } : {}) },
     }).catch(() => undefined)
   }
+
+  // The public reply changes the derived label to "Waiting for customer".
+  // Pause work tracking even though the workflow status remains In Progress.
+  await syncWorkTimerWithConversation(ticketId, "outbound").catch((err) =>
+    console.error("[messages] failed to pause work timer:", err),
+  )
 
   const serialized = {
     id: message.id,
@@ -315,6 +340,7 @@ export async function POST(
     authorName: message.author?.name ?? null,
     authorAvatarUrl: message.author?.avatarUrl ?? null,
     createdAt: message.createdAt.toISOString(),
+    ticketStatus,
     attachments: outboundAttachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
   }
 

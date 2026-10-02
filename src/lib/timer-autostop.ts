@@ -18,6 +18,21 @@ export async function stopRunningTimersOnStatusChange(
 ): Promise<void> {
   if (normalizeStatus(newStatus) === "In Progress") return
 
+  await stopRunningTimers(ticketId)
+}
+
+/**
+ * A public agent reply changes the conversation to "Waiting for customer".
+ * Stop work tracking even though the ticket itself remains In Progress.
+ */
+export async function stopRunningTimersForWaitingCustomer(
+  ticketId: string,
+): Promise<void> {
+  await stopRunningTimers(ticketId)
+}
+
+async function stopRunningTimers(ticketId: string): Promise<void> {
+
   const running = await prisma.timeEntry.findMany({
     where: { ticketId, endedAt: null },
     select: {

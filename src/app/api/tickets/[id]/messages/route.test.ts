@@ -23,6 +23,12 @@ vi.mock("@/lib/db", () => ({
     ticketMessage: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
     subDepartmentStatus: { findFirst: vi.fn() },
+    $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
+      callback({
+        $executeRaw: vi.fn(),
+        ticket: { update: vi.fn().mockResolvedValue({}) },
+      }),
+    ),
   },
 }))
 vi.mock("@/lib/email-config", () => ({
@@ -32,11 +38,19 @@ vi.mock("@/lib/email-config", () => ({
 vi.mock("@/lib/email", () => ({
   sendCustomerReplyEmail: vi.fn(),
 }))
+vi.mock("@/lib/timer-conversation-sync", () => ({
+  syncWorkTimerWithConversation: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock("@/lib/timer-autostart", () => ({
+  startTimerOnStatusChange: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { POST } from "./route"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendCustomerReplyEmail } from "@/lib/email"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
+import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 
 const mockRequireAuth = vi.mocked(requireAuth)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
@@ -47,12 +61,16 @@ const mockSend = vi.mocked(sendCustomerReplyEmail)
 const mockFindAttachments = vi.mocked(prisma.attachment.findMany)
 const mockUpdateAttachments = vi.mocked(prisma.attachment.updateMany)
 const mockSubDepartmentStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
+const mockSyncWorkTimer = vi.mocked(syncWorkTimerWithConversation)
+const mockStartTimer = vi.mocked(startTimerOnStatusChange)
 
 const intakeTicket = {
   id: "ticket-1",
   title: "Broken login",
   ticketNumber: 42,
   subDepartmentId: "team-abc",
+  status: "IN PROGRESS",
+  labels: [],
   assigneeId: null,
   creatorId: "creator-1",
   deletedAt: null,
@@ -128,6 +146,27 @@ describe("POST /api/tickets/[id]/messages", () => {
     )
     const json = await res.json()
     expect(json).toMatchObject({ direction: "outbound", body: "Hi Jane, on it." })
+    expect(mockSyncWorkTimer).toHaveBeenCalledWith("ticket-1", "outbound")
+  })
+
+  it("moves an open ticket to In Progress before applying the waiting-for-customer pause", async () => {
+    mockFindUnique.mockResolvedValue({ ...intakeTicket, status: "OPEN" } as never)
+    mockSubDepartmentStatusFindFirst.mockResolvedValue({ label: "IN PROGRESS" } as never)
+
+    const res = await POST(makeRequest({ body: "I am working on this." }), { params })
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.ticketStatus).toBe("IN PROGRESS")
+    expect(mockStartTimer).toHaveBeenCalledWith(
+      "ticket-1",
+      "IN PROGRESS",
+      expect.objectContaining({ id: mockProfile.id }),
+    )
+    expect(mockSyncWorkTimer).toHaveBeenCalledWith("ticket-1", "outbound")
+    expect(mockStartTimer.mock.invocationCallOrder[0]).toBeLessThan(
+      mockSyncWorkTimer.mock.invocationCallOrder[0],
+    )
   })
 
   it("threads the send onto the conversation's last message", async () => {

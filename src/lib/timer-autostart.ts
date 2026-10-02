@@ -24,6 +24,12 @@ export async function startTimerOnStatusChange(
     select: {
       assigneeId: true,
       assignees: { select: { userId: true } },
+      messages: {
+        where: { status: { not: "system" } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { direction: true, createdAt: true },
+      },
     },
   })
   if (!ticket) return
@@ -33,15 +39,27 @@ export async function startTimerOnStatusChange(
     ticket.assignees.some((a) => a.userId === actor.id)
   if (!isAssignee) return
 
-  const alreadyRunningHere = await prisma.timeEntry.findFirst({
+  // The derived conversation label is Waiting for customer when the latest
+  // public message is outbound. Automatic status changes must not restart work
+  // while the agent is waiting; the next inbound customer reply will resume it.
+  if (ticket.messages?.[0]?.direction === "outbound") return
+
+  const latestInboundAt = ticket.messages?.[0]?.createdAt
+  const existingEntry = await prisma.timeEntry.findFirst({
     where: {
       ticketId,
       profileId: actor.id,
-      endedAt: null,
+      OR: [
+        { endedAt: null },
+        ...(latestInboundAt ? [{ startedAt: { gte: latestInboundAt } }] : []),
+      ],
     },
     select: { id: true },
   })
-  if (alreadyRunningHere) return
+  // A running entry means there is nothing to start. An entry begun after the
+  // latest inbound message means that reply already started one work session;
+  // reconciliation must not restart it after the assignee manually pauses.
+  if (existingEntry) return
 
   const now = new Date()
   const { entry, closed } = await prisma.$transaction(async (tx) => {

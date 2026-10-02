@@ -1,0 +1,63 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    ticket: { findUnique: vi.fn() },
+    timeEntry: { findFirst: vi.fn() },
+  },
+}))
+vi.mock("@/lib/timer-broadcast", () => ({ broadcastTimerChange: vi.fn() }))
+vi.mock("@/lib/ticket-events", () => ({ broadcastTicketEvent: vi.fn() }))
+
+import { prisma } from "@/lib/db"
+import { startTimerOnStatusChange } from "./timer-autostart"
+
+const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
+const mockFindRunning = vi.mocked(prisma.timeEntry.findFirst)
+
+beforeEach(() => vi.clearAllMocks())
+
+describe("startTimerOnStatusChange", () => {
+  it("does not auto-start while the conversation is Waiting for customer", async () => {
+    mockFindTicket.mockResolvedValue({
+      assigneeId: "agent-1",
+      assignees: [],
+      messages: [{ direction: "outbound", createdAt: new Date() }],
+    } as never)
+
+    await startTimerOnStatusChange("ticket-1", "IN PROGRESS", {
+      id: "agent-1",
+      name: "Agent One",
+    })
+
+    expect(mockFindRunning).not.toHaveBeenCalled()
+  })
+
+  it("does not restart a reply timer that the assignee already paused", async () => {
+    const repliedAt = new Date("2026-10-02T11:52:17Z")
+    mockFindTicket.mockResolvedValue({
+      assigneeId: "agent-1",
+      assignees: [],
+      messages: [{ direction: "inbound", createdAt: repliedAt }],
+    } as never)
+    mockFindRunning.mockResolvedValueOnce({ id: "handled-entry" } as never)
+
+    await startTimerOnStatusChange("ticket-1", "IN PROGRESS", {
+      id: "agent-1",
+      name: "Agent One",
+    })
+
+    expect(mockFindRunning).toHaveBeenCalledWith({
+      where: {
+        ticketId: "ticket-1",
+        profileId: "agent-1",
+        OR: [
+          { endedAt: null },
+          { startedAt: { gte: repliedAt } },
+        ],
+      },
+      select: { id: true },
+    })
+    expect(mockFindRunning).toHaveBeenCalledTimes(1)
+  })
+})

@@ -7,7 +7,6 @@ import {
   DONE_STATUSES,
   IN_REVIEW_STATUSES,
   buildMemberWorkloads,
-  buildProjectHealth,
   buildDigest,
   bucketDistribution,
   type OpenTicketRow,
@@ -54,7 +53,9 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
       reviewGroups: [],
       joinRequests: [],
       members: [],
-      projects: [],
+      mailboxes: [],
+      supportForms: [],
+      canManageForms: false,
       subDepartments: [],
       activity: [],
       activityTotal: 0,
@@ -71,7 +72,17 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
 
   const FINISHED_STATUSES = ["Live", "Done", "Completed", "Closed"];
 
-  const [openTickets, allScopedTickets, subDepartmentMembers, todayActivity, pendingJoinRequests, subDepartmentRows, department] =
+  const [
+    openTickets,
+    allScopedTickets,
+    subDepartmentMembers,
+    todayActivity,
+    pendingJoinRequests,
+    subDepartmentRows,
+    department,
+    mailboxRows,
+    supportFormRows,
+  ] =
     await Promise.all([
       prisma.ticket.findMany({
         where: {
@@ -103,7 +114,6 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
         select: {
           status: true,
           dueDate: true,
-          project: { select: { id: true, name: true, color: true } },
         },
       }),
       prisma.profile.findMany({
@@ -183,6 +193,32 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
             select: { name: true },
           })
         : Promise.resolve(null),
+      prisma.mailboxConnection.findMany({
+        where: {
+          departmentId: deptScope?.activeDeptId ?? "__no_department__",
+          subDepartmentId: { in: subDepartmentIds },
+        },
+        orderBy: { address: "asc" },
+        select: {
+          id: true,
+          address: true,
+          isActive: true,
+          status: true,
+          subDepartment: { select: { name: true } },
+        },
+      }),
+      prisma.intakeFormConfig.findMany({
+        where: { departmentId: deptScope?.activeDeptId ?? "__no_department__" },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          isActive: true,
+          _count: {
+            select: { intakes: { where: { createdAt: { gte: startOfToday } } } },
+          },
+        },
+      }),
     ]);
 
   const toRow = (t: (typeof openTickets)[number]): OpenTicketRow => ({
@@ -294,18 +330,17 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
   ).size;
 
   const projectRows: ProjectTicketRow[] = allScopedTickets.map((t) => ({
-    projectId: t.project?.id ?? null,
-    projectName: t.project?.name ?? null,
-    projectColor: t.project?.color ?? null,
+    projectId: null,
+    projectName: null,
+    projectColor: null,
     status: t.status,
     dueDate: t.dueDate?.toISOString() ?? null,
   }));
 
   const members = buildMemberWorkloads(subDepartmentMembers, rows, lastActivityByActor, startOfToday);
-  const projects = buildProjectHealth(projectRows, startOfToday);
 
   const topOverdue = overdueGroups[0] ?? null;
-  const digest = buildDigest({
+  const ticketDigest = buildDigest({
     overdue: overdueRows.length,
     topOverdueProject: topOverdue?.name ?? null,
     topOverdueCount: topOverdue?.tickets.length ?? 0,
@@ -314,6 +349,12 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
     movedToday,
     requests: pendingJoinRequests.length,
   });
+  const mailboxIssueCount = mailboxRows.filter(
+    (mailbox) => !mailbox.isActive || mailbox.status !== "ACTIVE",
+  ).length;
+  const digest = mailboxIssueCount > 0
+    ? `${mailboxIssueCount} shared mailbox${mailboxIssueCount === 1 ? "" : "es"} need attention${ticketDigest.startsWith("All clear") ? "" : ` · ${ticketDigest}`}`
+    : ticketDigest;
 
   return {
     managerName: profile.name,
@@ -342,7 +383,22 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
       departmentId: r.department?.id ?? null,
     })),
     members,
-    projects,
+    mailboxes: mailboxRows.map((mailbox) => ({
+      id: mailbox.id,
+      address: mailbox.address,
+      isActive: mailbox.isActive,
+      status: mailbox.status,
+      subDepartmentName: mailbox.subDepartment.name,
+    })),
+    supportForms: supportFormRows.map((form) => ({
+      id: form.id,
+      name: form.name,
+      isActive: form.isActive,
+      submissionsToday: form._count.intakes,
+    })),
+    canManageForms:
+      profile.role === "admin" ||
+      (!!deptScope?.activeDeptId && (profile.departmentAdminIds ?? []).includes(deptScope.activeDeptId)),
     subDepartments,
     activity: todayActivity.slice(0, 30).map((a) => ({
       id: a.id,

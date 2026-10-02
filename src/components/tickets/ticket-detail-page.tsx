@@ -865,6 +865,12 @@ export function TicketDetailPage({
   const knownCommentIds = useRef(new Set(comments.map((c) => c.id)));
   const knownActivityIds = useRef(new Set(activity.map((a) => a.id)));
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  // Tracks the message/comment counts last seen by the auto-scroll effect, so we
+  // only jump to the newest item when one actually *arrives* — never on the
+  // initial mount (which would land the viewer at the bottom) or a tab switch.
+  const lastChatCounts = useRef<{ messages: number; comments: number } | null>(
+    null,
+  );
   const [liveMessages, setLiveMessages] = useState<MessageData[]>(messages);
   const [refreshingMessages, setRefreshingMessages] = useState(false);
   const pushSub = useDrawerStore((s) => s.pushSub);
@@ -1021,10 +1027,21 @@ export function TicketDetailPage({
     );
   }, [liveComments]);
 
-  // Jump to the newest item (bottom, by the sticky composer) whenever the
-  // conversation or internal-comment tab opens or a comment/message arrives.
+  // Jump to the newest item (bottom, by the sticky composer) only when a
+  // comment/message actually arrives — not on the initial mount or a tab
+  // switch, which would otherwise land the viewer at the bottom of the page.
   useEffect(() => {
     if (activeTab !== "conversation" && activeTab !== "internal") return;
+    const prev = lastChatCounts.current;
+    const grew =
+      prev !== null &&
+      (sortedMessages.length > prev.messages ||
+        flatComments.length > prev.comments);
+    lastChatCounts.current = {
+      messages: sortedMessages.length,
+      comments: flatComments.length,
+    };
+    if (!grew) return;
     const id = requestAnimationFrame(() =>
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
@@ -1555,6 +1572,16 @@ export function TicketDetailPage({
     [],
   );
 
+  const syncConversationTimer = useCallback(async () => {
+    try {
+      await fetch(`/api/tickets/${dbId}/messages/sync-timer`, { method: "POST" });
+    } finally {
+      // The endpoint commits the timer before responding, so this refresh can
+      // update the global indicator without waiting for another broadcast.
+      await useTimerStore.getState().syncFromServer();
+    }
+  }, [dbId]);
+
   useEffect(() => {
     const supabase = createClient();
     const unsub = createTicketDetailSubscription(supabase, dbId, {
@@ -1591,6 +1618,10 @@ export function TicketDetailPage({
       (message, direction) => {
         appendMessage(message);
         if (direction === "inbound") {
+          // Ask this app instance to synchronize immediately. In shared-DB
+          // development the webhook may be handled by another deployment, so a
+          // local /api/time refresh alone can happen before any timer exists.
+          void syncConversationTimer();
           try {
             const audio = new Audio("/sounds/notification.mp3");
             audio.volume = 0.5;
@@ -1609,7 +1640,7 @@ export function TicketDetailPage({
         }
       },
     );
-  }, [dbId, appendMessage, refreshMessages]);
+  }, [dbId, appendMessage, refreshMessages, syncConversationTimer]);
 
   // Poll for new messages only when the chat tab is open AND the browser tab is
   // visible. Broadcast handles the fast path; this catches emails that arrive
@@ -3407,17 +3438,27 @@ export function TicketDetailPage({
                       ticketId={dbId}
                       customerName={customerReply.customerName}
                       customerEmail={customerReply.customerEmail}
-                      onSent={(m) => setLiveMessages((prev) => [...prev, m])}
-                      onSentConfirmed={(tempId, real) =>
+                      onSent={(m) => {
+                        setLiveMessages((prev) => [...prev, m]);
+                        // Pause the visible timer immediately; the server
+                        // persists the stop once the email send succeeds.
+                        if (useTimerStore.getState().ticketDbId === dbId) {
+                          useTimerStore.getState().clearRunning();
+                        }
+                      }}
+                      onSentConfirmed={(tempId, real) => {
                         setLiveMessages((prev) =>
                           prev.some((m) => m.id === real.id)
                             ? prev.filter((m) => m.id !== tempId)
                             : prev.map((m) => (m.id === tempId ? real : m)),
-                        )
-                      }
-                      onSentFailed={(tempId) =>
-                        setLiveMessages((prev) => prev.filter((m) => m.id !== tempId))
-                      }
+                        );
+                        if (real.ticketStatus) setLiveStatus(real.ticketStatus);
+                        void useTimerStore.getState().syncFromServer();
+                      }}
+                      onSentFailed={(tempId) => {
+                        setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
+                        void useTimerStore.getState().syncFromServer();
+                      }}
                     />
                   ) : (
                     <p className="py-2 text-center font-sans text-[11.5px] text-sts-subtle">

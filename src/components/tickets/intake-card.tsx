@@ -68,10 +68,14 @@ function EmailValue({ email }: { email: string }) {
 }
 
 export function IntakeCard({ intake }: { intake: IntakeData }) {
-  const date = new Date(intake.submittedAt).toLocaleDateString("en-GB", {
+  const date = new Date(intake.submittedAt).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZoneName: "short",
   });
 
   const visibleResponses = intake.responses.filter(

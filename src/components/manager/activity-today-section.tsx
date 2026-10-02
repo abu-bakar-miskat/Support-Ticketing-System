@@ -32,7 +32,6 @@ export function ActivityTodaySection({ items, total }: { items: ActivityItem[]; 
       icon={Zap}
       accent="#f59e0b"
       title="Today's activity"
-      defaultOpen={false}
       aside={
         <span className="font-sans text-[11px] text-sts-subtle">
           {total} event{total === 1 ? "" : "s"}{total > items.length ? ` · last ${items.length}` : ""}

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
@@ -56,6 +57,27 @@ function formatMins(mins: number): string {
   return [d && `${d}d`, h && `${h}h`, m && `${m}m`].filter(Boolean).join(" ") || "0m";
 }
 
+/** Parse a "HH:MM" (24-hour) string to minutes since midnight, or null if malformed. */
+function parseTimeToMins(value: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/** "17:00" → "5:00 PM". Returns the raw value if it can't be parsed. */
+function formatTime12(value: string): string {
+  const mins = parseTimeToMins(value);
+  if (mins === null) return value || "—";
+  const h24 = Math.floor(mins / 60);
+  const m = mins % 60;
+  const period = h24 < 12 ? "AM" : "PM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 async function jsonOrThrow(res: Response) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -89,6 +111,8 @@ export function SlaSettingsPage({
   const [forms, setForms] = useState<FormOption[]>([]);
   const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
+  // Snapshot of the last-saved settings, used to detect unsaved changes.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
@@ -105,6 +129,9 @@ export function SlaSettingsPage({
         if (cancelled) return;
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
+        setSavedSnapshot(
+          JSON.stringify({ slaConfig: settingsRes.slaConfig, businessHours: settingsRes.businessHours }),
+        );
       })
       .catch((e) => {
         if (!cancelled) setError(e.message);
@@ -192,6 +219,12 @@ export function SlaSettingsPage({
 
   async function saveSettings() {
     if (!slaConfig || !businessHours) return;
+    const startMins = parseTimeToMins(businessHours.workStartTime);
+    const endMins = parseTimeToMins(businessHours.workEndTime);
+    if (startMins === null || endMins === null || endMins <= startMins) {
+      setError("Fix the working-hours start and end times before saving.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -202,6 +235,7 @@ export function SlaSettingsPage({
           body: JSON.stringify({ slaConfig, businessHours }),
         }),
       );
+      setSavedSnapshot(JSON.stringify({ slaConfig, businessHours }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save SLA settings");
     } finally {
@@ -219,6 +253,24 @@ export function SlaSettingsPage({
         : [...businessHours.workingDays, day].sort(),
     });
   }
+
+  // Working-hours start/end validation + derived day length (for the summary line).
+  const startMins = businessHours ? parseTimeToMins(businessHours.workStartTime) : null;
+  const endMins = businessHours ? parseTimeToMins(businessHours.workEndTime) : null;
+  const hoursError =
+    !businessHours
+      ? null
+      : startMins === null || endMins === null
+        ? "Enter both times as HH:MM."
+        : endMins <= startMins
+          ? "End time must be after the start time."
+          : null;
+  const workdayMins =
+    startMins !== null && endMins !== null && endMins > startMins ? endMins - startMins : null;
+
+  // Only enable the save button once the user has changed something.
+  const isDirty =
+    savedSnapshot !== null && JSON.stringify({ slaConfig, businessHours }) !== savedSnapshot;
 
   // In department-wide mode only department-level policies (no sub-department)
   // are managed here; sub-department-scoped ones live on the sub-department page.
@@ -342,93 +394,168 @@ export function SlaSettingsPage({
           <SkeletonRows count={4} height="h-10" />
         ) : (
           <div className="flex flex-col gap-4">
-            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
+            <label className="flex w-fit cursor-pointer items-start gap-2.5 font-sans text-[12.5px] text-sts-foreground">
               <Switch
+                className="mt-0.5"
                 checked={slaConfig.pauseOutsideHours}
                 onCheckedChange={(v) => setSlaConfig({ ...slaConfig, pauseOutsideHours: v })}
               />
-              Pause SLA timers outside working hours
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium">Only count SLA time during working hours</span>
+                <span className="text-[11.5px] text-sts-muted">
+                  {slaConfig.pauseOutsideHours
+                    ? "On — timers pause overnight and on weekends. A ticket that arrives after hours doesn't start burning SLA until the next working period."
+                    : "Off — timers run 24/7 on real elapsed time. SLA keeps counting overnight, on weekends, and on holidays even when no one is working."}
+                </span>
+              </span>
             </label>
 
-            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
+            <label className="flex w-fit cursor-pointer items-start gap-2.5 font-sans text-[12.5px] text-sts-foreground">
               <Switch
+                className="mt-0.5"
                 checked={slaConfig.pauseWhenWaitingForCustomer}
                 onCheckedChange={(v) =>
                   setSlaConfig({ ...slaConfig, pauseWhenWaitingForCustomer: v })
                 }
               />
-              Pause resolution SLA while waiting for customer
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium">Pause the resolution timer while waiting on the customer</span>
+                <span className="text-[11.5px] text-sts-muted">
+                  {slaConfig.pauseWhenWaitingForCustomer
+                    ? "On — after your team replies, the resolution timer stops until the customer responds. Time spent waiting on them isn't counted against you."
+                    : "Off — the resolution timer keeps running even while you're waiting for the customer to reply."}
+                </span>
+              </span>
             </label>
 
-            <label className="flex items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
-              At-risk threshold (%)
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={slaConfig.atRiskPct}
-                onChange={(e) => setSlaConfig({ ...slaConfig, atRiskPct: Number(e.target.value) })}
-                className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
-              />
+            <div className="h-px bg-sts-card-border/70" />
+
+            <label className="flex items-center justify-between gap-3 font-sans text-[12.5px] text-sts-foreground">
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium">At-risk threshold</span>
+                <span className="text-[11.5px] text-sts-muted">
+                  Flag a ticket as at-risk once it has used this share of its SLA budget.
+                </span>
+              </span>
+              <span className="relative shrink-0">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={slaConfig.atRiskPct}
+                  onChange={(e) => setSlaConfig({ ...slaConfig, atRiskPct: Number(e.target.value) })}
+                  className="h-8 w-[4.5rem] rounded-md border border-sts-card-border bg-sts-surface pl-2.5 pr-6 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/60"
+                />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-sans text-[11px] text-sts-subtle">
+                  %
+                </span>
+              </span>
             </label>
 
-            <div>
-              <p className="mb-1.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                Fallback business calendar (used when an assignee has no personal schedule)
+            <div className="rounded-xl border border-sts-card-border p-4">
+              <p className="font-sans text-[12px] font-semibold text-sts-foreground">
+                Fallback business calendar
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  Timezone
-                  <input
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+                Used when an assignee has no personal schedule.
+              </p>
+
+              <div className="mt-3.5 flex flex-wrap items-start gap-3">
+                <div className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    Timezone
+                  </span>
+                  <TimezoneSelect
                     value={businessHours.timezone}
-                    onChange={(e) => setBusinessHours({ ...businessHours, timezone: e.target.value })}
-                    className="w-40 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    onChange={(v) => setBusinessHours({ ...businessHours, timezone: v })}
                   />
-                </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  Start
+                </div>
+                <label className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    Start
+                  </span>
                   <input
+                    type="time"
                     value={businessHours.workStartTime}
+                    aria-invalid={hoursError !== null}
                     onChange={(e) => setBusinessHours({ ...businessHours, workStartTime: e.target.value })}
-                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    className={cn(
+                      "h-8 w-28 rounded-md border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none",
+                      hoursError ? "border-sts-red" : "border-sts-card-border focus:border-sts-blue/60",
+                    )}
                   />
                 </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  End
+                <label className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    End
+                  </span>
                   <input
+                    type="time"
                     value={businessHours.workEndTime}
+                    aria-invalid={hoursError !== null}
                     onChange={(e) => setBusinessHours({ ...businessHours, workEndTime: e.target.value })}
-                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    className={cn(
+                      "h-8 w-28 rounded-md border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none",
+                      hoursError ? "border-sts-red" : "border-sts-card-border focus:border-sts-blue/60",
+                    )}
                   />
                 </label>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {DAY_LABELS.map((label, day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleWorkingDay(day)}
-                    className={cn(
-                      "rounded-full px-2 py-1 font-sans text-[11px] font-medium",
-                      businessHours.workingDays.includes(day)
-                        ? "bg-sts-blue text-sts-blue-fg"
-                        : "bg-sts-surface text-sts-muted",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+
+              <p
+                className={cn(
+                  "mt-2 font-sans text-[11.5px]",
+                  hoursError ? "text-sts-red" : "text-sts-muted",
+                )}
+              >
+                {hoursError ?? (
+                  <>
+                    {formatTime12(businessHours.workStartTime)} – {formatTime12(businessHours.workEndTime)}
+                    <span className="mx-1.5 text-sts-subtle">·</span>
+                    <span className="font-medium text-sts-foreground">{formatMins(workdayMins ?? 0)}</span> per
+                    working day
+                  </>
+                )}
+              </p>
+
+              <div className="mt-4">
+                <p className="mb-2 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                  Working days
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAY_LABELS.map((label, day) => {
+                    const on = businessHours.workingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleWorkingDay(day)}
+                        className={cn(
+                          "rounded-full px-2.5 py-1 font-sans text-[11px] font-medium transition-colors",
+                          on
+                            ? "bg-sts-blue text-sts-blue-fg"
+                            : "border border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={saveSettings}
-              disabled={saving}
-              className="w-fit rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg hover:bg-sts-blue/90 disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Save working-hours settings"}
-            </button>
+            <div className="mt-1 flex justify-end border-t border-sts-card-border pt-4">
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={saving || hoursError !== null || !isDirty}
+                className="shrink-0 rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save working hours"}
+              </button>
+            </div>
           </div>
         )}
       </div>

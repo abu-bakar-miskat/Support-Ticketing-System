@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { uploadAvatar } from "@/lib/storage";
 import { validateAvatarIcon } from "@/lib/avatar-icon-file";
+import { invalidateProfileCache } from "@/lib/profile";
 
 export async function POST(request: Request) {
   const { profile, error } = await requireAuth();
@@ -30,6 +31,9 @@ export async function POST(request: Request) {
       where: { id: profile.id },
       data: { avatarUrl: url },
     });
+    // Drop the cached profile so the router.refresh() after upload re-reads the
+    // new avatar instead of the stale (≤8s TTL) cached copy.
+    invalidateProfileCache(profile.id);
 
     return NextResponse.json({ avatarUrl: url });
   } catch (err) {

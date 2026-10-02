@@ -1,7 +1,8 @@
 import type { OverdueGroup, ReviewGroup, SubDeptGroup, JoinRequest } from "@/components/manager/attention-section";
 import type { SubDepartmentSummary } from "@/components/manager/sub-departments-section";
 import type { ActivityItem } from "@/components/manager/activity-today-section";
-import type { Distribution, MemberWorkload, ProjectHealth } from "@/components/manager/aggregate";
+import type { MailboxSummary, SupportFormSummary } from "@/components/manager/support-channels-section";
+import type { Distribution, MemberWorkload } from "@/components/manager/aggregate";
 
 export type ManagerDashboardData = {
   managerName: string;
@@ -22,7 +23,9 @@ export type ManagerDashboardData = {
   reviewGroups: ReviewGroup[];
   joinRequests: JoinRequest[];
   members: MemberWorkload[];
-  projects: ProjectHealth[];
+  mailboxes: MailboxSummary[];
+  supportForms: SupportFormSummary[];
+  canManageForms: boolean;
   subDepartments: SubDepartmentSummary[];
   activity: ActivityItem[];
   activityTotal: number;
@@ -49,7 +52,9 @@ export function emptyManagerDashboard(managerName: string): ManagerDashboardData
     reviewGroups: [],
     joinRequests: [],
     members: [],
-    projects: [],
+    mailboxes: [],
+    supportForms: [],
+    canManageForms: false,
     subDepartments: [],
     activity: [],
     activityTotal: 0,

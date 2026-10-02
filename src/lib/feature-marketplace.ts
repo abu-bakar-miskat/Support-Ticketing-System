@@ -234,7 +234,6 @@ export async function setTenantDepartmentFeatures(params: {
 }
 
 function departmentHasTemplate(featureKeys: unknown, templateId: string): boolean {
-  if (featureKeys == null) return true;
   if (!Array.isArray(featureKeys)) return false;
   return featureKeys.includes(templateGrantToken(templateId));
 }
@@ -756,13 +755,15 @@ export async function requestDepartmentTemplate(params: {
     throw new Error("That template isn't available");
   }
   if (!dept || dept.tenantId !== params.tenantId) throw new Error("Department not found");
+  const featureTemplate = (await listSavedFeatures()).some((feature) => feature.id === template.slug);
   const active = await getDepartmentActiveFeatureKeys(dept.id);
   if (
     departmentHasTemplate(dept.featureKeys, template.id) ||
-    packageAlreadyEnabled(
-      active,
-      template.features.map((feature) => feature.key),
-    )
+    (!featureTemplate &&
+      packageAlreadyEnabled(
+        active,
+        template.features.map((feature) => feature.key),
+      ))
   ) {
     throw new Error("This department already has that template");
   }
@@ -1146,17 +1147,30 @@ export async function requestDepartmentFeature(params: {
   });
   if (!dept || dept.tenantId !== params.tenantId) throw new Error("Department not found");
 
+  const source = params.templateId
+    ? await prisma.template.findUnique({
+        where: { id: params.templateId },
+        select: { slug: true, isActive: true },
+      })
+    : null;
+  const featureTemplate =
+    source?.isActive === true && (await listSavedFeatures()).some((feature) => feature.id === source.slug);
   const granted = grantedMarketplaceFeatures(dept.featureKeys);
-  if (granted === "ALL" || granted.includes(featureKey)) {
+  if (featureTemplate && params.templateId && departmentHasTemplate(dept.featureKeys, params.templateId)) {
+    throw new Error("This department already has that template");
+  }
+  if (!featureTemplate && (granted === "ALL" || granted.includes(featureKey))) {
     throw new Error("This department already has that feature");
   }
   const storedKey = params.templateId ? `feature:${featureKey}:${params.templateId}` : featureKey;
   const existing = await prisma.featureRequest.findFirst({
-    where: {
-      departmentId: dept.id,
-      status: "PENDING",
-      OR: [{ featureKey }, { featureKey: { startsWith: `feature:${featureKey}:` } }],
-    },
+    where: featureTemplate
+      ? { departmentId: dept.id, status: "PENDING", featureKey: storedKey }
+      : {
+          departmentId: dept.id,
+          status: "PENDING",
+          OR: [{ featureKey }, { featureKey: { startsWith: `feature:${featureKey}:` } }],
+        },
     select: { id: true },
   });
   if (existing) throw new Error("A request for this feature is already pending");

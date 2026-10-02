@@ -31,10 +31,24 @@ export async function operationTemplateForDepartment(
     select: { id: true, slug: true },
   });
   const slugById = new Map(templates.map((template) => [template.id, template.slug]));
+  const savedFeatures = await listSavedFeatures();
   let found: OperationTemplate | null = null;
   for (const value of dept.featureKeys) {
     const id = templateIdFromGrantToken(value);
-    const operation = await resolveOperation(id ? slugById.get(id) : null);
+    const slug = id ? slugById.get(id) : null;
+    const feature = slug ? savedFeatures.find((item) => item.id === slug && item.statuses.length >= 2) : null;
+    if (feature) {
+      found = {
+        slug: feature.id,
+        name: feature.name,
+        useCase: feature.useCase || feature.explanation,
+        featureKeys: [feature.key],
+        statuses: feature.statuses,
+        lists: feature.lists,
+      };
+      continue;
+    }
+    const operation = await resolveOperation(slug);
     if (operation) found = operation;
   }
   return found;
@@ -60,6 +74,11 @@ export async function applyOperationBoard(
   if (!effective) return;
   const saved = await listSavedBoards();
   const nextLabels = effective.statuses.map((status) => status.label);
+  const featureBoards = new Set(
+    savedFeatures
+      .filter((feature) => feature.statuses.length >= 2)
+      .map((feature) => feature.statuses.map((status) => status.label).join("\n")),
+  );
   const subs = await tx.subDepartment.findMany({
     where: { departmentId },
     select: { id: true, statuses: { select: { label: true, order: true } } },
@@ -71,7 +90,17 @@ export async function applyOperationBoard(
     const matchesSaved = saved.some(
       (board) => board.statuses.map((status) => status.label).join("\n") === currentLabels.join("\n"),
     );
-    if (currentLabels.length > 0 && !isReplaceableStatusSet(currentLabels) && !matchesSaved) continue;
+    const matchesFeature = featureBoards.has(currentLabels.join("\n"));
+    // Enabling a saved feature template is an explicit choice, so it replaces the board.
+    if (
+      !featureTemplate &&
+      currentLabels.length > 0 &&
+      !isReplaceableStatusSet(currentLabels) &&
+      !matchesSaved &&
+      !matchesFeature
+    ) {
+      continue;
+    }
 
     const remap = remapStatusLabels(currentLabels, nextLabels);
     for (const [from, to] of remap) {

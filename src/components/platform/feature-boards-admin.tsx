@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, RotateCcw } from "lucide-react";
+import { Check, GripVertical, Loader2, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FEATURE_ICONS } from "@/components/settings/feature-preview";
 import { DEFAULT_SUB_DEPARTMENT_STATUSES } from "@/lib/board-columns";
@@ -401,6 +401,14 @@ function FeatureEditor({
   );
 }
 
+function moveItem<T>(items: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
+
 function StatusEditor({
   draft,
   onChange,
@@ -410,6 +418,14 @@ function StatusEditor({
   onChange: (draft: FeatureDraft) => void;
   patchStatus: (index: number, patch: Partial<StatusDraft>) => void;
 }) {
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  function reorder(from: number, to: number) {
+    if (from === to) return;
+    onChange({ ...draft, statuses: moveItem(draft.statuses, from, to) });
+    setDragging(to);
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
@@ -424,7 +440,31 @@ function StatusEditor({
         </Button>
       </div>
       {draft.statuses.map((status, index) => (
-        <div key={index} className="flex flex-wrap items-center gap-2">
+        <div
+          key={index}
+          onDragOver={(event) => {
+            event.preventDefault();
+            if (dragging !== null) reorder(dragging, index);
+          }}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border border-transparent px-1 py-0.5",
+            dragging === index && "border-sts-blue/40 bg-sts-blue-tint/40",
+          )}
+        >
+          <button
+            type="button"
+            draggable
+            aria-label={`Move ${status.label || "status"}`}
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", String(index));
+              setDragging(index);
+            }}
+            onDragEnd={() => setDragging(null)}
+            className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-md text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground active:cursor-grabbing"
+          >
+            <GripVertical className="size-4" />
+          </button>
           <input
             type="color"
             aria-label="Status color"
@@ -438,10 +478,35 @@ function StatusEditor({
             value={status.label}
             onChange={(event) => patchStatus(index, { label: event.target.value })}
           />
-          <label className="inline-flex items-center gap-1.5 font-sans text-[12px] text-sts-muted">
-            <input type="checkbox" checked={status.isComplete} onChange={(event) => patchStatus(index, { isComplete: event.target.checked })} />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={status.isComplete}
+            onClick={() => patchStatus(index, { isComplete: !status.isComplete })}
+            className={cn(
+              "inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-2 pr-2.5 font-sans text-[12px] font-medium transition-colors",
+              status.isComplete
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
+            )}
+          >
+            <span
+              className={cn(
+                "relative h-4 w-7 rounded-full transition-colors",
+                status.isComplete ? "bg-emerald-500" : "bg-sts-card-border",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 flex size-3 items-center justify-center rounded-full bg-white shadow-sm transition-transform",
+                  status.isComplete ? "translate-x-3.5" : "translate-x-0.5",
+                )}
+              >
+                {status.isComplete && <Check className="size-2 text-emerald-600" strokeWidth={3} />}
+              </span>
+            </span>
             Done
-          </label>
+          </button>
           <Button
             variant="ghost"
             size="sm"

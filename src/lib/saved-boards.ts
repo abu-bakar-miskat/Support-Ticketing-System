@@ -268,6 +268,7 @@ export async function applyTemplateFeatureSetup(
   const setup = operation?.setup ?? emptyFeatureSetup();
   const saved = await listSavedFeatures();
   const featureTemplate = saved.find((feature) => feature.id === params.slug);
+  const reflect = featureTemplate != null;
   const keys = new Set(featureTemplate ? [featureTemplate.key] : params.featureKeys);
   const tags = featureTemplate?.key === "tagsLabels" ? featureTemplate.tags : setup.tags;
   const sla = featureTemplate?.key === "slaPolicies" ? featureTemplate.sla : setup.sla;
@@ -277,44 +278,107 @@ export async function applyTemplateFeatureSetup(
   const supportForm = featureTemplate?.key === "supportForm" ? featureTemplate.supportForm : setup.supportForm;
 
   if (keys.has("tagsLabels") && tags.length > 0) {
-    const existing = await tx.label.count({ where: { departmentId: params.departmentId } });
-    if (existing === 0) {
-      await tx.label.createMany({
-        data: tags.map((tag) => ({ name: tag.name, color: tag.color, departmentId: params.departmentId })),
-        skipDuplicates: true,
-      });
+    if (reflect) {
+      for (const tag of tags) {
+        const existing = await tx.label.findFirst({
+          where: { departmentId: params.departmentId, name: tag.name },
+          select: { id: true },
+        });
+        if (existing) {
+          await tx.label.update({ where: { id: existing.id }, data: { color: tag.color } });
+        } else {
+          await tx.label.create({ data: { name: tag.name, color: tag.color, departmentId: params.departmentId } });
+        }
+      }
+    } else {
+      const existing = await tx.label.count({ where: { departmentId: params.departmentId } });
+      if (existing === 0) {
+        await tx.label.createMany({
+          data: tags.map((tag) => ({ name: tag.name, color: tag.color, departmentId: params.departmentId })),
+          skipDuplicates: true,
+        });
+      }
     }
   }
 
   if (keys.has("slaPolicies") && sla.length > 0) {
-    const existing = await tx.slaPolicy.count({ where: { departmentId: params.departmentId } });
-    if (existing === 0) {
-      await tx.slaPolicy.createMany({
-        data: sla.map((policy, order) => ({
-          tenantId: params.tenantId,
-          departmentId: params.departmentId,
-          name: policy.name,
-          conditions: { combinator: "AND", conditions: [] },
-          firstResponseMins: policy.firstResponseMins,
-          resolutionMins: policy.resolutionMins,
-          order,
-        })),
-      });
+    if (reflect) {
+      for (const [order, policy] of sla.entries()) {
+        const existing = await tx.slaPolicy.findFirst({
+          where: { departmentId: params.departmentId, name: policy.name },
+          select: { id: true },
+        });
+        if (existing) {
+          await tx.slaPolicy.update({
+            where: { id: existing.id },
+            data: { firstResponseMins: policy.firstResponseMins, resolutionMins: policy.resolutionMins, enabled: true },
+          });
+        } else {
+          await tx.slaPolicy.create({
+            data: {
+              tenantId: params.tenantId,
+              departmentId: params.departmentId,
+              name: policy.name,
+              conditions: { combinator: "AND", conditions: [] },
+              firstResponseMins: policy.firstResponseMins,
+              resolutionMins: policy.resolutionMins,
+              order,
+            },
+          });
+        }
+      }
+    } else {
+      const existing = await tx.slaPolicy.count({ where: { departmentId: params.departmentId } });
+      if (existing === 0) {
+        await tx.slaPolicy.createMany({
+          data: sla.map((policy, order) => ({
+            tenantId: params.tenantId,
+            departmentId: params.departmentId,
+            name: policy.name,
+            conditions: { combinator: "AND", conditions: [] },
+            firstResponseMins: policy.firstResponseMins,
+            resolutionMins: policy.resolutionMins,
+            order,
+          })),
+        });
+      }
     }
   }
 
   if (keys.has("ticketTemplates") && ticketTemplates.length > 0) {
-    const existing = await tx.ticketTemplate.count({ where: { departmentId: params.departmentId } });
-    if (existing === 0) {
+    if (reflect) {
       for (const template of ticketTemplates) {
-        await tx.ticketTemplate.create({
-          data: {
-            name: template.name,
-            departmentId: params.departmentId,
-            createdById: params.actorId,
-            customFields: template.fields.map((label, index) => ({ id: `field-${index + 1}`, label, type: "text" })),
-          },
+        const existing = await tx.ticketTemplate.findFirst({
+          where: { departmentId: params.departmentId, name: template.name },
+          select: { id: true },
         });
+        const customFields = template.fields.map((label, index) => ({ id: `field-${index + 1}`, label, type: "text" }));
+        if (existing) {
+          await tx.ticketTemplate.update({ where: { id: existing.id }, data: { customFields } });
+        } else {
+          await tx.ticketTemplate.create({
+            data: {
+              name: template.name,
+              departmentId: params.departmentId,
+              createdById: params.actorId,
+              customFields,
+            },
+          });
+        }
+      }
+    } else {
+      const existing = await tx.ticketTemplate.count({ where: { departmentId: params.departmentId } });
+      if (existing === 0) {
+        for (const template of ticketTemplates) {
+          await tx.ticketTemplate.create({
+            data: {
+              name: template.name,
+              departmentId: params.departmentId,
+              createdById: params.actorId,
+              customFields: template.fields.map((label, index) => ({ id: `field-${index + 1}`, label, type: "text" })),
+            },
+          });
+        }
       }
     }
   }
@@ -324,11 +388,13 @@ export async function applyTemplateFeatureSetup(
       where: { id: params.departmentId },
       select: { assignmentMethod: true },
     });
-    if (department?.assignmentMethod === "ROUND_ROBIN" && assignmentMethod !== "ROUND_ROBIN") {
-      await tx.department.update({
-        where: { id: params.departmentId },
-        data: { assignmentMethod },
-      });
+    if (reflect || (department?.assignmentMethod === "ROUND_ROBIN" && assignmentMethod !== "ROUND_ROBIN")) {
+      if (department && department.assignmentMethod !== assignmentMethod) {
+        await tx.department.update({
+          where: { id: params.departmentId },
+          data: { assignmentMethod },
+        });
+      }
     }
   }
 
@@ -337,12 +403,13 @@ export async function applyTemplateFeatureSetup(
       where: { id: params.departmentId },
       select: { businessHours: true },
     });
-    if (department && department.businessHours == null) {
+    if (department && (reflect || department.businessHours == null)) {
+      const current = department.businessHours as { timezone?: string } | null;
       await tx.department.update({
         where: { id: params.departmentId },
         data: {
           businessHours: {
-            timezone: "UTC",
+            timezone: current?.timezone || "UTC",
             workingDays: calendar.workingDays,
             workStartTime: calendar.start,
             workEndTime: calendar.end,
@@ -353,11 +420,18 @@ export async function applyTemplateFeatureSetup(
   }
 
   if (keys.has("supportForm") && (supportForm.name || supportForm.fields.length > 0)) {
-    const existing = await tx.intakeFormConfig.count({ where: { departmentId: params.departmentId } });
+    const name = supportForm.name || "Request form";
+    const named = reflect
+      ? await tx.intakeFormConfig.findFirst({
+          where: { departmentId: params.departmentId, name },
+          select: { id: true },
+        })
+      : null;
+    const existing = reflect ? (named ? 1 : 0) : await tx.intakeFormConfig.count({ where: { departmentId: params.departmentId } });
     if (existing === 0) {
       await tx.intakeFormConfig.create({
         data: {
-          name: supportForm.name || "Request form",
+          name,
           departmentId: params.departmentId,
           fields: {
             create: supportForm.fields.map((field, order) => ({

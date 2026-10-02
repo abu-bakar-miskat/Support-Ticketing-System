@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { DEFAULT_FEATURE_TEMPLATES } from "@/lib/default-feature-templates";
 import { emptyFeatureSetup, parseFeatureSetup, type SavedFeature } from "@/lib/feature-setup";
-import { TEMPLATE_FEATURE_LABELS, isMarketplaceFeatureKey } from "@/lib/template-features";
+import { TEMPLATE_FEATURE_LABELS, isMarketplaceFeatureKey, templateGrantToken } from "@/lib/template-features";
 
 const SETTING_KEY = "savedFeatures";
 
@@ -82,7 +82,8 @@ export async function saveFeature(input: unknown, actorId: string): Promise<Save
     create: { key: SETTING_KEY, value: next as never, updatedById: actorId },
     update: { value: next as never, updatedById: actorId },
   });
-  await publishFeatureTemplate(feature, actorId);
+  const templateId = await publishFeatureTemplate(feature, actorId);
+  await reflectFeatureTemplate(feature, templateId, actorId);
   return feature;
 }
 
@@ -118,7 +119,29 @@ function slugify(name: string): string {
   return base || "template";
 }
 
-async function publishFeatureTemplate(feature: SavedFeature, actorId: string) {
+async function reflectFeatureTemplate(feature: SavedFeature, templateId: string, actorId: string) {
+  const departments = await prisma.department.findMany({
+    where: { featureKeys: { array_contains: templateGrantToken(templateId) } },
+    select: { id: true, tenantId: true },
+  });
+  if (departments.length === 0) return;
+  const { applyOperationBoard } = await import("@/lib/operation-board");
+  const { applyTemplateFeatureSetup } = await import("@/lib/saved-boards");
+  for (const department of departments) {
+    await prisma.$transaction(async (tx) => {
+      if (feature.statuses.length >= 2) await applyOperationBoard(tx, department.id, feature.id);
+      await applyTemplateFeatureSetup(tx, {
+        departmentId: department.id,
+        tenantId: department.tenantId,
+        actorId,
+        slug: feature.id,
+        featureKeys: [feature.key],
+      });
+    });
+  }
+}
+
+async function publishFeatureTemplate(feature: SavedFeature, actorId: string): Promise<string> {
   const description = feature.useCase || feature.explanation || null;
   const template = await prisma.template.upsert({
     where: { slug: feature.id },
@@ -135,6 +158,7 @@ async function publishFeatureTemplate(feature: SavedFeature, actorId: string) {
     data: [{ templateId: template.id, key: feature.key }],
     skipDuplicates: true,
   });
+  return template.id;
 }
 
 function parseSavedFeature(value: unknown): SavedFeature | null {

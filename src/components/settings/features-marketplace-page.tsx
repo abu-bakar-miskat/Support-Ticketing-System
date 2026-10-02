@@ -247,7 +247,7 @@ export function FeaturesMarketplacePage({
         <p className="mt-[3px] max-w-2xl font-sans text-[13px] text-sts-muted">
           {canEnable
             ? `Feature templates for ${tenantName}. Open one, choose a department, and turn it on. A board template also sets up that version's statuses and lists.`
-            : `Feature templates for ${tenantName}. Open one, choose a department, and request it. A super admin approves it before that department can use it.`}
+            : `Feature templates for ${tenantName}. Choose any department and request a template. Once a super admin enables it, that department uses the template's setup.`}
         </p>
       </div>
 

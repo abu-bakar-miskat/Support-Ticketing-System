@@ -1,21 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Dialog } from "@base-ui/react/dialog";
 import {
   LayoutTemplate,
-  Plus,
-  Pencil,
   Trash2,
   Search,
   Layers,
+  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { TemplateFormModal } from "@/components/platform/template-form-modal";
 import { TEMPLATE_FEATURE_LABELS, TEMPLATE_FEATURE_GROUPS, type TemplateFeatureKey } from "@/lib/template-features";
-import { featureIcon, TemplatePreview } from "@/components/settings/feature-preview";
+import { featureIcon } from "@/components/settings/feature-preview";
+import { cn } from "@/lib/utils";
+
+type TemplateSetup = {
+  key: string;
+  statuses: { label: string; color: string; isComplete: boolean }[];
+  lists: { name: string; statuses: string[] }[];
+  tags: { name: string; color: string }[];
+  sla: { name: string; firstResponseMins: number; resolutionMins: number }[];
+  ticketTemplates: { name: string; fields: string[] }[];
+  assignmentLabel: string | null;
+  supportForm: { name: string; fields: string[] } | null;
+  calendar: string | null;
+  reportsPeriodDays: number | null;
+};
 
 type TemplateRow = {
   id: string;
@@ -25,6 +37,7 @@ type TemplateRow = {
   isActive: boolean;
   featureKeys: string[];
   activeTenantCount: number;
+  setup: TemplateSetup | null;
 };
 
 type SortKey = "name" | "tenants" | "features";
@@ -37,47 +50,13 @@ export function TemplatesCatalogueAdmin({
   const [templates, setTemplates] = useState(initialTemplates);
   const [error, setError] = useState<string | null>(null);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<TemplateRow | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<TemplateRow | null>(null);
 
   // List controls
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
-
-  function openCreateModal() {
-    setEditingTemplate(null);
-    setModalOpen(true);
-  }
-
-  function openEditModal(template: TemplateRow) {
-    setEditingTemplate(template);
-    setModalOpen(true);
-  }
-
-  function handleSaved(saved: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    isActive: boolean;
-    featureKeys: string[];
-  }) {
-    setTemplates((prev) => {
-      const exists = prev.some((t) => t.id === saved.id);
-      if (exists) {
-        return prev.map((t) =>
-          t.id === saved.id
-            ? { ...t, name: saved.name, description: saved.description, featureKeys: saved.featureKeys }
-            : t,
-        );
-      }
-      return [...prev, { ...saved, activeTenantCount: 0 }];
-    });
-    setModalOpen(false);
-    setEditingTemplate(null);
-  }
 
   async function deleteTemplate(template: TemplateRow) {
     const res = await fetch(`/api/admin/templates/${template.id}`, { method: "DELETE" });
@@ -128,10 +107,6 @@ export function TemplatesCatalogueAdmin({
             title="Feature templates"
             description="Templates saved from Customize features. Active ones show up in the Features marketplace, where a tenant admin or manager can request one."
           />
-          <Button size="lg" onClick={openCreateModal} className="mt-1 shrink-0">
-            <Plus className="size-4" />
-            New template
-          </Button>
         </div>
 
         {/* Summary stats */}
@@ -196,7 +171,7 @@ export function TemplatesCatalogueAdmin({
                 <TemplateCard
                   key={t.id}
                   template={t}
-                  onEdit={() => openEditModal(t)}
+                  onPreview={() => setPreviewTemplate(t)}
                   onDelete={() => setDeletingTemplate(t)}
                 />
               ))}
@@ -205,25 +180,10 @@ export function TemplatesCatalogueAdmin({
         </div>
       </div>
 
-      {modalOpen && (
-        <TemplateFormModal
-          initial={
-            editingTemplate
-              ? {
-                  id: editingTemplate.id,
-                  name: editingTemplate.name,
-                  description: editingTemplate.description ?? "",
-                  featureKeys: new Set(editingTemplate.featureKeys as TemplateFeatureKey[]),
-                }
-              : undefined
-          }
-          onClose={() => {
-            setModalOpen(false);
-            setEditingTemplate(null);
-          }}
-          onSaved={handleSaved}
-        />
-      )}
+      <TemplatePreviewDialog
+        template={previewTemplate}
+        onClose={() => setPreviewTemplate(null)}
+      />
 
       <ConfirmDialog
         open={deletingTemplate !== null}
@@ -286,42 +246,32 @@ function SelectControl({
 
 function TemplateCard({
   template: t,
-  onEdit,
+  onPreview,
   onDelete,
 }: {
   template: TemplateRow;
-  onEdit: () => void;
+  onPreview: () => void;
   onDelete: () => void;
 }) {
   const extraFeatures = t.featureKeys.filter(
     (key) => (TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key) !== t.name,
   );
   return (
-    <li className="group flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50">
-      <div className="relative h-28 border-b border-sts-card-border">
-        <TemplatePreview featureKeys={t.featureKeys} />
-        <div className="absolute top-2 right-2 flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Edit template"
-            onClick={onEdit}
-            className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground"
-          >
-            <Pencil className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete template"
-            onClick={onDelete}
-            className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
-      </div>
+    <li className="group relative flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50">
+      <button type="button" onClick={onPreview} className="relative h-28 border-b border-sts-card-border text-left">
+        <SavedWorkflowPreview template={t} compact />
+      </button>
+      <button
+        type="button"
+        aria-label="Delete template"
+        onClick={onDelete}
+        className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col gap-1 px-4 py-3">
+      <button type="button" onClick={onPreview} className="flex flex-1 flex-col gap-1 px-4 py-3 text-left">
         <div className="flex items-baseline justify-between gap-2">
           <span className="min-w-0 truncate font-sans text-[14px] font-semibold text-sts-foreground">
             {t.name}
@@ -349,7 +299,7 @@ function TemplateCard({
             })}
           </div>
         )}
-      </div>
+      </button>
 
       {/* Footer status */}
       <div className="border-t border-sts-card-border/60 px-4 py-3 font-sans text-[11.5px] text-sts-subtle">
@@ -357,4 +307,171 @@ function TemplateCard({
       </div>
     </li>
   );
+}
+
+function TemplatePreviewDialog({
+  template,
+  onClose,
+}: {
+  template: TemplateRow | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog.Root open={template != null} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 sts-overlay-backdrop" />
+        <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[min(720px,calc(100vh-2rem))] w-[min(860px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-[var(--sts-card-solid)] shadow-2xl">
+          {template && (
+            <>
+              <div className="flex items-start justify-between gap-3 px-5 pt-5">
+                <div className="min-w-0">
+                  <Dialog.Title className="sts-text-modal-title">{template.name}</Dialog.Title>
+                  {template.description && (
+                    <Dialog.Description className="mt-1 font-sans text-[13px] leading-snug text-sts-muted">
+                      {template.description}
+                    </Dialog.Description>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto px-5 pt-4 pb-5">
+                <SavedWorkflowPreview template={template} />
+              </div>
+            </>
+          )}
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function SavedWorkflowPreview({ template, compact = false }: { template: TemplateRow; compact?: boolean }) {
+  const setup = template.setup;
+  const key = setup?.key ?? template.featureKeys[0] ?? "";
+  const statuses = setup?.statuses ?? [];
+
+  return (
+    <div className={cn("relative h-full w-full overflow-hidden bg-sts-surface", !compact && "rounded-xl border border-sts-card-border p-4")}>
+      {compact && (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--sts-blue) 20%, transparent), transparent 62%)",
+          }}
+        />
+      )}
+      <div className={cn("relative", compact && "flex h-full items-center px-4")}>
+        {(key === "board" || key === "workflows") && statuses.length > 0 ? (
+          <BoardWorkflow statuses={statuses} lists={setup?.lists ?? []} compact={compact} />
+        ) : key === "tagsLabels" && setup && setup.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {setup.tags.map((tag) => (
+              <span
+                key={tag.name}
+                className="inline-flex items-center gap-1.5 rounded-full bg-sts-card px-2 py-1 font-sans text-[12px] text-sts-foreground"
+              >
+                <span className="size-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        ) : key === "slaPolicies" && setup && setup.sla.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {setup.sla.map((policy) => (
+              <div key={policy.name} className="font-sans text-[12px] text-sts-foreground">
+                <span className="font-medium">{policy.name}</span>
+                <span className="text-sts-muted">
+                  {" "}
+                  · reply {formatMinutes(policy.firstResponseMins)} · resolve {formatMinutes(policy.resolutionMins)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <FallbackPreview template={template} compact={compact} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BoardWorkflow({
+  statuses,
+  lists,
+  compact,
+}: {
+  statuses: TemplateSetup["statuses"];
+  lists: TemplateSetup["lists"];
+  compact: boolean;
+}) {
+  const shown = compact ? statuses.slice(0, 4) : statuses;
+  return (
+    <div className="flex w-full flex-col gap-3">
+      <div className={cn("flex gap-1.5", compact ? "w-full" : "overflow-x-auto pb-1")}>
+        {shown.map((status) => (
+          <div
+            key={status.label}
+            className={cn(
+              "flex min-w-0 flex-1 flex-col gap-1 rounded-md bg-sts-card/80 p-1.5",
+              !compact && "w-36 max-w-40 shrink-0 flex-none",
+            )}
+          >
+            <span className="flex items-center gap-1">
+              <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
+              <span className="truncate font-sans text-[10px] text-sts-muted">{status.label}</span>
+            </span>
+            <span className={cn("rounded-sm bg-sts-blue/25", compact ? "h-6" : "h-10")} />
+            {!compact && <span className="h-8 rounded-sm bg-sts-foreground/10" />}
+          </div>
+        ))}
+      </div>
+      {!compact && lists.length > 0 && (
+        <p className="font-sans text-[12px] text-sts-muted">
+          <span className="text-sts-subtle">Lists. </span>
+          {lists.map((list) => list.name).join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FallbackPreview({ template, compact }: { template: TemplateRow; compact: boolean }) {
+  const setup = template.setup;
+  const lines = [
+    setup?.assignmentLabel,
+    setup?.calendar,
+    setup?.reportsPeriodDays ? `Last ${setup.reportsPeriodDays} days` : null,
+    setup?.supportForm ? [setup.supportForm.name, setup.supportForm.fields.join(", ")].filter(Boolean).join(" — ") : null,
+    setup?.ticketTemplates.map((item) => item.name).filter(Boolean).join(" · ") || null,
+  ].filter((line): line is string => !!line);
+  const Icon = featureIcon(setup?.key ?? template.featureKeys[0] ?? "");
+  if (lines.length === 0) {
+    return (
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-sts-blue-tint text-sts-blue">
+        <Icon className={compact ? "size-6" : "size-6"} />
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {lines.map((line) => (
+        <p key={line} className="font-sans text-[12px] text-sts-foreground">{line}</p>
+      ))}
+    </div>
+  );
+}
+
+function formatMinutes(mins: number): string {
+  if (mins % 1440 === 0) return `${mins / 1440}d`;
+  if (mins % 60 === 0) return `${mins / 60}h`;
+  return `${mins}m`;
 }

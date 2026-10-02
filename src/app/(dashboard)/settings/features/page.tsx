@@ -19,10 +19,17 @@ export default async function FeaturesSettingsPage() {
   const marketplace = await listMarketplaceTemplatesForTenant(tenantId);
   if (!marketplace) redirect("/settings");
 
+  const departments =
+    profile.isSuperAdmin || profile.role === "admin"
+      ? marketplace.departments
+      : marketplace.departments.filter((department) =>
+          (profile.managedDepartmentIds ?? []).includes(department.id),
+        );
+
   return (
     <FeaturesMarketplacePage
-      tenantId={marketplace.tenantId}
       tenantName={marketplace.tenantName}
+      departments={departments}
       initialTemplates={marketplace.templates}
       canRequest={canRequest}
       canEnable={profile.isSuperAdmin}

@@ -4,13 +4,9 @@ import { useMemo, useState } from "react";
 import {
   LayoutTemplate,
   Plus,
-  Archive,
   Pencil,
   Trash2,
-  Lock,
-  RotateCcw,
   Search,
-  Users,
   Layers,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,10 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TemplateFormModal } from "@/components/platform/template-form-modal";
-import { cn } from "@/lib/utils";
 import { TEMPLATE_FEATURE_LABELS, TEMPLATE_FEATURE_GROUPS, type TemplateFeatureKey } from "@/lib/template-features";
 import { featureIcon, TemplatePreview } from "@/components/settings/feature-preview";
-import { isSystemTemplateSlug } from "@/lib/system-templates";
 
 type TemplateRow = {
   id: string;
@@ -33,7 +27,6 @@ type TemplateRow = {
   activeTenantCount: number;
 };
 
-type StatusFilter = "all" | "active" | "archived";
 type SortKey = "name" | "tenants" | "features";
 
 export function TemplatesCatalogueAdmin({
@@ -43,7 +36,6 @@ export function TemplatesCatalogueAdmin({
 }) {
   const [templates, setTemplates] = useState(initialTemplates);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
@@ -51,7 +43,6 @@ export function TemplatesCatalogueAdmin({
 
   // List controls
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
 
@@ -88,49 +79,18 @@ export function TemplatesCatalogueAdmin({
     setEditingTemplate(null);
   }
 
-  async function restoreTemplate(template: TemplateRow) {
-    setBusy(template.id);
-    setError(null);
-    const res = await fetch(`/api/admin/templates/${template.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: true }),
-    });
-    setBusy(null);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to restore template");
-      return;
-    }
-    setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, isActive: true } : t)));
-  }
-
   async function deleteTemplate(template: TemplateRow) {
     const res = await fetch(`/api/admin/templates/${template.id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "Failed to delete template");
     }
-    setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, isActive: false } : t)));
+    setTemplates((prev) => prev.filter((t) => t.id !== template.id));
   }
 
-  // Summary stats across all templates (unfiltered).
-  const stats = useMemo(() => {
-    const active = templates.filter((t) => t.isActive);
-    const archived = templates.filter((t) => !t.isActive);
-    return {
-      activeCount: active.length,
-      archivedCount: archived.length,
-    };
-  }, [templates]);
-
-  // Apply search / status / group filters, then sort.
   const visibleTemplates = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = templates.filter((t) => {
-      if (statusFilter === "active" && !t.isActive) return false;
-      if (statusFilter === "archived" && t.isActive) return false;
-
       if (groupFilter !== "all") {
         const group = TEMPLATE_FEATURE_GROUPS.find((g) => g.label === groupFilter);
         if (group && !group.keys.some((key) => t.featureKeys.includes(key))) return false;
@@ -155,10 +115,8 @@ export function TemplatesCatalogueAdmin({
       return a.name.localeCompare(b.name);
     });
     return sorted;
-  }, [templates, query, statusFilter, groupFilter, sortKey]);
+  }, [templates, query, groupFilter, sortKey]);
 
-  const activeVisible = visibleTemplates.filter((t) => t.isActive);
-  const archivedVisible = visibleTemplates.filter((t) => !t.isActive);
   const hasAnyResult = visibleTemplates.length > 0;
 
   return (
@@ -168,7 +126,7 @@ export function TemplatesCatalogueAdmin({
           <PageHeader
             icon={LayoutTemplate}
             title="Feature templates"
-            description="Name a template and choose its features. Active templates show up in each department’s Features marketplace, where a tenant admin or manager can request one."
+            description="Templates saved from Customize features. Active ones show up in the Features marketplace, where a tenant admin or manager can request one."
           />
           <Button size="lg" onClick={openCreateModal} className="mt-1 shrink-0">
             <Plus className="size-4" />
@@ -178,8 +136,7 @@ export function TemplatesCatalogueAdmin({
 
         {/* Summary stats */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard icon={Layers} label="Active templates" value={stats.activeCount} />
-          <StatCard icon={Archive} label="Archived" value={stats.archivedCount} />
+          <StatCard icon={Layers} label="Templates" value={templates.length} />
         </div>
 
         {error && (
@@ -201,16 +158,6 @@ export function TemplatesCatalogueAdmin({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <SegmentedControl
-              options={[
-                { value: "all", label: "All" },
-                { value: "active", label: "Active" },
-                { value: "archived", label: "Archived" },
-              ]}
-              value={statusFilter}
-              onChange={(v) => setStatusFilter(v as StatusFilter)}
-            />
-
             <SelectControl
               value={groupFilter}
               onChange={setGroupFilter}
@@ -239,35 +186,21 @@ export function TemplatesCatalogueAdmin({
               <p className="mt-3 font-sans text-[13px] font-medium text-sts-foreground">No templates match</p>
               <p className="mt-1 font-sans text-[12px] text-sts-subtle">
                 {templates.length === 0
-                  ? "Create a feature template. Its name and features appear in the department Features marketplace."
+                  ? "Save a customized feature from Customize features. It will show up here and in the Features marketplace."
                   : "Try clearing the search or filters."}
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-8">
-              {(statusFilter === "all" || statusFilter === "active") && activeVisible.length > 0 && (
-                <TemplateSection
-                  title="Active"
-                  count={activeVisible.length}
-                  templates={activeVisible}
-                  busy={busy}
-                  onEdit={openEditModal}
-                  onDelete={setDeletingTemplate}
-                  onRestore={restoreTemplate}
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleTemplates.map((t) => (
+                <TemplateCard
+                  key={t.id}
+                  template={t}
+                  onEdit={() => openEditModal(t)}
+                  onDelete={() => setDeletingTemplate(t)}
                 />
-              )}
-              {(statusFilter === "all" || statusFilter === "archived") && archivedVisible.length > 0 && (
-                <TemplateSection
-                  title="Archived"
-                  count={archivedVisible.length}
-                  templates={archivedVisible}
-                  busy={busy}
-                  onEdit={openEditModal}
-                  onDelete={setDeletingTemplate}
-                  onRestore={restoreTemplate}
-                />
-              )}
-            </div>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -300,7 +233,7 @@ export function TemplatesCatalogueAdmin({
         title="Delete template"
         description={
           deletingTemplate
-            ? `"${deletingTemplate.name}" will be archived and removed from the Features marketplace. Departments that already have it keep those features, and this can be restored later.`
+            ? `"${deletingTemplate.name}" will be removed from this list and from the Features marketplace. Departments that already have it keep those features.`
             : ""
         }
         confirmLabel="Delete"
@@ -313,7 +246,7 @@ export function TemplatesCatalogueAdmin({
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: number }) {
+function StatCard({ icon: Icon, label, value }: { icon: typeof Layers; label: string; value: number }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card p-3.5 shadow-sts-card">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sts-blue-tint text-sts-blue">
@@ -323,36 +256,6 @@ function StatCard({ icon: Icon, label, value }: { icon: typeof Users; label: str
         <p className="font-sans text-[19px] leading-none font-semibold text-sts-foreground">{value}</p>
         <p className="mt-1 truncate font-sans text-[11.5px] text-sts-subtle">{label}</p>
       </div>
-    </div>
-  );
-}
-
-function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-sts-card-border bg-sts-card p-0.5">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            "rounded-full px-2.5 py-1 font-sans text-[12px] font-medium transition-colors",
-            value === opt.value
-              ? "bg-sts-blue-tint text-sts-blue"
-              : "text-sts-muted hover:text-sts-foreground",
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -381,125 +284,39 @@ function SelectControl({
   );
 }
 
-function TemplateSection({
-  title,
-  count,
-  templates,
-  busy,
-  onEdit,
-  onDelete,
-  onRestore,
-}: {
-  title: string;
-  count: number;
-  templates: TemplateRow[];
-  busy: string | null;
-  onEdit: (t: TemplateRow) => void;
-  onDelete: (t: TemplateRow) => void;
-  onRestore: (t: TemplateRow) => void;
-}) {
-  return (
-    <div>
-      <h2 className="font-sans text-[13px] font-semibold text-sts-foreground">
-        {title} <span className="text-sts-subtle">({count})</span>
-      </h2>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {templates.map((t) => (
-          <TemplateCard
-            key={t.id}
-            template={t}
-            busy={busy === t.id}
-            onEdit={() => onEdit(t)}
-            onDelete={() => onDelete(t)}
-            onRestore={() => onRestore(t)}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function TemplateCard({
   template: t,
-  busy,
   onEdit,
   onDelete,
-  onRestore,
 }: {
   template: TemplateRow;
-  busy: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onRestore: () => void;
 }) {
-  const isSystem = isSystemTemplateSlug(t.slug);
   const extraFeatures = t.featureKeys.filter(
     (key) => (TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key) !== t.name,
   );
   return (
-    <li
-      className={cn(
-        "group flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50",
-        !t.isActive && "opacity-75",
-      )}
-    >
-      {/* Preview header — same gradient graphic as the Features marketplace */}
+    <li className="group flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50">
       <div className="relative h-28 border-b border-sts-card-border">
         <TemplatePreview featureKeys={t.featureKeys} />
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
-          {isSystem && (
-            <span className="rounded-full bg-sts-card/90 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-muted shadow-sm">
-              System
-            </span>
-          )}
-          {!t.isActive && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sts-card/90 px-2 py-0.5 font-sans text-[11px] font-medium text-sts-muted shadow-sm">
-              <Archive className="size-3" /> Archived
-            </span>
-          )}
-        </div>
         <div className="absolute top-2 right-2 flex items-center gap-1">
-          {t.isActive ? (
-            <>
-              <button
-                type="button"
-                aria-label="Edit template"
-                onClick={onEdit}
-                className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground"
-              >
-                <Pencil className="size-3.5" />
-              </button>
-              {isSystem ? (
-                <span
-                  aria-label="System template — can't be deleted"
-                  title="System template — can't be deleted"
-                  className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-subtle shadow-sm"
-                >
-                  <Lock className="size-3.5" />
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  aria-label="Delete template"
-                  disabled={busy}
-                  onClick={onDelete}
-                  className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              )}
-            </>
-          ) : (
-            <button
-              type="button"
-              aria-label="Restore template"
-              disabled={busy}
-              onClick={onRestore}
-              className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground disabled:opacity-50"
-            >
-              <RotateCcw className="size-3.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="Edit template"
+            onClick={onEdit}
+            className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-sts-card hover:text-sts-foreground"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Delete template"
+            onClick={onDelete}
+            className="flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
       </div>
 
@@ -536,13 +353,7 @@ function TemplateCard({
 
       {/* Footer status */}
       <div className="border-t border-sts-card-border/60 px-4 py-3 font-sans text-[11.5px] text-sts-subtle">
-        {t.isActive ? (
-          <span>Available in the Features marketplace</span>
-        ) : (
-          <span className="flex items-center gap-1 text-sts-muted">
-            <Archive className="size-3" /> Archived
-          </span>
-        )}
+        <span>Available in the Features marketplace</span>
       </div>
     </li>
   );

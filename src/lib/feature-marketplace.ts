@@ -6,7 +6,10 @@ import { recordAuditEvent } from "@/lib/audit-log";
 import { ensureAvailableFeatureTemplates, getDepartmentActiveFeatureKeys } from "@/lib/template-catalogue";
 import { isSystemTemplateSlug } from "@/lib/system-templates";
 import { applyOperationBoard } from "@/lib/operation-board";
-import { OPERATION_TEMPLATES, operationTemplateBySlug } from "@/lib/operation-templates";
+import { type OperationTemplate } from "@/lib/operation-templates";
+import { applyTemplateFeatureSetup, listSavedBoards, mergeBoard, resolveOperation } from "@/lib/saved-boards";
+import { featureCopy, featureSetupSummary, plainFeatureRequestKey, scopedFeatureRequest, emptyFeatureSetup, savedFeatureToSetup, type SavedFeature } from "@/lib/feature-setup";
+import { ensureDefaultFeatureTemplates, listSavedFeatures } from "@/lib/saved-features";
 import { createNotification } from "@/lib/notify";
 import {
   MARKETPLACE_FEATURE_DESCRIPTIONS,
@@ -21,7 +24,7 @@ import {
   type MarketplaceFeatureKey,
 } from "@/lib/template-features";
 import type { FeatureRequestStatus } from "@/generated/prisma/enums";
-import type { MarketplaceFeature, MarketplaceTemplate, PendingFeatureRequest } from "@/lib/feature-marketplace-types";
+import type { MarketplaceBoard, MarketplaceFeature, MarketplaceTemplate, PendingFeatureRequest } from "@/lib/feature-marketplace-types";
 
 export type { MarketplaceFeature, MarketplaceTemplate, PendingFeatureRequest };
 
@@ -215,9 +218,8 @@ export async function setTenantDepartmentFeatures(params: {
 
   await Promise.all(
     pending.map((row) => {
-      const label = isMarketplaceFeatureKey(row.featureKey)
-        ? TEMPLATE_FEATURE_LABELS[row.featureKey]
-        : row.featureKey;
+      const requested = plainFeatureRequestKey(row.featureKey);
+      const label = isMarketplaceFeatureKey(requested) ? TEMPLATE_FEATURE_LABELS[requested] : requested;
       return notifyDepartmentFeatureReview({
         tenantId: params.tenantId,
         departmentId: row.departmentId,
@@ -263,9 +265,12 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
     where: { isSuperAdmin: true, isActive: true },
     select: { id: true },
   });
-  if (owner) await ensureAvailableFeatureTemplates(owner.id);
+  if (owner) {
+    await ensureAvailableFeatureTemplates(owner.id);
+    await ensureDefaultFeatureTemplates(owner.id);
+  }
 
-  const operationOrder = new Map(OPERATION_TEMPLATES.map((operation, index) => [operation.slug, index]));
+  const { saved, order: operationOrder, features: savedFeatures } = await marketplaceBoardOrder();
   const [templates, pending] = await Promise.all([
     prisma.template.findMany({
       where: { isActive: true, slug: { in: [...operationOrder.keys()] } },
@@ -282,7 +287,9 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
   const pendingIds = new Set(
     pending.map((row) => templateIdFromGrantToken(row.featureKey)).filter((id): id is string => id !== null),
   );
-  const pendingFeatureKeys = new Set<string>(pending.map((row) => row.featureKey).filter(isMarketplaceFeatureKey));
+  const pendingFeatureKeys = new Set<string>(
+    pending.map((row) => plainFeatureRequestKey(row.featureKey)).filter(isMarketplaceFeatureKey),
+  );
   const granted = grantedMarketplaceFeatures(dept.featureKeys);
   const grantedKeys = new Set<string>(granted === "ALL" ? MARKETPLACE_FEATURE_KEYS : granted);
 
@@ -290,20 +297,46 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
     departmentId: dept.id,
     departmentName: dept.name,
     templates: templates.map((template) => {
-      const operation = operationTemplateBySlug(template.slug);
+      const featureTemplate = savedFeatures.find((feature) => feature.id === template.slug);
+      const operation = mergeBoard(template.slug, saved);
       const order = new Map<string, number>(
         (operation?.featureKeys ?? template.features.map((feature) => feature.key)).map((key, index) => [key, index]),
+      );
+      const templateToken = templateGrantToken(template.id);
+      const hasThisTemplate = Array.isArray(dept.featureKeys) && dept.featureKeys.includes(templateToken);
+      const templatePending = pending.some(
+        (row) => row.featureKey === templateToken || scopedFeatureRequest(row.featureKey)?.templateId === template.id,
       );
       const features = [...template.features]
         .sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0))
         .map((feature) => ({
           key: feature.key,
           label: isTemplateFeatureLabel(feature.key),
-          status: (grantedKeys.has(feature.key)
-            ? "enabled"
+          status: (featureTemplate
+            ? hasThisTemplate
+              ? "enabled"
+              : templatePending
+                ? "pending"
+                : "available"
+            : grantedKeys.has(feature.key)
+              ? "enabled"
+              : pendingFeatureKeys.has(feature.key)
+                ? "pending"
+                : "available") as "enabled" | "pending" | "available",
+          enabledFor: featureTemplate
+            ? hasThisTemplate
+              ? [departmentId]
+              : []
+            : grantedKeys.has(feature.key)
+              ? [departmentId]
+              : [],
+          pendingFor: featureTemplate
+            ? templatePending
+              ? [departmentId]
+              : []
             : pendingFeatureKeys.has(feature.key)
-              ? "pending"
-              : "available") as "enabled" | "pending" | "available",
+              ? [departmentId]
+              : [],
         }));
       const allOn = features.length > 0 && features.every((feature) => feature.status === "enabled");
       return {
@@ -313,6 +346,10 @@ export async function listMarketplaceTemplates(departmentId: string): Promise<{
         description: template.description,
         features,
         status: allOn ? "enabled" : pendingIds.has(template.id) ? "pending" : "available",
+        pendingFor: pendingIds.has(template.id) ? [departmentId] : [],
+        board: savedFeatures.find((feature) => feature.id === template.slug)
+          ? savedFeatureBoard(savedFeatures.find((feature) => feature.id === template.slug)!)
+          : boardPayload(operation),
       };
     }),
   };
@@ -322,10 +359,58 @@ function isTemplateFeatureLabel(key: string): string {
   return (TEMPLATE_FEATURE_LABELS as Record<string, string>)[key] ?? key;
 }
 
-/** Marketplace for the organization. A feature is on only when every department has it. */
+function boardPayload(operation: OperationTemplate | null): MarketplaceBoard | null {
+  if (!operation) return null;
+  const setup = operation.setup ?? emptyFeatureSetup();
+  return {
+    useCase: operation.useCase,
+    group: operation.group?.trim() || "Operations",
+    statuses: operation.statuses.map((status) => ({
+      label: status.label,
+      color: status.color,
+      isComplete: status.isComplete,
+    })),
+    lists: operation.lists,
+    featureDetails: operation.featureKeys.filter(isMarketplaceFeatureKey).map((key) => ({
+      key,
+      explanation: featureCopy(setup, key).explanation,
+      summary: featureSetupSummary(key, setup, operation.statuses),
+    })),
+  };
+}
+
+function savedFeatureBoard(feature: SavedFeature): MarketplaceBoard {
+  const group = MARKETPLACE_FEATURE_GROUPS.find((item) => item.keys.includes(feature.key))?.label ?? "Features";
+  const setup = savedFeatureToSetup(feature);
+  return {
+    useCase: feature.useCase || feature.explanation,
+    group,
+    statuses: feature.statuses.map((status) => ({
+      label: status.label,
+      color: status.color,
+      isComplete: status.isComplete,
+    })),
+    lists: feature.lists,
+    featureDetails: [{
+      key: feature.key,
+      explanation: feature.explanation || featureCopy(setup, feature.key).explanation,
+      summary: featureSetupSummary(feature.key, setup, feature.statuses),
+    }],
+  };
+}
+
+async function marketplaceBoardOrder() {
+  const [saved, features] = await Promise.all([listSavedBoards(), listSavedFeatures()]);
+  const order = new Map<string, number>();
+  features.forEach((feature, index) => order.set(feature.id, index));
+  return { saved, order, features };
+}
+
+/** Marketplace for the organization, with each feature's status per department. */
 export async function listMarketplaceTemplatesForTenant(tenantId: string): Promise<{
   tenantId: string;
   tenantName: string;
+  departments: { id: string; name: string }[];
   templates: MarketplaceTemplate[];
 } | null> {
   const tenant = await prisma.tenant.findUnique({
@@ -338,9 +423,12 @@ export async function listMarketplaceTemplatesForTenant(tenantId: string): Promi
     where: { isSuperAdmin: true, isActive: true },
     select: { id: true },
   });
-  if (owner) await ensureAvailableFeatureTemplates(owner.id);
+  if (owner) {
+    await ensureAvailableFeatureTemplates(owner.id);
+    await ensureDefaultFeatureTemplates(owner.id);
+  }
 
-  const operationOrder = new Map(OPERATION_TEMPLATES.map((operation, index) => [operation.slug, index]));
+  const { saved, order: operationOrder, features: savedFeatures } = await marketplaceBoardOrder();
   const [templates, departments, pending] = await Promise.all([
     prisma.template.findMany({
       where: { isActive: true, slug: { in: [...operationOrder.keys()] } },
@@ -348,50 +436,79 @@ export async function listMarketplaceTemplatesForTenant(tenantId: string): Promi
     }),
     prisma.department.findMany({
       where: { tenantId },
-      select: { featureKeys: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, featureKeys: true },
     }),
     prisma.featureRequest.findMany({
       where: { tenantId, status: "PENDING" },
-      select: { featureKey: true },
+      select: { departmentId: true, featureKey: true },
     }),
   ]);
   templates.sort(
     (a, b) => (operationOrder.get(a.slug) ?? 0) - (operationOrder.get(b.slug) ?? 0),
   );
 
-  const grantedSets = departments.map((department) => {
-    const granted = grantedMarketplaceFeatures(department.featureKeys);
-    return new Set<string>(granted === "ALL" ? MARKETPLACE_FEATURE_KEYS : granted);
-  });
-  const grantedKeys = new Set<string>(
-    MARKETPLACE_FEATURE_KEYS.filter(
-      (key) => grantedSets.length > 0 && grantedSets.every((set) => set.has(key)),
-    ),
+  const grantedByDepartment = new Map(
+    departments.map((department) => {
+      const granted = grantedMarketplaceFeatures(department.featureKeys);
+      return [
+        department.id,
+        new Set<string>(granted === "ALL" ? MARKETPLACE_FEATURE_KEYS : granted),
+      ] as const;
+    }),
   );
-  const pendingIds = new Set(
-    pending.map((row) => templateIdFromGrantToken(row.featureKey)).filter((id): id is string => id !== null),
-  );
-  const pendingFeatureKeys = new Set<string>(pending.map((row) => row.featureKey).filter(isMarketplaceFeatureKey));
 
   return {
     tenantId: tenant.id,
     tenantName: tenant.name,
+    departments: departments.map((department) => ({ id: department.id, name: department.name })),
     templates: templates.map((template) => {
-      const operation = operationTemplateBySlug(template.slug);
+      const operation = mergeBoard(template.slug, saved);
       const order = new Map<string, number>(
         (operation?.featureKeys ?? template.features.map((feature) => feature.key)).map((key, index) => [key, index]),
       );
+      const token = templateGrantToken(template.id);
+      const pendingFor = [
+        ...new Set(
+          pending
+            .filter((row) => row.featureKey === token)
+            .map((row) => row.departmentId),
+        ),
+      ];
+      const featureTemplate = savedFeatures.find((feature) => feature.id === template.slug);
       const features = [...template.features]
         .sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0))
-        .map((feature) => ({
-          key: feature.key,
-          label: isTemplateFeatureLabel(feature.key),
-          status: (grantedKeys.has(feature.key)
-            ? "enabled"
-            : pendingFeatureKeys.has(feature.key)
-              ? "pending"
-              : "available") as "enabled" | "pending" | "available",
-        }));
+        .map((feature) => {
+          const enabledFor = featureTemplate
+            ? departments
+                .filter((department) => Array.isArray(department.featureKeys) && department.featureKeys.includes(token))
+                .map((department) => department.id)
+            : departments
+                .filter((department) => grantedByDepartment.get(department.id)?.has(feature.key))
+                .map((department) => department.id);
+          const featurePendingFor = [
+            ...new Set(
+              pending
+                .filter((row) =>
+                  featureTemplate
+                    ? row.featureKey === token || scopedFeatureRequest(row.featureKey)?.templateId === template.id
+                    : plainFeatureRequestKey(row.featureKey) === feature.key,
+                )
+                .map((row) => row.departmentId),
+            ),
+          ];
+          const onEverywhere = departments.length > 0 && enabledFor.length === departments.length;
+          return {
+            key: feature.key,
+            label: isTemplateFeatureLabel(feature.key),
+            status: (onEverywhere ? "enabled" : featurePendingFor.length > 0 ? "pending" : "available") as
+              | "enabled"
+              | "pending"
+              | "available",
+            enabledFor,
+            pendingFor: featurePendingFor,
+          };
+        });
       const allOn = features.length > 0 && features.every((feature) => feature.status === "enabled");
       return {
         id: template.id,
@@ -399,7 +516,11 @@ export async function listMarketplaceTemplatesForTenant(tenantId: string): Promi
         name: template.name,
         description: template.description,
         features,
-        status: allOn ? "enabled" : pendingIds.has(template.id) ? "pending" : "available",
+        status: allOn ? "enabled" : pendingFor.length > 0 ? "pending" : "available",
+        pendingFor,
+        board: savedFeatures.find((feature) => feature.id === template.slug)
+          ? savedFeatureBoard(savedFeatures.find((feature) => feature.id === template.slug)!)
+          : boardPayload(operation),
       };
     }),
   };
@@ -704,10 +825,11 @@ export async function enableDepartmentTemplate(params: {
   if (!dept) throw new Error("Department not found");
 
   const keys = template.features.map((feature) => feature.key).filter(isMarketplaceFeatureKey);
-  const operation = operationTemplateBySlug(template.slug);
+  const operation = await resolveOperation(template.slug);
+  const featureTemplate = (await listSavedFeatures()).find((feature) => feature.id === template.slug);
   const active = await getDepartmentActiveFeatureKeys(dept.id);
   const alreadyGranted = departmentHasTemplate(dept.featureKeys, template.id);
-  if (alreadyGranted || (!operation && packageAlreadyEnabled(active, keys))) {
+  if (alreadyGranted || (!operation && !featureTemplate && packageAlreadyEnabled(active, keys))) {
     throw new Error("This department already has that template");
   }
 
@@ -719,7 +841,16 @@ export async function enableDepartmentTemplate(params: {
 
   await prisma.$transaction(async (tx) => {
     await grantDepartmentTemplate(tx, dept.id, template.id, keys);
-    if (operation) await applyOperationBoard(tx, dept.id, template.slug);
+    if (operation || featureTemplate) await applyOperationBoard(tx, dept.id, template.slug);
+    if (operation || featureTemplate) {
+      await applyTemplateFeatureSetup(tx, {
+        departmentId: dept.id,
+        tenantId: dept.tenantId,
+        actorId: params.actorId,
+        slug: template.slug,
+        featureKeys: keys,
+      });
+    }
     if (pending.length > 0) {
       await tx.featureRequest.updateMany({
         where: { id: { in: pending.map((row) => row.id) } },
@@ -837,14 +968,18 @@ export async function enableDepartmentFeature(params: {
   if (!dept) throw new Error("Department not found");
 
   const granted = grantedMarketplaceFeatures(dept.featureKeys);
-  if (granted === "ALL" || granted.includes(featureKey)) {
+  const operation = await resolveOperation(template.slug);
+  const featureTemplate = (await listSavedFeatures()).find((feature) => feature.id === template.slug);
+  const applyBoard = (operation != null && featureKey === "board") || featureTemplate != null;
+  if ((granted === "ALL" || granted.includes(featureKey)) && !featureTemplate) {
     throw new Error("This department already has that feature");
   }
-
-  const operation = operationTemplateBySlug(template.slug);
-  const applyBoard = operation != null && featureKey === "board";
   const pending = await prisma.featureRequest.findMany({
-    where: { departmentId: dept.id, featureKey, status: "PENDING" },
+    where: {
+      departmentId: dept.id,
+      status: "PENDING",
+      OR: [{ featureKey }, { featureKey: `feature:${featureKey}:${template.id}` }],
+    },
     select: { id: true, requestedById: true },
   });
 
@@ -864,6 +999,15 @@ export async function enableDepartmentFeature(params: {
       data: { featureKeys: [...nextFeatures, ...nextTokens] },
     });
     if (applyBoard) await applyOperationBoard(tx, dept.id, template.slug);
+    if (operation || featureTemplate) {
+      await applyTemplateFeatureSetup(tx, {
+        departmentId: dept.id,
+        tenantId: dept.tenantId,
+        actorId: params.actorId,
+        slug: template.slug,
+        featureKeys: [featureKey],
+      });
+    }
     if (pending.length > 0) {
       await tx.featureRequest.updateMany({
         where: { id: { in: pending.map((row) => row.id) } },
@@ -917,7 +1061,7 @@ export async function disableDepartmentFeature(params: {
     throw new Error("This department does not have that feature");
   }
 
-  const operation = operationTemplateBySlug(template.slug);
+  const operation = await resolveOperation(template.slug);
   const dropBoard = operation != null && featureKey === "board";
 
   await prisma.$transaction(async (tx) => {
@@ -967,7 +1111,7 @@ export async function listMarketplaceForDepartment(departmentId: string) {
     where: { departmentId, status: "PENDING" },
     select: { featureKey: true },
   });
-  const pendingKeys = new Set(pending.map((row) => row.featureKey));
+  const pendingKeys = new Set(pending.map((row) => plainFeatureRequestKey(row.featureKey)));
   const groupOf = new Map<MarketplaceFeatureKey, string>();
   for (const group of MARKETPLACE_FEATURE_GROUPS) {
     for (const key of group.keys) groupOf.set(key, group.label);
@@ -988,6 +1132,7 @@ export async function requestDepartmentFeature(params: {
   tenantId: string;
   departmentId: string;
   featureKey: string;
+  templateId?: string;
   requestedById: string;
   message?: string;
 }) {
@@ -1005,8 +1150,13 @@ export async function requestDepartmentFeature(params: {
   if (granted === "ALL" || granted.includes(featureKey)) {
     throw new Error("This department already has that feature");
   }
+  const storedKey = params.templateId ? `feature:${featureKey}:${params.templateId}` : featureKey;
   const existing = await prisma.featureRequest.findFirst({
-    where: { departmentId: dept.id, featureKey, status: "PENDING" },
+    where: {
+      departmentId: dept.id,
+      status: "PENDING",
+      OR: [{ featureKey }, { featureKey: { startsWith: `feature:${featureKey}:` } }],
+    },
     select: { id: true },
   });
   if (existing) throw new Error("A request for this feature is already pending");
@@ -1015,7 +1165,7 @@ export async function requestDepartmentFeature(params: {
     data: {
       tenantId: params.tenantId,
       departmentId: dept.id,
-      featureKey,
+      featureKey: storedKey,
       requestedById: params.requestedById,
       message: params.message?.trim() || null,
     },
@@ -1077,12 +1227,13 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
   const templateById = new Map(templates.map((row) => [row.id, row]));
 
   return rows.map((row) => {
+    const requestedKey = plainFeatureRequestKey(row.featureKey);
     const template = templateById.get(templateIdFromGrantToken(row.featureKey) ?? "");
     const featureLabel = template
       ? template.name
-      : isMarketplaceFeatureKey(row.featureKey)
-        ? TEMPLATE_FEATURE_LABELS[row.featureKey]
-        : row.featureKey;
+      : isMarketplaceFeatureKey(requestedKey)
+        ? TEMPLATE_FEATURE_LABELS[requestedKey]
+        : requestedKey;
     const narrative = featureTemplateNarrative({
       description: template?.description ?? null,
       features: template
@@ -1090,7 +1241,7 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
             key: feature.key,
             label: isTemplateFeatureLabel(feature.key),
           }))
-        : [{ key: row.featureKey, label: featureLabel }],
+        : [{ key: requestedKey, label: featureLabel }],
     });
     const featureDescription =
       narrative.useCases.map((item) => item.text).join(" ") ||
@@ -1099,7 +1250,7 @@ export async function listPendingFeatureRequests(): Promise<PendingFeatureReques
       null;
     const featureKeys = template
       ? template.features.map((feature) => feature.key)
-      : [row.featureKey];
+      : [requestedKey];
     return {
     id: row.id,
     featureKey: row.featureKey,
@@ -1128,7 +1279,8 @@ export async function reviewFeatureRequest(params: {
   if (!request) throw new Error("Request not found");
   if (request.status !== "PENDING") throw new Error("Request has already been reviewed");
   const templateId = templateIdFromGrantToken(request.featureKey);
-  if (!templateId && !isMarketplaceFeatureKey(request.featureKey)) {
+  const requestedFeatureKey = plainFeatureRequestKey(request.featureKey);
+  if (!templateId && !isMarketplaceFeatureKey(requestedFeatureKey)) {
     throw new Error("That isn't a feature you can approve");
   }
   if (params.decision === "REJECTED" && !params.reviewNote?.trim()) {
@@ -1157,11 +1309,35 @@ export async function reviewFeatureRequest(params: {
     if (params.decision === "APPROVED" && template) {
       const keys = template.features.map((feature) => feature.key).filter(isMarketplaceFeatureKey);
       await grantDepartmentTemplate(tx, request.departmentId, template.id, keys);
-      if (operationTemplateBySlug(template.slug)) {
+      if ((await resolveOperation(template.slug)) || (await listSavedFeatures()).some((feature) => feature.id === template.slug)) {
         await applyOperationBoard(tx, request.departmentId, template.slug);
+        await applyTemplateFeatureSetup(tx, {
+          departmentId: request.departmentId,
+          tenantId: request.tenantId,
+          actorId: params.reviewedById,
+          slug: template.slug,
+          featureKeys: keys,
+        });
       }
-    } else if (params.decision === "APPROVED" && isMarketplaceFeatureKey(featureKey)) {
-      await grantDepartmentFeature(tx, request.departmentId, featureKey);
+    } else if (params.decision === "APPROVED" && isMarketplaceFeatureKey(requestedFeatureKey)) {
+      await grantDepartmentFeature(tx, request.departmentId, requestedFeatureKey);
+      const scoped = scopedFeatureRequest(featureKey);
+      if (scoped) {
+        const source = await tx.template.findUnique({
+          where: { id: scoped.templateId },
+          select: { slug: true },
+        });
+        if (source) {
+          if (requestedFeatureKey === "board") await applyOperationBoard(tx, request.departmentId, source.slug);
+          await applyTemplateFeatureSetup(tx, {
+            departmentId: request.departmentId,
+            tenantId: request.tenantId,
+            actorId: params.reviewedById,
+            slug: source.slug,
+            featureKeys: [requestedFeatureKey],
+          });
+        }
+      }
     }
   });
 

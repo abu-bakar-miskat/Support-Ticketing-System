@@ -3,10 +3,11 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
   isReplaceableStatusSet,
-  operationTemplateBySlug,
   remapStatusLabels,
   type OperationTemplate,
 } from "@/lib/operation-templates";
+import { listSavedBoards, resolveOperation } from "@/lib/saved-boards";
+import { listSavedFeatures } from "@/lib/saved-features";
 import { templateIdFromGrantToken } from "@/lib/template-features";
 
 /**
@@ -33,7 +34,7 @@ export async function operationTemplateForDepartment(
   let found: OperationTemplate | null = null;
   for (const value of dept.featureKeys) {
     const id = templateIdFromGrantToken(value);
-    const operation = operationTemplateBySlug(id ? slugById.get(id) : null);
+    const operation = await resolveOperation(id ? slugById.get(id) : null);
     if (operation) found = operation;
   }
   return found;
@@ -50,9 +51,15 @@ export async function applyOperationBoard(
   departmentId: string,
   slug: string,
 ): Promise<void> {
-  const operation = operationTemplateBySlug(slug);
-  if (!operation) return;
-  const nextLabels = operation.statuses.map((status) => status.label);
+  const savedFeatures = await listSavedFeatures();
+  const featureTemplate = savedFeatures.find((feature) => feature.id === slug && feature.statuses.length >= 2);
+  const operation = featureTemplate ? null : await resolveOperation(slug);
+  const effective = featureTemplate
+    ? { statuses: featureTemplate.statuses, lists: featureTemplate.lists }
+    : operation;
+  if (!effective) return;
+  const saved = await listSavedBoards();
+  const nextLabels = effective.statuses.map((status) => status.label);
   const subs = await tx.subDepartment.findMany({
     where: { departmentId },
     select: { id: true, statuses: { select: { label: true, order: true } } },
@@ -61,7 +68,10 @@ export async function applyOperationBoard(
     const current = [...sub.statuses].sort((a, b) => a.order - b.order);
     const currentLabels = current.map((status) => status.label);
     if (currentLabels.join("\n") === nextLabels.join("\n")) continue;
-    if (currentLabels.length > 0 && !isReplaceableStatusSet(currentLabels)) continue;
+    const matchesSaved = saved.some(
+      (board) => board.statuses.map((status) => status.label).join("\n") === currentLabels.join("\n"),
+    );
+    if (currentLabels.length > 0 && !isReplaceableStatusSet(currentLabels) && !matchesSaved) continue;
 
     const remap = remapStatusLabels(currentLabels, nextLabels);
     for (const [from, to] of remap) {
@@ -81,7 +91,7 @@ export async function applyOperationBoard(
       await tx.subDepartmentStatus.deleteMany({ where: { subDepartmentId: sub.id } });
     }
     await tx.subDepartmentStatus.createMany({
-      data: operation.statuses.map((status) => ({ ...status, subDepartmentId: sub.id })),
+      data: effective.statuses.map((status) => ({ ...status, subDepartmentId: sub.id })),
     });
   }
 }

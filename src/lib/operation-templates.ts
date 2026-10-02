@@ -1,4 +1,5 @@
 import { DEFAULT_SUB_DEPARTMENT_STATUSES } from "@/lib/board-columns";
+import type { FeatureSetup } from "@/lib/feature-setup";
 import type { TemplateFeatureKey } from "@/lib/template-features";
 
 /**
@@ -23,9 +24,13 @@ export type OperationTemplate = {
   slug: string;
   name: string;
   useCase: string;
+  /** Super-admin grouping. Built-in boards sit in Operations until one is saved. */
+  group?: string;
   featureKeys: TemplateFeatureKey[];
   statuses: OperationStatus[];
   lists: OperationList[];
+  /** Super-admin options for each feature. Built-ins start empty. */
+  setup?: FeatureSetup;
 };
 
 function columns(

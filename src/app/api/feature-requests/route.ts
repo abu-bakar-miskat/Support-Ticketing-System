@@ -28,6 +28,16 @@ export async function POST(req: NextRequest) {
   if (!templateId && !featureKey) {
     return badRequest("A template or feature is required");
   }
+  if (
+    departmentId &&
+    profile.role === "manager" &&
+    !(profile.managedDepartmentIds ?? []).includes(departmentId)
+  ) {
+    return NextResponse.json(
+      { error: "You can only request features for a department you manage." },
+      { status: 403 },
+    );
+  }
 
   try {
     if (!departmentId) {
@@ -48,18 +58,19 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ status: "PENDING" });
     }
-    const request = templateId
-      ? await requestDepartmentTemplate({
-          tenantId,
-          departmentId,
-          templateId,
-          requestedById: profile.id,
-          message: typeof body.message === "string" ? body.message : undefined,
-        })
-      : await requestDepartmentFeature({
+    const request = featureKey
+      ? await requestDepartmentFeature({
           tenantId,
           departmentId,
           featureKey,
+          templateId: templateId || undefined,
+          requestedById: profile.id,
+          message: typeof body.message === "string" ? body.message : undefined,
+        })
+      : await requestDepartmentTemplate({
+          tenantId,
+          departmentId,
+          templateId,
           requestedById: profile.id,
           message: typeof body.message === "string" ? body.message : undefined,
         });

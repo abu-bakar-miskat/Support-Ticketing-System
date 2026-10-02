@@ -256,8 +256,9 @@ export function DashboardLayout({
           />
           <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
             <ProjectTabSyncProvider>
-              <FeatureRouteGuard />
-              <PageEnter>{children}</PageEnter>
+              <FeatureRouteGuard>
+                <PageEnter>{children}</PageEnter>
+              </FeatureRouteGuard>
             </ProjectTabSyncProvider>
           </main>
         </div>

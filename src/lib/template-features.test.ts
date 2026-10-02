@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALWAYS_ON_FEATURE_KEYS,
+  featureKeyForPath,
   featureTemplateCardText,
   featureTemplateNarrative,
   grantedMarketplaceFeatures,
@@ -22,6 +23,17 @@ describe("grantedMarketplaceFeatures", () => {
       "reports",
       "timeline",
     ]);
+  });
+});
+
+describe("featureKeyForPath", () => {
+  it("matches a feature route whether or not the URL has tenant prefixes", () => {
+    expect(featureKeyForPath("/board")).toBe("board");
+    expect(featureKeyForPath("/acme/support/board")).toBe("board");
+    expect(featureKeyForPath("/acme/support/triage/timeline")).toBe("timeline");
+    expect(featureKeyForPath("/acme/support/settings/api-keys")).toBe("apiKeys");
+    expect(featureKeyForPath("/settings/api-keys")).toBe("apiKeys");
+    expect(featureKeyForPath("/acme/support/settings")).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { TENANT_SCOPED_ROOTS, firstSegment } from "@/lib/tenant-path";
+import { toInternalAppPath } from "@/lib/tenant-path";
 
 /**
  * usePathname with the tenant slug prefix removed, so active-nav logic in
@@ -15,15 +15,5 @@ import { TENANT_SCOPED_ROOTS, firstSegment } from "@/lib/tenant-path";
  * must keep the raw usePathname().
  */
 export function useAppPathname(): string {
-  const pathname = usePathname();
-  // Strip leading tenant AND department slug segments — anything that isn't a
-  // known internal root — until we reach the first known root (board, settings,
-  // departments, …). Handles /<tenant>/board and /<tenant>/<dept>/board alike.
-  let p = pathname;
-  for (;;) {
-    const seg = firstSegment(p);
-    if (!seg || TENANT_SCOPED_ROOTS.has(seg)) break;
-    p = p.slice(seg.length + 1) || "/";
-  }
-  return p;
+  return toInternalAppPath(usePathname());
 }

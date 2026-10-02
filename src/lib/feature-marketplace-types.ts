@@ -10,12 +10,40 @@ export type MarketplaceFeature = {
   group: string;
 };
 
-export type MarketplaceTemplate = {
+export type MarketplaceDepartment = {
   id: string;
   name: string;
-  description: string | null;
-  features: { key: string; label: string }[];
+};
+
+export type MarketplaceTemplateFeature = {
+  key: string;
+  label: string;
   status: MarketplaceFeatureStatus;
+  /** Departments that already have this feature. */
+  enabledFor: string[];
+  /** Departments with a pending request for this feature. */
+  pendingFor: string[];
+};
+
+export type MarketplaceBoard = {
+  useCase: string;
+  group: string;
+  statuses: { label: string; color: string; isComplete: boolean }[];
+  lists: { name: string; statuses: string[] }[];
+  featureDetails: { key: string; explanation: string; summary: string | null }[];
+};
+
+export type MarketplaceTemplate = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  features: MarketplaceTemplateFeature[];
+  status: MarketplaceFeatureStatus;
+  /** Departments with a pending request for the whole operation. */
+  pendingFor: string[];
+  /** Statuses and lists for this board, including a super-admin save. */
+  board: MarketplaceBoard | null;
 };
 
 export type PendingFeatureRequest = {

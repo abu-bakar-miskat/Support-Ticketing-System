@@ -8,17 +8,13 @@
  * Client-safe: constants + slug helpers only. The prisma-backed
  * ensureSystemTemplates lives in template-catalogue.ts (server-only).
  */
-import {
-  MARKETPLACE_FEATURE_DESCRIPTIONS,
-  MARKETPLACE_FEATURE_KEYS,
-  TEMPLATE_FEATURE_LABELS,
-  type TemplateFeatureKey,
-} from "@/lib/template-features";
+import { type TemplateFeatureKey } from "@/lib/template-features";
 import {
   DEFAULT_DEPARTMENT_TYPE,
   isValidDepartmentType,
   type DepartmentType,
 } from "@/lib/department-types";
+import { OPERATION_TEMPLATES } from "@/lib/operation-templates";
 
 export type SystemTemplate = {
   slug: string;
@@ -66,7 +62,7 @@ export type FeatureTemplateSeed = {
 
 /**
  * Templates that should exist without anyone creating them by hand: the
- * Support bundle, plus one template per optional marketplace feature.
+ * Support bundle, plus one pre-configured template per operation.
  */
 export const AVAILABLE_FEATURE_TEMPLATES: FeatureTemplateSeed[] = [
   {
@@ -76,11 +72,11 @@ export const AVAILABLE_FEATURE_TEMPLATES: FeatureTemplateSeed[] = [
     featureKeys: SUPPORT_TEMPLATE.featureKeys,
     system: true,
   },
-  ...MARKETPLACE_FEATURE_KEYS.map((key) => ({
-    slug: key,
-    name: TEMPLATE_FEATURE_LABELS[key],
-    description: MARKETPLACE_FEATURE_DESCRIPTIONS[key],
-    featureKeys: [key] as TemplateFeatureKey[],
+  ...OPERATION_TEMPLATES.map((operation) => ({
+    slug: operation.slug,
+    name: operation.name,
+    description: operation.useCase,
+    featureKeys: operation.featureKeys,
     system: false,
   })),
 ];

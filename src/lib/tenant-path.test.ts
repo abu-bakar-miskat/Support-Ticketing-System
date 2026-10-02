@@ -4,6 +4,7 @@ import {
   TENANT_LEVEL_ROOTS,
   TENANT_SCOPED_ROOTS,
   tenantWithMissingDepartment,
+  toInternalAppPath,
 } from "./tenant-path";
 
 describe("parseTenantPathContext", () => {
@@ -70,6 +71,14 @@ describe("parseTenantPathContext", () => {
     expect(tenantWithMissingDepartment("/nova-pathways/tasks/task-1")).toBe(
       "nova-pathways",
     );
+  });
+
+  it("strips tenant and department prefixes down to the app route", () => {
+    expect(toInternalAppPath("/acme/support/board")).toBe("/board");
+    expect(toInternalAppPath("/acme/support/triage/timeline")).toBe("/timeline");
+    expect(toInternalAppPath("/acme/support/settings/api-keys")).toBe("/settings/api-keys");
+    expect(toInternalAppPath("/settings/api-keys")).toBe("/settings/api-keys");
+    expect(toInternalAppPath("/")).toBe("/");
   });
 
   it("does not flag complete department or tenant-level URLs", () => {

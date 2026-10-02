@@ -1,4 +1,5 @@
 import { LayoutGrid, Wrench } from "lucide-react";
+import { toInternalAppPath } from "@/lib/tenant-path";
 
 /**
  * Named settings-nav and sidebar sections a Super Admin can bundle into a
@@ -409,10 +410,14 @@ const FEATURE_PATH_ENTRIES: [prefix: string, key: TemplateFeatureKey][] = [
   ["/docs", "helpCenter"],
 ].sort((a, b) => b[0].length - a[0].length) as [string, TemplateFeatureKey][];
 
-/** The feature key that gates `pathname`, or null when the route is un-gated. */
+/**
+ * The feature key that gates `pathname`, or null when the route is un-gated.
+ * Accepts the public URL (`/acme/support/board`) and the internal path (`/board`).
+ */
 export function featureKeyForPath(pathname: string): TemplateFeatureKey | null {
+  const path = toInternalAppPath(pathname);
   for (const [prefix, key] of FEATURE_PATH_ENTRIES) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return key;
+    if (path === prefix || path.startsWith(`${prefix}/`)) return key;
   }
   return null;
 }

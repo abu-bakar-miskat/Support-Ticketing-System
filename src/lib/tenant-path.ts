@@ -257,6 +257,21 @@ export function firstSegment(pathname: string): string {
   return pathname.split("/")[1] ?? "";
 }
 
+/**
+ * Drop leading tenant, department, and sub-department slugs so route checks see
+ * the App Router path. `/acme/support/board` and `/acme/support/triage/board`
+ * both become `/board`. A path that already starts at a known root is unchanged.
+ */
+export function toInternalAppPath(pathname: string): string {
+  let path = pathname || "/";
+  for (;;) {
+    const segment = firstSegment(path);
+    if (!segment || TENANT_SCOPED_ROOTS.has(segment)) break;
+    path = path.slice(segment.length + 1) || "/";
+  }
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 /** A bare (un-prefixed) tenant-scoped path — the dashboard home or a scoped root. */
 export function isBareTenantScoped(pathname: string): boolean {
   if (pathname === "/") return true;

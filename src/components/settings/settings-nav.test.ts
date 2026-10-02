@@ -11,14 +11,14 @@ const hrefs = (
     .map((item) => item.href)
 
 describe("features marketplace nav", () => {
-  it("shows the features marketplace to a tenant admin or manager inside a department", () => {
-    expect(hrefs("admin", true)).toContain("/settings/features")
-    expect(hrefs("manager", true)).toContain("/settings/features")
-    expect(hrefs("admin", true)).not.toContain("/settings/templates-catalogue")
+  it("shows the features marketplace to a tenant admin or manager in the organization view", () => {
+    expect(hrefs("admin", false)).toContain("/settings/features")
+    expect(hrefs("manager", false)).toContain("/settings/features")
+    expect(hrefs("admin", false)).not.toContain("/settings/templates-catalogue")
   })
 
-  it("hides it outside a department and from staff", () => {
-    expect(hrefs("admin", false)).not.toContain("/settings/features")
-    expect(hrefs("agent", true)).not.toContain("/settings/features")
+  it("hides it inside a department and from staff", () => {
+    expect(hrefs("admin", true)).not.toContain("/settings/features")
+    expect(hrefs("agent", false)).not.toContain("/settings/features")
   })
 })

@@ -10,7 +10,6 @@ import {
   grantedMarketplaceFeatures,
   isMarketplaceFeatureKey,
   isStaleBuiltinFeatureDescription,
-  templateIdFromGrantToken,
   type TemplateFeatureKey,
 } from "@/lib/template-features";
 import { AVAILABLE_FEATURE_TEMPLATES, SYSTEM_TEMPLATES } from "@/lib/system-templates";
@@ -42,23 +41,9 @@ export async function getDepartmentActiveFeatureKeys(
   const granted = grantedMarketplaceFeatures(dept?.featureKeys);
   if (granted === "ALL") return "ALL";
 
-  const templateIds = Array.isArray(dept?.featureKeys)
-    ? dept.featureKeys.map(templateIdFromGrantToken).filter((id): id is string => id !== null)
-    : [];
-  const fromTemplates = templateIds.length
-    ? await runAsSystem(() =>
-        prisma.templateFeature.findMany({
-          where: { templateId: { in: templateIds } },
-          select: { key: true },
-        }),
-      ).catch(() => [])
-    : [];
-
-  return new Set<TemplateFeatureKey>([
-    ...ALWAYS_ON_FEATURE_KEYS,
-    ...granted,
-    ...fromTemplates.map((row) => row.key).filter(isMarketplaceFeatureKey),
-  ]);
+  // A template token marks which operation board is active. It does not turn
+  // on every feature in that operation — those are granted one key at a time.
+  return new Set<TemplateFeatureKey>([...ALWAYS_ON_FEATURE_KEYS, ...granted]);
 }
 
 /**
@@ -421,6 +406,13 @@ export async function archiveTemplate(id: string) {
  * Existing rows are left alone, so a renamed or re-featured template stays as edited.
  */
 export async function ensureAvailableFeatureTemplates(createdById: string) {
+  // One-feature templates are no longer offered. Departments that already have
+  // one keep that grant; the row just leaves the marketplace.
+  await prisma.template.updateMany({
+    where: { slug: { in: [...MARKETPLACE_FEATURE_KEYS] }, isActive: true },
+    data: { isActive: false },
+  });
+
   for (const tpl of AVAILABLE_FEATURE_TEMPLATES) {
     const existing = await prisma.template.findUnique({
       where: { slug: tpl.slug },

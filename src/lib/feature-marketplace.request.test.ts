@@ -18,6 +18,10 @@ vi.mock("@/lib/template-catalogue", () => ({
 vi.mock("@/lib/request-scope", () => ({
   runAsSystem: (fn: () => unknown) => fn(),
 }));
+vi.mock("@/lib/saved-features", () => ({
+  listSavedFeatures: vi.fn(async () => []),
+  ensureDefaultFeatureTemplates: vi.fn(),
+}));
 
 import { prisma } from "@/lib/db";
 import { createNotification } from "@/lib/notify";

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { badRequest } from "@/lib/api-response";
-import { requestDepartmentFeature, requestDepartmentTemplate } from "@/lib/feature-marketplace";
+import {
+  requestDepartmentFeature,
+  requestDepartmentTemplate,
+  requestTenantFeature,
+  requestTenantTemplate,
+} from "@/lib/feature-marketplace";
 
 /** Tenant admin or department manager asks for one marketplace feature. */
 export async function POST(req: NextRequest) {
@@ -20,23 +25,52 @@ export async function POST(req: NextRequest) {
   const departmentId = typeof body.departmentId === "string" ? body.departmentId : "";
   const templateId = typeof body.templateId === "string" ? body.templateId : "";
   const featureKey = typeof body.featureKey === "string" ? body.featureKey : "";
-  if (!departmentId || (!templateId && !featureKey)) {
-    return badRequest("departmentId and a template or feature are required");
+  if (!templateId && !featureKey) {
+    return badRequest("A template or feature is required");
+  }
+  if (
+    departmentId &&
+    profile.role === "manager" &&
+    !(profile.managedDepartmentIds ?? []).includes(departmentId)
+  ) {
+    return NextResponse.json(
+      { error: "You can only request features for a department you manage." },
+      { status: 403 },
+    );
   }
 
   try {
-    const request = templateId
-      ? await requestDepartmentTemplate({
+    if (!departmentId) {
+      if (templateId) {
+        await requestTenantTemplate({
           tenantId,
-          departmentId,
           templateId,
           requestedById: profile.id,
           message: typeof body.message === "string" ? body.message : undefined,
-        })
-      : await requestDepartmentFeature({
+        });
+      } else {
+        await requestTenantFeature({
+          tenantId,
+          featureKey,
+          requestedById: profile.id,
+          message: typeof body.message === "string" ? body.message : undefined,
+        });
+      }
+      return NextResponse.json({ status: "PENDING" });
+    }
+    const request = featureKey
+      ? await requestDepartmentFeature({
           tenantId,
           departmentId,
           featureKey,
+          templateId: templateId || undefined,
+          requestedById: profile.id,
+          message: typeof body.message === "string" ? body.message : undefined,
+        })
+      : await requestDepartmentTemplate({
+          tenantId,
+          departmentId,
+          templateId,
           requestedById: profile.id,
           message: typeof body.message === "string" ? body.message : undefined,
         });

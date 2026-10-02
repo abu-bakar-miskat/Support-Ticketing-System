@@ -169,6 +169,46 @@ describe("POST /api/tickets/[id]/messages", () => {
     )
   })
 
+  it("moves an escalated ticket to In Progress and drops the Escalated label", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...intakeTicket,
+      status: "ESCALATED",
+      labels: ["Escalated"],
+    } as never)
+    mockSubDepartmentStatusFindFirst.mockResolvedValue({ label: "IN PROGRESS" } as never)
+    const txTicketUpdate = vi.fn().mockResolvedValue({})
+    vi.mocked(prisma.$transaction).mockImplementationOnce((async (
+      callback: (tx: unknown) => unknown,
+    ) => callback({ $executeRaw: vi.fn(), ticket: { update: txTicketUpdate } })) as never)
+
+    const res = await POST(makeRequest({ body: "Picking this up now." }), { params })
+    const json = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(json.ticketStatus).toBe("IN PROGRESS")
+    expect(txTicketUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "IN PROGRESS", labels: [] }),
+      }),
+    )
+    expect(mockStartTimer).toHaveBeenCalledWith(
+      "ticket-1",
+      "IN PROGRESS",
+      expect.objectContaining({ id: mockProfile.id }),
+    )
+  })
+
+  it("leaves a paused ticket's status alone", async () => {
+    mockFindUnique.mockResolvedValue({ ...intakeTicket, status: "PAUSED" } as never)
+
+    const res = await POST(makeRequest({ body: "Still waiting on vendor." }), { params })
+    const json = await res.json()
+
+    expect(json.ticketStatus).toBe("PAUSED")
+    expect(mockSubDepartmentStatusFindFirst).not.toHaveBeenCalled()
+    expect(mockStartTimer).not.toHaveBeenCalled()
+  })
+
   it("threads the send onto the conversation's last message", async () => {
     mockFindFirst.mockResolvedValue({ providerMessageId: "prev-msg-id" } as never)
     await POST(makeRequest({ body: "Following up." }), { params })

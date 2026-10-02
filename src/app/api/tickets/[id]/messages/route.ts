@@ -10,6 +10,7 @@ import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
+import { isEscalatedLabel, labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -188,8 +189,12 @@ export async function POST(
   }
 
   // Resolve the In Progress status early (runs concurrently with other setup)
-  // so the DB update is ready to await before we respond.
-  const inProgressStatusPromise = normalizeStatus(ticket.status) === "To Do"
+  // so the DB update is ready to await before we respond. An agent replying to
+  // an escalated ticket has picked it up, so it moves to In Progress too.
+  // ("ESCALATED" normalizes to "Blocked", so it needs its own check.)
+  const shouldMoveToInProgress =
+    normalizeStatus(ticket.status) === "To Do" || isEscalatedLabel(ticket.status)
+  const inProgressStatusPromise = shouldMoveToInProgress
     ? prisma.subDepartmentStatus.findFirst({
         where: { subDepartmentId: ticket.subDepartmentId, isComplete: false },
         orderBy: { order: "asc" },
@@ -278,16 +283,20 @@ export async function POST(
     })
   }
 
-  const nextLabels = clearReopenedLabelOnReply(ticket.labels ?? [], "outbound")
-  const labelsChanged =
-    nextLabels.length !== (ticket.labels ?? []).length ||
-    nextLabels.some((l, i) => l !== (ticket.labels ?? [])[i])
+  const repliedLabels = clearReopenedLabelOnReply(ticket.labels ?? [], "outbound")
+  const labelsDiffer = (next: string[]) =>
+    next.length !== (ticket.labels ?? []).length ||
+    next.some((l, i) => l !== (ticket.labels ?? [])[i])
+  const labelsChanged = labelsDiffer(repliedLabels)
 
   // Auto-move to In Progress — awaited before responding so the DB change is
   // committed before the response is sent, ensuring postgres_changes picks it up.
   const inProgressStatus = await inProgressStatusPromise
   let ticketStatus = ticket.status
   if (inProgressStatus) {
+    // Entering In Progress de-escalates, same as a manual status move.
+    const nextLabels = labelsAfterDeEscalation(repliedLabels, inProgressStatus.label)
+    const moveLabelsChanged = labelsDiffer(nextLabels)
     // Attribute the reopen to the agent who replied (via the GUC the
     // ActivityLog trigger reads) rather than falling back to the creator.
     try {
@@ -295,7 +304,7 @@ export async function POST(
         await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
         await tx.ticket.update({
           where: { id: ticketId },
-          data: { status: inProgressStatus.label, ...(labelsChanged ? { labels: nextLabels } : {}) },
+          data: { status: inProgressStatus.label, ...(moveLabelsChanged ? { labels: nextLabels } : {}) },
         })
       })
       ticketStatus = inProgressStatus.label
@@ -319,7 +328,7 @@ export async function POST(
     // "Waiting for customer/assignee" badge on the task list and board views.
     await prisma.ticket.update({
       where: { id: ticketId },
-      data: { updatedAt: new Date(), ...(labelsChanged ? { labels: nextLabels } : {}) },
+      data: { updatedAt: new Date(), ...(labelsChanged ? { labels: repliedLabels } : {}) },
     }).catch(() => undefined)
   }
 

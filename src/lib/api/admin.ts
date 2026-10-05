@@ -121,7 +121,10 @@ export async function updateAdminUser(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error("Failed to update user")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to update user")
+  }
   return res.json()
 }
 

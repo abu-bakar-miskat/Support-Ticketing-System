@@ -136,23 +136,53 @@ export async function loadUserRoleChanges(userId: string, tenantId?: string): Pr
 }
 
 /**
- * Translate a department-context role pick from the members UI into explicit
- * scoped operations. Manager-to-Sub-manager removes the department manager grant
- * and creates/updates the sub-department grant in the same request.
+ * Translate a role pick from the members UI into explicit scoped operations.
+ *
+ * "Admin" is a TENANT-wide grant (matching the "Tenant Admin" badge and the
+ * invite flow's "Tenant-wide" target), so it needs no department — this is what
+ * lets a super-admin promote a member who belongs to no department. Every other
+ * role is department/sub-department scoped. Demoting away from Admin downgrades
+ * the tenant membership to Agent so the person keeps workspace access but loses
+ * admin power. Manager-to-Sub-manager removes the department manager grant and
+ * creates/updates the sub-department grant in the same request.
  */
 export function planLegacyDepartmentRoleUpdate(params: {
-  departmentId: string;
+  tenantId: string;
+  departmentId?: string | null;
   subDepartmentId?: string | null;
   newRole: Role;
   current: RoleChange[];
 }): RoleChange[] {
-  const { departmentId, subDepartmentId, newRole, current } = params;
+  const { tenantId, departmentId, subDepartmentId, newRole, current } = params;
   const byScope = new Map(current.map((change) => [`${change.scopeType}:${change.scopeId}`, change]));
-  const deptGrant = byScope.get(`DEPARTMENT:${departmentId}`);
+  const deptGrant = departmentId ? byScope.get(`DEPARTMENT:${departmentId}`) : undefined;
+  const tenantGrant = byScope.get(`TENANT:${tenantId}`);
   const changes: RoleChange[] = [];
 
-  if (newRole === "admin" || newRole === "manager") {
-    changes.push({ scopeType: "DEPARTMENT", scopeId: departmentId, role: newRole });
+  if (newRole === "admin") {
+    changes.push({ scopeType: "TENANT", scopeId: tenantId, role: "admin" });
+    // A tenant admin is never also a department manager — clear any existing
+    // DepartmentManager grants (setting the department role to "agent" deletes the
+    // row) so promoting a manager to Admin removes them from DepartmentManager.
+    for (const grant of current) {
+      if (grant.scopeType === "DEPARTMENT" && grant.role !== "agent") {
+        changes.push({ scopeType: "DEPARTMENT", scopeId: grant.scopeId, role: "agent" });
+      }
+    }
+    return changes;
+  }
+
+  // Leaving the Admin role: drop the tenant-admin grant to Agent in the same
+  // request so the demotion actually takes effect for tenant-scoped admins.
+  if (tenantGrant && tenantGrant.role === "admin") {
+    changes.push({ scopeType: "TENANT", scopeId: tenantId, role: "agent" });
+  }
+
+  if (newRole === "manager") {
+    if (!departmentId) {
+      throw new RoleChangeError("Manager assignment requires a department.", "INVALID_SCOPE");
+    }
+    changes.push({ scopeType: "DEPARTMENT", scopeId: departmentId, role: "manager" });
     return changes;
   }
 
@@ -160,21 +190,21 @@ export function planLegacyDepartmentRoleUpdate(params: {
     if (!subDepartmentId) {
       throw new RoleChangeError("Sub-manager assignment requires a sub-department.", "INVALID_SCOPE");
     }
-    if (deptGrant && (deptGrant.role === "manager" || deptGrant.role === "admin")) {
+    if (departmentId && deptGrant && (deptGrant.role === "manager" || deptGrant.role === "admin")) {
       changes.push({ scopeType: "DEPARTMENT", scopeId: departmentId, role: "agent" });
     }
     changes.push({ scopeType: "SUB_DEPARTMENT", scopeId: subDepartmentId, role: "sub_manager" });
     return changes;
   }
 
-  if (deptGrant && deptGrant.role !== "agent") {
+  if (departmentId && deptGrant && deptGrant.role !== "agent") {
     changes.push({ scopeType: "DEPARTMENT", scopeId: departmentId, role: "agent" });
   }
   if (subDepartmentId) {
     changes.push({ scopeType: "SUB_DEPARTMENT", scopeId: subDepartmentId, role: "agent" });
   }
   if (changes.length === 0) {
-    throw new RoleChangeError("No scoped role grant exists to update for this department.", "INVALID_SCOPE");
+    throw new RoleChangeError("No scoped role grant exists to update for this member.", "INVALID_SCOPE");
   }
   return changes;
 }

@@ -111,17 +111,24 @@ export async function PATCH(
           { status: 403 },
         )
       }
-      const departmentId = await resolveRoleChangeDepartmentId(
-        id,
-        profile!.activeTenantId,
-        typeof body.departmentId === "string" ? body.departmentId : null,
-      )
-      if (!departmentId) {
+      const tenantId = profile!.activeTenantId
+      if (!tenantId) {
         return NextResponse.json(
-          { error: "departmentId is required for scoped role changes" },
+          { error: "An active tenant is required to change roles" },
           { status: 400 },
         )
       }
+      // "Admin" is tenant-wide and needs no department; every other role is
+      // department/sub-department scoped. Resolving a department only matters for
+      // those — a member with no department can still be promoted to tenant admin.
+      const departmentId =
+        body.role === "admin"
+          ? null
+          : await resolveRoleChangeDepartmentId(
+              id,
+              tenantId,
+              typeof body.departmentId === "string" ? body.departmentId : null,
+            )
       const subDepartmentId =
         typeof body.subDepartmentId === "string"
           ? body.subDepartmentId
@@ -132,8 +139,9 @@ export async function PATCH(
               })
             )?.subDepartmentId ?? null
       try {
-        const current = await loadUserRoleChanges(id, profile!.activeTenantId ?? undefined)
+        const current = await loadUserRoleChanges(id, tenantId)
         scopedRoleChanges = planLegacyDepartmentRoleUpdate({
+          tenantId,
           departmentId,
           subDepartmentId,
           newRole: body.role as Role,

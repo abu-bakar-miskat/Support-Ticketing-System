@@ -444,6 +444,9 @@ export function SettingsMembersPage({
   // departments here; inside a specific department the column stays read-only.
   const canEditDepartment = !departmentId && isAdmin && availableDepartments.length > 0;
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
+  // Converting an Admin to a lower role revokes their admin access (and, for
+  // Manager, moves them into DepartmentManager) — confirm before applying.
+  const [confirmAdminDemote, setConfirmAdminDemote] = useState<{ member: MemberRow; newRole: Role } | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
   const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<MemberRow | null>(null);
@@ -631,8 +634,8 @@ export function SettingsMembersPage({
         subDepartmentId: member?.subDepartmentId ?? undefined,
       });
       startTransition(() => router.refresh());
-    } catch {
-      setError("Failed to update role");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update role");
       setLocalRoles((prev) => {
         const n = { ...prev };
         delete n[memberId];
@@ -641,6 +644,18 @@ export function SettingsMembersPage({
     } finally {
       setSaving(null);
     }
+  }
+
+  // Gate role changes: converting an Admin to a lower role revokes admin access
+  // (and, for Manager, moves them into DepartmentManager), so confirm first.
+  // Everything else applies immediately.
+  function requestRoleChange(member: MemberRow, newRole: Role) {
+    if (newRole === currentRole(member)) return;
+    if (currentRole(member) === "admin" && newRole !== "admin") {
+      setConfirmAdminDemote({ member, newRole });
+      return;
+    }
+    handleRoleChange(member.id, newRole);
   }
 
   async function handleToggleActive(member: MemberRow) {
@@ -784,6 +799,26 @@ export function SettingsMembersPage({
         confirmLabel="Delete permanently"
         successMessage={confirmDelete ? `${confirmDelete.name} has been deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
+      />
+      <ConfirmDialog
+        open={!!confirmAdminDemote}
+        onOpenChange={(open) => { if (!open) setConfirmAdminDemote(null); }}
+        title={confirmAdminDemote?.member.id === currentUserId ? "Give up your admin access?" : "Remove admin access?"}
+        description={(() => {
+          if (!confirmAdminDemote) return "";
+          const { member, newRole } = confirmAdminDemote;
+          const label = ROLE_LABEL(newRole);
+          const managerNote =
+            newRole === "manager" ? " and be added as a department manager" : "";
+          if (member.id === currentUserId) {
+            return `You're about to change your own role from Admin to ${label}. You'll immediately lose administrator access to this workspace — including this Members page — and won't be able to restore it yourself. Another admin would have to promote you back.`;
+          }
+          return `${member.name} is currently an Admin. Changing them to ${label} will remove their admin access${managerNote}. Continue?`;
+        })()}
+        confirmLabel={confirmAdminDemote?.member.id === currentUserId ? "Yes, remove my admin access" : "Remove admin access"}
+        onConfirm={async () => {
+          if (confirmAdminDemote) await handleRoleChange(confirmAdminDemote.member.id, confirmAdminDemote.newRole);
+        }}
       />
       <ConfirmDialog
         open={!!confirmRemoveTenant}
@@ -1153,7 +1188,7 @@ export function SettingsMembersPage({
                             {(isAdmin ? ROLE_OPTIONS_ADMIN : ROLE_OPTIONS_MANAGER).map((o) => (
                               <DropdownMenuItem
                                 key={o.value}
-                                onClick={() => handleRoleChange(member.id, o.value)}
+                                onClick={() => requestRoleChange(member, o.value)}
                                 className={cn(
                                   "gap-2 font-sans text-[12px]",
                                   role === o.value && "font-semibold",

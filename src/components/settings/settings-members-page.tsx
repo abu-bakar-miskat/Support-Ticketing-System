@@ -444,6 +444,9 @@ export function SettingsMembersPage({
   // departments here; inside a specific department the column stays read-only.
   const canEditDepartment = !departmentId && isAdmin && availableDepartments.length > 0;
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
+  // When an admin picks a lower role for their OWN row they're about to revoke
+  // their own admin access — confirm before applying so it isn't an accident.
+  const [confirmSelfDemote, setConfirmSelfDemote] = useState<{ member: MemberRow; newRole: Role } | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
   const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<MemberRow | null>(null);
@@ -631,8 +634,8 @@ export function SettingsMembersPage({
         subDepartmentId: member?.subDepartmentId ?? undefined,
       });
       startTransition(() => router.refresh());
-    } catch {
-      setError("Failed to update role");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update role");
       setLocalRoles((prev) => {
         const n = { ...prev };
         delete n[memberId];
@@ -641,6 +644,18 @@ export function SettingsMembersPage({
     } finally {
       setSaving(null);
     }
+  }
+
+  // Gate role changes: an admin lowering their OWN role loses admin access, so
+  // confirm first. Everything else applies immediately.
+  function requestRoleChange(member: MemberRow, newRole: Role) {
+    if (newRole === currentRole(member)) return;
+    const isSelf = member.id === currentUserId;
+    if (isSelf && currentRole(member) === "admin" && newRole !== "admin") {
+      setConfirmSelfDemote({ member, newRole });
+      return;
+    }
+    handleRoleChange(member.id, newRole);
   }
 
   async function handleToggleActive(member: MemberRow) {
@@ -784,6 +799,20 @@ export function SettingsMembersPage({
         confirmLabel="Delete permanently"
         successMessage={confirmDelete ? `${confirmDelete.name} has been deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
+      />
+      <ConfirmDialog
+        open={!!confirmSelfDemote}
+        onOpenChange={(open) => { if (!open) setConfirmSelfDemote(null); }}
+        title="Give up your admin access?"
+        description={
+          confirmSelfDemote
+            ? `You're about to change your own role from Admin to ${ROLE_LABEL(confirmSelfDemote.newRole)}. You'll immediately lose administrator access to this workspace — including this Members page — and won't be able to restore it yourself. Another admin would have to promote you back.`
+            : ""
+        }
+        confirmLabel="Yes, remove my admin access"
+        onConfirm={async () => {
+          if (confirmSelfDemote) await handleRoleChange(confirmSelfDemote.member.id, confirmSelfDemote.newRole);
+        }}
       />
       <ConfirmDialog
         open={!!confirmRemoveTenant}
@@ -1153,7 +1182,7 @@ export function SettingsMembersPage({
                             {(isAdmin ? ROLE_OPTIONS_ADMIN : ROLE_OPTIONS_MANAGER).map((o) => (
                               <DropdownMenuItem
                                 key={o.value}
-                                onClick={() => handleRoleChange(member.id, o.value)}
+                                onClick={() => requestRoleChange(member, o.value)}
                                 className={cn(
                                   "gap-2 font-sans text-[12px]",
                                   role === o.value && "font-semibold",

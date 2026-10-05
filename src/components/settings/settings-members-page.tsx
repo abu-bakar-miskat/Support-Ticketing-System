@@ -444,9 +444,9 @@ export function SettingsMembersPage({
   // departments here; inside a specific department the column stays read-only.
   const canEditDepartment = !departmentId && isAdmin && availableDepartments.length > 0;
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
-  // When an admin picks a lower role for their OWN row they're about to revoke
-  // their own admin access — confirm before applying so it isn't an accident.
-  const [confirmSelfDemote, setConfirmSelfDemote] = useState<{ member: MemberRow; newRole: Role } | null>(null);
+  // Converting an Admin to a lower role revokes their admin access (and, for
+  // Manager, moves them into DepartmentManager) — confirm before applying.
+  const [confirmAdminDemote, setConfirmAdminDemote] = useState<{ member: MemberRow; newRole: Role } | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
   const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<MemberRow | null>(null);
@@ -646,13 +646,13 @@ export function SettingsMembersPage({
     }
   }
 
-  // Gate role changes: an admin lowering their OWN role loses admin access, so
-  // confirm first. Everything else applies immediately.
+  // Gate role changes: converting an Admin to a lower role revokes admin access
+  // (and, for Manager, moves them into DepartmentManager), so confirm first.
+  // Everything else applies immediately.
   function requestRoleChange(member: MemberRow, newRole: Role) {
     if (newRole === currentRole(member)) return;
-    const isSelf = member.id === currentUserId;
-    if (isSelf && currentRole(member) === "admin" && newRole !== "admin") {
-      setConfirmSelfDemote({ member, newRole });
+    if (currentRole(member) === "admin" && newRole !== "admin") {
+      setConfirmAdminDemote({ member, newRole });
       return;
     }
     handleRoleChange(member.id, newRole);
@@ -801,17 +801,23 @@ export function SettingsMembersPage({
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
       />
       <ConfirmDialog
-        open={!!confirmSelfDemote}
-        onOpenChange={(open) => { if (!open) setConfirmSelfDemote(null); }}
-        title="Give up your admin access?"
-        description={
-          confirmSelfDemote
-            ? `You're about to change your own role from Admin to ${ROLE_LABEL(confirmSelfDemote.newRole)}. You'll immediately lose administrator access to this workspace — including this Members page — and won't be able to restore it yourself. Another admin would have to promote you back.`
-            : ""
-        }
-        confirmLabel="Yes, remove my admin access"
+        open={!!confirmAdminDemote}
+        onOpenChange={(open) => { if (!open) setConfirmAdminDemote(null); }}
+        title={confirmAdminDemote?.member.id === currentUserId ? "Give up your admin access?" : "Remove admin access?"}
+        description={(() => {
+          if (!confirmAdminDemote) return "";
+          const { member, newRole } = confirmAdminDemote;
+          const label = ROLE_LABEL(newRole);
+          const managerNote =
+            newRole === "manager" ? " and be added as a department manager" : "";
+          if (member.id === currentUserId) {
+            return `You're about to change your own role from Admin to ${label}. You'll immediately lose administrator access to this workspace — including this Members page — and won't be able to restore it yourself. Another admin would have to promote you back.`;
+          }
+          return `${member.name} is currently an Admin. Changing them to ${label} will remove their admin access${managerNote}. Continue?`;
+        })()}
+        confirmLabel={confirmAdminDemote?.member.id === currentUserId ? "Yes, remove my admin access" : "Remove admin access"}
         onConfirm={async () => {
-          if (confirmSelfDemote) await handleRoleChange(confirmSelfDemote.member.id, confirmSelfDemote.newRole);
+          if (confirmAdminDemote) await handleRoleChange(confirmAdminDemote.member.id, confirmAdminDemote.newRole);
         }}
       />
       <ConfirmDialog

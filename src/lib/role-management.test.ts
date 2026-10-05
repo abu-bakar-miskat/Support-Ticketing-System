@@ -74,6 +74,21 @@ describe("planLegacyDepartmentRoleUpdate", () => {
     ]);
   });
 
+  it("removes department manager grants when promoting a manager to Admin", () => {
+    const changes = planLegacyDepartmentRoleUpdate({
+      tenantId: "tenant-a",
+      departmentId: "department-a",
+      newRole: "admin",
+      current: [departmentManager, unrelatedManager],
+    });
+
+    expect(changes).toEqual([
+      { scopeType: "TENANT", scopeId: "tenant-a", role: "admin" },
+      { scopeType: "DEPARTMENT", scopeId: "department-a", role: "agent" },
+      { scopeType: "DEPARTMENT", scopeId: "department-b", role: "agent" },
+    ]);
+  });
+
   it("downgrades a tenant admin to agent when demoting away from Admin", () => {
     const changes = planLegacyDepartmentRoleUpdate({
       tenantId: "tenant-a",

@@ -161,6 +161,14 @@ export function planLegacyDepartmentRoleUpdate(params: {
 
   if (newRole === "admin") {
     changes.push({ scopeType: "TENANT", scopeId: tenantId, role: "admin" });
+    // A tenant admin is never also a department manager — clear any existing
+    // DepartmentManager grants (setting the department role to "agent" deletes the
+    // row) so promoting a manager to Admin removes them from DepartmentManager.
+    for (const grant of current) {
+      if (grant.scopeType === "DEPARTMENT" && grant.role !== "agent") {
+        changes.push({ scopeType: "DEPARTMENT", scopeId: grant.scopeId, role: "agent" });
+      }
+    }
     return changes;
   }
 

@@ -25,6 +25,7 @@ type PortalSubmission = {
   responses: IntakeResponseEntry[]
   ticketId: string | null
   ticketNumber: number | null
+  ticketHref: string | null
   ticketStatus: string | null
   ticketAssigneeName: string | null
   ticketAssigneeAvatarUrl: string | null
@@ -119,9 +120,9 @@ function SubmissionDetail({ submission }: { submission: PortalSubmission }) {
           <PriorityPill priority={submission.priority} />
         </MetaCell>
         <MetaCell label="Ticket">
-          {submission.ticketId ? (
+          {submission.ticketHref ? (
             <Link
-              href={`/tickets/${submission.ticketId}`}
+              href={submission.ticketHref}
               className="group/ticket inline-flex min-w-0 items-center gap-1.5 rounded-md font-sans text-[12px] font-semibold text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30"
             >
               #{submission.ticketNumber}

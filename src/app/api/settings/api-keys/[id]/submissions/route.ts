@@ -30,6 +30,8 @@ export async function GET(
           status: true,
           deletedAt: true,
           assignee: { select: { name: true, avatarUrl: true } },
+          tenant: { select: { slug: true } },
+          subDepartment: { select: { department: { select: { slug: true } } } },
         },
       },
     },
@@ -56,6 +58,11 @@ export async function GET(
       responses,
       ticketId: ticket?.id ?? null,
       ticketNumber: ticket?.ticketNumber ?? null,
+      // Ticket pages are department-scoped; a bare /tickets/<id> from this
+      // tenant-wide page has no department in the URL and bounces to the picker.
+      ticketHref: ticket
+        ? `/${ticket.tenant.slug}/${ticket.subDepartment.department.slug}/tickets/${ticket.id}`
+        : null,
       ticketStatus: ticket?.status ?? null,
       ticketAssigneeName: ticket?.assignee?.name ?? null,
       ticketAssigneeAvatarUrl: ticket?.assignee?.avatarUrl ?? null,

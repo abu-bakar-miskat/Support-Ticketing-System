@@ -1,11 +1,13 @@
 import { NextRequest } from "next/server"
 import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
-import { requirePortalApiKey, portalJson } from "@/lib/portal-api"
+import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
 
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requirePortalApiKey(request)
   if (error) return error
+  const limited = enforcePortalRateLimit(request, ctx.keyId, 120, "discovery")
+  if (limited) return limited
 
   return runWithApiKeyScope(ctx, async () => {
     const tenant = await prisma.tenant.findUnique({

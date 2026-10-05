@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
-import { requirePortalApiKey, portalJson } from "@/lib/portal-api"
+import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
 import { toSubmissionJson } from "../route"
 
 export async function GET(
@@ -10,6 +10,8 @@ export async function GET(
 ) {
   const { ctx, error } = await requirePortalApiKey(request)
   if (error) return error
+  const limited = enforcePortalRateLimit(request, ctx.keyId, 120, "submission")
+  if (limited) return limited
   const { submissionId } = await params
 
   return runWithApiKeyScope(ctx, async () => {

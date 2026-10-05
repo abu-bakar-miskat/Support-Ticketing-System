@@ -55,12 +55,28 @@ describe("tenant portal API guard", () => {
     expect(result.error?.status).toBe(403)
   })
 
-  it("rate limits by API key and client IP", () => {
-    mockLimited.mockReturnValue(true)
-    const response = enforcePortalRateLimit(new NextRequest("https://example.test/api"), "key-1")
-    expect(mockLimited).toHaveBeenCalledWith("portal:key-1:127.0.0.1", 60, 60_000)
+  it("rate limits authentication attempts by client IP", async () => {
+    mockLimited.mockReturnValueOnce(true)
+    const result = await requirePortalApiKey(new NextRequest("https://example.test/api"))
+    expect(result.ctx).toBeNull()
+    expect(result.error?.status).toBe(429)
+    expect(mockRequire).not.toHaveBeenCalled()
+    expect(mockLimited).toHaveBeenCalledWith("portal:auth:ip:127.0.0.1", 300, 60_000)
+  })
+
+  it("rate limits globally by API key and separately by client IP", () => {
+    mockLimited.mockReturnValueOnce(true).mockReturnValueOnce(false)
+    const response = enforcePortalRateLimit(
+      new NextRequest("https://example.test/api"),
+      "key-1",
+      30,
+      "submit",
+    )
+    expect(mockLimited).toHaveBeenNthCalledWith(1, "portal:submit:key:key-1", 30, 60_000)
+    expect(mockLimited).toHaveBeenNthCalledWith(2, "portal:submit:key:key-1:ip:127.0.0.1", 30, 60_000)
     expect(response?.status).toBe(429)
     expect(response?.headers.get("retry-after")).toBe("60")
+    expect(response?.headers.get("x-ratelimit-limit")).toBe("30")
   })
 
   it("rejects non-JSON and oversized bodies before parsing", async () => {

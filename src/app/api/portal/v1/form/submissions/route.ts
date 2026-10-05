@@ -17,7 +17,7 @@ import {
 export async function POST(request: NextRequest) {
   const { ctx, error } = await requirePortalApiKey(request, { write: true })
   if (error) return error
-  const limited = enforcePortalRateLimit(request, ctx.keyId, 30)
+  const limited = enforcePortalRateLimit(request, ctx.keyId, 30, "submit")
   if (limited) return limited
   const parsed = await readPortalJson(request)
   if (parsed.error) return parsed.error

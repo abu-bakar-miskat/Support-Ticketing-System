@@ -17,7 +17,7 @@ export async function POST(
 ) {
   const { ctx, error } = await requirePortalApiKey(request, { write: true })
   if (error) return error
-  const limited = enforcePortalRateLimit(request, ctx.keyId, 60)
+  const limited = enforcePortalRateLimit(request, ctx.keyId, 60, "comment")
   if (limited) return limited
   const parsed = await readPortalJson(request)
   if (parsed.error) return parsed.error

@@ -22,6 +22,14 @@ export async function requirePortalApiKey(
   | { ctx: ApiKeyContext & { tenantId: string }; error: null }
   | { ctx: null; error: NextResponse }
 > {
+  if (publicRateLimited(`portal:auth:ip:${clientIp(request)}`, 300, 60_000)) {
+    const error = portalJson({ error: "Too many requests" }, { status: 429 })
+    error.headers.set("Retry-After", "60")
+    error.headers.set("X-RateLimit-Limit", "300")
+    error.headers.set("X-RateLimit-Window", "60")
+    return { ctx: null, error }
+  }
+
   const result = await requireApiKey(request, { allowPortal: true })
   if (result.error) return result
 
@@ -73,11 +81,16 @@ export function enforcePortalRateLimit(
   request: NextRequest,
   keyId: string,
   limit = 60,
+  scope = "default",
 ): NextResponse | null {
-  const bucket = `portal:${keyId}:${clientIp(request)}`
-  if (!publicRateLimited(bucket, limit, 60_000)) return null
+  const ip = clientIp(request)
+  const keyLimited = publicRateLimited(`portal:${scope}:key:${keyId}`, limit, 60_000)
+  const clientLimited = publicRateLimited(`portal:${scope}:key:${keyId}:ip:${ip}`, limit, 60_000)
+  if (!keyLimited && !clientLimited) return null
   const response = portalJson({ error: "Too many requests" }, { status: 429 })
   response.headers.set("Retry-After", "60")
+  response.headers.set("X-RateLimit-Limit", String(limit))
+  response.headers.set("X-RateLimit-Window", "60")
   return response
 }
 

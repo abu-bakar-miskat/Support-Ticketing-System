@@ -2,11 +2,13 @@ import { NextRequest } from "next/server"
 import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import { isValidEmailFormat } from "@/lib/email-validation"
-import { requirePortalApiKey, portalJson } from "@/lib/portal-api"
+import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
 
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requirePortalApiKey(request)
   if (error) return error
+  const limited = enforcePortalRateLimit(request, ctx.keyId, 60, "submissions")
+  if (limited) return limited
   const email = (request.nextUrl.searchParams.get("email") ?? "").trim().toLowerCase()
   if (!isValidEmailFormat(email)) {
     return portalJson({ error: "A valid email query parameter is required" }, { status: 400 })

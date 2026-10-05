@@ -367,11 +367,12 @@ export type BoardCardWhere = {
   sortKey?: string
   unassignedOnly?: boolean
   /**
-   * "intake"  = only tickets created via an intake form,
+   * "intake"  = support-form tickets not created through the Portal API,
+   * "portal"  = tickets submitted through a linked Portal API form,
    * "mailbox" = only tickets created from an inbound email (no intake form),
    * "manual"  = only tickets created by hand (no intake form, not from email)
    */
-  source?: "intake" | "manual" | "mailbox"
+  source?: "intake" | "portal" | "manual" | "mailbox"
   /**
    * Draft visibility:
    * - undefined/false (default): exclude drafts from boards and normal lists
@@ -511,7 +512,9 @@ function buildTicketWhere(where: Omit<BoardCardWhere, "skip" | "take" | "timeFor
     },
   }
   if (where.source === "intake") {
-    and.push({ intake: { isNot: null } })
+    and.push({ intake: { is: { apiKeyId: null } } })
+  } else if (where.source === "portal") {
+    and.push({ intake: { is: { apiKeyId: { not: null } } } })
   } else if (where.source === "mailbox") {
     and.push(mailboxSourceFilter)
   } else if (where.source === "manual") {

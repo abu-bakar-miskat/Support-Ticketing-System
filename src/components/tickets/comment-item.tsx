@@ -51,6 +51,7 @@ type CommentData = {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
+  externalAuthor?: boolean
   attachments: CommentAttachment[]
   replies: CommentData[]
 }
@@ -601,7 +602,7 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comment.attachments, comment.body, comment.deletedAt])
-  const isAuthor = localComment.authorId === currentUser?.id
+  const isAuthor = !localComment.externalAuthor && localComment.authorId === currentUser?.id
   const isDeleted = !!localComment.deletedAt
   const isReply = !!parentRef
   const replyCount = comment.replies.length
@@ -683,6 +684,11 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
           <span className="font-sans text-[12.5px] font-semibold leading-none text-sts-foreground">
             {localComment.authorName}
           </span>
+          {localComment.externalAuthor && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-sts-blue/20 bg-sts-blue/10 px-1.5 py-0.5 font-sans text-[9px] font-semibold leading-none tracking-[0.04em] text-sts-blue uppercase">
+              Portal user
+            </span>
+          )}
           <span className="font-sans text-[11.5px] text-sts-subtle shrink-0">
             {formatDateTime(new Date(localComment.createdAt))}
           </span>

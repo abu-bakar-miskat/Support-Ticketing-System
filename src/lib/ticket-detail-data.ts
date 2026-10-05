@@ -15,6 +15,7 @@ import { isDueOverdue, isBlockedStatus } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
+import { presentPortalComment } from "@/lib/portal-comments";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
@@ -62,6 +63,7 @@ const ticketCoreInclude = {
   intake: {
     include: {
       formConfig: { select: { name: true, allowCustomerReplies: true } },
+      apiKey: { select: { createdById: true } },
     },
   },
   comments: {
@@ -671,39 +673,57 @@ export async function getTicketDetailPayload(
       assigneeAvatarUrl: st.assignee?.avatarUrl ?? null,
       canDelete: canDeleteTicket(profile, { creatorId: st.creatorId }),
     })),
-    comments: comments.map((c) => ({
-      id: c.id,
-      body: c.body,
-      createdAt: c.createdAt.toISOString(),
-      editedAt: c.editedAt?.toISOString() ?? null,
-      deletedAt: c.deletedAt?.toISOString() ?? null,
-      authorId: c.author.id,
-      authorName: c.author.name,
-      authorAvatarUrl: c.author.avatarUrl,
-      attachments: c.attachments.map((a) => ({
-        id: a.id,
-        storageUrl: a.storageUrl,
-        fileName: a.fileName,
-        fileSize: a.fileSize,
-      })),
-      replies: c.replies.map((r) => ({
-        id: r.id,
-        body: r.body,
-        createdAt: r.createdAt.toISOString(),
-        editedAt: r.editedAt?.toISOString() ?? null,
-        deletedAt: r.deletedAt?.toISOString() ?? null,
-        authorId: r.author.id,
-        authorName: r.author.name,
-        authorAvatarUrl: r.author.avatarUrl,
-        attachments: r.attachments.map((a) => ({
+    comments: comments.map((c) => {
+      const presented = presentPortalComment({
+        body: c.body,
+        authorId: c.author.id,
+        apiKeyCreatedById: ticket.intake?.apiKey?.createdById,
+        submitterName: ticket.intake?.submitterName,
+      });
+      return {
+        id: c.id,
+        body: presented.body,
+        createdAt: c.createdAt.toISOString(),
+        editedAt: c.editedAt?.toISOString() ?? null,
+        deletedAt: c.deletedAt?.toISOString() ?? null,
+        authorId: c.author.id,
+        authorName: presented.authorName ?? c.author.name,
+        authorAvatarUrl: presented.isPortalRequester ? null : c.author.avatarUrl,
+        externalAuthor: presented.isPortalRequester,
+        attachments: c.attachments.map((a) => ({
           id: a.id,
           storageUrl: a.storageUrl,
           fileName: a.fileName,
           fileSize: a.fileSize,
         })),
-        replies: [],
-      })),
-    })),
+        replies: c.replies.map((r) => {
+          const replyPresented = presentPortalComment({
+            body: r.body,
+            authorId: r.author.id,
+            apiKeyCreatedById: ticket.intake?.apiKey?.createdById,
+            submitterName: ticket.intake?.submitterName,
+          });
+          return {
+            id: r.id,
+            body: replyPresented.body,
+            createdAt: r.createdAt.toISOString(),
+            editedAt: r.editedAt?.toISOString() ?? null,
+            deletedAt: r.deletedAt?.toISOString() ?? null,
+            authorId: r.author.id,
+            authorName: replyPresented.authorName ?? r.author.name,
+            authorAvatarUrl: replyPresented.isPortalRequester ? null : r.author.avatarUrl,
+            externalAuthor: replyPresented.isPortalRequester,
+            attachments: r.attachments.map((a) => ({
+              id: a.id,
+              storageUrl: a.storageUrl,
+              fileName: a.fileName,
+              fileSize: a.fileSize,
+            })),
+            replies: [],
+          };
+        }),
+      };
+    }),
     activity: activityLogs.map((a) => ({
       id: a.id,
       action: a.action,

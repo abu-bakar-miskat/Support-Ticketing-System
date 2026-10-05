@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bot, ChevronDown, Copy, Check, Info, Plus, X, Key } from "lucide-react";
+import { BookOpen, Bot, ChevronDown, Copy, Check, Info, Plus, X, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -20,6 +20,7 @@ import {
   PortalApiFormsSection,
   type PortalApiFormRow,
 } from "@/components/departments/portal-api-forms-section";
+import { PortalApiDocumentation } from "@/components/departments/portal-api-documentation";
 
 export type ApiKeyRow = {
   id: string;
@@ -429,6 +430,7 @@ export function SettingsApiKeysPage({
   } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [routeCopied, setRouteCopied] = useState(false);
+  const [showDocumentation, setShowDocumentation] = useState(false);
 
   function handleCreated(rawKey: string, keyName: string) {
     setShowGenerate(false);
@@ -487,6 +489,11 @@ export function SettingsApiKeysPage({
         />
       )}
 
+      <PortalApiDocumentation
+        open={showDocumentation}
+        onClose={() => setShowDocumentation(false)}
+      />
+
       <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
@@ -519,16 +526,26 @@ export function SettingsApiKeysPage({
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-lg bg-sts-surface px-2.5 py-2 ring-1 ring-sts-card-border/70">
-              <code className="font-mono text-[11.5px] text-sts-foreground">/api/portal/v1</code>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-lg bg-sts-surface px-2.5 py-2 ring-1 ring-sts-card-border/70">
+                <code className="font-mono text-[11.5px] text-sts-foreground">/api/portal/v1</code>
+                <button
+                  type="button"
+                  onClick={copyPortalRoute}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md bg-sts-card px-2.5 font-sans text-[11px] font-semibold text-sts-foreground shadow-sm ring-1 ring-sts-card-border transition-colors hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
+                  aria-label="Copy portal API route"
+                >
+                  {routeCopied ? <Check className="size-3 text-sts-green" aria-hidden /> : <Copy className="size-3" aria-hidden />}
+                  {routeCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
               <button
                 type="button"
-                onClick={copyPortalRoute}
-                className="inline-flex h-7 items-center gap-1.5 rounded-md bg-sts-card px-2.5 font-sans text-[11px] font-semibold text-sts-foreground shadow-sm ring-1 ring-sts-card-border transition-colors hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
-                aria-label="Copy portal API route"
+                onClick={() => setShowDocumentation(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id/30 hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
               >
-                {routeCopied ? <Check className="size-3 text-sts-green" aria-hidden /> : <Copy className="size-3" aria-hidden />}
-                {routeCopied ? "Copied" : "Copy"}
+                <BookOpen className="size-3.5" strokeWidth={1.8} />
+                Documentation
               </button>
             </div>
           </div>

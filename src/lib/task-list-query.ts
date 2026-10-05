@@ -42,7 +42,7 @@ export async function buildTaskListParams(
   const targetToStr   = url.searchParams.get("targetDateTo");
   const sortKey      = url.searchParams.get("sort") ?? "created";
   const sourceParam  = url.searchParams.get("source");
-  const source       = sourceParam === "intake" || sourceParam === "manual" || sourceParam === "mailbox" ? sourceParam : undefined;
+  const source       = sourceParam === "intake" || sourceParam === "portal" || sourceParam === "manual" || sourceParam === "mailbox" ? sourceParam : undefined;
   const subDepartmentIdIn = url.searchParams.get("subDepartmentId")?.split(",").filter(Boolean) ?? [];
 
   const dateFrom = dateFromStr ? new Date(dateFromStr) : undefined;

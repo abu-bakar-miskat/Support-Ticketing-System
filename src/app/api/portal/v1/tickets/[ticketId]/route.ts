@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
+import { presentPortalComment } from "@/lib/portal-comments"
 
 export async function GET(
   request: NextRequest,
@@ -44,12 +45,13 @@ export async function GET(
             body: true,
             createdAt: true,
             editedAt: true,
-            author: { select: { name: true, avatarUrl: true } },
+            author: { select: { id: true, name: true, avatarUrl: true } },
           },
         },
       },
     })
-    if (!ticket) return portalJson({ error: "Ticket not found" }, { status: 404 })
+    if (!ticket?.intake) return portalJson({ error: "Ticket not found" }, { status: 404 })
+    const intake = ticket.intake
 
     return portalJson({
       data: {
@@ -66,8 +68,24 @@ export async function GET(
         subDepartment: { id: ticket.subDepartment.id, name: ticket.subDepartment.name },
         project: ticket.project,
         assignee: ticket.assignee,
-        submission: ticket.intake,
-        comments: ticket.comments,
+        submission: intake,
+        comments: ticket.comments.map((comment) => {
+          const displayed = presentPortalComment({
+            body: comment.body,
+            authorId: comment.author.id,
+            apiKeyCreatedById: ctx.createdById,
+            submitterName: intake.submitterName,
+          })
+          return {
+            id: comment.id,
+            body: displayed.body,
+            createdAt: comment.createdAt,
+            editedAt: comment.editedAt,
+            author: displayed.isPortalRequester
+              ? { name: intake.submitterName, avatarUrl: null, type: "requester" }
+              : { name: comment.author.name, avatarUrl: comment.author.avatarUrl, type: "staff" },
+          }
+        }),
       },
     })
   })

@@ -36,6 +36,7 @@ const PRIORITY_OPTIONS = [
 
 const SOURCE_OPTIONS = [
   { id: "intake", label: "Support Ticket" },
+  { id: "portal", label: "Portal API Ticket" },
   { id: "manual", label: "Manual Ticket" },
   { id: "mailbox", label: "Mailbox Ticket" },
 ];
@@ -161,7 +162,7 @@ export function AllTasksPage({
   const [selPeople, setSelPeople] = useState<Set<string>>(new Set()); // profile IDs
   const [selModule, setSelModule] = useState<Set<string>>(new Set()); // module IDs
   const [selLabels, setSelLabels] = useState<Set<string>>(new Set()); // label names
-  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "manual" | "mailbox"
+  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "portal" | "manual" | "mailbox"
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
@@ -202,7 +203,7 @@ export function AllTasksPage({
       sort: sortKey,
       unassigned: unassignedOnly || undefined,
       drafts: draftsOnly || undefined,
-      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual" | "mailbox") : undefined,
+      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "portal" | "manual" | "mailbox") : undefined,
     }),
     [
       pageSize,

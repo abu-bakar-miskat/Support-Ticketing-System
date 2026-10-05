@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
       version: "v1",
       tenantId: ctx.tenantId,
       tenantName: tenant?.name ?? null,
-    endpoints: {
-      form: "GET /api/portal/v1/form",
-      submit: "POST /api/portal/v1/form/submissions",
+      endpoints: {
+        form: "GET /api/portal/v1/form",
+        submit: "POST /api/portal/v1/form/submissions",
         submissions: "GET /api/portal/v1/submissions?email={email}",
         submission: "GET /api/portal/v1/submissions/{submissionId}",
         ticket: "GET /api/portal/v1/tickets/{ticketId}",

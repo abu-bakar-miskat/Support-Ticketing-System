@@ -27,7 +27,7 @@ export async function GET(
         submitterEmail: true,
         responses: true,
         createdAt: true,
-        formConfig: { select: { id: true, name: true, departmentId: true } },
+        formConfig: { select: { id: true, name: true } },
         ticket: {
           select: {
             id: true,

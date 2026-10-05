@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
 import { assertTicketAccess } from "@/lib/auth"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { presentPortalComment } from "@/lib/portal-comments"
 
 export async function GET(
   _req: NextRequest,
@@ -23,6 +24,12 @@ export async function GET(
         select: {
           id: true, tenantId: true, subDepartmentId: true, projectId: true, assigneeId: true, creatorId: true, deletedAt: true,
           subDepartment: { select: { departmentId: true } },
+          intake: {
+            select: {
+              submitterName: true,
+              apiKey: { select: { createdById: true } },
+            },
+          },
         },
       },
       replies: {
@@ -39,29 +46,50 @@ export async function GET(
   const accessError = await assertTicketAccess(profile, comment.ticket)
   if (accessError) return accessError
 
+  const present = (item: { body: string; author: { id: string; name: string; avatarUrl: string | null } }) => {
+    const displayed = presentPortalComment({
+      body: item.body,
+      authorId: item.author.id,
+      apiKeyCreatedById: comment.ticket.intake?.apiKey?.createdById,
+      submitterName: comment.ticket.intake?.submitterName,
+    })
+    return {
+      body: displayed.body,
+      authorName: displayed.authorName ?? item.author.name,
+      authorAvatarUrl: displayed.isPortalRequester ? null : item.author.avatarUrl,
+      externalAuthor: displayed.isPortalRequester,
+    }
+  }
+  const displayedComment = present(comment)
+
   return NextResponse.json({
     id: comment.id,
-    body: comment.body,
+    body: displayedComment.body,
     createdAt: comment.createdAt.toISOString(),
     editedAt: comment.editedAt?.toISOString() ?? null,
     deletedAt: comment.deletedAt?.toISOString() ?? null,
     messageId: comment.messageId ?? null,
     authorId: comment.author.id,
-    authorName: comment.author.name,
-    authorAvatarUrl: comment.author.avatarUrl ?? null,
+    authorName: displayedComment.authorName,
+    authorAvatarUrl: displayedComment.authorAvatarUrl,
+    externalAuthor: displayedComment.externalAuthor,
     attachments: comment.attachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
-    replies: comment.replies.map((r) => ({
-      id: r.id,
-      body: r.body,
-      createdAt: r.createdAt.toISOString(),
-      editedAt: r.editedAt?.toISOString() ?? null,
-      deletedAt: r.deletedAt?.toISOString() ?? null,
-      authorId: r.author.id,
-      authorName: r.author.name,
-      authorAvatarUrl: r.author.avatarUrl ?? null,
-      attachments: r.attachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
-      replies: [],
-    })),
+    replies: comment.replies.map((r) => {
+      const displayedReply = present(r)
+      return {
+        id: r.id,
+        body: displayedReply.body,
+        createdAt: r.createdAt.toISOString(),
+        editedAt: r.editedAt?.toISOString() ?? null,
+        deletedAt: r.deletedAt?.toISOString() ?? null,
+        authorId: r.author.id,
+        authorName: displayedReply.authorName,
+        authorAvatarUrl: displayedReply.authorAvatarUrl,
+        externalAuthor: displayedReply.externalAuthor,
+        attachments: r.attachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
+        replies: [],
+      }
+    }),
   })
 }
 
@@ -78,10 +106,21 @@ export async function PATCH(
     where: { id },
     select: {
       id: true,
+      body: true,
       authorId: true,
       deletedAt: true,
       ticketId: true,
-      ticket: { select: { title: true } },
+      ticket: {
+        select: {
+          title: true,
+          intake: {
+            select: {
+              submitterName: true,
+              apiKey: { select: { createdById: true } },
+            },
+          },
+        },
+      },
       mentions: { select: { mentionedUserId: true, notifiedAt: true } },
     },
   })
@@ -90,6 +129,14 @@ export async function PATCH(
   }
   if (comment.authorId !== profile.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+  if (presentPortalComment({
+    body: comment.body,
+    authorId: comment.authorId,
+    apiKeyCreatedById: comment.ticket.intake?.apiKey?.createdById,
+    submitterName: comment.ticket.intake?.submitterName,
+  }).isPortalRequester) {
+    return NextResponse.json({ error: "Portal requester comments cannot be edited internally" }, { status: 403 })
   }
   if (comment.deletedAt) {
     return NextResponse.json({ error: "Cannot edit a deleted comment" }, { status: 409 })
@@ -141,13 +188,35 @@ export async function DELETE(
 
   const comment = await prisma.comment.findUnique({
     where: { id },
-    select: { id: true, authorId: true },
+    select: {
+      id: true,
+      body: true,
+      authorId: true,
+      ticket: {
+        select: {
+          intake: {
+            select: {
+              submitterName: true,
+              apiKey: { select: { createdById: true } },
+            },
+          },
+        },
+      },
+    },
   })
   if (!comment) {
     return NextResponse.json({ error: "Comment not found" }, { status: 404 })
   }
   if (comment.authorId !== profile.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+  if (presentPortalComment({
+    body: comment.body,
+    authorId: comment.authorId,
+    apiKeyCreatedById: comment.ticket.intake?.apiKey?.createdById,
+    submitterName: comment.ticket.intake?.submitterName,
+  }).isPortalRequester) {
+    return NextResponse.json({ error: "Portal requester comments cannot be deleted internally" }, { status: 403 })
   }
 
   await prisma.comment.update({

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         submitterEmail: true,
         responses: true,
         createdAt: true,
-        formConfig: { select: { id: true, name: true, departmentId: true } },
+        formConfig: { select: { id: true, name: true } },
         ticket: {
           select: {
             id: true,
@@ -51,7 +51,7 @@ export function toSubmissionJson(submission: {
   submitterEmail: string
   responses: unknown
   createdAt: Date
-  formConfig: { id: string; name: string; departmentId: string }
+  formConfig: { id: string; name: string }
   ticket: null | {
     id: string
     ticketNumber: number

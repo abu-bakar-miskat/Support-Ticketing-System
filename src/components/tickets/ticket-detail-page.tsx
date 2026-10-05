@@ -583,6 +583,8 @@ export type CommentData = {
   authorId: string;
   authorName: string;
   authorAvatarUrl: string | null;
+  /** True for a requester comment submitted through the external Portal API. */
+  externalAuthor?: boolean;
   attachments: CommentAttachment[];
   replies: CommentData[];
   /** Set when this comment is an internal note attached to a customer message. */

@@ -208,6 +208,16 @@ export type IntakeFormRow = {
   hasSlaPolicies: boolean;
 };
 
+export type FormEditorTarget = Pick<
+  IntakeFormRow,
+  | "id"
+  | "name"
+  | "departmentId"
+  | "departmentName"
+  | "intakeSubDepartmentId"
+  | "hasSlaPolicies"
+>;
+
 export type SubDepartmentOption = { id: string; name: string };
 export type MemberOption = UserListPerson;
 export type DeptOption = {
@@ -1369,12 +1379,12 @@ function FieldEditor({
 
 // ── Field builder modal ───────────────────────────────────────────────────────
 
-function FieldBuilderModal({
+export function FieldBuilderModal({
   form,
   defaultFields,
   onClose,
 }: {
-  form: IntakeFormRow;
+  form: FormEditorTarget;
   defaultFields: ResolvedDefaultFields;
   onClose: () => void;
 }) {
@@ -2259,57 +2269,116 @@ function FormDesignModal({
 type IssueRow = {
   id: string;
   name: string;
+  departmentId: string | null;
   subDepartmentId: string | null;
   priority: string | null;
   firstResponseMins: number;
   resolutionMins: number;
 };
 
+export type IssueDepartmentOption = {
+  id: string;
+  name: string;
+  subDepartments: SubDepartmentOption[];
+};
+
 function IssueEditorRow({
   issue,
   subDepartments,
+  departments,
   requiresSubDept,
   onSave,
   onDelete,
 }: {
   issue: IssueRow;
   subDepartments: SubDepartmentOption[];
+  departments?: IssueDepartmentOption[];
   requiresSubDept: boolean;
-  onSave: (id: string, patch: { name: string; subDepartmentId: string | null }) => Promise<void>;
+  onSave: (id: string, patch: {
+    name: string;
+    departmentId?: string;
+    subDepartmentId: string | null;
+    firstResponseMins: number;
+    resolutionMins: number;
+  }) => Promise<void>;
   onDelete: (id: string) => void;
 }) {
   const [name, setName] = useState(issue.name);
+  const [departmentId, setDepartmentId] = useState(issue.departmentId ?? "");
   const [subDepartmentId, setSubDepartmentId] = useState(issue.subDepartmentId ?? "");
+  const [firstResponseMins, setFirstResponseMins] = useState(issue.firstResponseMins);
+  const [resolutionMins, setResolutionMins] = useState(issue.resolutionMins);
   const [saving, setSaving] = useState(false);
-  const dirty = name.trim() !== issue.name || (subDepartmentId || null) !== issue.subDepartmentId;
-  const canSave = dirty && !saving && name.trim().length > 0 && !(requiresSubDept && !subDepartmentId);
+  const availableSubDepartments = departments
+    ? (departments.find((department) => department.id === departmentId)?.subDepartments ?? [])
+    : subDepartments;
+  const dirty = name.trim() !== issue.name ||
+    (departments ? departmentId !== issue.departmentId : false) ||
+    (subDepartmentId || null) !== issue.subDepartmentId ||
+    firstResponseMins !== issue.firstResponseMins ||
+    resolutionMins !== issue.resolutionMins;
+  const canSave = dirty && !saving && name.trim().length > 0 &&
+    firstResponseMins > 0 && resolutionMins > 0 &&
+    (!departments || Boolean(departmentId)) &&
+    !(requiresSubDept && !subDepartmentId);
 
   async function save() {
     if (!canSave) return;
     setSaving(true);
     try {
-      await onSave(issue.id, { name: name.trim(), subDepartmentId: subDepartmentId || null });
+      await onSave(issue.id, {
+        name: name.trim(),
+        ...(departments ? { departmentId } : {}),
+        subDepartmentId: subDepartmentId || null,
+        firstResponseMins,
+        resolutionMins,
+      });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5">
+    <div className="flex flex-wrap items-end gap-2 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Issue name"
         className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
       />
+      {departments && (
+        <div className="w-[170px] shrink-0">
+          <Select
+            value={departmentId}
+            onValueChange={(value) => {
+              setDepartmentId(value ?? "");
+              setSubDepartmentId("");
+            }}
+          >
+            <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+              <span className={departmentId ? "text-sts-foreground" : "text-sts-subtle"}>
+                {departments.find((department) => department.id === departmentId)?.name ?? "Select department"}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((department) => (
+                <SelectItem key={department.id} value={department.id} className="font-sans text-[12.5px]">
+                  {department.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="w-[190px] shrink-0">
         <Select
           value={subDepartmentId || "__default__"}
+          disabled={Boolean(departments) && !departmentId}
           onValueChange={(v) => setSubDepartmentId(v === "__default__" ? "" : (v ?? ""))}
         >
           <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
             <span className={subDepartmentId ? "text-sts-foreground" : "text-sts-subtle"}>
-              {subDepartments.find((s) => s.id === subDepartmentId)?.name ??
+              {availableSubDepartments.find((s) => s.id === subDepartmentId)?.name ??
                 (requiresSubDept ? "Select sub-department" : "Form default")}
             </span>
           </SelectTrigger>
@@ -2319,7 +2388,7 @@ function IssueEditorRow({
                 Form default
               </SelectItem>
             )}
-            {subDepartments.map((s) => (
+            {availableSubDepartments.map((s) => (
               <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
                 {s.name}
               </SelectItem>
@@ -2327,6 +2396,32 @@ function IssueEditorRow({
           </SelectContent>
         </Select>
       </div>
+      <label className="flex w-[130px] shrink-0 flex-col gap-1">
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Response (min)
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={525600}
+          value={firstResponseMins}
+          onChange={(event) => setFirstResponseMins(Number(event.target.value))}
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+        />
+      </label>
+      <label className="flex w-[130px] shrink-0 flex-col gap-1">
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Resolution (min)
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={525600}
+          value={resolutionMins}
+          onChange={(event) => setResolutionMins(Number(event.target.value))}
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+        />
+      </label>
       <button
         type="button"
         onClick={save}
@@ -2349,34 +2444,44 @@ function IssueEditorRow({
   );
 }
 
-function IssuesModal({
+export function IssuesModal({
   form,
   subDepartments,
+  issuesEndpoint,
+  issueDepartments,
   onClose,
 }: {
-  form: IntakeFormRow;
+  form: FormEditorTarget;
   subDepartments: SubDepartmentOption[];
+  issuesEndpoint?: string;
+  issueDepartments?: IssueDepartmentOption[];
   onClose: () => void;
 }) {
   const [issues, setIssues] = useState<IssueRow[] | null>(null);
   const [newName, setNewName] = useState("");
+  const [newDepartmentId, setNewDepartmentId] = useState("");
   const [newSubDept, setNewSubDept] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Department-level forms (no default sub-department) must route every issue.
-  const requiresSubDept = !form.intakeSubDepartmentId;
-  const base = `/api/departments/${form.departmentId}/sla-policies`;
+  const tenantRouted = Boolean(issueDepartments);
+  const requiresSubDept = tenantRouted || !form.intakeSubDepartmentId;
+  const newSubDepartments = issueDepartments
+    ? (issueDepartments.find((department) => department.id === newDepartmentId)?.subDepartments ?? [])
+    : subDepartments;
+  const base = issuesEndpoint ?? `/api/departments/${form.departmentId}/sla-policies`;
 
   useEffect(() => {
-    fetch(`${base}?formConfigId=${form.id}`)
+    fetch(issuesEndpoint ? base : `${base}?formConfigId=${form.id}`)
       .then((r) => r.json())
       .then((data: IssueRow[]) => setIssues(Array.isArray(data) ? data : []))
       .catch(() => setIssues([]));
-  }, [base, form.id]);
+  }, [base, form.id, issuesEndpoint]);
 
   async function addIssue() {
     const name = newName.trim();
     if (!name) { setError("Issue name is required."); return; }
+    if (tenantRouted && !newDepartmentId) { setError("Pick a department for this issue."); return; }
     if (requiresSubDept && !newSubDept) { setError("Pick a sub-department for this issue."); return; }
     setAdding(true);
     setError(null);
@@ -2387,6 +2492,7 @@ function IssuesModal({
         body: JSON.stringify({
           name,
           formConfigId: form.id,
+          ...(tenantRouted ? { departmentId: newDepartmentId } : {}),
           subDepartmentId: newSubDept || null,
           // Sensible default SLA targets; fine-tune on the SLA policies page.
           firstResponseMins: 60,
@@ -2401,13 +2507,20 @@ function IssuesModal({
       const created: IssueRow = await res.json();
       setIssues((prev) => [...(prev ?? []), created]);
       setNewName("");
+      setNewDepartmentId("");
       setNewSubDept("");
     } finally {
       setAdding(false);
     }
   }
 
-  async function saveIssue(id: string, patch: { name: string; subDepartmentId: string | null }) {
+  async function saveIssue(id: string, patch: {
+    name: string;
+    departmentId?: string;
+    subDepartmentId: string | null;
+    firstResponseMins: number;
+    resolutionMins: number;
+  }) {
     const res = await fetch(`${base}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -2436,14 +2549,17 @@ function IssuesModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
       <div
-        className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
+        className={cn(
+          "relative flex w-full flex-col rounded-2xl border border-sts-card-border shadow-2xl",
+          tenantRouted ? "max-w-5xl" : "max-w-2xl",
+        )}
         style={{ height: "70vh", maxHeight: "70vh", background: "var(--sts-card-solid)" }}
       >
         <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
           <div>
             <h2 className="sts-text-modal-title">Issues</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              {form.name} · {form.departmentName}
+              {tenantRouted ? form.name : `${form.name} · ${form.departmentName}`}
             </p>
           </div>
           <button
@@ -2457,16 +2573,18 @@ function IssuesModal({
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <p className="mb-3 font-sans text-[11.5px] text-sts-subtle">
-            Customers pick an issue on the public form. Each issue routes its ticket to the chosen
-            sub-department, where it&apos;s recorded and assigned using that sub-department&apos;s
+            Customers pick an issue on the support form. Each issue routes its ticket to the chosen
+            {tenantRouted ? " department and sub-department" : " sub-department"}, where it&apos;s recorded and assigned using that sub-department&apos;s
             assignment method.
-            {requiresSubDept
-              ? " This form has no default sub-department, so every issue must route to one."
+            {tenantRouted
+              ? " Select both levels for every issue."
+              : requiresSubDept
+                ? " This form has no default sub-department, so every issue must route to one."
               : " Leave an issue on “Form default” to use the form’s default sub-department."}
           </p>
 
           {/* Add new issue */}
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -2474,11 +2592,39 @@ function IssuesModal({
               placeholder="New issue, e.g. Cannot log in"
               className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
             />
+            {issueDepartments && (
+              <div className="w-[170px] shrink-0">
+                <Select
+                  value={newDepartmentId}
+                  onValueChange={(value) => {
+                    setNewDepartmentId(value ?? "");
+                    setNewSubDept("");
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+                    <span className={newDepartmentId ? "text-sts-foreground" : "text-sts-subtle"}>
+                      {issueDepartments.find((department) => department.id === newDepartmentId)?.name ?? "Select department"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueDepartments.map((department) => (
+                      <SelectItem key={department.id} value={department.id} className="font-sans text-[12.5px]">
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="w-[190px] shrink-0">
-              <Select value={newSubDept || "__default__"} onValueChange={(v) => setNewSubDept(v === "__default__" ? "" : (v ?? ""))}>
+              <Select
+                value={newSubDept || "__default__"}
+                disabled={tenantRouted && !newDepartmentId}
+                onValueChange={(v) => setNewSubDept(v === "__default__" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
                   <span className={newSubDept ? "text-sts-foreground" : "text-sts-subtle"}>
-                    {subDepartments.find((s) => s.id === newSubDept)?.name ??
+                    {newSubDepartments.find((s) => s.id === newSubDept)?.name ??
                       (requiresSubDept ? "Select sub-department" : "Form default")}
                   </span>
                 </SelectTrigger>
@@ -2488,7 +2634,7 @@ function IssuesModal({
                       Form default
                     </SelectItem>
                   )}
-                  {subDepartments.map((s) => (
+                  {newSubDepartments.map((s) => (
                     <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
                       {s.name}
                     </SelectItem>
@@ -2499,7 +2645,7 @@ function IssuesModal({
             <button
               type="button"
               onClick={addIssue}
-              disabled={adding}
+              disabled={adding || (tenantRouted && (!newDepartmentId || !newSubDept))}
               className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               {adding ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" strokeWidth={2.5} />}
@@ -2527,6 +2673,7 @@ function IssuesModal({
                   key={issue.id}
                   issue={issue}
                   subDepartments={subDepartments}
+                  departments={issueDepartments}
                   requiresSubDept={requiresSubDept}
                   onSave={saveIssue}
                   onDelete={deleteIssue}
@@ -2538,7 +2685,7 @@ function IssuesModal({
 
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-sts-card-border px-6 py-3">
           <p className="font-sans text-[11px] text-sts-subtle">
-            Fine-tune SLA targets, priority &amp; assignees on the SLA policies page.
+            Response and resolution targets are applied to tickets created for each issue.
           </p>
           <button
             type="button"

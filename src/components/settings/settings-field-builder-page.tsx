@@ -411,11 +411,17 @@ export function SettingsFieldBuilderPage({
   formName,
   departmentName,
   fields: initialFields,
+  backHref = "/settings/support-forms",
+  backLabel = "Support forms",
+  currentHref = `/settings/support-forms/${formId}`,
 }: {
   formId: string
   formName: string
   departmentName: string
   fields: FieldRow[]
+  backHref?: string
+  backLabel?: string
+  currentHref?: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -528,19 +534,19 @@ export function SettingsFieldBuilderPage({
       <BreadcrumbRegistrar
         crumbs={[
           { label: "Home", href: "/" },
-          { label: "Support forms", href: "/settings/support-forms" },
-          { label: formName, href: `/settings/support-forms/${formId}` },
+          { label: backLabel, href: backHref },
+          { label: formName, href: currentHref },
         ]}
       />
       {/* Header */}
       <div className="flex flex-col gap-1">
         <button
           type="button"
-          onClick={() => startTransition(() => router.push("/settings/support-forms"))}
+          onClick={() => startTransition(() => router.push(backHref))}
           className="flex w-fit items-center gap-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ChevronLeft className="size-3.5" />
-          Support forms
+          {backLabel}
         </button>
         <div className="flex items-center justify-between">
           <div>

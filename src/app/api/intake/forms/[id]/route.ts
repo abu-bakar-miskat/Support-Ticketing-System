@@ -125,6 +125,17 @@ export async function DELETE(
     )
   }
 
+  const portalKey = await prisma.apiKey.findUnique({
+    where: { formConfigId: id },
+    select: { id: true },
+  })
+  if (portalKey) {
+    return NextResponse.json(
+      { error: "This form belongs to a portal API key and cannot be deleted." },
+      { status: 409 },
+    )
+  }
+
   await prisma.intakeFormConfig.delete({ where: { id } })
   return new NextResponse(null, { status: 204 })
 }

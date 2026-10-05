@@ -16,10 +16,12 @@ export function TimezoneSelect({
   value,
   onChange,
   className,
+  triggerClassName,
 }: {
   value: string;
   onChange: (timezone: string) => void;
   className?: string;
+  triggerClassName?: string;
 }) {
   const [options, setOptions] = useState(() =>
     TIMEZONES.some((timezone) => timezone.value === value)
@@ -64,7 +66,7 @@ export function TimezoneSelect({
           emptyLabel="No timezone found"
           aria-label="Timezone"
           icon={Globe2}
-          className="w-72 bg-sts-surface"
+          className={cn("w-72 bg-sts-surface", triggerClassName)}
           contentClassName="min-w-[min(22rem,calc(100vw-2rem))]"
         />
         {detectedTimezone && detectedTimezone !== value && (

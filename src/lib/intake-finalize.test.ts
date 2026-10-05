@@ -105,6 +105,21 @@ describe("createTicketFromPayload — department-scoped routing", () => {
     )
   })
 
+  it("uses the chosen issue's department for tenant-wide portal routing", async () => {
+    mockFindPolicy.mockResolvedValue({
+      priority: "Medium",
+      resolutionMins: 120,
+      departmentId: "dept-2",
+      subDepartmentId: "team-2",
+    } as never)
+
+    await createTicketFromPayload("form-1", { ...payload, issueId: "issue-2" })
+
+    expect(mockPrepare).toHaveBeenCalledWith(
+      expect.objectContaining({ departmentId: "dept-2", intakeSubDepartmentId: "team-2" }),
+    )
+  })
+
   it("throws only when the department has no sub-departments at all", async () => {
     mockFindFirstSub.mockResolvedValue(null as never)
 

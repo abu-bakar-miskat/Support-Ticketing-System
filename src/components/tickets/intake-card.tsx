@@ -67,6 +67,55 @@ function EmailValue({ email }: { email: string }) {
   );
 }
 
+/** Renders one submitted answer: rich text, file/image link, email, or plain text. */
+export function IntakeResponseValue({ response: r }: { response: IntakeResponseEntry }) {
+  const isEmail =
+    r.type === "email" ||
+    (r.type !== "richtext" &&
+      r.type !== "file" &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.value.trim()));
+  return r.type === "richtext" ? (
+    <RichTextDisplay html={r.value} />
+  ) : r.type === "file" ? (
+    isImageUrl(r.value) ? (
+      <div className="flex flex-col gap-1.5">
+        <div className="overflow-hidden rounded-lg border border-sts-card-border">
+          <img
+            src={r.value}
+            alt={r.label}
+            className="block max-w-full"
+          />
+        </div>
+        <a
+          href={r.value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-sans text-[11.5px] text-sts-id hover:underline"
+        >
+          <ExternalLink className="size-3 shrink-0" />
+          View full image
+        </a>
+      </div>
+    ) : (
+      <a
+        href={r.value}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-id hover:underline"
+      >
+        <Paperclip className="size-3 shrink-0" />
+        Download file
+      </a>
+    )
+  ) : isEmail ? (
+    <EmailValue email={r.value.trim()} />
+  ) : (
+    <p className="font-sans text-[12.5px] leading-relaxed text-sts-foreground break-words whitespace-pre-wrap">
+      {r.value}
+    </p>
+  );
+}
+
 export function IntakeCard({ intake }: { intake: IntakeData }) {
   const date = new Date(intake.submittedAt).toLocaleString("en-GB", {
     day: "numeric",
@@ -108,11 +157,6 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
             <SectionLabel>Responses</SectionLabel>
             <div className="overflow-hidden rounded-lg border border-sts-card-border">
               {visibleResponses.map((r, i) => {
-                const isEmail =
-                  r.type === "email" ||
-                  (r.type !== "richtext" &&
-                    r.type !== "file" &&
-                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.value.trim()));
                 return (
                   <div
                     key={r.fieldId}
@@ -124,46 +168,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
                     <p className="mb-1 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                       {r.label}
                     </p>
-                    {r.type === "richtext" ? (
-                      <RichTextDisplay html={r.value} />
-                    ) : r.type === "file" ? (
-                      isImageUrl(r.value) ? (
-                        <div className="flex flex-col gap-1.5">
-                          <div className="overflow-hidden rounded-lg border border-sts-card-border">
-                            <img
-                              src={r.value}
-                              alt={r.label}
-                              className="block max-w-full"
-                            />
-                          </div>
-                          <a
-                            href={r.value}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-sans text-[11.5px] text-sts-id hover:underline"
-                          >
-                            <ExternalLink className="size-3 shrink-0" />
-                            View full image
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={r.value}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-id hover:underline"
-                        >
-                          <Paperclip className="size-3 shrink-0" />
-                          Download file
-                        </a>
-                      )
-                    ) : isEmail ? (
-                      <EmailValue email={r.value.trim()} />
-                    ) : (
-                      <p className="font-sans text-[12.5px] leading-relaxed text-sts-foreground break-words whitespace-pre-wrap">
-                        {r.value}
-                      </p>
-                    )}
+                    <IntakeResponseValue response={r} />
                   </div>
                 );
               })}

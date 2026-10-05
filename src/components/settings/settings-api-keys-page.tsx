@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Bot, ChevronDown, Copy, Check, Info, Plus, X, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import {
+  PortalApiFormsSection,
+  type PortalApiFormRow,
+} from "@/components/departments/portal-api-forms-section";
 
 export type ApiKeyRow = {
   id: string;
@@ -26,6 +31,8 @@ export type ApiKeyRow = {
   createdBy: string;
   lastUsed: string;
   revoked: boolean;
+  formId?: string | null;
+  formName?: string | null;
 };
 
 export type DepartmentOption = {
@@ -40,11 +47,9 @@ function ClaudeConnectGuide() {
   const [open, setOpen] = useState(false);
   const [keyInput, setKeyInput] = useState("");
   const [copied, setCopied] = useState(false);
-  const [origin, setOrigin] = useState("https://ticketing-system.pengroup.com");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") setOrigin(window.location.origin);
-  }, []);
+  const origin = typeof window === "undefined"
+    ? "https://ticketing-system.pengroup.com"
+    : window.location.origin;
 
   const trimmed = keyInput.trim();
   const url = `${origin}/api/mcp/${trimmed || "<your-api-key>"}/mcp`;
@@ -132,9 +137,9 @@ function ClaudeConnectGuide() {
                 Try &quot;show me ticket WEB-12&quot; or &quot;create a bug for the WEB subDepartment&quot;.
                 Actions taken by Claude are attributed to the key&apos;s owner and send the same
                 notifications as the web app. Full tool reference in the{" "}
-                <a href="/docs#claude-connector" className="text-sts-blue hover:underline">
+                <Link href="/docs#claude-connector" className="text-sts-blue hover:underline">
                   user manual
-                </a>
+                </Link>
                 .
               </span>
             </li>
@@ -175,13 +180,16 @@ function GenerateKeyModal({
   isAdmin,
   onClose,
   onCreated,
+  portalMode = false,
 }: {
   departments: DepartmentOption[];
   isAdmin: boolean;
   onClose: () => void;
   onCreated: (rawKey: string, keyName: string) => void;
+  portalMode?: boolean;
 }) {
   const [name, setName] = useState("");
+  const [formName, setFormName] = useState("");
   const [deptId, setDeptId] = useState(departments[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -197,7 +205,9 @@ function GenerateKeyModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          departmentId: deptId || undefined,
+          departmentId: portalMode ? undefined : (deptId || undefined),
+          purpose: portalMode ? "portal" : undefined,
+          formName: portalMode ? (formName.trim() || undefined) : undefined,
         }),
       });
       const data = await res.json();
@@ -240,7 +250,23 @@ function GenerateKeyModal({
             />
           </div>
 
-          {departments.length > 0 && (
+          {portalMode && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-sans text-[12px] font-medium text-sts-foreground">
+                  Support form name
+                </label>
+                <Input
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder={name.trim() ? `${name.trim()} Support Form` : "Customer support form"}
+                  className="h-9 font-sans text-[13px]"
+                />
+              </div>
+            </>
+          )}
+
+          {!portalMode && departments.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="font-sans text-[12px] font-medium text-sts-foreground">
                 Department scope
@@ -270,8 +296,9 @@ function GenerateKeyModal({
               strokeWidth={2}
             />
             <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
-              Keys are read-only and scoped to the selected department. The raw
-              key is shown once — store it securely.
+              {portalMode
+                ? "A dedicated support form will be created for this key. The key can submit that form, view its tickets, and add requester comments. The raw key is shown once."
+                : "Keys are read-only and scoped to the selected department. The raw key is shown once — store it securely."}
             </p>
           </div>
 
@@ -360,7 +387,7 @@ function KeyRevealModal({
               strokeWidth={2}
             />
             <p className="font-sans text-[11.5px] leading-snug text-amber-700 dark:text-amber-300">
-              Store this key somewhere safe. You won't be able to view it again.
+              Store this key somewhere safe. You won&apos;t be able to view it again.
             </p>
           </div>
 
@@ -385,10 +412,14 @@ export function SettingsApiKeysPage({
   apiKeys: initialKeys,
   departments,
   isAdmin,
+  portalMode = false,
+  portalForms = [],
 }: {
   apiKeys: ApiKeyRow[];
   departments: DepartmentOption[];
   isAdmin: boolean;
+  portalMode?: boolean;
+  portalForms?: PortalApiFormRow[];
 }) {
   const router = useRouter();
   const [showGenerate, setShowGenerate] = useState(false);
@@ -397,6 +428,7 @@ export function SettingsApiKeysPage({
     name: string;
   } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [routeCopied, setRouteCopied] = useState(false);
 
   function handleCreated(rawKey: string, keyName: string) {
     setShowGenerate(false);
@@ -418,12 +450,30 @@ export function SettingsApiKeysPage({
     }
   }
 
+  async function handleDelete(id: string) {
+    const response = await fetch(`/api/settings/api-keys/${id}?permanent=true`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error ?? "Failed to delete connection");
+    }
+    router.refresh();
+  }
+
+  async function copyPortalRoute() {
+    await navigator.clipboard.writeText(`${window.location.origin}/api/portal/v1`);
+    setRouteCopied(true);
+    setTimeout(() => setRouteCopied(false), 2000);
+  }
+
   return (
     <>
       {showGenerate && (
         <GenerateKeyModal
           departments={departments}
           isAdmin={isAdmin}
+          portalMode={portalMode}
           onClose={() => setShowGenerate(false)}
           onCreated={handleCreated}
         />
@@ -440,9 +490,11 @@ export function SettingsApiKeysPage({
       <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="sts-text-admin-title">API keys</h1>
+            <h1 className="sts-text-admin-title">{portalMode ? "Generate API" : "API keys"}</h1>
             <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-              Programmatic read-only access for external platform integration.
+              {portalMode
+                ? "Connect an external portal to this tenant's departments and support forms."
+                : "Programmatic read-only access for external platform integration."}
             </p>
           </div>
           <Button
@@ -454,42 +506,64 @@ export function SettingsApiKeysPage({
           </Button>
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-[8px] bg-sts-surface px-3.5 py-2.5">
-          <Info
-            className="mt-px size-3.5 shrink-0 text-sts-muted"
-            strokeWidth={2}
-            aria-hidden
+        {portalMode ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 shadow-[0_10px_30px_-28px_rgba(74,44,35,0.4)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
+                <Info className="size-3.5" strokeWidth={1.8} aria-hidden />
+              </span>
+              <div>
+                <p className="font-sans text-[12px] font-semibold text-sts-foreground">Server-side integration</p>
+                <p className="mt-0.5 max-w-2xl font-sans text-[11.5px] leading-relaxed text-sts-muted">
+                  Send the key as <code className="font-mono text-[11px] text-sts-foreground">Authorization: Bearer &lt;key&gt;</code>. Never expose it in browser code.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-lg bg-sts-surface px-2.5 py-2 ring-1 ring-sts-card-border/70">
+              <code className="font-mono text-[11.5px] text-sts-foreground">/api/portal/v1</code>
+              <button
+                type="button"
+                onClick={copyPortalRoute}
+                className="inline-flex h-7 items-center gap-1.5 rounded-md bg-sts-card px-2.5 font-sans text-[11px] font-semibold text-sts-foreground shadow-sm ring-1 ring-sts-card-border transition-colors hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
+                aria-label="Copy portal API route"
+              >
+                {routeCopied ? <Check className="size-3 text-sts-green" aria-hidden /> : <Copy className="size-3" aria-hidden />}
+                {routeCopied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-[8px] bg-sts-surface px-3.5 py-2.5">
+            <Info className="mt-px size-3.5 shrink-0 text-sts-muted" strokeWidth={2} aria-hidden />
+            <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
+              Keys use Bearer token auth:{" "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">Authorization: Bearer &lt;key&gt;</code>
+              . Access is scoped to the key&apos;s department. Available endpoints:{" "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects</code>
+              {" — list projects (with member counts), "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects/:id</code>
+              {" — project with members, tickets & sub-tickets, "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects/:id/tickets</code>
+              {" — tickets list, "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/tickets/:id</code>
+              {" — ticket detail."}
+            </p>
+          </div>
+        )}
+
+        {!portalMode && <ClaudeConnectGuide />}
+
+        {portalMode ? (
+          <PortalApiFormsSection
+            apiKeys={initialKeys}
+            forms={portalForms}
+            revokingId={revoking}
+            onRevoke={handleRevoke}
+            onDelete={handleDelete}
           />
-          <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
-            Keys use Bearer token auth:{" "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              Authorization: Bearer &lt;key&gt;
-            </code>
-            . Access is scoped to the key&apos;s department. Available
-            endpoints:{" "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects
-            </code>
-            {" — list projects (with member counts), "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects/:id
-            </code>
-            {" — project with members, tickets & sub-tickets, "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects/:id/tickets
-            </code>
-            {" — tickets list, "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/tickets/:id
-            </code>
-            {" — ticket detail."}
-          </p>
-        </div>
-
-        <ClaudeConnectGuide />
-
-        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-          <Table className="min-w-[760px]">
+        ) : (
+          <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+            <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableHead className="h-8 w-[22%]">
@@ -570,23 +644,26 @@ export function SettingsApiKeysPage({
                           Revoked
                         </span>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={revoking === apiKey.id}
-                          onClick={() => handleRevoke(apiKey.id)}
-                          className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-red hover:bg-transparent hover:text-sts-red/80 disabled:opacity-50"
-                        >
-                          {revoking === apiKey.id ? "Revoking…" : "Revoke"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={revoking === apiKey.id}
+                            onClick={() => handleRevoke(apiKey.id)}
+                            className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-red hover:bg-transparent hover:text-sts-red/80 disabled:opacity-50"
+                          >
+                            {revoking === apiKey.id ? "Revoking…" : "Revoke"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+            </Table>
+          </div>
+        )}
       </div>
     </>
   );

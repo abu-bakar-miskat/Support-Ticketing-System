@@ -8,6 +8,7 @@ import {
   Bell,
   Building2,
   History,
+  KeyRound,
   Mail,
   Palette,
   Store,
@@ -18,7 +19,6 @@ import {
 import { DepartmentIcon } from "@/components/icons/department-icon";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
-import { InstallAppButton } from "@/components/pwa/install-app-button";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { useNotificationStore } from "@/store";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,9 @@ export function DepartmentsSidebar({
     { label: "SLA", href: "/departments/sla", icon: Timer },
     { label: "Users", href: "/departments/users", icon: Users },
     { label: "Mailboxes", href: "/departments/mailboxes", icon: Mail },
+    ...(userRole === "admin" || isSuperAdmin
+      ? [{ label: "Generate API", href: "/departments/generate-api", icon: KeyRound }]
+      : []),
     ...(canSeeFeatures
       ? [{ label: "Feature marketplace", href: "/departments/features", icon: Store }]
       : []),

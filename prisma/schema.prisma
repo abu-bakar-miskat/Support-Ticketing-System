@@ -242,6 +242,7 @@ model Tenant {
   ruleExecutionLogs RuleExecutionLog[]
   emailDomains EmailDomain[]
   emailDomainRequests EmailDomainRequest[]
+  apiKeys ApiKey[]
 }
 
 // A sending domain (e.g. mail.acme.com) a tenant has registered in Resend and
@@ -1936,15 +1937,24 @@ model ApiKey {
   keySuffix    String
   hashedKey    String      @unique
   scope        ApiKeyScope @default(read)
+  kind         String      @default("general")
+  // Tenant boundary for tenant-wide integrations. Legacy department keys may
+  // derive this through Department; every newly-created key sets it directly.
+  tenantId     String?
   departmentId String?
+  formConfigId String?     @unique
   createdById  String      @db.Uuid
   lastUsedAt   DateTime?
   revokedAt    DateTime?
   createdAt    DateTime    @default(now())
 
   createdBy  Profile      @relation(fields: [createdById], references: [id])
+  tenant     Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department Department?  @relation(fields: [departmentId], references: [id])
+  formConfig IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Restrict)
+  intakes    Intake[]
 
+  @@index([tenantId])
   @@index([departmentId])
 }
 
@@ -1997,6 +2007,7 @@ model IntakeFormConfig {
   pendingIntakes PendingIntake[]
   assignmentRules AssignmentRule[]
   rules      Rule[]
+  apiKey     ApiKey?
 }
 
 model IntakeFormField {
@@ -2078,12 +2089,19 @@ model Intake {
   schemaVersion  Int?
   fieldSnapshot  Json?
   ticketId       String?        @unique
+  // Set when the submission was created by the tenant portal API. This is the
+  // capability boundary used to prevent one integration key from reading
+  // submissions or tickets created by another key.
+  apiKeyId       String?
   replyToken     String?        @unique
   resolutionNote String?
   createdAt      DateTime       @default(now())
 
   formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id])
   ticket     Ticket?          @relation(fields: [ticketId], references: [id])
+  apiKey     ApiKey?          @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([apiKeyId])
 }
 
 // A support submission awaiting email verification (double opt-in). The ticket

@@ -10,20 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { cn } from "@/lib/utils";
 import { AVATAR_ICON_ACCEPT, validateAvatarIcon } from "@/lib/avatar-icon-file";
 import { renderSignatureHtml } from "@/lib/email-templates/signature";
 import { hasSignatureContent, sanitizeSignatureHtml } from "@/lib/sanitize-signature-html";
-import { TIMEZONES } from "@/lib/timezones";
 
 type SignatureEntry = {
   id: string;
@@ -209,10 +202,6 @@ export function SettingsProfilePage({
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
-
-  const timezoneOptions = TIMEZONES.some((t) => t.value === initialTimezone)
-    ? TIMEZONES
-    : [{ value: initialTimezone, label: initialTimezone }, ...TIMEZONES];
 
   function handleDiscard() {
     setFullName(userName);
@@ -415,25 +404,11 @@ export function SettingsProfilePage({
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
               <FieldLabel>Timezone</FieldLabel>
-              <Select
+              <TimezoneSelect
                 value={timezone}
-                onValueChange={(v) => v && setTimezone(v)}
-              >
-                <SelectTrigger className="h-9 w-full rounded-full border-sts-card-border bg-sts-bg px-[11px] font-sans text-[12.5px] text-sts-foreground shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {timezoneOptions.map((tz) => (
-                    <SelectItem
-                      key={tz.value}
-                      value={tz.value}
-                      className="font-sans text-[12.5px]"
-                    >
-                      {tz.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={setTimezone}
+                triggerClassName="w-full rounded-md bg-sts-bg px-[11px] shadow-none"
+              />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
               <FieldLabel>Location</FieldLabel>

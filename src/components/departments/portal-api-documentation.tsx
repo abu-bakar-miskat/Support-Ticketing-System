@@ -157,7 +157,7 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 4. Dynamic support form
 - Fetch the current form on page load or use only a short server cache. Never hard-code form fields or issue IDs.
 - Render defaultFields for name, email, title, and issue type. Name/email come from the session and are read-only or server-overridden.
-- Render issues as the required category selector, submitting its id. Render fields in order and support text, richtext, email, number, date, select, radio, checkbox, nested select, and documented file references.
+- Render issues as the required issue selector, submitting its id. Render fields in order and support text, richtext, email, number, date, select, radio, checkbox, nested select, and documented file references.
 - Enforce isRequired, options, childOptions, validation, placeholder, helperText, and visibleWhen. Omit hidden fields. Submit every custom value as a string.
 - Submit submitterName, submitterEmail, title, issueId, and responses. Never ask the requester for department, sub-department, SLA, assignee, project, or status; issue configuration controls central routing.
 - Do not add binary attachment upload: the current API has no public upload endpoint.
@@ -170,19 +170,28 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 
 6. Ticket list and detail
 - List only the signed-in user's submissions, using the server-session email rather than browser input.
-- Show Reference, Subject, Category/Department, Status, Progress, and Last Updated using reference, title, category, department/subDepartment, status, and lastActivityAt (or updatedAt fallback).
-- Do not invent a progress percentage. The API does not currently return progress; require an agreed status mapping or API field.
+- Show Reference, Subject, Department, Status, and Last Updated using reference, title, department/subDepartment, status, and lastActivityAt (or updatedAt fallback).
 - Ticket properties are read-only. Do not provide edit, assignment, routing, priority, project, SLA, or status-change actions.
-- Requester comments are the only mutation. Validate 1–10,000 characters, post through the comments endpoint, and refresh after success.
+- Requester comments are the only mutation. Follow the comment and reply rules below.
 - Show a "Last refreshed" timestamp for the last successful fetch, distinct from ticket timestamps. Provide manual refresh and rate-limit-safe revalidation/polling that pauses when hidden.
 
-7. Privacy and unavailable API fields
-- Never show internal staff comments and never guess visibility from author/text. Before release, require GET /tickets/{ticketId} to return requester-visible comments only or an explicit visibility field. This is currently a blocking API dependency.
+7. Comments, replies, and privacy
+- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, and parentId. Internal notes are excluded upstream.
+- Show only comments whose visibility is requester-visible (for example, "public"), plus the requester's own comments. Never guess visibility from author or body text. If visibility is missing, withhold staff comments and explain why in the UI rather than risk exposing an internal note.
+- Requester comments are the only mutation. Validate 1–10,000 characters and POST to /tickets/{ticketId}/comments only after verifying ticket ownership.
+- Never automatically retry a comment POST because there is no comment idempotency key. Preserve the text after failure and refresh the thread after success.
+- Build threads with parentId. Nest visible replies beneath their parent using an indented connector line and order replies oldest to newest.
+- Order top-level threads by the latest activity in each thread, newest first, so a new reply moves its thread to the top.
+- If a reply's parent is hidden, render the reply as a top-level comment without referencing or revealing the hidden parent.
+- Comment cards show: an initial avatar with distinct requester/support colours; author name; "(you)" for the requester's comments; a "Support team" badge for staff; a "replied" marker for nested replies; relative time with full date on hover; an "edited" marker; and a highlighted edge for the requester's comments.
+- Render staff bodies as sanitized HTML and requester bodies as plain text.
+- Use an ordered list for the thread and label reply groups, for example "2 replies to Mahmud".
+- Give the comment box a visible label and an aria-describedby character counter. Support Ctrl+Enter and Command+Enter to post. Announce success through role="status" and errors through role="alert".
 - Full update history with actors, attachments, escalated time, and elapsed duration are not in the current response. Do not fabricate them. Mark them as API-extension dependencies. Available fields include status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
 
 8. UI states and errors
 - Provide accessible loading, empty, validation, submitting, success, unauthorized/not-found, and retry states.
-- Map fieldErrors by field ID. Do not auto-retry 400/401/403/404/409/413/415. For 429 respect Retry-After. Retry transient network/500/503 failures with bounded exponential backoff and jitter, reusing the submission idempotency key.
+- Map fieldErrors by field ID. Do not auto-retry 400/401/403/404/409/413/415. For 429 respect Retry-After. Retry transient network/500/503 failures with bounded exponential backoff and jitter only when safe, reusing the submission idempotency key. Never automatically retry a comment POST.
 - Preserve form/comment text after recoverable errors without exposing credentials or raw upstream details.
 
 9. Audit and data lifecycle
@@ -190,16 +199,14 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 - Minimise personal data, show [PRIVACY NOTICE URL], and apply [RETENTION PERIOD] plus agreed access/deletion, hosting, and data-transfer rules to ownership links, drafts, idempotency records, caches, and audit data.
 
 10. Resolve before production
-- Complete issue/category-to-department mapping.
+- Complete issue-to-department mapping.
 - Cross-system authentication and stable requester identity/email rules.
 - Designated-tenant configuration and one key per tenant.
 - Retention, data-access/deletion, hosting, and transfer arrangements.
-- Public versus internal-comment contract.
-- Progress definition.
 - API support for history/actors, attachments, escalation time, and duration if still required.
 
 11. Tests and delivery
-Test tenant gating; server-only secrets; dynamic fields/conditional validation; routing issue ID; double-submit and retry deduplication; confirmation; own-user filtering; direct-ID denial; read-only controls; comments; internal-comment exclusion; loading/empty/error/rate-limit states; session-derived identity; audit creation; and keyboard/screen-reader behaviour.
+Test tenant gating; server-only secrets; dynamic fields/conditional validation; routing issue ID; double-submit and retry deduplication; confirmation; own-user filtering; direct-ID denial; read-only controls; comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; no automatic retry after comment failure; comment bodies never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit creation; and keyboard/screen-reader behaviour.
 
 Deliver the implementation, tests, configuration notes, and dependency report. Explicitly identify acceptance criteria blocked by the API instead of creating misleading substitutes.`
 
@@ -276,7 +283,7 @@ Deliver the implementation, tests, configuration notes, and dependency report. E
                     "Submit the completed request.",
                     "Save the returned submission and ticket IDs.",
                     "Show the user's submissions and ticket.",
-                    "Allow requester comments only.",
+                    "Show staff replies and allow requester comments.",
                   ].map((item, index) => (
                     <li key={item} className="flex gap-2 rounded-lg bg-sts-surface/60 px-3 py-2.5">
                       <span className="font-mono text-[11px] text-sts-id">{String(index + 1).padStart(2, "0")}</span>

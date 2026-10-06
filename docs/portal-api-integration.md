@@ -329,12 +329,27 @@ Example response:
       "submitterName": "Amira Khan",
       "submitterEmail": "amira@example.com"
     },
-    "comments": []
+    "comments": [
+      {
+        "id": "cmcomment123",
+        "body": "We are investigating this now.",
+        "createdAt": "2026-10-05T14:42:00.000Z",
+        "editedAt": null,
+        "visibility": "public",
+        "author": {
+          "name": "Jordan Lee",
+          "avatarUrl": null,
+          "type": "staff"
+        }
+      }
+    ]
   }
 }
 ```
 
 The API is intentionally read-only for ticket properties. The external portal cannot change status, priority, assignment, department, project, or other ticket fields.
+
+Every comment returned in this response is explicitly requester-visible and includes `visibility: "public"`. This includes comments authored by staff and comments submitted through the Portal API. Deleted comments and notes attached to customer email messages are excluded.
 
 ## 6. Add a requester comment
 
@@ -359,6 +374,7 @@ Successful response:
     "id": "cmcomment123",
     "body": "I can reproduce this in both Chrome and Safari.",
     "createdAt": "2026-10-05T14:42:00.000Z",
+    "visibility": "public",
     "author": {
       "name": "Amira Khan",
       "email": "amira@example.com",
@@ -559,20 +575,30 @@ Do not expose a generic proxy that accepts arbitrary Support API paths, emails, 
 - The list must show Reference, Subject, Category/Department, Status, Progress, and Last Updated. Use ticket.reference, ticket.title, ticket.category, ticket.department/subDepartment, ticket.status, and ticket.lastActivityAt (falling back to updatedAt where needed).
 - Do not invent a progress percentage. The current API does not return structured progress; implement it only after an agreed status-to-progress mapping or an API field is provided.
 - The detail page is read-only for ticket properties. Do not provide edit, assignment, routing, priority, project, SLA, or status-change controls.
-- Requester comments are the only permitted ticket mutation. Validate non-empty comment text up to 10,000 characters, then refresh the ticket after posting.
+- Requester comments are the only permitted ticket mutation. Follow the comment and reply rules below.
 - Display a visible "Last refreshed" time based on when the portal completed its latest successful API fetch. Keep it distinct from the ticket's lastActivityAt/updatedAt value.
 - Provide manual refresh and an appropriate revalidation/polling policy that stays within API rate limits and pauses when the page is not visible.
 
-7. Comment privacy and unsupported tracking fields
-- Never show internal staff comments. Do not attempt to identify internal comments by author name, text prefix, or other client-side heuristic.
-- Before release, confirm that GET /tickets/{ticketId} returns only requester-visible comments or has an explicit visibility field that the portal can enforce. Treat this as a blocking dependency because the current contract does not expose a public/internal visibility flag.
+7. Comments, replies, and privacy
+- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, and parentId. Internal notes are excluded upstream.
+- Show only comments whose visibility is requester-visible (for example, "public"), plus the requester's own comments. Never guess visibility from the author or body text. If visibility is missing, withhold staff comments and explain why in the UI rather than risk exposing an internal note.
+- Requester comments are the only permitted mutation. Validate 1–10,000 characters and post through POST /tickets/{ticketId}/comments for an owned ticket only.
+- Do not automatically retry comment posts because the API has no comment idempotency key. Keep the text in the comment box after a failure and refresh the thread after success.
+- Render replies as threads using parentId. Nest visible replies beneath their parent with an indented connector line, ordered chronologically from oldest to newest.
+- Order top-level threads by the latest activity anywhere in the thread, newest first, so a new reply moves its thread to the top.
+- If a reply's parent is not visible to the requester, show the reply as a top-level comment. Never reference, summarize, or reveal the hidden parent.
+- Each comment card must show an initial avatar with distinct requester/support colours; the author name; "(you)" on the requester's own comments; a "Support team" badge on staff comments; a "replied" marker on nested replies; relative time such as "2 hours ago" with the full date on hover; an "edited" marker when applicable; and a highlighted edge on the requester's own comments.
+- Render staff comment bodies as sanitized HTML. Render requester comment bodies as plain text.
+- Render the thread as an ordered list. Label each reply group, for example "2 replies to Mahmud".
+- Give the comment box a visible label and a character counter connected with aria-describedby. Support Ctrl+Enter and Command+Enter to post.
+- Announce successful posting with role="status" and errors with role="alert".
 - The requested full update history with actor, attachments, escalated time, and elapsed duration is not present in the current API response. Do not fabricate it or infer it from comments. Mark these items as dependent on an API contract extension. Continue to show the fields that are available: status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
 
 8. States, errors, and retry behaviour
 - Provide accessible loading states/skeletons, empty ticket and comment states, inline field validation, submitting state, success confirmation, unauthorized/not-found state, and recoverable API error state.
 - Map API fieldErrors back to fields by field ID.
 - Do not automatically retry 400, 401, 403, 404, 409, 413, or 415 responses.
-- For 429, respect Retry-After and show when retry is available. Retry transient 500/503 and network failures with bounded exponential backoff and jitter. Reuse the original Idempotency-Key for submission retries.
+- For 429, respect Retry-After and show when retry is available. Retry transient 500/503 and network failures with bounded exponential backoff and jitter only where the operation is safe to retry. Reuse the original Idempotency-Key for submission retries. Never automatically retry a comment POST.
 - Preserve the user's form/comment text on recoverable failures and avoid exposing upstream error details or credentials.
 
 9. Audit, privacy, and data lifecycle
@@ -587,12 +613,11 @@ Do not silently guess these values. Record and resolve them before declaring the
 - Designated-tenant configuration and one Portal API key per tenant.
 - Ticket retention and data-access/deletion rules.
 - Hosting region and applicable data-transfer arrangements.
-- Requester-visible versus internal-comment API contract.
 - Progress definition or mapping.
 - API support for update history/actors, attachments, escalation time, and elapsed duration if those remain required.
 
 11. Verification
-Add unit, integration, and end-to-end tests for tenant feature gating; server-only secret handling; dynamic form rendering and conditional validation; issue ID submission; exactly-once creation under double-click and retry; success reference/link; own-user list filtering; direct-ID access denial; read-only ticket controls; requester comment posting; internal-comment exclusion; loading/empty/error/rate-limit states; session-derived identity; audit event creation; and keyboard/screen-reader behaviour.
+Add unit, integration, and end-to-end tests for tenant feature gating; server-only secret handling; dynamic form rendering and conditional validation; issue ID submission; exactly-once creation under double-click and retry; success reference/link; own-user list filtering; direct-ID access denial; read-only ticket controls; requester comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; no automatic retry after comment failure; comment bodies never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit event creation; and keyboard/screen-reader behaviour.
 
 Deliver the implementation, tests, configuration documentation, and a short dependency report. Clearly identify any acceptance criterion blocked by the current API instead of implementing a misleading substitute.
 ```

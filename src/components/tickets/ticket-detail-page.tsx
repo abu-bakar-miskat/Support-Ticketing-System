@@ -987,47 +987,22 @@ export function TicketDetailPage({
       : "awaiting-customer";
   }, [liveMessages, liveStatus, effectiveSubDepartmentStatuses]);
 
-  // Unified conversation: top-level comments and their replies flattened into
-  // one chronological timeline (oldest first, newest nearest the composer pinned
-  // at the bottom). Each reply keeps a reference to the comment it answers so
-  // responses stay linked for full traceability.
-  const flatComments = useMemo(() => {
-    const snippet = (body: string) => {
-      const clean = body
-        .replace(/@([\w.-]+)/g, (_, h: string) => `@${h.replace(/_/g, " ")}`)
-        .replace(/\s+/g, " ")
-        .trim();
-      return clean.length > 60 ? `${clean.slice(0, 60)}…` : clean;
-    };
-    const items: {
-      comment: CommentData;
-      parentRef: {
-        id: string;
-        authorName: string;
-        snippet: string;
-        isDeleted: boolean;
-      } | null;
-    }[] = [];
-    for (const c of liveComments) {
-      items.push({ comment: c, parentRef: null });
-      for (const r of c.replies ?? []) {
-        items.push({
-          comment: r,
-          parentRef: {
-            id: c.id,
-            authorName: c.authorName,
-            snippet: c.deletedAt ? "" : snippet(c.body),
-            isDeleted: !!c.deletedAt,
-          },
-        });
-      }
-    }
-    return items.sort(
-      (a, b) =>
-        new Date(a.comment.createdAt).getTime() -
-        new Date(b.comment.createdAt).getTime(),
-    );
-  }, [liveComments]);
+  // Internal comments as threads: top-level comments in chronological order
+  // (oldest first, newest nearest the composer pinned at the bottom), each
+  // carrying its replies so a response stays beside the comment it answers.
+  const threadedComments = useMemo(
+    () =>
+      [...liveComments].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
+    [liveComments],
+  );
+  const totalCommentCount = useMemo(
+    () =>
+      liveComments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0),
+    [liveComments],
+  );
 
   // Jump to the newest item (bottom, by the sticky composer) only when a
   // comment/message actually arrives — not on the initial mount or a tab
@@ -1038,17 +1013,17 @@ export function TicketDetailPage({
     const grew =
       prev !== null &&
       (sortedMessages.length > prev.messages ||
-        flatComments.length > prev.comments);
+        totalCommentCount > prev.comments);
     lastChatCounts.current = {
       messages: sortedMessages.length,
-      comments: flatComments.length,
+      comments: totalCommentCount,
     };
     if (!grew) return;
     const id = requestAnimationFrame(() =>
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [activeTab, sortedMessages.length, flatComments.length]);
+  }, [activeTab, sortedMessages.length, totalCommentCount]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -3342,7 +3317,7 @@ export function TicketDetailPage({
                   {
                     key: "internal" as const,
                     label: "Comment",
-                    count: flatComments.length,
+                    count: totalCommentCount,
                     show: true,
                   },
                   {
@@ -3477,7 +3452,7 @@ export function TicketDetailPage({
               <div className="flex flex-col">
                 {/* Staff-only internal comments, separated from the customer
                     email chain. */}
-                {flatComments.length === 0 ? (
+                {threadedComments.length === 0 ? (
                   <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
                     <MessageSquare className="size-5 text-sts-subtle/50" />
                     <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
@@ -3489,13 +3464,12 @@ export function TicketDetailPage({
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-sts-card-border">
-                    {flatComments.map(({ comment, parentRef }) => (
+                    {threadedComments.map((comment) => (
                       <div key={`c-${comment.id}`} className="py-4">
                         <CommentItem
                           comment={comment}
                           ticketId={dbId}
                           subDepartmentMembers={mentionableUsers}
-                          parentRef={parentRef}
                           onReplySubmitted={(reply) => handleReplyAdded(comment.id, reply)}
                         />
                       </div>

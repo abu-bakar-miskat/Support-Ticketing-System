@@ -56,6 +56,7 @@ export async function GET(
           select: {
             id: true,
             body: true,
+            parentId: true,
             createdAt: true,
             editedAt: true,
             author: { select: { id: true, name: true, avatarUrl: true } },
@@ -99,6 +100,8 @@ export async function GET(
             body: displayed.body,
             createdAt: comment.createdAt,
             editedAt: comment.editedAt,
+            parentId: comment.parentId,
+            visibility: displayed.visibility,
             author: displayed.isPortalRequester
               ? { name: intake.submitterName, avatarUrl: null, type: "requester" }
               : { name: comment.author.name, avatarUrl: comment.author.avatarUrl, type: "staff" },

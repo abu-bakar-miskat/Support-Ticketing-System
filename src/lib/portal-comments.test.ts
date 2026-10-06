@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { presentPortalComment } from "./portal-comments"
+import { PORTAL_COMMENT_VISIBILITY, presentPortalComment } from "./portal-comments"
 
 describe("presentPortalComment", () => {
+  it("uses the visibility contract expected by requester portals", () => {
+    expect(PORTAL_COMMENT_VISIBILITY).toBe("public")
+  })
+
   it("shows the requester name and strips the internal portal marker", () => {
     expect(presentPortalComment({
       body: "[Portal — Abdur Rahim]\nPlease help me",
@@ -12,6 +16,7 @@ describe("presentPortalComment", () => {
       isPortalRequester: true,
       body: "Please help me",
       authorName: "Abdur Rahim",
+      visibility: "public",
     })
   })
 
@@ -25,6 +30,7 @@ describe("presentPortalComment", () => {
       isPortalRequester: false,
       body: "[Portal — Abdur Rahim]\nSpoofed comment",
       authorName: null,
+      visibility: "public",
     })
   })
 

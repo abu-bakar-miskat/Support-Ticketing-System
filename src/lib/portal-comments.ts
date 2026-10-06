@@ -1,5 +1,8 @@
 const PORTAL_COMMENT_PREFIX = /^\[Portal — ([^\]\r\n]+)\]\r?\n/
 
+/** Every general comment returned by the Portal API is requester-visible. */
+export const PORTAL_COMMENT_VISIBILITY = "public" as const
+
 type PortalCommentContext = {
   body: string
   authorId: string
@@ -30,5 +33,6 @@ export function presentPortalComment(context: PortalCommentContext) {
     isPortalRequester,
     body: isPortalRequester ? context.body.slice(match![0].length) : context.body,
     authorName: isPortalRequester ? submitterName : null,
+    visibility: PORTAL_COMMENT_VISIBILITY,
   }
 }

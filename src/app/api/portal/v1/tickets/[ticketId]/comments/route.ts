@@ -10,6 +10,7 @@ import {
   requirePortalApiKey,
 } from "@/lib/portal-api"
 import { appendTicketEvent } from "@/lib/ticket-events"
+import { PORTAL_COMMENT_VISIBILITY } from "@/lib/portal-comments"
 
 export async function POST(
   request: NextRequest,
@@ -76,6 +77,7 @@ export async function POST(
           id: comment.id,
           body: commentBody,
           createdAt: comment.createdAt,
+          visibility: PORTAL_COMMENT_VISIBILITY,
           author: {
             name: ticket.intake.submitterName,
             email: ticket.intake.submitterEmail,

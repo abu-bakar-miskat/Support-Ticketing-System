@@ -137,8 +137,16 @@ export async function applyTenantMembership(
     create: { tenantId, userId, role: role as Role },
   });
 
-  // The app keys role checks off Profile.role, so reflect the chosen role there.
-  await db.profile.update({ where: { id: userId }, data: { role: role as Role } });
+  // Profile.role is a single global column, but authorization is per-tenant
+  // (getProfile derives the effective role from scoped RoleAssignment rows). This
+  // grant is additive, so only ever *raise* the denormalized hint — never lower
+  // it. Otherwise accepting an agent invite in one tenant would clobber an admin/
+  // manager role the user legitimately holds in another tenant.
+  const ROLE_RANK: Record<string, number> = { admin: 4, manager: 3, sub_manager: 2, agent: 1 };
+  const current = await db.profile.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!current || (ROLE_RANK[role] ?? 0) >= (ROLE_RANK[current.role] ?? 0)) {
+    await db.profile.update({ where: { id: userId }, data: { role: role as Role } });
+  }
 
   if (role === "manager") {
     for (const departmentId of deptIds) {

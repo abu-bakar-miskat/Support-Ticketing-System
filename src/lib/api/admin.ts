@@ -422,6 +422,10 @@ export async function createDepartmentInvite(
   return res.json()
 }
 
+export type InviteEmailDelivery =
+  | { status: "sent"; via: "mailpit" | "resend" }
+  | { status: "failed" }
+
 export async function createTenantInvite(
   tenantId: string,
   body: {
@@ -431,7 +435,7 @@ export async function createTenantInvite(
     subDepartmentId?: string | null
     message?: string
   },
-): Promise<{ id: string; email: string; role: string; token: string; acceptPath: string }> {
+): Promise<{ id: string; email: string; role: string; token: string; acceptPath: string; emailDelivery?: InviteEmailDelivery }> {
   const res = await fetch(`/api/admin/tenants/${tenantId}/invites`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

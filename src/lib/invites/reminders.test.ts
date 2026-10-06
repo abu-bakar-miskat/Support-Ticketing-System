@@ -12,7 +12,7 @@ vi.mock("@/lib/email", () => ({
 }));
 
 import { sweepInviteReminders } from "./reminders";
-import { INVITE_REMINDER_AFTER_MS } from "./constants";
+import { INVITE_REMINDER_AFTER_MS, INVITE_TTL_MS } from "./constants";
 import { prisma } from "@/lib/db";
 import { sendInviteEmail, sendTenantInviteEmail } from "@/lib/email";
 
@@ -65,15 +65,18 @@ beforeEach(() => {
 });
 
 describe("sweepInviteReminders", () => {
-  it("only queries invites that are unaccepted, unrevoked, unreminded, aged 12h, and unexpired", async () => {
+  it("only queries invites that are unaccepted, unrevoked, unreminded, within the pre-expiry window, and unexpired", async () => {
     await sweepInviteReminders(NOW);
     const where = deptFind.mock.calls[0][0]!.where as Record<string, unknown>;
     expect(where.acceptedAt).toBeNull();
     expect(where.revokedAt).toBeNull();
     expect(where.reminderSentAt).toBeNull();
-    expect(where.expiresAt).toEqual({ gt: NOW });
-    expect(where.createdAt).toEqual({
-      lte: new Date(NOW.getTime() - INVITE_REMINDER_AFTER_MS),
+    // Eligibility is anchored on time-left-before-expiry (TTL − REMINDER_AFTER),
+    // not createdAt, so a resend restarts the reminder clock.
+    expect(where.createdAt).toBeUndefined();
+    expect(where.expiresAt).toEqual({
+      gt: NOW,
+      lte: new Date(NOW.getTime() + (INVITE_TTL_MS - INVITE_REMINDER_AFTER_MS)),
     });
     // Both invite types use the same eligibility gate.
     expect(tenantFind.mock.calls[0][0]!.where).toEqual(where);

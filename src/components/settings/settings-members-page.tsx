@@ -896,8 +896,8 @@ export function SettingsMembersPage({
         canInvitePrivileged={isAdmin}
         departments={availableDepartments}
         subDepartments={availableSubDepartments}
-        onSent={() => {
-          toast.success("Invitation sent");
+        onSent={(delivered) => {
+          if (delivered) toast.success("Invitation sent");
           startTransition(() => router.refresh());
         }}
         onClose={() => setInviteOpen(false)}

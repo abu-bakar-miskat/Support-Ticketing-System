@@ -1,17 +1,17 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { sendInviteEmail, sendTenantInviteEmail } from "@/lib/email";
-import { INVITE_REMINDER_AFTER_MS } from "./constants";
+import { INVITE_REMINDER_AFTER_MS, INVITE_TTL_MS } from "./constants";
 
 /**
  * Send the one-time "your invitation is still pending" reminder for every invite
- * (department + tenant) that has been sitting unaccepted for at least
- * {@link INVITE_REMINDER_AFTER_MS} (24h) and is still valid.
+ * (department + tenant) that is within its final {@link INVITE_REMINDER_AFTER_MS}
+ * (12h) before expiry and is still valid.
  *
  * The `where` is the guarantee behind every acceptance criterion:
  *   - `acceptedAt: null`  → never remind an already-accepted invite,
  *   - `revokedAt: null`   → never remind a cancelled invite,
- *   - `expiresAt: { gt }` → never remind an already-expired invite,
+ *   - `expiresAt: { gt, lte }` → only once inside the pre-expiry reminder window,
  *   - `reminderSentAt: null` + the post-send stamp → exactly one reminder each.
  *
  * `reminderSentAt` is stamped only after the send resolves without throwing, so a
@@ -20,13 +20,19 @@ import { INVITE_REMINDER_AFTER_MS } from "./constants";
  * doesn't halt the batch. Intended to run under `runAsSystem` (the cron wrapper).
  */
 export async function sweepInviteReminders(now: Date = new Date()): Promise<number> {
-  const reminderThreshold = new Date(now.getTime() - INVITE_REMINDER_AFTER_MS);
+  // Anchor eligibility on time-left-before-expiry, not createdAt. A reminder goes
+  // out once the invite is within its final stretch (TTL − REMINDER_AFTER = 12h)
+  // of expiring. This is equivalent to "12h after creation" for a fresh invite,
+  // but — unlike a createdAt threshold — a resend (which pushes expiresAt out and
+  // clears reminderSentAt) correctly restarts the clock instead of firing a
+  // reminder on the very next sweep.
+  const remindWhenExpiryWithinMs = INVITE_TTL_MS - INVITE_REMINDER_AFTER_MS;
+  const reminderCutoff = new Date(now.getTime() + remindWhenExpiryWithinMs);
   const pendingWhere = {
     acceptedAt: null,
     revokedAt: null,
     reminderSentAt: null,
-    createdAt: { lte: reminderThreshold },
-    expiresAt: { gt: now },
+    expiresAt: { gt: now, lte: reminderCutoff },
   } as const;
 
   let sent = 0;

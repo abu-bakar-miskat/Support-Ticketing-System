@@ -28,8 +28,10 @@ export default async function DepartmentsFeaturesRoute() {
 
   return (
     <FeaturesMarketplacePage
+      tenantId={tenantId}
       tenantName={marketplace.tenantName}
       departments={departments}
+      seesAllDepartments={profile.isSuperAdmin || profile.role === "admin"}
       initialTemplates={marketplace.templates}
       canRequest={canRequest}
       canEnable={profile.isSuperAdmin}

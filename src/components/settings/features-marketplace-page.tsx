@@ -25,14 +25,19 @@ import type {
 } from "@/lib/feature-marketplace-types";
 
 export function FeaturesMarketplacePage({
+  tenantId,
   tenantName,
   departments,
+  seesAllDepartments,
   initialTemplates,
   canRequest,
   canEnable,
 }: {
+  tenantId: string;
   tenantName: string;
   departments: MarketplaceDepartment[];
+  /** True for tenant admins and super admins — "all" then means the whole organization. */
+  seesAllDepartments: boolean;
   initialTemplates: MarketplaceTemplate[];
   canRequest: boolean;
   canEnable: boolean;
@@ -52,6 +57,8 @@ export function FeaturesMarketplacePage({
   if (selected) shownRef.current = selected;
   const shown = selected ?? shownRef.current;
   const shownForDepartment = shown && departmentId ? forDepartment(shown, departmentId) : shown;
+  const departmentIds = departments.map((department) => department.id);
+  const allStatus = shown ? statusForAll(shown, departmentIds) : "available";
   const featureTemplates = templates.filter((template) => template.board);
   const groupOrder = new Map(MARKETPLACE_FEATURE_GROUPS.map((group, index) => [group.label, index]));
   const groups = [...featureTemplates.reduce((map, template) => {
@@ -70,47 +77,62 @@ export function FeaturesMarketplacePage({
     return false;
   }
 
-  async function requestTemplate(template: MarketplaceTemplate) {
-    if (!requireDepartment()) return;
-    setBusy(template.id);
-    setError(null);
-    setNotice(null);
-    const res = await fetch("/api/feature-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ departmentId, templateId: template.id }),
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setError(body.error ?? "Couldn't send that request");
+  async function requestTemplateForAll(template: MarketplaceTemplate) {
+    const targets = departmentIds.filter((id) => forDepartment(template, id).status === "available");
+    if (targets.length === 0) {
+      setError("Every department already has or has requested this template.");
       return;
     }
-    setTemplates((prev) =>
-      prev.map((item) =>
-        item.id === template.id
-          ? { ...item, pendingFor: withId(item.pendingFor, departmentId, true) }
-          : item,
-      ),
-    );
-    setNotice(`${template.name} is waiting for a super admin to approve it for ${departmentName}.`);
-    router.refresh();
-  }
-
-  async function enableTemplate(template: MarketplaceTemplate) {
-    if (!requireDepartment()) return;
     setBusy(template.id);
     setError(null);
     setNotice(null);
-    const res = await fetch(`/api/admin/departments/${departmentId}/feature-templates`, {
+    // Tenant admins send one organization-wide request; managers can only ask for the departments they manage.
+    const bodies: { departmentId?: string; templateId: string }[] = seesAllDepartments
+      ? [{ templateId: template.id }]
+      : targets.map((id) => ({ departmentId: id, templateId: template.id }));
+    const results = await Promise.all(
+      bodies.map(async (payload) => {
+        const res = await fetch("/api/feature-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => ({}));
+        return { ok: res.ok, error: body.error as string | undefined, departmentId: payload.departmentId };
+      }),
+    );
+    setBusy(null);
+    const failed = results.find((result) => !result.ok);
+    const sent = seesAllDepartments
+      ? failed ? [] : targets
+      : results.filter((result) => result.ok).map((result) => result.departmentId!);
+    if (sent.length > 0) {
+      setTemplates((prev) =>
+        prev.map((item) =>
+          item.id === template.id
+            ? { ...item, pendingFor: sent.reduce((ids, id) => withId(ids, id, true), item.pendingFor) }
+            : item,
+        ),
+      );
+      setNotice(`${template.name} is waiting for a super admin to approve it for ${countLabel(sent.length)}.`);
+      router.refresh();
+    }
+    if (failed) setError(failed.error ?? "Couldn't send that request");
+  }
+
+  async function setTemplateForAll(template: MarketplaceTemplate, enabled: boolean) {
+    setBusy(template.id);
+    setError(null);
+    setNotice(null);
+    const res = await fetch(`/api/admin/tenants/${tenantId}/feature-templates`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: template.id }),
+      body: JSON.stringify({ templateId: template.id, enabled }),
     });
     const body = await res.json().catch(() => ({}));
     setBusy(null);
     if (!res.ok) {
-      setError(body.error ?? "Couldn't enable that template");
+      setError(body.error ?? (enabled ? "Couldn't enable that template" : "Couldn't disable that template"));
       return;
     }
     setTemplates((prev) =>
@@ -118,52 +140,19 @@ export function FeaturesMarketplacePage({
         item.id === template.id
           ? {
               ...item,
-              pendingFor: withId(item.pendingFor, departmentId, false),
+              pendingFor: enabled ? item.pendingFor.filter((id) => !departmentIds.includes(id)) : item.pendingFor,
               features: item.features.map((feature) => ({
                 ...feature,
-                enabledFor: withId(feature.enabledFor, departmentId, true),
-                pendingFor: withId(feature.pendingFor, departmentId, false),
+                enabledFor: enabled
+                  ? [...new Set([...feature.enabledFor, ...departmentIds])]
+                  : feature.enabledFor.filter((id) => !departmentIds.includes(id)),
+                pendingFor: feature.pendingFor.filter((id) => !departmentIds.includes(id)),
               })),
             }
           : item,
       ),
     );
-    setNotice(`${template.name} is enabled for ${departmentName}.`);
-    await queryClient.invalidateQueries({ queryKey: ["dashboard", "layout"] });
-    router.refresh();
-  }
-
-  async function disableTemplate(template: MarketplaceTemplate) {
-    if (!requireDepartment()) return;
-    setBusy(template.id);
-    setError(null);
-    setNotice(null);
-    const res = await fetch(`/api/admin/departments/${departmentId}/feature-templates`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: template.id, enabled: false }),
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setError(body.error ?? "Couldn't disable that template");
-      return;
-    }
-    setTemplates((prev) =>
-      prev.map((item) =>
-        item.id === template.id
-          ? {
-              ...item,
-              features: item.features.map((feature) => ({
-                ...feature,
-                enabledFor: withId(feature.enabledFor, departmentId, false),
-                pendingFor: withId(feature.pendingFor, departmentId, false),
-              })),
-            }
-          : item,
-      ),
-    );
-    setNotice(`${template.name} is disabled for ${departmentName}.`);
+    setNotice(`${template.name} is ${enabled ? "enabled" : "disabled"} for every department in ${tenantName}.`);
     await queryClient.invalidateQueries({ queryKey: ["dashboard", "layout"] });
     router.refresh();
   }
@@ -336,13 +325,13 @@ export function FeaturesMarketplacePage({
                     </Select>
                   </div>
                   <TemplateAction
-                    template={shownForDepartment}
+                    status={allStatus}
                     canRequest={canRequest}
                     canEnable={canEnable}
                     busy={busy === shownForDepartment.id}
-                    onRequest={() => requestTemplate(shownForDepartment)}
-                    onEnable={() => enableTemplate(shownForDepartment)}
-                    onDisable={() => disableTemplate(shownForDepartment)}
+                    onRequest={() => requestTemplateForAll(shownForDepartment)}
+                    onEnable={() => setTemplateForAll(shownForDepartment, true)}
+                    onDisable={() => setTemplateForAll(shownForDepartment, false)}
                   />
                 </div>
                 {error && (
@@ -367,6 +356,19 @@ export function FeaturesMarketplacePage({
       </Dialog.Root>
     </div>
   );
+}
+
+/** Enabled when every department has it; pending when every department lacking it has a request open. */
+function statusForAll(template: MarketplaceTemplate, departmentIds: string[]): MarketplaceFeatureStatus {
+  if (departmentIds.length === 0) return "available";
+  const statuses = departmentIds.map((id) => forDepartment(template, id).status);
+  if (statuses.every((status) => status === "enabled")) return "enabled";
+  if (statuses.every((status) => status !== "available")) return "pending";
+  return "available";
+}
+
+function countLabel(count: number) {
+  return count === 1 ? "1 department" : `${count} departments`;
 }
 
 function withId(ids: string[], id: string, on: boolean) {
@@ -437,7 +439,7 @@ function OperationCard({
 }
 
 function TemplateAction({
-  template,
+  status,
   canRequest,
   canEnable,
   busy,
@@ -445,7 +447,7 @@ function TemplateAction({
   onEnable,
   onDisable,
 }: {
-  template: MarketplaceTemplate;
+  status: MarketplaceFeatureStatus;
   canRequest: boolean;
   canEnable: boolean;
   busy: boolean;
@@ -453,12 +455,12 @@ function TemplateAction({
   onEnable: () => void;
   onDisable: () => void;
 }) {
-  if (template.status === "enabled") {
+  if (status === "enabled") {
     if (!canEnable) return null;
     return (
       <Button variant="ghost" size="sm" disabled={busy} onClick={onDisable}>
         {busy && <Loader2 className="animate-spin" />}
-        Disable all
+        Disable for all departments
       </Button>
     );
   }
@@ -466,14 +468,14 @@ function TemplateAction({
     return (
       <Button variant="ghost" size="sm" disabled={busy} onClick={onEnable}>
         {busy && <Loader2 className="animate-spin" />}
-        Enable all
+        Enable for all departments
       </Button>
     );
   }
-  if (template.status === "pending") {
+  if (status === "pending") {
     return (
       <span className="inline-flex h-7 items-center gap-1 rounded-full bg-amber-500/10 px-2.5 font-sans text-[12px] font-medium text-amber-700 dark:text-amber-400">
-        <Clock className="size-3" /> Pending
+        <Clock className="size-3" /> Pending for all departments
       </span>
     );
   }
@@ -481,7 +483,7 @@ function TemplateAction({
   return (
     <Button variant="ghost" size="sm" disabled={busy} onClick={onRequest}>
       {busy && <Loader2 className="animate-spin" />}
-      Request all
+      Request for all departments
     </Button>
   );
 }

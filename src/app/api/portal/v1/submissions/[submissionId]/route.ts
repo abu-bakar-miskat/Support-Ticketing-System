@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
-import { toSubmissionJson } from "../route"
+import { toSubmissionJson } from "@/lib/portal-submissions"
 
 export async function GET(
   request: NextRequest,
@@ -33,8 +33,22 @@ export async function GET(
             id: true,
             ticketNumber: true,
             title: true,
+            category: true,
             status: true,
-            subDepartment: { select: { prefix: true } },
+            updatedAt: true,
+            subDepartment: {
+              select: {
+                id: true,
+                name: true,
+                prefix: true,
+                department: { select: { id: true, name: true } },
+              },
+            },
+            activityLogs: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { createdAt: true },
+            },
           },
         },
       },

@@ -201,7 +201,7 @@ Required properties:
 
 Every response value must be a string. Omit fields that are currently hidden by `visibleWhen`. Required visible fields must have a value.
 
-Use a unique, stable `Idempotency-Key` for each logical submission. If your request times out, retry with the same key. This prevents a network retry from creating a second ticket.
+The `Idempotency-Key` header is required. Use one unique, stable value for each logical submission and reuse it if the request times out. The database enforces uniqueness for each Portal API key, including when identical requests arrive concurrently.
 
 Successful response:
 
@@ -265,7 +265,18 @@ The endpoint returns up to 50 newest submissions:
         "id": "cmticket123",
         "reference": "IT-184",
         "title": "Unable to access my account",
-        "status": "OPEN"
+        "category": "TechnicalIssue",
+        "department": {
+          "id": "cmdepartment123",
+          "name": "Technical Support"
+        },
+        "subDepartment": {
+          "id": "cmsubdepartment123",
+          "name": "Service Desk"
+        },
+        "status": "OPEN",
+        "updatedAt": "2026-10-05T14:35:00.000Z",
+        "lastActivityAt": "2026-10-05T14:42:00.000Z"
       }
     }
   ]
@@ -293,10 +304,16 @@ Example response:
     "description": "Submitted support request details",
     "status": "OPEN",
     "type": "Task",
+    "category": "TechnicalIssue",
     "createdAt": "2026-10-05T14:30:00.000Z",
     "updatedAt": "2026-10-05T14:35:00.000Z",
+    "lastActivityAt": "2026-10-05T14:42:00.000Z",
     "closedAt": null,
     "departmentId": "cmdepartment123",
+    "department": {
+      "id": "cmdepartment123",
+      "name": "Technical Support"
+    },
     "subDepartment": {
       "id": "cmsubdepartment123",
       "name": "Service Desk"
@@ -476,6 +493,111 @@ POST /support/tickets/:id/comments
 ```
 
 On every browser-facing route, verify the portal session and derive the requester's email from that session. Do not trust an email, submission ID, or ticket ID supplied by the browser until your server confirms it belongs to that user.
+
+## Copy-and-paste portal implementation prompt
+
+Copy the prompt below into your coding assistant. Replace the bracketed values before using it. The prompt is technology-neutral and can be used for Next.js, PHP, Laravel, .NET, Java, or another server-side stack.
+
+```text
+You are implementing a Technical Support area in an existing tenant portal.
+
+Project context
+- Portal/application: [PORTAL NAME]
+- Technology stack: [TECH STACK]
+- Designated tenants: [TENANT IDS OR CONFIGURATION RULE]
+- Privacy notice URL: [PRIVACY NOTICE URL]
+- Agreed ticket retention period: [RETENTION PERIOD]
+- Global Support API base URL: [SUPPORT_API_BASE_URL]
+- Authentication method used by this portal: [AUTHENTICATION METHOD]
+
+First inspect the existing application structure, authentication and authorization model, tenant resolution, design system, form components, validation conventions, accessibility patterns, test setup, and audit-log facilities. Reuse established patterns rather than creating a separate visual or architectural system.
+
+Build the following feature.
+
+1. Availability and navigation
+- Show a "Technical Support" menu item only when the signed-in user's resolved tenant is in the server-controlled designated-tenant configuration.
+- Do not rely only on hiding UI. Enforce the same tenant entitlement on every portal backend route.
+- The Technical Support area must contain a ticket list and a clearly labelled "+" action for raising a new request.
+- Use the portal's existing responsive layout, terminology, focus handling, keyboard navigation, validation presentation, and accessible names.
+
+2. Security architecture
+- Call the Global Support API only from the portal server. The browser must call authenticated same-origin portal routes.
+- Store SUPPORT_API_BASE_URL and SUPPORT_API_KEY in the server's secret configuration. Never expose the key in browser code, public environment variables, HTML, URLs, local storage, analytics, error messages, or logs.
+- Send Authorization: Bearer <key> and Accept: application/json on every Support API request. Send Content-Type: application/json for JSON bodies.
+- Derive tenant ID, requester name, and requester email from the authenticated server session. Never accept tenant or requester identity from browser-controlled query parameters or request bodies.
+- Keep one API key per tenant portal. Never share a key between ESL, Nova Pathways, or any other tenant.
+- Store the returned submissionId and ticketId with the authenticated portal user and tenant. Before reading a submission/ticket or posting a comment, verify this local ownership. A user must not gain access by changing a URL or ID.
+- Apply CSRF protection to cookie-authenticated mutations, escape untrusted content when rendering, use HTTPS, set outbound timeouts, restrict redirects, redact sensitive logs, and add per-user rate limits.
+
+3. Portal backend adapter
+Create authenticated portal-server routes/services that proxy these Global Support API operations:
+- GET /api/portal/v1/form: load the linked support form.
+- POST /api/portal/v1/form/submissions: create one submission and central ticket.
+- GET /api/portal/v1/submissions?email={authenticated-user-email}: list the signed-in user's newest submissions.
+- GET /api/portal/v1/submissions/{submissionId}: retrieve an owned submission.
+- GET /api/portal/v1/tickets/{ticketId}: retrieve an owned ticket and requester-visible comments.
+- POST /api/portal/v1/tickets/{ticketId}/comments: add a requester comment to an owned ticket.
+
+Do not expose a generic proxy that accepts arbitrary Support API paths, emails, tenant IDs, submission IDs, or ticket IDs without authorization.
+
+4. Dynamic support form
+- Fetch the form when the new-request screen loads; a short server cache is acceptable, but do not hard-code form fields or issue IDs.
+- Render defaultFields for requester name, requester email, title, and issue type. Name and email must come from the authenticated user and should be read-only or server-overridden.
+- Render issues as a required category selector using the issue id as the submitted value and name as its label.
+- Render custom fields in ascending order. Support text, richtext, email, number, date, select, radio, checkbox, nested select, and file-reference fields exactly as documented by the API.
+- Enforce isRequired, options, childOptions, validation, placeholder, helperText, and visibleWhen. Omit hidden fields from responses. Every submitted custom-field value must be a string.
+- Submit submitterName, submitterEmail, title, issueId, and responses. Do not ask the requester to choose a department, sub-department, SLA, assignee, project, or status. The selected issue ID controls central routing.
+- The API has no public binary upload endpoint. Do not add an attachment upload control unless an approved upload/file-reference flow is supplied.
+
+5. Exactly-once submission and recovery
+- Generate one unguessable Idempotency-Key for each logical form submission, persist it before the request, and reuse the same value for every retry of that submission. Generate a new value only when the user intentionally starts a new request.
+- Disable repeated submit actions while a request is in flight, but do not rely on the button alone for deduplication.
+- Preserve entered values after validation, network, rate-limit, or server failures whenever safe.
+- On success, store submissionId, ticketId, and ticketReference; clear the draft/idempotency record; and show a confirmation containing the ticket reference plus a link back to the user's Technical Support ticket list.
+- If the API reports duplicate: true, treat the returned original ticket as success rather than creating another submission.
+
+6. Ticket list and detail
+- Under Technical Support, show only submissions belonging to the signed-in user. The server must call the list endpoint with the email from the authenticated session, never an email supplied by the browser.
+- The list must show Reference, Subject, Category/Department, Status, Progress, and Last Updated. Use ticket.reference, ticket.title, ticket.category, ticket.department/subDepartment, ticket.status, and ticket.lastActivityAt (falling back to updatedAt where needed).
+- Do not invent a progress percentage. The current API does not return structured progress; implement it only after an agreed status-to-progress mapping or an API field is provided.
+- The detail page is read-only for ticket properties. Do not provide edit, assignment, routing, priority, project, SLA, or status-change controls.
+- Requester comments are the only permitted ticket mutation. Validate non-empty comment text up to 10,000 characters, then refresh the ticket after posting.
+- Display a visible "Last refreshed" time based on when the portal completed its latest successful API fetch. Keep it distinct from the ticket's lastActivityAt/updatedAt value.
+- Provide manual refresh and an appropriate revalidation/polling policy that stays within API rate limits and pauses when the page is not visible.
+
+7. Comment privacy and unsupported tracking fields
+- Never show internal staff comments. Do not attempt to identify internal comments by author name, text prefix, or other client-side heuristic.
+- Before release, confirm that GET /tickets/{ticketId} returns only requester-visible comments or has an explicit visibility field that the portal can enforce. Treat this as a blocking dependency because the current contract does not expose a public/internal visibility flag.
+- The requested full update history with actor, attachments, escalated time, and elapsed duration is not present in the current API response. Do not fabricate it or infer it from comments. Mark these items as dependent on an API contract extension. Continue to show the fields that are available: status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
+
+8. States, errors, and retry behaviour
+- Provide accessible loading states/skeletons, empty ticket and comment states, inline field validation, submitting state, success confirmation, unauthorized/not-found state, and recoverable API error state.
+- Map API fieldErrors back to fields by field ID.
+- Do not automatically retry 400, 401, 403, 404, 409, 413, or 415 responses.
+- For 429, respect Retry-After and show when retry is available. Retry transient 500/503 and network failures with bounded exponential backoff and jitter. Reuse the original Idempotency-Key for submission retries.
+- Preserve the user's form/comment text on recoverable failures and avoid exposing upstream error details or credentials.
+
+9. Audit, privacy, and data lifecycle
+- Write a portal audit event after confirmed ticket creation containing the authenticated actor/user ID, tenant ID, timestamp, action, submission ID, ticket ID, and ticket reference. Do not store the API key, Authorization header, full form answers, or comment bodies in the audit event.
+- Collect only personal data required for support and display the supplied privacy notice near the form.
+- Apply the agreed retention, deletion, subject-access, hosting, and cross-border data-transfer rules to locally stored ownership links, drafts, idempotency records, caches, and audit data.
+
+10. Pre-development dependencies
+Do not silently guess these values. Record and resolve them before declaring the feature production-ready:
+- Complete issue/category-to-department mapping configured in the Global Support Platform.
+- Cross-system user authentication and stable requester email/identity rules.
+- Designated-tenant configuration and one Portal API key per tenant.
+- Ticket retention and data-access/deletion rules.
+- Hosting region and applicable data-transfer arrangements.
+- Requester-visible versus internal-comment API contract.
+- Progress definition or mapping.
+- API support for update history/actors, attachments, escalation time, and elapsed duration if those remain required.
+
+11. Verification
+Add unit, integration, and end-to-end tests for tenant feature gating; server-only secret handling; dynamic form rendering and conditional validation; issue ID submission; exactly-once creation under double-click and retry; success reference/link; own-user list filtering; direct-ID access denial; read-only ticket controls; requester comment posting; internal-comment exclusion; loading/empty/error/rate-limit states; session-derived identity; audit event creation; and keyboard/screen-reader behaviour.
+
+Deliver the implementation, tests, configuration documentation, and a short dependency report. Clearly identify any acceptance criterion blocked by the current API instead of implementing a misleading substitute.
+```
 
 ## Rate limits
 

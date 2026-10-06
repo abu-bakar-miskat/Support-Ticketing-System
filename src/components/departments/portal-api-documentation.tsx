@@ -117,6 +117,91 @@ export async function supportApi(path, options = {}) {
   if (!response.ok) throw new Error(data.error || \`API error \${response.status}\`);
   return data;
 }`
+  const implementationPrompt = `You are implementing a Technical Support area in an existing tenant portal.
+
+Project context
+- Portal/application: [PORTAL NAME]
+- Technology stack: [TECH STACK]
+- Designated tenants: [TENANT IDS OR CONFIGURATION RULE]
+- Privacy notice URL: [PRIVACY NOTICE URL]
+- Agreed ticket retention period: [RETENTION PERIOD]
+- Global Support API base URL: ${baseUrl}
+- Authentication method used by this portal: [AUTHENTICATION METHOD]
+
+First inspect the existing application structure, authentication and authorization model, tenant resolution, design system, form components, validation conventions, accessibility patterns, test setup, and audit-log facilities. Reuse established patterns.
+
+Build the following feature.
+
+1. Availability and navigation
+- Show a "Technical Support" menu only when the signed-in user's server-resolved tenant is in the designated-tenant configuration. Enforce the same entitlement on every backend route; hiding UI is not authorization.
+- Include a ticket list and a clearly labelled "+" action for raising a request. Follow existing responsive, terminology, interaction, and accessibility conventions.
+
+2. Security architecture
+- Call the Global Support API only from the portal server. The browser calls authenticated same-origin portal routes.
+- Keep SUPPORT_API_BASE_URL and SUPPORT_API_KEY in server secrets. Never expose the key in browser code, public environment variables, HTML, URLs, local storage, analytics, errors, or logs.
+- Send Bearer authentication and Accept: application/json; send Content-Type: application/json with JSON bodies.
+- Derive tenant ID, requester name, and requester email from the authenticated server session, never browser input.
+- Use one API key per tenant portal. Store returned submissionId and ticketId against the authenticated user and tenant. Verify ownership before every submission/ticket read or comment post so changing a URL or ID cannot expose another user or tenant.
+- Apply CSRF protection, output escaping, HTTPS, outbound timeouts, redirect restrictions, sensitive-log redaction, and per-user limits.
+
+3. Portal backend adapter
+Create authenticated portal-server routes/services for:
+- GET /form — load the linked form.
+- POST /form/submissions — create one central ticket.
+- GET /submissions?email={authenticated-user-email} — list only the signed-in user's submissions.
+- GET /submissions/{submissionId} — retrieve an owned submission.
+- GET /tickets/{ticketId} — retrieve an owned ticket and requester-visible comments.
+- POST /tickets/{ticketId}/comments — add a requester comment to an owned ticket.
+Do not build a generic proxy accepting arbitrary upstream paths, identity parameters, or unverified record IDs.
+
+4. Dynamic support form
+- Fetch the current form on page load or use only a short server cache. Never hard-code form fields or issue IDs.
+- Render defaultFields for name, email, title, and issue type. Name/email come from the session and are read-only or server-overridden.
+- Render issues as the required category selector, submitting its id. Render fields in order and support text, richtext, email, number, date, select, radio, checkbox, nested select, and documented file references.
+- Enforce isRequired, options, childOptions, validation, placeholder, helperText, and visibleWhen. Omit hidden fields. Submit every custom value as a string.
+- Submit submitterName, submitterEmail, title, issueId, and responses. Never ask the requester for department, sub-department, SLA, assignee, project, or status; issue configuration controls central routing.
+- Do not add binary attachment upload: the current API has no public upload endpoint.
+
+5. Exactly-once submission
+- Generate and persist one unguessable Idempotency-Key per logical submission before sending. Reuse it for every retry; replace it only for an intentionally new request.
+- Disable repeat submission while in flight and preserve entered values after recoverable failures.
+- On success, store submissionId, ticketId, and ticketReference, clear the draft/idempotency record, and show the reference plus a link to the ticket list.
+- Treat duplicate: true as a successful return of the original ticket.
+
+6. Ticket list and detail
+- List only the signed-in user's submissions, using the server-session email rather than browser input.
+- Show Reference, Subject, Category/Department, Status, Progress, and Last Updated using reference, title, category, department/subDepartment, status, and lastActivityAt (or updatedAt fallback).
+- Do not invent a progress percentage. The API does not currently return progress; require an agreed status mapping or API field.
+- Ticket properties are read-only. Do not provide edit, assignment, routing, priority, project, SLA, or status-change actions.
+- Requester comments are the only mutation. Validate 1–10,000 characters, post through the comments endpoint, and refresh after success.
+- Show a "Last refreshed" timestamp for the last successful fetch, distinct from ticket timestamps. Provide manual refresh and rate-limit-safe revalidation/polling that pauses when hidden.
+
+7. Privacy and unavailable API fields
+- Never show internal staff comments and never guess visibility from author/text. Before release, require GET /tickets/{ticketId} to return requester-visible comments only or an explicit visibility field. This is currently a blocking API dependency.
+- Full update history with actors, attachments, escalated time, and elapsed duration are not in the current response. Do not fabricate them. Mark them as API-extension dependencies. Available fields include status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
+
+8. UI states and errors
+- Provide accessible loading, empty, validation, submitting, success, unauthorized/not-found, and retry states.
+- Map fieldErrors by field ID. Do not auto-retry 400/401/403/404/409/413/415. For 429 respect Retry-After. Retry transient network/500/503 failures with bounded exponential backoff and jitter, reusing the submission idempotency key.
+- Preserve form/comment text after recoverable errors without exposing credentials or raw upstream details.
+
+9. Audit and data lifecycle
+- After confirmed creation, write a portal audit event with actor user ID, tenant ID, timestamp, action, submission ID, ticket ID, and reference. Never log credentials, full answers, or comment bodies.
+- Minimise personal data, show [PRIVACY NOTICE URL], and apply [RETENTION PERIOD] plus agreed access/deletion, hosting, and data-transfer rules to ownership links, drafts, idempotency records, caches, and audit data.
+
+10. Resolve before production
+- Complete issue/category-to-department mapping.
+- Cross-system authentication and stable requester identity/email rules.
+- Designated-tenant configuration and one key per tenant.
+- Retention, data-access/deletion, hosting, and transfer arrangements.
+- Public versus internal-comment contract.
+- Progress definition.
+- API support for history/actors, attachments, escalation time, and duration if still required.
+
+11. Tests and delivery
+Test tenant gating; server-only secrets; dynamic fields/conditional validation; routing issue ID; double-submit and retry deduplication; confirmation; own-user filtering; direct-ID denial; read-only controls; comments; internal-comment exclusion; loading/empty/error/rate-limit states; session-derived identity; audit creation; and keyboard/screen-reader behaviour.
+
+Deliver the implementation, tests, configuration notes, and dependency report. Explicitly identify acceptance criteria blocked by the API instead of creating misleading substitutes.`
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -167,6 +252,7 @@ export async function supportApi(path, options = {}) {
                 ["form", "Render the form"],
                 ["submit", "Submit a request"],
                 ["server", "Server example"],
+                ["prompt", "Implementation prompt"],
                 ["security", "Security"],
                 ["limits", "Rate limits"],
               ].map(([id, label]) => (
@@ -247,7 +333,7 @@ export async function supportApi(path, options = {}) {
                   Every custom value is a string. Send dates as <code className="font-mono text-[11.5px] text-sts-foreground">YYYY-MM-DD</code>, checkbox selections as comma-separated option values, and nested selections as <code className="font-mono text-[11.5px] text-sts-foreground">Parent &gt; Child</code>.
                 </p>
                 <div className="rounded-xl border border-sts-id/15 bg-sts-blue-tint/60 p-4 text-sts-foreground">
-                  Use one stable <code className="font-mono text-[11.5px]">Idempotency-Key</code> per logical submission. Reuse it when retrying a timed-out request so a second ticket is not created.
+                  The <code className="font-mono text-[11.5px]">Idempotency-Key</code> header is required. Use one stable value per logical submission and reuse it when retrying a timed-out request. Database enforcement prevents duplicates even when identical requests arrive concurrently.
                 </div>
                 <CodeBlock code={`{
   "data": {
@@ -263,6 +349,13 @@ export async function supportApi(path, options = {}) {
                 <p>
                   Your browser should call authenticated routes on your own portal. Those routes derive the requester email from the signed-in session and proxy the request to this API.
                 </p>
+              </DocSection>
+
+              <DocSection id="prompt" title="Copy-and-paste implementation prompt">
+                <p>
+                  Replace the bracketed values, then paste this into your coding assistant. It works for Next.js, PHP, Laravel, .NET, Java, or another server-side stack and includes the portal-side requirements and current API dependencies.
+                </p>
+                <CodeBlock code={implementationPrompt} />
               </DocSection>
 
               <DocSection id="security" title="Security and user ownership">

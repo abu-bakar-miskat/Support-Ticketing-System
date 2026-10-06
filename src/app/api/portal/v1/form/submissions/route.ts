@@ -14,6 +14,26 @@ import {
   requirePortalApiKey,
 } from "@/lib/portal-api"
 
+type ExistingSubmission = { id: string; ticketId: string | null }
+
+async function findExistingSubmission(
+  apiKeyId: string,
+  formConfigId: string,
+  idempotencyKey: string,
+): Promise<ExistingSubmission | null> {
+  const existing = await prisma.$queryRaw<ExistingSubmission[]>`
+    SELECT id, "ticketId" FROM "Intake"
+    WHERE "apiKeyId" = ${apiKeyId}
+      AND "formConfigId" = ${formConfigId}
+      AND (
+        "portalIdempotencyKey" = ${idempotencyKey}
+        OR responses::jsonb @> ${JSON.stringify([{ _ikey: idempotencyKey }])}::jsonb
+      )
+    LIMIT 1
+  `
+  return existing[0] ?? null
+}
+
 export async function POST(request: NextRequest) {
   const { ctx, error } = await requirePortalApiKey(request, { write: true })
   if (error) return error
@@ -22,6 +42,13 @@ export async function POST(request: NextRequest) {
   const parsed = await readPortalJson(request)
   if (parsed.error) return parsed.error
   const formId = ctx.formConfigId!
+  const idempotencyHeader = cleanString(request.headers.get("idempotency-key"), 128)
+  if (!idempotencyHeader) {
+    return portalJson({ error: "Idempotency-Key header is required" }, { status: 400 })
+  }
+  const idempotencyKey = `portal_${createHash("sha256")
+    .update(`${ctx.keyId}:${idempotencyHeader}`)
+    .digest("hex")}`
 
   return runWithApiKeyScope(ctx, async () => {
     const form = await prisma.intakeFormConfig.findFirst({
@@ -97,24 +124,12 @@ export async function POST(request: NextRequest) {
         value: supplied.get(field.id) ?? "",
       }))
 
-    const idempotencyHeader = cleanString(request.headers.get("idempotency-key"), 128)
-    const idempotencyKey = idempotencyHeader
-      ? `portal_${createHash("sha256").update(`${ctx.keyId}:${idempotencyHeader}`).digest("hex")}`
-      : null
-    if (idempotencyKey) {
-      const existing = await prisma.$queryRaw<Array<{ id: string; ticketId: string | null }>>`
-        SELECT id, "ticketId" FROM "Intake"
-        WHERE "apiKeyId" = ${ctx.keyId}
-          AND "formConfigId" = ${form.id}
-          AND responses::jsonb @> ${JSON.stringify([{ _ikey: idempotencyKey }])}::jsonb
-        LIMIT 1
-      `
-      if (existing[0]) {
-        return portalJson({
-          data: { submissionId: existing[0].id, ticketId: existing[0].ticketId },
-          duplicate: true,
-        })
-      }
+    const existing = await findExistingSubmission(ctx.keyId, form.id, idempotencyKey)
+    if (existing) {
+      return portalJson({
+        data: { submissionId: existing.id, ticketId: existing.ticketId },
+        duplicate: true,
+      })
     }
 
     try {
@@ -144,6 +159,16 @@ export async function POST(request: NextRequest) {
         { status: 201 },
       )
     } catch (cause) {
+      // A concurrent request with the same key can win the unique-index race.
+      // Once its transaction commits, return its identifiers as an idempotent
+      // success rather than surfacing the expected uniqueness error.
+      const duplicate = await findExistingSubmission(ctx.keyId, form.id, idempotencyKey)
+      if (duplicate) {
+        return portalJson({
+          data: { submissionId: duplicate.id, ticketId: duplicate.ticketId },
+          duplicate: true,
+        })
+      }
       console.error("[portal api] submission failed", cause)
       return portalJson({ error: "Failed to create submission" }, { status: 500 })
     }

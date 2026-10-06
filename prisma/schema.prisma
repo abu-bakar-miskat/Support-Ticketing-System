@@ -2093,6 +2093,9 @@ model Intake {
   // capability boundary used to prevent one integration key from reading
   // submissions or tickets created by another key.
   apiKeyId       String?
+  // Hashed Portal API Idempotency-Key. Kept outside responses so PostgreSQL can
+  // enforce exactly one submission for a key even when requests race.
+  portalIdempotencyKey String?
   replyToken     String?        @unique
   resolutionNote String?
   createdAt      DateTime       @default(now())
@@ -2102,6 +2105,7 @@ model Intake {
   apiKey     ApiKey?          @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
 
   @@index([apiKeyId])
+  @@unique([apiKeyId, portalIdempotencyKey])
 }
 
 // A support submission awaiting email verification (double opt-in). The ticket

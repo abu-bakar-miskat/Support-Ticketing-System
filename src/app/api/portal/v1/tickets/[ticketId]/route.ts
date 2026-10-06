@@ -3,6 +3,7 @@ import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
 import { presentPortalComment } from "@/lib/portal-comments"
+import { latestPortalActivityAt } from "@/lib/portal-submissions"
 
 export async function GET(
   request: NextRequest,
@@ -29,13 +30,26 @@ export async function GET(
         description: true,
         status: true,
         type: true,
+        category: true,
         createdAt: true,
         updatedAt: true,
         closedAt: true,
-        subDepartment: { select: { id: true, name: true, prefix: true, departmentId: true } },
+        subDepartment: {
+          select: {
+            id: true,
+            name: true,
+            prefix: true,
+            department: { select: { id: true, name: true } },
+          },
+        },
         project: { select: { id: true, name: true } },
         assignee: { select: { name: true, avatarUrl: true } },
         intake: { select: { id: true, submitterName: true, submitterEmail: true } },
+        activityLogs: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
         comments: {
           where: { deletedAt: null, messageId: null },
           orderBy: { createdAt: "asc" },
@@ -61,10 +75,16 @@ export async function GET(
         description: ticket.description,
         status: ticket.status,
         type: ticket.type,
+        category: ticket.category,
         createdAt: ticket.createdAt,
         updatedAt: ticket.updatedAt,
+        lastActivityAt: latestPortalActivityAt(
+          ticket.updatedAt,
+          ticket.activityLogs[0]?.createdAt,
+        ),
         closedAt: ticket.closedAt,
-        departmentId: ticket.subDepartment.departmentId,
+        departmentId: ticket.subDepartment.department.id,
+        department: ticket.subDepartment.department,
         subDepartment: { id: ticket.subDepartment.id, name: ticket.subDepartment.name },
         project: ticket.project,
         assignee: ticket.assignee,

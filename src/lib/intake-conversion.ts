@@ -239,6 +239,7 @@ export async function runConversion(
       responses: storedResponses as Prisma.InputJsonValue,
       replyToken: generateReplyToken(),
       ...(apiKeyId ? { apiKeyId } : {}),
+      ...(apiKeyId && idempotencyKey ? { portalIdempotencyKey: idempotencyKey } : {}),
       ...(schema
         ? { schemaVersion: schema.schemaVersion, fieldSnapshot: schema.fieldSnapshot }
         : {}),

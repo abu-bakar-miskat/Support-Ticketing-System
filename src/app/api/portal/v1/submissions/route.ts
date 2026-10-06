@@ -3,6 +3,7 @@ import { runWithApiKeyScope } from "@/lib/api-key-auth"
 import { prisma } from "@/lib/db"
 import { isValidEmailFormat } from "@/lib/email-validation"
 import { enforcePortalRateLimit, requirePortalApiKey, portalJson } from "@/lib/portal-api"
+import { toSubmissionJson } from "@/lib/portal-submissions"
 
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requirePortalApiKey(request)
@@ -35,47 +36,26 @@ export async function GET(request: NextRequest) {
             id: true,
             ticketNumber: true,
             title: true,
+            category: true,
             status: true,
-            subDepartment: { select: { prefix: true } },
+            updatedAt: true,
+            subDepartment: {
+              select: {
+                id: true,
+                name: true,
+                prefix: true,
+                department: { select: { id: true, name: true } },
+              },
+            },
+            activityLogs: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { createdAt: true },
+            },
           },
         },
       },
     })
     return portalJson({ data: submissions.map(toSubmissionJson) })
   })
-}
-
-export function toSubmissionJson(submission: {
-  id: string
-  submitterName: string
-  submitterEmail: string
-  responses: unknown
-  createdAt: Date
-  formConfig: { id: string; name: string }
-  ticket: null | {
-    id: string
-    ticketNumber: number
-    title: string
-    status: string
-    subDepartment: { prefix: string }
-  }
-}) {
-  return {
-    id: submission.id,
-    submitterName: submission.submitterName,
-    submitterEmail: submission.submitterEmail,
-    responses: Array.isArray(submission.responses)
-      ? submission.responses.filter((item) => !(item && typeof item === "object" && "_ikey" in item))
-      : submission.responses,
-    createdAt: submission.createdAt,
-    form: submission.formConfig,
-    ticket: submission.ticket
-      ? {
-          id: submission.ticket.id,
-          reference: `${submission.ticket.subDepartment.prefix}-${submission.ticket.ticketNumber}`,
-          title: submission.ticket.title,
-          status: submission.ticket.status,
-        }
-      : null,
-  }
 }

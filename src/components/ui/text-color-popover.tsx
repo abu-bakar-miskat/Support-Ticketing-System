@@ -6,6 +6,7 @@ import type { Editor } from "@tiptap/react";
 import { Baseline, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "./tooltip";
 
 /** Above expanded description overlay (z-10000) */
 const PANEL_Z = 10060;
@@ -100,22 +101,23 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
       </p>
       <div className="mb-2 grid grid-cols-7 gap-1.5">
         {TEXT_COLORS.map((c) => (
-          <button
-            key={c.name}
-            type="button"
-            title={c.name}
-            aria-label={`Text color ${c.name}`}
-            onClick={() => apply(c.value)}
-            className={cn(
-              "flex size-5 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
-              editor.isActive("textStyle", { color: c.value })
-                ? "border-sts-id ring-1 ring-sts-id"
-                : "border-sts-card-border",
-            )}
-            style={{ color: c.value }}
-          >
-            A
-          </button>
+          <Tip key={c.name} label={c.name}>
+            <button
+              key={c.name}
+              type="button"
+              aria-label={`Text color ${c.name}`}
+              onClick={() => apply(c.value)}
+              className={cn(
+                "flex size-5 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
+                editor.isActive("textStyle", { color: c.value })
+                  ? "border-sts-id ring-1 ring-sts-id"
+                  : "border-sts-card-border",
+              )}
+              style={{ color: c.value }}
+            >
+              A
+            </button>
+          </Tip>
         ))}
       </div>
       <button
@@ -133,26 +135,27 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        title="Text color"
-        aria-label="Text color"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setOpen((v) => !v);
-        }}
-        className={cn(
-          "flex size-6 items-center justify-center rounded transition-colors",
-          isActive || open
-            ? "bg-sts-blue-tint font-semibold text-sts-id"
-            : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
-        )}
-      >
-        <Baseline className="size-3.5" />
-      </button>
+      <Tip label="Text color">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label="Text color"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }}
+          className={cn(
+            "flex size-6 items-center justify-center rounded transition-colors",
+            isActive || open
+              ? "bg-sts-blue-tint font-semibold text-sts-id"
+              : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
+          )}
+        >
+          <Baseline className="size-3.5" />
+        </button>
+      </Tip>
       {portalRoot && panel ? createPortal(panel, portalRoot) : null}
     </>
   );

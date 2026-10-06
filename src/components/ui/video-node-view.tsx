@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
 import { useState } from "react";
 import { downloadFile } from "@/lib/download-file";
+import { Tip } from "./tooltip";
 
 export function VideoNodeView(props: NodeViewProps) {
   const { node, deleteNode, selected } = props;
@@ -64,34 +65,36 @@ export function VideoNodeView(props: NodeViewProps) {
             <p className="text-xs text-sts-muted">{sizeInMb} MB</p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0 transition-opacity">
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
-              title={`Download ${fileName}`}
-              aria-label={`Download ${fileName}`}
-            >
-              {isDownloading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Download className="size-4" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Delete video"
-              aria-label="Delete video"
-            >
-              {isDeleting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" />
-              )}
-            </button>
+            <Tip label={isDownloading ? undefined : `Download ${fileName}`}>
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
+                aria-label={`Download ${fileName}`}
+              >
+                {isDownloading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+              </button>
+            </Tip>
+            <Tip label={isDeleting ? undefined : "Delete video"}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Delete video"
+              >
+                {isDeleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
+              </button>
+            </Tip>
           </div>
         </div>
       </div>

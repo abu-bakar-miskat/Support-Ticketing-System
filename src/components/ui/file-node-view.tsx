@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
 import { useState } from "react";
 import { downloadFile } from "@/lib/download-file";
+import { Tip } from "./tooltip";
 
 export function FileNodeView(props: any) {
   const { node, deleteNode, selected } = props;
@@ -72,36 +73,38 @@ export function FileNodeView(props: any) {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-1 flex-shrink-0 transition-opacity">
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
-            title={`Download ${fileName}`}
-            aria-label={`Download ${fileName}`}
-          >
-            {isDownloading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Delete file"
-            aria-label="Delete file"
-          >
-            {isDeleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}
-          </button>
+          <Tip label={isDownloading ? undefined : `Download ${fileName}`}>
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
+              aria-label={`Download ${fileName}`}
+            >
+              {isDownloading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
+            </button>
+          </Tip>
+          <Tip label={isDeleting ? undefined : "Delete file"}>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Delete file"
+            >
+              {isDeleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+            </button>
+          </Tip>
         </div>
       </div>
     </NodeViewWrapper>

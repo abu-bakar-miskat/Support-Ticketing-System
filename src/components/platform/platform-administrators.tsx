@@ -252,7 +252,7 @@ export function PlatformAdministrators({
                           Audit
                         </button>
                       </Tip>
-                      <Tip label={isSelf ? "You can't remove your own super-admin access" : undefined}>
+                      <Tip wrap label={isSelf ? "You can't remove your own super-admin access" : undefined}>
                         <Button
                           variant="outline"
                           size="sm"

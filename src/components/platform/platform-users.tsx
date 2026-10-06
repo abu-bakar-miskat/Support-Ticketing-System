@@ -260,7 +260,7 @@ export function PlatformUsers({
                           Audit
                         </button>
                       </Tip>
-                      <Tip label={user.id === currentUserId ? "You can't delete your own account" : undefined}>
+                      <Tip wrap label={user.id === currentUserId ? "You can't delete your own account" : undefined}>
                         <Button
                           variant="outline"
                           size="sm"

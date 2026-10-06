@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "./tooltip";
 import { TEXT_COLORS } from "./text-color-popover";
 
 const VIEWPORT_MARGIN = 8;
@@ -74,21 +75,22 @@ function FormatButton({
   item: FormatItem;
 }) {
   return (
-    <button
-      type="button"
-      title={item.label}
-      aria-label={item.label}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={item.onSelect}
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
-        item.active
-          ? "bg-sts-blue-tint text-sts-id"
-          : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
-      )}
-    >
-      {item.icon}
-    </button>
+    <Tip label={item.label}>
+      <button
+        type="button"
+        aria-label={item.label}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={item.onSelect}
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
+          item.active
+            ? "bg-sts-blue-tint text-sts-id"
+            : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+        )}
+      >
+        {item.icon}
+      </button>
+    </Tip>
   );
 }
 
@@ -294,34 +296,36 @@ export function EditorSelectionMenu({
       {showColors && (
         <>
           {TEXT_COLORS.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              title={c.name}
-              aria-label={`Text color ${c.name}`}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => editor.chain().focus().setColor(c.value).run()}
-              className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
-                editor.isActive("textStyle", { color: c.value })
-                  ? "border-sts-id ring-1 ring-sts-id"
-                  : "border-sts-card-border",
-              )}
-              style={{ color: c.value }}
-            >
-              A
-            </button>
+            <Tip key={c.name} label={c.name}>
+              <button
+                key={c.name}
+                type="button"
+                aria-label={`Text color ${c.name}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().setColor(c.value).run()}
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
+                  editor.isActive("textStyle", { color: c.value })
+                    ? "border-sts-id ring-1 ring-sts-id"
+                    : "border-sts-card-border",
+                )}
+                style={{ color: c.value }}
+              >
+                A
+              </button>
+            </Tip>
           ))}
-          <button
-            type="button"
-            title="Default color"
-            aria-label="Default color"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => editor.chain().focus().unsetColor().run()}
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <Ban className="size-4" strokeWidth={2} />
-          </button>
+          <Tip label="Default color">
+            <button
+              type="button"
+              aria-label="Default color"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editor.chain().focus().unsetColor().run()}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <Ban className="size-4" strokeWidth={2} />
+            </button>
+          </Tip>
         </>
       )}
     </div>

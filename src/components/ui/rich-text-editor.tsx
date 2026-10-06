@@ -48,6 +48,7 @@ import {
 import { InsertTablePopover } from "./insert-table-popover";
 import { TextColorPopover } from "./text-color-popover";
 import { EditorSelectionMenu } from "./editor-selection-menu";
+import { Tip } from "./tooltip";
 
 type UploadStatusItem = {
   id: number;
@@ -525,17 +526,18 @@ export function RichTextEditor({
                 <span className="shrink-0 opacity-80">— {u.message}</span>
               )}
               {u.status === "error" && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setUploads((prev) => prev.filter((x) => x.id !== u.id))
-                  }
-                  className="shrink-0 transition-opacity hover:opacity-70"
-                  title="Dismiss"
-                  aria-label="Dismiss"
-                >
-                  <X className="size-3" />
-                </button>
+                <Tip label="Dismiss">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUploads((prev) => prev.filter((x) => x.id !== u.id))
+                    }
+                    className="shrink-0 transition-opacity hover:opacity-70"
+                    aria-label="Dismiss"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Tip>
               )}
             </span>
           ))}
@@ -602,26 +604,27 @@ function ToolBtn({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
-      aria-pressed={active}
-      className={cn(
-        "flex size-6 items-center justify-center rounded transition-colors",
-        active
-          ? "bg-sts-blue-tint font-semibold text-sts-id"
-          : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
-        disabled && "cursor-not-allowed opacity-30",
-      )}
-    >
-      {children}
-    </button>
+    <Tip label={disabled ? undefined : title}>
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onClick();
+        }}
+        disabled={disabled}
+        aria-label={title}
+        aria-pressed={active}
+        className={cn(
+          "flex size-6 items-center justify-center rounded transition-colors",
+          active
+            ? "bg-sts-blue-tint font-semibold text-sts-id"
+            : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
+          disabled && "cursor-not-allowed opacity-30",
+        )}
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }
 

@@ -2525,9 +2525,9 @@ function ProjectProfilePageInner({
                 className="size-3 shrink-0 text-violet-500 dark:text-violet-400"
                 aria-hidden
               />
+            )}
+          </button>
         </Tip>
-          )}
-        </button>
       );
     },
     [canManageBoards, creatingBoardSubDepartmentId, setTab, tab, subDepartmentBoardById],

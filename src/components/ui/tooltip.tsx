@@ -47,12 +47,10 @@ function TooltipContent({
     TooltipPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   >) {
-  const [container, setContainer] = React.useState<HTMLElement | null>(null);
-  React.useEffect(() => {
-    setContainer(getPortalRoot());
-  }, []);
+  // The popup only mounts client-side once open, so the portal root is safe to
+  // resolve during render (getPortalRoot returns null on the server).
   return (
-    <TooltipPrimitive.Portal container={container}>
+    <TooltipPrimitive.Portal container={getPortalRoot()}>
       <TooltipPrimitive.Positioner
         align={align}
         alignOffset={alignOffset}
@@ -83,6 +81,11 @@ type TipProps = {
   side?: TooltipPrimitive.Positioner.Props["side"];
   align?: TooltipPrimitive.Positioner.Props["align"];
   disabled?: boolean;
+  /**
+   * Wrap the trigger in a span so the tooltip still shows while the child is
+   * disabled. Use for buttons whose tooltip explains why they're disabled.
+   */
+  wrap?: boolean;
 };
 
 /**
@@ -91,15 +94,20 @@ type TipProps = {
  * A tooltip is a visual hint, not an accessible name — icon-only triggers
  * still need their own `aria-label`.
  */
-function Tip({ label, children, side, align, disabled }: TipProps) {
+function Tip({ label, children, side, align, disabled, wrap }: TipProps) {
   if (!label) return children;
-  // Disabled buttons get no pointer/focus events, so anchor the tooltip on a
-  // focusable wrapper — keeps "why is this disabled?" hints reachable.
+  // Disabled buttons get no pointer/focus events, so `wrap` anchors the tooltip
+  // on a span instead — keeps "why is this disabled?" hints reachable. The span
+  // is always rendered (only its tabIndex toggles) so the button never remounts
+  // and loses focus when its disabled state flips.
   const childDisabled = Boolean(
     (children.props as { disabled?: boolean }).disabled,
   );
-  const trigger = childDisabled ? (
-    <span tabIndex={0} className="inline-flex rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+  const trigger = wrap ? (
+    <span
+      tabIndex={childDisabled ? 0 : undefined}
+      className="inline-flex rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
       {children}
     </span>
   ) : (

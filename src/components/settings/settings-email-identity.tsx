@@ -271,6 +271,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
           Add sender
         </button>
         <Tip
+          wrap
           label={
             unverified
               ? "Each address must be on a verified Resend domain"

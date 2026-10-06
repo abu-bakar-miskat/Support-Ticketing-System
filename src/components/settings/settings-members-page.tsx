@@ -941,6 +941,7 @@ export function SettingsMembersPage({
         {(isAdmin || isManager) && (departmentId || availableDepartments.length > 0) && (
           <div className="flex shrink-0 items-center gap-2">
             <Tip
+              wrap
               label={
                 !isAdmin && availableSubDepartments.length === 0
                   ? "Create a sub-department before inviting"

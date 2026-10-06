@@ -579,6 +579,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </div>
         </div>
         <Tip
+          wrap
           label={
             data.availableSubDepartments.length === 0
               ? "Create a sub-department before inviting"

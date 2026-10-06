@@ -25,6 +25,7 @@ vi.mock("@/lib/assignment-engine", () => ({ recordAssignmentFailure: vi.fn().moc
 
 import { prisma } from "@/lib/db"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
+import { startSlaTimers } from "@/lib/sla-engine"
 import { createTicketFromPayload } from "./intake-finalize"
 
 const mockFindForm = vi.mocked(prisma.intakeFormConfig.findUnique)
@@ -35,6 +36,7 @@ const mockFindTicket = vi.mocked(prisma.ticket.findUnique)
 const mockTransaction = vi.mocked(prisma.$transaction)
 const mockPrepare = vi.mocked(prepareConversion)
 const mockRun = vi.mocked(runConversion)
+const mockStartSlaTimers = vi.mocked(startSlaTimers)
 
 // A department-scoped form: no fixed sub-department of its own.
 const deptForm = {
@@ -86,10 +88,12 @@ describe("createTicketFromPayload — department-scoped routing", () => {
     expect(mockPrepare).toHaveBeenCalledWith(
       expect.objectContaining({ intakeSubDepartmentId: "default-team", departmentId: "dept-1" }),
     )
+    expect(mockStartSlaTimers).not.toHaveBeenCalled()
   })
 
   it("routes to the chosen issue's sub-department without touching the default", async () => {
     mockFindPolicy.mockResolvedValue({
+      id: "issue-1",
       priority: "High",
       resolutionMins: 60,
       subDepartmentId: "routed-team",
@@ -103,10 +107,20 @@ describe("createTicketFromPayload — department-scoped routing", () => {
     expect(mockPrepare).toHaveBeenCalledWith(
       expect.objectContaining({ intakeSubDepartmentId: "routed-team" }),
     )
+    expect(mockStartSlaTimers).toHaveBeenCalledWith(
+      "t1",
+      "ten-1",
+      "dept-1",
+      { priority: "High" },
+      expect.any(Date),
+      "resolved",
+      "issue-1",
+    )
   })
 
   it("uses the chosen issue's department for tenant-wide portal routing", async () => {
     mockFindPolicy.mockResolvedValue({
+      id: "issue-2",
       priority: "Medium",
       resolutionMins: 120,
       departmentId: "dept-2",
@@ -118,6 +132,15 @@ describe("createTicketFromPayload — department-scoped routing", () => {
     expect(mockPrepare).toHaveBeenCalledWith(
       expect.objectContaining({ departmentId: "dept-2", intakeSubDepartmentId: "team-2" }),
     )
+  })
+
+  it("does not start an SLA when a submitted issue id is invalid", async () => {
+    mockFindPolicy.mockResolvedValue(null as never)
+    mockFindFirstSub.mockResolvedValue({ id: "default-team" } as never)
+
+    await createTicketFromPayload("form-1", { ...payload, issueId: "invalid-issue" })
+
+    expect(mockStartSlaTimers).not.toHaveBeenCalled()
   })
 
   it("throws only when the department has no sub-departments at all", async () => {

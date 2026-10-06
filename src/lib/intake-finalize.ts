@@ -53,6 +53,7 @@ export async function createTicketFromPayload(
   // method among currently available members.
   let resolvedPriority: TicketPriority = TicketPriority.Medium
   let resolvedEstimatedMinutes: number | null = null
+  let resolvedSlaPolicyId: string | null = null
   let routedSubDepartmentId: string | null = null
   let routedDepartmentId = form.departmentId
 
@@ -74,6 +75,7 @@ export async function createTicketFromPayload(
         ],
       },
       select: {
+        id: true,
         priority: true,
         resolutionMins: true,
         subDepartmentId: true,
@@ -81,6 +83,7 @@ export async function createTicketFromPayload(
       },
     })
     if (policy) {
+      resolvedSlaPolicyId = policy.id
       resolvedPriority = policy.priority ?? TicketPriority.Medium
       resolvedEstimatedMinutes = policy.resolutionMins
       routedSubDepartmentId = policy.subDepartmentId
@@ -163,15 +166,21 @@ export async function createTicketFromPayload(
 
   if (subDepartment && ticket) {
     const formValues = Object.fromEntries(responses.map((r) => [r.fieldId, r.value]))
-    startSlaTimers(
-      ticketId,
-      subDepartment.tenantId,
-      routedDepartmentId,
-      { ...formValues, priority: resolvedPriority },
-      ticket.createdAt,
-      prep.intakeSubDepartmentId,
-      issueId ?? null,
-    ).catch(() => undefined)
+    // Public support-form tickets only have an SLA when the submitter selected
+    // a valid SLA-backed issue. Without one, do not fall through to generic
+    // department/tenant policy matching: that creates an invisible SLA timer
+    // and can later auto-escalate a ticket that was submitted with no issue.
+    if (resolvedSlaPolicyId) {
+      startSlaTimers(
+        ticketId,
+        subDepartment.tenantId,
+        routedDepartmentId,
+        { ...formValues, priority: resolvedPriority },
+        ticket.createdAt,
+        prep.intakeSubDepartmentId,
+        resolvedSlaPolicyId,
+      ).catch(() => undefined)
+    }
     // RE-01/02: run the department's automation rules against the submitted form
     // values (plus resolved TicketPriority enum) and apply fired actions.
     await applyRulesToTicket(

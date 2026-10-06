@@ -83,9 +83,47 @@ export type InboxItem = {
   };
 };
 
+/** Ticket-less system notifications (feature/template/domain approvals, agreement
+ *  + mailbox alerts, access grants). Mirrors what the notification panel shows. */
+export type GeneralItem = {
+  id: string;
+  notifType: string;
+  actor: string;
+  actorInitials: string;
+  actorColor: string;
+  actorAvatarUrl?: string | null;
+  message: string | null;
+  time: string;
+  createdAt: string;
+  unread: boolean;
+};
+
 type AnyItem =
   | ({ kind: "ticket" } & InboxItem)
-  | ({ kind: "join_request" } & JoinRequestNotification);
+  | ({ kind: "join_request" } & JoinRequestNotification)
+  | ({ kind: "general" } & GeneralItem);
+
+// Label + click target per ticket-less notification type. Unknown types still
+// render (with a generic label and no navigation) so nothing from the panel is
+// ever missing here.
+const GENERAL_META: Record<
+  string,
+  { icon: React.ElementType; color: string; label: string; href: string | null }
+> = {
+  feature_request_submitted:  { icon: GitPullRequest, color: "#f84201", label: "requested feature approval", href: "/platform/feature-approvals" },
+  template_request_submitted: { icon: GitPullRequest, color: "#f84201", label: "requested a template",       href: "/platform/feature-approvals" },
+  domain_request_submitted:   { icon: GitPullRequest, color: "#f84201", label: "requested a domain",         href: "/platform/feature-approvals" },
+  feature_request_reviewed:   { icon: Sparkles,       color: "#7c3aed", label: "reviewed a feature request", href: null },
+  template_request_reviewed:  { icon: Sparkles,       color: "#7c3aed", label: "reviewed a template request", href: null },
+  domain_request_reviewed:    { icon: Sparkles,       color: "#7c3aed", label: "reviewed a domain request",  href: null },
+  agreement_expiring:         { icon: Clock,          color: "#d97706", label: "agreement expiring",         href: null },
+  mailbox_connection_failed:  { icon: Bell,           color: "#dc2626", label: "mailbox connection failed",  href: null },
+  access_granted:             { icon: UserCheck,      color: "#059669", label: "granted you access",         href: null },
+};
+
+function generalMeta(type: string) {
+  return GENERAL_META[type] ?? { icon: Bell, color: "#0a76b9", label: "sent a notification", href: null };
+}
 
 type TimeGroup = "today" | "yesterday" | "this_week" | "earlier";
 
@@ -356,16 +394,87 @@ function JoinRequestCard({
   );
 }
 
+// ── General (ticket-less) notification card ────────────────────────────────────
+
+function GeneralCard({
+  item,
+  onSelect,
+}: {
+  item: GeneralItem;
+  onSelect: () => void;
+}) {
+  const meta = generalMeta(item.notifType);
+  const Icon = meta.icon;
+  // Feature/template/domain review messages are prefixed with "approved:"/
+  // "rejected:" for other surfaces — strip it for a clean one-liner here.
+  const summary = item.message?.replace(/^(approved|rejected):\s*/i, "").trim() || null;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "group relative flex w-full items-start gap-3.5 rounded-xl border px-4 py-3.5 text-left transition-all hover:shadow-sm",
+        item.unread
+          ? "border-sts-card-border bg-sts-card hover:border-sts-id/20"
+          : "border-transparent bg-sts-surface/30 hover:bg-sts-surface/60",
+      )}
+    >
+      {item.unread && (
+        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-sts-blue" />
+      )}
+      <div className="relative mt-0.5 shrink-0">
+        <UserAvatar name={item.actor} avatarUrl={item.actorAvatarUrl} size={32} />
+        <span
+          className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-sts-card"
+          style={{ backgroundColor: meta.color }}
+        >
+          <Icon className="size-[8px] text-white" strokeWidth={2.5} />
+        </span>
+      </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <span
+            className={cn(
+              "shrink-0 font-sans text-[12.5px] font-semibold",
+              item.unread ? "text-sts-foreground" : "text-sts-muted",
+            )}
+          >
+            {item.actor}
+          </span>
+          <span className="shrink-0 font-sans text-[11.5px] text-sts-muted">{meta.label}</span>
+          <span className="ml-auto shrink-0 font-sans text-[11px] text-sts-subtle">{item.time}</span>
+        </div>
+        {summary && (
+          <p
+            className={cn(
+              "min-w-0 truncate font-sans text-[12px] leading-none",
+              item.unread ? "text-sts-foreground/90" : "text-sts-muted/80",
+            )}
+          >
+            {summary}
+          </p>
+        )}
+      </div>
+      <span className="flex size-6 shrink-0 items-center justify-center self-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
+        <ArrowRight className="size-3" strokeWidth={2} />
+      </span>
+    </button>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function InboxPage({
   items,
   joinRequestItems = [],
+  generalItems = [],
   currentUserInitials,
   userId,
 }: {
   items: InboxItem[];
   joinRequestItems?: JoinRequestNotification[];
+  generalItems?: GeneralItem[];
   currentUserInitials: string;
   userId: string;
 }) {
@@ -380,6 +489,10 @@ export function InboxPage({
   const prependNotification = useCallback(async (notifId: string) => {
     try {
       const item: InboxItem = await getNotification(notifId);
+      // Ticket-less notifications (join requests, feature/template/domain
+      // approvals, …) come back with `detail: null` — they can't render as a
+      // ticket card, so don't live-prepend them; they'll appear on next load.
+      if (!item?.detail) return;
       setLiveItems((prev) => {
         if (prev.some((p) => p.id === notifId)) return prev;
         return [item, ...prev];
@@ -409,6 +522,7 @@ export function InboxPage({
   const allItems: AnyItem[] = [
     ...liveItems.map((i): AnyItem => ({ kind: "ticket", ...i })),
     ...joinRequestItems.map((i): AnyItem => ({ kind: "join_request", ...i })),
+    ...generalItems.map((i): AnyItem => ({ kind: "general", ...i })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const all = allItems.map((n) =>
@@ -455,6 +569,12 @@ export function InboxPage({
   function openJoinRequest(item: JoinRequestNotification) {
     markDone(item.id);
     router.push("/settings/sub-departments");
+  }
+
+  function openGeneral(item: GeneralItem) {
+    markDone(item.id);
+    const href = generalMeta(item.notifType).href;
+    if (href) router.push(href);
   }
 
   function markAllRead() {
@@ -570,6 +690,12 @@ export function InboxPage({
                       key={item.id}
                       item={item}
                       onSelect={() => openJoinRequest(item)}
+                    />
+                  ) : item.kind === "general" ? (
+                    <GeneralCard
+                      key={item.id}
+                      item={item}
+                      onSelect={() => openGeneral(item)}
                     />
                   ) : (
                     <NotificationCard

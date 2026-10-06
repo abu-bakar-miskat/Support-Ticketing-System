@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { InboxPage, type InboxItem } from "@/components/inbox/inbox-page";
+import { InboxPage, type InboxItem, type GeneralItem } from "@/components/inbox/inbox-page";
 import type { JoinRequestNotification } from "@/components/inbox/join-request-item";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
@@ -97,6 +97,11 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
       n.type === "join_request" &&
       joinRequestInDeptScope(n.joinRequest?.subDepartment?.departmentId ?? null, activeDeptId),
   );
+  // Ticket-less, non-join notifications (feature/template/domain approvals,
+  // agreement + mailbox alerts, access grants, …). These carry no ticket or
+  // sub-department, so — exactly like the notification panel — they aren't
+  // department-scoped and would otherwise be dropped entirely from this page.
+  const generalRows = rows.filter((n) => n.type !== "join_request" && n.ticket === null);
 
   const items: InboxItem[] = ticketRows.map((n) => {
     const ticket = n.ticket!;
@@ -212,10 +217,24 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
     };
   });
 
+  const generalItems: GeneralItem[] = generalRows.map((n) => ({
+    id: n.id,
+    notifType: n.type,
+    actor: n.actor?.name ?? "System",
+    actorInitials: initialsOf(n.actor?.name ?? "System"),
+    actorColor: avatarColorFor(n.actor?.name ?? "System"),
+    actorAvatarUrl: n.actor?.avatarUrl ?? null,
+    message: n.message ?? null,
+    time: timeAgo(n.createdAt, now),
+    createdAt: n.createdAt.toISOString(),
+    unread: n.readAt === null,
+  }));
+
   return (
     <InboxPage
       items={items}
       joinRequestItems={joinRequestItems}
+      generalItems={generalItems}
       currentUserInitials={initialsOf(profile.name)}
       userId={profile.id}
     />

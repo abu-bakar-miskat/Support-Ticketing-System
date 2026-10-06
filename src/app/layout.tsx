@@ -5,6 +5,7 @@ import { FontSizeInitScript } from "@/components/font-size/font-size-init-script
 import { FontSizeProvider } from "@/components/font-size/font-size-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { UpdateNotifier } from "@/components/update-notifier";
 import { Analytics } from "@vercel/analytics/next";
@@ -57,7 +58,7 @@ export default function RootLayout({
         <QueryProvider>
           <FontSizeProvider>
             <ThemeProvider>
-            {children}
+            <TooltipProvider>{children}</TooltipProvider>
             <Toaster
               position="top-center"
               gap={8}

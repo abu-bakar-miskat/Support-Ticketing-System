@@ -104,6 +104,7 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
             key={c.name}
             type="button"
             title={c.name}
+            aria-label={`Text color ${c.name}`}
             onClick={() => apply(c.value)}
             className={cn(
               "flex size-5 items-center justify-center rounded-full border font-sans text-[12px] font-bold transition-transform hover:scale-110",
@@ -136,6 +137,9 @@ export function TextColorPopover({ editor }: { editor: Editor }) {
         ref={triggerRef}
         type="button"
         title="Text color"
+        aria-label="Text color"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onMouseDown={(e) => {
           e.preventDefault();
           setOpen((v) => !v);

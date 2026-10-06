@@ -18,6 +18,7 @@ import {
 } from "@/components/settings/settings-intake-forms-page"
 import type { ResolvedDefaultFields } from "@/lib/intake-default-fields"
 import { cn } from "@/lib/utils"
+import { Tip } from "@/components/ui/tooltip"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PortalSubmissionsModal } from "@/components/departments/portal-submissions-modal"
 
@@ -164,15 +165,16 @@ export function PortalApiFormsSection({
                       </button>
                     )}
                     {apiKey.revoked && (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(apiKey)}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-red-500/8 hover:text-sts-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-red/30 active:translate-y-px"
-                        aria-label={`Delete ${apiKey.name}`}
-                        title="Delete connection"
-                      >
-                        <Trash2 className="size-3.5" strokeWidth={1.8} />
-                      </button>
+                      <Tip label="Delete connection">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(apiKey)}
+                          className="inline-flex size-7 items-center justify-center rounded-md text-sts-subtle transition-colors hover:bg-red-500/8 hover:text-sts-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-red/30 active:translate-y-px"
+                          aria-label={`Delete ${apiKey.name}`}
+                        >
+                          <Trash2 className="size-3.5" strokeWidth={1.8} />
+                        </button>
+                      </Tip>
                     )}
                   </div>
                 </div>

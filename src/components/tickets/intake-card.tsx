@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RichTextDisplay } from "@/components/ui/rich-text-editor";
 import { Paperclip, ExternalLink, Inbox, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 export type IntakeResponseEntry = {
   fieldId: string;
@@ -46,23 +47,25 @@ function EmailValue({ email }: { email: string }) {
       >
         {email}
       </a>
-      <button
-        type="button"
-        onClick={() => {
-          navigator.clipboard?.writeText(email).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          });
-        }}
-        title={copied ? "Copied" : "Copy email"}
-        className="flex size-5 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-      >
-        {copied ? (
-          <Check className="size-3 text-sts-green" />
-        ) : (
-          <Copy className="size-3" />
-        )}
-      </button>
+      <Tip label={copied ? "Copied" : "Copy email"}>
+        <button
+          aria-label={copied ? "Copied" : "Copy email"}
+          type="button"
+          onClick={() => {
+            navigator.clipboard?.writeText(email).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            });
+          }}
+          className="flex size-5 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+        >
+          {copied ? (
+            <Check className="size-3 text-sts-green" />
+          ) : (
+            <Copy className="size-3" />
+          )}
+        </button>
+      </Tip>
     </span>
   );
 }

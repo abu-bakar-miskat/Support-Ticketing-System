@@ -64,6 +64,7 @@ import {
   type FormBrandingDefaults,
 } from "@/lib/form-branding";
 import { Palette } from "lucide-react";
+import { Tip } from "@/components/ui/tooltip";
 
 const SWITCH_ACCENTS = {
   green: {
@@ -97,45 +98,46 @@ function LabeledSwitch({
 }) {
   const colors = SWITCH_ACCENTS[accent];
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onToggle}
-      disabled={loading}
-      title={title}
-      className={cn(
-        "relative h-7 w-[80px] shrink-0 cursor-pointer overflow-hidden rounded-full border transition-colors duration-300",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-sts-bg",
-        checked
-          ? colors.track
-          : "border-sts-card-border bg-sts-surface hover:border-sts-muted/60",
-        loading && "cursor-wait opacity-70",
-      )}
-    >
-      <span
+    <Tip label={title}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onToggle}
+        disabled={loading}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold tracking-wide transition-colors duration-300",
-          checked ? cn("left-3", colors.label) : "right-2.5 text-sts-muted",
+          "relative h-7 w-[80px] shrink-0 cursor-pointer overflow-hidden rounded-full border transition-colors duration-300",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-sts-bg",
+          checked
+            ? colors.track
+            : "border-sts-card-border bg-sts-surface hover:border-sts-muted/60",
+          loading && "cursor-wait opacity-70",
         )}
       >
-        {loading ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : checked ? (
-          onLabel
-        ) : (
-          offLabel
-        )}
-      </span>
-      <span
-        className={cn(
-          "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
-          checked
-            ? cn("translate-x-[52px]", colors.thumb)
-            : "translate-x-0 bg-sts-muted",
-        )}
-      />
-    </button>
+        <span
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold tracking-wide transition-colors duration-300",
+            checked ? cn("left-3", colors.label) : "right-2.5 text-sts-muted",
+          )}
+        >
+          {loading ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : checked ? (
+            onLabel
+          ) : (
+            offLabel
+          )}
+        </span>
+        <span
+          className={cn(
+            "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
+            checked
+              ? cn("translate-x-[52px]", colors.thumb)
+              : "translate-x-0 bg-sts-muted",
+          )}
+        />
+      </button>
+    </Tip>
   );
 }
 
@@ -245,19 +247,20 @@ function CopyLinkButton({ url }: { url: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-      title={url}
-    >
-      {copied ? (
-        <Check className="size-3 text-sts-green" />
-      ) : (
-        <Copy className="size-3" />
-      )}
-      {copied ? "Copied!" : "Copy link"}
-    </button>
+    <Tip label={url}>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+      >
+        {copied ? (
+          <Check className="size-3 text-sts-green" />
+        ) : (
+          <Copy className="size-3" />
+        )}
+        {copied ? "Copied!" : "Copy link"}
+      </button>
+    </Tip>
   );
 }
 
@@ -379,13 +382,16 @@ function IntakeFormModal({
           <h2 className="sts-text-modal-title">
             {isEdit ? "Edit support form" : "New support form"}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -899,20 +905,26 @@ function FieldEditor({
                           }}
                           className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button
-                          type="button"
-                          onClick={confirmEditOption}
-                          className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                        >
-                          <Check className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingOption(null)}
-                          className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
+                        <Tip label="Save option">
+                          <button
+                            aria-label="Save option"
+                            type="button"
+                            onClick={confirmEditOption}
+                            className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
+                          >
+                            <Check className="size-3" />
+                          </button>
+                        </Tip>
+                        <Tip label="Cancel">
+                          <button
+                            aria-label="Cancel editing option"
+                            type="button"
+                            onClick={() => setEditingOption(null)}
+                            className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Tip>
                       </>
                     ) : (
                       <>
@@ -943,20 +955,26 @@ function FieldEditor({
                               : "Sub-options"}
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setEditingOption({ idx, draft: opt })}
-                          className="text-sts-subtle hover:text-sts-foreground"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeOption(opt)}
-                          className="text-sts-subtle hover:text-sts-red"
-                        >
-                          <X className="size-3" />
-                        </button>
+                        <Tip label="Edit option">
+                          <button
+                            aria-label="Edit option"
+                            type="button"
+                            onClick={() => setEditingOption({ idx, draft: opt })}
+                            className="text-sts-subtle hover:text-sts-foreground"
+                          >
+                            <Pencil className="size-3" />
+                          </button>
+                        </Tip>
+                        <Tip label="Remove option">
+                          <button
+                            aria-label="Remove option"
+                            type="button"
+                            onClick={() => removeOption(opt)}
+                            className="text-sts-subtle hover:text-sts-red"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Tip>
                       </>
                     )}
                   </div>
@@ -990,20 +1008,26 @@ function FieldEditor({
                                   }}
                                   className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={confirmEditChild}
-                                  className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                                >
-                                  <Check className="size-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingChild(null)}
-                                  className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                                >
-                                  <X className="size-2.5" />
-                                </button>
+                                <Tip label="Save sub-option">
+                                  <button
+                                    aria-label="Save sub-option"
+                                    type="button"
+                                    onClick={confirmEditChild}
+                                    className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
+                                  >
+                                    <Check className="size-2.5" />
+                                  </button>
+                                </Tip>
+                                <Tip label="Cancel">
+                                  <button
+                                    aria-label="Cancel editing sub-option"
+                                    type="button"
+                                    onClick={() => setEditingChild(null)}
+                                    className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
+                                  >
+                                    <X className="size-2.5" />
+                                  </button>
+                                </Tip>
                               </div>
                             ) : (
                               <div
@@ -1013,26 +1037,32 @@ function FieldEditor({
                                 <span className="flex-1 font-sans text-[11px] text-sts-foreground">
                                   {child}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditingChild({
-                                      parent: opt,
-                                      idx,
-                                      draft: child,
-                                    })
-                                  }
-                                  className="text-sts-subtle hover:text-sts-foreground"
-                                >
-                                  <Pencil className="size-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeChild(opt, child)}
-                                  className="text-sts-subtle hover:text-sts-red"
-                                >
-                                  <X className="size-2.5" />
-                                </button>
+                                <Tip label="Edit sub-option">
+                                  <button
+                                    aria-label="Edit sub-option"
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingChild({
+                                        parent: opt,
+                                        idx,
+                                        draft: child,
+                                      })
+                                    }
+                                    className="text-sts-subtle hover:text-sts-foreground"
+                                  >
+                                    <Pencil className="size-2.5" />
+                                  </button>
+                                </Tip>
+                                <Tip label="Remove sub-option">
+                                  <button
+                                    aria-label="Remove sub-option"
+                                    type="button"
+                                    onClick={() => removeChild(opt, child)}
+                                    className="text-sts-subtle hover:text-sts-red"
+                                  >
+                                    <X className="size-2.5" />
+                                  </button>
+                                </Tip>
                               </div>
                             );
                           })}
@@ -1589,13 +1619,16 @@ export function FieldBuilderModal({
               <Plus className="size-3.5" strokeWidth={2.5} />
               Add field
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Close">
+              <button
+                aria-label="Close"
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         </div>
 
@@ -1828,24 +1861,30 @@ export function FieldBuilderModal({
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(field.id);
-                          setAddingField(false);
-                          setEditorError(null);
-                        }}
-                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                      >
-                        <Pencil className="size-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(field)}
-                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
+                      <Tip label="Edit field">
+                        <button
+                          aria-label="Edit field"
+                          type="button"
+                          onClick={() => {
+                            setEditingId(field.id);
+                            setAddingField(false);
+                            setEditorError(null);
+                          }}
+                          className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                      </Tip>
+                      <Tip label="Delete field">
+                        <button
+                          aria-label="Delete field"
+                          type="button"
+                          onClick={() => setDeleteTarget(field)}
+                          className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </Tip>
                     </div>
                   </div>
                 );
@@ -2044,13 +2083,16 @@ function FormDesignModal({
               to the department brand (Email settings → Branding).
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Edit / Preview toggle */}
@@ -2426,24 +2468,27 @@ function IssueEditorRow({
         />
       </label>
       </>)}
-      <button
-        type="button"
-        onClick={save}
-        disabled={!canSave}
-        className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
-        title="Save issue"
-      >
-        {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-        Save
-      </button>
-      <button
-        type="button"
-        onClick={() => onDelete(issue.id)}
-        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-500/10 hover:text-sts-red"
-        title="Delete issue"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      <Tip label="Save issue">
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
+        >
+          {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+          Save
+        </button>
+      </Tip>
+      <Tip label="Delete issue">
+        <button
+          aria-label="Delete issue"
+          type="button"
+          onClick={() => onDelete(issue.id)}
+          className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-500/10 hover:text-sts-red"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </Tip>
     </div>
   );
 }
@@ -2570,13 +2615,16 @@ export function IssuesModal({
               {tenantRouted ? form.name : `${form.name} · ${form.departmentName}`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -3031,51 +3079,58 @@ export function SettingsIntakeFormsPage({
                     {/* Actions */}
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[56px] items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setIssuesModal(form)}
-                          className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
-                          title="Add or edit the issues shown on this form and their routing"
-                        >
-                          <ListChecks className="size-3.5" />
-                          Issues
-                        </button>
-                        {form.displayMode !== "CHAT" && (
+                        <Tip label="Add or edit the issues shown on this form and their routing">
                           <button
                             type="button"
-                            onClick={() => setFieldModal(form)}
+                            onClick={() => setIssuesModal(form)}
                             className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
-                            title="Add or edit the fields shown on this form"
                           >
-                            <Settings2 className="size-3.5" />
-                            Add Field
+                            <ListChecks className="size-3.5" />
+                            Issues
                           </button>
+                        </Tip>
+                        {form.displayMode !== "CHAT" && (
+                          <Tip label="Add or edit the fields shown on this form">
+                            <button
+                              type="button"
+                              onClick={() => setFieldModal(form)}
+                              className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
+                            >
+                              <Settings2 className="size-3.5" />
+                              Add Field
+                            </button>
+                          </Tip>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setDesignModal(form)}
-                          className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
-                          title="Customize the public form's logo and colors"
-                        >
-                          <Palette className="size-3.5" />
-                          Design
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setModal({ type: "edit", form })}
-                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-                          title="Edit form settings"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(form)}
-                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
-                          title="Delete this form"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                        <Tip label="Customize the public form's logo and colors">
+                          <button
+                            type="button"
+                            onClick={() => setDesignModal(form)}
+                            className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
+                          >
+                            <Palette className="size-3.5" />
+                            Design
+                          </button>
+                        </Tip>
+                        <Tip label="Edit form settings">
+                          <button
+                            aria-label="Edit form settings"
+                            type="button"
+                            onClick={() => setModal({ type: "edit", form })}
+                            className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </Tip>
+                        <Tip label="Delete this form">
+                          <button
+                            aria-label="Delete form"
+                            type="button"
+                            onClick={() => setDeleteTarget(form)}
+                            className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tip>
                       </div>
                     </TableCell>
                   </TableRow>

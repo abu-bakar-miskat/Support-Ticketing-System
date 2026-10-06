@@ -13,6 +13,7 @@ import { TIMEZONES } from "@/lib/timezones";
 import { toast } from "sonner";
 import { toastResponseError } from "@/lib/toast-error";
 import { useAvailabilityRefresh } from "@/components/providers/availability-provider";
+import { Tip } from "@/components/ui/tooltip";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -282,13 +283,16 @@ export function MemberConfigPanel({
             </p>
             <p className="font-sans text-[11.5px] text-sts-subtle truncate">{member.email}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="ml-3 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {loading ? (
@@ -428,13 +432,16 @@ export function MemberConfigPanel({
                             <p className="font-sans text-[11px] text-sts-subtle">{h.reason}</p>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeHoliday(h.id)}
-                          className="ml-2 inline-flex size-6 items-center justify-center rounded text-sts-subtle hover:text-red-500"
-                        >
-                          <X className="size-3.5" />
-                        </button>
+                        <Tip label="Remove holiday">
+                          <button
+                            aria-label="Remove holiday"
+                            type="button"
+                            onClick={() => removeHoliday(h.id)}
+                            className="ml-2 inline-flex size-6 items-center justify-center rounded text-sts-subtle hover:text-red-500"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </Tip>
                       </div>
                     ))}
                   </div>

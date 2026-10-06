@@ -152,6 +152,9 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
         ref={triggerRef}
         type="button"
         title="Insert table"
+        aria-label="Insert table"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onMouseDown={(e) => {
           e.preventDefault();
           setOpen((v) => !v);

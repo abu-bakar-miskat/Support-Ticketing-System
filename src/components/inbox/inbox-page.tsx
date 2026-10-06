@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -293,17 +294,19 @@ function NotificationCard({
       {/* Actions */}
       <div className="flex shrink-0 flex-col items-end gap-1.5 self-center">
         {item.unread && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onMarkDone(item.id);
-            }}
-            title="Mark as read"
-            className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
-          >
-            <Check className="size-3" strokeWidth={2.5} />
-          </button>
+          <Tip label="Mark as read">
+            <button
+              aria-label="Mark as read"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onMarkDone(item.id);
+              }}
+              className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
+            >
+              <Check className="size-3" strokeWidth={2.5} />
+            </button>
+          </Tip>
         )}
         <span className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
           <ArrowRight className="size-3" strokeWidth={2} />

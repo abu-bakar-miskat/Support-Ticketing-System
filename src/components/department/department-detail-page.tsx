@@ -57,6 +57,7 @@ import {
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
 import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -450,15 +451,17 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               otherMemberships.map((s) => (
                 <span key={s.subDepartmentId} className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
                   {s.subDepartmentName}
-                  <button
-                    type="button"
-                    title={`Remove from ${s.subDepartmentName}`}
-                    disabled={saving === m.userId}
-                    onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
-                    className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
-                  >
-                    <X className="size-3" />
-                  </button>
+                  <Tip label={`Remove from ${s.subDepartmentName}`}>
+                    <button
+                      aria-label={`Remove ${m.name} from ${s.subDepartmentName}`}
+                      type="button"
+                      disabled={saving === m.userId}
+                      onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
+                      className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Tip>
                 </span>
               ))
             )}
@@ -508,25 +511,29 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </TableCell>
         <TableCell className="py-0 text-right">
           <div className="flex h-[54px] items-center justify-end gap-0.5">
-            <button
-              type="button"
-              title="Configure availability"
-              onClick={() => setConfigMember(toConfigTarget(m))}
-              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <Settings2 className="size-3.5" />
-            </button>
+            <Tip label="Configure availability">
+              <button
+                aria-label={`Configure availability for ${m.name}`}
+                type="button"
+                onClick={() => setConfigMember(toConfigTarget(m))}
+                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <Settings2 className="size-3.5" />
+              </button>
+            </Tip>
             {/* A sub-manager may remove only agents (with confirmation) — never a
                 fellow sub-manager. Admins/managers can remove anyone. */}
             {(!data.isSubManager || role === "agent") && (
-              <button
-                type="button"
-                onClick={() => setConfirmRemoveMember(m)}
-                title="Remove from department"
-                className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-              >
-                <X className="size-3.5" />
-              </button>
+              <Tip label="Remove from department">
+                <button
+                  aria-label={`Remove ${m.name} from department`}
+                  type="button"
+                  onClick={() => setConfirmRemoveMember(m)}
+                  className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Tip>
             )}
           </div>
         </TableCell>
@@ -571,19 +578,22 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowInviteModal(true)}
-          disabled={data.availableSubDepartments.length === 0}
-          title={
+        <Tip
+          label={
             data.availableSubDepartments.length === 0
               ? "Create a sub-department before inviting"
               : "Send an email invite to someone without an account"
           }
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
         >
-          <Mail className="size-4" /> Invite new members
-        </button>
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            disabled={data.availableSubDepartments.length === 0}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
+          >
+            <Mail className="size-4" /> Invite new members
+          </button>
+        </Tip>
       </div>
 
       {/* Join requests */}
@@ -705,22 +715,26 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       {/* Sub-managers see the managers list read-only — no config or remove. */}
                       {!data.isSubManager && (
                         <div className="flex h-[54px] items-center justify-end gap-0.5">
-                          <button
-                            type="button"
-                            title="Configure availability"
-                            onClick={() => setConfigMember(toConfigTarget(m))}
-                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Settings2 className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeManager(m.userId)}
-                            title="Remove manager"
-                            className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                          >
-                            <X className="size-3.5" />
-                          </button>
+                          <Tip label="Configure availability">
+                            <button
+                              aria-label={`Configure availability for ${m.name}`}
+                              type="button"
+                              onClick={() => setConfigMember(toConfigTarget(m))}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Settings2 className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Remove manager">
+                            <button
+                              aria-label={`Remove manager ${m.name}`}
+                              type="button"
+                              onClick={() => removeManager(m.userId)}
+                              className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
                         </div>
                       )}
                     </TableCell>
@@ -861,26 +875,28 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                     </TableCell>
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          title="Resend invite email"
-                          disabled={!!inviteAction[inv.id]}
-                          onClick={() => resendInvite(inv)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-50"
-                        >
-                          {inviteAction[inv.id] === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
-                          Resend
-                        </button>
-                        <button
-                          type="button"
-                          title="Delete invite"
-                          disabled={!!inviteAction[inv.id]}
-                          onClick={() => deleteInvite(inv)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
-                        >
-                          {inviteAction[inv.id] === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Delete
-                        </button>
+                        <Tip label="Resend invite email">
+                          <button
+                            type="button"
+                            disabled={!!inviteAction[inv.id]}
+                            onClick={() => resendInvite(inv)}
+                            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-50"
+                          >
+                            {inviteAction[inv.id] === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
+                            Resend
+                          </button>
+                        </Tip>
+                        <Tip label="Delete invite">
+                          <button
+                            type="button"
+                            disabled={!!inviteAction[inv.id]}
+                            onClick={() => deleteInvite(inv)}
+                            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
+                          >
+                            {inviteAction[inv.id] === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                            Delete
+                          </button>
+                        </Tip>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import { ArrowLeft, Check, X, Mail, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 type MailboxMessage = {
   id: string;
@@ -186,24 +187,28 @@ export function DepartmentMailboxPage({
                   <span className="shrink-0 font-sans text-[11.5px] text-sts-subtle">{formatDate(m.createdAt)}</span>
                   {m.status === "quarantined" && (
                     <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        disabled={busyId === m.id}
-                        onClick={() => act(m, "accept")}
-                        title="Accept — mark trusted"
-                        className="inline-flex size-7 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-900/20"
-                      >
-                        <Check className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === m.id}
-                        onClick={() => act(m, "reject")}
-                        title="Reject — discard this message"
-                        className="inline-flex size-7 items-center justify-center rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
-                      >
-                        <X className="size-3.5" />
-                      </button>
+                      <Tip label="Accept — mark trusted">
+                        <button
+                          aria-label="Accept and mark sender trusted"
+                          type="button"
+                          disabled={busyId === m.id}
+                          onClick={() => act(m, "accept")}
+                          className="inline-flex size-7 items-center justify-center rounded-full text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 dark:hover:bg-emerald-900/20"
+                        >
+                          <Check className="size-3.5" />
+                        </button>
+                      </Tip>
+                      <Tip label="Reject — discard this message">
+                        <button
+                          aria-label="Reject and discard message"
+                          type="button"
+                          disabled={busyId === m.id}
+                          onClick={() => act(m, "reject")}
+                          className="inline-flex size-7 items-center justify-center rounded-full text-red-600 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </Tip>
                     </div>
                   )}
                 </button>

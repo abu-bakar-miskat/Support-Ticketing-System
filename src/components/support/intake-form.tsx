@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { uploadIntakeFile } from "@/lib/api/upload-intake-file"
 import { resolveIntakeDefaultFields, type ResolvedDefaultFields } from "@/lib/intake-default-fields"
 import { isFieldVisible, toFormFieldDef, validateSubmission } from "@/lib/form-validation"
+import { Tip } from "@/components/ui/tooltip"
 
 type FieldValidation = {
   minLength?: number
@@ -584,14 +585,16 @@ function DynamicField({
               alt={upload.file.name}
               className="max-h-56 w-full object-contain bg-[#f8f9fb]"
             />
-            <button
-              type="button"
-              onClick={onFileRemove}
-              title="Remove image"
-              className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Remove image">
+              <button
+                aria-label="Remove image"
+                type="button"
+                onClick={onFileRemove}
+                className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
           <div className="flex items-center gap-2 border-t border-sts-card-border px-3 py-2">
             <Paperclip className="size-3 shrink-0 text-sts-subtle" />
@@ -620,14 +623,16 @@ function DynamicField({
           <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] font-medium text-sts-foreground">
             {upload.file.name}
           </span>
-          <button
-            type="button"
-            onClick={onFileRemove}
-            title="Remove file"
-            className="shrink-0 text-sts-subtle transition-colors hover:text-sts-red"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Remove file">
+            <button
+              aria-label="Remove file"
+              type="button"
+              onClick={onFileRemove}
+              className="shrink-0 text-sts-subtle transition-colors hover:text-sts-red"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
       )
     }

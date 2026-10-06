@@ -33,9 +33,11 @@ export function ImageNodeView(props: any) {
 
         {/* Delete button on hover */}
         <button
+          type="button"
           onClick={handleDelete}
           className="absolute top-2 right-2 flex items-center justify-center p-2 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
           title="Delete image"
+          aria-label="Delete image"
         >
           <Trash2 className="size-4" />
         </button>

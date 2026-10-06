@@ -91,6 +91,7 @@ import {
   TITLE_CELL_CLASS,
   TITLE_INNER_CLASS,
 } from "@/components/tasks/task-list-cells";
+import { Tip } from "@/components/ui/tooltip";
 
 const DRAG_TYPE = "MY_TASK_CARD";
 type DragItem = { dbId: string; fromStatus: string };
@@ -308,31 +309,36 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
           </span>
         </div>
         {isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : canTrack ? (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ) : null}
         <span className="flex-1" />
         {subTotal > 0 && (
           <button
             type="button"
             onClick={toggleExpanded}
+            aria-expanded={expanded}
             className={cn(
               "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
               subtasksDone ? "text-sts-green" : "text-sts-muted",
@@ -342,15 +348,16 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
             {subDone}/{subTotal} sub-tickets
           </button>
         )}
-        <button
-          type="button"
-          title="Add sub-task"
-          onClick={openSubTicketModal}
-          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
-        >
-          <Plus className="size-[11px] shrink-0" />
-          <span>Sub-task</span>
-        </button>
+        <Tip label="Add sub-task">
+          <button
+            type="button"
+            onClick={openSubTicketModal}
+            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
+          >
+            <Plus className="size-[11px] shrink-0" />
+            <span>Sub-task</span>
+          </button>
+        </Tip>
       </div>
       {subTotal > 0 && expanded && (
         <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">
@@ -535,7 +542,7 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
         <td className={cn(TITLE_CELL_CLASS, LIST_TD)}>
           <div className={TITLE_INNER_CLASS}>
             {hasChildren && (
-              <button type="button" onClick={() => setExpanded((v) => !v)} className="flex shrink-0 items-center justify-center text-sts-muted hover:text-sts-foreground">
+              <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} aria-label={expanded ? "Collapse sub-tasks" : "Expand sub-tasks"} className="flex shrink-0 items-center justify-center text-sts-muted hover:text-sts-foreground">
                 <ChevronRight className={cn("size-[13px] transition-transform", expanded && "rotate-90")} />
               </button>
             )}

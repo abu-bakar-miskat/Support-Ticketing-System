@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
+import { Tip } from "@/components/ui/tooltip";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
@@ -826,23 +827,26 @@ function PolicyRow({
       <td className={cell}>
         {!readOnly && (
           <div className="flex items-center justify-end gap-1.5">
-            <button
-              type="button"
-              onClick={save}
-              disabled={!canSave}
-              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
-              title="Save changes"
-            >
-              <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-              title="Delete policy"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <Tip label="Save changes">
+              <button
+                type="button"
+                onClick={save}
+                disabled={!canSave}
+                className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
+              >
+                <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
+              </button>
+            </Tip>
+            <Tip label="Delete policy">
+              <button
+                aria-label="Delete policy"
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </Tip>
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}
@@ -932,14 +936,17 @@ function NewPolicyModal({
       >
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">New SLA policy</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={creating}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onCancel}
+              disabled={creating}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex flex-col gap-4 overflow-y-auto px-[22px] py-5">

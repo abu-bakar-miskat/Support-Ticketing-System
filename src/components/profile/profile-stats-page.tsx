@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -243,13 +244,16 @@ function TicketSlideOver({
               {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
         <div className="flex-1 overflow-y-auto">
           {tickets.length === 0 ? (

@@ -532,6 +532,7 @@ export function RichTextEditor({
                   }
                   className="shrink-0 transition-opacity hover:opacity-70"
                   title="Dismiss"
+                  aria-label="Dismiss"
                 >
                   <X className="size-3" />
                 </button>
@@ -609,6 +610,8 @@ function ToolBtn({
       }}
       disabled={disabled}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={cn(
         "flex size-6 items-center justify-center rounded transition-colors",
         active

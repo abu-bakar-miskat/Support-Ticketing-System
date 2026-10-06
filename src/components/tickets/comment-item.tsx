@@ -21,6 +21,7 @@ import type { MentionableUser } from "@/lib/mentionable-users"
 import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-list-item"
 import { AnchoredDropdown } from "@/components/ui/anchored-dropdown"
 import { formatDateTime } from "@/lib/format"
+import { Tip } from "@/components/ui/tooltip"
 
 type ReplyFileEntry = { id: number; file: File; previewUrl: string | null }
 
@@ -119,17 +120,17 @@ function AttachmentList({ attachments }: { attachments: CommentAttachment[] }) {
         </Link>
       ))}
       {files.map((a) => (
-        <button
-          key={a.id}
-          type="button"
-          onClick={() => downloadFile(a.storageUrl, a.fileName)}
-          title={`Download ${a.fileName}`}
-          className="flex cursor-pointer items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
-        >
-          <FileDown className="size-3.5 shrink-0 text-sts-blue" />
-          <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
-          <span className="shrink-0 text-[11.5px] text-sts-subtle">{formatBytes(a.fileSize)}</span>
-        </button>
+        <Tip key={a.id} label={`Download ${a.fileName}`}>
+          <button
+            type="button"
+            onClick={() => downloadFile(a.storageUrl, a.fileName)}
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+          >
+            <FileDown className="size-3.5 shrink-0 text-sts-blue" />
+            <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
+            <span className="shrink-0 text-[11.5px] text-sts-subtle">{formatBytes(a.fileSize)}</span>
+          </button>
+        </Tip>
       ))}
     </div>
   )
@@ -437,15 +438,16 @@ function InlineReplyBox({
               e.target.value = ""
             }}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            title="Attach files"
-            className="flex h-7 items-center gap-1 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-bg hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30"
-          >
-            <Paperclip className="size-[11px]" />
-            Attach
-          </button>
+          <Tip label="Attach files">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-7 items-center gap-1 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-bg hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30"
+            >
+              <Paperclip className="size-[11px]" />
+              Attach
+            </button>
+          </Tip>
           <button type="button" onClick={onCancel} className="h-7 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-bg hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30">
             Cancel
           </button>
@@ -679,14 +681,18 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, isReply =
           {/* Actions on hover */}
           {isAuthor && !isDeleted && mode === "view" && (
             <div className="ml-auto flex shrink-0 items-center gap-0.5 transition-opacity">
-              <button onClick={beginEditing}
-                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Edit">
-                <Pencil className="size-[11px]" />
-              </button>
-              <button onClick={() => setConfirmingDelete(true)}
-                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red" title="Delete">
-                <Trash2 className="size-[11px]" />
-              </button>
+              <Tip label="Edit">
+                <button aria-label="Edit comment" onClick={beginEditing}
+                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
+                  <Pencil className="size-[11px]" />
+                </button>
+              </Tip>
+              <Tip label="Delete">
+                <button aria-label="Delete comment" onClick={() => setConfirmingDelete(true)}
+                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red">
+                  <Trash2 className="size-[11px]" />
+                </button>
+              </Tip>
             </div>
           )}
         </div>

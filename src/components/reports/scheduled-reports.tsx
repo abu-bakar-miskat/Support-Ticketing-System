@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Download, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
@@ -216,13 +217,16 @@ export function ScheduledReports() {
                 >
                   {s.enabled ? "Enabled" : "Paused"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => remove(s.id)}
-                  className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:text-red-500"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                <Tip label="Delete schedule">
+                  <button
+                    aria-label={`Delete schedule ${s.name}`}
+                    type="button"
+                    onClick={() => remove(s.id)}
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:text-red-500"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </Tip>
               </div>
             ))}
           </div>

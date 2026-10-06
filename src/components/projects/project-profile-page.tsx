@@ -93,6 +93,7 @@ import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-li
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { FilterDropdown } from "@/components/tasks/task-filter-dropdown";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1305,45 +1306,46 @@ function OverviewTab({
           <SubDepartmentStatusBreakdown subDepartmentBoardGroups={subDepartmentBoardGroups} />
 
           {/* Assets */}
-          <button
-            type="button"
-            onClick={onOpenAssets}
-            title="Open assets"
-            className="w-full rounded-xl border border-sts-card-border bg-sts-card px-4 py-3 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-surface/40"
-          >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="sts-text-section-label">Assets</p>
-              {totalAssetCount > 0 && (
-                <span className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-foreground">
-                  {totalAssetCount} total
-                </span>
+          <Tip label="Open assets">
+            <button
+              type="button"
+              onClick={onOpenAssets}
+              className="w-full rounded-xl border border-sts-card-border bg-sts-card px-4 py-3 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-surface/40"
+            >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="sts-text-section-label">Assets</p>
+                {totalAssetCount > 0 && (
+                  <span className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11.5px] font-semibold text-sts-foreground">
+                    {totalAssetCount} total
+                  </span>
+                )}
+              </div>
+              {assetCounts.length === 0 ? (
+                <div className="flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
+                  <FolderOpen className="size-4 shrink-0 text-sts-subtle/30" />
+                  <p className="font-sans text-[11.5px] text-sts-subtle">No assets uploaded yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  {assetCounts.map(({ type, label, icon: Icon, color, count }) => (
+                    <div
+                      key={type}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors"
+                      style={{ backgroundColor: `${color}12` }}
+                    >
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}20` }}>
+                        <Icon className="size-3.5" style={{ color }} strokeWidth={1.8} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-sans text-[11px] text-sts-muted">{label}</p>
+                        <p className="font-sans text-[14px] font-bold tabular-nums" style={{ color }}>{count}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
-            {assetCounts.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-sts-card-border px-3 py-4">
-                <FolderOpen className="size-4 shrink-0 text-sts-subtle/30" />
-                <p className="font-sans text-[11.5px] text-sts-subtle">No assets uploaded yet</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {assetCounts.map(({ type, label, icon: Icon, color, count }) => (
-                  <div
-                    key={type}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors"
-                    style={{ backgroundColor: `${color}12` }}
-                  >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${color}20` }}>
-                      <Icon className="size-3.5" style={{ color }} strokeWidth={1.8} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-sans text-[11px] text-sts-muted">{label}</p>
-                      <p className="font-sans text-[14px] font-bold tabular-nums" style={{ color }}>{count}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </button>
+            </button>
+          </Tip>
         </div>
 
         {/* ── Right column ─────────────────────────────────────────────────── */}
@@ -1643,20 +1645,22 @@ function AddBoardButton({
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={toggleOpen}
-        disabled={adding}
-        title="Add board — department sub departments or sub departments of assigned members"
-        className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
-      >
-        {adding ? (
-          <Loader2 className="size-3.5 animate-spin text-sts-id" />
-        ) : (
-          <Plus className="size-3.5" />
-        )}
-      </button>
+      <Tip label="Add board — department sub departments or sub departments of assigned members">
+        <button
+          aria-label="Add board"
+          ref={buttonRef}
+          type="button"
+          onClick={toggleOpen}
+          disabled={adding}
+          className="mb-2 flex size-7 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
+        >
+          {adding ? (
+            <Loader2 className="size-3.5 animate-spin text-sts-id" />
+          ) : (
+            <Plus className="size-3.5" />
+          )}
+        </button>
+      </Tip>
       {open &&
         typeof document !== "undefined" &&
         createPortal(
@@ -1900,28 +1904,31 @@ function HeaderMemberAvatars({
 
       {/* Self-join button for non-members (all roles) */}
       {showJoin && (
-        <button
-          type="button"
-          onClick={selfJoin}
-          disabled={joining}
-          title="Join this project"
-          className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-2.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
-        >
-          <UserPlus className="size-3" />
-          {joining ? "Joining…" : "Join"}
-        </button>
+        <Tip label="Join this project">
+          <button
+            type="button"
+            onClick={selfJoin}
+            disabled={joining}
+            className="flex h-7 items-center gap-1.5 rounded-full border border-dashed border-sts-card-border px-2.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id disabled:opacity-50"
+          >
+            <UserPlus className="size-3" />
+            {joining ? "Joining…" : "Join"}
+          </button>
+        </Tip>
       )}
 
       {/* Any subDepartment member can add others; privileged roles can add without joining first */}
       {(isSelfMember || isPrivileged) && (
-        <button
-          type="button"
-          onClick={openAdding}
-          title="Add member"
-          className="flex size-7 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
-        >
-          <UserPlus className="size-3.5" />
-        </button>
+        <Tip label="Add member">
+          <button
+            aria-label="Add member"
+            type="button"
+            onClick={openAdding}
+            className="flex size-7 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
+          >
+            <UserPlus className="size-3.5" />
+          </button>
+        </Tip>
       )}
 
       {adding && (
@@ -2480,44 +2487,45 @@ function ProjectProfilePageInner({
           ? boardSubDepartmentSourceLabel(boardGroup.boardSource, boardGroup.memberNames)
           : undefined;
       return (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => setTab(t.id)}
-          title={subDepartmentHint}
-          onContextMenu={
-            canManageBoards && isSubDepartmentTab && boardGroup
-              ? (e) => {
-                  e.preventDefault();
-                  setBoardMenu({
-                    subDepartmentId: boardGroup.subDepartmentId,
-                    subDepartmentName: boardGroup.subDepartmentName,
-                    ticketCount: boardGroup.cards.length,
-                    x: e.clientX,
-                    y: e.clientY,
-                  });
-                }
-              : undefined
-          }
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-3 font-sans text-[12px] whitespace-nowrap sm:px-3 sm:text-[12.5px]",
-            tab === t.id
-              ? "border-sts-id font-semibold text-sts-id"
-              : "border-transparent text-sts-muted hover:text-sts-foreground",
-          )}
-        >
-          <Icon className="size-3.5 shrink-0" />
-          {t.label}
-          {isSubDepartmentTab && creatingBoardSubDepartmentId === subDepartmentId && (
-            <Loader2 className="size-3 shrink-0 animate-spin text-sts-id" />
-          )}
-          {(!creatingBoardSubDepartmentId || creatingBoardSubDepartmentId !== subDepartmentId) &&
-            boardGroup &&
-            boardGroup.boardSource === "member" && (
-            <Users
-              className="size-3 shrink-0 text-violet-500 dark:text-violet-400"
-              aria-hidden
-            />
+        <Tip key={t.id} label={subDepartmentHint}>
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            onContextMenu={
+              canManageBoards && isSubDepartmentTab && boardGroup
+                ? (e) => {
+                    e.preventDefault();
+                    setBoardMenu({
+                      subDepartmentId: boardGroup.subDepartmentId,
+                      subDepartmentName: boardGroup.subDepartmentName,
+                      ticketCount: boardGroup.cards.length,
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }
+                : undefined
+            }
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-3 font-sans text-[12px] whitespace-nowrap sm:px-3 sm:text-[12.5px]",
+              tab === t.id
+                ? "border-sts-id font-semibold text-sts-id"
+                : "border-transparent text-sts-muted hover:text-sts-foreground",
+            )}
+          >
+            <Icon className="size-3.5 shrink-0" />
+            {t.label}
+            {isSubDepartmentTab && creatingBoardSubDepartmentId === subDepartmentId && (
+              <Loader2 className="size-3 shrink-0 animate-spin text-sts-id" />
+            )}
+            {(!creatingBoardSubDepartmentId || creatingBoardSubDepartmentId !== subDepartmentId) &&
+              boardGroup &&
+              boardGroup.boardSource === "member" && (
+              <Users
+                className="size-3 shrink-0 text-violet-500 dark:text-violet-400"
+                aria-hidden
+              />
+        </Tip>
           )}
         </button>
       );
@@ -2628,15 +2636,16 @@ function ProjectProfilePageInner({
                 />
                 {canExport && <ProjectExportMenu projectId={project.id} />}
                 {canManageProjectSettings && (
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    title="Project settings"
-                    aria-label="Project settings"
-                    className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-id hover:bg-sts-surface hover:text-sts-foreground"
-                  >
-                    <Settings className="size-3.5" strokeWidth={2} />
-                  </button>
+                  <Tip label="Project settings">
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
+                      aria-label="Project settings"
+                      className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-id hover:bg-sts-surface hover:text-sts-foreground"
+                    >
+                      <Settings className="size-3.5" strokeWidth={2} />
+                    </button>
+                  </Tip>
                 )}
               </div>
             </div>
@@ -2717,20 +2726,22 @@ function ProjectProfilePageInner({
                     />
                   )}
                   {activeBoardFilterCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFilterPriority(new Set());
-                        setFilterLabels(new Set());
-                        setFilterAssignee(new Set());
-                        setFilterModule(new Set());
-                      }}
-                      title="Clear filters"
-                      className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-sts-card-border px-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
-                    >
-                      <X className="size-3 shrink-0" />
-                      <span className="hidden sm:inline">Clear</span>
-                    </button>
+                    <Tip label="Clear filters">
+                      <button
+                        aria-label="Clear filters"
+                        type="button"
+                        onClick={() => {
+                          setFilterPriority(new Set());
+                          setFilterLabels(new Set());
+                          setFilterAssignee(new Set());
+                          setFilterModule(new Set());
+                        }}
+                        className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-sts-card-border px-2 font-sans text-[11.5px] text-sts-muted transition-colors hover:border-sts-red hover:text-sts-red"
+                      >
+                        <X className="size-3 shrink-0" />
+                        <span className="hidden sm:inline">Clear</span>
+                      </button>
+                    </Tip>
                   )}
                 </div>
               </>

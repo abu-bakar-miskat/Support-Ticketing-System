@@ -24,6 +24,7 @@ import {
 import { validateProjectIcon, PROJECT_ICON_ACCEPT } from "@/lib/project-icon";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 export type ProjectRow = {
   id: string;
@@ -667,14 +668,16 @@ export function ProjectModal({
                       {avatarUploading ? "…" : "Upload"}
                     </button>
                     {avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveAvatar}
-                        title="Remove photo"
-                        className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-red"
-                      >
-                        <Trash2 className="size-3" strokeWidth={2} />
-                      </button>
+                      <Tip label="Remove photo">
+                        <button
+                          aria-label="Remove photo"
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-red"
+                        >
+                          <Trash2 className="size-3" strokeWidth={2} />
+                        </button>
+                      </Tip>
                     )}
                   </div>
                   <input
@@ -724,6 +727,7 @@ export function ProjectModal({
                       />
                       <input
                         type="color"
+                        aria-label="Custom colour"
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
                         className="absolute inset-0 size-full cursor-pointer opacity-0"

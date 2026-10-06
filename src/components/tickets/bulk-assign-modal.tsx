@@ -155,7 +155,7 @@ export function BulkAssignModal({
       <div className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="sts-text-modal-title">Assign {count} ticket{count !== 1 ? "s" : ""}</h2>
-          <button type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
+          <button aria-label="Close" type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
             <X className="size-4" />
           </button>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -235,20 +236,24 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
         )}
       </div>
       <span className="shrink-0 font-sans text-[11px] text-sts-subtle">{timeAgo(req.requestedAt)}</span>
-      <button
-        type="button" disabled={!!loading} onClick={() => void approve()}
-        aria-label={`Approve ${req.user.name}`} title="Approve"
-        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
-      >
-        <Check className="size-3.5" strokeWidth={2.5} />
-      </button>
-      <button
-        type="button" disabled={!!loading} onClick={() => setConfirmReject(true)}
-        aria-label={`Reject ${req.user.name}`} title="Reject"
-        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
-      >
-        <X className="size-3.5" strokeWidth={2.5} />
-      </button>
+      <Tip label="Approve">
+        <button
+          type="button" disabled={!!loading} onClick={() => void approve()}
+          aria-label={`Approve ${req.user.name}`}
+          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
+        >
+          <Check className="size-3.5" strokeWidth={2.5} />
+        </button>
+      </Tip>
+      <Tip label="Reject">
+        <button
+          type="button" disabled={!!loading} onClick={() => setConfirmReject(true)}
+          aria-label={`Reject ${req.user.name}`}
+          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
+        >
+          <X className="size-3.5" strokeWidth={2.5} />
+        </button>
+      </Tip>
       <ConfirmDialog
         open={confirmReject}
         onOpenChange={setConfirmReject}

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { AVATAR_ICON_ACCEPT, validateAvatarIcon } from "@/lib/avatar-icon-file";
 import { renderSignatureHtml } from "@/lib/email-templates/signature";
 import { hasSignatureContent, sanitizeSignatureHtml } from "@/lib/sanitize-signature-html";
+import { Tip } from "@/components/ui/tooltip";
 
 type SignatureEntry = {
   id: string;
@@ -534,22 +535,26 @@ export function SettingsProfilePage({
                       </span>
                     </button>
                     <div className="flex shrink-0 items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => openEditSigForm(entry)}
-                        title="Edit signature"
-                        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSignature(entry.id)}
-                        title="Delete signature"
-                        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <Tip label="Edit signature">
+                        <button
+                          aria-label="Edit signature"
+                          type="button"
+                          onClick={() => openEditSigForm(entry)}
+                          className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      </Tip>
+                      <Tip label="Delete signature">
+                        <button
+                          aria-label="Delete signature"
+                          type="button"
+                          onClick={() => handleDeleteSignature(entry.id)}
+                          className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </Tip>
                     </div>
                   </div>
                 );

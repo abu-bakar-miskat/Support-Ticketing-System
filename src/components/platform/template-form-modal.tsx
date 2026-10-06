@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 import { X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -146,14 +147,17 @@ export function TemplateFormModal({
       <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-lg flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">{isEdit ? "Edit template" : "Create template"}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">

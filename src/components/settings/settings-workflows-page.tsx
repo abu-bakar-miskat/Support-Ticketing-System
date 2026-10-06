@@ -31,6 +31,7 @@ import {
   replaceSubDepartmentStatusesInCaches,
 } from "@/hooks/queries/sync-sub-department-status-caches";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Tip } from "@/components/ui/tooltip";
 
 type SubDepartmentStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
 type SubDepartment = { id: string; name: string; prefix: string };
@@ -236,6 +237,8 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                   key={c}
                   type="button"
                   onClick={() => setEditColor(c)}
+                  aria-label={`Status color ${c}`}
+                  aria-pressed={editColor === c}
                   className={cn("size-3.5 rounded-full border-2 transition-transform", editColor === c ? "border-sts-foreground scale-110" : "border-transparent")}
                   style={{ backgroundColor: c }}
                 />
@@ -249,12 +252,16 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
             onKeyDown={(e) => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditingId(null); }}
             className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
           />
-          <button type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
-            <Check className="size-3.5" />
-          </button>
-          <button type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Save status">
+            <button aria-label="Save status" type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
+              <Check className="size-3.5" />
+            </button>
+          </Tip>
+          <Tip label="Cancel editing">
+            <button aria-label="Cancel editing" type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
       );
     }
@@ -336,29 +343,31 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
             <span className="font-sans text-[11px] text-sts-subtle">Saving…</span>
           </div>
         ) : s.isComplete ? (
-          <button
-            type="button"
-            title="Click to remove completion status"
-            onClick={() => toggleComplete(s.id, true)}
-            className="group/toggle flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-sts-green/10 px-2.5 transition-colors hover:bg-sts-red/10"
-          >
-            <CheckCircle2 className="size-3 text-sts-green transition-colors group-hover/toggle:hidden" />
-            <X className="hidden size-3 text-sts-red transition-colors group-hover/toggle:block" />
-            <span className="font-sans text-[11px] font-medium text-sts-green transition-colors group-hover/toggle:text-sts-red">
-              <span className="group-hover/toggle:hidden">Complete</span>
-              <span className="hidden group-hover/toggle:inline">Remove</span>
-            </span>
-          </button>
+          <Tip label="Click to remove completion status">
+            <button
+              type="button"
+              onClick={() => toggleComplete(s.id, true)}
+              className="group/toggle flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-sts-green/10 px-2.5 transition-colors hover:bg-sts-red/10"
+            >
+              <CheckCircle2 className="size-3 text-sts-green transition-colors group-hover/toggle:hidden" />
+              <X className="hidden size-3 text-sts-red transition-colors group-hover/toggle:block" />
+              <span className="font-sans text-[11px] font-medium text-sts-green transition-colors group-hover/toggle:text-sts-red">
+                <span className="group-hover/toggle:hidden">Complete</span>
+                <span className="hidden group-hover/toggle:inline">Remove</span>
+              </span>
+            </button>
+          </Tip>
         ) : (
-          <button
-            type="button"
-            title="Mark as completion status"
-            onClick={() => toggleComplete(s.id, false)}
-            className="flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sts-subtle transition-all hover:bg-sts-green/10 hover:text-sts-green"
-          >
-            <CheckCircle2 className="size-3" />
-            <span className="font-sans text-[11px] font-medium">Set complete</span>
-          </button>
+          <Tip label="Mark as completion status">
+            <button
+              type="button"
+              onClick={() => toggleComplete(s.id, false)}
+              className="flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sts-subtle transition-all hover:bg-sts-green/10 hover:text-sts-green"
+            >
+              <CheckCircle2 className="size-3" />
+              <span className="font-sans text-[11px] font-medium">Set complete</span>
+            </button>
+          </Tip>
         )}
         <div className="flex items-center gap-0.5 transition-opacity">
           <button type="button" aria-label={`Edit ${s.label}`} onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
@@ -456,6 +465,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                 <div className="flex flex-wrap gap-1">
                   {PRESET_COLORS.map((c) => (
                     <button key={c} type="button" onClick={() => setNewColor(c)}
+                      aria-label={`Status color ${c}`} aria-pressed={newColor === c}
                       className={cn("size-3.5 rounded-full border-2 transition-transform", newColor === c ? "border-sts-foreground scale-110" : "border-transparent")}
                       style={{ backgroundColor: c }} />
                   ))}
@@ -469,12 +479,16 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                 onKeyDown={(e) => { if (e.key === "Enter") addStatus(); if (e.key === "Escape") setAdding(false); }}
                 className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
               />
-              <button type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
-                <Check className="size-3.5" />
-              </button>
-              <button type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-                <X className="size-3.5" />
-              </button>
+              <Tip label="Add status">
+                <button aria-label="Add status" type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
+                  <Check className="size-3.5" />
+                </button>
+              </Tip>
+              <Tip label="Cancel">
+                <button aria-label="Cancel adding status" type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+                  <X className="size-3.5" />
+                </button>
+              </Tip>
             </div>
           ) : (
             <button

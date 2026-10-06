@@ -32,6 +32,7 @@ import {
   deleteAdminDepartment,
   createAdminSubDepartment,
 } from "@/lib/api/admin";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -385,9 +386,11 @@ function NewDepartmentModal({
             </div>
             <p className="font-sans text-[14px] font-semibold text-sts-foreground">New department</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button aria-label="Close" type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Body */}
@@ -422,9 +425,11 @@ function NewDepartmentModal({
                   <div key={m.id} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                     <UserAvatar name={m.name} size={18} avatarUrl={m.avatarUrl ?? null} />
                     <span className="font-sans text-[11.5px] text-sts-foreground">{m.name}</span>
-                    <button type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
-                      <X className="size-2.5" />
-                    </button>
+                    <Tip label="Remove manager">
+                      <button aria-label="Remove manager" type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
+                        <X className="size-2.5" />
+                      </button>
+                    </Tip>
                   </div>
                 ))}
               </div>
@@ -467,9 +472,11 @@ function NewDepartmentModal({
                   <div key={t.id} className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5">
                     <span className="font-mono text-[11.5px] text-sts-id">{t.prefix}</span>
                     <span className="font-sans text-[12.5px] text-sts-foreground flex-1">{t.name}</span>
-                    <button type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-sts-subtle hover:text-red-500">
-                      <X className="size-3" />
-                    </button>
+                    <Tip label="Remove sub-department">
+                      <button aria-label="Remove sub-department" type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-sts-subtle hover:text-red-500">
+                        <X className="size-3" />
+                      </button>
+                    </Tip>
                   </div>
                 ))}
               </div>
@@ -641,8 +648,8 @@ function DepartmentCard({
                   }}
                   className="min-w-0 flex-1 rounded-lg border border-sts-blue/50 bg-sts-surface px-3 py-1 font-sans text-[14px] font-semibold text-sts-foreground outline-none"
                 />
-                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-full p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
-                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-full p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button>
+                <Tip label="Save"><button aria-label="Save department name" type="button" onClick={saveEdit} disabled={saving} className="rounded-full p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button></Tip>
+                <Tip label="Cancel"><button aria-label="Cancel editing" type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-full p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button></Tip>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">

@@ -11,6 +11,7 @@ import { validateProjectIcon, PROJECT_ICON_ACCEPT } from "@/lib/project-icon";
 import { projectDetailsKeys } from "@/hooks/queries/use-project-details";
 import type { ProjectDetailsResponse } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 type Props = {
   projectId: string;
@@ -95,26 +96,27 @@ export function ProjectAvatarEditor({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        title="Change project icon"
-        aria-label="Change project icon"
-        className={cn(
-          "group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id",
-          className,
-        )}
-      >
-        <ProjectAvatar name={name} color={color} avatarUrl={avatarUrl} size={size} />
-        <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-          {uploading ? (
-            <Loader2 className="size-3.5 animate-spin text-white" />
-          ) : (
-            <ImagePlus className="size-3.5 text-white" strokeWidth={2} />
+      <Tip label="Change project icon">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          aria-label="Change project icon"
+          className={cn(
+            "group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id",
+            className,
           )}
-        </span>
-      </button>
+        >
+          <ProjectAvatar name={name} color={color} avatarUrl={avatarUrl} size={size} />
+          <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {uploading ? (
+              <Loader2 className="size-3.5 animate-spin text-white" />
+            ) : (
+              <ImagePlus className="size-3.5 text-white" strokeWidth={2} />
+            )}
+          </span>
+        </button>
+      </Tip>
       <input
         ref={inputRef}
         type="file"

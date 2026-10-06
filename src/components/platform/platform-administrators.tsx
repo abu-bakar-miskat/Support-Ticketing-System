@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useRef, useState } from "react";
 import { ShieldCheck, X, Building2, Crown, ScrollText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -241,26 +242,28 @@ export function PlatformAdministrators({
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setAuditUser(admin)}
-                        title="View audit log for this administrator"
-                        className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
-                      >
-                        <ScrollText className="size-3.5" />
-                        Audit
-                      </button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={isSelf || busyId === admin.id}
-                        title={isSelf ? "You can't remove your own super-admin access" : undefined}
-                        onClick={() => setConfirmRemove(admin)}
-                      >
-                        <X className="size-3.5" />
-                        Remove
-                      </Button>
+                      <Tip label="View audit log for this administrator">
+                        <button
+                          type="button"
+                          onClick={() => setAuditUser(admin)}
+                          className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+                        >
+                          <ScrollText className="size-3.5" />
+                          Audit
+                        </button>
+                      </Tip>
+                      <Tip label={isSelf ? "You can't remove your own super-admin access" : undefined}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={isSelf || busyId === admin.id}
+                          onClick={() => setConfirmRemove(admin)}
+                        >
+                          <X className="size-3.5" />
+                          Remove
+                        </Button>
+                      </Tip>
                     </div>
                   </div>
                 );

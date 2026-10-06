@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { Dialog } from "@base-ui/react/dialog";
 import {
   CheckCircle2,
@@ -250,13 +251,16 @@ export function SprintDetailDialog({
                     <Trash2 className="size-3.5" />
                     Delete
                   </Button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenChange(false)}
-                    className="ml-1 rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-                  >
-                    <X className="size-4" />
-                  </button>
+                  <Tip label="Close">
+                    <button
+                      aria-label="Close"
+                      type="button"
+                      onClick={() => onOpenChange(false)}
+                      className="ml-1 rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </Tip>
                 </div>
               </div>
 

@@ -142,6 +142,7 @@ import {
   GitHubDevSection,
   type GitHubDevData,
 } from "@/components/tickets/github-dev-section";
+import { Tip } from "@/components/ui/tooltip";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -2269,25 +2270,28 @@ export function TicketDetailPage({
                 {copied ? "Copied" : "Copy link"}
               </button>
               {canEditTicket && (
-                <button
-                  type="button"
-                  onClick={() => setTransferOpen(true)}
-                  title="Transfer to another department or sub-department"
-                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
-                >
-                  <ArrowRightLeft className="size-3" />
-                  Transfer
-                </button>
+                <Tip label="Transfer to another department or sub-department">
+                  <button
+                    type="button"
+                    onClick={() => setTransferOpen(true)}
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
+                  >
+                    <ArrowRightLeft className="size-3" />
+                    Transfer
+                  </button>
+                </Tip>
               )}
               {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  title="Delete ticket"
-                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                <Tip label="Delete ticket">
+                  <button
+                    aria-label="Delete ticket"
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </Tip>
               )}
             </div>
 
@@ -2366,31 +2370,35 @@ export function TicketDetailPage({
                       onApply={(r) => setTitleValue(r.title)}
                       className="size-6"
                     />
-                    <button
-                      type="button"
-                      onClick={saveTitle}
-                      disabled={titleSaving}
-                      title="Save"
-                      className="flex size-6 items-center justify-center rounded-full bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                    >
-                      {titleSaving ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        <Check className="size-3" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTitleValue(title);
-                        setTitleEditing(false);
-                      }}
-                      disabled={titleSaving}
-                      title="Cancel"
-                      className="flex size-6 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
-                    >
-                      <X className="size-3" />
-                    </button>
+                    <Tip label="Save">
+                      <button
+                        aria-label="Save title"
+                        type="button"
+                        onClick={saveTitle}
+                        disabled={titleSaving}
+                        className="flex size-6 items-center justify-center rounded-full bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                      >
+                        {titleSaving ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Check className="size-3" />
+                        )}
+                      </button>
+                    </Tip>
+                    <Tip label="Cancel">
+                      <button
+                        aria-label="Cancel editing title"
+                        type="button"
+                        onClick={() => {
+                          setTitleValue(title);
+                          setTitleEditing(false);
+                        }}
+                        disabled={titleSaving}
+                        className="flex size-6 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Tip>
                   </div>
                 </>
               ) : (
@@ -2399,17 +2407,19 @@ export function TicketDetailPage({
                     {titleValue}
                   </h1>
                   {canEditTicket && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTitleValue(title);
-                        setTitleEditing(true);
-                      }}
-                      className="mt-1 shrink-0 rounded-full p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
-                      title="Edit title"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
+                    <Tip label="Edit title">
+                      <button
+                        aria-label="Edit title"
+                        type="button"
+                        onClick={() => {
+                          setTitleValue(title);
+                          setTitleEditing(true);
+                        }}
+                        className="mt-1 shrink-0 rounded-full p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </Tip>
                   )}
                 </>
               )}
@@ -2452,15 +2462,18 @@ export function TicketDetailPage({
               {liveLabels.map((lbl) => (
                 <span key={lbl} className="group relative inline-flex">
                   <TagPill label={lbl} size="md" />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleLabelsChange(liveLabels.filter((l) => l !== lbl))
-                    }
-                    className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <X className="size-2" />
-                  </button>
+                  <Tip label="Remove label">
+                    <button
+                      aria-label={`Remove label ${lbl}`}
+                      type="button"
+                      onClick={() =>
+                        handleLabelsChange(liveLabels.filter((l) => l !== lbl))
+                      }
+                      className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <X className="size-2" />
+                    </button>
+                  </Tip>
                 </span>
               ))}
               <LabelPicker
@@ -3152,39 +3165,43 @@ export function TicketDetailPage({
                             )}
                             {/* Unlink (detach from parent, keep the ticket) */}
                             {canEditTicket && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSubToUnlink({
-                                    id: st.dbId,
-                                    humanId: st.humanId,
-                                  });
-                                }}
-                                title={`Remove ${st.humanId} from sub-tickets`}
-                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-blue/10 hover:text-sts-blue"
-                              >
-                                <Unlink className="size-3.5" />
-                              </button>
+                              <Tip label={`Remove ${st.humanId} from sub-tickets`}>
+                                <button
+                                  aria-label={`Remove ${st.humanId} from sub-tickets`}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSubToUnlink({
+                                      id: st.dbId,
+                                      humanId: st.humanId,
+                                    });
+                                  }}
+                                  className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-blue/10 hover:text-sts-blue"
+                                >
+                                  <Unlink className="size-3.5" />
+                                </button>
+                              </Tip>
                             )}
                             {/* Delete */}
                             {st.canDelete && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSubToDelete({
-                                    id: st.dbId,
-                                    humanId: st.humanId,
-                                  });
-                                }}
-                                title={`Delete ${st.humanId}`}
-                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-red/10 hover:text-sts-red"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
+                              <Tip label={`Delete ${st.humanId}`}>
+                                <button
+                                  aria-label={`Delete ${st.humanId}`}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSubToDelete({
+                                      id: st.dbId,
+                                      humanId: st.humanId,
+                                    });
+                                  }}
+                                  className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-red/10 hover:text-sts-red"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </Tip>
                             )}
                           </Link>
                         ))}
@@ -3224,13 +3241,16 @@ export function TicketDetailPage({
                             }}
                             className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
                           />
-                          <button
-                            type="button"
-                            onClick={closeLinkPicker}
-                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
-                          >
-                            <X className="size-3.5" />
-                          </button>
+                          <Tip label="Close">
+                            <button
+                              aria-label="Close"
+                              type="button"
+                              onClick={closeLinkPicker}
+                              className="shrink-0 text-sts-subtle hover:text-sts-muted"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
                         </div>
                         <div className="max-h-56 overflow-y-auto py-1">
                           {linkLoading ? (
@@ -3308,16 +3328,19 @@ export function TicketDetailPage({
                           >
                             {subSaving ? "…" : "Create"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAddingSubTicket(false);
-                              setSubTitle("");
-                            }}
-                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
-                          >
-                            <X className="size-3.5" />
-                          </button>
+                          <Tip label="Cancel">
+                            <button
+                              aria-label="Cancel adding sub-ticket"
+                              type="button"
+                              onClick={() => {
+                                setAddingSubTicket(false);
+                                setSubTitle("");
+                              }}
+                              className="shrink-0 text-sts-subtle hover:text-sts-muted"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
                         </div>
                       </form>
                     )}
@@ -3399,24 +3422,26 @@ export function TicketDetailPage({
                   ))}
                 <span className="flex-1" />
                 {activeTab === "conversation" && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setRefreshingMessages(true);
-                      await refreshMessages();
-                      setRefreshingMessages(false);
-                    }}
-                    disabled={refreshingMessages}
-                    title="Refresh messages"
-                    className="mb-0.5 flex items-center justify-center rounded-full p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "size-[11px]",
-                        refreshingMessages && "animate-spin",
-                      )}
-                    />
-                  </button>
+                  <Tip label="Refresh messages">
+                    <button
+                      aria-label="Refresh messages"
+                      type="button"
+                      onClick={async () => {
+                        setRefreshingMessages(true);
+                        await refreshMessages();
+                        setRefreshingMessages(false);
+                      }}
+                      disabled={refreshingMessages}
+                      className="mb-0.5 flex items-center justify-center rounded-full p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "size-[11px]",
+                          refreshingMessages && "animate-spin",
+                        )}
+                      />
+                    </button>
+                  </Tip>
                 )}
               </div>
             </div>
@@ -3878,13 +3903,17 @@ function AssetLinksEditor({
       <div className="flex items-center gap-2">
         <SectionLabel>Asset Links</SectionLabel>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => setAdding((v) => !v)}
-            className="ml-auto flex h-5 w-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-blue"
-          >
-            <Plus size={12} />
-          </button>
+          <Tip label="Add asset link">
+            <button
+              aria-label="Add asset link"
+              aria-expanded={adding}
+              type="button"
+              onClick={() => setAdding((v) => !v)}
+              className="ml-auto flex h-5 w-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-blue"
+            >
+              <Plus size={12} />
+            </button>
+          </Tip>
         )}
       </div>
 
@@ -3909,14 +3938,17 @@ function AssetLinksEditor({
                 {link.label || link.url}
               </a>
               {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(i)}
-                  className="shrink-0 text-sts-subtle hover:text-sts-red"
-                  disabled={saving}
-                >
-                  <X size={10} />
-                </button>
+                <Tip label="Remove link">
+                  <button
+                    aria-label={`Remove link ${link.label || link.url}`}
+                    type="button"
+                    onClick={() => handleRemove(i)}
+                    className="shrink-0 text-sts-subtle hover:text-sts-red"
+                    disabled={saving}
+                  >
+                    <X size={10} />
+                  </button>
+                </Tip>
               )}
             </div>
           ))}
@@ -4041,16 +4073,19 @@ function StoryPointsEditor({
           >
             {saving ? "…" : "Save"}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(false);
-              setInputVal(sp?.toString() ?? "");
-            }}
-            className="flex size-5 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
-          >
-            <X className="size-3" />
-          </button>
+          <Tip label="Cancel">
+            <button
+              aria-label="Cancel editing story points"
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setInputVal(sp?.toString() ?? "");
+              }}
+              className="flex size-5 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
+            >
+              <X className="size-3" />
+            </button>
+          </Tip>
         </div>
       ) : (
         <button
@@ -4907,13 +4942,16 @@ function TimeTrackingSection({
               >
                 {savingEst ? "…" : "Save"}
               </button>
-              <button
-                type="button"
-                onClick={() => setEditingEst(false)}
-                className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
-              >
-                <X className="size-3" />
-              </button>
+              <Tip label="Cancel">
+                <button
+                  aria-label="Cancel editing estimate"
+                  type="button"
+                  onClick={() => setEditingEst(false)}
+                  className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
+                >
+                  <X className="size-3" />
+                </button>
+              </Tip>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
@@ -4971,16 +5009,17 @@ function TimeTrackingSection({
             />
           </div>
           {canReset && (
-            <button
-              type="button"
-              onClick={() => setConfirmReset(true)}
-              disabled={resetting}
-              title="Reset your time on this ticket to 0"
-              className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-            >
-              <RotateCcw className="size-[11px]" />
-              {resetting ? "…" : "Reset"}
-            </button>
+            <Tip label="Reset your time on this ticket to 0">
+              <button
+                type="button"
+                onClick={() => setConfirmReset(true)}
+                disabled={resetting}
+                className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              >
+                <RotateCcw className="size-[11px]" />
+                {resetting ? "…" : "Reset"}
+              </button>
+            </Tip>
           )}
         </div>
       ) : isAssignee ? (

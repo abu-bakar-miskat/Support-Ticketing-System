@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Tip } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { BankQuestion } from "@/lib/screening/question-bank"
 
@@ -155,24 +156,28 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
                   {q.hint && <p className="text-muted-foreground mt-1 text-sm italic">{q.hint}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={busy || i === 0}
-                    title="Move up"
-                    onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "up" })}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={busy || i === initialQuestions.length - 1}
-                    title="Move down"
-                    onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "down" })}
-                  >
-                    <ArrowDown />
-                  </Button>
+                  <Tip label="Move up">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={busy || i === 0}
+                      aria-label={`Move question ${i + 1} up`}
+                      onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "up" })}
+                    >
+                      <ArrowUp />
+                    </Button>
+                  </Tip>
+                  <Tip label="Move down">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={busy || i === initialQuestions.length - 1}
+                      aria-label={`Move question ${i + 1} down`}
+                      onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "down" })}
+                    >
+                      <ArrowDown />
+                    </Button>
+                  </Tip>
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -197,17 +202,19 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
                 >
                   {q.active ? "Disable" : "Enable"}
                 </Button>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  disabled={busy}
-                  title="Pinned questions appear in every invite; the rest are drawn randomly per invite once the bank is bigger than one set."
-                  onClick={() =>
-                    call(`/api/screening/questions/${q.id}`, "PATCH", { alwaysInclude: !q.alwaysInclude })
-                  }
-                >
-                  {q.alwaysInclude ? "Unpin" : "Pin to every invite"}
-                </Button>
+                <Tip label="Pinned questions appear in every invite; the rest are drawn randomly per invite once the bank is bigger than one set.">
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    disabled={busy}
+                    aria-pressed={q.alwaysInclude}
+                    onClick={() =>
+                      call(`/api/screening/questions/${q.id}`, "PATCH", { alwaysInclude: !q.alwaysInclude })
+                    }
+                  >
+                    {q.alwaysInclude ? "Unpin" : "Pin to every invite"}
+                  </Button>
+                </Tip>
                 <Button size="xs" variant="destructive" disabled={busy} onClick={() => setDeleteTarget(q)}>
                   Delete
                 </Button>

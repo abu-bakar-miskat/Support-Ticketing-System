@@ -654,9 +654,10 @@ export function AllTasksPage({
                   <button
                     type="button"
                     onClick={chip.onRemove}
+                    aria-label={`Remove filter ${chip.label}`}
                     className="hover:opacity-70"
                   >
-                    <X className="size-3" />
+                    <X className="size-3" aria-hidden />
                   </button>
                 </span>
               ))}

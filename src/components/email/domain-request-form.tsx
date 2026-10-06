@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Globe, Loader2, Send, CheckCircle2, Clock, XCircle, Mail, Trash2 } from "lucide-react";
@@ -143,15 +144,16 @@ export function DomainRequestForm({
                   {new Date(r.createdAt).toLocaleDateString()}
                 </span>
                 {r.status === "rejected" && (
-                  <button
-                    type="button"
-                    onClick={() => setDeleting({ id: r.id, domain: r.domain })}
-                    className="rounded-full p-1 text-sts-subtle transition-colors hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Delete request"
-                    title="Delete request"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  <Tip label="Delete request">
+                    <button
+                      type="button"
+                      onClick={() => setDeleting({ id: r.id, domain: r.domain })}
+                      className="rounded-full p-1 text-sts-subtle transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Delete request"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </Tip>
                 )}
               </li>
             );

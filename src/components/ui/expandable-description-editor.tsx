@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "@/components/ui/tooltip";
 
 type ExpandableDescriptionEditorProps = {
   content: string;
@@ -69,15 +70,16 @@ export function ExpandableDescriptionEditor({
   }, [expanded, onExpandedChange]);
 
   const expandButton = !expanded ? (
-    <button
-      type="button"
-      onClick={() => onExpandedChange(true)}
-      className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground"
-      aria-label="Expand description editor"
-      title="Expand"
-    >
-      <Maximize2 className="size-3.5" strokeWidth={2} />
-    </button>
+    <Tip label="Expand">
+      <button
+        type="button"
+        onClick={() => onExpandedChange(true)}
+        className="flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground"
+        aria-label="Expand description editor"
+      >
+        <Maximize2 className="size-3.5" strokeWidth={2} />
+      </button>
+    </Tip>
   ) : null;
 
   const editor = (

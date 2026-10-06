@@ -15,6 +15,7 @@ import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { useProjectTabSync } from "@/components/projects/project-tab-sync";
 import { buildBreadcrumbs, parentCrumb } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 type TopBarProps = {
   onMenuClick: () => void;
@@ -104,15 +105,16 @@ export function TopBar({
       </button>
 
       {sidebarCollapsed && (
-        <button
-          type="button"
-          className="hidden rounded p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground lg:inline-flex"
-          onClick={toggleSidebar}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-        >
-          <PanelLeft className="size-4" />
-        </button>
+        <Tip label="Expand sidebar">
+          <button
+            type="button"
+            className="hidden rounded p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground lg:inline-flex"
+            onClick={toggleSidebar}
+            aria-label="Expand sidebar"
+          >
+            <PanelLeft className="size-4" />
+          </button>
+        </Tip>
       )}
 
       <nav

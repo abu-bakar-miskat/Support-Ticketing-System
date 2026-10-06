@@ -19,6 +19,7 @@ import { BulkAssignModal } from "@/components/tickets/bulk-assign-modal";
 import type { SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar";
+import { Tip } from "@/components/ui/tooltip";
 
 export type SubmissionRow = {
   id: string;
@@ -314,14 +315,16 @@ export function SettingsIntakeSubmissionsPage({
             <Trash2 className="size-3.5" />
             Delete
           </button>
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="rounded-full p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
-            title="Clear selection"
-          >
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Clear selection">
+            <button
+              aria-label="Clear selection"
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="rounded-full p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
       )}
 
@@ -442,14 +445,16 @@ export function SettingsIntakeSubmissionsPage({
 
                   <TableCell className="py-0 text-right">
                     <div className="flex h-[56px] items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(s)}
-                        className="cursor-pointer rounded-full p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
-                        title="Delete submission"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <Tip label="Delete submission">
+                        <button
+                          aria-label="Delete submission"
+                          type="button"
+                          onClick={() => setDeleteTarget(s)}
+                          className="cursor-pointer rounded-full p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </Tip>
                       <Link
                         href={`${formsBasePath}/${formId}/submissions/${s.id}`}
                         className="flex items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"

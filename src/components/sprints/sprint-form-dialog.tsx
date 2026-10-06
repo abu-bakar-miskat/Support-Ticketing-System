@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Loader2, Search, X } from "lucide-react";
@@ -210,14 +211,17 @@ export function SprintFormDialog({
               <Dialog.Title className="font-sans text-[14px] font-semibold text-sts-foreground">
                 {isEdit ? "Edit sprint" : "New sprint"}
               </Dialog.Title>
-              <button
-                type="button"
-                onClick={() => handleOpenChange(false)}
-                disabled={isPending}
-                className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-              >
-                <X className="size-4" />
-              </button>
+              <Tip label="Close">
+                <button
+                  aria-label="Close"
+                  type="button"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isPending}
+                  className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </Tip>
             </div>
 
             {/* Scrollable body */}

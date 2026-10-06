@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -528,26 +529,32 @@ export function DepartmentMailboxesPage({
                           onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
                           className="min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-surface px-2 py-1 font-sans text-[13px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} title="Save" className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
-                          <Check className="size-4" />
-                        </button>
-                        <button type="button" onClick={() => setEditingId(null)} title="Cancel" className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-                          <X className="size-4" />
-                        </button>
+                        <Tip label="Save">
+                          <button type="button" aria-label="Save address" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
+                            <Check className="size-4" />
+                          </button>
+                        </Tip>
+                        <Tip label="Cancel">
+                          <button type="button" aria-label="Cancel editing" onClick={() => setEditingId(null)} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
+                            <X className="size-4" />
+                          </button>
+                        </Tip>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
                           {c.address}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => copyAddress(c)}
-                          title="Copy address"
-                          className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                        >
-                          {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
-                        </button>
+                        <Tip label="Copy address">
+                          <button
+                            type="button"
+                            aria-label="Copy address"
+                            onClick={() => copyAddress(c)}
+                            className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                          >
+                            {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
+                          </button>
+                        </Tip>
                       </div>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11px] text-sts-subtle">
@@ -588,14 +595,16 @@ export function DepartmentMailboxesPage({
                           );
                         })()}
                         {canManage && editingAssignmentId !== c.id && (
-                          <button
-                            type="button"
-                            onClick={() => startEditAssignment(c)}
-                            title="Edit assignment method"
-                            className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3" />
-                          </button>
+                          <Tip label="Edit assignment method">
+                            <button
+                              type="button"
+                              aria-label="Edit assignment method"
+                              onClick={() => startEditAssignment(c)}
+                              className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          </Tip>
                         )}
                       </span>
                     </div>
@@ -615,44 +624,51 @@ export function DepartmentMailboxesPage({
                     )}
                     {canManage && editingId !== c.id && (
                       <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => (c.isActive ? setConfirmDisable(c) : toggleActive(c))}
-                          disabled={!!togglingId[c.id]}
-                          title={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}
-                          className={cn(
-                            "flex items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-medium hover:bg-sts-surface disabled:opacity-50",
-                            c.isActive ? "text-sts-green hover:text-sts-green" : "text-sts-subtle hover:text-sts-foreground",
-                          )}
-                        >
-                          {togglingId[c.id] ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
-                          {c.isActive ? "On" : "Off"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => recheck(c.id)}
-                          disabled={busy}
-                          title="Test connection"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-                        >
-                          <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                          title="Edit address"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDisconnect(c)}
-                          title="Disconnect"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                        <Tip label={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}>
+                          <button
+                            type="button"
+                            onClick={() => (c.isActive ? setConfirmDisable(c) : toggleActive(c))}
+                            disabled={!!togglingId[c.id]}
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-medium hover:bg-sts-surface disabled:opacity-50",
+                              c.isActive ? "text-sts-green hover:text-sts-green" : "text-sts-subtle hover:text-sts-foreground",
+                            )}
+                          >
+                            {togglingId[c.id] ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
+                            {c.isActive ? "On" : "Off"}
+                          </button>
+                        </Tip>
+                        <Tip label="Test connection">
+                          <button
+                            type="button"
+                            aria-label="Test connection"
+                            onClick={() => recheck(c.id)}
+                            disabled={busy}
+                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                          >
+                            <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
+                          </button>
+                        </Tip>
+                        <Tip label="Edit address">
+                          <button
+                            type="button"
+                            aria-label="Edit address"
+                            onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </Tip>
+                        <Tip label="Disconnect">
+                          <button
+                            type="button"
+                            aria-label="Disconnect mailbox"
+                            onClick={() => setConfirmDisconnect(c)}
+                            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tip>
                       </div>
                     )}
                   </div>
@@ -721,26 +737,28 @@ export function DepartmentMailboxesPage({
                           })}
                         </SelectContent>
                       </Select>
-                      <button
-                        type="button"
-                        onClick={() => saveAssignmentMethod(c)}
-                        disabled={savingAssignment}
-                        title="Save assignment method"
-                        aria-label="Save assignment method"
-                        className="flex size-8 items-center justify-center rounded-lg bg-sts-green text-white shadow-sm transition-colors hover:bg-sts-green/90 disabled:opacity-50"
-                      >
-                        {savingAssignment ? <Loader2 className="size-4 animate-spin" strokeWidth={2.75} /> : <Check className="size-4" strokeWidth={2.75} />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
-                        disabled={savingAssignment}
-                        title="Cancel"
-                        aria-label="Cancel"
-                        className="flex size-8 items-center justify-center rounded-lg border border-sts-card-border bg-sts-surface text-sts-muted shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-900/20"
-                      >
-                        <X className="size-4" strokeWidth={2.75} />
-                      </button>
+                      <Tip label="Save assignment method">
+                        <button
+                          type="button"
+                          onClick={() => saveAssignmentMethod(c)}
+                          disabled={savingAssignment}
+                          aria-label="Save assignment method"
+                          className="flex size-8 items-center justify-center rounded-lg bg-sts-green text-white shadow-sm transition-colors hover:bg-sts-green/90 disabled:opacity-50"
+                        >
+                          {savingAssignment ? <Loader2 className="size-4 animate-spin" strokeWidth={2.75} /> : <Check className="size-4" strokeWidth={2.75} />}
+                        </button>
+                      </Tip>
+                      <Tip label="Cancel">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
+                          disabled={savingAssignment}
+                          aria-label="Cancel"
+                          className="flex size-8 items-center justify-center rounded-lg border border-sts-card-border bg-sts-surface text-sts-muted shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-900/20"
+                        >
+                          <X className="size-4" strokeWidth={2.75} />
+                        </button>
+                      </Tip>
                     </div>
 
                     {/* Member picker — only for the "Manual user" method. One picked

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
+import { Tip } from "@/components/ui/tooltip";
 import {
   fetchEmailIdentity,
   setEmailSenders,
@@ -269,15 +270,22 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
         >
           Add sender
         </button>
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || loading || !saveAllowed}
-          title={unverified ? "Each address must be on a verified Resend domain" : undefined}
-          className="inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        <Tip
+          label={
+            unverified
+              ? "Each address must be on a verified Resend domain"
+              : undefined
+          }
         >
-          {saving ? "Saving…" : "Save senders"}
-        </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving || loading || !saveAllowed}
+            className="inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save senders"}
+          </button>
+        </Tip>
         {checkingDomain && (
           <span className="font-sans text-[11px] text-sts-subtle">Checking domains…</span>
         )}

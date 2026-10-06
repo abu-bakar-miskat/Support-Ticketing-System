@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { Download, MonitorSmartphone, Share, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,41 +41,45 @@ export function InstallAppButton({
 
   if (canPrompt) {
     return (
-      <button
-        type="button"
-        onClick={() => void handleInstall()}
-        disabled={installing}
-        title={collapsed ? "Install app" : undefined}
-        className={cn(
-          "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
-          "hover:border-sts-blue/40 hover:bg-sts-blue/15 disabled:opacity-60",
-          collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
-          className,
-        )}
-      >
-        <Download className="size-3.5 shrink-0" />
-        {!collapsed && (
-          <span>{installing ? "Installing…" : "Install app"}</span>
-        )}
-      </button>
+      <Tip label={collapsed ? "Install app" : undefined} side="right">
+        <button
+          aria-label={collapsed ? "Install app" : undefined}
+          type="button"
+          onClick={() => void handleInstall()}
+          disabled={installing}
+          className={cn(
+            "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+            "hover:border-sts-blue/40 hover:bg-sts-blue/15 disabled:opacity-60",
+            collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
+            className,
+          )}
+        >
+          <Download className="size-3.5 shrink-0" />
+          {!collapsed && (
+            <span>{installing ? "Installing…" : "Install app"}</span>
+          )}
+        </button>
+      </Tip>
     );
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        type="button"
-        title={collapsed ? "Install app" : undefined}
-        className={cn(
-          "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
-          "hover:border-sts-blue/40 hover:bg-sts-blue/15",
-          collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
-          className,
-        )}
-      >
-        <Download className="size-3.5 shrink-0" />
-        {!collapsed && <span>Install app</span>}
-      </PopoverTrigger>
+      <Tip label={collapsed ? "Install app" : undefined} side="right">
+        <PopoverTrigger
+          type="button"
+          aria-label={collapsed ? "Install app" : undefined}
+          className={cn(
+            "flex w-full items-center rounded-full border border-sts-blue/25 bg-sts-blue-tint font-sans text-[12px] font-semibold text-sts-id transition-colors",
+            "hover:border-sts-blue/40 hover:bg-sts-blue/15",
+            collapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
+            className,
+          )}
+        >
+          <Download className="size-3.5 shrink-0" />
+          {!collapsed && <span>Install app</span>}
+        </PopoverTrigger>
+      </Tip>
       <PopoverContent
         align="start"
         side="right"

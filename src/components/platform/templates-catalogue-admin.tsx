@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import {
@@ -258,17 +259,19 @@ function TemplateCard({
   );
   return (
     <li className="group relative flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card transition-colors hover:border-sts-blue/50">
-      <button type="button" onClick={onPreview} className="relative h-28 border-b border-sts-card-border text-left">
+      <button aria-label={`Preview ${t.name}`} type="button" onClick={onPreview} className="relative h-28 border-b border-sts-card-border text-left">
         <SavedWorkflowPreview template={t} compact />
       </button>
-      <button
-        type="button"
-        aria-label="Delete template"
-        onClick={onDelete}
-        className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      <Tip label="Delete template">
+        <button
+          type="button"
+          aria-label="Delete template"
+          onClick={onDelete}
+          className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-sts-card/90 text-sts-muted shadow-sm hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </Tip>
 
       {/* Body */}
       <button type="button" onClick={onPreview} className="flex flex-1 flex-col gap-1 px-4 py-3 text-left">

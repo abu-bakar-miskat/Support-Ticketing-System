@@ -23,6 +23,7 @@ import {
   type PortalApiFormRow,
 } from "@/components/departments/portal-api-forms-section";
 import { PortalApiDocumentation } from "@/components/departments/portal-api-documentation";
+import { Tip } from "@/components/ui/tooltip";
 
 export type ApiKeyRow = {
   id: string;
@@ -109,15 +110,17 @@ function ClaudeConnectGuide() {
                 />
                 <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[8px] border border-sts-card-border bg-sts-bg px-2.5">
                   <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-sts-id">{url}</code>
-                  <button
-                    type="button"
-                    onClick={copyUrl}
-                    disabled={!trimmed}
-                    className="shrink-0 rounded p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
-                    title="Copy URL"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                  </button>
+                  <Tip label={copied ? "Copied!" : "Copy URL"}>
+                    <button
+                      aria-label="Copy URL"
+                      type="button"
+                      onClick={copyUrl}
+                      disabled={!trimmed}
+                      className="shrink-0 rounded p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
+                    >
+                      {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                    </button>
+                  </Tip>
                 </div>
               </div>
               <p className="mt-1 text-[11.5px] text-sts-muted">
@@ -231,12 +234,15 @@ function GenerateKeyModal({
       <div className="w-full max-w-md rounded-xl border border-sts-card-border bg-sts-card shadow-xl">
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
           <h2 className="sts-text-modal-title">Generate API key</h2>
-          <button
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              onClick={onClose}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
@@ -371,17 +377,19 @@ function KeyRevealModal({
             <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-sts-foreground">
               {rawKey}
             </code>
-            <button
-              onClick={copy}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-              title="Copy key"
-            >
-              {copied ? (
-                <Check className="size-3.5 text-sts-green" />
-              ) : (
-                <Copy className="size-3.5" />
-              )}
-            </button>
+            <Tip label={copied ? "Copied!" : "Copy key"}>
+              <button
+                aria-label="Copy key"
+                onClick={copy}
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-sts-green" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+            </Tip>
           </div>
 
           <div className="flex items-start gap-2 rounded-[8px] bg-amber-50 px-3 py-2.5 dark:bg-amber-900/20">

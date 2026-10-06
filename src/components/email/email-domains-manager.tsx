@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useMemo, useRef, useState } from "react";
 import {
   Plus,
@@ -108,23 +109,24 @@ function StatusBadge({ status }: { status: string }) {
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        } catch {
-          /* clipboard unavailable */
-        }
-      }}
-      className="inline-flex size-6 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
-      aria-label="Copy value"
-      title="Copy"
-    >
-      {copied ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
-    </button>
+    <Tip label={copied ? "Copied" : "Copy"}>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          } catch {
+            /* clipboard unavailable */
+          }
+        }}
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
+        aria-label="Copy value"
+      >
+        {copied ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
+      </button>
+    </Tip>
   );
 }
 

@@ -26,6 +26,7 @@ import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, remov
 import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
+import { Tip } from "@/components/ui/tooltip";
 
 export type MemberRow = {
   id: string;
@@ -276,13 +277,16 @@ export function AddMemberModal({
                 >
                   {selected.role}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
-                >
-                  <X className="size-3" />
-                </button>
+                <Tip label="Clear selection">
+                  <button
+                    aria-label="Clear selection"
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Tip>
               </div>
             )}
 
@@ -936,29 +940,33 @@ export function SettingsMembersPage({
         </div>
         {(isAdmin || isManager) && (departmentId || availableDepartments.length > 0) && (
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              disabled={!isAdmin && availableSubDepartments.length === 0}
-              title={
+            <Tip
+              label={
                 !isAdmin && availableSubDepartments.length === 0
                   ? "Create a sub-department before inviting"
                   : "Send an email invite to someone without an account"
               }
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Mail className="size-3.5" />
-              Invite new members
-            </button>
-            <button
-              type="button"
-              onClick={() => setAddMemberOpen(true)}
-              title="Add people who already have an account"
-              className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
-            >
-              <Plus className="size-3.5" />
-              Add existing members
-            </button>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                disabled={!isAdmin && availableSubDepartments.length === 0}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Mail className="size-3.5" />
+                Invite new members
+              </button>
+            </Tip>
+            <Tip label="Add people who already have an account">
+              <button
+                type="button"
+                onClick={() => setAddMemberOpen(true)}
+                className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
+              >
+                <Plus className="size-3.5" />
+                Add existing members
+              </button>
+            </Tip>
           </div>
         )}
       </div>
@@ -1266,9 +1274,11 @@ export function SettingsMembersPage({
                             <span key={department.id} className="inline-flex items-center gap-1 rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
                               {department.name}
                               {(isAdmin || isManager) && !member.isCrossAccess && (
-                                <button type="button" title={`Remove from ${department.name}`} disabled={saving === member.id} onClick={() => setConfirmRemoveDept({ ...member, departmentId: department.id, department: department.name })} className="rounded text-sts-id/60 hover:text-red-500 disabled:opacity-50">
-                                  <X className="size-3" />
-                                </button>
+                                <Tip label={`Remove from ${department.name}`}>
+                                  <button aria-label={`Remove from ${department.name}`} type="button" disabled={saving === member.id} onClick={() => setConfirmRemoveDept({ ...member, departmentId: department.id, department: department.name })} className="rounded text-sts-id/60 hover:text-red-500 disabled:opacity-50">
+                                    <X className="size-3" />
+                                  </button>
+                                </Tip>
                               )}
                             </span>
                           ))}
@@ -1361,9 +1371,11 @@ export function SettingsMembersPage({
                           >
                             {t.name}
                             {(isAdmin || isManager) && !member.isCrossAccess && member.memberships?.some((membership) => membership.subDepartmentId === t.id) && (
-                              <button type="button" title={`Remove from ${t.name}`} disabled={saving === member.id} onClick={() => handleRemoveMembership(member, t.id)} className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50">
-                                <X className="size-3" />
-                              </button>
+                              <Tip label={`Remove from ${t.name}`}>
+                                <button aria-label={`Remove from ${t.name}`} type="button" disabled={saving === member.id} onClick={() => handleRemoveMembership(member, t.id)} className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50">
+                                  <X className="size-3" />
+                                </button>
+                              </Tip>
                             )}
                           </span>
                         ))
@@ -1402,14 +1414,16 @@ export function SettingsMembersPage({
                     <TableCell className="py-0 pr-2 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-0.5">
                         {!member.isCrossAccess && (
-                          <button
-                            type="button"
-                            title="Configure availability"
-                            onClick={() => setConfigMember(member)}
-                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Settings2 className="size-3.5" />
-                          </button>
+                          <Tip label="Configure availability">
+                            <button
+                              aria-label="Configure availability"
+                              type="button"
+                              onClick={() => setConfigMember(member)}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Settings2 className="size-3.5" />
+                            </button>
+                          </Tip>
                         )}
                         {member.id !== currentUserId && (
                           <DropdownMenu>
@@ -1559,24 +1573,28 @@ export function SettingsMembersPage({
                         </TableCell>
                         <TableCell className="py-0 pr-2 text-right">
                           <div className="flex h-[54px] items-center justify-end gap-0.5">
-                            <button
-                              type="button"
-                              title="Resend invitation email"
-                              disabled={!!busy}
-                              onClick={() => handleResendInvite(invite)}
-                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              {busy === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                            </button>
-                            <button
-                              type="button"
-                              title="Delete invitation"
-                              disabled={!!busy}
-                              onClick={() => setConfirmDeleteInvite(invite)}
-                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/30"
-                            >
-                              {busy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                            </button>
+                            <Tip label="Resend invitation email">
+                              <button
+                                aria-label="Resend invitation email"
+                                type="button"
+                                disabled={!!busy}
+                                onClick={() => handleResendInvite(invite)}
+                                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {busy === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                              </button>
+                            </Tip>
+                            <Tip label="Delete invitation">
+                              <button
+                                aria-label="Delete invitation"
+                                type="button"
+                                disabled={!!busy}
+                                onClick={() => setConfirmDeleteInvite(invite)}
+                                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/30"
+                              >
+                                {busy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                              </button>
+                            </Tip>
                           </div>
                         </TableCell>
                       </TableRow>

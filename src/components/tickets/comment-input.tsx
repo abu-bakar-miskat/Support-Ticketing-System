@@ -16,6 +16,7 @@ import {
   maxBytesFor,
   maxLabelFor,
 } from "@/lib/mime";
+import { Tip } from "@/components/ui/tooltip";
 
 export type CommentShape = {
   id: string; body: string; createdAt: string; editedAt: string | null;
@@ -382,15 +383,16 @@ export function CommentInput({
                 e.target.value = "";
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              title="Attach files"
-              className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
-            >
-              <Paperclip className="size-[12px]" />
-              Attach
-            </button>
+            <Tip label="Attach files">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
+              >
+                <Paperclip className="size-[12px]" />
+                Attach
+              </button>
+            </Tip>
           </div>
 
           <div className="flex items-center gap-2">

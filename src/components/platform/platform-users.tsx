@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Crown, Search, ScrollText, ShieldCheck, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -249,26 +250,28 @@ export function PlatformUsers({
                       <DeptPills departments={user.departments} />
                     </div>
                     <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setAuditUser(user)}
-                        title="View audit log for this user"
-                        className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
-                      >
-                        <ScrollText className="size-3.5" />
-                        Audit
-                      </button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={user.id === currentUserId}
-                        title={user.id === currentUserId ? "You can't delete your own account" : "Delete this user"}
-                        onClick={() => setConfirmDelete(user)}
-                      >
-                        <Trash2 className="size-3.5" />
-                        Delete
-                      </Button>
+                      <Tip label="View audit log for this user">
+                        <button
+                          type="button"
+                          onClick={() => setAuditUser(user)}
+                          className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+                        >
+                          <ScrollText className="size-3.5" />
+                          Audit
+                        </button>
+                      </Tip>
+                      <Tip label={user.id === currentUserId ? "You can't delete your own account" : undefined}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={user.id === currentUserId}
+                          onClick={() => setConfirmDelete(user)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          Delete
+                        </Button>
+                      </Tip>
                     </div>
                   </div>
                 );

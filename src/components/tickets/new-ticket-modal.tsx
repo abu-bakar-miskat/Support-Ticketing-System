@@ -41,6 +41,7 @@ import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-li
 import { AvatarVisual } from "@/components/ui/user-avatar";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "@/components/ui/tooltip";
 
 type Project = { id: string; name: string; subDepartmentId?: string | null; kind?: string };
 type SubDepartmentMember = UserListPerson;
@@ -834,44 +835,47 @@ export function NewTicketModal({
                                               <span className="font-sans text-[11px] text-sts-foreground text-center wrap-break-word w-full line-clamp-2">{fileObj.fileName}</span>
                                             </div>
                                           )}
-                                          <button
-                                            type="button"
-                                            disabled={isDeleting}
-                                            onClick={async () => {
-                                              setDeletingFiles((prev) => ({
-                                                ...prev,
-                                                [field.id]: { ...(prev[field.id] || {}), [fileId]: true },
-                                              }));
-                                              try {
-                                                await deleteTemplateFile(fileObj.path);
-                                                const fileIds = customFieldValues[field.id].split(",").filter(Boolean);
-                                                const newIds = fileIds.filter((id: string) => id !== fileId);
-                                                setCustomFieldValues((prev) => ({
-                                                  ...prev,
-                                                  [field.id]: newIds.join(","),
-                                                }));
-                                                setFileObjectsMap((prev) => {
-                                                  const updated = {...prev};
-                                                  if (updated[field.id]) {
-                                                    delete updated[field.id][fileId];
-                                                  }
-                                                  return updated;
-                                                });
-                                              } catch (err) {
-                                                toast.error((err as Error).message);
-                                              } finally {
+                                          <Tip label="Delete file">
+                                            <button
+                                              aria-label={`Delete ${fileObj.fileName}`}
+                                              type="button"
+                                              disabled={isDeleting}
+                                              onClick={async () => {
                                                 setDeletingFiles((prev) => ({
                                                   ...prev,
-                                                  [field.id]: { ...(prev[field.id] || {}), [fileId]: false },
+                                                  [field.id]: { ...(prev[field.id] || {}), [fileId]: true },
                                                 }));
-                                              }
-                                            }}
-                                            className="absolute -top-2 -right-2 bg-sts-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
-                                          >
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                            </svg>
-                                          </button>
+                                                try {
+                                                  await deleteTemplateFile(fileObj.path);
+                                                  const fileIds = customFieldValues[field.id].split(",").filter(Boolean);
+                                                  const newIds = fileIds.filter((id: string) => id !== fileId);
+                                                  setCustomFieldValues((prev) => ({
+                                                    ...prev,
+                                                    [field.id]: newIds.join(","),
+                                                  }));
+                                                  setFileObjectsMap((prev) => {
+                                                    const updated = {...prev};
+                                                    if (updated[field.id]) {
+                                                      delete updated[field.id][fileId];
+                                                    }
+                                                    return updated;
+                                                  });
+                                                } catch (err) {
+                                                  toast.error((err as Error).message);
+                                                } finally {
+                                                  setDeletingFiles((prev) => ({
+                                                    ...prev,
+                                                    [field.id]: { ...(prev[field.id] || {}), [fileId]: false },
+                                                  }));
+                                                }
+                                              }}
+                                              className="absolute -top-2 -right-2 bg-sts-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
+                                            >
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                              </svg>
+                                            </button>
+                                          </Tip>
                                         </div>
                                       );
                                     })}
@@ -1470,13 +1474,16 @@ function AssetLinksField({
               <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] font-medium text-sts-blue">
                 {link.label || link.url}
               </span>
-              <button
-                type="button"
-                onClick={() => setAssetLinks((prev) => prev.filter((_, j) => j !== i))}
-                className="shrink-0 text-sts-subtle hover:text-sts-red"
-              >
-                <X size={10} />
-              </button>
+              <Tip label="Remove link">
+                <button
+                  aria-label={`Remove link ${link.label || link.url}`}
+                  type="button"
+                  onClick={() => setAssetLinks((prev) => prev.filter((_, j) => j !== i))}
+                  className="shrink-0 text-sts-subtle hover:text-sts-red"
+                >
+                  <X size={10} />
+                </button>
+              </Tip>
             </div>
           ))}
         </div>
@@ -1536,17 +1543,19 @@ function LabelsField({
     <FormField label="Labels">
       <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-[6px] border border-dashed border-sts-card-border bg-sts-bg/40 px-3 py-2">
         {labels.map((lbl) => (
-          <button
-            key={lbl}
-            type="button"
-            onClick={() => setLabels((prev) => prev.filter((l) => l !== lbl))}
-            className="group relative inline-flex"
-          >
-            <TagPill label={lbl} size="sm" />
-            <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100">
-              <X size={8} />
-            </span>
-          </button>
+          <Tip key={lbl} label="Remove label">
+            <button
+              aria-label={`Remove label ${lbl}`}
+              type="button"
+              onClick={() => setLabels((prev) => prev.filter((l) => l !== lbl))}
+              className="group relative inline-flex"
+            >
+              <TagPill label={lbl} size="sm" />
+              <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <X size={8} />
+              </span>
+            </button>
+          </Tip>
         ))}
         <LabelPicker current={labels} onChange={setLabels} />
       </div>

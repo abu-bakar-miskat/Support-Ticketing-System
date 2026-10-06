@@ -59,6 +59,7 @@ import { deriveSubDepartmentPrefix } from "@/lib/sub-department-prefix";
 import { toastError } from "@/lib/toast-error";
 import { toast } from "sonner";
 import { notifEvents } from "@/store";
+import { Tip } from "@/components/ui/tooltip";
 
 export type SubDepartmentRow = {
   id: string;
@@ -134,14 +135,16 @@ function SubManagersList({
             <span className="truncate font-sans text-[12.5px] text-sts-foreground">{lead.name}</span>
           </div>
           {canManage && lead.isExplicit && (
-            <button
-              type="button"
-              onClick={() => onRemove(lead.userId)}
-              title="Remove sub-manager"
-              className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Remove sub-manager">
+              <button
+                aria-label="Remove sub-manager"
+                type="button"
+                onClick={() => onRemove(lead.userId)}
+                className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           )}
         </div>
       ))}
@@ -271,13 +274,16 @@ function SubDepartmentModal({
           <h2 className="sts-text-modal-title">
             {isEdit ? "Edit sub-department" : "New sub-department"}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -540,13 +546,16 @@ function SubDepartmentMembersModal({
           <span className="font-sans text-[11.5px] text-sts-subtle">
             {members.length} member{members.length !== 1 ? "s" : ""}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Body */}
@@ -889,13 +898,16 @@ function AssignMemberModal({
               </span>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 ">
@@ -914,13 +926,16 @@ function AssignMemberModal({
                     <span className="font-sans text-[11.5px] text-sts-foreground">
                       {p.name}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => toggle(id)}
-                      className="text-sts-subtle hover:text-sts-foreground"
-                    >
-                      <X className="size-2.5" />
-                    </button>
+                    <Tip label={`Remove ${p.name}`}>
+                      <button
+                        aria-label={`Remove ${p.name}`}
+                        type="button"
+                        onClick={() => toggle(id)}
+                        className="text-sts-subtle hover:text-sts-foreground"
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </Tip>
                   </span>
                 );
               })}
@@ -1368,30 +1383,36 @@ function SubDepartmentCard({
         </div>
         {canManage && (
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={onInvite}
-              title="Invite new members (email invite for people without an account)"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <UserPlus className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onEdit}
-              title="Edit sub-department"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <Pencil className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              title="Delete sub-department"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <Tip label="Invite new members (email invite for people without an account)">
+              <button
+                aria-label="Invite new members"
+                type="button"
+                onClick={onInvite}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <UserPlus className="size-3.5" />
+              </button>
+            </Tip>
+            <Tip label="Edit sub-department">
+              <button
+                aria-label="Edit sub-department"
+                type="button"
+                onClick={onEdit}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+            </Tip>
+            <Tip label="Delete sub-department">
+              <button
+                aria-label="Delete sub-department"
+                type="button"
+                onClick={onDelete}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         )}
       </div>

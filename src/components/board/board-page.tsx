@@ -86,6 +86,7 @@ import {
   collectModules,
   countAssigneeMatches,
 } from "@/components/board/board-filters";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── DnD types ─────────────────────────────────────────────────────────────────
 
@@ -458,31 +459,36 @@ function BoardCard({
           </span>
         </div>
         {isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : canTrack ? (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ) : null}
         <span className="flex-1" />
         {subTotal > 0 && (
           <button
             type="button"
             onClick={toggleExpanded}
+            aria-expanded={expanded}
             className={cn(
               "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
               subtasksDone ? "text-sts-green" : "text-sts-muted",
@@ -497,15 +503,16 @@ function BoardCard({
             {subDone}/{subTotal} sub-tickets
           </button>
         )}
-        <button
-          type="button"
-          title="Add sub-task"
-          onClick={openSubTicketModal}
-          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
-        >
-          <Plus className="size-[11px] shrink-0" />
-          <span>Sub-task</span>
-        </button>
+        <Tip label="Add sub-task">
+          <button
+            type="button"
+            onClick={openSubTicketModal}
+            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
+          >
+            <Plus className="size-[11px] shrink-0" />
+            <span>Sub-task</span>
+          </button>
+        </Tip>
       </div>
       {subTotal > 0 && expanded && (
         <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">

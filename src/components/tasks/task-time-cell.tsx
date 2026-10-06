@@ -9,6 +9,7 @@ import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useAuthStore, useTimerStore } from "@/store";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
+import { Tip } from "@/components/ui/tooltip";
 
 type Props = {
   ticketDbId: string;
@@ -94,25 +95,29 @@ export function TaskTimeCell({
       </span>
       {canTrack &&
         (isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ))}
     </div>
   );

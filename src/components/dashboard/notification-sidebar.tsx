@@ -11,6 +11,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/api/notifications";
 import { useNotificationStore } from "@/store";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -231,15 +232,16 @@ export function NotificationSidebar({
             </span>
           )}
           {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllRead}
-              title="Mark all read"
-              aria-label="Mark all notifications as read"
-              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <CheckCheck className="size-3.5" />
-            </button>
+            <Tip label="Mark all read">
+              <button
+                type="button"
+                onClick={markAllRead}
+                aria-label="Mark all notifications as read"
+                className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <CheckCheck className="size-3.5" />
+              </button>
+            </Tip>
           )}
           <button
             type="button"

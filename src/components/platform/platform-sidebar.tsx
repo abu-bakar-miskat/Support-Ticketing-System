@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -89,18 +90,19 @@ export function PlatformSidebar({
       {/* Logo row */}
       <div className={cn("flex h-14 items-center", isCollapsed ? "justify-center" : "pl-1")}>
         {isCollapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            className="flex size-10 items-center justify-center rounded-full hover:bg-sts-blue-tint"
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/support-icon.png" alt="Global Support Portal" width={40} height={40} className="size-10 dark:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/support-icon-white.png" alt="" width={40} height={40} className="hidden size-10 dark:block" />
-          </button>
+          <Tip label="Expand sidebar" side="right">
+            <button
+              type="button"
+              onClick={toggle}
+              className="flex size-10 items-center justify-center rounded-full hover:bg-sts-blue-tint"
+              aria-label="Expand sidebar"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/support-icon.png" alt="Global Support Portal" width={40} height={40} className="size-10 dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/support-icon-white.png" alt="" width={40} height={40} className="hidden size-10 dark:block" />
+            </button>
+          </Tip>
         ) : (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -117,15 +119,16 @@ export function PlatformSidebar({
               height={56}
               className="hidden h-14 w-auto max-w-[150px] object-contain dark:block"
             />
-            <button
-              type="button"
-              onClick={onClose ?? toggle}
-              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
-              aria-label={onClose ? "Close menu" : "Collapse sidebar"}
-              title={onClose ? "Close menu" : "Collapse sidebar"}
-            >
-              {onClose ? <X className="size-4" /> : <PanelLeftClose className="size-4" />}
-            </button>
+            <Tip label={onClose ? "Close menu" : "Collapse sidebar"}>
+              <button
+                type="button"
+                onClick={onClose ?? toggle}
+                className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
+                aria-label={onClose ? "Close menu" : "Collapse sidebar"}
+              >
+                {onClose ? <X className="size-4" /> : <PanelLeftClose className="size-4" />}
+              </button>
+            </Tip>
           </>
         )}
       </div>
@@ -145,35 +148,36 @@ export function PlatformSidebar({
           const Icon = item.icon;
           const badge = item.href === "/platform/feature-approvals" && pendingCount > 0 ? pendingCount : null;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              aria-current={active ? "page" : undefined}
-              title={isCollapsed ? item.label : undefined}
-              className={cn(
-                "flex h-8 items-center gap-[9px] rounded-full font-sans text-[13px] transition-colors",
-                isCollapsed ? "justify-center px-0" : "px-[9px]",
-                active
-                  ? "bg-sts-blue-tint font-semibold text-sts-foreground"
-                  : "font-normal text-sts-muted hover:bg-sts-blue-tint/50 hover:text-sts-foreground",
-              )}
-            >
-              <span className="relative shrink-0">
-                <Icon className="size-4" />
-                {isCollapsed && badge != null && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 font-sans text-[11.5px] font-medium text-white">
+            <Tip key={item.href} label={isCollapsed ? item.label : undefined} side="right">
+              <Link
+                href={item.href}
+                onClick={onClose}
+                aria-current={active ? "page" : undefined}
+                aria-label={isCollapsed ? (badge != null ? `${item.label} (${badge} pending)` : item.label) : undefined}
+                className={cn(
+                  "flex h-8 items-center gap-[9px] rounded-full font-sans text-[13px] transition-colors",
+                  isCollapsed ? "justify-center px-0" : "px-[9px]",
+                  active
+                    ? "bg-sts-blue-tint font-semibold text-sts-foreground"
+                    : "font-normal text-sts-muted hover:bg-sts-blue-tint/50 hover:text-sts-foreground",
+                )}
+              >
+                <span className="relative shrink-0">
+                  <Icon className="size-4" />
+                  {isCollapsed && badge != null && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 font-sans text-[11.5px] font-medium text-white">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
+                </span>
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+                {!isCollapsed && badge != null && (
+                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 font-sans text-[11.5px] font-medium text-white">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )}
-              </span>
-              {!isCollapsed && <span className="truncate">{item.label}</span>}
-              {!isCollapsed && badge != null && (
-                <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 font-sans text-[11.5px] font-medium text-white">
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              )}
-            </Link>
+              </Link>
+            </Tip>
           );
         })}
       </nav>

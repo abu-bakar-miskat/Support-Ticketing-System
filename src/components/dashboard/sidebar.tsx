@@ -62,6 +62,7 @@ import { ProjectModal } from "@/components/projects/project-modal";
 // import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 import type { LucideIcon } from "lucide-react";
+import { Tip } from "@/components/ui/tooltip";
 
 export type SidebarProject = {
   id: string;
@@ -218,57 +219,59 @@ function SidebarNavLink({
             </>
           )}
         </Link>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            onQuickAdd();
-          }}
-          aria-label={`New ${item.label}`}
-          title={`New ${item.label.toLowerCase()}`}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
-        >
-          <Plus className="size-3" aria-hidden="true" />
-        </button>
+        <Tip label={`New ${item.label.toLowerCase()}`}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onQuickAdd();
+            }}
+            aria-label={`New ${item.label}`}
+            className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
+          >
+            <Plus className="size-3" aria-hidden="true" />
+          </button>
+        </Tip>
       </div>
     );
   }
 
   return (
-    <Link
-      href={href(item.href)}
-      prefetch={true}
-      title={collapsed ? item.label : undefined}
-      aria-label={collapsed ? item.label : undefined}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
-        collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
-      )}
-    >
-      <span className="relative shrink-0">
-        <SidebarNavIcon icon={Icon} />
-        {collapsed && item.badge != null && item.badge > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sts-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
-            {item.badge > 9 ? "9+" : item.badge}
-          </span>
+    <Tip label={collapsed ? item.label : null} side="right">
+      <Link
+        href={href(item.href)}
+        prefetch={true}
+        aria-label={collapsed ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
+          collapsed ? "justify-center px-0" : "gap-2 px-2.5",
+          active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
         )}
-      </span>
-      {!collapsed && (
-        <>
-          <span className="truncate">{item.label}</span>
-          {item.badge != null && (
-            <>
-              <span className="flex-1" />
-              <span className="text-[11.5px] text-sts-subtle">
-                {item.badge}
-              </span>
-            </>
+      >
+        <span className="relative shrink-0">
+          <SidebarNavIcon icon={Icon} />
+          {collapsed && item.badge != null && item.badge > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sts-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
+              {item.badge > 9 ? "9+" : item.badge}
+            </span>
           )}
-        </>
-      )}
-    </Link>
+        </span>
+        {!collapsed && (
+          <>
+            <span className="truncate">{item.label}</span>
+            {item.badge != null && (
+              <>
+                <span className="flex-1" />
+                <span className="text-[11.5px] text-sts-subtle">
+                  {item.badge}
+                </span>
+              </>
+            )}
+          </>
+        )}
+      </Link>
+    </Tip>
   );
 }
 
@@ -602,50 +605,51 @@ export function Sidebar({
           )}
         >
           {isCollapsed ? (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="flex size-10 items-center justify-center rounded-full hover:bg-sts-surface"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-            >
-              {brandingLogoUrl && !brandingHideLogo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={brandingLogoUrl}
-                  alt={brandingName ?? ""}
-                  width={40}
-                  height={40}
-                  className="size-10 object-contain"
-                />
-              ) : brandingName ? (
-                <span
-                  aria-hidden="true"
-                  className="flex size-9 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
-                >
-                  {brandingName.charAt(0)}
-                </span>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+            <Tip label="Expand sidebar" side="right">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="flex size-10 items-center justify-center rounded-full hover:bg-sts-surface"
+                aria-label="Expand sidebar"
+              >
+                {brandingLogoUrl && !brandingHideLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src="/images/support-icon.png"
-                    alt="Global Support Portal"
+                    src={brandingLogoUrl}
+                    alt={brandingName ?? ""}
                     width={40}
                     height={40}
-                    className="size-10 dark:hidden"
+                    className="size-10 object-contain"
                   />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/support-icon-white.png"
-                    alt=""
-                    width={40}
-                    height={40}
-                    className="hidden size-10 dark:block"
-                  />
-                </>
-              )}
-            </button>
+                ) : brandingName ? (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+                  >
+                    {brandingName.charAt(0)}
+                  </span>
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/support-icon.png"
+                      alt="Global Support Portal"
+                      width={40}
+                      height={40}
+                      className="size-10 dark:hidden"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/support-icon-white.png"
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="hidden size-10 dark:block"
+                    />
+                  </>
+                )}
+              </button>
+            </Tip>
           ) : brandingLogoUrl || brandingName ? (
             <div className="flex min-w-0 items-center gap-2">
               {!brandingHideLogo &&
@@ -705,15 +709,16 @@ export function Sidebar({
             </button>
           )}
           {!isCollapsed && onToggleCollapse && !onClose && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose className="size-4" />
-            </button>
+            <Tip label="Collapse sidebar">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose className="size-4" />
+              </button>
+            </Tip>
           )}
         </div>
 
@@ -723,23 +728,24 @@ export function Sidebar({
         {(isAdmin || isManager || allDepts.length > 0) && activeDept && (
           <div className="flex flex-col gap-0.5">
             {isAdmin && isCollapsed && (
-              <button
-                type="button"
-                disabled={switchingDept}
-                title="All Departments"
-                aria-label="All Departments"
-                onClick={async () => {
-                  await fetch("/api/active-dept", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deptId: null }),
-                  });
-                  window.location.href = "/departments";
-                }}
-                className="flex h-7 w-full items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-              >
-                <ArrowLeft className="size-3.5" />
-              </button>
+              <Tip label="All Departments" side="right">
+                <button
+                  type="button"
+                  disabled={switchingDept}
+                  aria-label="All Departments"
+                  onClick={async () => {
+                    await fetch("/api/active-dept", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ deptId: null }),
+                    });
+                    window.location.href = "/departments";
+                  }}
+                  className="flex h-7 w-full items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                >
+                  <ArrowLeft className="size-3.5" />
+                </button>
+              </Tip>
             )}
             {isAdmin && !isCollapsed && (
               <button
@@ -766,6 +772,11 @@ export function Sidebar({
                   type="button"
                   disabled={switchingDept}
                   title={
+                    isCollapsed
+                      ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
+                      : undefined
+                  }
+                  aria-label={
                     isCollapsed
                       ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
                       : undefined
@@ -853,22 +864,23 @@ export function Sidebar({
           </div>
         )}
         {isSuperAdmin && !activeDeptId && (
-          <Link
-            href="/platform"
-            title={isCollapsed ? "Platform" : undefined}
-            aria-label={isCollapsed ? "Platform" : undefined}
-            className={cn(
-              "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
-              isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
-            )}
-          >
-            <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
-            {!isCollapsed && (
-              <span className="font-sans text-[11.5px] font-medium">
-                Platform
-              </span>
-            )}
-          </Link>
+          <Tip label={isCollapsed ? "Platform" : null} side="right">
+            <Link
+              href="/platform"
+              aria-label={isCollapsed ? "Platform" : undefined}
+              className={cn(
+                "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
+                isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
+              )}
+            >
+              <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
+              {!isCollapsed && (
+                <span className="font-sans text-[11.5px] font-medium">
+                  Platform
+                </span>
+              )}
+            </Link>
+          </Tip>
         )}
         {isAdmin && !activeDeptId && (
           <div

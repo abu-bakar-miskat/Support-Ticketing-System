@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { TemplateFormModal } from "./template-form-modal";
 import { createTemplate, updateTemplate, deleteTemplate } from "@/lib/api/templates";
+import { Tip } from "@/components/ui/tooltip";
 
 export type TemplateRow = {
   id: string;
@@ -152,24 +153,26 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                 </TableCell>
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[46px] items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
-                      title="Edit template"
-                    >
-                      <Edit2 className="size-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeletingTemplate(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
-                      title="Delete template"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </button>
+                    <Tip label="Edit template">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(template)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
+                      >
+                        <Edit2 className="size-3.5" />
+                        Edit
+                      </button>
+                    </Tip>
+                    <Tip label="Delete template">
+                      <button
+                        type="button"
+                        onClick={() => setDeletingTemplate(template)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </button>
+                    </Tip>
                   </div>
                 </TableCell>
               </TableRow>

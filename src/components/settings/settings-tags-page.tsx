@@ -22,6 +22,7 @@ import {
 import { TagPill } from "@/components/board/tag-pill";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 export type TagRow = {
   id: string;
@@ -188,12 +189,16 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                 <TableCell />
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[54px] items-center justify-end gap-1">
-                    <button type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
-                      <Check className="size-3.5" />
-                    </button>
-                    <button type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-                      <X className="size-3.5" />
-                    </button>
+                    <Tip label="Create tag">
+                      <button aria-label="Create tag" type="button" onClick={handleCreate} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
+                        <Check className="size-3.5" />
+                      </button>
+                    </Tip>
+                    <Tip label="Cancel">
+                      <button aria-label="Cancel" type="button" onClick={() => setCreating(false)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+                        <X className="size-3.5" />
+                      </button>
+                    </Tip>
                   </div>
                 </TableCell>
               </TableRow>
@@ -244,12 +249,16 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
                   <div className="flex h-[46px] items-center justify-end gap-1">
                     {editingId === label.id ? (
                       <>
-                        <button type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
-                          <Check className="size-3.5" />
-                        </button>
-                        <button type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-                          <X className="size-3.5" />
-                        </button>
+                        <Tip label="Save tag">
+                          <button aria-label="Save tag" type="button" onClick={() => handleSaveEdit(label.id)} disabled={saving} className="flex size-7 items-center justify-center rounded-full bg-sts-blue text-white hover:bg-sts-blue/90 disabled:opacity-50">
+                            <Check className="size-3.5" />
+                          </button>
+                        </Tip>
+                        <Tip label="Cancel editing">
+                          <button aria-label="Cancel editing" type="button" onClick={() => setEditingId(null)} className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+                            <X className="size-3.5" />
+                          </button>
+                        </Tip>
                       </>
                     ) : (
                       <DropdownMenu>

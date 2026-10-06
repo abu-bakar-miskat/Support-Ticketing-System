@@ -70,6 +70,7 @@ export function VideoNodeView(props: NodeViewProps) {
               disabled={isDownloading}
               className="p-2 text-sts-blue hover:bg-sts-surface rounded-full transition-colors disabled:opacity-50"
               title={`Download ${fileName}`}
+              aria-label={`Download ${fileName}`}
             >
               {isDownloading ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -83,6 +84,7 @@ export function VideoNodeView(props: NodeViewProps) {
               disabled={isDeleting}
               className="p-2 text-sts-muted hover:bg-red-100 hover:text-red-600 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Delete video"
+              aria-label="Delete video"
             >
               {isDeleting ? (
                 <Loader2 className="size-4 animate-spin" />

@@ -28,6 +28,12 @@ export async function POST(req: NextRequest) {
   if (!templateId && !featureKey) {
     return badRequest("A template or feature is required");
   }
+  if (!departmentId && profile.role === "manager") {
+    return NextResponse.json(
+      { error: "Choose a department you manage to request a feature." },
+      { status: 403 },
+    );
+  }
   if (
     departmentId &&
     profile.role === "manager" &&

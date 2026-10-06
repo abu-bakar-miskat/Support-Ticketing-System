@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppPathname } from "@/hooks/use-app-pathname";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
   Select,
   SelectContent,
@@ -28,9 +29,12 @@ function SettingsNavLink({
   item: SettingsNavItem;
   active: boolean;
 }) {
+  // Nav hrefs are internal (/settings/sla); prefix them with the URL's
+  // tenant/dept so the proxy doesn't fall back to (possibly missing) cookies.
+  const tenantHref = useTenantHref();
   return (
     <Link
-      href={item.href}
+      href={tenantHref(item.href)}
       className={cn(
         "flex h-7 items-center gap-[7px] rounded-[5px] px-[9px] font-sans text-[13px] transition-colors",
         active
@@ -130,6 +134,7 @@ function SettingsMobileNav({
   isDepartmentAdmin: boolean;
 }) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags, isDepartmentAdmin);
   const allItems = nav.flatMap((g) => g.items);
   const activeItem =
@@ -140,7 +145,7 @@ function SettingsMobileNav({
       <Select
         value={activeItem?.href}
         onValueChange={(href) => {
-          if (href) router.push(href);
+          if (href) router.push(tenantHref(href));
         }}
       >
         <SelectTrigger className="h-9 w-full font-sans text-[13px]">

@@ -8,6 +8,7 @@ import { ticketKeys } from "@/hooks/queries/keys";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
 import { useTicketDetail } from "@/hooks/queries/use-ticket-detail";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useBreadcrumbStore, useDrawerStore, useTimerStore } from "@/store";
@@ -801,6 +802,7 @@ export function TicketDetailPage({
   isDraft = false,
 }: TicketDetailProps) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const currentUserId = currentUser?.id ?? "";
@@ -2053,7 +2055,7 @@ export function TicketDetailPage({
     : 0;
 
   async function copyLink() {
-    const ticketUrl = `${window.location.origin}/tickets/${dbId}`;
+    const ticketUrl = `${window.location.origin}${tenantHref(`/tasks/${dbId}`)}`;
     await navigator.clipboard.writeText(ticketUrl).catch(() => undefined);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -2238,7 +2240,7 @@ export function TicketDetailPage({
               <span className="flex-1" />
               {isDrawer && (
                 <Link
-                  href={`/tasks/${dbId}`}
+                  href={tenantHref(`/tasks/${dbId}`)}
                   title="Open this ticket as a full page"
                   onClick={onClose}
                   className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground transition-opacity hover:opacity-70"

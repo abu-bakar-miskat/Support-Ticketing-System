@@ -43,12 +43,14 @@ export function PortalApiFormsSection({
   forms,
   revokingId,
   onRevoke,
+  onRestore,
   onDelete,
 }: {
   apiKeys: PortalApiConnectionRow[]
   forms: PortalApiFormRow[]
   revokingId: string | null
   onRevoke: (id: string) => void
+  onRestore: (id: string) => void
   onDelete: (id: string) => Promise<void>
 }) {
   const router = useRouter()
@@ -149,6 +151,16 @@ export function PortalApiFormsSection({
                         className="rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-sts-red transition-colors hover:bg-red-500/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-red/30 active:translate-y-px disabled:opacity-50"
                       >
                         {revokingId === apiKey.id ? "Revoking…" : "Revoke"}
+                      </button>
+                    )}
+                    {apiKey.revoked && (
+                      <button
+                        type="button"
+                        disabled={revokingId === apiKey.id}
+                        onClick={() => onRestore(apiKey.id)}
+                        className="rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-sts-id transition-colors hover:bg-sts-blue-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px disabled:opacity-50"
+                      >
+                        {revokingId === apiKey.id ? "Restoring…" : "Restore"}
                       </button>
                     )}
                     {apiKey.revoked && (

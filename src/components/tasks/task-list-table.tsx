@@ -22,6 +22,7 @@ import { useSubDepartmentMembers } from "@/hooks/queries/use-board";
 import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { toastError } from "@/lib/toast-error";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import { ModuleCell } from "@/components/board/module-label";
 import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_MODULE, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
 
@@ -42,6 +43,7 @@ export function TaskListRow({
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
 }) {
+  const tenantHref = useTenantHref();
   const [expanded, setExpanded] = useState(false);
   const hasChildren = task.subTicketCards.length > 0;
   const [liveStatus, setLiveStatus] = useState(task.status);
@@ -113,7 +115,7 @@ export function TaskListRow({
         )}
         <td className={cn("w-[80px] py-2.5", onToggleSelect ? "pl-2" : "pl-4")}>
           <Link
-            href={`/tickets/${task.dbId}`}
+            href={tenantHref(`/tickets/${task.dbId}`)}
             className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
           >
             {task.humanId}
@@ -137,7 +139,7 @@ export function TaskListRow({
               </button>
             )}
             <Link
-              href={`/tickets/${task.dbId}`}
+              href={tenantHref(`/tickets/${task.dbId}`)}
               className="flex min-w-0 items-center gap-1.5"
               title={task.title}
             >
@@ -279,7 +281,7 @@ export function TaskListRow({
               {onToggleSelect && <td className="w-9 py-2 pl-4" />}
               <td className={cn("w-[80px] py-2", onToggleSelect ? "pl-2" : "pl-4")}>
                 <Link
-                  href={`/tickets/${sub.dbId}`}
+                  href={tenantHref(`/tickets/${sub.dbId}`)}
                   className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
                 >
                   {sub.humanId}
@@ -287,7 +289,7 @@ export function TaskListRow({
               </td>
               <td className="max-w-0 py-2 pr-3 pl-5">
                 <Link
-                  href={`/tickets/${sub.dbId}`}
+                  href={tenantHref(`/tickets/${sub.dbId}`)}
                   className="flex min-w-0 items-center gap-2"
                 >
                   <span

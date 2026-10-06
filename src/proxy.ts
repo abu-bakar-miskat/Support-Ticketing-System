@@ -13,6 +13,7 @@ import {
   isSubDeptScopedPath,
   parseTenantPathContext,
   tenantWithMissingDepartment,
+  withTenantContext,
   type TenantPathContext,
 } from "@/lib/tenant-path";
 import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
@@ -190,6 +191,22 @@ export async function proxy(request: NextRequest) {
           supabaseResponse,
           NextResponse.next({ request: { headers } }),
         );
+      }
+    }
+
+    // A bare in-app link (/settings/sla) clicked from a tenant page: canonicalise
+    // it from the referring tab's URL context, which is tab-local and names the
+    // department. Falling through to cookies here bounced users to
+    // /<tenant>/departments whenever pen_active_dept_slug was missing/stale.
+    if (isBareTenantScoped(pathname) && !pathname.startsWith("/api/")) {
+      const referrerContext = contextFromSameOriginReferrer(request);
+      if (referrerContext?.departmentSlug || (referrerContext && !isDeptScopedPath(pathname))) {
+        const target = withTenantContext(referrerContext, pathname);
+        if (target !== pathname) {
+          const url = request.nextUrl.clone();
+          url.pathname = target;
+          return carryCookies(supabaseResponse, NextResponse.redirect(url));
+        }
       }
     }
 

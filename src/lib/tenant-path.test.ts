@@ -5,6 +5,7 @@ import {
   TENANT_SCOPED_ROOTS,
   tenantWithMissingDepartment,
   toInternalAppPath,
+  withTenantContext,
 } from "./tenant-path";
 
 describe("parseTenantPathContext", () => {
@@ -84,5 +85,29 @@ describe("parseTenantPathContext", () => {
   it("does not flag complete department or tenant-level URLs", () => {
     expect(tenantWithMissingDepartment("/nova-pathways/support/tasks")).toBeNull();
     expect(tenantWithMissingDepartment("/nova-pathways/departments")).toBeNull();
+  });
+});
+
+describe("withTenantContext", () => {
+  it("keeps department and sub-department scope on ticket URLs", () => {
+    expect(withTenantContext(
+      {
+        tenantSlug: "nova-pathways",
+        departmentSlug: "support",
+        subDepartmentSlug: "triage",
+      },
+      "/tasks/task-1",
+    )).toBe("/nova-pathways/support/triage/tasks/task-1");
+  });
+
+  it("does not add department scope to tenant-level pages", () => {
+    expect(withTenantContext(
+      { tenantSlug: "nova-pathways", departmentSlug: "support" },
+      "/departments/generate-api",
+    )).toBe("/nova-pathways/departments/generate-api");
+  });
+
+  it("leaves paths bare when request-local scope is unavailable", () => {
+    expect(withTenantContext({}, "/tasks/task-1")).toBe("/tasks/task-1");
   });
 });

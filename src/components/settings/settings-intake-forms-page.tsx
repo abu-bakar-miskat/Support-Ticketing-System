@@ -2287,6 +2287,7 @@ function IssueEditorRow({
   subDepartments,
   departments,
   requiresSubDept,
+  showSlaTargets,
   onSave,
   onDelete,
 }: {
@@ -2294,6 +2295,7 @@ function IssueEditorRow({
   subDepartments: SubDepartmentOption[];
   departments?: IssueDepartmentOption[];
   requiresSubDept: boolean;
+  showSlaTargets: boolean;
   onSave: (id: string, patch: {
     name: string;
     departmentId?: string;
@@ -2396,6 +2398,7 @@ function IssueEditorRow({
           </SelectContent>
         </Select>
       </div>
+      {showSlaTargets && (<>
       <label className="flex w-[130px] shrink-0 flex-col gap-1">
         <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">
           Response (min)
@@ -2422,6 +2425,7 @@ function IssueEditorRow({
           className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
         />
       </label>
+      </>)}
       <button
         type="button"
         onClick={save}
@@ -2449,12 +2453,16 @@ export function IssuesModal({
   subDepartments,
   issuesEndpoint,
   issueDepartments,
+  showSlaTargets = true,
   onClose,
 }: {
   form: FormEditorTarget;
   subDepartments: SubDepartmentOption[];
   issuesEndpoint?: string;
   issueDepartments?: IssueDepartmentOption[];
+  /** Show per-issue Response/Resolution SLA inputs. Support Forms hides them;
+   *  issues still carry the default targets they were created with. */
+  showSlaTargets?: boolean;
   onClose: () => void;
 }) {
   const [issues, setIssues] = useState<IssueRow[] | null>(null);
@@ -2675,6 +2683,7 @@ export function IssuesModal({
                   subDepartments={subDepartments}
                   departments={issueDepartments}
                   requiresSubDept={requiresSubDept}
+                  showSlaTargets={showSlaTargets}
                   onSave={saveIssue}
                   onDelete={deleteIssue}
                 />
@@ -2685,7 +2694,7 @@ export function IssuesModal({
 
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-sts-card-border px-6 py-3">
           <p className="font-sans text-[11px] text-sts-subtle">
-            Response and resolution targets are applied to tickets created for each issue.
+            {showSlaTargets && "Response and resolution targets are applied to tickets created for each issue."}
           </p>
           <button
             type="button"
@@ -3100,6 +3109,7 @@ export function SettingsIntakeFormsPage({
           subDepartments={
             departments.find((d) => d.id === issuesModal.departmentId)?.subDepartments ?? []
           }
+          showSlaTargets={false}
           onClose={() => {
             setIssuesModal(null);
             startTransition(() => router.refresh());

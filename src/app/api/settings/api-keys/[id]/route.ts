@@ -3,16 +3,9 @@ import { requireAdmin } from "@/lib/auth"
 import { isActiveTenantAdmin } from "@/lib/tenant-admin"
 import { prisma } from "@/lib/db"
 
-// DELETE /api/settings/api-keys/:id — revoke a key
-// DELETE /api/settings/api-keys/:id?permanent=true — delete a portal key and its empty linked form
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+async function loadManageableKey(id: string) {
   const { profile, error } = await requireAdmin()
-  if (error) return error
-
-  const { id } = await params
+  if (error) return { error }
 
   const key = await prisma.apiKey.findUnique({
     where: { id },
@@ -29,14 +22,28 @@ export async function DELETE(
 
   const keyTenantId = key?.tenantId ?? key?.department?.tenantId ?? null
   if (!key || !profile?.activeTenantId || keyTenantId !== profile.activeTenantId) {
-    return NextResponse.json({ error: "API key not found" }, { status: 404 })
+    return { error: NextResponse.json({ error: "API key not found" }, { status: 404 }) }
   }
   if (
     !isActiveTenantAdmin(profile) &&
     (!key.departmentId || !(profile.departmentAdminIds ?? []).includes(key.departmentId))
   ) {
-    return NextResponse.json({ error: "API key not found" }, { status: 404 })
+    return { error: NextResponse.json({ error: "API key not found" }, { status: 404 }) }
   }
+
+  return { profile, key }
+}
+
+// DELETE /api/settings/api-keys/:id — revoke a key
+// DELETE /api/settings/api-keys/:id?permanent=true — delete a portal key and its empty linked form
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  const loaded = await loadManageableKey(id)
+  if ("error" in loaded) return loaded.error
+  const { profile, key } = loaded
 
   if (request.nextUrl.searchParams.get("permanent") === "true") {
     if (key.kind !== "portal" || !isActiveTenantAdmin(profile)) {
@@ -81,6 +88,41 @@ export async function DELETE(
       await tx.intakeFormConfig.update({
         where: { id: key.formConfigId },
         data: { isActive: false },
+      })
+    }
+  })
+
+  return NextResponse.json({ ok: true })
+}
+
+// PATCH /api/settings/api-keys/:id { action: "restore" } — un-revoke a key
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  const body = await request.json().catch(() => null)
+  if ((body as { action?: unknown } | null)?.action !== "restore") {
+    return NextResponse.json({ error: "Unsupported action" }, { status: 400 })
+  }
+
+  const loaded = await loadManageableKey(id)
+  if ("error" in loaded) return loaded.error
+  const { key } = loaded
+
+  if (key.revokedAt === null) {
+    return NextResponse.json({ error: "Key is not revoked" }, { status: 409 })
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.apiKey.update({
+      where: { id },
+      data: { revokedAt: null },
+    })
+    if (key.formConfigId) {
+      await tx.intakeFormConfig.update({
+        where: { id: key.formConfigId },
+        data: { isActive: true },
       })
     }
   })

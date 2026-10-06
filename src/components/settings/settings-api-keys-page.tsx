@@ -452,6 +452,20 @@ export function SettingsApiKeysPage({
     }
   }
 
+  async function handleRestore(id: string) {
+    setRevoking(id);
+    try {
+      await fetch(`/api/settings/api-keys/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+      router.refresh();
+    } finally {
+      setRevoking(null);
+    }
+  }
+
   async function handleDelete(id: string) {
     const response = await fetch(`/api/settings/api-keys/${id}?permanent=true`, {
       method: "DELETE",
@@ -576,6 +590,7 @@ export function SettingsApiKeysPage({
             forms={portalForms}
             revokingId={revoking}
             onRevoke={handleRevoke}
+            onRestore={handleRestore}
             onDelete={handleDelete}
           />
         ) : (
@@ -657,9 +672,20 @@ export function SettingsApiKeysPage({
                   <TableCell className="py-0 text-right">
                     <div className="flex h-[50px] items-center justify-end">
                       {apiKey.revoked ? (
-                        <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
-                          Revoked
-                        </span>
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
+                            Revoked
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={revoking === apiKey.id}
+                            onClick={() => handleRestore(apiKey.id)}
+                            className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-id hover:bg-transparent hover:text-sts-id/80 disabled:opacity-50"
+                          >
+                            {revoking === apiKey.id ? "Restoring…" : "Restore"}
+                          </Button>
+                        </div>
                       ) : (
                         <div className="flex items-center justify-end gap-3">
                           <Button

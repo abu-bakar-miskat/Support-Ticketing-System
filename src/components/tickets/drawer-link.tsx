@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDrawerStore } from "@/store";
 import { ticketKeys } from "@/hooks/queries/keys";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import type { TicketShellSource } from "@/lib/ticket-detail-placeholder";
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
 export function DrawerLink({ ticketId, href, className, children, card }: Props) {
   const open = useDrawerStore((s) => s.open);
   const queryClient = useQueryClient();
+  const tenantHref = useTenantHref();
 
   const seedShell = useCallback(() => {
     if (!card) return;
@@ -42,7 +44,7 @@ export function DrawerLink({ ticketId, href, className, children, card }: Props)
 
   return (
     <Link
-      href={href}
+      href={tenantHref(href)}
       prefetch={false}
       data-sts-drawer-link
       onClick={handleClick}

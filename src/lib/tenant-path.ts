@@ -294,3 +294,36 @@ export function withTenant(slug: string, pathname: string): string {
   if (pathname === `/${slug}` || pathname.startsWith(`/${slug}/`)) return pathname;
   return `/${slug}${pathname === "/" ? "" : pathname}` || `/${slug}`;
 }
+
+/** Build a canonical public URL from request-local tenant context. */
+export function withTenantContext(
+  context: {
+    tenantSlug?: string | null;
+    departmentSlug?: string | null;
+    subDepartmentSlug?: string | null;
+  },
+  internalPath: string,
+): string {
+  const tenantSlug = context.tenantSlug?.trim() ?? "";
+  if (!tenantSlug || !internalPath.startsWith("/")) return internalPath;
+
+  const root = firstSegment(internalPath);
+  if (internalPath !== "/" && !TENANT_SCOPED_ROOTS.has(root)) return internalPath;
+
+  let prefix = `/${tenantSlug}`;
+  const departmentSlug = context.departmentSlug?.trim() ?? "";
+  if (departmentSlug && isDeptScopedPath(internalPath)) {
+    prefix += `/${departmentSlug}`;
+    const subDepartmentSlug = context.subDepartmentSlug?.trim() ?? "";
+    if (
+      subDepartmentSlug &&
+      subDepartmentSlug !== tenantSlug &&
+      subDepartmentSlug !== departmentSlug &&
+      isSubDeptScopedPath(internalPath)
+    ) {
+      prefix += `/${subDepartmentSlug}`;
+    }
+  }
+
+  return internalPath === "/" ? prefix : `${prefix}${internalPath}`;
+}

@@ -157,10 +157,20 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 4. Dynamic support form
 - Fetch the current form on page load or use only a short server cache. Never hard-code form fields or issue IDs.
 - Render defaultFields for name, email, title, and issue type. Name/email come from the session and are read-only or server-overridden.
-- Render issues as the required issue selector, submitting its id. Render fields in order and support text, richtext, email, number, date, select, radio, checkbox, nested select, and documented file references.
+- Render issues as the required issue selector and submit its id. Build one reusable schema-driven field renderer that supports every configured type:
+  - text — Short text: accessible single-line input.
+  - richtext — Rich text: the portal's accessible rich-text editor, submitting the documented string format.
+  - email — Email: email input with client and server validation.
+  - number — Number: numeric control submitted as a string, respecting configured limits.
+  - select — Dropdown: supplied options; support childOptions and submit nested values as Parent option > Child option.
+  - radio — Radio: one labelled group using the supplied options.
+  - checkbox — Checkbox: labelled group; submit selected options comma-separated, or "true" for a selected optionless checkbox.
+  - date — Date: accessible date control submitted as YYYY-MM-DD.
+  - file — File upload: labelled control with selected-file, validation, progress, remove, success, and failure states. Use an approved secure upload flow and submit only its opaque reference string.
+- Add an accessible unsupported-field fallback and report unknown types; never silently omit a required field.
 - Enforce isRequired, options, childOptions, validation, placeholder, helperText, and visibleWhen. Omit hidden fields. Submit every custom value as a string.
 - Submit submitterName, submitterEmail, title, issueId, and responses. Never ask the requester for department, sub-department, SLA, assignee, project, or status; issue configuration controls central routing.
-- Do not add binary attachment upload: the current API has no public upload endpoint.
+- The form-submission endpoint accepts only a string for a file response, not binary or base64. Never submit file contents, storage URLs, or a local filename. Keep the reusable File upload control implemented, but disable submission with a clear explanation until an approved upload endpoint, file constraints, malware scanning, access control, retention policy, and opaque-reference format are available.
 
 5. Exactly-once submission
 - Generate and persist one unguessable Idempotency-Key per logical submission before sending. Reuse it for every retry; replace it only for an intentionally new request.
@@ -176,7 +186,7 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 - Show a "Last refreshed" timestamp for the last successful fetch, distinct from ticket timestamps. Provide manual refresh and rate-limit-safe revalidation/polling that pauses when hidden.
 
 7. Comments, replies, and privacy
-- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, and parentId. Internal notes are excluded upstream.
+- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, parentId, and attachments [{ id, url, fileName, fileSize }]. Internal notes are excluded upstream.
 - Show only comments whose visibility is requester-visible (for example, "public"), plus the requester's own comments. Never guess visibility from author or body text. If visibility is missing, withhold staff comments and explain why in the UI rather than risk exposing an internal note.
 - Requester comments are the only mutation. Validate 1–10,000 characters and POST to /tickets/{ticketId}/comments only after verifying ticket ownership.
 - Never automatically retry a comment POST because there is no comment idempotency key. Preserve the text after failure and refresh the thread after success.
@@ -185,9 +195,13 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 - If a reply's parent is hidden, render the reply as a top-level comment without referencing or revealing the hidden parent.
 - Comment cards show: an initial avatar with distinct requester/support colours; author name; "(you)" for the requester's comments; a "Support team" badge for staff; a "replied" marker for nested replies; relative time with full date on hover; an "edited" marker; and a highlighted edge for the requester's comments.
 - Render staff bodies as sanitized HTML and requester bodies as plain text.
+- Show image attachments inside their visible support-team comment. Apply comment visibility before rendering or fetching attachments, so images from hidden/internal comments can never leak.
+- Use only API-provided attachment URLs through an approved authenticated delivery path. Never expose the Portal API key or accept browser-supplied attachment URLs. Use short-lived signed URLs or a protected portal-server proxy when storage URLs are not safely public and tenant-scoped.
+- Render safe raster images as constrained responsive thumbnails with preserved aspect ratio, file name, human-readable size, meaningful alt text, an accessible open/download action, and a keyboard-accessible larger preview.
+- Lazy-load images and provide loading, unavailable, expired-link, and failure states without hiding the comment. Never render active formats such as SVG inline; show unsupported and non-image attachments as safe file links.
 - Use an ordered list for the thread and label reply groups, for example "2 replies to Mahmud".
 - Give the comment box a visible label and an aria-describedby character counter. Support Ctrl+Enter and Command+Enter to post. Announce success through role="status" and errors through role="alert".
-- Full update history with actors, attachments, escalated time, and elapsed duration are not in the current response. Do not fabricate them. Mark them as API-extension dependencies. Available fields include status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
+- Full update history with actors, ticket-level attachments outside visible comments, escalated time, and elapsed duration are not in the current response. Do not fabricate them. Mark them as API-extension dependencies. Visible comment attachments are supported.
 
 8. UI states and errors
 - Provide accessible loading, empty, validation, submitting, success, unauthorized/not-found, and retry states.
@@ -203,10 +217,10 @@ Do not build a generic proxy accepting arbitrary upstream paths, identity parame
 - Cross-system authentication and stable requester identity/email rules.
 - Designated-tenant configuration and one key per tenant.
 - Retention, data-access/deletion, hosting, and transfer arrangements.
-- API support for history/actors, attachments, escalation time, and duration if still required.
+- API support for history/actors, ticket-level attachments outside visible comments, escalation time, and duration if still required.
 
 11. Tests and delivery
-Test tenant gating; server-only secrets; dynamic fields/conditional validation; routing issue ID; double-submit and retry deduplication; confirmation; own-user filtering; direct-ID denial; read-only controls; comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; no automatic retry after comment failure; comment bodies never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit creation; and keyboard/screen-reader behaviour.
+Test tenant gating; server-only secrets; every dynamic type (Short text, Rich text, Email, Number, Dropdown, Radio, Checkbox, Date, and File upload); options, nested options, required fields, conditional visibility, validation, value encoding, unknown-field fallback, and file-upload unavailable/uploading/success/failure states; routing issue ID; double-submit and retry deduplication; confirmation; own-user filtering; direct-ID denial; read-only controls; comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; visible support-comment image rendering and preview; attachment authorization; hidden-comment attachments never being requested or shown; broken, expired, unsupported, and non-image states; no automatic retry after comment failure; comment bodies and attachment URLs never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit creation; and keyboard/screen-reader behaviour.
 
 Deliver the implementation, tests, configuration notes, and dependency report. Explicitly identify acceptance criteria blocked by the API instead of creating misleading substitutes.`
 

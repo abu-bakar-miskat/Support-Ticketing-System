@@ -558,10 +558,20 @@ Do not expose a generic proxy that accepts arbitrary Support API paths, emails, 
 - Fetch the form when the new-request screen loads; a short server cache is acceptable, but do not hard-code form fields or issue IDs.
 - Render defaultFields for requester name, requester email, title, and issue type. Name and email must come from the authenticated user and should be read-only or server-overridden.
 - Render issues as a required category selector using the issue id as the submitted value and name as its label.
-- Render custom fields in ascending order. Support text, richtext, email, number, date, select, radio, checkbox, nested select, and file-reference fields exactly as documented by the API.
+- Build a reusable, schema-driven field renderer and render custom fields in ascending order. It must support every configured field type rather than hard-coding a form for one tenant:
+  - `text` — **Short text** using an accessible single-line text input.
+  - `richtext` — **Rich text** using the portal's accessible rich-text editor, submitting its documented string format.
+  - `email` — **Email** using an email input with client and server validation.
+  - `number` — **Number** using a numeric control while submitting the value as a string and respecting configured limits.
+  - `select` — **Dropdown** using the supplied options. Support nested selections from `childOptions` and submit them as `Parent option > Child option`.
+  - `radio` — **Radio** using one labelled radio group and the supplied options.
+  - `checkbox` — **Checkbox** using a labelled checkbox group. Submit selected option values joined with commas; a checkbox without options submits `"true"` when selected.
+  - `date` — **Date** using an accessible date control and submit `YYYY-MM-DD`.
+  - `file` — **File upload** using a labelled upload control with selected-file, validation, upload-progress, remove, success, and failure states. Transfer files only through the approved secure upload/storage flow, then submit the returned opaque file reference as the field's string value.
+- Provide an accessible unsupported-field fallback and report unknown field types; never silently omit a required field.
 - Enforce isRequired, options, childOptions, validation, placeholder, helperText, and visibleWhen. Omit hidden fields from responses. Every submitted custom-field value must be a string.
 - Submit submitterName, submitterEmail, title, issueId, and responses. Do not ask the requester to choose a department, sub-department, SLA, assignee, project, or status. The selected issue ID controls central routing.
-- The API has no public binary upload endpoint. Do not add an attachment upload control unless an approved upload/file-reference flow is supplied.
+- The form-submission endpoint accepts a string for a `file` response and does not accept raw binary data or base64. Do not send file contents to it, expose storage URLs, or use a local filename as the reference. Keep the reusable File upload control implemented, but disable submission with a clear explanation until the portal has an approved upload endpoint, file constraints, malware scanning, access control, retention policy, and opaque-reference format.
 
 5. Exactly-once submission and recovery
 - Generate one unguessable Idempotency-Key for each logical form submission, persist it before the request, and reuse the same value for every retry of that submission. Generate a new value only when the user intentionally starts a new request.
@@ -580,7 +590,7 @@ Do not expose a generic proxy that accepts arbitrary Support API paths, emails, 
 - Provide manual refresh and an appropriate revalidation/polling policy that stays within API rate limits and pauses when the page is not visible.
 
 7. Comments, replies, and privacy
-- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, and parentId. Internal notes are excluded upstream.
+- GET /tickets/{ticketId} returns each comment with id, body, createdAt, editedAt, author { name, type: "requester" | "staff" }, visibility, parentId, and attachments [{ id, url, fileName, fileSize }]. Internal notes are excluded upstream.
 - Show only comments whose visibility is requester-visible (for example, "public"), plus the requester's own comments. Never guess visibility from the author or body text. If visibility is missing, withhold staff comments and explain why in the UI rather than risk exposing an internal note.
 - Requester comments are the only permitted mutation. Validate 1–10,000 characters and post through POST /tickets/{ticketId}/comments for an owned ticket only.
 - Do not automatically retry comment posts because the API has no comment idempotency key. Keep the text in the comment box after a failure and refresh the thread after success.
@@ -589,10 +599,14 @@ Do not expose a generic proxy that accepts arbitrary Support API paths, emails, 
 - If a reply's parent is not visible to the requester, show the reply as a top-level comment. Never reference, summarize, or reveal the hidden parent.
 - Each comment card must show an initial avatar with distinct requester/support colours; the author name; "(you)" on the requester's own comments; a "Support team" badge on staff comments; a "replied" marker on nested replies; relative time such as "2 hours ago" with the full date on hover; an "edited" marker when applicable; and a highlighted edge on the requester's own comments.
 - Render staff comment bodies as sanitized HTML. Render requester comment bodies as plain text.
+- When a visible support-team comment includes image attachments, show those images inside that comment. Keep every attachment bound to its parent comment and apply comment visibility filtering before rendering or fetching it; never reveal an attachment from a hidden or internal comment.
+- Load attachment URLs only from the API response through an authenticated/approved delivery path. Do not expose the Portal API key, accept a browser-supplied attachment URL, or copy an arbitrary remote URL into an image element. Use short-lived signed URLs or a protected portal-server proxy when the storage URL is not safely public and tenant-scoped.
+- Render supported raster images as constrained, responsive thumbnails that preserve aspect ratio. Allow keyboard and pointer users to open a larger preview, show the file name and human-readable size, provide meaningful alternative text based on available attachment metadata, and include an accessible download/open action.
+- Lazy-load images, reserve their layout space, and show safe loading, unavailable, expired-link, and failed-image states without hiding the rest of the comment. Do not render active formats such as SVG inline; unsupported or non-image files should appear as safe file links rather than broken images.
 - Render the thread as an ordered list. Label each reply group, for example "2 replies to Mahmud".
 - Give the comment box a visible label and a character counter connected with aria-describedby. Support Ctrl+Enter and Command+Enter to post.
 - Announce successful posting with role="status" and errors with role="alert".
-- The requested full update history with actor, attachments, escalated time, and elapsed duration is not present in the current API response. Do not fabricate it or infer it from comments. Mark these items as dependent on an API contract extension. Continue to show the fields that are available: status, assignee, createdAt, updatedAt, lastActivityAt, closedAt, and comment author/timestamps.
+- The requested full update history with actor, ticket-level attachments outside visible comments, escalated time, and elapsed duration is not present in the current API response. Do not fabricate it or infer it from comments. Mark these items as dependent on an API contract extension. Continue to show the fields that are available, including visible comment attachments.
 
 8. States, errors, and retry behaviour
 - Provide accessible loading states/skeletons, empty ticket and comment states, inline field validation, submitting state, success confirmation, unauthorized/not-found state, and recoverable API error state.
@@ -614,10 +628,10 @@ Do not silently guess these values. Record and resolve them before declaring the
 - Ticket retention and data-access/deletion rules.
 - Hosting region and applicable data-transfer arrangements.
 - Progress definition or mapping.
-- API support for update history/actors, attachments, escalation time, and elapsed duration if those remain required.
+- API support for update history/actors, ticket-level attachments outside visible comments, escalation time, and elapsed duration if those remain required.
 
 11. Verification
-Add unit, integration, and end-to-end tests for tenant feature gating; server-only secret handling; dynamic form rendering and conditional validation; issue ID submission; exactly-once creation under double-click and retry; success reference/link; own-user list filtering; direct-ID access denial; read-only ticket controls; requester comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; no automatic retry after comment failure; comment bodies never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit event creation; and keyboard/screen-reader behaviour.
+Add unit, integration, and end-to-end tests for tenant feature gating; server-only secret handling; every dynamic field type (Short text, Rich text, Email, Number, Dropdown, Radio, Checkbox, Date, and File upload); options, nested options, required fields, conditional visibility, validation, value encoding, unknown-field fallback, and file-upload unavailable/uploading/success/failure states; issue ID submission; exactly-once creation under double-click and retry; success reference/link; own-user list filtering; direct-ID access denial; read-only ticket controls; requester comment posting; 1–10,000 character limits; visibility filtering; internal-comment exclusion; reply threading, including a visible reply whose parent is hidden; visible support-comment image rendering and preview; attachment authorization; attachments on hidden comments never being requested or displayed; broken, expired, unsupported, and non-image attachment states; no automatic retry after comment failure; comment bodies and attachment URLs never appearing in logs; loading/empty/error/rate-limit states; session-derived identity; audit event creation; and keyboard/screen-reader behaviour.
 
 Deliver the implementation, tests, configuration documentation, and a short dependency report. Clearly identify any acceptance criterion blocked by the current API instead of implementing a misleading substitute.
 ```

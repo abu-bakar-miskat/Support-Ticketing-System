@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         submission: "GET /api/portal/v1/submissions/{submissionId}",
         ticket: "GET /api/portal/v1/tickets/{ticketId}",
         comment: "POST /api/portal/v1/tickets/{ticketId}/comments",
+        upload: "POST /api/portal/v1/uploads (multipart: file, fieldId)",
       },
     })
   })

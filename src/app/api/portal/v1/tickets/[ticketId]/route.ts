@@ -60,6 +60,11 @@ export async function GET(
             createdAt: true,
             editedAt: true,
             author: { select: { id: true, name: true, avatarUrl: true } },
+            attachments: {
+              where: { status: "attached" },
+              orderBy: { createdAt: "asc" },
+              select: { id: true, storageUrl: true, fileName: true, fileSize: true },
+            },
           },
         },
       },
@@ -101,6 +106,12 @@ export async function GET(
             createdAt: comment.createdAt,
             editedAt: comment.editedAt,
             parentId: comment.parentId,
+            attachments: comment.attachments.map((attachment) => ({
+              id: attachment.id,
+              url: attachment.storageUrl,
+              fileName: attachment.fileName,
+              fileSize: attachment.fileSize,
+            })),
             visibility: displayed.visibility,
             author: displayed.isPortalRequester
               ? { name: intake.submitterName, avatarUrl: null, type: "requester" }

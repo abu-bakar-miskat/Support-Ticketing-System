@@ -606,22 +606,42 @@ export function Sidebar({
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/support-icon.png"
-                alt="Global Support Portal"
-                width={40}
-                height={40}
-                className="size-10 dark:hidden"
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/support-icon-white.png"
-                alt=""
-                width={40}
-                height={40}
-                className="hidden size-10 dark:block"
-              />
+              {brandingLogoUrl && !brandingHideLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={brandingLogoUrl}
+                  alt={brandingName ?? ""}
+                  width={40}
+                  height={40}
+                  className="size-10 object-contain"
+                />
+              ) : brandingName ? (
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+                >
+                  {brandingName.charAt(0)}
+                </span>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/support-icon.png"
+                    alt="Global Support Portal"
+                    width={40}
+                    height={40}
+                    className="size-10 dark:hidden"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/support-icon-white.png"
+                    alt=""
+                    width={40}
+                    height={40}
+                    className="hidden size-10 dark:block"
+                  />
+                </>
+              )}
             </button>
           ) : brandingLogoUrl || brandingName ? (
             <div className="flex min-w-0 items-center gap-2">

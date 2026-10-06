@@ -200,6 +200,7 @@ function SidebarNavLink({
           // prefetches an empty shell — this caches the whole RSC payload for
           // instant transitions (fresh for staleTimes.dynamic seconds).
           prefetch={true}
+          aria-current={active ? "page" : undefined}
           className={cn(
             "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
             active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
@@ -238,6 +239,8 @@ function SidebarNavLink({
       href={href(item.href)}
       prefetch={true}
       title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
         collapsed ? "justify-center px-0" : "gap-2 px-2.5",
@@ -424,7 +427,7 @@ export function Sidebar({
   }
 
   const deptContextClassName = cn(
-    "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors",
+    "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sts-accent/60",
     "hover:border-sts-card-border hover:bg-sts-surface data-popup-open:border-sts-card-border data-popup-open:bg-sts-surface",
   );
 
@@ -724,6 +727,7 @@ export function Sidebar({
                 type="button"
                 disabled={switchingDept}
                 title="All Departments"
+                aria-label="All Departments"
                 onClick={async () => {
                   await fetch("/api/active-dept", {
                     method: "POST",
@@ -852,6 +856,7 @@ export function Sidebar({
           <Link
             href="/platform"
             title={isCollapsed ? "Platform" : undefined}
+            aria-label={isCollapsed ? "Platform" : undefined}
             className={cn(
               "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
@@ -872,6 +877,7 @@ export function Sidebar({
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
             )}
             title={isCollapsed ? "All Departments" : undefined}
+            aria-label={isCollapsed ? "All Departments" : undefined}
           >
             <SidebarNavIcon
               icon={DepartmentIcon}
@@ -1001,6 +1007,7 @@ export function Sidebar({
                         <Link
                           key={p.id}
                           href={p.href}
+                          aria-current={pathname === p.href ? "page" : undefined}
                           className={cn(
                             "group sts-nav-link flex h-7 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
                             pathname === p.href &&

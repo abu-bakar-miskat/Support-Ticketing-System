@@ -39,7 +39,7 @@ function initialsOf(name: string): string {
 
 type AuthedProfile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
-async function InboxData({ profile }: { profile: AuthedProfile }) {
+async function InboxData({ profile, initialTab }: { profile: AuthedProfile; initialTab?: string }) {
   // Notifications are department-scoped: only the active department's items show.
   const { allowedSubDepartmentIds, activeDeptId } = await resolveNotificationScope(profile)
   const rows = await prisma.notification.findMany({
@@ -237,17 +237,23 @@ async function InboxData({ profile }: { profile: AuthedProfile }) {
       generalItems={generalItems}
       currentUserInitials={initialsOf(profile.name)}
       userId={profile.id}
+      initialTab={initialTab}
     />
   );
 }
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
+  const { tab } = await searchParams;
 
   return (
     <Suspense fallback={<InboxPageSkeleton />}>
-      <InboxData profile={profile} />
+      <InboxData profile={profile} initialTab={typeof tab === "string" ? tab : undefined} />
     </Suspense>
   );
 }

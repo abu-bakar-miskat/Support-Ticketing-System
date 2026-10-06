@@ -21,8 +21,10 @@ import {
   Sparkles,
   Clock,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   getNotification,
   markNotificationRead,
@@ -471,20 +473,35 @@ export function InboxPage({
   generalItems = [],
   currentUserInitials,
   userId,
+  initialTab,
 }: {
   items: InboxItem[];
   joinRequestItems?: JoinRequestNotification[];
   generalItems?: GeneralItem[];
   currentUserInitials: string;
   userId: string;
+  /** From `?tab=` — lets links (e.g. /mentions) open a specific tab. */
+  initialTab?: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<TabId>("all");
+  const [activeTab, setActiveTabState] = useState<TabId>(() =>
+    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "all",
+  );
+  // Mirror the tab into the URL so reload/back keeps it.
+  const setActiveTab = useCallback((tab: TabId) => {
+    setActiveTabState(tab);
+    const url = new URL(window.location.href);
+    if (tab === "all") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", tab);
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [liveItems, setLiveItems] = useState<InboxItem[]>(items);
   const decrement = useNotificationStore((s) => s.decrement);
+  const increment = useNotificationStore((s) => s.increment);
   const reset = useNotificationStore((s) => s.reset);
+  const initCount = useNotificationStore((s) => s.init);
 
   const prependNotification = useCallback(async (notifId: string) => {
     try {
@@ -562,7 +579,18 @@ export function InboxPage({
     setReadIds((prev) => new Set(prev).add(id));
     decrement();
     startTransition(async () => {
-      await markNotificationRead(id).catch(() => null);
+      try {
+        await markNotificationRead(id);
+      } catch {
+        // Roll back so the unread state/counter match the server.
+        setReadIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        increment();
+        toast.error("Couldn't mark notification as read");
+      }
     });
   }
 
@@ -578,10 +606,18 @@ export function InboxPage({
   }
 
   function markAllRead() {
+    const previousReadIds = readIds;
+    const previousCount = useNotificationStore.getState().unreadCount;
     setReadIds(new Set(allItems.map((n) => n.id)));
     reset();
     startTransition(async () => {
-      await markAllNotificationsRead().catch(() => null);
+      try {
+        await markAllNotificationsRead();
+      } catch {
+        setReadIds(previousReadIds);
+        initCount(previousCount);
+        toast.error("Couldn't mark all as read");
+      }
     });
   }
 
@@ -665,19 +701,28 @@ export function InboxPage({
 
       {/* Feed */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="flex size-12 items-center justify-center rounded-xl border border-sts-card-border bg-sts-card">
-            <Inbox className="size-5 text-sts-subtle" strokeWidth={1.2} />
-          </div>
-          <div>
-            <p className="font-sans text-[13px] font-semibold text-sts-foreground">
-              All caught up
-            </p>
-            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              No notifications match this filter.
-            </p>
-          </div>
-        </div>
+        activeTab === "all" ? (
+          <EmptyState
+            icon={Inbox}
+            title="All caught up"
+            description="You have no notifications. Mentions, assignments and comments will show up here."
+          />
+        ) : (
+          <EmptyState
+            icon={Inbox}
+            title={activeTab === "unread" ? "No unread notifications" : `No ${TABS.find((t) => t.id === activeTab)?.label.toLowerCase() ?? "notifications"} yet`}
+            description="Nothing matches this tab right now."
+            action={
+              <button
+                type="button"
+                onClick={() => setActiveTab("all")}
+                className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+              >
+                Show all notifications
+              </button>
+            }
+          />
+        )
       ) : (
         <div className="flex flex-col gap-4">
           {groups.map(({ key, items: groupItems }) => (

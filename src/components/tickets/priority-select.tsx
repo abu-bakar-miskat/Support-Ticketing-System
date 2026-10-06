@@ -23,6 +23,7 @@ import {
   sidebarSelectContentClass,
   sidebarSelectItemClass,
 } from "@/components/tickets/sidebar-field-styles"
+import { toastError } from "@/lib/toast-error"
 
 type Props = {
   ticketId: string
@@ -47,7 +48,8 @@ export function PrioritySelect({ ticketId, priority, disabled = false, onPriorit
     setLivePriority(next)
     onPriorityChange?.(next)
     setError(null)
-    void updateTicket(ticketId, { priority: UI_TO_DB_PRIORITY[next] }).catch(() => {
+    void updateTicket(ticketId, { priority: UI_TO_DB_PRIORITY[next] }).catch((err: unknown) => {
+      toastError("Couldn't update priority", err)
       setLivePriority(previous)
       onPriorityChange?.(previous)
       setError("Failed to update priority")

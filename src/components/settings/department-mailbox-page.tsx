@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import { ArrowLeft, Check, X, Mail, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ export function DepartmentMailboxPage({
   departmentId: string;
   departmentName: string;
 }) {
+  const tenantHref = useTenantHref();
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [messages, setMessages] = useState<MailboxMessage[] | null>(null);
   const [suppressed, setSuppressed] = useState<SuppressedMail[] | null>(null);
@@ -96,7 +98,7 @@ export function DepartmentMailboxPage({
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
-        href="/settings/departments"
+        href={tenantHref("/settings/departments")}
         className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back to departments

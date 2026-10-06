@@ -187,6 +187,7 @@ export function TenantManageClient({
   const [tenantStatus, setTenantStatus] = useState(tenant.status);
   const [deleted, setDeleted] = useState(tenant.deleted);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleConfirm, setLifecycleConfirm] = useState<"suspend" | "delete" | null>(null);
 
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
@@ -436,12 +437,6 @@ export function TenantManageClient({
   }
 
   async function softDeleteTenant() {
-    if (
-      !window.confirm(
-        "Soft-delete this tenant? Members lose access until it's restored. No data is removed.",
-      )
-    )
-      return;
     setLifecycleBusy(true);
     setError(null);
     setStatus(null);
@@ -716,9 +711,9 @@ export function TenantManageClient({
                       size="lg"
                       className="shrink-0"
                       onClick={() =>
-                        updateStatus(
-                          tenantStatus === "suspended" ? "active" : "suspended",
-                        )
+                        tenantStatus === "suspended"
+                          ? updateStatus("active")
+                          : setLifecycleConfirm("suspend")
                       }
                       disabled={lifecycleBusy}
                     >
@@ -739,7 +734,7 @@ export function TenantManageClient({
                       variant="destructive"
                       size="lg"
                       className="shrink-0"
-                      onClick={softDeleteTenant}
+                      onClick={() => setLifecycleConfirm("delete")}
                       disabled={lifecycleBusy}
                     >
                       Delete
@@ -986,6 +981,22 @@ export function TenantManageClient({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={lifecycleConfirm !== null}
+        onOpenChange={(o) => { if (!o) setLifecycleConfirm(null); }}
+        title={lifecycleConfirm === "suspend" ? `Suspend ${tenant.name}?` : `Soft-delete ${tenant.name}?`}
+        description={
+          lifecycleConfirm === "suspend"
+            ? "Every member of this tenant will be signed out and blocked from signing in until you reactivate it."
+            : "Members lose access until it's restored. No data is removed."
+        }
+        confirmLabel={lifecycleConfirm === "suspend" ? "Suspend tenant" : "Soft-delete"}
+        onConfirm={async () => {
+          if (lifecycleConfirm === "suspend") await updateStatus("suspended");
+          else if (lifecycleConfirm === "delete") await softDeleteTenant();
+        }}
+      />
 
       <ConfirmDialog
         open={memberToRemove !== null}

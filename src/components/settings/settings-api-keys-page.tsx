@@ -16,6 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   PortalApiFormsSection,
   type PortalApiFormRow,
@@ -429,6 +431,7 @@ export function SettingsApiKeysPage({
     name: string;
   } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
   const [routeCopied, setRouteCopied] = useState(false);
   const [showDocumentation, setShowDocumentation] = useState(false);
 
@@ -442,10 +445,19 @@ export function SettingsApiKeysPage({
     router.refresh();
   }
 
-  async function handleRevoke(id: string) {
+  // Revoking breaks live integrations, so it always goes through a confirm.
+  function handleRevoke(id: string) {
+    setKeyToRevoke(id);
+  }
+
+  async function revokeKey(id: string) {
     setRevoking(id);
     try {
-      await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Failed to revoke key");
+      }
       router.refresh();
     } finally {
       setRevoking(null);
@@ -455,11 +467,17 @@ export function SettingsApiKeysPage({
   async function handleRestore(id: string) {
     setRevoking(id);
     try {
-      await fetch(`/api/settings/api-keys/${id}`, {
+      const res = await fetch(`/api/settings/api-keys/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "restore" }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error((data as { error?: string }).error ?? "Failed to restore key");
+        return;
+      }
+      toast.success("Key restored.");
       router.refresh();
     } finally {
       setRevoking(null);
@@ -485,6 +503,17 @@ export function SettingsApiKeysPage({
 
   return (
     <>
+      <ConfirmDialog
+        open={keyToRevoke !== null}
+        onOpenChange={(o) => { if (!o) setKeyToRevoke(null); }}
+        title="Revoke this key?"
+        description="Integrations using this key will stop working immediately. You can restore it later."
+        confirmLabel="Revoke"
+        successMessage="Key revoked."
+        onConfirm={async () => {
+          if (keyToRevoke) await revokeKey(keyToRevoke);
+        }}
+      />
       {showGenerate && (
         <GenerateKeyModal
           departments={departments}

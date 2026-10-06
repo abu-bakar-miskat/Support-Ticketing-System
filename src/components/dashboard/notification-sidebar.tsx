@@ -235,6 +235,7 @@ export function NotificationSidebar({
               type="button"
               onClick={markAllRead}
               title="Mark all read"
+              aria-label="Mark all notifications as read"
               className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
             >
               <CheckCheck className="size-3.5" />

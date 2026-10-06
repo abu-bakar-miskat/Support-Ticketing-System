@@ -277,7 +277,9 @@ export function CommentInput({
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Cmd/Ctrl+Enter posts (same as the customer reply composer) so a stray
+    // Enter adds a newline instead of posting a half-written comment.
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       doSubmit();
     }
@@ -334,6 +336,7 @@ export function CommentInput({
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
+                  aria-label={`Remove ${entry.file.name}`}
                   className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
@@ -352,6 +355,7 @@ export function CommentInput({
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
+                  aria-label={`Remove ${entry.file.name}`}
                   className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
@@ -389,6 +393,10 @@ export function CommentInput({
             </button>
           </div>
 
+          <div className="flex items-center gap-2">
+          <span className="hidden font-sans text-[10.5px] text-sts-subtle sm:inline">
+            Ctrl/⌘ + Enter to post
+          </span>
           <button
             type="button"
             disabled={submitting || uploading}
@@ -407,6 +415,7 @@ export function CommentInput({
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
 

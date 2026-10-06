@@ -22,6 +22,23 @@ import {
 import type { TemplateFeatureKey } from "@/lib/template-features";
 
 
+/**
+ * The nav item a pathname belongs to: exact match, else the longest item href
+ * that prefixes it, so nested pages (/settings/departments/[id]/sla,
+ * /settings/support-forms/[id]) keep their parent highlighted. "/settings"
+ * (Profile) only ever matches exactly — it prefixes everything.
+ */
+function resolveActiveHref(items: SettingsNavItem[], pathname: string): string | undefined {
+  let best: string | undefined;
+  for (const { href } of items) {
+    if (href === pathname) return href;
+    if (href !== "/settings" && pathname.startsWith(`${href}/`) && href.length > (best?.length ?? 0)) {
+      best = href;
+    }
+  }
+  return best;
+}
+
 function SettingsNavLink({
   item,
   active,
@@ -35,6 +52,7 @@ function SettingsNavLink({
   return (
     <Link
       href={tenantHref(item.href)}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-7 items-center gap-[7px] rounded-[5px] px-[9px] font-sans text-[13px] transition-colors",
         active
@@ -80,6 +98,7 @@ function SettingsSubNav({
   isDepartmentAdmin: boolean;
 }) {
   const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags, isDepartmentAdmin);
+  const resolvedHref = resolveActiveHref(nav.flatMap((g) => g.items), activeHref);
   return (
     <nav
       aria-label="Settings"
@@ -102,7 +121,7 @@ function SettingsSubNav({
               <SettingsNavLink
                 key={item.href}
                 item={item}
-                active={activeHref === item.href}
+                active={resolvedHref === item.href}
               />
             ))}
           </div>
@@ -137,8 +156,8 @@ function SettingsMobileNav({
   const tenantHref = useTenantHref();
   const nav = getFilteredNav(role, counts, isCrossAccess, isSuperAdmin, activeFeatureKeys, hasActiveDept, platformFlags, isDepartmentAdmin);
   const allItems = nav.flatMap((g) => g.items);
-  const activeItem =
-    allItems.find((item) => item.href === activeHref) ?? allItems[0];
+  const resolvedHref = resolveActiveHref(allItems, activeHref);
+  const activeItem = allItems.find((item) => item.href === resolvedHref);
 
   return (
     <div className="border-b border-sts-card-border bg-sts-settings-subnav px-4 py-3 lg:hidden">
@@ -149,7 +168,7 @@ function SettingsMobileNav({
         }}
       >
         <SelectTrigger className="h-9 w-full font-sans text-[13px]">
-          <SelectValue>{activeItem?.label}</SelectValue>
+          <SelectValue>{activeItem?.label ?? "Settings"}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {nav.map((group) => (

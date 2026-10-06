@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { toastError } from "@/lib/toast-error";
+import { toastError, toastResponseError } from "@/lib/toast-error";
 import { useQueryClient } from "@tanstack/react-query";
 import { ticketKeys } from "@/hooks/queries/keys";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
@@ -1114,6 +1114,7 @@ export function TicketDetailPage({
     })
       .then((res) => {
         if (!res.ok) {
+          toast.error("Couldn't update labels");
           setLiveLabels(previous);
           queryClient.setQueryData<TicketDetailProps>(
             ticketKeys.detail(dbId),
@@ -1121,7 +1122,8 @@ export function TicketDetailPage({
           );
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        toastError("Couldn't update labels", err);
         setLiveLabels(previous);
         queryClient.setQueryData<TicketDetailProps>(
           ticketKeys.detail(dbId),
@@ -1870,25 +1872,34 @@ export function TicketDetailPage({
       return;
     }
     setTitleSaving(true);
-    await updateTicket(dbId, { title: t }).catch(() => null);
-    setTitleSaving(false);
-    setTitleEditing(false);
+    try {
+      await updateTicket(dbId, { title: t });
+      setTitleEditing(false);
+    } catch (err) {
+      // Keep the editor open so the typed title isn't lost.
+      toastError("Couldn't save the title", err);
+    } finally {
+      setTitleSaving(false);
+    }
   }
 
   async function saveDescription() {
     setDescSaving(true);
-    const ok = await updateTicket(dbId, {
-      description: descValue || null,
-    }).catch(() => null);
-    if (ok !== null) {
-      const attachmentIds = extractAttachmentIdsFromHtml(descValue);
-      if (attachmentIds.length > 0) {
-        await fetch(`/api/tickets/${dbId}/attachments/link`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ attachmentIds }),
-        }).catch(() => null);
-      }
+    try {
+      await updateTicket(dbId, { description: descValue || null });
+    } catch (err) {
+      // Keep the editor open so the typed description isn't lost.
+      setDescSaving(false);
+      toastError("Couldn't save the description", err);
+      return;
+    }
+    const attachmentIds = extractAttachmentIdsFromHtml(descValue);
+    if (attachmentIds.length > 0) {
+      await fetch(`/api/tickets/${dbId}/attachments/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachmentIds }),
+      }).catch(() => null);
     }
     setDescSaving(false);
     setDescEditing(false);
@@ -2629,6 +2640,41 @@ export function TicketDetailPage({
                 </div>
               );
             })()} */}
+
+            {/* Key fields for narrow screens — the details sidebar is lg-only. */}
+            <div className="grid grid-cols-1 gap-3 rounded-[12px] border border-sts-card-border bg-sts-card p-3 sm:grid-cols-3 lg:hidden">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Status</SectionLabel>
+                <StatusSelect
+                  ticketId={dbId}
+                  currentStatus={liveStatus}
+                  statuses={effectiveSubDepartmentStatuses}
+                  onStatusChange={setLiveStatus}
+                  disabled={!canChangeStatus}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Priority</SectionLabel>
+                <PrioritySelect
+                  ticketId={dbId}
+                  priority={livePriority}
+                  disabled={!canEditTicket}
+                  onPriorityChange={setLivePriority}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Assignee</SectionLabel>
+                <AssigneeSelect
+                  ticketId={dbId}
+                  assigneeId={liveAssigneeId}
+                  assigneeName={liveAssigneeName}
+                  assigneeAvatarUrl={liveAssigneeAvatarUrl}
+                  subDepartmentMembers={subDepartmentMembers}
+                  onAssigneeChange={handleAssigneeChange}
+                  disabled={!canEditTicket}
+                />
+              </div>
+            </div>
 
             {/* Description — hidden for intake-form tickets and template-based tickets */}
             {!intake && !hasTemplateData && (
@@ -3790,20 +3836,31 @@ function AssetLinksEditor({
   const [newUrl, setNewUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function patchLinks(nextLinks: { label: string; url: string }[]) {
+  async function patchLinks(nextLinks: { label: string; url: string }[]): Promise<boolean> {
     setSaving(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assetLinks: nextLinks }),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetLinks: nextLinks }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save links");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      toastError("Couldn't save links", err);
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleAdd() {
     if (!newUrl.trim()) return;
     const next = [...links, { url: newUrl.trim(), label: newLabel.trim() }];
-    await patchLinks(next);
+    if (!(await patchLinks(next))) return;
     setLinks(next);
     setNewUrl("");
     setNewLabel("");
@@ -3812,7 +3869,7 @@ function AssetLinksEditor({
 
   async function handleRemove(index: number) {
     const next = links.filter((_, i) => i !== index);
-    await patchLinks(next);
+    if (!(await patchLinks(next))) return;
     setLinks(next);
   }
 
@@ -3934,14 +3991,23 @@ function StoryPointsEditor({
     const num = inputVal.trim() === "" ? null : parseInt(inputVal, 10);
     if (num !== null && (isNaN(num) || num < 0)) return;
     setSaving(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storyPoints: num }),
-    });
-    setSp(num);
-    setSaving(false);
-    setEditing(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyPoints: num }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save story points");
+        return;
+      }
+      setSp(num);
+      setEditing(false);
+    } catch (err) {
+      toastError("Couldn't save story points", err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -4574,6 +4640,8 @@ function TimeTrackingSection({
     }
   }
 
+  const [confirmReset, setConfirmReset] = useState(false);
+
   async function resetMyTime() {
     if (resetting) return;
     setResetting(true);
@@ -4597,14 +4665,23 @@ function TimeTrackingSection({
   async function saveEstimate() {
     const mins = parseTimeInput(estInput);
     setSavingEst(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estimatedTime: mins }),
-    });
-    setEstimatedTime(mins);
-    setSavingEst(false);
-    setEditingEst(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimatedTime: mins }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save the estimate");
+        return;
+      }
+      setEstimatedTime(mins);
+      setEditingEst(false);
+    } catch (err) {
+      toastError("Couldn't save the estimate", err);
+    } finally {
+      setSavingEst(false);
+    }
   }
 
   const displayEntries = entries.slice().sort((a, b) => {
@@ -4896,7 +4973,7 @@ function TimeTrackingSection({
           {canReset && (
             <button
               type="button"
-              onClick={resetMyTime}
+              onClick={() => setConfirmReset(true)}
               disabled={resetting}
               title="Reset your time on this ticket to 0"
               className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
@@ -4918,7 +4995,7 @@ function TimeTrackingSection({
           {canReset && (
             <button
               type="button"
-              onClick={resetMyTime}
+              onClick={() => setConfirmReset(true)}
               disabled={resetting}
               className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
@@ -4928,6 +5005,14 @@ function TimeTrackingSection({
           )}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title="Reset your time?"
+        description="All time you've logged on this ticket will be set back to 0. This cannot be undone."
+        confirmLabel="Reset time"
+        onConfirm={resetMyTime}
+      />
     </div>
   );
 }

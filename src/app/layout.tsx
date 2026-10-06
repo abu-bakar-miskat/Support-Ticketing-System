@@ -62,7 +62,8 @@ export default function RootLayout({
               position="top-center"
               gap={8}
               offset={16}
-              duration={2000}
+              duration={4000}
+              closeButton
               containerAriaLabel="Notifications"
               style={{ left: "50%", transform: "translateX(-50%)" }}
             />

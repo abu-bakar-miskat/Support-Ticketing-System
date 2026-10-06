@@ -44,7 +44,7 @@ export function UnifiedReplyComposer({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="inline-flex w-fit rounded-md border border-sts-card-border p-0.5">
+      <div role="tablist" aria-label="Message type" className="inline-flex w-fit rounded-md border border-sts-card-border p-0.5">
         {(
           [
             { key: "note" as const, label: "Internal Comment" },
@@ -54,6 +54,8 @@ export function UnifiedReplyComposer({
           <button
             key={opt.key}
             type="button"
+            role="tab"
+            aria-selected={mode === opt.key}
             onClick={() => setMode(opt.key)}
             className={cn(
               "rounded-[5px] px-2.5 py-1 font-sans text-[11.5px] font-medium transition-colors",
@@ -67,9 +69,11 @@ export function UnifiedReplyComposer({
         ))}
       </div>
 
-      {mode === "note" ? (
+      {/* Both composers stay mounted so switching modes keeps each draft. */}
+      <div hidden={mode !== "note"}>
         <CommentInput ticketId={ticketId} subDepartmentMembers={subDepartmentMembers} onCommentAdded={onCommentAdded} />
-      ) : (
+      </div>
+      <div hidden={mode !== "reply"}>
         <CustomerReplyComposer
           ticketId={ticketId}
           customerName={customerName}
@@ -78,7 +82,7 @@ export function UnifiedReplyComposer({
           onSentConfirmed={onSentConfirmed}
           onSentFailed={onSentFailed}
         />
-      )}
+      </div>
     </div>
   );
 }

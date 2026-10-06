@@ -22,6 +22,12 @@ export default async function TenantsPage() {
       deletedAt: true,
       branding: true,
       _count: { select: { departments: true } },
+      // Current agreement — same "latest end date" rule as listTenantAgreementSummaries.
+      agreements: {
+        select: { endDate: true, renewalStatus: true },
+        orderBy: { endDate: "desc" },
+        take: 1,
+      },
     },
   })
 
@@ -50,6 +56,7 @@ export default async function TenantsPage() {
 
   const tenants = rows.map((t) => {
     const b = readTenantBranding(t.branding)
+    const agreement = t.agreements[0]
     return {
       id: t.id,
       slug: t.slug,
@@ -60,6 +67,8 @@ export default async function TenantsPage() {
       logoUrl: b.logoUrl ?? null,
       departments: t._count.departments,
       members: memberIdsByTenant.get(t.id)?.size ?? 0,
+      agreementEndDate: agreement?.endDate.toISOString() ?? null,
+      renewalStatus: agreement?.renewalStatus ?? null,
     }
   })
 

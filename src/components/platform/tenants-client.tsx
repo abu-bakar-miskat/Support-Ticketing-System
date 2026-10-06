@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
   Building2,
+  CalendarClock,
   Layers,
   Loader2,
   MoreHorizontal,
   Plus,
   RotateCcw,
+  Search,
   Settings,
   Trash2,
   Users,
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -33,6 +36,8 @@ import { TenantAvatar } from "@/components/platform/tenant-avatar";
 import { TenantStatusSummary } from "@/components/platform/tenant-status-summary";
 import { CreateTenantModal } from "@/components/platform/create-tenant-modal";
 import { tenantTypeLabel } from "@/lib/tenant-types";
+import { getAgreementExpiry, renewalStatusLabel } from "@/lib/agreement-expiry";
+import { Tip } from "@/components/ui/tooltip";
 
 type TenantRow = {
   id: string;
@@ -44,8 +49,11 @@ type TenantRow = {
   logoUrl: string | null;
   departments: number;
   members: number;
+  agreementEndDate: string | null;
+  renewalStatus: string | null;
 };
 
+/** Only non-default states get a badge — "Active" on every card is noise. */
 function StatusBadge({ tenant }: { tenant: TenantRow }) {
   if (tenant.deleted) {
     return (
@@ -61,9 +69,47 @@ function StatusBadge({ tenant }: { tenant: TenantRow }) {
       </span>
     );
   }
+  return null;
+}
+
+/** One-line agreement health: end date, flagged amber/red as it nears or passes. */
+function AgreementLine({ tenant }: { tenant: TenantRow }) {
+  if (!tenant.agreementEndDate) {
+    return (
+      <span className="flex items-center gap-1.5 text-sts-subtle">
+        <CalendarClock className="size-3.5 shrink-0" aria-hidden />
+        No agreement on file
+      </span>
+    );
+  }
+  const flag = getAgreementExpiry(tenant.agreementEndDate, tenant.renewalStatus);
+  const ends = format(new Date(tenant.agreementEndDate), "d MMM yyyy");
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-sts-green/10 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-green">
-      Active
+    <span
+      className={cn(
+        "flex items-center gap-1.5",
+        flag.state === "expired" && "font-medium text-sts-red",
+        flag.state === "expiring_soon" && "font-medium text-amber-600 dark:text-amber-400",
+      )}
+    >
+      <CalendarClock
+        className={cn("size-3.5 shrink-0", flag.state === "ok" && "text-sts-subtle")}
+        aria-hidden
+      />
+      {flag.state === "ok" ? (
+        <>
+          Agreement ends {ends}
+          {tenant.renewalStatus && tenant.renewalStatus !== "ACTIVE" && (
+            <span className="text-sts-subtle">· {renewalStatusLabel(tenant.renewalStatus)}</span>
+          )}
+        </>
+      ) : (
+        <Tip label={`Agreement ends ${ends}`}>
+          <span tabIndex={0} className="rounded outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+            {flag.label}
+          </span>
+        </Tip>
+      )}
     </span>
   );
 }
@@ -101,43 +147,40 @@ function TenantCard({
 
   return (
     <li
-      className="flex flex-col rounded-2xl border border-sts-card-border bg-sts-card transition-colors hover:border-sts-blue/30 animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300"
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card transition-[border-color,box-shadow] duration-200 hover:border-sts-blue/30 hover:shadow-[0_6px_24px_-12px_rgb(0_0_0/0.18)] animate-in fade-in-0 slide-in-from-bottom-1 fill-mode-both duration-300",
+        locked && "opacity-80",
+      )}
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
-      <div className="flex items-start gap-3 px-5 pt-5 pb-3">
-        <TenantAvatar name={tenant.name} logoUrl={tenant.logoUrl} size={44} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 truncate font-sans text-[15px] font-semibold text-sts-foreground">
-              {tenant.name}
-            </h3>
-            <StatusBadge tenant={tenant} />
+      {/* Logo band — tenant logos are mostly wordmarks, which are unreadable
+          squeezed into a square avatar. Give them room at their own aspect. */}
+      <div className="relative flex h-24 items-center justify-center border-b border-sts-card-border bg-sts-surface/60 px-12">
+        {tenant.logoUrl ? (
+          <div className="flex h-14 max-w-full items-center justify-center rounded-lg bg-white px-3 py-2 shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-black/5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={tenant.logoUrl}
+              alt={`${tenant.name} logo`}
+              className="max-h-full max-w-[160px] object-contain"
+            />
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="truncate font-mono text-[11.5px] text-sts-subtle">/{tenant.slug}</span>
-            <span className="rounded-full bg-sts-surface px-2 py-px font-sans text-[10px] font-medium text-sts-muted">
-              {tenantTypeLabel(tenant.type)}
-            </span>
-          </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-sts-muted">
-            <span className="flex items-center gap-1">
-              <Layers className="size-3.5 shrink-0 text-sts-subtle" />
-              {tenant.departments} department{tenant.departments === 1 ? "" : "s"}
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="size-3.5 shrink-0 text-sts-subtle" />
-              {tenant.members} member{tenant.members === 1 ? "" : "s"}
-            </span>
-          </div>
+        ) : (
+          <TenantAvatar name={tenant.name} size={52} />
+        )}
+        <div className="absolute top-2.5 left-3">
+          <StatusBadge tenant={tenant} />
         </div>
         {canManage && (
           <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label={`More actions for ${tenant.name}`}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle outline-none transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
+            <Tip label="More actions">
+              <DropdownMenuTrigger
+                aria-label={`More actions for ${tenant.name}`}
+                className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none transition-colors hover:bg-sts-card hover:text-sts-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-sts-card aria-expanded:text-sts-foreground"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+            </Tip>
             <DropdownMenuContent align="end" className="min-w-40">
               <DropdownMenuItem onClick={onManage}>
                 <Settings className="size-3.5" />
@@ -177,34 +220,65 @@ function TenantCard({
         )}
       </div>
 
-      <div className="mt-auto flex items-center gap-3 border-t border-sts-card-border px-5 py-3.5">
+      <div className="flex flex-1 flex-col gap-3 px-5 pt-4 pb-4">
+        <div className="min-w-0">
+          <h3 className="truncate font-sans text-[15px] font-semibold text-sts-foreground">
+            {tenant.name}
+          </h3>
+          <div className="mt-0.5 flex min-w-0 items-center gap-2">
+            <span className="truncate font-mono text-[11.5px] text-sts-subtle">/{tenant.slug}</span>
+            <span className="shrink-0 rounded-full bg-sts-surface px-2 py-px font-sans text-[10px] font-medium text-sts-muted">
+              {tenantTypeLabel(tenant.type)}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="flex items-center gap-1.5">
+              <Layers className="size-3.5 shrink-0 text-sts-subtle" aria-hidden />
+              {tenant.departments} department{tenant.departments === 1 ? "" : "s"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users className="size-3.5 shrink-0 text-sts-subtle" aria-hidden />
+              {tenant.members} member{tenant.members === 1 ? "" : "s"}
+            </span>
+          </div>
+          {canManage && <AgreementLine tenant={tenant} />}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-sts-card-border px-3 py-2.5">
         {canManage && (
-          <button
-            type="button"
-            onClick={onManage}
-            className="font-sans text-[12.5px] font-medium text-sts-muted transition-colors hover:text-sts-blue"
-          >
+          <Button variant="ghost" size="sm" onClick={onManage} aria-label={`Manage ${tenant.name}`}>
+            <Settings className="size-3.5" aria-hidden />
             Manage
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        {/* Outlined at rest so a grid of cards isn't a wall of primary buttons;
+            fills in when its card is hovered. */}
+        <Button
+          variant="outline"
+          size="sm"
           disabled={entering || enterDisabled || locked}
           onClick={onEnter}
+          aria-label={`Enter ${tenant.name}`}
           className={cn(
-            "ml-auto flex items-center justify-center gap-2 rounded-full bg-sts-blue px-4 py-2.5 font-sans text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:text-gray-900",
+            "ml-auto border-sts-blue/30 px-3.5 text-sts-blue hover:bg-sts-blue hover:text-white group-hover:border-transparent group-hover:bg-sts-blue group-hover:text-white dark:group-hover:text-gray-900 dark:hover:text-gray-900",
             !canManage && "w-full",
           )}
         >
           {entering ? (
-            "Entering…"
+            <>
+              <Loader2 className="animate-spin" aria-hidden />
+              Entering…
+            </>
           ) : (
             <>
               Enter
-              <ArrowRight className="size-3.5" />
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </>
           )}
-        </button>
+        </Button>
       </div>
     </li>
   );
@@ -300,14 +374,26 @@ export function TenantsClient({
     null,
   );
   const [purgeTarget, setPurgeTarget] = useState<TenantRow | null>(null);
+  const [query, setQuery] = useState("");
 
   const liveTenants = tenants.filter((t) => !t.deleted);
   const deletedTenants = tenants.filter((t) => t.deleted);
 
-  const activeCount = tenants.filter((t) => !t.deleted && t.status !== "suspended").length;
+  const q = query.trim().toLowerCase();
+  const matches = (t: TenantRow) =>
+    !q || t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q);
+  const visibleLive = liveTenants.filter(matches);
+  const visibleDeleted = deletedTenants.filter(matches);
+
   const suspendedCount = tenants.filter((t) => !t.deleted && t.status === "suspended").length;
   const memberTotal = liveTenants.reduce((sum, t) => sum + t.members, 0);
   const deptTotal = liveTenants.reduce((sum, t) => sum + t.departments, 0);
+  // Agreements expiring within the flag window or already lapsed.
+  const renewalsDue = liveTenants.filter(
+    (t) =>
+      t.agreementEndDate &&
+      getAgreementExpiry(t.agreementEndDate, t.renewalStatus).state !== "ok",
+  ).length;
 
   // Enter leaves busy set while navigating away. Returning via back (bfcache),
   // soft nav, or remount must clear it or every Enter button stays disabled.
@@ -408,27 +494,53 @@ export function TenantsClient({
 
         {/* Overview band */}
         {liveTenants.length > 0 && (
-          <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:grid-cols-4 sm:divide-y-0">
+          <div
+            className={cn(
+              "mt-5 grid grid-cols-2 divide-x divide-y divide-sts-card-border overflow-hidden rounded-xl border border-sts-card-border bg-sts-card sm:divide-y-0",
+              canManage ? "sm:grid-cols-4" : "sm:grid-cols-3",
+            )}
+          >
             {[
-              { label: "Tenants", value: liveTenants.length },
-              { label: "Active", value: activeCount },
-              { label: "Departments", value: deptTotal },
-              { label: "Members", value: memberTotal },
+              {
+                label: "Tenants",
+                value: liveTenants.length,
+                hint: suspendedCount > 0 ? `${suspendedCount} suspended` : "All active",
+                warn: suspendedCount > 0,
+              },
+              { label: "Departments", value: deptTotal, hint: "Across all tenants", warn: false },
+              { label: "Members", value: memberTotal, hint: "Distinct active users", warn: false },
+              ...(canManage
+                ? [
+                    {
+                      label: "Renewals due",
+                      value: renewalsDue,
+                      hint: renewalsDue > 0 ? "Expiring within 30 days or lapsed" : "All agreements current",
+                      warn: renewalsDue > 0,
+                    },
+                  ]
+                : []),
             ].map((stat) => (
-              <div key={stat.label} className="flex flex-col gap-1.5 px-3.5 py-3">
+              <div key={stat.label} className="flex flex-col gap-1.5 px-4 py-3.5">
                 <span className="sts-text-section-label">{stat.label}</span>
-                <p className="font-mono text-[22px] font-semibold leading-none tracking-tight text-sts-foreground">
+                <p
+                  className={cn(
+                    "font-mono text-[22px] font-semibold leading-none tracking-tight tabular-nums",
+                    stat.warn ? "text-amber-600 dark:text-amber-400" : "text-sts-foreground",
+                  )}
+                >
                   {stat.value}
                 </p>
+                <span
+                  className={cn(
+                    "font-sans text-[11.5px]",
+                    stat.warn ? "text-amber-600 dark:text-amber-400" : "text-sts-subtle",
+                  )}
+                >
+                  {stat.hint}
+                </span>
               </div>
             ))}
           </div>
-        )}
-
-        {suspendedCount > 0 && (
-          <p className="mt-2 font-sans text-[12px] text-amber-600 dark:text-amber-400">
-            {suspendedCount} suspended tenant{suspendedCount === 1 ? "" : "s"} — members are locked out until reactivated.
-          </p>
         )}
 
         {error && (
@@ -453,25 +565,55 @@ export function TenantsClient({
             )}
           </div>
         ) : (
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {liveTenants.map((t, i) => (
-              <TenantCard
-                key={t.id}
-                tenant={t}
-                canManage={canManage}
-                entering={busy === `enter-${t.id}`}
-                enterDisabled={!!busy?.startsWith("enter-") && busy !== `enter-${t.id}`}
-                index={i}
-                onEnter={() => enterTenant(t.id)}
-                onManage={() => router.push(`/platform/${t.id}`)}
-                onSuspend={() => setConfirmTarget({ action: "suspend", tenant: t })}
-                onReactivate={() => setTenantStatus(t.id, "active")}
-                onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
-                onRestore={() => restoreTenant(t.id)}
-                onPurge={() => setPurgeTarget(t)}
-              />
-            ))}
-          </ul>
+          <>
+            <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
+                All tenants
+                <span className="ml-2 font-mono text-[12px] font-normal text-sts-subtle tabular-nums">
+                  {q ? `${visibleLive.length} of ${liveTenants.length}` : liveTenants.length}
+                </span>
+              </h2>
+              <div className="relative w-full sm:w-64">
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-sts-subtle"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name or slug"
+                  aria-label="Search tenants"
+                  className="h-8 rounded-full pl-8 text-[12.5px]"
+                />
+              </div>
+            </div>
+            {visibleLive.length === 0 ? (
+              <p className="mt-4 rounded-2xl border border-dashed border-sts-card-border py-10 text-center font-sans text-[13px] text-sts-muted">
+                No tenants match &ldquo;{query.trim()}&rdquo;.
+              </p>
+            ) : (
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {visibleLive.map((t, i) => (
+                  <TenantCard
+                    key={t.id}
+                    tenant={t}
+                    canManage={canManage}
+                    entering={busy === `enter-${t.id}`}
+                    enterDisabled={!!busy?.startsWith("enter-") && busy !== `enter-${t.id}`}
+                    index={i}
+                    onEnter={() => enterTenant(t.id)}
+                    onManage={() => router.push(`/platform/${t.id}`)}
+                    onSuspend={() => setConfirmTarget({ action: "suspend", tenant: t })}
+                    onReactivate={() => setTenantStatus(t.id, "active")}
+                    onDelete={() => setConfirmTarget({ action: "delete", tenant: t })}
+                    onRestore={() => restoreTenant(t.id)}
+                    onPurge={() => setPurgeTarget(t)}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
         )}
 
         {deletedTenants.length > 0 && (
@@ -487,7 +629,7 @@ export function TenantsClient({
 
             {showDeleted && (
               <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {deletedTenants.map((t, i) => (
+                {visibleDeleted.map((t, i) => (
                   <TenantCard
                     key={t.id}
                     tenant={t}

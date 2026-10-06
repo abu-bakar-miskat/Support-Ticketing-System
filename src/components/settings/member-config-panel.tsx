@@ -174,7 +174,11 @@ export function MemberConfigPanel({
   }
 
   async function removeHoliday(holidayId: string) {
-    await fetch(`/api/admin/members/${member.id}/holidays/${holidayId}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/members/${member.id}/holidays/${holidayId}`, { method: "DELETE" });
+    if (!res.ok) {
+      await toastResponseError(res, "Failed to remove holiday");
+      return;
+    }
     setHolidays((prev) => prev.filter((h) => h.id !== holidayId));
     refreshAvailability();
   }

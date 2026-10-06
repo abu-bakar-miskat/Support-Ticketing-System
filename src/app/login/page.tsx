@@ -111,7 +111,7 @@ async function requestLoginCode(formData: FormData) {
   const result = await sendLoginCode(email);
 
   if (result.error) {
-    redirect(`/login?error=${encodeURIComponent(result.error)}${nextQuery}`);
+    redirect(`/login?error=${encodeURIComponent(result.error)}&email=${encodeURIComponent(email)}${nextQuery}`);
   }
 
   // `t` is the send time — the resend countdown reads it so the 90s cooldown
@@ -258,7 +258,8 @@ export default async function LoginPage({
             role="alert"
             className="mb-5 w-full rounded-xl border border-destructive/35 bg-destructive/10 px-4 py-3 text-left text-[13px] leading-relaxed text-destructive"
           >
-            {decodeURIComponent(error)}
+            {/* searchParams are already decoded — decoding again throws on a literal "%". */}
+            {error}
           </div>
         )}
 
@@ -346,6 +347,7 @@ export default async function LoginPage({
                   required
                   placeholder="name@company.com"
                   autoComplete="email"
+                  defaultValue={paramEmail}
                   autoFocus
                   className={cn(
                     "h-12 w-full rounded-xl border border-sts-card-border bg-sts-card px-4 text-[14px] text-sts-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",

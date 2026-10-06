@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Check, X, GripVertical, CheckCircle2, Loader2, Tag } from "lucide-react";
 import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -68,6 +69,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
   const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState(defaultSubDepartmentId ?? "");
   const [statuses, setStatuses] = useState<SubDepartmentStatus[]>(initialStatuses);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [statusToDelete, setStatusToDelete] = useState<SubDepartmentStatus | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editColor, setEditColor] = useState("");
   const [adding, setAdding] = useState(false);
@@ -146,18 +148,15 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
     }
   }
 
+  // Throws on failure so ConfirmDialog surfaces the error as a toast.
   async function deleteStatus(id: string) {
     setError(null);
-    try {
-      await deleteSubDepartmentStatus(selectedSubDepartmentId, id);
-      setStatuses((prev) => {
-        const next = prev.filter((s) => s.id !== id);
-        replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
-        return next;
-      });
-    } catch {
-      setError("Failed to delete");
-    }
+    await deleteSubDepartmentStatus(selectedSubDepartmentId, id);
+    setStatuses((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
+      return next;
+    });
   }
 
   async function addStatus() {
@@ -362,10 +361,10 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
           </button>
         )}
         <div className="flex items-center gap-0.5 transition-opacity">
-          <button type="button" onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
+          <button type="button" aria-label={`Edit ${s.label}`} onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
             <Pencil className="size-3" />
           </button>
-          <button type="button" onClick={() => deleteStatus(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
+          <button type="button" aria-label={`Delete ${s.label}`} onClick={() => setStatusToDelete(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
             <Trash2 className="size-3" />
           </button>
         </div>
@@ -490,6 +489,16 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
         </div>
       )}
 
+      <ConfirmDialog
+        open={statusToDelete !== null}
+        onOpenChange={(o) => { if (!o) setStatusToDelete(null); }}
+        title={`Delete "${statusToDelete?.label ?? ""}" status?`}
+        description="Tickets currently in this status may need to be moved to another column. This can't be undone."
+        successMessage="Status deleted."
+        onConfirm={async () => {
+          if (statusToDelete) await deleteStatus(statusToDelete.id);
+        }}
+      />
     </div>
   );
 }

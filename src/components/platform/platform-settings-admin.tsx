@@ -16,6 +16,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -264,6 +265,7 @@ export function PlatformSettingsAdmin({
   const [resettingOtp, setResettingOtp] = useState(false);
 
   const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
+  useUnsavedChangesGuard(generalDirty || otpDirty);
   const otpPreviewHtml = otpBodyHtml
     .replaceAll("{{code}}", "123456")
     .replaceAll("{{platformName}}", platformName.trim() || "Global Support Portal");

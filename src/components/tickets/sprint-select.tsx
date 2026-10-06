@@ -17,6 +17,7 @@ import {
   sidebarSelectContentClass,
   sidebarSelectItemClass,
 } from "@/components/tickets/sidebar-field-styles"
+import { toastError } from "@/lib/toast-error"
 
 const NO_SPRINT = "__no_sprint__"
 const NO_SPRINT_LABEL = "No sprint"
@@ -65,7 +66,8 @@ export function SprintSelect({ ticketId, projectId, sprintId, sprintName, disabl
     setLiveId(nextId)
     setLiveName(nextId ? options.find((s) => s.id === nextId)?.name ?? null : null)
     setError(null)
-    void updateTicket(ticketId, { sprintId: nextId }).catch(() => {
+    void updateTicket(ticketId, { sprintId: nextId }).catch((err: unknown) => {
+      toastError("Couldn't update sprint", err)
       setLiveId(prevId)
       setLiveName(prevName)
       setError("Failed to update sprint")

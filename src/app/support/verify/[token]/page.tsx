@@ -49,7 +49,7 @@ export default async function VerifyIntakePage({
         <div style={{ background: brand.headerColor }} className="w-full px-4 py-5 sm:px-6">
           <div className="mx-auto flex max-w-2xl items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={brand.logoUrl} alt="PEN" className="h-9 w-auto" />
+            <img src={brand.logoUrl} alt={brand.headerTitle || "Support"} className="h-9 w-auto" />
           </div>
         </div>
       )}

@@ -21,6 +21,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { RailCard } from "@/components/manager/rail-card";
 import { DrawerLink } from "@/components/tickets/drawer-link";
 import { useLondonGreeting } from "@/lib/london-time";
+import { HomeDashboardSkeleton } from "@/components/skeletons/page-skeletons";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -421,6 +422,10 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
     placeholderData: EMPTY_HOME,
     refetchOnWindowFocus: false,
   });
+
+  // Placeholder data is all zeros — show a skeleton rather than "0 · nothing
+  // late" metrics and empty sections until the real numbers arrive.
+  if (isPlaceholderData && !isError) return <HomeDashboardSkeleton />;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">

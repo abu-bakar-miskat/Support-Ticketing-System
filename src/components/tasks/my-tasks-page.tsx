@@ -25,6 +25,7 @@ import {
 import { avatarColorFor } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   normalizeStatus,
@@ -840,7 +841,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
   const boardEnabled = useFeatureEnabled("board");
   const viewMode = boardEnabled ? view : "list";
-  const [page, setPage] = useState(1);
+  const [rawPage, setPage] = useState(1);
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
   // Managers see a subDepartment review/PR list — kept collapsed by default and below
   // their own tasks so the view leads with what's assigned to them.
@@ -1075,13 +1076,29 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   ], [filteredTasks, subtasks]);
 
   const totalPages = Math.max(1, Math.ceil(allFlatRows.length / PAGE_SIZE));
+  // Realtime row-count changes only clamp the page, so the agent isn't thrown
+  // back to page 1 mid-list; filter/sort changes reset it (below).
+  const page = Math.min(rawPage, totalPages);
   const pagedRows = useMemo(
     () => allFlatRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [allFlatRows, page],
   );
 
-  // Reset to page 1 whenever filters change
-  useEffect(() => { setPage(1); }, [allFlatRows.length]);
+  // Reset to page 1 whenever filters/sort change (adjusting state during
+  // render rather than in an effect).
+  const [pageResetDeps, setPageResetDeps] = useState({ filterStatus, filterProject, filterPriority, filterDue, filterLabels, filterModule, sortKey });
+  if (
+    pageResetDeps.filterStatus !== filterStatus ||
+    pageResetDeps.filterProject !== filterProject ||
+    pageResetDeps.filterPriority !== filterPriority ||
+    pageResetDeps.filterDue !== filterDue ||
+    pageResetDeps.filterLabels !== filterLabels ||
+    pageResetDeps.filterModule !== filterModule ||
+    pageResetDeps.sortKey !== sortKey
+  ) {
+    setPageResetDeps({ filterStatus, filterProject, filterPriority, filterDue, filterLabels, filterModule, sortKey });
+    setPage(1);
+  }
   const totalSubtickets = useMemo(() => {
     const ids = new Set<string>();
     for (const s of subtasks) ids.add(s.dbId);
@@ -1120,14 +1137,21 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
     if (boardTimerTicketDbId === dbId && normalizeStatus(toStatus) !== "In Progress") {
       stopTimerOnMove(boardTimerEntryId).catch(() => undefined);
     }
-    setLocalTasks((prev) => {
-      const snapshot = prev;
-      moveTicket(dbId, { status: toStatus, chosenLabel })
-        .then(() => invalidateTaskCaches(queryClient))
-        .catch(() => setLocalTasks(snapshot));
-      return prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus } : c));
-    });
-  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove]);
+    const previous = localTasks.find((c) => c.dbId === dbId);
+    if (!previous || previous.status === toStatus) return;
+    setLocalTasks((prev) => prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus } : c)));
+    // API call lives outside the state updater (StrictMode runs updaters twice).
+    moveTicket(dbId, { status: toStatus, chosenLabel })
+      .then(() => invalidateTaskCaches(queryClient))
+      .catch((err: unknown) => {
+        setLocalTasks((prev) =>
+          prev.map((c) =>
+            c.dbId === dbId && c.status === toStatus ? { ...c, status: previous.status } : c,
+          ),
+        );
+        toastError(`Couldn't move ${previous.humanId}`, err);
+      });
+  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove, localTasks]);
 
   const getCardSubDepartmentId = useCallback(
     (dbId: string) => localTasks.find((c) => c.dbId === dbId)?.subDepartmentId,
@@ -1377,8 +1401,36 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               <tbody>
                 {pagedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-20 text-center font-sans text-[13px] text-sts-subtle">
-                      No tasks match the current filters.
+                    <td colSpan={10}>
+                      {activeExtraFilters > 0 ? (
+                        <EmptyState
+                          icon={ListTodo}
+                          title="No tasks match these filters"
+                          description="Try removing a filter to see more of your work."
+                          action={
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFilterStatus(new Set());
+                                setFilterProject(new Set());
+                                setFilterPriority(new Set());
+                                setFilterDue(new Set());
+                                setFilterLabels(new Set());
+                                setFilterModule(new Set());
+                              }}
+                              className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+                            >
+                              Clear filters
+                            </button>
+                          }
+                        />
+                      ) : (
+                        <EmptyState
+                          icon={ListTodo}
+                          title="You're all caught up"
+                          description="Nothing is assigned to you right now. New tickets assigned to you will show up here."
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : pagedRows.map((row) =>
@@ -1399,8 +1451,9 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page === 1}
+                    aria-label="Previous page"
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="size-3.5" />
@@ -1420,6 +1473,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                           key={p}
                           type="button"
                           onClick={() => setPage(p as number)}
+                          aria-label={`Page ${p}`}
+                          aria-current={page === p ? "page" : undefined}
                           className={cn(
                             "flex h-7 w-7 items-center justify-center rounded-full font-sans text-[11.5px] font-medium transition-colors",
                             page === p
@@ -1433,8 +1488,9 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                     )}
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages}
+                    aria-label="Next page"
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="size-3.5" />

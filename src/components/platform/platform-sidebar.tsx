@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal } from "lucide-react";
+import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createNotificationsBroadcastSubscription } from "@/lib/realtime";
 import { useAuthStore } from "@/store";
 
-const PLATFORM_NAV = [
+export const PLATFORM_NAV = [
   { label: "Tenants", href: "/platform", icon: Building2 },
   { label: "Reports", href: "/platform/reports", icon: BarChart3 },
   { label: "Tenant Types", href: "/platform/tenant-types", icon: Tags },
@@ -32,10 +32,20 @@ const PLATFORM_NAV = [
  * /settings/*. Shares the collapse-state hook and user menu with the main
  * dashboard sidebar (components/dashboard/sidebar.tsx) for a consistent feel.
  */
-export function PlatformSidebar({ pendingFeatureRequests }: { pendingFeatureRequests: number }) {
+export function PlatformSidebar({
+  pendingFeatureRequests,
+  onClose,
+  className,
+}: {
+  pendingFeatureRequests: number;
+  /** Set when rendered as the mobile drawer: always expanded, and the header
+   * button / nav clicks close the drawer instead of collapsing. */
+  onClose?: () => void;
+  className?: string;
+}) {
   const pathname = usePathname();
   const { collapsed, toggle, ready } = useSidebarState();
-  const isCollapsed = ready && collapsed;
+  const isCollapsed = !onClose && ready && collapsed;
   const userId = useAuthStore((s) => s.user?.id ?? "");
   const [pendingCount, setPendingCount] = useState(pendingFeatureRequests);
 
@@ -73,6 +83,7 @@ export function PlatformSidebar({ pendingFeatureRequests }: { pendingFeatureRequ
       className={cn(
         "sts-glass-panel flex h-full shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
         isCollapsed ? "w-[68px] px-2" : "w-[220px] px-3",
+        className,
       )}
     >
       {/* Logo row */}
@@ -108,12 +119,12 @@ export function PlatformSidebar({ pendingFeatureRequests }: { pendingFeatureRequ
             />
             <button
               type="button"
-              onClick={toggle}
+              onClick={onClose ?? toggle}
               className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
+              aria-label={onClose ? "Close menu" : "Collapse sidebar"}
+              title={onClose ? "Close menu" : "Collapse sidebar"}
             >
-              <PanelLeftClose className="size-4" />
+              {onClose ? <X className="size-4" /> : <PanelLeftClose className="size-4" />}
             </button>
           </>
         )}
@@ -137,6 +148,8 @@ export function PlatformSidebar({ pendingFeatureRequests }: { pendingFeatureRequ
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
+              aria-current={active ? "page" : undefined}
               title={isCollapsed ? item.label : undefined}
               className={cn(
                 "flex h-8 items-center gap-[9px] rounded-full font-sans text-[13px] transition-colors",

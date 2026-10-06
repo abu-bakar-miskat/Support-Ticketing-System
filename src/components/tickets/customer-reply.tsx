@@ -481,14 +481,13 @@ function MessageNotes({
     }
   }
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Throws on failure so ConfirmDialog keeps itself open and toasts the error.
   async function removeNote(noteId: string) {
-    try {
-      const res = await fetch(`/api/comments/${noteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      onRemoved(noteId);
-    } catch (err) {
-      toastError("Failed to delete note", err);
-    }
+    const res = await fetch(`/api/comments/${noteId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete comment");
+    onRemoved(noteId);
   }
 
   return (
@@ -514,7 +513,7 @@ function MessageNotes({
                 {n.editedAt ? " · edited" : ""}
               </span>
               {isAuthor && !editing && (
-                <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/note:opacity-100">
+                <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/note:opacity-100 group-focus-within/note:opacity-100 [@media(hover:none)]:opacity-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -522,14 +521,16 @@ function MessageNotes({
                       setEditValue(n.body);
                     }}
                     title="Edit comment"
+                    aria-label="Edit comment"
                     className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-card hover:text-sts-foreground"
                   >
                     <Pencil className="size-3" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => removeNote(n.id)}
+                    onClick={() => setPendingDeleteId(n.id)}
                     title="Delete comment"
+                    aria-label="Delete comment"
                     className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red"
                   >
                     <Trash2 className="size-3" />
@@ -623,6 +624,19 @@ function MessageNotes({
           Add internal comment
         </button>
       )}
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingDeleteId(null);
+        }}
+        title="Delete internal comment?"
+        description="This comment will be permanently removed for everyone on the ticket."
+        confirmLabel="Delete"
+        successMessage="Comment deleted"
+        onConfirm={async () => {
+          if (pendingDeleteId) await removeNote(pendingDeleteId);
+        }}
+      />
     </div>
   );
 }

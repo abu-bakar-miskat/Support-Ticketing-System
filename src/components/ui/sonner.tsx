@@ -1,7 +1,7 @@
 "use client"
 
 import { useTheme } from "@/components/theme/theme-provider"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { toast, Toaster as Sonner, type ToasterProps } from "sonner"
 import {
   CircleCheckIcon,
   InfoIcon,
@@ -9,6 +9,13 @@ import {
   OctagonXIcon,
   Loader2Icon,
 } from "lucide-react"
+
+// Errors need time to be read (WCAG 2.2.1) — give them a longer default than
+// the global duration unless a call site sets its own.
+const ERROR_TOAST_DURATION_MS = 8000
+const baseError = toast.error
+toast.error = ((message, data) =>
+  baseError(message, { duration: ERROR_TOAST_DURATION_MS, ...data })) as typeof toast.error
 
 function ToastIcon({
   children,

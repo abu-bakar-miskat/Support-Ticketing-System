@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
   ArrowLeft,
   ArrowUp,
@@ -124,6 +125,7 @@ export function RulesSettingsPage({
   members?: MemberOption[];
   subDepartments?: SubDepartmentOption[];
 }) {
+  const tenantHref = useTenantHref();
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
   const [slaPolicies, setSlaPolicies] = useState<SlaPolicyLite[]>([]);
@@ -277,7 +279,7 @@ export function RulesSettingsPage({
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
-        href="/settings/departments"
+        href={tenantHref("/settings/departments")}
         className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back to departments

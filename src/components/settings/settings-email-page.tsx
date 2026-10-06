@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
 import { EmailIdentityCard } from "./settings-email-identity";
 import { LogoUploadButton } from "./logo-upload-button";
@@ -355,10 +356,13 @@ function EmailBrandingCard({
   scope,
   departments,
   workspaceDefaults,
+  onDirtyChange,
 }: {
   scope: DeptOption | undefined;
   departments: DeptOption[];
   workspaceDefaults: EmailBrandingValues;
+  /** Lets the page block tab/scope switches that would discard edits. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   // The active scope is chosen by the page-level selector; read the department /
   // sub-department straight off it — never re-derive the sub-department by matching
@@ -431,8 +435,6 @@ function EmailBrandingCard({
     };
   }, [departmentId, subDepartmentId]);
 
-  if (departments.length === 0) return null;
-
   const dirty =
     brandColor !== saved.brandColor ||
     headerColor !== saved.headerColor ||
@@ -445,6 +447,16 @@ function EmailBrandingCard({
     pageBackground !== saved.pageBackground ||
     hideFooter !== saved.hideFooter ||
     hideSignature !== saved.hideSignature;
+
+  useUnsavedChangesGuard(dirty);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Report clean on unmount so a stale "dirty" can't block the next tab switch.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  if (departments.length === 0) return null;
+
   const validColor = HEX_RE.test(brandColor.trim());
   const validHeader = HEX_RE.test(headerColor.trim());
   const validBodyText = HEX_RE.test(bodyTextColor.trim());
@@ -980,6 +992,14 @@ export function SettingsEmailPage({
 }) {
   const canSeeGeneral = isAdmin || isManager;
   const [tab, setTab] = useState<"general" | "branding" | "templates">(canSeeGeneral ? "general" : "templates");
+  // Switching tab or scope remounts/reloads the branding card, which would
+  // silently drop unsaved edits — hold the switch until the user confirms.
+  const [brandingDirty, setBrandingDirty] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<(() => void) | null>(null);
+  function guardedSwitch(apply: () => void) {
+    if (brandingDirty) setPendingSwitch(() => apply);
+    else apply();
+  }
   const [switches, setSwitches] = useState<Record<string, boolean>>(() =>
     mergeSwitches(defaultSwitches(), initialConfig),
   );
@@ -1023,7 +1043,7 @@ export function SettingsEmailPage({
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => { if (t.id !== tab) guardedSwitch(() => setTab(t.id)); }}
               className={cn(
                 "h-9 rounded-t-md px-3.5 font-sans text-[12.5px] font-medium",
                 tab === t.id
@@ -1039,7 +1059,13 @@ export function SettingsEmailPage({
         {showScopeSelector ? (
           <div className="flex max-w-[920px] flex-col gap-1.5">
             <label className="sts-text-label">Applies to</label>
-            <Select value={scopeKey} onValueChange={(v) => setScopeKey(v ?? scopeKeyOf(departments[0]))}>
+            <Select
+              value={scopeKey}
+              onValueChange={(v) => {
+                const next = v ?? scopeKeyOf(departments[0]);
+                if (next !== scopeKey) guardedSwitch(() => setScopeKey(next));
+              }}
+            >
               <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">
                 <span>{selectedScope?.name ?? "Select scope"}</span>
               </SelectTrigger>
@@ -1078,12 +1104,25 @@ export function SettingsEmailPage({
               scope={selectedScope}
               departments={departments}
               workspaceDefaults={branding}
+              onDirtyChange={setBrandingDirty}
             />
           ) : null}
         </div>
       ) : (
         <SettingsEmailTemplatesPage scope={selectedScope} departments={departments} />
       )}
+
+      <ConfirmDialog
+        open={pendingSwitch !== null}
+        onOpenChange={(o) => { if (!o) setPendingSwitch(null); }}
+        title="Discard unsaved changes?"
+        description="Your branding edits haven't been saved. Leaving now will discard them."
+        confirmLabel="Discard changes"
+        onConfirm={async () => {
+          setBrandingDirty(false);
+          pendingSwitch?.();
+        }}
+      />
     </div>
   );
 }

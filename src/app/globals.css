@@ -340,13 +340,35 @@
     --sidebar-ring: oklch(0.646 0.225 35.2);
   }
 
+  /* Thin, theme-aware scrollbars everywhere so mouse/trackpad users can see
+     that a panel scrolls. Opt out per element with `scrollbar-none` (or
+     `sts-header-scroll` for horizontal header strips). */
   * {
     @apply border-border outline-ring/50;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--border) 85%, transparent)
+      transparent;
   }
 
   *::-webkit-scrollbar {
-    display: none;
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--border) 85%, transparent);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
   }
   body {
     @apply text-foreground;
@@ -639,9 +661,18 @@
     display: none;
   }
 
+  /* Explicit opt-out of the global thin scrollbar (chip strips, carousels). */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Theme-aware thin scrollbar. Colors derive from theme tokens, so it adapts
-     to light/dark and every custom palette automatically. Overrides the global
-     scrollbar-hiding rule. */
+     to light/dark and every custom palette automatically. Now identical to
+     the global default; kept so existing usages stay explicit. */
   .sts-scroll {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--border) 85%, transparent)

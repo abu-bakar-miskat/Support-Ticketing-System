@@ -334,15 +334,20 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     if (allItems.length > 0 && activeIndex === -1) setActiveId(allItems[0].id);
   }, [allItems, activeIndex]);
 
+  // Focus the input on open and hand focus back to whatever had it on close.
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     setTimeout(() => inputRef.current?.focus(), 0);
+    return () => previouslyFocused?.focus?.();
   }, [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!open) return;
       if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
+      // Options are driven by arrow keys; keep Tab from escaping the modal.
+      if (e.key === "Tab") { e.preventDefault(); inputRef.current?.focus(); return; }
       if (e.key === "ArrowDown") { e.preventDefault(); const n = allItems[(activeIndex + 1) % allItems.length]; if (n) setActiveId(n.id); return; }
       if (e.key === "ArrowUp") { e.preventDefault(); const p = allItems[(activeIndex - 1 + allItems.length) % allItems.length]; if (p) setActiveId(p.id); return; }
       if (e.key === "Enter") { e.preventDefault(); const item = allItems[activeIndex]; if (item) handleSelect(item); }
@@ -357,6 +362,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]" onClick={onClose}>
       <div className="sts-overlay-enter absolute inset-0 sts-overlay-backdrop" />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         className="relative z-10 w-full max-w-[640px] overflow-hidden rounded-[8px] sts-glass-panel sts-modal-enter border ring-1 ring-white/30 dark:ring-white/10"
         onClick={(e) => e.stopPropagation()}
       >
@@ -368,6 +376,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            role="combobox"
+            aria-label="Search tickets, projects and settings"
+            aria-expanded={visibleGroups.length > 0}
+            aria-controls="command-palette-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={activeId ? optionDomId(activeId) : undefined}
             placeholder="Search tickets, projects, settings… or try ENG-123"
             className="min-w-0 flex-1 bg-transparent font-sans text-[15px] text-sts-foreground outline-none placeholder:text-sts-subtle"
             style={{ caretColor: "#38bdf8" }}
@@ -379,13 +393,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         </div>
 
         {/* Results */}
-        <div className="flex flex-col gap-0.5 overflow-y-auto p-2" style={{ maxHeight: "calc(80vh - 52px - 38px)" }}>
+        <div
+          id="command-palette-listbox"
+          role="listbox"
+          aria-label="Results"
+          className="flex flex-col gap-0.5 overflow-y-auto p-2"
+          style={{ maxHeight: "calc(80vh - 52px - 38px)" }}
+        >
           {visibleGroups.length === 0 && query.length >= 2 && !searching && (
-            <p className="py-8 text-center font-sans text-[13px] text-sts-subtle">No results for "{query}"</p>
+            <p role="status" className="py-8 text-center font-sans text-[13px] text-sts-subtle">No results for "{query}"</p>
           )}
           {visibleGroups.map((group) => (
-            <div key={group.heading}>
-              <div className="flex h-[22px] items-center pl-2.5">
+            <div key={group.heading} role="group" aria-label={group.heading}>
+              <div className="flex h-[22px] items-center pl-2.5" aria-hidden="true">
                 <span className="sts-text-label">{group.heading}</span>
               </div>
               {group.items.map((item) => {
@@ -396,7 +416,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 return (
                   <button
                     key={item.id}
+                    id={optionDomId(item.id)}
                     type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    tabIndex={-1}
                     className={cn(
                       "flex w-full items-center gap-[10px] rounded-lg px-2.5 text-left transition-colors",
                       (t || p) ? "h-10" : "h-9",
@@ -485,6 +509,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       </div>
     </div>
   );
+}
+
+function optionDomId(itemId: string) {
+  return `cmdk-opt-${itemId.replace(/[^\w-]/g, "_")}`;
 }
 
 export function useCommandPalette() {

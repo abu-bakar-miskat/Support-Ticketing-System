@@ -38,47 +38,48 @@ export async function DashboardShellLayout({ children }: { children: React.React
     console.error("[dashboard-layout] getProfile failed:", err);
     const detail =
       process.env.NODE_ENV !== "production" && err instanceof Error ? err.message : null;
+    // Rendered inside the root layout's <body>, so no <html>/<body> here.
     return (
-      <html lang="en" className="h-full">
-        <body className="flex min-h-full flex-col items-center justify-center gap-4 bg-white p-8 dark:bg-gray-950">
-          <div className="flex max-w-md flex-col items-center gap-3 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-900/30">
-              <svg
-                className="size-6 text-red-600 dark:text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                />
-              </svg>
-            </div>
-            <h1 className="font-semibold text-gray-900 dark:text-white text-lg">
-              Database unavailable
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              We could not connect to the database. This is usually a configuration issue on the
-              server.
-            </p>
-            {detail && (
-              <pre className="w-full overflow-x-auto rounded-lg bg-gray-100 dark:bg-gray-900 p-3 text-left text-xs text-gray-700 dark:text-gray-300">
-                {detail}
-              </pre>
-            )}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- A hard reload retries the failed database connection. */}
-            <a
-              href="/"
-              className="mt-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
+      <div
+        role="alert"
+        className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8"
+      >
+        <div className="flex max-w-md flex-col items-center gap-3 text-center">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-sts-red-tint">
+            <svg
+              className="size-6 text-sts-red"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden="true"
             >
-              Try again
-            </a>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              />
+            </svg>
           </div>
-        </body>
-      </html>
+          <h1 className="sts-text-page-title">Can&apos;t reach the server</h1>
+          <p className="font-sans text-[13px] leading-relaxed text-sts-muted">
+            We couldn&apos;t load your workspace because the database didn&apos;t respond. This is
+            usually temporary — try again in a moment.
+          </p>
+          {detail && (
+            <pre className="w-full overflow-x-auto rounded-lg bg-sts-surface p-3 text-left font-mono text-xs text-sts-muted">
+              {detail}
+            </pre>
+          )}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- A hard reload retries the failed database connection. */}
+          <a
+            href="/"
+            className="mt-2 inline-flex h-9 items-center rounded-full bg-sts-button px-5 font-sans text-[13px] font-semibold text-sts-button-fg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60"
+          >
+            Try again
+          </a>
+        </div>
+      </div>
     );
   }
 

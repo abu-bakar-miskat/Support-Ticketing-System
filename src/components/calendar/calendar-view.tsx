@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   addMonths,
   eachDayOfInterval,
@@ -19,6 +19,7 @@ import type { LucideIcon } from "lucide-react"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { MemberConfigPanel } from "@/components/settings/member-config-panel"
 import { useAvailabilityRefresh } from "@/components/providers/availability-provider"
@@ -62,6 +63,7 @@ export function CalendarView({
   const refreshAvailability = useAvailabilityRefresh()
   const [monthAnchor, setMonthAnchor] = useState(() => startOfMonth(new Date()))
   const [configMember, setConfigMember] = useState<{ id: string; name: string; email: string } | null>(null)
+  const [pendingRemoval, setPendingRemoval] = useState<{ kind: "holiday" | "event"; id: string; name: string } | null>(null)
 
   const gridStart = startOfWeek(startOfMonth(monthAnchor), { weekStartsOn: 0 })
   const gridEnd = endOfWeek(endOfMonth(monthAnchor), { weekStartsOn: 0 })
@@ -76,6 +78,8 @@ export function CalendarView({
         ? initialData
         : undefined,
     staleTime: 30_000,
+    // Keep the previous month on screen while the next one loads (no empty flash).
+    placeholderData: keepPreviousData,
   })
 
   const canManage = data?.canManage ?? false
@@ -241,8 +245,8 @@ export function CalendarView({
                         <button
                           type="button"
                           aria-label={`Remove ${h.name}`}
-                          className="ml-auto opacity-0 transition group-hover:opacity-100"
-                          onClick={() => deleteHoliday.mutate(h.id)}
+                          className="ml-auto opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                          onClick={() => setPendingRemoval({ kind: "holiday", id: h.id, name: h.name })}
                         >
                           <X className="size-3" />
                         </button>
@@ -264,8 +268,8 @@ export function CalendarView({
                           <button
                             type="button"
                             aria-label={`Remove ${ev.title}`}
-                            className="ml-auto opacity-0 transition group-hover:opacity-100"
-                            onClick={() => deleteEvent.mutate(ev.id)}
+                            className="ml-auto opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                            onClick={() => setPendingRemoval({ kind: "event", id: ev.id, name: ev.title })}
                           >
                             <X className="size-3" />
                           </button>
@@ -335,6 +339,22 @@ export function CalendarView({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={pendingRemoval !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingRemoval(null)
+        }}
+        title={pendingRemoval?.kind === "holiday" ? "Remove holiday?" : "Remove event?"}
+        description={`"${pendingRemoval?.name ?? ""}" will be removed from the department calendar for everyone.`}
+        confirmLabel="Remove"
+        onConfirm={async () => {
+          if (!pendingRemoval) return
+          // The mutations toast their own success/failure.
+          const m = pendingRemoval.kind === "holiday" ? deleteHoliday : deleteEvent
+          await m.mutateAsync(pendingRemoval.id).catch(() => undefined)
+        }}
+      />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   AGREEMENT_DOC_ACCEPT,
   AGREEMENT_DOC_MAX_LABEL,
@@ -81,6 +82,11 @@ export function TenantAgreements({
   const [endDate, setEndDate] = useState("");
   const [renewalStatus, setRenewalStatus] = useState<RenewalStatus>("ACTIVE");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [docToRemove, setDocToRemove] = useState<{
+    agreementId: string;
+    documentId: string;
+    fileName: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function overlapsExisting(startISO: string, endISO: string, excludeId?: string) {
@@ -179,6 +185,7 @@ export function TenantAgreements({
     toast.success(`"${file.name}" uploaded.`);
   }
 
+  // Throws on failure so ConfirmDialog surfaces the error as a toast.
   async function removeDocument(agreementId: string, documentId: string) {
     setBusyId(agreementId);
     setError(null);
@@ -189,8 +196,7 @@ export function TenantAgreements({
     setBusyId(null);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to remove document");
-      return;
+      throw new Error(body.error ?? "Failed to remove document");
     }
     setAgreements((prev) =>
       prev.map((a) =>
@@ -314,9 +320,9 @@ export function TenantAgreements({
                     aria-label={`Remove ${d.fileName}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      removeDocument(a.id, d.id);
+                      setDocToRemove({ agreementId: a.id, documentId: d.id, fileName: d.fileName });
                     }}
-                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sts-red"
+                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sts-red focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -347,6 +353,17 @@ export function TenantAgreements({
           <li className="font-sans text-[12px] text-sts-subtle">No agreements recorded yet.</li>
         )}
       </ul>
+      <ConfirmDialog
+        open={docToRemove !== null}
+        onOpenChange={(o) => { if (!o) setDocToRemove(null); }}
+        title="Remove document?"
+        description={docToRemove ? `"${docToRemove.fileName}" will be permanently removed from this agreement.` : ""}
+        confirmLabel="Remove"
+        successMessage="Document removed."
+        onConfirm={async () => {
+          if (docToRemove) await removeDocument(docToRemove.agreementId, docToRemove.documentId);
+        }}
+      />
     </section>
   );
 }

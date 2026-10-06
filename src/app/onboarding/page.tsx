@@ -7,6 +7,6 @@ export default async function Page() {
 
   // Onboarding is invite-only: a user with no workspace membership is simply
   // asked to contact their tenant/department manager for an invite link, so the
-  // page needs nothing beyond their own name.
-  return <OnboardingPage userName={profile.name} />
+  // page needs nothing beyond their own name and email.
+  return <OnboardingPage userName={profile.name} userEmail={profile.email} />
 }

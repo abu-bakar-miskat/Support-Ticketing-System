@@ -15,6 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { MemberOption } from "@/components/ui/issue-assignee-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -161,6 +162,7 @@ export function AssignmentSettingsPage({
   // from any of them via issue routing).
   const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
   const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
+  const [ruleToDelete, setRuleToDelete] = useState<string | null>(null);
 
   // Department page only: a dropdown to view/manage a specific sub-department's
   // assignment. "" = the department itself; a sub-department id = that sub-dept's
@@ -522,7 +524,7 @@ export function AssignmentSettingsPage({
                         </label>
                         <button
                           type="button"
-                          onClick={() => deleteRule(rule.id)}
+                          onClick={() => setRuleToDelete(rule.id)}
                           aria-label="Delete rule"
                           className="sts-pressable rounded-full p-1.5 text-sts-subtle transition-colors hover:bg-sts-red-tint hover:text-sts-red"
                         >
@@ -564,6 +566,15 @@ export function AssignmentSettingsPage({
           </SectionCard>
         )}
       </div>
+      <ConfirmDialog
+        open={ruleToDelete !== null}
+        onOpenChange={(o) => { if (!o) setRuleToDelete(null); }}
+        title="Delete assignment rule?"
+        description="New tickets will no longer be routed by this rule. This can't be undone."
+        onConfirm={async () => {
+          if (ruleToDelete) await deleteRule(ruleToDelete);
+        }}
+      />
     </div>
   );
 }

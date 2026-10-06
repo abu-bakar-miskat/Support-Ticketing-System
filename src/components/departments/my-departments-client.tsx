@@ -6,6 +6,7 @@ import { DepartmentIconVisual } from "@/components/icons/department-icon-visual"
 import { Users, FolderKanban, ArrowRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export type MyDepartmentItem = {
   id: string;
@@ -120,7 +121,11 @@ export function MyDepartmentsClient({ departments }: { departments: MyDepartment
       <div className="border-b border-sts-card-border bg-sts-card/50 px-6 py-6 sm:px-10">
         <PageHeader
           title="My Departments"
-          description={`You have access to ${departments.length} departments. Select one to enter its workspace.`}
+          description={
+            departments.length === 0
+              ? "You don't have access to any departments yet."
+              : `You have access to ${departments.length} department${departments.length === 1 ? "" : "s"}. Select one to enter its workspace.`
+          }
           icon={DepartmentIcon}
           iconClassName="text-sts-blue"
         />
@@ -128,11 +133,19 @@ export function MyDepartmentsClient({ departments }: { departments: MyDepartment
 
       {/* Department grid */}
       <div className="px-6 py-6 sm:px-10">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {departments.map((dept) => (
-            <DeptCard key={dept.id} dept={dept} />
-          ))}
-        </div>
+        {departments.length === 0 ? (
+          <EmptyState
+            icon={DepartmentIcon}
+            title="No departments yet"
+            description="Ask your workspace admin to add you to a department. Once they do, it will appear here."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {departments.map((dept) => (
+              <DeptCard key={dept.id} dept={dept} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

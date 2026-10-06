@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 const ACCEPT_TIMEOUT_MS = 20_000;
@@ -20,6 +21,8 @@ type AcceptJson = {
  */
 export function AutoAcceptInvite({ acceptUrl }: { acceptUrl: string }) {
   const [error, setError] = useState<string | null>(null);
+  // Bumped by "Try again" to re-run the accept request.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -59,7 +62,7 @@ export function AutoAcceptInvite({ acceptUrl }: { acceptUrl: string }) {
       window.clearTimeout(timeout);
       ac.abort();
     };
-  }, [acceptUrl]);
+  }, [acceptUrl, attempt]);
 
   if (error) {
     return (
@@ -68,12 +71,22 @@ export function AutoAcceptInvite({ acceptUrl }: { acceptUrl: string }) {
           Couldn&apos;t finish accepting
         </h1>
         <p className="mt-2 text-center text-[13.5px] text-sts-muted">{error}</p>
-        <a
-          href="/"
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setAttempt((n) => n + 1);
+          }}
           className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sts-blue px-4 py-2.5 text-[14px] font-medium text-white hover:opacity-90"
         >
+          Try again
+        </button>
+        <Link
+          href="/"
+          className="mt-3 text-[13px] font-medium text-sts-blue hover:underline"
+        >
           Open dashboard
-        </a>
+        </Link>
       </div>
     );
   }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTenantHref } from "@/hooks/use-tenant-href";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -271,6 +273,8 @@ export function SlaSettingsPage({
   // Only enable the save button once the user has changed something.
   const isDirty =
     savedSnapshot !== null && JSON.stringify({ slaConfig, businessHours }) !== savedSnapshot;
+  useUnsavedChangesGuard(isDirty);
+  const tenantHref = useTenantHref();
 
   // In department-wide mode only department-level policies (no sub-department)
   // are managed here; sub-department-scoped ones live on the sub-department page.
@@ -297,7 +301,7 @@ export function SlaSettingsPage({
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       {!hideBackLink && (
         <Link
-          href="/settings/departments"
+          href={tenantHref("/settings/departments")}
           className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ArrowLeft className="size-3.5" /> Back to departments
@@ -698,6 +702,7 @@ function PolicyRow({
     draft.firstResponseMins !== policy.firstResponseMins ||
     draft.resolutionMins !== policy.resolutionMins ||
     draft.subDepartmentId !== policy.subDepartmentId;
+  useUnsavedChangesGuard(dirty);
 
   // Sub-department is required whenever the department has sub-departments to
   // pick from (mirrors the create path).

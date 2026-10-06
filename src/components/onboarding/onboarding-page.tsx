@@ -26,13 +26,15 @@ function SignOutButton() {
 
 type Props = {
   userName: string
+  /** Shown so someone signed in with the wrong address can spot it. */
+  userEmail?: string
 }
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || name
 }
 
-export function OnboardingPage({ userName }: Props) {
+export function OnboardingPage({ userName, userEmail }: Props) {
   return (
     <main className="sts-ambient-bg relative flex min-h-svh flex-col font-sans">
       {/* Top bar */}
@@ -50,7 +52,7 @@ export function OnboardingPage({ userName }: Props) {
         <div className="sts-page-enter flex items-center gap-2.5">
           <UserAvatar name={userName} size={28} />
           <span className="font-sans text-[12px] text-sts-muted">
-            Signed in as <span className="font-medium text-sts-foreground">{userName}</span>
+            Signed in as <span className="font-medium text-sts-foreground">{userEmail || userName}</span>
           </span>
         </div>
 

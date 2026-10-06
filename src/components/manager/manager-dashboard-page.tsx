@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ManagerDashboard } from "@/components/manager/manager-dashboard";
+import { ManagerDashboardSkeleton } from "@/components/skeletons/page-skeletons";
 import {
   emptyManagerDashboard,
   type ManagerDashboardData,
@@ -22,6 +23,10 @@ export function ManagerDashboardPage({ managerName }: { managerName: string }) {
     placeholderData: placeholder,
     refetchOnWindowFocus: false,
   });
+
+  // Placeholder data is all zeros — show a skeleton rather than "0" metrics and
+  // misleading empty states until the real numbers arrive.
+  if (isPlaceholderData && !isError) return <ManagerDashboardSkeleton />;
 
   const view = {
     ...data,

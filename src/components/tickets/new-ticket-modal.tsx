@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpandableDescriptionEditor } from "@/components/ui/expandable-description-editor";
 import { AiComposeButton } from "@/components/tickets/ai-compose-button";
@@ -360,19 +361,38 @@ export function NewTicketModal({
     titleRef.current?.focus();
   }, []);
 
+  // Closing an edited form asks first so a stray Escape/Cancel doesn't throw
+  // away the ticket being written (attachments included).
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const isDirty = () =>
+      Boolean(titleRef.current?.value.trim()) ||
+      descriptionHtml.replace(/<[^>]*>/g, "").trim() !== "" ||
+      labels.length > 0 ||
+      assetLinks.length > 0 ||
+      estInput.trim() !== "" ||
+      Object.values(customFieldValues).some((v) => String(v ?? "").trim() !== "") ||
+      Object.values(fileObjectsMap).some((m) => Object.keys(m).length > 0);
+  const requestClose = () => {
+    if (isDirty()) setConfirmDiscard(true);
+    else onClose();
+  };
+
   // Close on Escape — collapse description first, then close modal
+  const onEscape = useEffectEvent(() => {
+    if (confirmDiscard) return;
+    if (descriptionExpanded) {
+      setDescriptionExpanded(false);
+      return;
+    }
+    requestClose();
+  });
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      if (descriptionExpanded) {
-        setDescriptionExpanded(false);
-        return;
-      }
-      onClose();
+      if (e.key === "Escape") onEscape();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, descriptionExpanded]);
+  }, []);
 
   // Submit on Cmd/Ctrl+Enter
   useEffect(() => {
@@ -581,7 +601,7 @@ export function NewTicketModal({
           <div className="flex-1" />
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
             className="flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
@@ -1075,7 +1095,7 @@ export function NewTicketModal({
             <div className="flex-1" />
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border"
             >
               Cancel
@@ -1106,6 +1126,14 @@ export function NewTicketModal({
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        title="Discard this ticket?"
+        description="You have unsaved changes. If you close now, everything you've entered will be lost."
+        confirmLabel="Discard"
+        onConfirm={async () => onClose()}
+      />
     </div>
   );
 }

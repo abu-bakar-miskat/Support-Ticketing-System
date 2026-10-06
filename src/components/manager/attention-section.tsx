@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle, Check, ChevronDown, Eye, MessageCircle, UserX, Users, X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { toastError } from "@/lib/toast-error";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { DrawerLink } from "@/components/tickets/drawer-link";
 
@@ -189,16 +192,33 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
+  const [confirmReject, setConfirmReject] = useState(false);
 
-  async function handle(action: "approve" | "reject") {
-    setLoading(action);
+  // Throws on failure so the reject ConfirmDialog stays open and shows it.
+  async function process(action: "approve" | "reject") {
     const res = await fetch(`/api/join-requests/${req.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...(req.subDepartmentId ? { subDepartmentId: req.subDepartmentId } : {}) }),
     });
-    setLoading(null);
-    if (res.ok) { onProcessed(req.id); startTransition(() => router.refresh()); }
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error || `Couldn't ${action} the request`);
+    }
+    onProcessed(req.id);
+    startTransition(() => router.refresh());
+  }
+
+  async function approve() {
+    setLoading("approve");
+    try {
+      await process("approve");
+      toast.success(`${req.user.name} approved`);
+    } catch (err) {
+      toastError("Couldn't approve the request", err);
+    } finally {
+      setLoading(null);
+    }
   }
 
   return (
@@ -216,17 +236,28 @@ function JoinRow({ req, onProcessed }: { req: JoinRequest; onProcessed: (id: str
       </div>
       <span className="shrink-0 font-sans text-[11px] text-sts-subtle">{timeAgo(req.requestedAt)}</span>
       <button
-        type="button" disabled={!!loading} onClick={() => handle("approve")}
+        type="button" disabled={!!loading} onClick={() => void approve()}
+        aria-label={`Approve ${req.user.name}`} title="Approve"
         className="flex size-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 dark:text-emerald-400"
       >
         <Check className="size-3.5" strokeWidth={2.5} />
       </button>
       <button
-        type="button" disabled={!!loading} onClick={() => handle("reject")}
+        type="button" disabled={!!loading} onClick={() => setConfirmReject(true)}
+        aria-label={`Reject ${req.user.name}`} title="Reject"
         className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40"
       >
         <X className="size-3.5" strokeWidth={2.5} />
       </button>
+      <ConfirmDialog
+        open={confirmReject}
+        onOpenChange={setConfirmReject}
+        title="Reject join request?"
+        description={`${req.user.name} won't be added to ${req.target}. They can send a new request later.`}
+        confirmLabel="Reject"
+        successMessage="Request rejected"
+        onConfirm={() => process("reject")}
+      />
     </div>
   );
 }

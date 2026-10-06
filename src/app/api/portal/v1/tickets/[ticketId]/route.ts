@@ -30,7 +30,6 @@ export async function GET(
         description: true,
         status: true,
         type: true,
-        category: true,
         createdAt: true,
         updatedAt: true,
         closedAt: true,
@@ -75,7 +74,6 @@ export async function GET(
         description: ticket.description,
         status: ticket.status,
         type: ticket.type,
-        category: ticket.category,
         createdAt: ticket.createdAt,
         updatedAt: ticket.updatedAt,
         lastActivityAt: latestPortalActivityAt(

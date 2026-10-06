@@ -17,7 +17,6 @@ describe("portal submission presentation", () => {
         id: "ticket-1",
         ticketNumber: 184,
         title: "Unable to access my account",
-        category: "TechnicalIssue",
         status: "In Progress",
         updatedAt,
         subDepartment: {
@@ -33,7 +32,6 @@ describe("portal submission presentation", () => {
     expect(result.responses).toEqual([{ fieldId: "field-1", value: "Help" }])
     expect(result.ticket).toMatchObject({
       reference: "IT-184",
-      category: "TechnicalIssue",
       department: { id: "dept-1", name: "Technical Support" },
       subDepartment: { id: "sub-1", name: "Service Desk" },
       updatedAt,

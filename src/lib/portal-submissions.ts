@@ -9,7 +9,6 @@ export type PortalSubmissionRow = {
     id: string
     ticketNumber: number
     title: string
-    category: string | null
     status: string
     updatedAt: Date
     subDepartment: {
@@ -47,7 +46,6 @@ export function toSubmissionJson(submission: PortalSubmissionRow) {
           id: ticket.id,
           reference: `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`,
           title: ticket.title,
-          category: ticket.category,
           department: ticket.subDepartment.department,
           subDepartment: { id: ticket.subDepartment.id, name: ticket.subDepartment.name },
           status: ticket.status,

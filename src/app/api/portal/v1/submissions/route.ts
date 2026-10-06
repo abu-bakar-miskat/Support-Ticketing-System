@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
             id: true,
             ticketNumber: true,
             title: true,
-            category: true,
             status: true,
             updatedAt: true,
             subDepartment: {

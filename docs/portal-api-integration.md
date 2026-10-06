@@ -265,7 +265,6 @@ The endpoint returns up to 50 newest submissions:
         "id": "cmticket123",
         "reference": "IT-184",
         "title": "Unable to access my account",
-        "category": "TechnicalIssue",
         "department": {
           "id": "cmdepartment123",
           "name": "Technical Support"
@@ -304,7 +303,6 @@ Example response:
     "description": "Submitted support request details",
     "status": "OPEN",
     "type": "Task",
-    "category": "TechnicalIssue",
     "createdAt": "2026-10-05T14:30:00.000Z",
     "updatedAt": "2026-10-05T14:35:00.000Z",
     "lastActivityAt": "2026-10-05T14:42:00.000Z",

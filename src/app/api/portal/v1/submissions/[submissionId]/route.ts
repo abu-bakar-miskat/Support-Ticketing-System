@@ -33,7 +33,6 @@ export async function GET(
             id: true,
             ticketNumber: true,
             title: true,
-            category: true,
             status: true,
             updatedAt: true,
             subDepartment: {

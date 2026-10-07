@@ -3,6 +3,8 @@ import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { timeAgo } from "@/lib/format"
 import { ticketPayloadInScope, resolveNotificationScope, joinRequestInDeptScope } from "@/lib/notification-scope"
+import { countUnreadNotifications } from "@/lib/dashboard-badges-data"
+import { runAsSystem } from "@/lib/request-scope"
 
 export async function GET() {
   const { profile, error } = await requireAuth()
@@ -11,7 +13,7 @@ export async function GET() {
   // Department-scoped to the caller's active department (see resolveNotificationScope).
   const { allowedSubDepartmentIds, activeDeptId } = await resolveNotificationScope(profile)
 
-  const rows = await prisma.notification.findMany({
+  const [rows, unreadCount] = await Promise.all([prisma.notification.findMany({
     where: { recipientId: profile.id },
     orderBy: { createdAt: "desc" },
     take: 10,
@@ -30,7 +32,11 @@ export async function GET() {
         select: { id: true, status: true, departmentId: true },
       },
     },
-  })
+  }),
+  // Same query as the bell badge, so the panel header and badge always agree
+  // (unread among the 10 rows shown would undercount).
+  runAsSystem(() => countUnreadNotifications(profile.id, allowedSubDepartmentIds ?? undefined, activeDeptId)),
+  ])
 
   const now = new Date()
 
@@ -60,5 +66,5 @@ export async function GET() {
       : null,
   }))
 
-  return NextResponse.json(items)
+  return NextResponse.json({ items, unreadCount })
 }

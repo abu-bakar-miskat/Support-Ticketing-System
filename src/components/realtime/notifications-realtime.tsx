@@ -40,15 +40,13 @@ export function NotificationsRealtime() {
 
   const { requestAndSetup } = usePushNotifications();
 
-  // Initialize once with the server-rendered count. Using a ref guard so
-  // re-renders of the provider (e.g. sidebar collapse) don't reset live increments.
-  const initDone = useRef(false);
+  // Sync whenever the server count changes — not just on mount. Layout badges
+  // can be deferred (first paint has inboxCount 0, the real count hydrates
+  // later), so a mount-only init left the bell stuck at 0 + live increments.
+  // Re-renders with an unchanged count don't re-run this, so live increments survive.
   useEffect(() => {
-    if (initDone.current) return;
-    initDone.current = true;
     init(inboxCount);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [init, inboxCount]);
 
   // If permission was already granted in a prior session, treat the page as
   // interacted so sound plays immediately without waiting for a click.

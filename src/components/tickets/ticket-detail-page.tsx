@@ -2440,7 +2440,11 @@ export function TicketDetailPage({
               />
 
               {!isHydrating ? (
-                <SlaIndicatorBadge ticketId={dbId} size="md" />
+                <SlaIndicatorBadge
+                  ticketId={dbId}
+                  size="md"
+                  refreshKey={liveMessages.map((message) => message.id).join(":")}
+                />
               ) : null}
 
               {transferredFromName && (

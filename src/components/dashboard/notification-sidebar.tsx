@@ -162,16 +162,23 @@ export function NotificationSidebar({
   const [loading, setLoading] = useState(false);
   const decrement = useNotificationStore((s) => s.decrement);
   const reset     = useNotificationStore((s) => s.reset);
+  const init      = useNotificationStore((s) => s.init);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const fetchRecent = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/notifications/recent");
-      if (res.ok) setItems(await res.json());
+      if (res.ok) {
+        const data = (await res.json()) as { items: RecentNotif[]; unreadCount: number };
+        setItems(data.items);
+        // Re-sync the bell badge with the authoritative server count.
+        init(data.unreadCount);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [init]);
 
   useEffect(() => {
     if (open) fetchRecent();
@@ -198,8 +205,6 @@ export function NotificationSidebar({
     reset();
     markAllNotificationsRead().catch(() => null);
   }
-
-  const unreadCount = items.filter((n) => n.unread).length;
 
   return (
     <>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 type SlaMetric = {
@@ -43,14 +43,22 @@ function formatDuration(ms: number): string {
 }
 
 /** SLA-06: on-ticket indicator (ON_TRACK/AT_RISK/BREACHED) with remaining/overdue time. */
-export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string; size?: "sm" | "md" }) {
+export function SlaIndicatorBadge({
+  ticketId,
+  size = "sm",
+  refreshKey,
+}: {
+  ticketId: string
+  size?: "sm" | "md"
+  /** Changes whenever the ticket conversation changes so stopped/paused clocks refresh immediately. */
+  refreshKey?: number | string
+}) {
   const [indicator, setIndicator] = useState<SlaIndicator | null | undefined>(undefined)
   // Client clock at the moment the current snapshot was received; the live
   // countdown measures elapsed time from here rather than trusting `asOf`
   // directly, so unsynced client/server clocks don't skew the number.
-  const anchorRef = useRef(0)
-  // Bumps to force a re-render so the interpolated time re-computes; value unused.
-  const [, tick] = useState(0)
+  const [receivedAt, setReceivedAt] = useState(0)
+  const [clock, setClock] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -58,7 +66,9 @@ export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string;
       .then((res) => (res.ok ? res.json() : { indicator: null }))
       .then((data) => {
         if (!cancelled) {
-          anchorRef.current = Date.now()
+          const now = Date.now()
+          setReceivedAt(now)
+          setClock(now)
           setIndicator(data.indicator ?? null)
         }
       })
@@ -68,14 +78,14 @@ export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string;
     return () => {
       cancelled = true
     }
-  }, [ticketId])
+  }, [ticketId, refreshKey])
 
   // Only tick while a metric's clock is actually moving; when everything is
   // stopped or paused (outside hours / waiting on customer) we render statically.
   const anyRunning = !!indicator && (indicator.firstResponse.running || indicator.resolution.running)
   useEffect(() => {
     if (!anyRunning) return
-    const id = setInterval(() => tick((t) => t + 1), TICK_MS)
+    const id = setInterval(() => setClock(Date.now()), TICK_MS)
     return () => clearInterval(id)
   }, [anyRunning])
 
@@ -86,7 +96,7 @@ export function SlaIndicatorBadge({ ticketId, size = "sm" }: { ticketId: string;
   const activeMetric =
     indicator.firstResponse.status === indicator.overall ? indicator.firstResponse : indicator.resolution
   // Interpolate down from the snapshot only while this metric's clock is running.
-  const elapsedSinceFetch = activeMetric.running ? Date.now() - anchorRef.current : 0
+  const elapsedSinceFetch = activeMetric.running ? clock - receivedAt : 0
   const remainingMs = activeMetric.remainingMs - elapsedSinceFetch
   const timeLabel =
     remainingMs >= 0

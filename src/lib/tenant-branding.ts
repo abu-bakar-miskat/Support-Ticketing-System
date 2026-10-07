@@ -11,7 +11,10 @@ export type TenantBranding = {
   logoUrl?: string;
   /** Hide the logo in the shell; the display name then fills the width. */
   hideLogo?: boolean;
-  /** Hide the display name in the shell; the logo then fills the width. */
+  /**
+   * Hide the display name in the shell; the logo then fills the width.
+   * Defaults ON (unset = hidden) — stored explicitly as `false` when turned off.
+   */
   hideDisplayName?: boolean;
 };
 
@@ -46,8 +49,9 @@ export function sanitizeTenantBranding(input: unknown): TenantBranding | null {
   }
   if (isUsableUrl(raw.logoUrl)) out.logoUrl = raw.logoUrl;
   // At most one may be hidden — hiding both would leave the shell blank.
+  // hideDisplayName defaults on, so an explicit `false` is kept to record opt-out.
   if (raw.hideLogo === true) out.hideLogo = true;
-  else if (raw.hideDisplayName === true) out.hideDisplayName = true;
+  else if (typeof raw.hideDisplayName === "boolean") out.hideDisplayName = raw.hideDisplayName;
 
   return Object.keys(out).length > 0 ? out : null;
 }
@@ -68,6 +72,7 @@ export function resolveTenantBranding(stored: unknown): ResolvedTenantBranding {
     displayName: b.displayName ?? null,
     logoUrl: b.logoUrl ?? null,
     hideLogo: b.hideLogo ?? false,
-    hideDisplayName: b.hideDisplayName ?? false,
+    // Default on — but only when there's a logo to fill the width.
+    hideDisplayName: b.hideDisplayName ?? (!b.hideLogo && !!b.logoUrl),
   };
 }

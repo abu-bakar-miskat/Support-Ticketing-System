@@ -20,17 +20,26 @@ export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
       mentionedUserId: profile.id, readAt: null,
       ...(deptIds && deptIds.length > 0 ? { comment: { ticket: { subDepartmentId: { in: deptIds } } } } : {}),
     } }),
-    prisma.notification.count({ where: {
-      recipientId: profile.id, readAt: null,
-      // Department-scoped: ticket notifications limited to the active department's
-      // sub-departments, join-request notifications to the active department, and
-      // other (system, non-ticket/non-join) notifications kept.
-      ...(activeDeptId ? { OR: [
-        { ticket: { subDepartmentId: { in: deptIds ?? [] } } },
-        { joinRequest: { subDepartment: { departmentId: activeDeptId } } },
-        { AND: [{ ticketId: null }, { joinRequestId: null }] },
-      ] } : {}),
-    } }),
+    countUnreadNotifications(profile.id, deptIds, activeDeptId),
   ]));
   return { myTasksCount, mentionsCount, inboxCount };
 });
+
+/** Unread bell count — shared by the layout badge and the notification panel so they agree. */
+export function countUnreadNotifications(
+  recipientId: string,
+  deptIds: string[] | undefined,
+  activeDeptId: string | null,
+) {
+  return prisma.notification.count({ where: {
+    recipientId, readAt: null,
+    // Department-scoped: ticket notifications limited to the active department's
+    // sub-departments, join-request notifications to the active department, and
+    // other (system, non-ticket/non-join) notifications kept.
+    ...(activeDeptId ? { OR: [
+      { ticket: { subDepartmentId: { in: deptIds ?? [] } } },
+      { joinRequest: { subDepartment: { departmentId: activeDeptId } } },
+      { AND: [{ ticketId: null }, { joinRequestId: null }] },
+    ] } : {}),
+  } });
+}

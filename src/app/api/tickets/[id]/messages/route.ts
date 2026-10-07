@@ -273,7 +273,9 @@ export async function POST(
   })
 
   // SLA-03: the first PUBLIC agent message stops the first-response timer.
-  stopFirstResponseOnPublicAgentMessage(ticketId, message.createdAt).catch(() => undefined)
+  // Await this write before returning the message so the client cannot refresh
+  // its SLA snapshot while the timer still appears to be running.
+  await stopFirstResponseOnPublicAgentMessage(ticketId, message.createdAt)
 
   // Link uploaded attachments to this message
   if (outboundAttachments.length > 0) {

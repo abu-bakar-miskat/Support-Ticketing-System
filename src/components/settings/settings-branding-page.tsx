@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
@@ -22,7 +23,11 @@ export function SettingsBrandingPage({
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
   const [hideLogo, setHideLogo] = useState(initialBranding.hideLogo ?? false)
-  const [hideDisplayName, setHideDisplayName] = useState(initialBranding.hideDisplayName ?? false)
+  // Default on (logo fills the width) unless the tenant explicitly turned it off.
+  const [hideDisplayName, setHideDisplayName] = useState(
+    initialBranding.hideDisplayName ?? !initialBranding.hideLogo,
+  )
+  const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +56,9 @@ export function SettingsBrandingPage({
       setError(body.error ?? "Failed to save")
       return
     }
-    setStatus("Saved. Reload to see the shell update.")
+    setStatus("Branding saved.")
+    // Re-render the server shell layout so the sidebar header picks up the change.
+    router.refresh()
   }
 
   const labelClass = "block font-sans text-[13px] font-medium text-sts-foreground"

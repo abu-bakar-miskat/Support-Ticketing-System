@@ -44,6 +44,9 @@ vi.mock("@/lib/timer-conversation-sync", () => ({
 vi.mock("@/lib/timer-autostart", () => ({
   startTimerOnStatusChange: vi.fn().mockResolvedValue(undefined),
 }))
+vi.mock("@/lib/sla-engine", () => ({
+  stopFirstResponseOnPublicAgentMessage: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { POST } from "./route"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
@@ -51,6 +54,7 @@ import { prisma } from "@/lib/db"
 import { sendCustomerReplyEmail } from "@/lib/email"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 
 const mockRequireAuth = vi.mocked(requireAuth)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
@@ -63,6 +67,7 @@ const mockUpdateAttachments = vi.mocked(prisma.attachment.updateMany)
 const mockSubDepartmentStatusFindFirst = vi.mocked(prisma.subDepartmentStatus.findFirst)
 const mockSyncWorkTimer = vi.mocked(syncWorkTimerWithConversation)
 const mockStartTimer = vi.mocked(startTimerOnStatusChange)
+const mockStopFirstResponse = vi.mocked(stopFirstResponseOnPublicAgentMessage)
 
 const intakeTicket = {
   id: "ticket-1",
@@ -147,6 +152,30 @@ describe("POST /api/tickets/[id]/messages", () => {
     const json = await res.json()
     expect(json).toMatchObject({ direction: "outbound", body: "Hi Jane, on it." })
     expect(mockSyncWorkTimer).toHaveBeenCalledWith("ticket-1", "outbound")
+    expect(mockStopFirstResponse).toHaveBeenCalledWith(
+      "ticket-1",
+      new Date("2026-07-07T10:00:00Z"),
+    )
+  })
+
+  it("persists the first-response stop before returning the reply", async () => {
+    let releaseStop!: () => void
+    mockStopFirstResponse.mockImplementationOnce(
+      () => new Promise<void>((resolve) => { releaseStop = resolve }),
+    )
+
+    let settled = false
+    const responsePromise = POST(makeRequest({ body: "Hi Jane, on it." }), { params })
+      .then((response) => {
+        settled = true
+        return response
+      })
+
+    await vi.waitFor(() => expect(mockStopFirstResponse).toHaveBeenCalled())
+    expect(settled).toBe(false)
+
+    releaseStop()
+    expect((await responsePromise).status).toBe(201)
   })
 
   it("moves an open ticket to In Progress before applying the waiting-for-customer pause", async () => {

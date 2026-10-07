@@ -3063,7 +3063,12 @@ export function TicketDetailPage({
             )}
 
             {/* Intake */}
-            {intake && <IntakeCard intake={intake} />}
+            {intake && (
+              <IntakeCard
+                intake={intake}
+                sourceLabel={isPortalTicket ? "Portal API Support Form" : undefined}
+              />
+            )}
 
             {!isHydrating ? <RuleExecutionLog ticketId={dbId} /> : null}
 
@@ -3438,7 +3443,7 @@ export function TicketDetailPage({
                 {[
                   {
                     key: "conversation" as const,
-                    label: "Conversation",
+                    label: "Reply",
                     count: sortedMessages.length,
                     show: isSupport && !isPortalTicket,
                   },

@@ -119,7 +119,13 @@ export function IntakeResponseValue({ response: r }: { response: IntakeResponseE
   );
 }
 
-export function IntakeCard({ intake }: { intake: IntakeData }) {
+export function IntakeCard({
+  intake,
+  sourceLabel,
+}: {
+  intake: IntakeData;
+  sourceLabel?: string;
+}) {
   const date = new Date(intake.submittedAt).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
@@ -145,7 +151,7 @@ export function IntakeCard({ intake }: { intake: IntakeData }) {
           <p className="min-w-0 font-sans text-[12.5px] text-sts-foreground">
             <span className="font-semibold">{intake.submitterEmail}</span>{" "}
             raised this request via{" "}
-            <span className="font-semibold">{intake.formName}</span>
+            <span className="font-semibold">{sourceLabel ?? intake.formName}</span>
           </p>
         </div>
         <span className="ml-3 shrink-0 font-sans text-[11.5px] text-sts-subtle">

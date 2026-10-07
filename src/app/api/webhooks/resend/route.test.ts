@@ -66,6 +66,7 @@ vi.mock("@/lib/mailbox-connection", () => ({
 vi.mock("@/lib/mailbox-ticket-creation", () => ({
   createTicketFromInboundEmail: vi.fn(),
   MailboxInactiveError: class MailboxInactiveError extends Error {},
+  DuplicateInboundEmailError: class DuplicateInboundEmailError extends Error {},
 }))
 
 // ── Imports (after mocks) ─────────────────────────────────────────────────────
@@ -77,7 +78,11 @@ import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
-import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
+import {
+  createTicketFromInboundEmail,
+  DuplicateInboundEmailError,
+  MailboxInactiveError,
+} from "@/lib/mailbox-ticket-creation"
 import * as resendMod from "resend"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -325,6 +330,16 @@ describe("POST /api/webhooks/resend", () => {
       subDepartmentPrefix: "SUP",
       creatorId: "creator-1",
       assigneeId: null,
+      message: {
+        id: "msg-new",
+        direction: "inbound",
+        status: "trusted",
+        bodyHtml: "<p>I cannot sign in to my account.</p>",
+        fromName: "Alice",
+        fromEmail: "alice@example.com",
+        createdAt: new Date(),
+        throttled: false,
+      },
     })
     mockReceivingGet.mockResolvedValue({
       data: {
@@ -347,19 +362,44 @@ describe("POST /api/webhooks/resend", () => {
         subject: "Cannot access my account",
         description: "<p>I cannot sign in to my account.</p>",
         mailboxConnectionId: "mailbox-1",
-      }),
-    )
-    expect(mockCreateMsg).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          rawPayload: expect.objectContaining({
-            to: ["forwarded@inbound.pengroup.com"],
-            envelopeTo: ["support@pengroup.com"],
-            mailboxConnectionId: "mailbox-1",
+        // The first message is stored with the ticket, not separately.
+        inboundMessage: expect.objectContaining({
+          data: expect.objectContaining({
+            status: "trusted",
+            rawPayload: expect.objectContaining({
+              to: ["forwarded@inbound.pengroup.com"],
+              envelopeTo: ["support@pengroup.com"],
+              mailboxConnectionId: "mailbox-1",
+            }),
           }),
         }),
       }),
     )
+    expect(mockCreateMsg).not.toHaveBeenCalled()
+  })
+
+  it("does not create a second ticket when a concurrent run already stored the email", async () => {
+    const mailboxEvent = {
+      ...receivedEventPayload,
+      data: { ...receivedEventPayload.data, to: ["support@pengroup.com"] },
+    }
+    mockVerify.mockReturnValue(mailboxEvent)
+    mockFindIntake.mockResolvedValue(null as never)
+    mockFindMailboxConnection.mockResolvedValue({
+      id: "mailbox-1",
+      address: "support@pengroup.com",
+      tenantId: "tenant-1",
+      departmentId: "department-1",
+      subDepartmentId: "team-1",
+      isActive: true,
+    })
+    mockCreateTicketFromInboundEmail.mockRejectedValue(new DuplicateInboundEmailError())
+
+    const res = await POST(makeRequest(mailboxEvent))
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({ ok: true, stored: false })
+    expect(mockCreateMsg).not.toHaveBeenCalled()
   })
 
   it("drops a new mailbox email when the mailbox is turned off during creation", async () => {

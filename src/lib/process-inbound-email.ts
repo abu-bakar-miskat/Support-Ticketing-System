@@ -21,7 +21,11 @@ import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
 import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
-import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
+import {
+  createTicketFromInboundEmail,
+  DuplicateInboundEmailError,
+  MailboxInactiveError,
+} from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
 import { normalizeStatus } from "@/components/board/board-types"
 
@@ -192,6 +196,32 @@ export async function processInboundEmail(
   let submitterEmail: string | null = null
   let isNewTicket = false
   let mailboxConnectionId: string | null = null
+  // Set when the new-ticket path already stored this email as the ticket's
+  // first message (atomically with the ticket).
+  let newTicketMessage: Awaited<ReturnType<typeof createTicketFromInboundEmail>>["message"] | null = null
+
+  const messageData = (status: "trusted" | "quarantined" | "system", throttled: boolean) => ({
+    direction: "inbound" as const,
+    status,
+    authorProfileId: null,
+    fromName,
+    fromEmail,
+    bodyHtml,
+    throttled,
+    rawPayload: {
+      from: email.from, to: email.to, subject: email.subject,
+      text: email.text, html: email.html, headers, quotedText: quoted,
+      resendEmailId: emailId,
+      // The webhook envelope is the source used to route direct mail. Keep
+      // it separately from the provider's fetched `to` field, which can be
+      // rewritten during forwarding. The resolved connection makes mailbox
+      // filtering unambiguous and excludes ordinary ticket replies.
+      envelopeTo: recipients,
+      mailboxConnectionId,
+    },
+    providerMessageId: normalizedMessageId,
+    inReplyTo: headers["in-reply-to"] ?? null,
+  })
 
   const token = recipients.map(extractReplyToken).find(Boolean) ?? null
   if (token) {
@@ -319,8 +349,16 @@ export async function processInboundEmail(
         subject: email.subject,
         description: bodyHtml,
         mailboxConnectionId: route.id,
+        // A freshly-created ticket has no baseline submitter email to verify
+        // against, so its first message is always "trusted" — never quarantined.
+        inboundMessage: { providerMessageIds: idVariants, data: messageData("trusted", false) },
       })
     } catch (err) {
+      // A concurrent run of this same email already created its ticket.
+      if (err instanceof DuplicateInboundEmailError) {
+        console.log("[inbound] duplicate inbound email skipped at ticket creation:", normalizedMessageId)
+        return false
+      }
       // DS-08: the department hasn't completed setup yet — drop the message
       // rather than fail the whole webhook. Not logged as a suppression
       // (that's specifically for auto-generated mail, EM-06); this is just
@@ -366,6 +404,7 @@ export async function processInboundEmail(
       subDepartment: { prefix: createdTicket.subDepartmentPrefix },
     }
     isNewTicket = true
+    newTicketMessage = createdTicket.message
   }
 
   // A freshly-created ticket has no baseline submitter email to verify
@@ -382,7 +421,7 @@ export async function processInboundEmail(
   // advisory lock serializes those runs across connections/instances (a session
   // lock wouldn't survive the transaction pooler), and the re-check inside the
   // lock skips the insert when a concurrent run already committed it.
-  const created = await prisma.$transaction(async (tx) => {
+  const created = newTicketMessage ?? await prisma.$transaction(async (tx) => {
     // $executeRaw (not $queryRaw): pg_advisory_xact_lock returns SQL `void`, which
     // the driver adapter can't deserialize as a result column. We only need the
     // lock's side effect, so execute without reading the result set.
@@ -393,29 +432,7 @@ export async function processInboundEmail(
     })
     if (dup) return null
     return tx.ticketMessage.create({
-      data: {
-        ticketId: ticket.id,
-        direction: "inbound",
-        status: messageStatus,
-        authorProfileId: null,
-        fromName,
-        fromEmail,
-        bodyHtml,
-        throttled,
-        rawPayload: {
-          from: email.from, to: email.to, subject: email.subject,
-          text: email.text, html: email.html, headers, quotedText: quoted,
-          resendEmailId: emailId,
-          // The webhook envelope is the source used to route direct mail. Keep
-          // it separately from the provider's fetched `to` field, which can be
-          // rewritten during forwarding. The resolved connection makes mailbox
-          // filtering unambiguous and excludes ordinary ticket replies.
-          envelopeTo: recipients,
-          mailboxConnectionId,
-        },
-        providerMessageId: normalizedMessageId,
-        inReplyTo: headers["in-reply-to"] ?? null,
-      },
+      data: { ...messageData(messageStatus, throttled), ticketId: ticket.id },
       select: { id: true, direction: true, status: true, bodyHtml: true, fromName: true, fromEmail: true, createdAt: true, throttled: true },
     })
   })

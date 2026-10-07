@@ -11,6 +11,7 @@ import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
 import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
 import { TicketPriority } from "@/generated/prisma/enums";
+import type { Prisma } from "@/generated/prisma/client";
 
 /**
  * EM-01/02/03: creates a brand-new ticket from an inbound email that matched
@@ -27,7 +28,27 @@ export type CreateTicketFromEmailResult = {
   subDepartmentPrefix: string;
   creatorId: string;
   assigneeId: string | null;
+  /** The inbound email stored as the ticket's first message (same transaction). */
+  message: InboundMessageRow;
 };
+
+const INBOUND_MESSAGE_SELECT = {
+  id: true, direction: true, status: true, bodyHtml: true, fromName: true,
+  fromEmail: true, createdAt: true, throttled: true,
+} as const;
+
+type InboundMessageRow = Prisma.TicketMessageGetPayload<{ select: typeof INBOUND_MESSAGE_SELECT }>;
+
+/**
+ * Another run (Resend's at-least-once webhook, or the webhook racing the
+ * on-open reconcile) already stored this email — and with it, its ticket.
+ */
+export class DuplicateInboundEmailError extends Error {
+  constructor() {
+    super("Inbound email already stored");
+    this.name = "DuplicateInboundEmailError";
+  }
+}
 
 /**
  * A mailbox was switched off after the inbound router resolved its address but
@@ -52,8 +73,15 @@ export async function createTicketFromInboundEmail(params: {
   /** The mailbox this email arrived at — its per-mailbox assignment override
    *  (if any) takes precedence over the sub-department's method. */
   mailboxConnectionId?: string | null;
+  /** The inbound email itself, stored as the ticket's first message in the
+   *  same transaction as the ticket. `providerMessageIds` are the lookup
+   *  variants used for the idempotency check. */
+  inboundMessage: {
+    providerMessageIds: string[];
+    data: Omit<Prisma.TicketMessageUncheckedCreateInput, "ticketId"> & { providerMessageId: string };
+  };
 }): Promise<CreateTicketFromEmailResult> {
-  const { departmentId, teamId, fromEmail, fromName, subject, description, mailboxConnectionId } = params;
+  const { departmentId, teamId, fromEmail, fromName, subject, description, mailboxConnectionId, inboundMessage } = params;
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
   const setupCheck = await assertDepartmentOperational(departmentId);
@@ -77,7 +105,20 @@ export async function createTicketFromInboundEmail(params: {
     mailboxConnectionId,
   });
 
-  const ticket = await prisma.$transaction(async (tx) => {
+  const { ticket, message } = await prisma.$transaction(async (tx) => {
+    // Serialize concurrent runs of the same email and re-check under the lock.
+    // Ticket + first message commit together, so a second run either sees the
+    // stored message here and bails, or never sees a ticket without one —
+    // previously each racing run created its own ticket and only the message
+    // was deduped, leaving an orphan ticket with no customer to reply to.
+    // $executeRaw: pg_advisory_xact_lock returns `void`, which the adapter can't read.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${inboundMessage.data.providerMessageId}))`;
+    const dup = await tx.ticketMessage.findFirst({
+      where: { providerMessageId: { in: inboundMessage.providerMessageIds } },
+      select: { id: true },
+    });
+    if (dup) throw new DuplicateInboundEmailError();
+
     // The router also checks `isActive`, but that read can become stale while
     // parsing/assignment is in progress. Lock this connection row at the point
     // of creation so a concurrent off-toggle and ticket creation are ordered:
@@ -125,7 +166,12 @@ export async function createTicketFromInboundEmail(params: {
       await tx.subDepartment.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
     }
 
-    return created;
+    const message = await tx.ticketMessage.create({
+      data: { ...inboundMessage.data, ticketId: created.id },
+      select: INBOUND_MESSAGE_SELECT,
+    });
+
+    return { ticket: created, message };
   });
 
   if (assignResult.assigneeId && projectId) {
@@ -204,5 +250,6 @@ export async function createTicketFromInboundEmail(params: {
     subDepartmentPrefix: subDepartment.prefix,
     creatorId,
     assigneeId: assignResult.assigneeId,
+    message,
   };
 }

@@ -419,7 +419,7 @@ export function IntakeChat({
     }
     const data = (await res.json().catch(() => ({}))) as { pending?: boolean }
     // Default flow emails a verification link (no ticket yet). `pending === false`
-    // is the degraded path where the ticket was created directly.
+    // means the email was already verified, so the ticket was created directly.
     setAwaitingVerification(data.pending !== false)
     setSubmitting(false)
     setSubmitted(true)

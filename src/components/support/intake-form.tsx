@@ -162,8 +162,8 @@ export function IntakeForm({
     }
     const data = (await res.json().catch(() => ({}))) as { pending?: boolean; humanId?: string }
     // Default flow: a verification link was emailed and no ticket exists yet.
-    // `pending === false` is the degraded path (email unavailable) where the
-    // ticket was created directly and we can show its number.
+    // `pending === false` means the submitter's email is already verified (or
+    // belongs to an account), so the ticket was created directly and we can show its number.
     setAwaitingVerification(data.pending !== false)
     setTicketNumber(data.humanId ?? null)
     setSubmitted(true)

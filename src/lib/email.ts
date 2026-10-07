@@ -173,8 +173,8 @@ export async function sendIntakeConfirmationEmail(args: {
   subDepartmentId?: string | null;
 }): Promise<{ providerMessageId: string | null; providerEmailId: string | null; bodyText: string }> {
   if (!resend) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
+  // Always sent — departments cannot opt out of confirming receipt to submitters.
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyIntakeConfirmation) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
   const { subject, html, text } = renderIntakeConfirmation({
     submitterName: args.submitterName,
@@ -203,10 +203,10 @@ export async function sendIntakeConfirmationEmail(args: {
   return { ...ids, bodyText: text };
 }
 
-/** Double opt-in verification email. `skipped` = sending is unavailable (no provider or the dept
- * disabled intake confirmations) so the caller should fall back to creating the ticket directly;
- * `ok` = the provider accepted the send (a false `ok` means it was rejected and no ticket should
- * be created). */
+/** Double opt-in verification email. Mandatory for unverified submitters — there is no
+ * department opt-out and no fallback to creating the ticket unverified. `ok: false` means no
+ * ticket may be created: `reason: "unavailable"` = no email provider is configured,
+ * `reason: "rejected"` = the provider refused the send (usually a bad recipient). */
 export async function sendIntakeVerificationEmail(args: {
   to: string;
   submitterName: string;
@@ -214,10 +214,9 @@ export async function sendIntakeVerificationEmail(args: {
   verifyUrl: string;
   departmentId?: string | null;
   subDepartmentId?: string | null;
-}): Promise<{ ok: boolean; skipped: boolean }> {
-  if (!resend) return { ok: false, skipped: true };
+}): Promise<{ ok: true } | { ok: false; reason: "unavailable" | "rejected" }> {
+  if (!resend) return { ok: false, reason: "unavailable" };
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyIntakeConfirmation) return { ok: false, skipped: true };
   const { subject, html, text } = renderIntakeVerification({
     submitterName: args.submitterName,
     formName: args.formName,
@@ -235,7 +234,7 @@ export async function sendIntakeVerificationEmail(args: {
       replyTo: config.replyTo || undefined,
     }),
   );
-  return { ok: !error, skipped: false };
+  return error ? { ok: false, reason: "rejected" } : { ok: true };
 }
 
 export async function sendIntakeManagerAlertEmail(args: {

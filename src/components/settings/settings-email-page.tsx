@@ -35,11 +35,6 @@ const NOTIFICATION_META = [
     description: "Notify a user when they are @mentioned in a comment",
   },
   {
-    id: "notifyIntakeConfirmation",
-    label: "Support confirmation emails",
-    description: "Confirm receipt to people who submit a support form",
-  },
-  {
     id: "notifyResolution",
     label: "Resolution emails",
     description: "Notify the submitter when their request is resolved",

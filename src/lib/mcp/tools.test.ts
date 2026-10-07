@@ -15,6 +15,7 @@ vi.mock("@/lib/db", () => ({
     $transaction: vi.fn(),
   },
 }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn() }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email", () => ({
   sendAssignmentEmail: vi.fn().mockResolvedValue(undefined),
@@ -34,6 +35,7 @@ vi.mock("@/lib/ticket-completion-notify", () => ({ notifyTicketCompletion: vi.fn
 vi.mock("@/lib/ticket-cascade", () => ({ cascadeCompleteToSubtickets: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/timer-autostop", () => ({ stopRunningTimersOnStatusChange: vi.fn().mockResolvedValue(undefined) }))
 
+import { startSlaTimers } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
@@ -179,6 +181,7 @@ describe("createTicket", () => {
     expect(res.ok).toBe(true)
     expect((res as { ok: true; data: { humanId: string } }).data.humanId).toBe("WEB-241")
     const data = mockTicketCreate.mock.calls[0][0]?.data as Record<string, unknown>
+    expect(startSlaTimers).not.toHaveBeenCalled()
     expect(data.ticketNumber).toBe(0)
     expect(data.status).toBe("To Do")
     expect(data.creator).toEqual({ connect: { id: "user-1" } })

@@ -4,7 +4,7 @@ import { getRequestScope } from "@/lib/request-scope"
 const m = vi.hoisted(() => ({
   auth: vi.fn(), scope: vi.fn(), projectScope: vi.fn(), subScope: vi.fn(), deptScope: vi.fn(),
   setup: vi.fn(), after: vi.fn(), email: vi.fn(), notify: vi.fn(), event: vi.fn(), members: vi.fn(),
-  eligibility: vi.fn(),
+  eligibility: vi.fn(), sla: vi.fn(), rules: vi.fn(),
   ticket: { create: vi.fn(), findUnique: vi.fn() }, project: { findUnique: vi.fn() },
   subDepartment: { findUnique: vi.fn() }, profile: { findUnique: vi.fn(), findMany: vi.fn() },
   attachment: { updateMany: vi.fn() }, transaction: vi.fn(),
@@ -29,8 +29,8 @@ vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: m.members
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: m.email }))
 vi.mock("@/lib/notify", () => ({ createNotification: m.notify }))
 vi.mock("@/lib/ticket-events", () => ({ appendTicketEvent: m.event }))
-vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn().mockResolvedValue(undefined) }))
-vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla }))
+vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: m.rules }))
 import { POST } from "./route"
 
 const profile = { id: "user-1", name: "Creator", role: "agent", tenantIds: ["tenant-1"],
@@ -60,10 +60,21 @@ beforeEach(() => {
   m.ticket.create.mockResolvedValue(created)
   m.attachment.updateMany.mockResolvedValue({ count: 1 })
   m.transaction.mockImplementation(async fn => fn(tx))
-  for (const fn of [m.members, m.event, m.notify, m.email]) fn.mockResolvedValue(undefined)
+  for (const fn of [m.members, m.event, m.notify, m.email, m.sla, m.rules]) fn.mockResolvedValue(undefined)
 })
 
 describe("POST /api/tickets", () => {
+  it.each([false, true])("never starts SLA timers for manual tickets (draft: %s)", async isDraft => {
+    expect((await POST(request({ ...valid, isDraft }))).status).toBe(201)
+    await m.after.mock.calls[0][0]()
+    expect(m.sla).not.toHaveBeenCalled()
+    if (isDraft) expect(m.rules).not.toHaveBeenCalled()
+    else expect(m.rules).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "ticket-1", allowSla: false }),
+      expect.objectContaining({ priority: "High" }),
+    )
+  })
+
   it("returns the saved ticket without waiting for external delivery", async () => {
     const response = await POST(request(valid))
     expect(response.status).toBe(201)

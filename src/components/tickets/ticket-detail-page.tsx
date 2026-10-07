@@ -3455,7 +3455,7 @@ export function TicketDetailPage({
                   },
                   {
                     key: "internal" as const,
-                    label: isSupport || isPortalTicket ? "Internal Comment" : "Comment",
+                    label: "Internal Comment",
                     count: internalCommentCount,
                     show: true,
                   },

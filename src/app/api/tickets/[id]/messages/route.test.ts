@@ -38,6 +38,9 @@ vi.mock("@/lib/email-config", () => ({
 vi.mock("@/lib/email", () => ({
   sendCustomerReplyEmail: vi.fn(),
 }))
+vi.mock("@/lib/mailbox-ticket-customer", () => ({
+  getMailboxTicketCustomer: vi.fn(),
+}))
 vi.mock("@/lib/timer-conversation-sync", () => ({
   syncWorkTimerWithConversation: vi.fn().mockResolvedValue(undefined),
 }))
@@ -52,6 +55,7 @@ import { POST } from "./route"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendCustomerReplyEmail } from "@/lib/email"
+import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
@@ -99,11 +103,13 @@ function makeRequest(body: unknown) {
 const params = Promise.resolve({ id: "ticket-1" })
 
 beforeEach(() => {
+  vi.restoreAllMocks()
   vi.clearAllMocks()
   mockRequireAuth.mockResolvedValue({ profile: mockProfile, error: null } as never)
   mockAssertAccess.mockResolvedValue(null)
   mockFindUnique.mockResolvedValue(intakeTicket as never)
   mockFindFirst.mockResolvedValue(null as never)
+  vi.mocked(getMailboxTicketCustomer).mockResolvedValue(null)
   mockSend.mockResolvedValue({
     providerMessageId: "provider-msg-id",
     providerEmailId: "resend-email-id",
@@ -300,6 +306,18 @@ describe("POST /api/tickets/[id]/messages", () => {
     )
   })
 
+  it("replies to a legacy mailbox ticket using its creation sender when no inbound message exists", async () => {
+    mockFindUnique.mockResolvedValue({ ...intakeTicket, intake: null } as never)
+    vi.mocked(getMailboxTicketCustomer).mockResolvedValue({
+      fromEmail: "customer@example.com", fromName: "Original Sender",
+    })
+    const res = await POST(makeRequest({ body: "Hello, we received your request." }), { params })
+    expect(res.status).toBe(201)
+    expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+      to: "customer@example.com", submitterName: "Original Sender", replyToken: null,
+    }))
+  })
+
   it("409s when the form disallows customer replies", async () => {
     mockFindUnique.mockResolvedValue({
       ...intakeTicket,
@@ -315,7 +333,8 @@ describe("POST /api/tickets/[id]/messages", () => {
 
   // ── attachment wiring ─────────────────────────────────────────────────────
 
-  it("passes attachment URLs to sendCustomerReplyEmail and links messageId after send", async () => {
+  it("downloads attachment bytes for sendCustomerReplyEmail and links messageId after send", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("attachment contents"))
     const attachmentRows = [
       { id: "att-1", storageUrl: "https://cdn.example.com/att-1.pdf", fileName: "report.pdf", fileSize: 100_000 },
       { id: "att-2", storageUrl: "https://cdn.example.com/att-2.png", fileName: "screenshot.png", fileSize: 50_000 },
@@ -331,15 +350,15 @@ describe("POST /api/tickets/[id]/messages", () => {
     expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
         attachments: [
-          { path: "https://cdn.example.com/att-1.pdf", filename: "report.pdf" },
-          { path: "https://cdn.example.com/att-2.png", filename: "screenshot.png" },
+          { content: Buffer.from("attachment contents"), filename: "report.pdf" },
+          { content: Buffer.from("attachment contents"), filename: "screenshot.png" },
         ],
       }),
     )
     expect(mockUpdateAttachments).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: { in: ["att-1", "att-2"] } },
-        data: { messageId: "msg-1" },
+        data: { ticketId: "ticket-1", messageId: "msg-1", status: "attached" },
       }),
     )
 
@@ -367,7 +386,7 @@ describe("POST /api/tickets/[id]/messages", () => {
     expect(res.status).toBe(201)
     expect(mockFindAttachments).not.toHaveBeenCalled()
     expect(mockSend).toHaveBeenCalledWith(
-      expect.objectContaining({ attachments: [] }),
+      expect.objectContaining({ attachments: undefined }),
     )
   })
 })

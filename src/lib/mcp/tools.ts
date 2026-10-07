@@ -8,7 +8,6 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
-import { startSlaTimers } from "@/lib/sla-engine"
 import { BASE_URL } from "@/lib/email-templates/_shared"
 import type { ApiKeyContext } from "@/lib/api-key-auth"
 import {
@@ -325,16 +324,7 @@ export async function createTicket(
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
-  if (subDepartment.departmentId) {
-    await startSlaTimers(
-      ticket.id,
-      subDepartment.tenantId,
-      subDepartment.departmentId,
-      { priority: input.priority, type: input.type, title: input.title },
-      ticket.createdAt,
-      subDepartment.id,
-    )
-  }
+  // Manual creation via MCP follows the same no-SLA policy as the ticket UI.
 
   await appendTicketEvent(ticket.id, ctx.createdById, "TICKET_CREATED", {
     humanId,

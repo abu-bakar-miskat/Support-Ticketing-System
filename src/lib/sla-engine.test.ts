@@ -29,6 +29,8 @@ import {
   syncResolutionTimerOnClosedAtChange,
   resolveCalendarForTicket,
   checkAndNotifySla,
+  getSlaIndicatorForTicket,
+  getSlaIndicatorViewForTicket,
 } from "./sla-engine"
 
 const mockDeptFind = vi.mocked(prisma.department.findUnique)
@@ -414,6 +416,8 @@ describe("resolveCalendarForTicket — SLA-04/WH-05", () => {
 
 describe("checkAndNotifySla — SLA-05/06/07", () => {
   const ticketRelation = {
+    intake: { id: "intake-1" },
+    activityLogs: [],
     id: "ticket-1",
     assigneeId: "assignee-1",
     subDepartmentId: "team-1",
@@ -565,5 +569,40 @@ describe("checkAndNotifySla — SLA-05/06/07", () => {
 
     expect(mockTimerUpdate).not.toHaveBeenCalled()
     expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("existing manual and mailbox tickets — no SLA", () => {
+  it.each([{ activityLogs: [] }, { activityLogs: [{ id: "email-creation" }] }])("ignores legacy manual and mailbox timers: %j", async ({ activityLogs }) => {
+    mockTimerFind.mockResolvedValue({
+      id: "legacy-timer",
+      ticket: { intake: null, activityLogs, assigneeId: "agent-1",
+        subDepartmentId: "sub-1", subDepartment: { departmentId: "dept-1" } },
+    } as never)
+
+    expect(await getSlaIndicatorForTicket("manual-1")).toBeNull()
+    expect(await getSlaIndicatorViewForTicket("manual-1")).toBeNull()
+    await checkAndNotifySla("manual-1")
+    expect(mockDeptFind).not.toHaveBeenCalled()
+    expect(mockTimerUpdate).not.toHaveBeenCalled()
+    expect(mockBreachCreate).not.toHaveBeenCalled()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+
+  it("continues evaluating form-submitted ticket timers", async () => {
+    mockTimerFind.mockResolvedValue({
+      id: "timer-1", ticketId: "intake-1",
+      firstResponseTargetMins: 60, resolutionTargetMins: 480,
+      firstResponseStartedAt: new Date("2026-10-07T09:00:00Z"), firstResponseStoppedAt: null,
+      resolutionStartedAt: new Date("2026-10-07T09:00:00Z"), resolutionStoppedAt: null,
+      ticket: { intake: { id: "intake-1" }, assigneeId: null, subDepartmentId: "sub-1",
+        subDepartment: { departmentId: "dept-1" } },
+    } as never)
+    vi.mocked(prisma.subDepartment.findUnique).mockResolvedValue({
+      slaConfig: { pauseOutsideHours: false }, businessHours: {},
+    } as never)
+    expect(await getSlaIndicatorViewForTicket("intake-1", new Date("2026-10-07T09:10:00Z")))
+      .toMatchObject({ overall: "ON_TRACK" })
   })
 })

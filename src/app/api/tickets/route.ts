@@ -15,7 +15,6 @@ import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTi
 import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
-import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { assertDepartmentOperational } from "@/lib/department-setup"
 
@@ -475,7 +474,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
   // The ticket is already committed above. Everything below is a side effect —
-  // SLA timers, automation rules, the activity event, project-member sync, and
+  // Automation rules, the activity event, project-member sync, and
   // the assignment notification/email. On a single-connection pool these add
   // ~6-10 sequential DB round-trips; awaiting them here made "Create" feel slow
   // (the client blocks on the 201 for work it doesn't need in the response —
@@ -488,34 +487,6 @@ async function createTicket(request: Request, profile: AuthProfile) {
   // a non-JSON body the client can't parse (which would drive retries/dupes).
   const creationScope = getRequestScope()!
   after(() => runWithScope(creationScope, async () => {
-    if (!isDraft) {
-      // Resolve the ticket's department (the project's, or its subDepartment's)
-      // to start SLA timers for the new ticket.
-      const columnProject = await prisma.project
-        .findUnique({
-          where: { id: resolvedProjectId },
-          select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
-        })
-        .catch(() => null)
-      const columnDeptId =
-        columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
-
-      if (columnDeptId) {
-        try {
-          await startSlaTimers(
-            ticket.id,
-            ticketTenantId,
-            columnDeptId,
-            { priority, type, title, description, labels },
-            ticket.createdAt,
-            ticket.subDepartment.id,
-          )
-        } catch (err) {
-          console.error("[POST /api/tickets] startSlaTimers failed:", err)
-        }
-      }
-    }
-
     // RE-01/02: run the department's automation rules on the new ticket.
     if (!isDraft) {
       try {
@@ -526,6 +497,8 @@ async function createTicket(request: Request, profile: AuthProfile) {
             departmentId: ticket.subDepartment.departmentId,
             subDepartmentId: ticket.subDepartment.id,
             assigneeId: ticket.assignee?.id ?? null,
+            // Manually created tickets never receive an SLA, including via rules.
+            allowSla: false,
           },
           { priority, type, title, description, labels },
         )

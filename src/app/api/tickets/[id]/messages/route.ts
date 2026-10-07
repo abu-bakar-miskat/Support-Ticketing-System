@@ -11,6 +11,7 @@ import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { isEscalatedLabel, labelsAfterDeEscalation } from "@/lib/ticket-escalation"
+import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -139,6 +140,11 @@ export async function POST(
     })
     submitterEmail = lastInbound?.fromEmail ?? null
     submitterName = lastInbound?.fromName ?? null
+  }
+  if (!submitterEmail && !ticket.intake) {
+    const customer = await getMailboxTicketCustomer(ticketId)
+    submitterEmail = customer?.fromEmail ?? null
+    submitterName = customer?.fromName ?? null
   }
   if (!submitterEmail) {
     return NextResponse.json(

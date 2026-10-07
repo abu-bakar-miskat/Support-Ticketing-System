@@ -36,6 +36,8 @@ export type RuleTicketContext = {
   departmentId: string;
   subDepartmentId: string;
   assigneeId: string | null;
+  /** Manual and mailbox creation disable SLA actions; form intake permits them by default. */
+  allowSla?: boolean;
   /**
    * The intake form the ticket came from, if any. Rules scoped to this form
    * (formConfigId set) run in addition to the department-wide rules. Sub-
@@ -92,7 +94,9 @@ export async function applyRulesToTicket(
       enabled: r.enabled,
       stopProcessing: r.stopProcessing,
       conditions: r.conditions as Rule["conditions"],
-      actions: r.actions as Rule["actions"],
+      actions: (r.actions as Rule["actions"]).filter(
+        (action) => ticket.allowSla !== false || action.type !== "apply_sla",
+      ),
     }));
 
     const plan = planRules(rules, formValues);

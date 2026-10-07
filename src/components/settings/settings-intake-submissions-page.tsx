@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Eye, Trash2, UserRound, Users, X } from "lucide-react";
+import { ArrowLeft, Eye, Link2, PlugZap, Trash2, UserRound, Users, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ export type SubmissionRow = {
   submitterEmail: string;
   priority: string;
   createdAt: string;
+  source: "portal" | "public";
   ticketId: string | null;
   ticketNumber: number | null;
   ticketStatus: string | null;
@@ -58,6 +59,26 @@ function PriorityPill({ priority }: { priority: string }) {
     >
       {priority}
     </span>
+  );
+}
+
+function SourcePill({ source }: { source: SubmissionRow["source"] }) {
+  const portal = source === "portal";
+  const Icon = portal ? PlugZap : Link2;
+  return (
+    <Tip label={portal ? "Submitted through the Portal API" : "Submitted via the public form link"}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full px-[7px] py-0.5 font-sans text-[11.5px] font-medium",
+          portal
+            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+            : "bg-sts-surface text-sts-muted",
+        )}
+      >
+        <Icon className="size-3" />
+        {portal ? "Portal" : "Public link"}
+      </span>
+    </Tip>
   );
 }
 
@@ -354,10 +375,11 @@ export function SettingsIntakeSubmissionsPage({
                     className="size-3.5 cursor-pointer rounded accent-sts-blue"
                   />
                 </TableHead>
-                <TableHead className="h-8 w-[24%]"><SectionLabel>Submitter</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[11%]"><SectionLabel>Priority</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[21%]"><SectionLabel>Submitter</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[11%]"><SectionLabel>Source</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[9%]"><SectionLabel>Priority</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[13%]"><SectionLabel>Submitted</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[20%]"><SectionLabel>Assignee</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[18%]"><SectionLabel>Assignee</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[14%]"><SectionLabel>Linked ticket</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[14%]" />
               </TableRow>
@@ -383,6 +405,12 @@ export function SettingsIntakeSubmissionsPage({
                       <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{s.submitterName}</span>
                       <span className="truncate font-sans text-[11.5px] text-sts-subtle">{s.submitterEmail}</span>
                     </Link>
+                  </TableCell>
+
+                  <TableCell className="py-0">
+                    <div className="flex h-[56px] items-center">
+                      <SourcePill source={s.source} />
+                    </div>
                   </TableCell>
 
                   <TableCell className="py-0">

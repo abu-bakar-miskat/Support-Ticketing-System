@@ -325,13 +325,29 @@ function toTimerState(timer: {
   return timer;
 }
 
+// Only form-submitted tickets are SLA-eligible. Existing timers on manual
+// and mailbox tickets are retained as history but ignored for indicators/alerts.
+const SLA_TICKET_SELECT = {
+  id: true,
+  assigneeId: true,
+  subDepartmentId: true,
+  subDepartment: { select: { departmentId: true } },
+  intake: { select: { id: true } },
+} as const satisfies Prisma.TicketSelect;
+
+function isSlaEligible(ticket: {
+  intake: { id: string } | null;
+}): boolean {
+  return ticket.intake !== null;
+}
+
 /** Read-only SLA indicator for a ticket (SLA-06), for the API/UI. Null when no SLA applies. */
 export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new Date()): Promise<SlaIndicator | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
-    include: { ticket: { select: { assigneeId: true, subDepartmentId: true, subDepartment: { select: { departmentId: true } } } } },
+    include: { ticket: { select: SLA_TICKET_SELECT } },
   });
-  if (!timer) return null;
+  if (!timer || !isSlaEligible(timer.ticket)) return null;
 
   const departmentId = timer.ticket.subDepartment.departmentId;
   const subDepartmentId = timer.ticket.subDepartmentId;
@@ -370,9 +386,9 @@ export async function getSlaIndicatorViewForTicket(
 ): Promise<SlaIndicatorView | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
-    include: { ticket: { select: { assigneeId: true, subDepartmentId: true, subDepartment: { select: { departmentId: true } } } } },
+    include: { ticket: { select: SLA_TICKET_SELECT } },
   });
-  if (!timer) return null;
+  if (!timer || !isSlaEligible(timer.ticket)) return null;
 
   const departmentId = timer.ticket.subDepartment.departmentId;
   const subDepartmentId = timer.ticket.subDepartmentId;
@@ -426,16 +442,11 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
       where: { ticketId },
       include: {
         ticket: {
-          select: {
-            id: true,
-            assigneeId: true,
-            subDepartmentId: true,
-            subDepartment: { select: { departmentId: true } },
-          },
+          select: SLA_TICKET_SELECT,
         },
       },
     });
-    if (!timer) return;
+    if (!timer || !isSlaEligible(timer.ticket)) return;
 
     const departmentId = timer.ticket.subDepartment.departmentId;
     const subDepartmentId = timer.ticket.subDepartmentId;

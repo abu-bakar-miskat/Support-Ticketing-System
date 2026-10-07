@@ -5,7 +5,6 @@ import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
-import { startSlaTimers } from "@/lib/sla-engine";
 import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
@@ -18,7 +17,7 @@ import type { Prisma } from "@/generated/prisma/client";
  * a configured `MailboxConnection` (no reply-token/header/subject match to an
  * existing ticket). Mirrors the ticket-creation block in
  * lib/intake-conversion.ts's runConversion — same ticketNumber-by-trigger,
- * board-column resolution, auto-assignment, and SLA-timer wiring — but there
+ * board-column resolution and auto-assignment — but there
  * is no Intake/form submission behind it, so it's simpler: no responses, no
  * versioned form values.
  */
@@ -191,9 +190,6 @@ export async function createTicketFromInboundEmail(params: {
     fromName,
     priority: TicketPriority.Medium,
   };
-  await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId)
-    .catch((err) => console.error("[inbound] startSlaTimers failed for", ticket.id, err));
-
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
     {
@@ -202,6 +198,8 @@ export async function createTicketFromInboundEmail(params: {
       departmentId,
       subDepartmentId: teamId,
       assigneeId: assignResult.assigneeId,
+      // Mailbox tickets never receive SLA policies, including through automation.
+      allowSla: false,
     },
     ruleFormValues,
   ).catch((err) => console.error("[inbound] applyRulesToTicket failed for", ticket.id, err));

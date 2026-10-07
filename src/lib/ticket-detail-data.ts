@@ -16,6 +16,7 @@ import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
 import { presentPortalComment } from "@/lib/portal-comments";
+import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
@@ -152,15 +153,25 @@ const getCachedProjectMembers = (projectId: string) =>
     { revalidate: 300 },
   )();
 
-/** @all audience for a ticket: project members if attached, else subDepartment/dept. */
-export const getCachedTicketMentionable = (
+/**
+ * @mention autocomplete audience: project members (if attached) plus everyone
+ * mentionable in the ticket's subDepartment/department. Project-only lists
+ * left manual tickets showing just the assignee. Server-side @all still
+ * targets project members only (see lib/mentions.ts).
+ */
+export const getCachedTicketMentionable = async (
   projectId: string | null,
   departmentId: string | null,
   ticketSubDepartmentId: string,
-) =>
-  projectId
-    ? getCachedProjectMembers(projectId)
-    : getCachedMentionableUsers(departmentId, ticketSubDepartmentId);
+) => {
+  const [projectMembers, deptUsers] = await Promise.all([
+    projectId ? getCachedProjectMembers(projectId) : Promise.resolve([]),
+    getCachedMentionableUsers(departmentId, ticketSubDepartmentId),
+  ]);
+  const byUser = new Map(projectMembers.map((u) => [u.id, u]));
+  for (const u of deptUsers) if (!byUser.has(u.id)) byUser.set(u.id, u);
+  return [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
 
 const getCachedDeptPeople = (departmentId: string | null) =>
   unstable_cache(
@@ -417,6 +428,10 @@ export async function getTicketDetailPayload(
   const ticketDeptId = ticket.subDepartment.departmentId;
   const comments = ticket.comments;
   const messages = ticket.messages;
+  const lastInbound = [...messages].reverse().find((m) => m.direction === "inbound");
+  const mailboxCustomer = !ticket.intake && !lastInbound?.fromEmail
+    ? await getMailboxTicketCustomer(ticket.id)
+    : null;
   const activityLogs = ticket.activityLogs;
   const ticketTimeEntries = ticket.timeEntries;
   // Statuses already load on the board via /api/sub-departments/:id/statuses.
@@ -768,11 +783,8 @@ export async function getTicketDetailPayload(
       // Ticket #16: a mailbox-connection-originated ticket (#14) has no
       // `intake` row — fall back to the most recent inbound message's
       // sender so the Reply composer still works for those tickets.
-      const lastInbound = ticket.intake
-        ? null
-        : [...messages].reverse().find((m) => m.direction === "inbound");
-      const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? null;
-      const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? null;
+      const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? mailboxCustomer?.fromName ?? null;
+      const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? mailboxCustomer?.fromEmail ?? null;
       return {
         // Composer shown only when receiving is configured, the form (when
         // there is one) permits replies, and there's a known customer address.

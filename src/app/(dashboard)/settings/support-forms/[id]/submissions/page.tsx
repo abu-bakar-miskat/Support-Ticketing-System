@@ -54,6 +54,7 @@ export default async function SettingsIntakeSubmissionsRoute({
         priority: true,
         createdAt: true,
         ticketId: true,
+        apiKeyId: true,
         ticket: {
           select: {
             id: true,
@@ -83,6 +84,9 @@ export default async function SettingsIntakeSubmissionsRoute({
       submitterEmail: i.submitterEmail,
       priority: i.priority,
       createdAt: i.createdAt.toISOString(),
+      // Portal API submissions carry the integration key that created them;
+      // everything else came through the public form link.
+      source: i.apiKeyId ? "portal" : "public",
       ticketId: t?.id ?? null,
       ticketNumber: t?.ticketNumber ?? null,
       ticketStatus: t?.status ?? null,

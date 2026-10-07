@@ -40,7 +40,6 @@ export type EmailConfig = {
   replyTo: string;
   notifyAssignment: boolean;
   notifyMention: boolean;
-  notifyIntakeConfirmation: boolean;
   notifyResolution: boolean;
   notifyCustomerReply: boolean;
   notifyTicketCompleted: boolean;
@@ -80,7 +79,6 @@ export function emailConfigDefaults(): EmailConfig {
     replyTo: "",
     notifyAssignment: true,
     notifyMention: true,
-    notifyIntakeConfirmation: true,
     notifyResolution: true,
     notifyCustomerReply: true,
     notifyTicketCompleted: true,
@@ -153,7 +151,6 @@ async function writeEmailConfigRaw(scope: EmailConfigScope, nextConfig: Record<s
 export const EMAIL_NOTIFY_KEYS = [
   "notifyAssignment",
   "notifyMention",
-  "notifyIntakeConfirmation",
   "notifyResolution",
   "notifyCustomerReply",
   "notifyTicketCompleted",

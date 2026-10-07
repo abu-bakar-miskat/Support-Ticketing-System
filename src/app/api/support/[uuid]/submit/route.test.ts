@@ -127,7 +127,7 @@ beforeEach(() => {
   } as never)
   mockCreateMessage.mockResolvedValue({ id: "msg-1" } as never)
   // Confirmation email is available by default: submissions become pending, not tickets.
-  mockSendVerification.mockResolvedValue({ ok: true, skipped: false } as never)
+  mockSendVerification.mockResolvedValue({ ok: true } as never)
   mockPendingCreate.mockResolvedValue({ id: "pending-1", token: "b".repeat(48) } as never)
   vi.mocked(prisma.pendingIntake.delete).mockResolvedValue(undefined as never)
   mockFindSubDept.mockResolvedValue({ prefix: "IT", tenantId: "t1" } as never)
@@ -155,11 +155,21 @@ describe("POST /api/support/[uuid]/submit — email confirmation gate", () => {
   })
 
   it("does not create a ticket if the confirmation email is rejected", async () => {
-    mockSendVerification.mockResolvedValue({ ok: false, skipped: false } as never)
+    mockSendVerification.mockResolvedValue({ ok: false, reason: "rejected" } as never)
     const res = await POST(makeRequest(validBody), { params })
 
     expect(res.status).toBe(400)
     expect(mockRun).not.toHaveBeenCalled()
+    expect(prisma.pendingIntake.delete).toHaveBeenCalled()
+  })
+
+  it("never creates an unverified ticket when confirmation email is unavailable", async () => {
+    mockSendVerification.mockResolvedValue({ ok: false, reason: "unavailable" } as never)
+    const res = await POST(makeRequest(validBody), { params })
+
+    expect(res.status).toBe(503)
+    expect(mockRun).not.toHaveBeenCalled()
+    expect(mockSendConfirmation).not.toHaveBeenCalled()
     expect(prisma.pendingIntake.delete).toHaveBeenCalled()
   })
 })
@@ -194,11 +204,10 @@ describe("POST /api/support/[uuid]/submit — trusted submitters", () => {
 })
 
 describe("POST /api/support/[uuid]/submit — customer confirmation", () => {
-  // These cover the direct-creation path taken when confirmation email is
-  // unavailable/disabled for the department (nothing to confirm), where the
-  // ticket is created inline and its confirmation email is sent.
+  // These cover the direct-creation path taken for a trusted submitter, where
+  // the ticket is created inline and its confirmation email is sent.
   beforeEach(() => {
-    mockSendVerification.mockResolvedValue({ ok: false, skipped: true } as never)
+    mockFindAccount.mockResolvedValue({ id: "profile-1" } as never)
   })
 
   it("sends the confirmation with the reply token when receiving is enabled", async () => {

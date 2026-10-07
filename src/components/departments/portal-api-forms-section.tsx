@@ -1,22 +1,13 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   FileInput,
   Inbox,
   KeyRound,
-  ListChecks,
-  Settings2,
+  Pencil,
   Trash2,
 } from "lucide-react"
-import {
-  FieldBuilderModal,
-  IssuesModal,
-  type FormEditorTarget,
-  type IssueDepartmentOption,
-} from "@/components/settings/settings-intake-forms-page"
-import type { ResolvedDefaultFields } from "@/lib/intake-default-fields"
 import { cn } from "@/lib/utils"
 import { Tip } from "@/components/ui/tooltip"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -24,10 +15,12 @@ import { PortalSubmissionsModal } from "@/components/departments/portal-submissi
 
 export type PortalApiFormRow = {
   apiKeyId: string
-  form: FormEditorTarget
-  defaultFields: ResolvedDefaultFields
+  form: {
+    id: string
+    name: string
+    departmentName: string
+  }
   intakeCount: number
-  departments: IssueDepartmentOption[]
 }
 
 export type PortalApiConnectionRow = {
@@ -46,6 +39,7 @@ export function PortalApiFormsSection({
   onRevoke,
   onRestore,
   onDelete,
+  onEdit,
 }: {
   apiKeys: PortalApiConnectionRow[]
   forms: PortalApiFormRow[]
@@ -53,15 +47,19 @@ export function PortalApiFormsSection({
   onRevoke: (id: string) => void
   onRestore: (id: string) => void
   onDelete: (id: string) => Promise<void>
+  onEdit: (id: string) => void
 }) {
-  const router = useRouter()
-  const [fieldTarget, setFieldTarget] = useState<PortalApiFormRow | null>(null)
-  const [issueTarget, setIssueTarget] = useState<PortalApiFormRow | null>(null)
   const [submissionsTarget, setSubmissionsTarget] = useState<PortalApiFormRow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PortalApiConnectionRow | null>(null)
+  // Submissions deleted from the modal this session, per key — keeps the
+  // card counts current without a server round-trip.
+  const [deletedCounts, setDeletedCounts] = useState<Record<string, number>>({})
   const formsByKey = useMemo(
-    () => new Map(forms.map((row) => [row.apiKeyId, row])),
-    [forms],
+    () => new Map(forms.map((row) => [
+      row.apiKeyId,
+      { ...row, intakeCount: Math.max(0, row.intakeCount - (deletedCounts[row.apiKeyId] ?? 0)) },
+    ])),
+    [forms, deletedCounts],
   )
   const activeCount = apiKeys.filter((key) => !key.revoked).length
 
@@ -81,7 +79,7 @@ export function PortalApiFormsSection({
             </span>
           </div>
           <p className="mt-0.5 max-w-2xl font-sans text-[12px] leading-relaxed text-sts-muted">
-            Each key controls one support form. Configure its questions, routing issues, and SLA targets here.
+            Each key connects an external portal to one existing support form.
           </p>
         </div>
       </header>
@@ -93,7 +91,7 @@ export function PortalApiFormsSection({
           </span>
           <p className="mt-3 font-sans text-[13px] font-semibold text-sts-foreground">No portal connections yet</p>
           <p className="mt-1 max-w-sm font-sans text-[12px] leading-relaxed text-sts-muted">
-            Generate a key to create its dedicated support form.
+            Generate a key and connect it to an existing support form.
           </p>
         </div>
       ) : (
@@ -144,6 +142,14 @@ export function PortalApiFormsSection({
                   </div>
 
                   <div className="flex items-center justify-start gap-1 lg:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(apiKey.id)}
+                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[11.5px] font-medium text-sts-id hover:bg-sts-blue-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30"
+                    >
+                      <Pencil className="size-3.5" aria-hidden />
+                      Edit linked form
+                    </button>
                     {!apiKey.revoked && (
                       <button
                         type="button"
@@ -190,6 +196,9 @@ export function PortalApiFormsSection({
                         <p className="mt-0.5 truncate font-sans text-[12.5px] font-semibold text-sts-foreground">
                           {linkedForm.form.name}
                         </p>
+                        <p className="mt-0.5 truncate font-sans text-[11px] text-sts-muted">
+                          {linkedForm.form.departmentName}
+                        </p>
                       </div>
                     </div>
 
@@ -209,23 +218,6 @@ export function PortalApiFormsSection({
                           No submissions
                         </span>
                       )}
-                      <span className="mx-1 hidden h-4 w-px bg-sts-card-border sm:block" aria-hidden />
-                      <button
-                        type="button"
-                        onClick={() => setIssueTarget(linkedForm)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-all duration-200 hover:border-sts-id/35 hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
-                      >
-                        <ListChecks className="size-3.5" strokeWidth={1.8} />
-                        Issues &amp; SLA
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFieldTarget(linkedForm)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[11.5px] font-semibold text-white shadow-sm transition-all duration-200 hover:bg-sts-blue/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/40 active:translate-y-px dark:text-gray-900"
-                      >
-                        <Settings2 className="size-3.5" strokeWidth={1.8} />
-                        Form fields
-                      </button>
                     </div>
                   </div>
                 )}
@@ -235,31 +227,14 @@ export function PortalApiFormsSection({
         </div>
       )}
 
-      {fieldTarget && (
-        <FieldBuilderModal
-          form={fieldTarget.form}
-          defaultFields={fieldTarget.defaultFields}
-          onClose={() => setFieldTarget(null)}
-        />
-      )}
-
       {submissionsTarget && (
         <PortalSubmissionsModal
           apiKeyId={submissionsTarget.apiKeyId}
           formName={submissionsTarget.form.name}
           onClose={() => setSubmissionsTarget(null)}
-        />
-      )}
-
-      {issueTarget && (
-        <IssuesModal
-          form={issueTarget.form}
-          subDepartments={[]}
-          issueDepartments={issueTarget.departments}
-          issuesEndpoint={`/api/settings/api-keys/${issueTarget.apiKeyId}/issues`}
-          onClose={() => {
-            setIssueTarget(null)
-            router.refresh()
+          onDeleted={() => {
+            const keyId = submissionsTarget.apiKeyId
+            setDeletedCounts((prev) => ({ ...prev, [keyId]: (prev[keyId] ?? 0) + 1 }))
           }}
         />
       )}
@@ -270,7 +245,7 @@ export function PortalApiFormsSection({
           if (!open) setDeleteTarget(null)
         }}
         title="Delete API connection?"
-        description={`This permanently deletes “${deleteTarget?.name ?? "this connection"}”, its API key, and its linked support form. Connections with submission history must be revoked instead.`}
+        description={`This permanently deletes “${deleteTarget?.name ?? "this connection"}” and its API key. The linked support form will not be deleted. Connections with API submission history must remain revoked instead.`}
         confirmLabel="Delete connection"
         successMessage="API connection deleted."
         onConfirm={async () => {

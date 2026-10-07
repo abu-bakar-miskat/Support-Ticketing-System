@@ -73,6 +73,7 @@ export async function GET(
     authorName: displayedComment.authorName,
     authorAvatarUrl: displayedComment.authorAvatarUrl,
     externalAuthor: displayedComment.externalAuthor,
+    portalVisible: comment.portalVisible,
     attachments: comment.attachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
     replies: comment.replies.map((r) => {
       const displayedReply = present(r)
@@ -86,6 +87,7 @@ export async function GET(
         authorName: displayedReply.authorName,
         authorAvatarUrl: displayedReply.authorAvatarUrl,
         externalAuthor: displayedReply.externalAuthor,
+        portalVisible: r.portalVisible,
         attachments: r.attachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
         replies: [],
       }

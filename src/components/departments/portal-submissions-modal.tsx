@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, ArrowUpRight, Inbox, Search, UserRound, X } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Inbox, Search, Trash2, UserRound, X } from "lucide-react"
 import { IntakeResponseValue, type IntakeResponseEntry } from "@/components/tickets/intake-card"
 import {
   UI_PRIORITY_DOT_HEX,
@@ -14,6 +14,7 @@ import {
 import { StatusPill } from "@/components/board/status-pill"
 import { AvatarVisual } from "@/components/ui/user-avatar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 
 type PortalSubmission = {
@@ -96,7 +97,13 @@ function MetaCell({ label, children }: { label: string; children: React.ReactNod
   )
 }
 
-function SubmissionDetail({ submission }: { submission: PortalSubmission }) {
+function SubmissionDetail({
+  submission,
+  onDelete,
+}: {
+  submission: PortalSubmission
+  onDelete: () => void
+}) {
   return (
     <article className="flex flex-col">
       <header className="flex items-start gap-3 border-b border-sts-card-border px-6 pt-5 pb-4">
@@ -113,6 +120,14 @@ function SubmissionDetail({ submission }: { submission: PortalSubmission }) {
             <time dateTime={submission.createdAt} className="tabular-nums">{fullTimestamp(submission.createdAt)}</time>
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-2.5 font-sans text-[11.5px] font-semibold text-sts-red shadow-sm transition-colors hover:border-sts-red/40 hover:bg-red-500/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-red/30"
+        >
+          <Trash2 className="size-3.5" />
+          Delete
+        </button>
       </header>
 
       <div className="grid grid-cols-2 border-b border-sts-card-border px-6 sm:grid-cols-3">
@@ -183,10 +198,13 @@ export function PortalSubmissionsModal({
   apiKeyId,
   formName,
   onClose,
+  onDeleted,
 }: {
   apiKeyId: string
   formName: string
   onClose: () => void
+  /** Called after a submission is deleted, so the caller can update its count. */
+  onDeleted?: () => void
 }) {
   const [submissions, setSubmissions] = useState<PortalSubmission[] | null>(null)
   const [error, setError] = useState(false)
@@ -196,6 +214,21 @@ export function PortalSubmissionsModal({
   // On narrow screens the list and detail share one pane; this tracks which is showing.
   const [mobileDetail, setMobileDetail] = useState(false)
   const listRef = useRef<HTMLUListElement>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PortalSubmission | null>(null)
+
+  async function deleteSubmission(target: PortalSubmission) {
+    const res = await fetch(`/api/settings/api-keys/${apiKeyId}/submissions/${target.id}`, {
+      method: "DELETE",
+    })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      throw new Error(body?.error ?? "Couldn\u2019t delete submission.")
+    }
+    setSubmissions((prev) => prev?.filter((s) => s.id !== target.id) ?? prev)
+    setSelectedId((current) => (current === target.id ? null : current))
+    setMobileDetail(false)
+    onDeleted?.()
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -245,6 +278,8 @@ export function PortalSubmissionsModal({
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      // The confirm dialog handles its own keys.
+      if (deleteTarget) return
       if (event.key === "Escape") {
         if (mobileDetail) setMobileDetail(false)
         else onClose()
@@ -263,7 +298,7 @@ export function PortalSubmissionsModal({
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [filtered, mobileDetail, onClose, selected])
+  }, [deleteTarget, filtered, mobileDetail, onClose, selected])
 
   const total = submissions?.length ?? 0
 
@@ -467,12 +502,32 @@ export function PortalSubmissionsModal({
                   <Skeleton className="h-24 w-full" />
                 </div>
               ) : selected ? (
-                <SubmissionDetail key={selected.id} submission={selected} />
+                <SubmissionDetail
+                  key={selected.id}
+                  submission={selected}
+                  onDelete={() => setDeleteTarget(selected)}
+                />
               ) : null}
             </div>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title="Delete submission?"
+        description={`This permanently deletes the submission from ${deleteTarget?.submitterName ?? "this submitter"}. Any ticket created from it is kept.`}
+        confirmLabel="Delete submission"
+        successMessage="Submission deleted."
+        onConfirm={async () => {
+          if (!deleteTarget) return
+          await deleteSubmission(deleteTarget)
+          setDeleteTarget(null)
+        }}
+      />
     </div>
   )
 }

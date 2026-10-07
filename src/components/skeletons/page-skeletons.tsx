@@ -933,7 +933,7 @@ export function DescriptionHydrating() {
 export function TicketTabContentHydrating({
   activeTab,
 }: {
-  activeTab: "conversation" | "internal" | "activity";
+  activeTab: "conversation" | "reply" | "internal" | "activity";
 }) {
   if (activeTab === "activity") {
     return (

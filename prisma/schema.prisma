@@ -1013,6 +1013,9 @@ model Comment {
   body        String
   ticketId    String
   authorId    String       @db.Uuid
+  // True only for the requester-visible thread on Portal API tickets.
+  // Ordinary comments and message notes remain staff-only by default.
+  portalVisible Boolean    @default(false)
   parentId    String?
   // When set, this comment is an internal note attached to a specific customer
   // email message rather than a general ticket comment. See lib/message notes.

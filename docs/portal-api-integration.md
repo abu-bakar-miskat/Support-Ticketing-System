@@ -4,7 +4,7 @@ This guide explains how another portal can display the support form linked to an
 
 ## Integration model
 
-One portal API key is linked to one support form. The external portal does not select a department or a support form.
+One portal API key is linked to one existing support form selected by the tenant administrator when the key is generated. The external portal does not select a department or a support form.
 
 The workflow is:
 

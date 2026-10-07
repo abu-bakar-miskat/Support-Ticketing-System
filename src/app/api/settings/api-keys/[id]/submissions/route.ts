@@ -13,7 +13,7 @@ export async function GET(
   if (auth.error || !auth.key) return auth.error
 
   const intakes = await prisma.intake.findMany({
-    where: { formConfigId: auth.key.formConfig.id },
+    where: { apiKeyId: auth.key.id },
     orderBy: { createdAt: "desc" },
     take: 200,
     select: {

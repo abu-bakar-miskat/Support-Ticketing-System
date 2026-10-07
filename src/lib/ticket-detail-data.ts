@@ -433,19 +433,21 @@ export async function getTicketDetailPayload(
     viewerIsProjectMember: false,
   };
 
-  const mentionableUsers: Awaited<
-    ReturnType<typeof getCachedTicketMentionable>
-  > = [];
   // Users eligible to be assigned to THIS ticket — the ticket's own
   // sub-department plus department-wide grant holders. Kept in sync with the
   // server-side eligibility check so every option in the picker is accepted on
   // save (a whole-department roster would list members of sibling
   // sub-departments who then get rejected — see SD-06).
-  const subDepartmentMembers = await getEligibleAssigneesForTicket(
-    ticket.subDepartmentId,
-    ticketDeptId,
-    assigneeFallback,
-  );
+  // mentionableUsers feeds the @mention autocomplete in comment composers.
+  const [mentionableUsers, subDepartmentMembers] = await Promise.all([
+    getCachedTicketMentionable(ticket.projectId, ticketDeptId, ticket.subDepartmentId).catch(
+      (e: unknown) => {
+        console.error("[ticket-detail] mentionable users failed:", e);
+        return [] as Awaited<ReturnType<typeof getCachedTicketMentionable>>;
+      },
+    ),
+    getEligibleAssigneesForTicket(ticket.subDepartmentId, ticketDeptId, assigneeFallback),
+  ]);
   const github = { pullRequests: [], commits: [] } as Awaited<
     ReturnType<typeof buildGitHubDevData>
   >;
@@ -691,6 +693,7 @@ export async function getTicketDetailPayload(
         authorName: presented.authorName ?? c.author.name,
         authorAvatarUrl: presented.isPortalRequester ? null : c.author.avatarUrl,
         externalAuthor: presented.isPortalRequester,
+        portalVisible: c.portalVisible,
         attachments: c.attachments.map((a) => ({
           id: a.id,
           storageUrl: a.storageUrl,
@@ -714,6 +717,7 @@ export async function getTicketDetailPayload(
             authorName: replyPresented.authorName ?? r.author.name,
             authorAvatarUrl: replyPresented.isPortalRequester ? null : r.author.avatarUrl,
             externalAuthor: replyPresented.isPortalRequester,
+            portalVisible: r.portalVisible,
             attachments: r.attachments.map((a) => ({
               id: a.id,
               storageUrl: a.storageUrl,

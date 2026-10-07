@@ -50,7 +50,7 @@ export async function GET(
           select: { createdAt: true },
         },
         comments: {
-          where: { deletedAt: null, messageId: null },
+          where: { deletedAt: null, messageId: null, portalVisible: true },
           orderBy: { createdAt: "asc" },
           take: 200,
           select: {

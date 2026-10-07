@@ -26,10 +26,9 @@ export async function GET() {
   }
 
   const forms = await prisma.intakeFormConfig.findMany({
-    // Portal API key forms are managed on Generate API, not Support Forms.
     where: deptScope
-      ? { departmentId: { in: [...deptScope] }, apiKey: { is: null } }
-      : { department: { tenantId: profile!.activeTenantId ?? "__no_tenant__" }, apiKey: { is: null } },
+      ? { departmentId: { in: [...deptScope] } }
+      : { department: { tenantId: profile!.activeTenantId ?? "__no_tenant__" } },
     orderBy: { createdAt: "desc" },
     include: {
       department: { select: { id: true, name: true } },

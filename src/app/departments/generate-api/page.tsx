@@ -5,7 +5,6 @@ import {
   type ApiKeyRow,
 } from "@/components/settings/settings-api-keys-page"
 import { prisma } from "@/lib/db"
-import { resolveIntakeDefaultFields } from "@/lib/intake-default-fields"
 import { isActiveTenantAdmin } from "@/lib/tenant-admin"
 import { getProfile } from "@/lib/profile"
 import { runAsSystem } from "@/lib/request-scope"
@@ -45,23 +44,17 @@ export default async function GenerateApiPage() {
       orderBy: [{ revokedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
       include: {
         createdBy: { select: { name: true } },
+        _count: { select: { intakes: true } },
         formConfig: {
           select: {
             id: true,
             name: true,
-            intakeSubDepartmentId: true,
-            intakeDefaultFields: true,
             department: {
               select: {
                 id: true,
                 name: true,
-                subDepartments: {
-                  orderBy: { name: "asc" },
-                  select: { id: true, name: true },
-                },
               },
             },
-            _count: { select: { intakes: true } },
           },
         },
       },
@@ -72,31 +65,25 @@ export default async function GenerateApiPage() {
       select: {
         id: true,
         name: true,
-        subDepartments: {
+        intakeFormConfigs: {
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            apiKey: { select: { id: true } },
+          },
         },
       },
     }),
   ]))
-
-  const activeFormIds = dbKeys.flatMap((key) =>
-    key.revokedAt === null && key.formConfigId ? [key.formConfigId] : [],
-  )
-  const formsWithSla = new Set(
-    (await runAsSystem(() => prisma.slaPolicy.findMany({
-      where: { formConfigId: { in: activeFormIds }, enabled: true },
-      select: { formConfigId: true },
-      distinct: ["formConfigId"],
-    }))).flatMap((policy) => policy.formConfigId ? [policy.formConfigId] : []),
-  )
 
   const apiKeys: ApiKeyRow[] = dbKeys.map((key) => ({
     id: key.id,
     name: key.name,
     maskedKey: `pen_••••${key.keySuffix}`,
     scope: SCOPE_LABELS[key.scope],
-    department: "Tenant-wide",
+    department: key.formConfig?.department.name ?? "—",
     created: formatRelative(key.createdAt),
     createdBy: key.createdBy.name,
     lastUsed: formatRelative(key.lastUsedAt),
@@ -113,25 +100,25 @@ export default async function GenerateApiPage() {
       form: {
         id: form.id,
         name: form.name,
-        departmentId: form.department.id,
-        departmentName: "Tenant-wide",
-        intakeSubDepartmentId: form.intakeSubDepartmentId,
-        hasSlaPolicies: formsWithSla.has(form.id),
+        departmentName: form.department.name,
       },
-      defaultFields: resolveIntakeDefaultFields(form.intakeDefaultFields),
-      intakeCount: form._count.intakes,
-      departments: departments.map((department) => ({
-        id: department.id,
-        name: department.name,
-        subDepartments: department.subDepartments,
-      })),
+      intakeCount: key._count.intakes,
     }]
   })
 
   return (
     <SettingsApiKeysPage
       apiKeys={apiKeys}
-      departments={departments}
+      departments={departments.map((department) => ({
+        id: department.id,
+        name: department.name,
+        forms: department.intakeFormConfigs.map((form) => ({
+          id: form.id,
+          name: form.name,
+          isActive: form.isActive,
+          isConnected: form.apiKey !== null,
+        })),
+      }))}
       isAdmin
       portalMode
       portalForms={portalForms}

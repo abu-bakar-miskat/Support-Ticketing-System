@@ -50,8 +50,7 @@ export default async function SettingsIntakeFormsRoute() {
   // to skip the per-query scope waterfall.
   const [forms, departments] = await runAsSystem(() => Promise.all([
     prisma.intakeFormConfig.findMany({
-      // Forms owned by a portal API key are managed on Generate API, not here.
-      where: { department: deptWhere, apiKey: { is: null } },
+      where: { department: deptWhere },
       orderBy: { createdAt: "desc" },
       include: {
         department: {

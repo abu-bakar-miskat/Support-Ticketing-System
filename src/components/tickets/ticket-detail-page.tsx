@@ -587,6 +587,8 @@ export type CommentData = {
   authorAvatarUrl: string | null;
   /** True for a requester comment submitted through the external Portal API. */
   externalAuthor?: boolean;
+  /** True when the comment is visible in the external portal reply thread. */
+  portalVisible?: boolean;
   attachments: CommentAttachment[];
   replies: CommentData[];
   /** Set when this comment is an internal note attached to a customer message. */
@@ -817,10 +819,21 @@ export function TicketDetailPage({
     setDraftBannerVisible(isDraft);
   }, [isDraft]);
   const [activeTab, setActiveTab] = useState<
-    "conversation" | "internal" | "activity"
-  >(projectKind === "support" && !isPortalTicket ? "conversation" : "internal");
-  const visibleActiveTab =
-    isPortalTicket && activeTab === "conversation" ? "internal" : activeTab;
+    "conversation" | "reply" | "internal" | "activity"
+  >(
+    isPortalTicket
+      ? "reply"
+      : projectKind === "support"
+        ? "conversation"
+        : "internal",
+  );
+  const visibleActiveTab = isPortalTicket
+    ? activeTab === "conversation"
+      ? "reply"
+      : activeTab
+    : activeTab === "reply"
+      ? "internal"
+      : activeTab;
   const [activityLimit, setActivityLimit] = useState(10);
   const [copied, setCopied] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
@@ -878,9 +891,11 @@ export function TicketDetailPage({
   // Tracks the message/comment counts last seen by the auto-scroll effect, so we
   // only jump to the newest item when one actually *arrives* — never on the
   // initial mount (which would land the viewer at the bottom) or a tab switch.
-  const lastChatCounts = useRef<{ messages: number; comments: number } | null>(
-    null,
-  );
+  const lastChatCounts = useRef<{
+    messages: number;
+    portalReplies: number;
+    internalComments: number;
+  } | null>(null);
   const [liveMessages, setLiveMessages] = useState<MessageData[]>(messages);
   const [refreshingMessages, setRefreshingMessages] = useState(false);
   const pushSub = useDrawerStore((s) => s.pushSub);
@@ -995,43 +1010,76 @@ export function TicketDetailPage({
       : "awaiting-customer";
   }, [liveMessages, liveStatus, effectiveSubDepartmentStatuses]);
 
-  // Internal comments as threads: top-level comments in chronological order
-  // (oldest first, newest nearest the composer pinned at the bottom), each
-  // carrying its replies so a response stays beside the comment it answers.
-  const threadedComments = useMemo(
+  // Portal-visible replies and staff-only comments are intentionally split at
+  // the data boundary. Both retain their threaded, chronological presentation.
+  const portalReplyComments = useMemo(
     () =>
-      [...liveComments].sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      ),
+      liveComments
+        .filter((comment) => comment.portalVisible)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
     [liveComments],
   );
-  const totalCommentCount = useMemo(
+  const internalComments = useMemo(
     () =>
-      liveComments.reduce((n, c) => n + 1 + (c.replies?.length ?? 0), 0),
+      liveComments
+        .filter((comment) => !comment.portalVisible)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
     [liveComments],
+  );
+  const portalReplyCount = useMemo(
+    () =>
+      portalReplyComments.reduce(
+        (count, comment) => count + 1 + (comment.replies?.length ?? 0),
+        0,
+      ),
+    [portalReplyComments],
+  );
+  const internalCommentCount = useMemo(
+    () =>
+      internalComments.reduce(
+        (count, comment) => count + 1 + (comment.replies?.length ?? 0),
+        0,
+      ),
+    [internalComments],
   );
 
   // Jump to the newest item (bottom, by the sticky composer) only when a
   // comment/message actually arrives — not on the initial mount or a tab
   // switch, which would otherwise land the viewer at the bottom of the page.
   useEffect(() => {
-    if (visibleActiveTab !== "conversation" && visibleActiveTab !== "internal") return;
+    if (
+      visibleActiveTab !== "conversation" &&
+      visibleActiveTab !== "reply" &&
+      visibleActiveTab !== "internal"
+    ) return;
     const prev = lastChatCounts.current;
-    const grew =
-      prev !== null &&
-      (sortedMessages.length > prev.messages ||
-        totalCommentCount > prev.comments);
+    const grew = prev !== null && (
+      (visibleActiveTab === "conversation" && sortedMessages.length > prev.messages) ||
+      (visibleActiveTab === "reply" && portalReplyCount > prev.portalReplies) ||
+      (visibleActiveTab === "internal" && internalCommentCount > prev.internalComments)
+    );
     lastChatCounts.current = {
       messages: sortedMessages.length,
-      comments: totalCommentCount,
+      portalReplies: portalReplyCount,
+      internalComments: internalCommentCount,
     };
     if (!grew) return;
     const id = requestAnimationFrame(() =>
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [visibleActiveTab, sortedMessages.length, totalCommentCount]);
+  }, [
+    visibleActiveTab,
+    sortedMessages.length,
+    portalReplyCount,
+    internalCommentCount,
+  ]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -3395,13 +3443,15 @@ export function TicketDetailPage({
                     show: isSupport && !isPortalTicket,
                   },
                   {
+                    key: "reply" as const,
+                    label: "Reply",
+                    count: portalReplyCount,
+                    show: isPortalTicket,
+                  },
+                  {
                     key: "internal" as const,
-                    label: isPortalTicket
-                      ? "Reply"
-                      : isSupport
-                        ? "Internal Comment"
-                        : "Comment",
-                    count: totalCommentCount,
+                    label: isSupport || isPortalTicket ? "Internal Comment" : "Comment",
+                    count: internalCommentCount,
                     show: true,
                   },
                   {
@@ -3534,11 +3584,60 @@ export function TicketDetailPage({
                 {/* Bottom anchor — scrolled into view to reveal the newest item */}
                 <div ref={chatBottomRef} />
               </div>
+            ) : visibleActiveTab === "reply" ? (
+              <div className="flex flex-col">
+                {/* Requester-visible portal thread. Only comments explicitly
+                    marked portal-visible are rendered or returned externally. */}
+                {portalReplyComments.length === 0 ? (
+                  <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
+                    <MessageSquare className="size-5 text-sts-subtle/50" />
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                      No replies yet
+                    </p>
+                    <p className="font-sans text-[11.5px] text-sts-subtle">
+                      Reply below — the portal requester can read this thread.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-sts-card-border">
+                    {portalReplyComments.map((comment) => (
+                      <div key={`portal-reply-${comment.id}`} className="py-4">
+                        <CommentItem
+                          comment={comment}
+                          ticketId={dbId}
+                          subDepartmentMembers={mentionableUsers}
+                          onReplySubmitted={(reply) => handleReplyAdded(comment.id, reply)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="sticky bottom-0 z-10 -mx-1 border-t border-sts-card-border bg-sts-bg px-1 pb-2 pt-3">
+                  <CommentInput
+                    ticketId={dbId}
+                    subDepartmentMembers={mentionableUsers}
+                    portalVisible
+                    onCommentAdded={(comment) => {
+                      knownCommentIds.current.add(comment.id);
+                      setLiveComments((prev) => {
+                        const idx = prev.findIndex((item) => item.id === comment.id);
+                        if (idx === -1) return [...prev, comment];
+                        const next = [...prev];
+                        next[idx] = comment;
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+
+                <div ref={chatBottomRef} />
+              </div>
             ) : visibleActiveTab === "internal" ? (
               <div className="flex flex-col">
                 {/* Staff-only internal comments, separated from the customer
                     email chain. */}
-                {threadedComments.length === 0 ? (
+                {internalComments.length === 0 ? (
                   <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
                     <MessageSquare className="size-5 text-sts-subtle/50" />
                     <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
@@ -3550,7 +3649,7 @@ export function TicketDetailPage({
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-sts-card-border">
-                    {threadedComments.map((comment) => (
+                    {internalComments.map((comment) => (
                       <div key={`c-${comment.id}`} className="py-4">
                         <CommentItem
                           comment={comment}

@@ -24,7 +24,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn() },
-    comment: { create: vi.fn() },
+    comment: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
     activityLog: { create: vi.fn() },
   },
@@ -43,6 +43,7 @@ const mockGetProfile = vi.mocked(getProfile)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
 const mockTicketFindUnique = vi.mocked(prisma.ticket.findUnique)
 const mockCommentCreate = vi.mocked(prisma.comment.create)
+const mockCommentFindFirst = vi.mocked(prisma.comment.findFirst)
 const mockAttachmentFindMany = vi.mocked(prisma.attachment.findMany)
 const mockAttachmentUpdateMany = vi.mocked(prisma.attachment.updateMany)
 const mockActivityLogCreate = vi.mocked(prisma.activityLog.create)
@@ -66,6 +67,7 @@ const accessibleTicket = {
   creatorId: "00000000-0000-0000-0000-000000000009",
   deletedAt: null,
   assignees: [],
+  intake: null,
 }
 
 beforeEach(() => {
@@ -103,6 +105,7 @@ describe("POST /api/tickets/[id]/comments", () => {
           body: "Looks good",
           authorId: mockProfile.id,
           ticketId: "ticket-1",
+          portalVisible: false,
         }),
       }),
     )
@@ -128,6 +131,70 @@ describe("POST /api/tickets/[id]/comments", () => {
         ticketId: "ticket-1",
         body: "Hey @Sara check this",
         ticketTitle: "Fix login",
+      }),
+    )
+  })
+
+  it("creates requester-visible replies only for portal tickets", async () => {
+    mockTicketFindUnique.mockResolvedValue({
+      ...accessibleTicket,
+      intake: { apiKeyId: "portal-key" },
+    } as never)
+    mockCommentCreate.mockResolvedValue({
+      id: "comment-public",
+      body: "We are looking into this",
+      portalVisible: true,
+      author: { id: mockProfile.id, name: "Dev User", avatarUrl: null },
+    } as never)
+
+    const res = await POST(
+      makeRequest({ body: "We are looking into this", portalVisible: true }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(201)
+    expect(mockCommentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ portalVisible: true }),
+      }),
+    )
+  })
+
+  it("rejects requester-visible replies on non-portal tickets", async () => {
+    const res = await POST(
+      makeRequest({ body: "Should not be public", portalVisible: true }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(400)
+    expect(mockCommentCreate).not.toHaveBeenCalled()
+  })
+
+  it("inherits the parent comment audience for threaded replies", async () => {
+    mockCommentFindFirst.mockResolvedValue({ portalVisible: true } as never)
+    mockCommentCreate.mockResolvedValue({
+      id: "reply-public",
+      body: "Public threaded reply",
+      portalVisible: true,
+      author: { id: mockProfile.id, name: "Dev User", avatarUrl: null },
+    } as never)
+
+    const res = await POST(
+      makeRequest({
+        body: "Public threaded reply",
+        parentId: "portal-comment",
+        portalVisible: false,
+      }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(201)
+    expect(mockCommentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          parentId: "portal-comment",
+          portalVisible: true,
+        }),
       }),
     )
   })

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { generateApiKey } from "@/lib/api-key-auth"
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue"
 import type { ApiKeyScope } from "@/generated/prisma/enums"
+import { Prisma } from "@/generated/prisma/client"
 
 // GET /api/settings/api-keys — list keys visible to the caller
 export async function GET() {
@@ -41,11 +42,11 @@ export async function POST(request: NextRequest) {
   if (error) return error
 
   const body = await request.json().catch(() => ({}))
-  const { name, departmentId, purpose, formName } = body as {
+  const { name, departmentId, purpose, formConfigId } = body as {
     name?: string
     departmentId?: string
     purpose?: string
-    formName?: string
+    formConfigId?: string
   }
 
   if (purpose !== "portal") {
@@ -82,49 +83,42 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (purpose === "portal" && resolvedDeptId) {
-    return NextResponse.json(
-      { error: "Portal keys must be tenant-wide" },
-      { status: 400 },
-    )
-  }
-
-  let resolvedFormDepartmentId: string | null = null
+  let resolvedFormId: string | null = null
   if (purpose === "portal") {
     if (!tenantAdmin) {
       return NextResponse.json({ error: "Only tenant admins can create portal keys" }, { status: 403 })
     }
-    const formDepartment = await prisma.department.findFirst({
-      where: { tenantId },
-      orderBy: { id: "asc" },
-      select: { id: true },
-    })
-    if (!formDepartment) {
-      return NextResponse.json({ error: "Create a department before generating a portal key" }, { status: 409 })
+    if (!resolvedDeptId || !formConfigId?.trim()) {
+      return NextResponse.json(
+        { error: "Department and support form are required" },
+        { status: 400 },
+      )
     }
-    // IntakeFormConfig is still department-backed internally for compatibility
-    // with the shared form builder. Portal routing is tenant-wide and is chosen
-    // independently on each issue; the API key itself remains departmentless.
-    resolvedFormDepartmentId = formDepartment.id
+    const form = await prisma.intakeFormConfig.findFirst({
+      where: {
+        id: formConfigId.trim(),
+        departmentId: resolvedDeptId,
+        department: { tenantId },
+      },
+      select: { id: true, isActive: true, apiKey: { select: { id: true } } },
+    })
+    if (!form) {
+      return NextResponse.json({ error: "Support form not found in this department" }, { status: 404 })
+    }
+    if (!form.isActive) {
+      return NextResponse.json({ error: "Select an active support form" }, { status: 409 })
+    }
+    if (form.apiKey) {
+      return NextResponse.json({ error: "This support form is already connected to an API key" }, { status: 409 })
+    }
+    resolvedFormId = form.id
   }
 
   const { raw, hashed, suffix } = generateApiKey()
 
-  const key = await prisma.$transaction(async (tx) => {
-    const form = purpose === "portal" && resolvedFormDepartmentId
-      ? await tx.intakeFormConfig.create({
-          data: {
-            name: formName?.trim().slice(0, 120) || `${name.trim()} Support Form`,
-            departmentId: resolvedFormDepartmentId,
-            intakeSubDepartmentId: null,
-            scope: "DEPARTMENT",
-            assignmentMethod: "ROUND_ROBIN",
-          },
-          select: { id: true, name: true },
-        })
-      : null
-
-    return tx.apiKey.create({
+  let key
+  try {
+    key = await prisma.apiKey.create({
       data: {
         name: name.trim(),
         keySuffix: suffix,
@@ -132,8 +126,10 @@ export async function POST(request: NextRequest) {
         scope: (purpose === "portal" ? "read_write" : "read") as ApiKeyScope,
         kind: purpose === "portal" ? "portal" : "general",
         tenantId,
-        departmentId: resolvedDeptId,
-        formConfigId: form?.id ?? null,
+        // Portal keys stay tenant-wide. The submitted department only verifies
+        // the selected form and is not an authorization boundary for the key.
+        departmentId: purpose === "portal" ? null : resolvedDeptId,
+        formConfigId: purpose === "portal" ? resolvedFormId : null,
         createdById: profile.id,
       },
       select: {
@@ -148,7 +144,19 @@ export async function POST(request: NextRequest) {
         formConfig: { select: { id: true, name: true } },
       },
     })
-  })
+  } catch (cause) {
+    if (
+      purpose === "portal" &&
+      cause instanceof Prisma.PrismaClientKnownRequestError &&
+      cause.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "This support form is already connected to an API key" },
+        { status: 409 },
+      )
+    }
+    throw cause
+  }
 
   // Return the raw key only at creation time — never stored
   return NextResponse.json({ ...key, rawKey: raw }, { status: 201 })

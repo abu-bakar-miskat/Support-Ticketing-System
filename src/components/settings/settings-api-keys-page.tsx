@@ -42,6 +42,12 @@ export type ApiKeyRow = {
 export type DepartmentOption = {
   id: string;
   name: string;
+  forms?: {
+    id: string;
+    name: string;
+    isActive: boolean;
+    isConnected: boolean;
+  }[];
 };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -187,33 +193,42 @@ function GenerateKeyModal({
   onClose,
   onCreated,
   portalMode = false,
+  editKey,
+  onSaved,
 }: {
   departments: DepartmentOption[];
   isAdmin: boolean;
   onClose: () => void;
   onCreated: (rawKey: string, keyName: string) => void;
   portalMode?: boolean;
+  editKey?: ApiKeyRow;
+  onSaved?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [formName, setFormName] = useState("");
-  const [deptId, setDeptId] = useState(departments[0]?.id ?? "");
+  const [name, setName] = useState(editKey?.name ?? "");
+  const [deptId, setDeptId] = useState(
+    editKey
+      ? departments.find((department) => department.forms?.some((form) => form.id === editKey.formId))?.id ?? ""
+      : departments[0]?.id ?? "",
+  );
+  const [formId, setFormId] = useState(editKey?.formId ?? "");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || (portalMode && (!deptId || !formId))) return;
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch("/api/settings/api-keys", {
-        method: "POST",
+      const res = await fetch(editKey ? `/api/settings/api-keys/${editKey.id}` : "/api/settings/api-keys", {
+        method: editKey ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          departmentId: portalMode ? undefined : (deptId || undefined),
+          departmentId: deptId || undefined,
           purpose: portalMode ? "portal" : undefined,
-          formName: portalMode ? (formName.trim() || undefined) : undefined,
+          formConfigId: portalMode ? formId : undefined,
+          action: editKey ? "update-form" : undefined,
         }),
       });
       const data = await res.json();
@@ -221,7 +236,8 @@ function GenerateKeyModal({
         setErr(data.error ?? "Failed to create key");
         return;
       }
-      onCreated(data.rawKey, data.name);
+      if (editKey) onSaved?.();
+      else onCreated(data.rawKey, data.name);
     } catch {
       setErr("Network error — please try again");
     } finally {
@@ -231,9 +247,9 @@ function GenerateKeyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop p-4">
-      <div className="w-full max-w-md rounded-xl border border-sts-card-border bg-sts-card shadow-xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="api-key-modal-title" className="w-full max-w-md rounded-xl border border-sts-card-border bg-sts-card shadow-xl">
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <h2 className="sts-text-modal-title">Generate API key</h2>
+          <h2 id="api-key-modal-title" className="sts-text-modal-title">{editKey ? "Edit linked support form" : "Generate API key"}</h2>
           <Tip label="Close">
             <button
               aria-label="Close"
@@ -255,46 +271,66 @@ function GenerateKeyModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. GitHub Actions, Zapier integration"
               className="h-9 font-sans text-[13px]"
+              disabled={Boolean(editKey)}
               autoFocus
             />
           </div>
 
-          {portalMode && (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label className="font-sans text-[12px] font-medium text-sts-foreground">
-                  Support form name
-                </label>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={name.trim() ? `${name.trim()} Support Form` : "Customer support form"}
-                  className="h-9 font-sans text-[13px]"
-                />
-              </div>
-            </>
-          )}
-
-          {!portalMode && departments.length > 0 && (
+          {departments.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="font-sans text-[12px] font-medium text-sts-foreground">
-                Department scope
+                {portalMode ? "Department" : "Department scope"}
               </label>
               <SearchableSelect
                 value={deptId}
-                onChange={setDeptId}
+                onChange={(value) => {
+                  setDeptId(value);
+                  if (portalMode) setFormId("");
+                }}
                 options={[
-                  ...(isAdmin
+                  ...(!portalMode && isAdmin
                     ? [{ value: "", label: "Global (all departments)" }]
                     : []),
                   ...departments.map((d) => ({ value: d.id, label: d.name })),
                 ]}
                 placeholder="Select department…"
                 className="bg-sts-bg"
-                aria-label="Department scope"
+                aria-label={portalMode ? "Department" : "Department scope"}
               />
               <p className="font-sans text-[11px] text-sts-muted">
-                Key will only be able to read data from this department.
+                {portalMode
+                  ? "Choose the department that owns the support form."
+                  : "Key will only be able to read data from this department."}
+              </p>
+            </div>
+          )}
+
+          {portalMode && (
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-[12px] font-medium text-sts-foreground">
+                Support form
+              </label>
+              <SearchableSelect
+                value={formId}
+                onChange={setFormId}
+                options={(departments.find((department) => department.id === deptId)?.forms ?? []).map((form) => ({
+                  value: form.id,
+                  label: form.name,
+                  description: form.isConnected && form.id !== editKey?.formId
+                    ? "Already connected"
+                    : !form.isActive
+                      ? "Inactive"
+                      : undefined,
+                  disabled: form.id !== editKey?.formId && (form.isConnected || !form.isActive),
+                }))}
+                placeholder={deptId ? "Select support form…" : "Select a department first"}
+                emptyLabel={deptId ? "No support forms in this department" : "Select a department first"}
+                disabled={!deptId}
+                className="bg-sts-bg"
+                aria-label="Support form"
+              />
+              <p className="font-sans text-[11px] text-sts-muted">
+                The API will use this form&apos;s existing fields, issues, routing, and SLA settings.
               </p>
             </div>
           )}
@@ -305,13 +341,15 @@ function GenerateKeyModal({
               strokeWidth={2}
             />
             <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
-              {portalMode
-                ? "A dedicated support form will be created for this key. The key can submit that form, view its tickets, and add requester comments. The raw key is shown once."
+              {editKey
+                ? "Future submissions will use the selected form. Your API key and existing tickets are preserved."
+                : portalMode
+                ? "The key will be linked to the selected support form. It can submit that form, view its tickets, and add requester comments. The raw key is shown once."
                 : "Keys are read-only and scoped to the selected department. The raw key is shown once — store it securely."}
             </p>
           </div>
 
-          {err && <p className="font-sans text-[12px] text-sts-red">{err}</p>}
+          {err && <p role="alert" className="font-sans text-[12px] text-sts-red">{err}</p>}
 
           <div className="flex justify-end gap-2">
             <Button
@@ -326,10 +364,10 @@ function GenerateKeyModal({
             <Button
               type="submit"
               size="sm"
-              disabled={loading || !name.trim()}
+              disabled={loading || !name.trim() || (portalMode && (!deptId || !formId))}
               className="gap-1.5 bg-sts-blue font-sans text-[12.5px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
             >
-              {loading ? "Generating…" : "Generate"}
+              {editKey ? (loading ? "Saving…" : "Save changes") : (loading ? "Generating…" : "Generate")}
             </Button>
           </div>
         </form>
@@ -434,6 +472,7 @@ export function SettingsApiKeysPage({
 }) {
   const router = useRouter();
   const [showGenerate, setShowGenerate] = useState(false);
+  const [editKey, setEditKey] = useState<ApiKeyRow | null>(null);
   const [revealKey, setRevealKey] = useState<{
     raw: string;
     name: string;
@@ -529,6 +568,22 @@ export function SettingsApiKeysPage({
           portalMode={portalMode}
           onClose={() => setShowGenerate(false)}
           onCreated={handleCreated}
+        />
+      )}
+
+      {editKey && (
+        <GenerateKeyModal
+          departments={departments}
+          isAdmin={isAdmin}
+          portalMode
+          editKey={editKey}
+          onClose={() => setEditKey(null)}
+          onCreated={handleCreated}
+          onSaved={() => {
+            setEditKey(null);
+            toast.success("Linked support form updated.");
+            router.refresh();
+          }}
         />
       )}
 
@@ -629,6 +684,7 @@ export function SettingsApiKeysPage({
             onRevoke={handleRevoke}
             onRestore={handleRestore}
             onDelete={handleDelete}
+            onEdit={(id) => setEditKey(initialKeys.find((key) => key.id === id) ?? null)}
           />
         ) : (
           <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">

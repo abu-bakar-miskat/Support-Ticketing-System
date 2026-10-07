@@ -48,7 +48,12 @@ export async function POST(
     // this visible prefix preserves the real requester attribution for staff.
     const storedBody = `[Portal — ${ticket.intake.submitterName}]\n${commentBody}`
     const comment = await prisma.comment.create({
-      data: { ticketId, authorId: ctx.createdById, body: storedBody },
+      data: {
+        ticketId,
+        authorId: ctx.createdById,
+        body: storedBody,
+        portalVisible: true,
+      },
       select: { id: true, createdAt: true },
     })
     await appendTicketEvent(ticketId, ctx.createdById, "COMMENT_ADDED", {

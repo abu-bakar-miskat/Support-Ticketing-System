@@ -131,7 +131,7 @@ export async function DELETE(
   })
   if (portalKey) {
     return NextResponse.json(
-      { error: "This form belongs to a portal API key and cannot be deleted." },
+      { error: "This form is connected to a portal API key. Delete that connection before deleting the form." },
       { status: 409 },
     )
   }

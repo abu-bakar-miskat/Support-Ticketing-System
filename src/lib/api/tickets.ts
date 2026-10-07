@@ -58,6 +58,7 @@ export type AddCommentBody = {
   parentId?: string;
   attachments?: string[];
   hasAttachment?: boolean;
+  portalVisible?: boolean;
 };
 
 /** Carries the HTTP status so the UI can tell "no access" (403) from "gone" (404). */

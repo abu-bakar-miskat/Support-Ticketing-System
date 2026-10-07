@@ -22,6 +22,7 @@ export type CommentShape = {
   id: string; body: string; createdAt: string; editedAt: string | null;
   deletedAt: string | null; authorId: string; authorName: string;
   authorAvatarUrl: string | null;
+  portalVisible?: boolean;
   attachments: { id: string; storageUrl: string; fileName: string; fileSize: number }[];
   replies: CommentShape[];
 };
@@ -34,10 +35,12 @@ export function CommentInput({
   ticketId,
   subDepartmentMembers = [],
   onCommentAdded,
+  portalVisible = false,
 }: {
   ticketId: string;
   subDepartmentMembers?: MentionableUser[];
   onCommentAdded?: (comment: CommentShape) => void;
+  portalVisible?: boolean;
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -213,6 +216,7 @@ export function CommentInput({
         body,
         hasAttachment: uploadedAttachments.length > 0,
         attachments: uploadedAttachments.map((a) => a.id),
+        portalVisible,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post comment";
@@ -231,6 +235,7 @@ export function CommentInput({
       authorId: data.author?.id ?? "",
       authorName: data.author?.name ?? "",
       authorAvatarUrl: data.author?.avatarUrl ?? null,
+      portalVisible,
       attachments: data.attachments ?? uploadedAttachments,
       replies: [],
     };
@@ -312,7 +317,11 @@ export function CommentInput({
           <textarea
             ref={textRef}
             rows={3}
-            placeholder="Write a comment… use @ to mention a teammate or @all"
+            placeholder={
+              portalVisible
+                ? "Write a reply… the portal requester can see this"
+                : "Write a comment… use @ to mention a teammate or @all"
+            }
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -413,7 +422,7 @@ export function CommentInput({
             ) : (
               <>
                 <SendHorizonal className="size-[12px]" />
-                Comment
+                {portalVisible ? "Reply" : "Comment"}
               </>
             )}
           </button>

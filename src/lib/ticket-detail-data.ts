@@ -593,6 +593,7 @@ export async function getTicketDetailPayload(
     projectName: ticket.project?.name ?? "Miscellaneous",
     projectColor: ticket.project?.color ?? "#0a76b9",
     projectKind: ticket.project?.kind ?? "standard",
+    isPortalTicket: ticket.intake?.apiKeyId != null,
     projectModuleSystemEnabled: ticket.project?.moduleSystemEnabled ?? false,
     moduleId: ticket.moduleId ?? null,
     moduleName: ticket.module?.name ?? null,

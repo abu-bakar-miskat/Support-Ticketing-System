@@ -654,6 +654,8 @@ export type TicketDetailProps = {
   projectColor: string;
   /** Project kind — "support" tickets hide sub-tickets, story points, asset links. */
   projectKind?: string;
+  /** True when the ticket was submitted through the external Portal API. */
+  isPortalTicket?: boolean;
   projectModuleSystemEnabled?: boolean;
   moduleId?: string | null;
   moduleName?: string | null;
@@ -747,6 +749,7 @@ export function TicketDetailPage({
   projectName,
   projectColor,
   projectKind = "standard",
+  isPortalTicket = false,
   projectModuleSystemEnabled = false,
   moduleId = null,
   moduleName = null,
@@ -815,7 +818,9 @@ export function TicketDetailPage({
   }, [isDraft]);
   const [activeTab, setActiveTab] = useState<
     "conversation" | "internal" | "activity"
-  >(projectKind === "support" ? "conversation" : "internal");
+  >(projectKind === "support" && !isPortalTicket ? "conversation" : "internal");
+  const visibleActiveTab =
+    isPortalTicket && activeTab === "conversation" ? "internal" : activeTab;
   const [activityLimit, setActivityLimit] = useState(10);
   const [copied, setCopied] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
@@ -1011,7 +1016,7 @@ export function TicketDetailPage({
   // comment/message actually arrives — not on the initial mount or a tab
   // switch, which would otherwise land the viewer at the bottom of the page.
   useEffect(() => {
-    if (activeTab !== "conversation" && activeTab !== "internal") return;
+    if (visibleActiveTab !== "conversation" && visibleActiveTab !== "internal") return;
     const prev = lastChatCounts.current;
     const grew =
       prev !== null &&
@@ -1026,7 +1031,7 @@ export function TicketDetailPage({
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [activeTab, sortedMessages.length, totalCommentCount]);
+  }, [visibleActiveTab, sortedMessages.length, totalCommentCount]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -1630,7 +1635,7 @@ export function TicketDetailPage({
   // high enough not to hammer the DB. Skip while hydrating so polling doesn't
   // contend with the primary /detail request.
   useEffect(() => {
-    if (isHydrating || activeTab !== "conversation") return;
+    if (isHydrating || visibleActiveTab !== "conversation") return;
     const poll = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -1650,7 +1655,7 @@ export function TicketDetailPage({
     };
     const interval = setInterval(poll, 20_000);
     return () => clearInterval(interval);
-  }, [isHydrating, activeTab, dbId]);
+  }, [isHydrating, visibleActiveTab, dbId]);
 
   // Reconciliation: ask the server to check Resend for any emails the webhook
   // may have missed. Runs when the Chat tab is open on a fully-loaded ticket,
@@ -1659,7 +1664,7 @@ export function TicketDetailPage({
   // Skipped while hydrating so reconcile doesn't contend with /detail for the
   // shared DB pool (that race caused 45s timeouts → "Failed to load ticket").
   useEffect(() => {
-    if (isHydrating || activeTab !== "conversation") return;
+    if (isHydrating || visibleActiveTab !== "conversation") return;
     let cancelled = false;
     const reconcile = async () => {
       if (document.visibilityState !== "visible") return;
@@ -1680,7 +1685,7 @@ export function TicketDetailPage({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [isHydrating, activeTab, dbId, refreshMessages]);
+  }, [isHydrating, visibleActiveTab, dbId, refreshMessages]);
 
   // Live GitHub Development section — the webhook broadcasts to
   // `ticket-github:{dbId}` when a linked PR changes state (e.g. merged), a new
@@ -2154,7 +2159,7 @@ export function TicketDetailPage({
             "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pt-[22px]",
             // The conversation feed pins the composer to the bottom, so it
             // needs almost no trailing padding; other tabs keep breathing room.
-            activeTab === "conversation" ? "pb-2" : "pb-16",
+            visibleActiveTab === "conversation" ? "pb-2" : "pb-16",
           )}
         >
           <div className="w-full space-y-3.5 px-8">
@@ -3387,11 +3392,15 @@ export function TicketDetailPage({
                     key: "conversation" as const,
                     label: "Conversation",
                     count: sortedMessages.length,
-                    show: isSupport,
+                    show: isSupport && !isPortalTicket,
                   },
                   {
                     key: "internal" as const,
-                    label: "Comment",
+                    label: isPortalTicket
+                      ? "Reply"
+                      : isSupport
+                        ? "Internal Comment"
+                        : "Comment",
                     count: totalCommentCount,
                     show: true,
                   },
@@ -3410,7 +3419,7 @@ export function TicketDetailPage({
                       onClick={() => setActiveTab(tab.key)}
                       className={cn(
                         "relative flex h-[30px] items-center gap-[5px] pr-[16px] font-sans text-[12px]",
-                        activeTab === tab.key
+                        visibleActiveTab === tab.key
                           ? "font-semibold text-sts-foreground"
                           : "text-sts-muted hover:text-sts-foreground",
                       )}
@@ -3419,13 +3428,13 @@ export function TicketDetailPage({
                       <span className="font-sans text-[11.5px] text-sts-subtle">
                         {tab.count}
                       </span>
-                      {activeTab === tab.key && (
+                      {visibleActiveTab === tab.key && (
                         <span className="absolute bottom-0 left-0 right-[16px] h-[2px] rounded-full bg-sts-blue" />
                       )}
                     </button>
                   ))}
                 <span className="flex-1" />
-                {activeTab === "conversation" && (
+                {visibleActiveTab === "conversation" && (
                   <Tip label="Refresh messages">
                     <button
                       aria-label="Refresh messages"
@@ -3452,8 +3461,8 @@ export function TicketDetailPage({
 
             {/* Tab content */}
             {isHydrating ? (
-              <TicketTabContentHydrating activeTab={activeTab} />
-            ) : activeTab === "conversation" ? (
+              <TicketTabContentHydrating activeTab={visibleActiveTab} />
+            ) : visibleActiveTab === "conversation" ? (
               <div className="flex flex-col">
                 {/* Customer email chain only — internal comments live in their
                     own tab so this stays a clean record of the conversation. */}
@@ -3525,7 +3534,7 @@ export function TicketDetailPage({
                 {/* Bottom anchor — scrolled into view to reveal the newest item */}
                 <div ref={chatBottomRef} />
               </div>
-            ) : activeTab === "internal" ? (
+            ) : visibleActiveTab === "internal" ? (
               <div className="flex flex-col">
                 {/* Staff-only internal comments, separated from the customer
                     email chain. */}

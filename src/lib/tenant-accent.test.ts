@@ -8,7 +8,7 @@ import {
 } from "./tenant-accent"
 import { sanitizeTenantBranding, resolveTenantBranding } from "./tenant-branding"
 
-const DARK_SURFACE = "#1c1b19"
+const DARK_SURFACE = "#0e0d0c"
 
 describe("normalizeHex", () => {
   it("expands shorthand and lowercases", () => {

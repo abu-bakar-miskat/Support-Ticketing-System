@@ -74,7 +74,7 @@ export function AccentColorField({
 
       <div className="mt-2 grid max-w-[460px] grid-cols-2 gap-2">
         <AccentPreview label="Light" surface="#ffffff" text="#111827" tokens={palette.light} />
-        <AccentPreview label="Dark" surface="#1c1b19" text="#f5f3f0" tokens={palette.dark} />
+        <AccentPreview label="Dark" surface="#000000" text="#f5f3f0" tokens={palette.dark} />
       </div>
 
       {notes.length > 0 && (

@@ -19,7 +19,7 @@ export const DEFAULT_ACCENT = "#f84201";
 const WHITE = "#ffffff";
 const INK = "#111827";
 /** Dark-theme card surface (--sts-card-solid in html.dark). */
-const DARK_SURFACE = "#1c1b19";
+const DARK_SURFACE = "#0e0d0c";
 
 const LIGHT_MIN_CONTRAST = 3;
 const DARK_MIN_CONTRAST = 4.5;

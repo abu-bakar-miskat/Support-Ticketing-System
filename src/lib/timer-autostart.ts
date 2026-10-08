@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { normalizeStatus } from "@/components/board/board-types"
+import { latestPortalCommentSelect, portalCommentsAsConversation, portalIntakeSelect } from "@/lib/portal-conversation"
 
 function durationSecsBetween(start: Date, end: Date): number {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))
@@ -30,6 +31,8 @@ export async function startTimerOnStatusChange(
         take: 1,
         select: { direction: true, createdAt: true },
       },
+      comments: latestPortalCommentSelect,
+      intake: portalIntakeSelect,
     },
   })
   if (!ticket) return
@@ -42,9 +45,13 @@ export async function startTimerOnStatusChange(
   // The derived conversation label is Waiting for customer when the latest
   // public message is outbound. Automatic status changes must not restart work
   // while the agent is waiting; the next inbound customer reply will resume it.
-  if (ticket.messages?.[0]?.direction === "outbound") return
+  const latest = [
+    ...ticket.messages,
+    ...portalCommentsAsConversation(ticket.comments, ticket.intake),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+  if (latest?.direction === "outbound") return
 
-  const latestInboundAt = ticket.messages?.[0]?.createdAt
+  const latestInboundAt = latest ? new Date(latest.createdAt) : undefined
   const existingEntry = await prisma.timeEntry.findFirst({
     where: {
       ticketId,

@@ -6,6 +6,7 @@ import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 
 export async function POST(
   request: NextRequest,
@@ -156,6 +157,15 @@ export async function POST(
   // email conversation, so a staff portal reply is the first public response.
   if (portalVisible) {
     await stopFirstResponseOnPublicAgentMessage(ticketId, comment.createdAt)
+    // Same as a public email reply: the label becomes "Waiting for customer"
+    // and work tracking pauses. Touching the ticket row refreshes the badge on
+    // board and task-list views via the Ticket-UPDATE realtime subscription.
+    await prisma.ticket
+      .update({ where: { id: ticketId }, data: { updatedAt: new Date() } })
+      .catch(() => undefined)
+    await syncWorkTimerWithConversation(ticketId, "outbound").catch((err) =>
+      console.error("[comments] failed to pause work timer:", err),
+    )
   }
 
   // Write event to ActivityLog and broadcast to ticket-activity:{ticketId} so

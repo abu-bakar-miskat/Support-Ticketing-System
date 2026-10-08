@@ -11,6 +11,7 @@ import { createNotification } from "@/lib/notify";
 import { selectSlaTargets, type SlaPolicyLike } from "@/lib/sla-policy-match";
 import { type SlaPauseInterval, type WorkingHoursCalendar } from "@/lib/sla-calendar";
 import { waitingForCustomerPauseIntervals } from "@/lib/sla-pause-intervals";
+import { loadPortalConversation } from "@/lib/portal-conversation";
 import {
   evaluateSlaIndicator,
   planReopen,
@@ -267,12 +268,15 @@ async function loadResolutionPauseIntervals(
   pauseWhenWaitingForCustomer: boolean,
 ): Promise<SlaPauseInterval[]> {
   if (!pauseWhenWaitingForCustomer) return [];
-  const messages = await prisma.ticketMessage.findMany({
-    where: { ticketId, status: { not: "system" } },
-    select: { direction: true, status: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
-  return waitingForCustomerPauseIntervals(messages, until);
+  const [messages, portal] = await Promise.all([
+    prisma.ticketMessage.findMany({
+      where: { ticketId, status: { not: "system" } },
+      select: { direction: true, status: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    loadPortalConversation(ticketId),
+  ]);
+  return waitingForCustomerPauseIntervals([...messages, ...portal], until);
 }
 
 /** SLA-03: the first-response timer stops on the first PUBLIC agent message. Idempotent. */

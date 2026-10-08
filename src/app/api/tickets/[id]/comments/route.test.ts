@@ -23,7 +23,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 })
 vi.mock("@/lib/db", () => ({
   prisma: {
-    ticket: { findUnique: vi.fn() },
+    ticket: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}) },
     comment: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
     activityLog: { create: vi.fn() },
@@ -31,6 +31,9 @@ vi.mock("@/lib/db", () => ({
 }))
 vi.mock("@/lib/sla-engine", () => ({
   stopFirstResponseOnPublicAgentMessage: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock("@/lib/timer-conversation-sync", () => ({
+  syncWorkTimerWithConversation: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("@/lib/mentions", () => ({
   processMentions: vi.fn().mockResolvedValue(undefined),
@@ -42,6 +45,7 @@ import { assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 
 const mockGetProfile = vi.mocked(getProfile)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
@@ -169,6 +173,8 @@ describe("POST /api/tickets/[id]/comments", () => {
     // The portal reply thread is the requester-facing channel, so it stops
     // the first-response SLA just like a public email reply does.
     expect(mockStopFirstResponse).toHaveBeenCalledWith("ticket-1", createdAt)
+    // ...and leaves the ticket Waiting for customer, pausing work tracking.
+    expect(vi.mocked(syncWorkTimerWithConversation)).toHaveBeenCalledWith("ticket-1", "outbound")
   })
 
   it("rejects requester-visible replies on non-portal tickets", async () => {

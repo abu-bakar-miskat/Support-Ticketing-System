@@ -26,6 +26,7 @@ import {
 import { hasNativeDeptProjectViewAccess } from "@/lib/support-project";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import type { getProfile } from "@/lib/profile";
+import { latestConversationDirection, latestPortalCommentSelect, portalCommentsAsConversation, portalIntakeSelect } from "@/lib/portal-conversation";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
@@ -126,8 +127,10 @@ export async function getProjectDetailsData(
         messages: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { direction: true },
+          select: { direction: true, createdAt: true },
         },
+        comments: latestPortalCommentSelect,
+        intake: portalIntakeSelect,
       },
     }),
     getBoardCards({
@@ -391,7 +394,10 @@ export async function getProjectDetailsData(
     commentCount: t._count.comments,
     labels: t.labels,
     subDepartmentName: t.subDepartment.name,
-    lastMessageDirection: (t.messages[0]?.direction as "inbound" | "outbound") ?? null,
+    lastMessageDirection: latestConversationDirection(
+      t.messages,
+      portalCommentsAsConversation(t.comments, t.intake),
+    ),
   }));
 
   const statusDist = fallbackStatuses.map((s) => ({

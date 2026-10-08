@@ -7,6 +7,9 @@ vi.mock("@/lib/db", () => ({
     ticket: { findMany: vi.fn() },
   },
 }))
+vi.mock("@/lib/portal-conversation", () => ({
+  loadPortalConversations: async () => new Map(),
+}))
 
 import { prisma } from "@/lib/db"
 import { resolveSubStatusTicketIds, resolveFormFieldTicketIds, resolveSearchTicketIds } from "./board-search"

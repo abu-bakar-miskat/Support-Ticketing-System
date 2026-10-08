@@ -17,6 +17,7 @@ import { formatTicketDue, isBlockedStatus } from "@/lib/format"
 import { dueHasTime, formatTimeHM, formatCalendarDate } from "@/lib/ticket-datetime"
 import { resolveSubStatusTicketIds, resolveFormFieldTicketIds, resolveSearchTicketIds, type FormFieldFilter } from "@/lib/board-search"
 import type { SubStatus } from "@/lib/ticket-sub-status"
+import { latestConversationDirection, latestPortalCommentSelect, portalCommentsAsConversation, portalIntakeSelect } from "@/lib/portal-conversation"
 
 export { avatarColorFor }
 
@@ -62,12 +63,13 @@ const ticketSelect = {
     },
   },
   _count: { select: { comments: { where: { deletedAt: null } }, attachments: true, messages: true } },
-  intake: { select: { id: true } },
+  intake: { select: { id: true, ...portalIntakeSelect.select } },
   messages: {
     orderBy: { createdAt: "desc" as const },
     take: 1,
-    select: { direction: true },
+    select: { direction: true, createdAt: true },
   },
+  comments: latestPortalCommentSelect,
 } as const
 
 type TicketWithRelations = TicketGetPayload<{ select: typeof ticketSelect }>
@@ -144,7 +146,10 @@ export function toBoardCard(
     createdIso: t.createdAt.toISOString(),
     hasIntake: !!t.intake,
     isComplete: isStatusComplete,
-    lastMessageDirection: (t.messages[0]?.direction as "inbound" | "outbound") ?? null,
+    lastMessageDirection: latestConversationDirection(
+      t.messages,
+      portalCommentsAsConversation(t.comments, t.intake),
+    ),
     transferredFromName: t.transferredFromName ?? null,
     transferredByName: t.transferredByName ?? null,
   }

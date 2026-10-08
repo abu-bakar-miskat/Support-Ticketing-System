@@ -11,6 +11,7 @@ import {
 } from "@/lib/portal-api"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { PORTAL_COMMENT_VISIBILITY } from "@/lib/portal-comments"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 
 export async function POST(
   request: NextRequest,
@@ -59,6 +60,16 @@ export async function POST(
     await appendTicketEvent(ticketId, ctx.createdById, "COMMENT_ADDED", {
       commentId: comment.id,
     })
+
+    // Same as an inbound customer email: the label becomes "Waiting for
+    // assignee" and the assignee's work timer resumes. Touching the ticket row
+    // fires the Ticket-UPDATE realtime subscription that refreshes the badge.
+    await prisma.ticket
+      .update({ where: { id: ticketId }, data: { updatedAt: new Date() } })
+      .catch(() => undefined)
+    await syncWorkTimerWithConversation(ticketId, "inbound").catch((err) =>
+      console.error("[portal] failed to resume work timer:", err),
+    )
 
     const recipients = new Set([
       ticket.assigneeId,

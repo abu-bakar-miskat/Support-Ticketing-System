@@ -996,19 +996,31 @@ export function TicketDetailPage({
   const chatReplyStatus = useMemo<
     "awaiting-assignee" | "awaiting-customer" | null
   >(() => {
-    if (liveMessages.length === 0) return null;
+    // Portal API tickets converse through the portal reply thread: a requester
+    // comment counts as inbound, a staff portal reply as outbound.
+    const portalThread = isPortalTicket
+      ? liveComments
+          .flatMap((c) => [c, ...c.replies])
+          .filter((c) => c.portalVisible && !c.deletedAt)
+          .map((c) => ({
+            direction: c.externalAuthor ? "inbound" : "outbound",
+            createdAt: c.createdAt,
+          }))
+      : [];
+    const conversation = [...liveMessages, ...portalThread];
+    if (conversation.length === 0) return null;
     const statusConfig = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
     );
     if (statusConfig?.isComplete || liveStatus === "Live") return null;
-    const last = [...liveMessages].sort(
+    const last = conversation.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )[0];
     return last.direction === "inbound"
       ? "awaiting-assignee"
       : "awaiting-customer";
-  }, [liveMessages, liveStatus, effectiveSubDepartmentStatuses]);
+  }, [liveMessages, liveComments, isPortalTicket, liveStatus, effectiveSubDepartmentStatuses]);
 
   // Portal-visible replies and staff-only comments are intentionally split at
   // the data boundary. Both retain their threaded, chronological presentation.

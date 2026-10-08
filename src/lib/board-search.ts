@@ -14,6 +14,7 @@
  */
 import { prisma } from "@/lib/db";
 import { deriveSubStatus, type SubStatus, type ConversationMessage } from "@/lib/ticket-sub-status";
+import { loadPortalConversations } from "@/lib/portal-conversation";
 
 export type FormFieldFilter = { fieldId: string; value: string };
 
@@ -25,12 +26,15 @@ export async function resolveSubStatusTicketIds(
   if (subStatusIn.length === 0) return candidateTicketIds ?? [];
   if (candidateTicketIds && candidateTicketIds.length === 0) return [];
 
-  const messages = await prisma.ticketMessage.findMany({
-    where: candidateTicketIds ? { ticketId: { in: candidateTicketIds } } : {},
-    select: { ticketId: true, direction: true, status: true, createdAt: true },
-  });
+  const [messages, byTicket] = await Promise.all([
+    prisma.ticketMessage.findMany({
+      where: candidateTicketIds ? { ticketId: { in: candidateTicketIds } } : {},
+      select: { ticketId: true, direction: true, status: true, createdAt: true },
+    }),
+    // Portal API tickets converse through the portal reply thread instead.
+    loadPortalConversations(candidateTicketIds),
+  ]);
 
-  const byTicket = new Map<string, ConversationMessage[]>();
   for (const m of messages) {
     const list = byTicket.get(m.ticketId) ?? [];
     list.push(m);

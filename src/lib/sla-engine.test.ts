@@ -17,6 +17,10 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 
+vi.mock("@/lib/portal-conversation", () => ({
+  loadPortalConversation: async () => [],
+}))
+
 vi.mock("@/lib/notify", () => ({
   createNotification: vi.fn(() => Promise.resolve()),
 }))

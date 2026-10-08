@@ -619,7 +619,7 @@ export function Sidebar({
                     alt={brandingName ?? ""}
                     width={40}
                     height={40}
-                    className="size-10 object-contain"
+                    className="sts-tenant-logo size-10 object-contain"
                   />
                 ) : brandingName ? (
                   <span
@@ -660,7 +660,7 @@ export function Sidebar({
                     alt=""
                     height={36}
                     className={cn(
-                      "w-auto shrink-0 object-contain",
+                      "sts-tenant-logo w-auto shrink-0 object-contain",
                       brandingHideDisplayName
                         ? "h-11 max-w-[150px]"
                         : "h-9 max-w-[72px]",

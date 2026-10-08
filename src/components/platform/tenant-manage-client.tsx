@@ -17,6 +17,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TenantAvatar } from "@/components/platform/tenant-avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { TenantBranding } from "@/lib/tenant-branding";
+import { normalizeHex } from "@/lib/tenant-accent";
+import { AccentColorField } from "@/components/settings/accent-color-field";
 import {
   TenantAgreements,
   type AgreementRow,
@@ -178,6 +180,8 @@ export function TenantManageClient({
     initialBranding.displayName ?? "",
   );
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "");
+  const [accentColor, setAccentColor] = useState(initialBranding.accentColor ?? "");
+  const accentValid = !accentColor.trim() || normalizeHex(accentColor) !== null;
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -391,6 +395,7 @@ export function TenantManageClient({
       body: JSON.stringify({
         displayName: displayName.trim() || undefined,
         logoUrl: logoUrl.trim() || undefined,
+        accentColor: normalizeHex(accentColor) ?? undefined,
       }),
     });
     setSaving(false);
@@ -597,7 +602,7 @@ export function TenantManageClient({
             <section className={cn(sectionCard, "space-y-4")}>
               <form onSubmit={saveBranding} className="space-y-4">
                 <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                  Logo &amp; name
+                  Logo, name &amp; color
                 </h2>
 
                 <div>
@@ -645,7 +650,9 @@ export function TenantManageClient({
                   </p>
                 </div>
 
-                <Button type="submit" size="lg" disabled={saving}>
+                <AccentColorField value={accentColor} onChange={setAccentColor} />
+
+                <Button type="submit" size="lg" disabled={saving || !accentValid}>
                   {saving ? "Saving…" : "Save branding"}
                 </Button>
               </form>

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
 import { EmailIdentityCard } from "./settings-email-identity"
 import { LogoUploadButton } from "./logo-upload-button"
+import { AccentColorField } from "./accent-color-field"
+import { normalizeHex } from "@/lib/tenant-accent"
 import type { DeptOption } from "./settings-email-templates-page"
 
 export function SettingsBrandingPage({
@@ -27,6 +29,8 @@ export function SettingsBrandingPage({
   const [hideDisplayName, setHideDisplayName] = useState(
     initialBranding.hideDisplayName ?? !initialBranding.hideLogo,
   )
+  const [accentColor, setAccentColor] = useState(initialBranding.accentColor ?? "")
+  const accentValid = !accentColor.trim() || normalizeHex(accentColor) !== null
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -48,6 +52,7 @@ export function SettingsBrandingPage({
         logoUrl: logoUrl.trim() || undefined,
         hideLogo,
         hideDisplayName,
+        accentColor: normalizeHex(accentColor) ?? undefined,
       }),
     })
     setSaving(false)
@@ -57,7 +62,7 @@ export function SettingsBrandingPage({
       return
     }
     setStatus("Branding saved.")
-    // Re-render the server shell layout so the sidebar header picks up the change.
+    // Re-render the server shell layout so the sidebar header and accent pick up the change.
     router.refresh()
   }
 
@@ -69,7 +74,7 @@ export function SettingsBrandingPage({
         <h1 className="sts-text-admin-title">Branding</h1>
         <p className="font-sans text-[13px] text-sts-muted">
           Customize how <span className="font-medium text-sts-foreground">{tenantName}</span> appears
-          in the app shell. These settings apply only to this tenant.
+          across the app. These settings apply only to this tenant.
         </p>
       </header>
 
@@ -155,6 +160,10 @@ export function SettingsBrandingPage({
             </p>
           </div>
 
+          <div className="border-t border-sts-card-border pt-4">
+            <AccentColorField value={accentColor} onChange={setAccentColor} />
+          </div>
+
           <div className="flex flex-col gap-2 border-t border-sts-card-border pt-4">
             <label className="flex items-center gap-2.5">
               <input
@@ -188,7 +197,7 @@ export function SettingsBrandingPage({
             </label>
           </div>
 
-          <Button type="submit" size="lg" disabled={saving} className="w-fit">
+          <Button type="submit" size="lg" disabled={saving || !accentValid} className="w-fit">
             {saving ? "Saving…" : "Save branding"}
           </Button>
         </form>

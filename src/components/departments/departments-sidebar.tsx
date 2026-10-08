@@ -96,7 +96,7 @@ export function DepartmentsSidebar({
                   alt=""
                   height={36}
                   className={cn(
-                    "w-auto shrink-0 object-contain",
+                    "sts-tenant-logo w-auto shrink-0 object-contain",
                     brandingHideDisplayName ? "h-11 max-w-[150px]" : "h-9 max-w-[72px]",
                   )}
                 />

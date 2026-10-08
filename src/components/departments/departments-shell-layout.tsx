@@ -6,6 +6,7 @@ import { UserHydrator } from "@/components/providers/user-hydrator";
 import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
+import { TenantAccentStyle } from "@/components/theme/tenant-accent-style";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 
 export async function DepartmentsShellLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
   return (
     <>
       <TenantUrlGuard />
+      <TenantAccentStyle accentColor={branding?.accentColor} />
       <UserHydrator
         id={profile.id}
         email={profile.email}

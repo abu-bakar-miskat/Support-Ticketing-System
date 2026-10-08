@@ -5,6 +5,7 @@ import { processMentions, resolveMentionedProfiles } from "@/lib/mentions"
 import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 
 export async function POST(
   request: NextRequest,
@@ -150,6 +151,12 @@ export async function POST(
     },
     include: { author: { select: { id: true, name: true, avatarUrl: true } } },
   })
+
+  // SLA-03: on portal tickets the requester-visible reply thread replaces the
+  // email conversation, so a staff portal reply is the first public response.
+  if (portalVisible) {
+    await stopFirstResponseOnPublicAgentMessage(ticketId, comment.createdAt)
+  }
 
   // Write event to ActivityLog and broadcast to ticket-activity:{ticketId} so
   // every user currently viewing this ticket receives the update in real-time.

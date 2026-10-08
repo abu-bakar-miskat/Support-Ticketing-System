@@ -42,6 +42,9 @@ export async function PUT(request: Request) {
     hideLogo: (body as Record<string, unknown>).hideLogo,
     hideDisplayName: (body as Record<string, unknown>).hideDisplayName,
     accentColor: (body as Record<string, unknown>).accentColor,
+    sidebarColors: (body as Record<string, unknown>).sidebarColors,
+    deptSidebarColors: (body as Record<string, unknown>).deptSidebarColors,
+    settingsNavColors: (body as Record<string, unknown>).settingsNavColors,
   })
 
   // Replace the whole branding object (empty when cleared).

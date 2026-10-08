@@ -6,6 +6,11 @@ import {
   type MarketplaceFeatureKey,
 } from "@/lib/template-features";
 import type { OtpEmailTemplate } from "@/lib/email-templates/otp";
+import {
+  PLATFORM_SIDEBAR_COLOR_DEFAULTS,
+  parsePlatformSidebarColors,
+  type PlatformSidebarColors,
+} from "@/lib/sidebar-colors";
 
 /**
  * Platform-wide global configuration (see the PlatformSetting model). Each
@@ -53,6 +58,8 @@ export type PlatformSettings = {
    * lib/tenant-agreement-access.
    */
   enforceTenantAgreements: boolean;
+  /** Accent colour per platform-sidebar nav group. See lib/platform-sidebar-colors. */
+  sidebarGroupColors: PlatformSidebarColors;
 };
 
 function defaultNewDepartmentFeatureDefaults(): Record<MarketplaceFeatureKey, boolean> {
@@ -70,6 +77,7 @@ export const PLATFORM_SETTINGS_DEFAULTS: PlatformSettings = {
   otpEmailTemplate: null,
   templateEnablementRequiresApproval: false,
   enforceTenantAgreements: false,
+  sidebarGroupColors: PLATFORM_SIDEBAR_COLOR_DEFAULTS,
 };
 
 /** Coerce a stored JSON value into a validated OTP template, or null. */
@@ -108,6 +116,7 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
     otpEmailTemplate: parseOtpTemplate(byKey.get("otpEmailTemplate")),
     templateEnablementRequiresApproval: byKey.get("templateEnablementRequiresApproval") === true,
     enforceTenantAgreements: byKey.get("enforceTenantAgreements") === true,
+    sidebarGroupColors: parsePlatformSidebarColors(byKey.get("sidebarGroupColors")),
   };
 }
 
@@ -141,6 +150,9 @@ export async function setPlatformSettings(
   }
   if (patch.enforceTenantAgreements !== undefined) {
     writes.push({ key: "enforceTenantAgreements", value: patch.enforceTenantAgreements === true });
+  }
+  if (patch.sidebarGroupColors !== undefined) {
+    writes.push({ key: "sidebarGroupColors", value: parsePlatformSidebarColors(patch.sidebarGroupColors) });
   }
 
   await prisma.$transaction(

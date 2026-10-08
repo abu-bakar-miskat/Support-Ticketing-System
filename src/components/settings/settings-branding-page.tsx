@@ -12,6 +12,125 @@ import { LogoUploadButton } from "./logo-upload-button"
 import { AccentColorField } from "./accent-color-field"
 import { normalizeHex } from "@/lib/tenant-accent"
 import type { DeptOption } from "./settings-email-templates-page"
+import { SidebarColorsEditor, type SidebarColorGroup } from "./sidebar-colors-editor"
+import {
+  Bell,
+  CalendarDays,
+  Columns3,
+  GanttChart,
+  Inbox,
+  LayoutDashboard,
+  Layers,
+  ListChecks,
+  Settings,
+  UserRound,
+  UsersRound,
+} from "lucide-react"
+import {
+  DEPT_SIDEBAR_COLOR_DEFAULTS,
+  DEPT_SIDEBAR_GROUP_LABELS,
+  SETTINGS_NAV_COLOR_DEFAULTS,
+  SETTINGS_NAV_GROUP_LABELS,
+  TENANT_SIDEBAR_COLOR_DEFAULTS,
+  TENANT_SIDEBAR_GROUP_LABELS,
+  parseDeptSidebarColors,
+  parseSettingsNavColors,
+  parseTenantSidebarColors,
+} from "@/lib/sidebar-colors"
+import {
+  DEPARTMENTS_NAV_GROUPS,
+  DEPARTMENTS_OVERVIEW_ITEMS,
+} from "@/components/departments/departments-sidebar"
+
+type SidebarColorField = "sidebarColors" | "deptSidebarColors" | "settingsNavColors"
+type SidebarColorState = Record<SidebarColorField, Record<string, string>>
+
+/** Colour editors for each grouped sidebar the tenant can theme. */
+const SIDEBAR_COLOR_SECTIONS: {
+  field: SidebarColorField
+  title: string
+  description: string
+  defaults: Record<string, string>
+  parse: (value: unknown) => Record<string, string>
+  groups: SidebarColorGroup[]
+}[] = [
+  {
+    field: "sidebarColors",
+    title: "All Departments sidebar",
+    description: "The tenant-wide sidebar on the departments overview.",
+    defaults: TENANT_SIDEBAR_COLOR_DEFAULTS,
+    parse: parseTenantSidebarColors,
+    groups: [
+      { key: "overview", label: TENANT_SIDEBAR_GROUP_LABELS.overview, items: DEPARTMENTS_OVERVIEW_ITEMS },
+      ...DEPARTMENTS_NAV_GROUPS.map((g) => ({ ...g, label: TENANT_SIDEBAR_GROUP_LABELS[g.key] })),
+    ],
+  },
+  {
+    field: "deptSidebarColors",
+    title: "Department sidebar",
+    description: "The sidebar inside a department workspace.",
+    defaults: DEPT_SIDEBAR_COLOR_DEFAULTS,
+    parse: parseDeptSidebarColors,
+    groups: [
+      { key: "workspace", label: DEPT_SIDEBAR_GROUP_LABELS.workspace, items: [{ label: "Home", icon: LayoutDashboard }] },
+      {
+        key: "operations",
+        label: DEPT_SIDEBAR_GROUP_LABELS.operations,
+        items: [
+          { label: "Tasks", icon: ListChecks },
+          { label: "Projects", icon: Layers },
+          { label: "Notifications", icon: Bell },
+        ],
+      },
+      {
+        key: "team",
+        label: DEPT_SIDEBAR_GROUP_LABELS.team,
+        items: [
+          { label: "Members", icon: UsersRound },
+          { label: "Shared Mailboxes", icon: Inbox },
+        ],
+      },
+      {
+        key: "views",
+        label: DEPT_SIDEBAR_GROUP_LABELS.views,
+        items: [
+          { label: "Board", icon: Columns3 },
+          { label: "Timeline", icon: GanttChart },
+          { label: "Calendar", icon: CalendarDays },
+        ],
+      },
+      {
+        key: "account",
+        label: DEPT_SIDEBAR_GROUP_LABELS.account,
+        items: [
+          { label: "My Profile", icon: UserRound },
+          { label: "Settings", icon: Settings },
+        ],
+      },
+    ],
+  },
+  {
+    field: "settingsNavColors",
+    title: "Settings menu",
+    description: "The grouped sub-menu on the Settings pages.",
+    defaults: SETTINGS_NAV_COLOR_DEFAULTS,
+    parse: parseSettingsNavColors,
+    groups: [
+      { key: "personal", label: SETTINGS_NAV_GROUP_LABELS.personal, items: [{ label: "Profile" }, { label: "Appearance" }] },
+      { key: "workspace", label: SETTINGS_NAV_GROUP_LABELS.workspace, items: [{ label: "Departments" }, { label: "Branding" }] },
+      {
+        key: "configuration",
+        label: SETTINGS_NAV_GROUP_LABELS.configuration,
+        items: [{ label: "Projects" }, { label: "SLA policies" }],
+      },
+      {
+        key: "integrations",
+        label: SETTINGS_NAV_GROUP_LABELS.integrations,
+        items: [{ label: "API keys" }, { label: "Email settings" }],
+      },
+    ],
+  },
+]
 
 export function SettingsBrandingPage({
   tenantName,
@@ -30,6 +149,15 @@ export function SettingsBrandingPage({
     initialBranding.hideDisplayName ?? !initialBranding.hideLogo,
   )
   const [accentColor, setAccentColor] = useState(initialBranding.accentColor ?? "")
+  const [sidebarColors, setSidebarColors] = useState<SidebarColorState>(() =>
+    Object.fromEntries(
+      SIDEBAR_COLOR_SECTIONS.map((sec) => [sec.field, sec.parse(initialBranding[sec.field])]),
+    ) as SidebarColorState,
+  )
+  const isDefaultColors = (field: SidebarColorField) => {
+    const sec = SIDEBAR_COLOR_SECTIONS.find((x) => x.field === field)!
+    return JSON.stringify(sidebarColors[field]) === JSON.stringify(sec.defaults)
+  }
   const accentValid = !accentColor.trim() || normalizeHex(accentColor) !== null
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -53,6 +181,13 @@ export function SettingsBrandingPage({
         hideLogo,
         hideDisplayName,
         accentColor: normalizeHex(accentColor) ?? undefined,
+        // Only store custom palettes — defaults stay implicit so they can evolve.
+        ...Object.fromEntries(
+          SIDEBAR_COLOR_SECTIONS.map((sec) => [
+            sec.field,
+            isDefaultColors(sec.field) ? undefined : sidebarColors[sec.field],
+          ]),
+        ),
       }),
     })
     setSaving(false)
@@ -162,6 +297,49 @@ export function SettingsBrandingPage({
 
           <div className="border-t border-sts-card-border pt-4">
             <AccentColorField value={accentColor} onChange={setAccentColor} />
+          </div>
+
+          <div className="flex flex-col gap-[5px] border-t border-sts-card-border pt-4">
+            <label className={labelClass}>Sidebar colours</label>
+            <p className="font-sans text-[12px] text-sts-muted">
+              Accent for each group in the navigation menus. Cards and highlights are soft tints of
+              the colour you pick.
+            </p>
+            <div className="mt-2 flex flex-col gap-5">
+              {SIDEBAR_COLOR_SECTIONS.map((sec) => (
+                <div key={sec.field} className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                        {sec.title}
+                      </h3>
+                      <p className="font-sans text-[12px] text-sts-muted">{sec.description}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isDefaultColors(sec.field)}
+                      onClick={() =>
+                        setSidebarColors((current) => ({ ...current, [sec.field]: { ...sec.defaults } }))
+                      }
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <SidebarColorsEditor
+                    groups={sec.groups}
+                    value={sidebarColors[sec.field]}
+                    onChange={(key, color) =>
+                      setSidebarColors((current) => ({
+                        ...current,
+                        [sec.field]: { ...current[sec.field], [key]: color },
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 border-t border-sts-card-border pt-4">

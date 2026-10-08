@@ -6,6 +6,7 @@ import { UserHydrator } from "@/components/providers/user-hydrator";
 import { TenantUrlGuard } from "@/components/providers/tenant-url-guard";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
+import { TENANT_SIDEBAR_COLOR_DEFAULTS } from "@/lib/sidebar-colors";
 import { TenantAccentStyle } from "@/components/theme/tenant-accent-style";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 
@@ -55,6 +56,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
         brandingLogoUrl={branding?.logoUrl ?? null}
         brandingHideLogo={branding?.hideLogo ?? false}
         brandingHideDisplayName={branding?.hideDisplayName ?? false}
+        sidebarColors={branding?.sidebarColors ?? TENANT_SIDEBAR_COLOR_DEFAULTS}
       >
         {children}
       </DepartmentsLayout>

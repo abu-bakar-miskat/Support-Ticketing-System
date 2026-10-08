@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
+import { DEPT_SIDEBAR_COLOR_DEFAULTS } from "@/lib/sidebar-colors";
 import { TenantAccentStyle } from "@/components/theme/tenant-accent-style";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
@@ -140,6 +141,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
         brandingLogoUrl={branding?.logoUrl ?? null}
         brandingHideLogo={branding?.hideLogo ?? false}
         brandingHideDisplayName={branding?.hideDisplayName ?? false}
+        sidebarColors={branding?.deptSidebarColors ?? DEPT_SIDEBAR_COLOR_DEFAULTS}
       >
         {children}
         <Suspense fallback={null}>

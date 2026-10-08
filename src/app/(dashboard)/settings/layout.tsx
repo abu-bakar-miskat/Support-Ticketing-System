@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { SettingsLayout } from "@/components/settings/settings-layout";
 import { getEffectiveFeatureKeys } from "@/lib/template-catalogue";
 import { listFeatureFlags } from "@/lib/feature-flags";
+import { getTenantBranding } from "@/lib/tenant-config";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const profile = await getProfile();
@@ -41,9 +42,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // (a department can't surface a feature the tenant hasn't licensed).
   const activeFeatureKeySet = await getEffectiveFeatureKeys(profile.activeTenantId, activeDeptId);
   const activeFeatureKeys = activeFeatureKeySet === "ALL" ? "ALL" : Array.from(activeFeatureKeySet);
-  const platformFlags = profile.activeTenantId
-    ? await listFeatureFlags(profile.activeTenantId)
-    : {};
+  const [platformFlags, branding] = profile.activeTenantId
+    ? await Promise.all([
+        listFeatureFlags(profile.activeTenantId),
+        getTenantBranding(profile.activeTenantId),
+      ])
+    : [{}, null];
 
   return (
     <SettingsLayout
@@ -54,6 +58,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       activeFeatureKeys={activeFeatureKeys}
       hasActiveDept={activeDeptId != null}
       platformFlags={platformFlags}
+      navColors={branding?.settingsNavColors}
       isDepartmentAdmin={
         activeDeptId != null && (profile.departmentAdminIds ?? []).includes(activeDeptId)
       }

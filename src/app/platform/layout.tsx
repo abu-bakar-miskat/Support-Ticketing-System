@@ -4,6 +4,8 @@ import { getProfile } from "@/lib/profile"
 import { UserHydrator } from "@/components/providers/user-hydrator"
 import { PlatformShell } from "@/components/platform/platform-shell"
 import { countPendingFeatureRequests } from "@/lib/feature-marketplace"
+import { getPlatformSettings } from "@/lib/platform-settings"
+import { PLATFORM_SIDEBAR_COLOR_DEFAULTS } from "@/lib/sidebar-colors"
 
 export const dynamic = "force-dynamic"
 
@@ -19,7 +21,12 @@ export default async function TenantsLayout({ children }: { children: React.Reac
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
-  const pendingFeatureRequests = await countPendingFeatureRequests().catch(() => 0)
+  const [pendingFeatureRequests, sidebarColors] = await Promise.all([
+    countPendingFeatureRequests().catch(() => 0),
+    getPlatformSettings()
+      .then((s) => s.sidebarGroupColors)
+      .catch(() => PLATFORM_SIDEBAR_COLOR_DEFAULTS),
+  ])
 
   return (
     <>
@@ -37,7 +44,7 @@ export default async function TenantsLayout({ children }: { children: React.Reac
           role: m.role,
         }))}
       />
-      <PlatformShell pendingFeatureRequests={pendingFeatureRequests}>{children}</PlatformShell>
+      <PlatformShell pendingFeatureRequests={pendingFeatureRequests} sidebarColors={sidebarColors}>{children}</PlatformShell>
     </>
   )
 }

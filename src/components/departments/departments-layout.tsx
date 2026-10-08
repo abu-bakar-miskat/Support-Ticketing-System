@@ -15,6 +15,7 @@ import { TabTitleBadge } from "@/components/realtime/tab-title-badge";
 import { NotificationSidebar } from "@/components/dashboard/notification-sidebar";
 import { DashboardProvider } from "@/components/dashboard/dashboard-context";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
+import type { TenantSidebarColors } from "@/lib/sidebar-colors";
 
 const EMPTY: LayoutData = {
   projects: [],
@@ -50,6 +51,7 @@ export function DepartmentsLayout({
   brandingLogoUrl = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
+  sidebarColors,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
@@ -57,6 +59,7 @@ export function DepartmentsLayout({
   brandingLogoUrl?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
+  sidebarColors: TenantSidebarColors;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -126,6 +129,7 @@ export function DepartmentsLayout({
           brandingLogoUrl={brandingLogoUrl}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
+          sidebarColors={sidebarColors}
         />
 
         {sidebarOpen && (
@@ -142,6 +146,7 @@ export function DepartmentsLayout({
                 brandingLogoUrl={brandingLogoUrl}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
+                sidebarColors={sidebarColors}
               />
             </div>
           </>

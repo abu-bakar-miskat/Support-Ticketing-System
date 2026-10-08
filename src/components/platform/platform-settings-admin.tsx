@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Settings as SettingsIcon,
   Building2,
@@ -14,6 +15,7 @@ import {
   ExternalLink,
   Mail,
   RotateCcw,
+  Palette,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
@@ -33,6 +35,13 @@ import {
   type MarketplaceFeatureKey,
 } from "@/lib/template-features";
 import { cn } from "@/lib/utils";
+import {
+  PLATFORM_SIDEBAR_COLOR_DEFAULTS,
+  PLATFORM_SIDEBAR_GROUP_LABELS,
+  type PlatformSidebarColors,
+} from "@/lib/sidebar-colors";
+import { PLATFORM_NAV_GROUPS } from "@/components/platform/platform-sidebar";
+import { SidebarColorsEditor } from "@/components/settings/sidebar-colors-editor";
 
 type TenantOption = { id: string; name: string; slug: string; status: string };
 type Overview = {
@@ -48,6 +57,7 @@ type PlatformSettings = {
   devMode: boolean;
   newDepartmentFeatureDefaults: Record<MarketplaceFeatureKey, boolean>;
   templateEnablementRequiresApproval: boolean;
+  sidebarGroupColors: PlatformSidebarColors;
 };
 type OtpTemplate = { subject: string; bodyHtml: string };
 
@@ -69,6 +79,7 @@ export function PlatformSettingsAdmin({
   /** The built-in OTP template — used to prefill and to reset. */
   otpDefault: OtpTemplate;
 }) {
+  const router = useRouter();
   const [tenants, setTenants] = useState<TenantOption[]>(initialTenants);
 
   // ── Banners ────────────────────────────────────────────────────────────────
@@ -265,7 +276,42 @@ export function PlatformSettingsAdmin({
   const [resettingOtp, setResettingOtp] = useState(false);
 
   const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
-  useUnsavedChangesGuard(generalDirty || otpDirty);
+  // ── Sidebar colours ──────────────────────────────────────────────────────────
+  const [sidebarColors, setSidebarColors] = useState<PlatformSidebarColors>(initialSettings.sidebarGroupColors);
+  const [sidebarBaseline, setSidebarBaseline] = useState<PlatformSidebarColors>(initialSettings.sidebarGroupColors);
+  const [savingSidebar, setSavingSidebar] = useState(false);
+
+  const sidebarDirty = JSON.stringify(sidebarColors) !== JSON.stringify(sidebarBaseline);
+  const sidebarIsDefault = JSON.stringify(sidebarColors) === JSON.stringify(PLATFORM_SIDEBAR_COLOR_DEFAULTS);
+
+  async function saveSidebarColors() {
+    setSavingSidebar(true);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/admin/platform-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sidebarGroupColors: sidebarColors }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Failed to save sidebar colours");
+        return;
+      }
+      setSidebarColors(body.sidebarGroupColors);
+      setSidebarBaseline(body.sidebarGroupColors);
+      setStatus("Sidebar colours saved");
+      // The sidebar lives in the platform layout — re-render it with the new colours.
+      router.refresh();
+    } catch {
+      setError("Failed to save sidebar colours");
+    } finally {
+      setSavingSidebar(false);
+    }
+  }
+
+  useUnsavedChangesGuard(generalDirty || otpDirty || sidebarDirty);
   const otpPreviewHtml = otpBodyHtml
     .replaceAll("{{code}}", "123456")
     .replaceAll("{{platformName}}", platformName.trim() || "Global Support Portal");
@@ -630,6 +676,44 @@ export function PlatformSettingsAdmin({
           </div>
         </div>
 
+        {/* ── Sidebar colours ───────────────────────────────────────────────── */}
+        <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
+          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+              <Palette className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                Accent colour for each group in the platform sidebar. Cards and highlights are soft tints of the colour you pick.
+              </p>
+            </div>
+          </div>
+
+          <div className="px-[22px] py-5">
+            <SidebarColorsEditor
+              groups={PLATFORM_NAV_GROUPS.map((g) => ({ ...g, label: PLATFORM_SIDEBAR_GROUP_LABELS[g.key] }))}
+              value={sidebarColors}
+              onChange={(key, color) => setSidebarColors((current) => ({ ...current, [key]: color }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-sts-card-border bg-sts-surface/40 px-[22px] py-3.5">
+            <Button
+              variant="outline"
+              disabled={sidebarIsDefault || savingSidebar}
+              onClick={() => setSidebarColors(PLATFORM_SIDEBAR_COLOR_DEFAULTS)}
+            >
+              <RotateCcw className="size-4" />
+              Reset to default
+            </Button>
+            <Button disabled={!sidebarDirty || savingSidebar} onClick={saveSidebarColors}>
+              {savingSidebar ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Save colours
+            </Button>
+          </div>
+        </div>
+
         {/* ── OTP sign-in email ─────────────────────────────────────────────── */}
         <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
           <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
@@ -698,3 +782,4 @@ export function PlatformSettingsAdmin({
     </div>
   );
 }
+

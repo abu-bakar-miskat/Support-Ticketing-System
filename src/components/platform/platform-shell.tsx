@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PlatformSidebar } from "@/components/platform/platform-sidebar";
 import { PlatformTopBar } from "@/components/platform/platform-top-bar";
 import { NotificationSidebar } from "@/components/dashboard/notification-sidebar";
+import type { PlatformSidebarColors } from "@/lib/sidebar-colors";
 
 /** Sidebar + top bar chrome for the platform (Super Admin) section, parallel
  * to DashboardLayout's Sidebar + TopBar but without the per-tenant dashboard
@@ -11,9 +12,11 @@ import { NotificationSidebar } from "@/components/dashboard/notification-sidebar
 export function PlatformShell({
   children,
   pendingFeatureRequests,
+  sidebarColors,
 }: {
   children: React.ReactNode;
   pendingFeatureRequests: number;
+  sidebarColors: PlatformSidebarColors;
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
   // Below lg the sidebar becomes a drawer (same pattern as DepartmentsLayout).
@@ -30,7 +33,11 @@ export function PlatformShell({
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <PlatformSidebar pendingFeatureRequests={pendingFeatureRequests} className="hidden lg:flex" />
+      <PlatformSidebar
+        pendingFeatureRequests={pendingFeatureRequests}
+        colors={sidebarColors}
+        className="hidden lg:flex"
+      />
       {drawerOpen && (
         <>
           <div
@@ -46,6 +53,7 @@ export function PlatformShell({
           >
             <PlatformSidebar
               pendingFeatureRequests={pendingFeatureRequests}
+              colors={sidebarColors}
               onClose={() => setDrawerOpen(false)}
             />
           </div>

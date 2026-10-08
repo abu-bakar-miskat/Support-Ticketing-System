@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { DeptSidebarColors } from "@/lib/sidebar-colors";
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
@@ -95,6 +96,7 @@ export function DashboardLayout({
   brandingLogoUrl = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
+  sidebarColors,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
@@ -102,6 +104,7 @@ export function DashboardLayout({
   brandingLogoUrl?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
+  sidebarColors: DeptSidebarColors;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -235,6 +238,7 @@ export function DashboardLayout({
           brandingLogoUrl={brandingLogoUrl}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
+          sidebarColors={sidebarColors}
         />
 
         {/* Sidebar — mobile & tablet portrait drawer */}
@@ -263,6 +267,7 @@ export function DashboardLayout({
                 brandingLogoUrl={brandingLogoUrl}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
+                sidebarColors={sidebarColors}
               />
             </div>
           </>

@@ -5,6 +5,18 @@
  */
 
 import { normalizeHex } from "@/lib/tenant-accent";
+import {
+  DEPT_SIDEBAR_GROUP_KEYS,
+  SETTINGS_NAV_GROUP_KEYS,
+  TENANT_SIDEBAR_GROUP_KEYS,
+  parseDeptSidebarColors,
+  parseSettingsNavColors,
+  parseTenantSidebarColors,
+  pickSidebarColors,
+  type DeptSidebarColors,
+  type SettingsNavColors,
+  type TenantSidebarColors,
+} from "@/lib/sidebar-colors";
 
 export type TenantBranding = {
   /** Org name shown in the shell (falls back to Tenant.name). */
@@ -20,6 +32,12 @@ export type TenantBranding = {
   hideDisplayName?: boolean;
   /** Brand hex (#rrggbb) used as the theme accent; unset = product default. */
   accentColor?: string;
+  /** Accent per departments-sidebar nav group; missing keys use the defaults. */
+  sidebarColors?: Partial<TenantSidebarColors>;
+  /** Accent per in-department sidebar nav group. */
+  deptSidebarColors?: Partial<DeptSidebarColors>;
+  /** Accent per Settings sub-nav group. */
+  settingsNavColors?: Partial<SettingsNavColors>;
 };
 
 export type ResolvedTenantBranding = {
@@ -28,6 +46,9 @@ export type ResolvedTenantBranding = {
   hideLogo: boolean;
   hideDisplayName: boolean;
   accentColor: string | null;
+  sidebarColors: TenantSidebarColors;
+  deptSidebarColors: DeptSidebarColors;
+  settingsNavColors: SettingsNavColors;
 };
 
 const MAX_URL = 2048;
@@ -55,6 +76,12 @@ export function sanitizeTenantBranding(input: unknown): TenantBranding | null {
   if (isUsableUrl(raw.logoUrl)) out.logoUrl = raw.logoUrl;
   const accent = normalizeHex(raw.accentColor);
   if (accent) out.accentColor = accent;
+  const sidebarColors = pickSidebarColors(TENANT_SIDEBAR_GROUP_KEYS, raw.sidebarColors);
+  if (sidebarColors) out.sidebarColors = sidebarColors;
+  const deptSidebarColors = pickSidebarColors(DEPT_SIDEBAR_GROUP_KEYS, raw.deptSidebarColors);
+  if (deptSidebarColors) out.deptSidebarColors = deptSidebarColors;
+  const settingsNavColors = pickSidebarColors(SETTINGS_NAV_GROUP_KEYS, raw.settingsNavColors);
+  if (settingsNavColors) out.settingsNavColors = settingsNavColors;
   // At most one may be hidden — hiding both would leave the shell blank.
   // hideDisplayName defaults on, so an explicit `false` is kept to record opt-out.
   if (raw.hideLogo === true) out.hideLogo = true;
@@ -82,5 +109,8 @@ export function resolveTenantBranding(stored: unknown): ResolvedTenantBranding {
     // Default on — but only when there's a logo to fill the width.
     hideDisplayName: b.hideDisplayName ?? (!b.hideLogo && !!b.logoUrl),
     accentColor: b.accentColor ?? null,
+    sidebarColors: parseTenantSidebarColors(b.sidebarColors),
+    deptSidebarColors: parseDeptSidebarColors(b.deptSidebarColors),
+    settingsNavColors: parseSettingsNavColors(b.settingsNavColors),
   };
 }

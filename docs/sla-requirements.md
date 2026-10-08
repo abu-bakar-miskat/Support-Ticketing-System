@@ -30,7 +30,7 @@ The manager will receive a notification about the Resolution Breach.
 
 After the Estimated Time is exceeded, the system should also continue counting and record the overtime so we can see how many extra minutes or hours were required to resolve the ticket.
 
-### Shared Mailbox / Support Ticket
+### Mailbox Ticket
 
 We also have tickets that are created from the **Shared Mailbox**.
 
@@ -40,6 +40,10 @@ For these tickets, SLA has two time limits:
 - **Time to Resolution**
 
 The SLA is associated with a specific issue. If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+
+### Support Ticket
+
+### Portal Ticket
 
 ### Time to First Response SLA
 

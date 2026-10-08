@@ -288,13 +288,19 @@ export function SlaSettingsPage({
 
   const policiesByForm = new Map<string, SlaPolicy[]>();
   const noFormPolicies: SlaPolicy[] = [];
+  // Policies authored against a support form that has since been deleted. No
+  // ticket can match them, so they're surfaced separately for clean-up rather
+  // than mislabelled as department-level SLA.
+  const deletedFormPolicies: SlaPolicy[] = [];
   for (const p of visiblePolicies ?? []) {
-    if (p.formConfigId && forms.some((f) => f.id === p.formConfigId)) {
+    if (!p.formConfigId) {
+      noFormPolicies.push(p);
+    } else if (forms.some((f) => f.id === p.formConfigId)) {
       const arr = policiesByForm.get(p.formConfigId) ?? [];
       arr.push(p);
       policiesByForm.set(p.formConfigId, arr);
     } else {
-      noFormPolicies.push(p);
+      deletedFormPolicies.push(p);
     }
   }
 
@@ -350,7 +356,7 @@ export function SlaSettingsPage({
             onDelete={deletePolicy}
             emptyHint="No SLA policies yet. Add one to set first-response and resolution targets for this department."
           />
-        ) : forms.length === 0 && noFormPolicies.length === 0 ? (
+        ) : forms.length === 0 && noFormPolicies.length === 0 && deletedFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
             <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
               <FileText className="size-5 text-sts-blue" />
@@ -387,6 +393,20 @@ export function SlaSettingsPage({
                 onDelete={deletePolicy}
                 emptyHint=""
                 readOnly
+              />
+            )}
+
+            {deletedFormPolicies.length > 0 && (
+              <PolicyGroup
+                title="Deleted support form — no longer applied"
+                policies={deletedFormPolicies}
+                subDepartments={subDeptList}
+                showSubDepartment={showSubDepartment}
+                onNewPolicy={() => {}}
+                onSave={savePolicy}
+                onDelete={deletePolicy}
+                emptyHint=""
+                hideNewPolicy
               />
             )}
           </div>
@@ -591,6 +611,7 @@ function PolicyGroup({
   onDelete,
   emptyHint,
   readOnly = false,
+  hideNewPolicy = false,
 }: {
   title: string;
   policies: SlaPolicy[];
@@ -601,6 +622,8 @@ function PolicyGroup({
   onDelete: (id: string) => Promise<void>;
   emptyHint: string;
   readOnly?: boolean;
+  /** Hide "New policy" while keeping rows editable/deletable. */
+  hideNewPolicy?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
@@ -612,7 +635,7 @@ function PolicyGroup({
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
-        {!readOnly && (
+        {!readOnly && !hideNewPolicy && (
           <button
             type="button"
             onClick={onNewPolicy}

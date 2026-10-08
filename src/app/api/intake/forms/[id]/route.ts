@@ -136,6 +136,11 @@ export async function DELETE(
     )
   }
 
-  await prisma.intakeFormConfig.delete({ where: { id } })
+  // SlaPolicy.formConfigId has no FK, so drop the form's SLA policies with it —
+  // otherwise they linger as orphans no ticket can ever match.
+  await prisma.$transaction([
+    prisma.slaPolicy.deleteMany({ where: { formConfigId: id } }),
+    prisma.intakeFormConfig.delete({ where: { id } }),
+  ])
   return new NextResponse(null, { status: 204 })
 }

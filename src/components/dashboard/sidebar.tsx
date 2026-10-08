@@ -81,8 +81,8 @@ import {
 /** Which tinted card each nav href lives in. */
 const NAV_GROUP_OF: Record<string, DeptSidebarGroupKey> = {
   "/departments": "workspace",
-  "/": "workspace",
-  "/manager": "workspace",
+  "/": "operations",
+  "/manager": "operations",
   "/tasks": "operations",
   "/projects": "operations",
   "/inbox": "operations",

@@ -197,7 +197,7 @@
     --sts-aurora-1: var(--sts-accent);
     --sts-aurora-2: color-mix(in oklch, var(--sts-accent) 55%, #f0abfc);
     --sts-aurora-3: color-mix(in oklch, var(--sts-accent) 55%, #fde047);
-    --sts-aurora-strength: 30%;
+    --sts-aurora-strength: 20%;
     --sts-aurora-bottom: 0.65;
     --sts-aurora-filter: blur(40px) saturate(1.1);
     /* Soft diagonal gradient wash (body + .sts-ambient-bg) so glass panels read. */
@@ -301,7 +301,7 @@
     /* On pure black a bright, rainbow aurora reads as neon — keep it deep and
        top-only: lower strength, no saturation boost, no bottom glow, and the
        hue-shifted neighbours darkened/desaturated (see @supports below). */
-    --sts-aurora-strength: 34%;
+    --sts-aurora-strength: 24%;
     --sts-aurora-bottom: 0;
     --sts-aurora-filter: blur(56px);
     /* AMOLED: the page is pure black (no ambient wash) so OLED pixels switch

@@ -1,6 +1,5 @@
 "use client";
 
-import { Tip } from "@/components/ui/tooltip";
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -9,7 +8,6 @@ import {
   MessageSquare,
   Activity,
   GitPullRequest,
-  X,
   ArrowRightLeft,
   UserCheck,
   Paperclip,
@@ -219,95 +217,79 @@ const STAT_LABELS: Record<StatKey, string> = {
   created: "Created",
 };
 
-function TicketSlideOver({
+function TicketList({
   statKey,
   tickets,
-  onClose,
 }: {
   statKey: StatKey;
   tickets: TicketSummary[];
-  onClose: () => void;
 }) {
   return (
-    <>
-      <div
-        className="fixed inset-0 z-40 sts-overlay-backdrop"
-        onClick={onClose}
-      />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[400px] flex-col border-l border-sts-card-border bg-sts-card shadow-2xl animate-in slide-in-from-right duration-250">
-        <div className="flex items-center justify-between border-b border-sts-card-border px-4 py-3">
-          <div>
-            <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
-              {STAT_LABELS[statKey]}
-            </h2>
-            <p className="font-sans text-[11.5px] text-sts-subtle">
-              {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
+    <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
+      <div className="flex shrink-0 items-baseline justify-between gap-3 border-b border-sts-card-border px-4 py-3">
+        <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
+          {STAT_LABELS[statKey]}
+        </h2>
+        <p className="font-sans text-[12px] text-sts-subtle">
+          {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {tickets.length === 0 ? (
+          <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-6 py-12 text-center">
+            <p className="font-sans text-[14px] font-medium text-sts-foreground">
+              {statKey === "total" ? "No assigned tickets" : `No ${STAT_LABELS[statKey].toLowerCase()} tickets`}
+            </p>
+            <p className="mt-1 max-w-[280px] font-sans text-[13px] leading-relaxed text-sts-subtle">
+              Nothing in this period matches. Try a longer range, or pick another status above.
             </p>
           </div>
-          <Tip label="Close">
-            <button
-              aria-label="Close"
-              type="button"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          </Tip>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {tickets.length === 0 ? (
-            <p className="py-12 text-center font-sans text-[13px] text-sts-subtle">
-              No tickets
-            </p>
-          ) : (
-            tickets.map((t) => {
-              const ov = !t.isComplete && t.dueDate && new Date(t.dueDate) < new Date();
-              return (
-                <Link
-                  key={t.id}
-                  href={`/tickets/${t.id}`}
-                  onClick={onClose}
-                  className="group flex items-start gap-2.5 border-b border-sts-card-border px-4 py-3 transition-colors hover:bg-sts-surface"
-                >
-                  <span
-                    className="mt-2 size-2 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor: PRIORITY_COLOR[t.priority] ?? "#94a3b8",
-                    }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono text-[11.5px] font-semibold text-sts-id">
-                        {t.humanId}
+        ) : (
+          tickets.map((t) => {
+            const ov = !t.isComplete && t.dueDate && new Date(t.dueDate) < new Date();
+            return (
+              <Link
+                key={t.id}
+                href={`/tickets/${t.id}`}
+                className="group flex items-start gap-2.5 border-b border-sts-card-border px-4 py-3 transition-colors last:border-b-0 hover:bg-sts-surface"
+              >
+                <span
+                  className="mt-2 size-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: PRIORITY_COLOR[t.priority] ?? "#94a3b8",
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-[11.5px] font-semibold text-sts-id">
+                      {t.humanId}
+                    </span>
+                    {t.department && t.isOutsideContribution && (
+                      <span className="rounded bg-amber-500/10 px-1.5 py-px font-sans text-[11.5px] text-amber-700 dark:text-amber-400">
+                        {t.department.name}
                       </span>
-                      {t.department && t.isOutsideContribution && (
-                        <span className="rounded bg-amber-500/10 px-1.5 py-px font-sans text-[11.5px] text-amber-700 dark:text-amber-400">
-                          {t.department.name}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 font-sans text-[13px] text-sts-foreground group-hover:text-sts-blue leading-snug">
-                      {t.title}
-                    </p>
-                    <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
-                      {t.status}
-                      {t.project && ` · ${t.project.name}`}
-                      {ov && (
-                        <span className="ml-1 font-semibold text-sts-red">
-                          · Overdue
-                        </span>
-                      )}
-                    </p>
+                    )}
                   </div>
-                  <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-sts-subtle" />
-                </Link>
-              );
-            })
-          )}
-        </div>
+                  <p className="mt-0.5 font-sans text-[13px] leading-snug text-sts-foreground group-hover:text-sts-blue">
+                    {t.title}
+                  </p>
+                  <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
+                    {t.status}
+                    {t.project && ` · ${t.project.name}`}
+                    {ov && (
+                      <span className="ml-1 font-semibold text-sts-red">
+                        · Overdue
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-sts-subtle" />
+              </Link>
+            );
+          })
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -340,16 +322,17 @@ function MetricTile({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "group flex flex-col items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-all",
+        "flex min-w-0 flex-col items-start gap-2 bg-sts-card px-3.5 py-3 text-left transition-colors",
+        "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sts-blue",
         active
-          ? "border-sts-blue bg-sts-blue-tint shadow-sts-card"
-          : "border-sts-card-border bg-sts-card hover:border-sts-blue/40 hover:shadow-sts-card",
+          ? "bg-sts-blue-tint shadow-[inset_0_-2px_0_0_var(--sts-blue)]"
+          : "hover:bg-sts-surface",
       )}
     >
-      <div className="flex w-full items-center justify-between">
+      <div className="flex w-full items-center justify-between gap-2">
         <span
           className={cn(
-            "flex size-7 items-center justify-center rounded-lg transition-colors",
+            "flex size-7 items-center justify-center rounded-lg",
             iconBg,
           )}
         >
@@ -364,7 +347,7 @@ function MetricTile({
       <div>
         <span
           className={cn(
-            "block font-sans text-[24px] font-bold leading-none tabular-nums",
+            "block font-sans text-[22px] font-bold leading-none tabular-nums",
             accent ?? "text-sts-foreground",
           )}
         >
@@ -499,11 +482,16 @@ function ActivityPanel({ activities }: { activities: ActivityItem[] }) {
         </p>
         <p className="font-sans text-[11.5px] text-sts-subtle">Last 7 days</p>
       </div>
-      <div className="max-h-[min(420px,50vh)] overflow-y-auto lg:max-h-none lg:flex-1">
+      <div className="flex max-h-[min(420px,50vh)] flex-col overflow-y-auto lg:max-h-none lg:min-h-0 lg:flex-1">
         {recent.length === 0 ? (
-          <p className="py-10 text-center font-sans text-[12px] text-sts-subtle">
-            No recent activity
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+            <p className="font-sans text-[13px] font-medium text-sts-foreground">
+              No recent activity
+            </p>
+            <p className="mt-1 font-sans text-[12px] leading-relaxed text-sts-subtle">
+              Comments, status changes, and assignments from the last 7 days show up here.
+            </p>
+          </div>
         ) : (
           recent.map((a) => {
             const cfg = ACTION_CONFIG[a.action] ?? {
@@ -689,7 +677,7 @@ export function ProfileStatsPage({
   isPrivileged: boolean;
   currentUserId: string;
 }) {
-  const [activeSlide, setSlide] = useState<StatKey | null>(null);
+  const [activeSlide, setSlide] = useState<StatKey>("total");
 
   const {
     profile,
@@ -771,14 +759,6 @@ export function ProfileStatsPage({
 
   return (
     <>
-      {activeSlide && (
-        <TicketSlideOver
-          statKey={activeSlide}
-          tickets={tickets[activeSlide] ?? []}
-          onClose={() => setSlide(null)}
-        />
-      )}
-
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header */}
         <div className="sts-page-header shrink-0 border-b border-sts-card-border bg-sts-card">
@@ -844,13 +824,10 @@ export function ProfileStatsPage({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <div className="sts-page-pad flex flex-col gap-4 lg:flex-1 lg:overflow-y-auto">
-            {/* Ticket counts — tap to see list */}
-            <div
-              className="grid gap-2.5"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(134px, 1fr))" }}
-            >
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+          <div className="sts-page-pad flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+            {/* Ticket counts — tap a status to list those tickets below */}
+            <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-xl border border-sts-card-border bg-sts-card-border sm:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
               <MetricTile
                 label="Assigned"
                 value={stats.total}
@@ -924,7 +901,7 @@ export function ProfileStatsPage({
 
             {/* Performance summary */}
             {perfStats.length > 0 && (
-              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
                 <p className="mb-4 font-sans text-[13px] font-semibold text-sts-foreground">
                   Performance
                 </p>
@@ -938,15 +915,17 @@ export function ProfileStatsPage({
 
             {/* GitHub contribution graph */}
             {profile.githubUsername ? (
-              <ContributionHeatmap
-                data={contributionsByDay}
-                username={profile.githubUsername}
-              />
+              <div className="shrink-0">
+                <ContributionHeatmap
+                  data={contributionsByDay}
+                  username={profile.githubUsername}
+                />
+              </div>
             ) : null}
 
             {/* Work by department */}
             {byDepartment.length > 0 && (
-              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
                 <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
                   Work by department
                 </p>
@@ -990,7 +969,7 @@ export function ProfileStatsPage({
 
             {/* Top projects — only when useful */}
             {byProject.length > 0 && (
-              <div className="rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
+              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
                 <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
                   Projects
                 </p>
@@ -1007,6 +986,11 @@ export function ProfileStatsPage({
                 </div>
               </div>
             )}
+
+            <TicketList
+              statKey={activeSlide}
+              tickets={tickets[activeSlide] ?? []}
+            />
           </div>
 
           <ActivityPanel activities={recentActivity} />

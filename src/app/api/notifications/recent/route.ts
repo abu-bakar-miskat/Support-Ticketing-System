@@ -16,7 +16,9 @@ export async function GET() {
   const [rows, unreadCount] = await Promise.all([prisma.notification.findMany({
     where: { recipientId: profile.id },
     orderBy: { createdAt: "desc" },
-    take: 10,
+    // Scope is filtered in JS below, so over-fetch; a small cap hid unread rows
+    // that the badge still counted (badge 25, panel showed 10).
+    take: 100,
     include: {
       actor: { select: { name: true, avatarUrl: true } },
       ticket: {
@@ -34,7 +36,7 @@ export async function GET() {
     },
   }),
   // Same query as the bell badge, so the panel header and badge always agree
-  // (unread among the 10 rows shown would undercount).
+  // (unread among the rows shown could undercount).
   runAsSystem(() => countUnreadNotifications(profile.id, allowedSubDepartmentIds ?? undefined, activeDeptId)),
   ])
 

@@ -7,7 +7,7 @@ import { sendSuperAdminInviteEmail } from "@/lib/email"
 import { INVITE_TTL_MS } from "@/lib/invites/constants"
 
 /**
- * Platform Settings > Administrators — manage who carries Profile.isSuperAdmin
+ * Platform super-admin API — manage who carries Profile.isSuperAdmin
  * (the platform-wide role, distinct from a tenant's own "admin"). Every
  * handler re-requires super-admin so a just-demoted caller can't keep acting
  * on a stale session.

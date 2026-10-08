@@ -46,15 +46,15 @@ type NavItem = {
 };
 
 /**
- * Grouped nav for the tenant departments shell. "Overview" (Platform link +
- * All Departments context row) is rendered separately since it isn't made of
- * tenant-scoped links. Exported for the Branding page's colour preview.
+ * Grouped nav for the tenant departments shell. "Super Admin" (the
+ * Platform link) is rendered separately since it isn't a tenant-scoped link.
+ * Exported for the Branding page's colour preview.
  */
 export const DEPARTMENTS_NAV_GROUPS: { key: Exclude<TenantSidebarGroupKey, "overview">; items: NavItem[] }[] = [
   {
     key: "operations",
     items: [
-      { label: "Departments", href: "/departments", icon: DepartmentIcon },
+      { label: "All Departments", href: "/departments", icon: DepartmentIcon },
       { label: "Reports", href: "/departments/reports", icon: BarChart3 },
       { label: "SLA", href: "/departments/sla", icon: Timer },
       { label: "Notifications", href: "/departments/inbox", icon: Bell },
@@ -80,7 +80,6 @@ export const DEPARTMENTS_NAV_GROUPS: { key: Exclude<TenantSidebarGroupKey, "over
 
 export const DEPARTMENTS_OVERVIEW_ITEMS: { label: string; icon: LucideIcon }[] = [
   { label: "Platform", icon: Building2 },
-  { label: "All Departments", icon: DepartmentIcon },
 ];
 
 type DepartmentsSidebarProps = {
@@ -181,14 +180,14 @@ export function DepartmentsSidebar({
       </div>
       <div className="h-2" />
       <nav aria-label="Departments" className="flex flex-col gap-1.5">
-        <div
-          role="group"
-          aria-label={TENANT_SIDEBAR_GROUP_LABELS.overview}
-          style={groupStyle(sidebarColors.overview)}
-          className={cn(GROUP_CARD_CLASS, "flex flex-col gap-px rounded-xl p-1")}
-        >
-          <p className={GROUP_LABEL_CLASS}>{TENANT_SIDEBAR_GROUP_LABELS.overview}</p>
-          {isSuperAdmin && (
+        {isSuperAdmin && (
+          <div
+            role="group"
+            aria-label={TENANT_SIDEBAR_GROUP_LABELS.overview}
+            style={groupStyle(sidebarColors.overview)}
+            className={cn(GROUP_CARD_CLASS, "flex flex-col gap-px rounded-xl p-1")}
+          >
+            <p className={GROUP_LABEL_CLASS}>{TENANT_SIDEBAR_GROUP_LABELS.overview}</p>
             <Link
               href="/platform"
               className={cn(
@@ -199,12 +198,8 @@ export function DepartmentsSidebar({
               <SidebarNavIcon icon={Building2} className="shrink-0" />
               <span className="truncate">Platform</span>
             </Link>
-          )}
-          <div className={cn(GROUP_NAV_ROW_CLASS, "text-sts-foreground")}>
-            <SidebarNavIcon icon={DepartmentIcon} className="shrink-0" />
-            <span className="truncate font-medium">All Departments</span>
           </div>
-        </div>
+        )}
 
         {DEPARTMENTS_NAV_GROUPS.map((group) => {
           const items = group.items.filter(visible);

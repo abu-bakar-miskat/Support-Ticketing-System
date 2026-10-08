@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
+import { Building2, Tags, LayoutTemplate, History, Settings, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
@@ -35,8 +35,7 @@ export const PLATFORM_NAV_GROUPS: {
     key: "organization",
     items: [
       { label: "Tenants", href: "/platform", icon: Building2 },
-      { label: "Users", href: "/platform/users", icon: Users },
-      { label: "Administrators", href: "/platform/administrators", icon: ShieldCheck },
+      { label: "All Users", href: "/platform/users", icon: Users },
     ],
   },
   {

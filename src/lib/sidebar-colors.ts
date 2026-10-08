@@ -65,7 +65,7 @@ export type TenantSidebarGroupKey = (typeof TENANT_SIDEBAR_GROUP_KEYS)[number];
 export type TenantSidebarColors = Record<TenantSidebarGroupKey, string>;
 
 export const TENANT_SIDEBAR_GROUP_LABELS: Record<TenantSidebarGroupKey, string> = {
-  overview: "Overview",
+  overview: "Super Admin",
   operations: "Operations",
   people: "People & Communication",
   tools: "Tools & Configuration",

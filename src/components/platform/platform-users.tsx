@@ -161,8 +161,8 @@ export function PlatformUsers({
       <div className="w-full px-6 py-8 lg:px-10">
         <PageHeader
           icon={Users}
-          title="Platform users"
-          description="All members across the platform. Use Administrators to manage platform-level access."
+          title="All users"
+          description="All members across the platform."
           actions={<PlatformInviteMemberDialog tenants={tenants} />}
         />
 

@@ -22,7 +22,7 @@ export type PlatformDirectoryUser = {
 
 /**
  * Load every active profile with tenants + departments aggregated.
- * Used by /platform/administrators and /platform/users.
+ * Used by /platform/users.
  */
 export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser[]> {
   const rows = await prisma.profile.findMany({

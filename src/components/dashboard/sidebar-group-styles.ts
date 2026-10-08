@@ -21,11 +21,11 @@ export const GROUP_NAV_ROW_CLASS =
   "sts-nav-link relative flex h-7 items-center gap-2 rounded-lg px-2 font-sans text-[12.5px] outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--grp)_55%,transparent)]";
 
 /**
- * Selected nav row: group tint + the theme accent for the label/icon, plus a
- * short bar in the group colour on the left edge.
+ * Selected nav row: group tint + the group colour (deepened for contrast) for
+ * the label/icon, plus a short bar in the group colour on the left edge.
  */
 export const GROUP_NAV_ACTIVE_CLASS =
-  "sts-nav-active bg-[color-mix(in_srgb,var(--grp)_20%,transparent)] font-semibold text-sts-blue before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--grp)]";
+  "sts-nav-active bg-[color-mix(in_srgb,var(--grp)_20%,transparent)] font-semibold text-[color-mix(in_srgb,var(--grp)_72%,var(--sts-foreground))] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--grp)]";
 
 export function groupStyle(color: string): CSSProperties {
   return { "--grp": color } as CSSProperties;

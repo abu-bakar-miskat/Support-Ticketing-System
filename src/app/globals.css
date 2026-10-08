@@ -984,7 +984,7 @@ html.dark .sts-tenant-logo {
 
 html.dark .sts-nav-active,
 html.dark .sts-nav-active:hover {
-  background-color: color-mix(in srgb, var(--sts-blue) 46%, var(--sts-card-solid));
+  background-color: color-mix(in srgb, var(--grp, var(--sts-blue)) 46%, var(--sts-card-solid));
   color: #fff8f5;
 }
 

@@ -72,6 +72,7 @@ import {
 import {
   GROUP_CARD_CLASS,
   GROUP_ITEM_IDLE_CLASS,
+  GROUP_LABEL_CLASS,
   GROUP_NAV_ACTIVE_CLASS as NAV_ITEM_ACTIVE_CLASS,
   GROUP_NAV_ROW_CLASS,
   groupStyle,
@@ -98,9 +99,6 @@ const NAV_GROUP_OF: Record<string, DeptSidebarGroupKey> = {
   "/settings": "account",
   "/docs": "account",
 };
-
-const NAV_GROUP_LABEL_CLASS =
-  "px-2 pt-1 pb-0.5 font-sans text-[9.5px] leading-4 font-semibold tracking-[0.9px] text-sts-subtle uppercase";
 
 export type SidebarProject = {
   id: string;
@@ -1050,7 +1048,7 @@ export function Sidebar({
                         )}
                       >
                         {!isCollapsed && (
-                          <p className={NAV_GROUP_LABEL_CLASS}>
+                          <p className={GROUP_LABEL_CLASS}>
                             {DEPT_SIDEBAR_GROUP_LABELS[groupKey]}
                           </p>
                         )}

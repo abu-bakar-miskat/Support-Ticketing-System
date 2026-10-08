@@ -30,9 +30,10 @@ import {
 } from "@/lib/sidebar-colors";
 import {
   GROUP_CARD_CLASS,
-  GROUP_ITEM_ACTIVE_CLASS,
   GROUP_ITEM_IDLE_CLASS,
   GROUP_LABEL_CLASS,
+  GROUP_NAV_ACTIVE_CLASS,
+  GROUP_NAV_ROW_CLASS,
   groupStyle,
 } from "@/components/dashboard/sidebar-group-styles";
 
@@ -120,7 +121,7 @@ export function DepartmentsSidebar({
         className,
       )}
     >
-      <div className="flex h-14 items-center pl-1">
+      <div className="flex h-12 items-center pl-1">
         {brandingLogoUrl || brandingName ? (
           <div className="flex min-w-0 items-center gap-2">
             {!brandingHideLogo &&
@@ -179,19 +180,19 @@ export function DepartmentsSidebar({
         )}
       </div>
       <div className="h-2" />
-      <nav aria-label="Departments" className="flex flex-col gap-2.5">
+      <nav aria-label="Departments" className="flex flex-col gap-1.5">
         <div
           role="group"
           aria-label={TENANT_SIDEBAR_GROUP_LABELS.overview}
           style={groupStyle(sidebarColors.overview)}
-          className={cn(GROUP_CARD_CLASS, "flex flex-col gap-0.5 p-1.5")}
+          className={cn(GROUP_CARD_CLASS, "flex flex-col gap-px rounded-xl p-1")}
         >
           <p className={GROUP_LABEL_CLASS}>{TENANT_SIDEBAR_GROUP_LABELS.overview}</p>
           {isSuperAdmin && (
             <Link
               href="/platform"
               className={cn(
-                "flex h-8 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] transition-colors",
+                GROUP_NAV_ROW_CLASS,
                 GROUP_ITEM_IDLE_CLASS,
               )}
             >
@@ -199,7 +200,7 @@ export function DepartmentsSidebar({
               <span className="truncate">Platform</span>
             </Link>
           )}
-          <div className="flex h-8 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-foreground">
+          <div className={cn(GROUP_NAV_ROW_CLASS, "text-sts-foreground")}>
             <SidebarNavIcon icon={DepartmentIcon} className="shrink-0" />
             <span className="truncate font-medium">All Departments</span>
           </div>
@@ -214,7 +215,7 @@ export function DepartmentsSidebar({
               role="group"
               aria-label={TENANT_SIDEBAR_GROUP_LABELS[group.key]}
               style={groupStyle(sidebarColors[group.key])}
-              className={cn(GROUP_CARD_CLASS, "flex flex-col gap-0.5 p-1.5")}
+              className={cn(GROUP_CARD_CLASS, "flex flex-col gap-px rounded-xl p-1")}
             >
               <p className={GROUP_LABEL_CLASS}>{TENANT_SIDEBAR_GROUP_LABELS[group.key]}</p>
               {items.map((item) => {
@@ -230,8 +231,8 @@ export function DepartmentsSidebar({
                     prefetch={true}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "sts-nav-link relative flex h-8 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] transition-colors",
-                      active ? GROUP_ITEM_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
+                      GROUP_NAV_ROW_CLASS,
+                      active ? GROUP_NAV_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
                     )}
                   >
                     <SidebarNavIcon icon={item.icon} />

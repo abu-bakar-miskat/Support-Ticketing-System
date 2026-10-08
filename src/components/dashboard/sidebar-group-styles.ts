@@ -9,7 +9,7 @@ import type { CSSProperties } from "react";
 export const GROUP_CARD_CLASS =
   "rounded-2xl border border-[color-mix(in_srgb,var(--grp)_14%,transparent)] bg-[color-mix(in_srgb,var(--grp)_8%,transparent)]";
 export const GROUP_LABEL_CLASS =
-  "px-[9px] pt-1.5 pb-1 font-sans text-[10.5px] font-semibold tracking-[1px] text-sts-subtle uppercase";
+  "px-2 pt-1 pb-0.5 font-sans text-[9.5px] leading-4 font-semibold tracking-[0.9px] text-sts-subtle uppercase";
 export const GROUP_ITEM_ACTIVE_CLASS =
   "bg-[color-mix(in_srgb,var(--grp)_20%,transparent)] font-semibold text-sts-foreground";
 export const GROUP_ITEM_IDLE_CLASS =

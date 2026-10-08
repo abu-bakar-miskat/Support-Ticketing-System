@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { Building2, Tags, LayoutTemplate, History, Settings, ShieldCheck, Users, Globe, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
 import { createClient } from "@/lib/supabase/client";
@@ -19,9 +20,10 @@ import {
 } from "@/lib/sidebar-colors";
 import {
   GROUP_CARD_CLASS,
-  GROUP_ITEM_ACTIVE_CLASS,
   GROUP_ITEM_IDLE_CLASS,
   GROUP_LABEL_CLASS,
+  GROUP_NAV_ACTIVE_CLASS,
+  GROUP_NAV_ROW_CLASS,
   groupStyle,
 } from "@/components/dashboard/sidebar-group-styles";
 
@@ -128,7 +130,7 @@ export function PlatformSidebar({
       )}
     >
       {/* Logo row */}
-      <div className={cn("flex h-14 items-center", isCollapsed ? "justify-center" : "pl-1")}>
+      <div className={cn("flex h-12 items-center", isCollapsed ? "justify-center" : "pl-1")}>
         {isCollapsed ? (
           <Tip label="Expand sidebar" side="right">
             <button
@@ -175,14 +177,14 @@ export function PlatformSidebar({
 
       <div className="h-2" />
 
-      <nav aria-label="Platform" className="flex flex-1 flex-col gap-2.5">
+      <nav aria-label="Platform" className="flex flex-1 flex-col gap-1.5">
         {PLATFORM_NAV_GROUPS.map((group) => (
           <div
             key={group.key}
             role="group"
             aria-label={PLATFORM_SIDEBAR_GROUP_LABELS[group.key]}
             style={groupStyle(colors[group.key])}
-            className={cn(GROUP_CARD_CLASS, "flex flex-col gap-0.5", isCollapsed ? "p-1" : "p-1.5")}
+            className={cn(GROUP_CARD_CLASS, "flex flex-col gap-px rounded-xl p-1")}
           >
             {!isCollapsed && (
               <p className={GROUP_LABEL_CLASS}>
@@ -191,7 +193,6 @@ export function PlatformSidebar({
             )}
             {group.items.map((item) => {
               const active = item.href === "/platform" ? pathname === "/platform" : pathname.startsWith(item.href);
-              const Icon = item.icon;
               const badge = item.href === "/platform/feature-approvals" && pendingCount > 0 ? pendingCount : null;
               return (
                 <Tip key={item.href} label={isCollapsed ? item.label : undefined} side="right">
@@ -201,13 +202,13 @@ export function PlatformSidebar({
                     aria-current={active ? "page" : undefined}
                     aria-label={isCollapsed ? (badge != null ? `${item.label} (${badge} pending)` : item.label) : undefined}
                     className={cn(
-                      "flex h-8 items-center gap-[9px] rounded-full font-sans text-[13px] transition-colors",
-                      isCollapsed ? "justify-center px-0" : "px-[9px]",
-                      active ? GROUP_ITEM_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
+                      GROUP_NAV_ROW_CLASS,
+                      isCollapsed && "justify-center px-0",
+                      active ? GROUP_NAV_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
                     )}
                   >
                     <span className="relative shrink-0">
-                      <Icon className="size-4" />
+                      <SidebarNavIcon icon={item.icon} />
                       {isCollapsed && badge != null && (
                         <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 font-sans text-[11.5px] font-medium text-white">
                           {badge > 9 ? "9+" : badge}

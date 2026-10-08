@@ -162,7 +162,9 @@ function TenantCard({
             <img
               src={tenant.logoUrl}
               alt={`${tenant.name} logo`}
-              className="max-h-full max-w-[160px] object-contain"
+              // Definite height: SVGs with only a viewBox have no intrinsic
+              // size and collapse to 0×0 under max-* constraints alone.
+              className="h-full w-auto max-w-[160px] object-contain"
             />
           </div>
         ) : (

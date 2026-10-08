@@ -29,7 +29,7 @@ export function TenantAvatar({
         style={{ width: size, height: size, padding: Math.max(2, Math.round(size * 0.12)) }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoUrl} alt={`${name} logo`} className="max-h-full max-w-full object-contain" />
+        <img src={logoUrl} alt={`${name} logo`} className="size-full object-contain" />
       </div>
     )
   }

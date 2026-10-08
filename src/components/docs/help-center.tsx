@@ -15,6 +15,7 @@ import {
   CalendarRange,
   ChevronDown,
   CircleAlert,
+  ExternalLink,
   CircleUser,
   FileText,
   FolderKanban,
@@ -1120,6 +1121,10 @@ const FAQS: FaqItem[] = [
 ];
 
 // ─── Component ─────────────────────────────────────────────────────────────
+/** Public support form (Web Development) — where users raise platform issues. */
+const REPORT_ISSUE_URL =
+  "https://ticketing-system.pengroup.com/support/web-development/47e2fb32-b964-46d7-a968-f21e0b477519";
+
 export function HelpCenter() {
   const user = useCurrentUser();
   const isManager = user?.role === "admin" || user?.role === "manager";
@@ -1256,6 +1261,18 @@ export function HelpCenter() {
             ))
           )}
         </nav>
+        <div className="border-t border-sts-card-border p-3">
+          <a
+            href={REPORT_ISSUE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium text-sts-id hover:bg-sts-surface"
+          >
+            <MessageSquare className="size-3.5 shrink-0" />
+            Report an issue
+            <ExternalLink className="ml-auto size-3 shrink-0 opacity-70" aria-hidden />
+          </a>
+        </div>
       </aside>
 
       {/* Content */}
@@ -1270,6 +1287,31 @@ export function HelpCenter() {
               Guides, processes and FAQs for the platform.
               {isManager && <> Manager-only topics are included for your role.</>}
             </p>
+            {/* Report an issue — opens the public support form as a ticket. */}
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-sts-blue/25 bg-sts-blue-tint px-4 py-3.5 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sts-blue/15 text-sts-id">
+                  <MessageSquare className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-sans text-[13.5px] font-semibold text-sts-foreground">
+                    Something not working?
+                  </p>
+                  <p className="font-sans text-[12.5px] text-sts-muted">
+                    Raise it as a ticket with the Web Development team and we&apos;ll look into it.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={REPORT_ISSUE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-semibold text-sts-blue-fg transition-opacity hover:opacity-90 sm:self-auto"
+              >
+                Report an issue
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
+            </div>
             {/* Mobile search + jump */}
             <div className="mt-4 flex flex-col gap-2 lg:hidden">
               <div className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-2.5">

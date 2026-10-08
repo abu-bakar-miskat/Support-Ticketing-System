@@ -18,6 +18,11 @@ import { AVATAR_ICON_ACCEPT, validateAvatarIcon } from "@/lib/avatar-icon-file";
 import { renderSignatureHtml } from "@/lib/email-templates/signature";
 import { hasSignatureContent, sanitizeSignatureHtml } from "@/lib/sanitize-signature-html";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  ProfileAvailabilitySection,
+  type OwnHoliday,
+  type OwnSubDepartmentMembership,
+} from "@/components/settings/profile-availability-section";
 
 type SignatureEntry = {
   id: string;
@@ -55,6 +60,8 @@ type SettingsProfileProps = {
   workStartTime: string;
   workEndTime: string;
   signature: SignaturePrefs;
+  subDepartmentMemberships: OwnSubDepartmentMembership[];
+  holidays: OwnHoliday[];
 };
 
 function FieldLabel({
@@ -124,6 +131,8 @@ export function SettingsProfilePage({
   workStartTime: initialWorkStartTime,
   workEndTime: initialWorkEndTime,
   signature: initialSignature,
+  subDepartmentMemberships,
+  holidays,
 }: SettingsProfileProps) {
   const router = useRouter();
   const [liveAvatarUrl, setLiveAvatarUrl] = useState(avatarUrl ?? undefined);
@@ -473,6 +482,11 @@ export function SettingsProfilePage({
           </div>
         </div>
 
+        <ProfileAvailabilitySection
+          subDepartmentMemberships={subDepartmentMemberships}
+          holidays={holidays}
+        />
+
         {/* <Separator className="bg-sts-card-border" /> */}
 
         <div className="flex flex-col gap-4">
@@ -488,7 +502,7 @@ export function SettingsProfilePage({
             <Switch
               checked={sigEnabled}
               onCheckedChange={handleSignatureEnabledChange}
-              className="h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-surface dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]"
+              className="h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-muted/45 dark:data-unchecked:bg-sts-muted/60 [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:bg-white! [&_[data-slot=switch-thumb]]:shadow-sm [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]"
             />
           </div>
 
@@ -709,9 +723,6 @@ export function SettingsProfilePage({
         <Separator className="bg-sts-card-border" />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <p className="font-sans text-[11.5px] text-sts-muted">
-            Sign out works through Microsoft.
-          </p>
           <div className="flex flex-1 justify-end gap-2.5">
             <Button
               type="button"

@@ -29,6 +29,9 @@ vi.mock("@/lib/db", () => ({
     activityLog: { create: vi.fn() },
   },
 }))
+vi.mock("@/lib/sla-engine", () => ({
+  stopFirstResponseOnPublicAgentMessage: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock("@/lib/mentions", () => ({
   processMentions: vi.fn().mockResolvedValue(undefined),
   resolveMentionedProfiles: vi.fn().mockResolvedValue([]),
@@ -38,6 +41,7 @@ import { getProfile } from "@/lib/profile"
 import { assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 
 const mockGetProfile = vi.mocked(getProfile)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
@@ -48,6 +52,7 @@ const mockAttachmentFindMany = vi.mocked(prisma.attachment.findMany)
 const mockAttachmentUpdateMany = vi.mocked(prisma.attachment.updateMany)
 const mockActivityLogCreate = vi.mocked(prisma.activityLog.create)
 const mockProcessMentions = vi.mocked(processMentions)
+const mockStopFirstResponse = vi.mocked(stopFirstResponseOnPublicAgentMessage)
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/tickets/ticket-1/comments", {
@@ -109,6 +114,7 @@ describe("POST /api/tickets/[id]/comments", () => {
         }),
       }),
     )
+    expect(mockStopFirstResponse).not.toHaveBeenCalled()
     expect(mockActivityLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: "COMMENT_ADDED" }),
@@ -140,10 +146,12 @@ describe("POST /api/tickets/[id]/comments", () => {
       ...accessibleTicket,
       intake: { apiKeyId: "portal-key" },
     } as never)
+    const createdAt = new Date("2026-10-07T15:41:14.170Z")
     mockCommentCreate.mockResolvedValue({
       id: "comment-public",
       body: "We are looking into this",
       portalVisible: true,
+      createdAt,
       author: { id: mockProfile.id, name: "Dev User", avatarUrl: null },
     } as never)
 
@@ -158,6 +166,9 @@ describe("POST /api/tickets/[id]/comments", () => {
         data: expect.objectContaining({ portalVisible: true }),
       }),
     )
+    // The portal reply thread is the requester-facing channel, so it stops
+    // the first-response SLA just like a public email reply does.
+    expect(mockStopFirstResponse).toHaveBeenCalledWith("ticket-1", createdAt)
   })
 
   it("rejects requester-visible replies on non-portal tickets", async () => {

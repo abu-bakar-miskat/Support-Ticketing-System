@@ -76,7 +76,7 @@ function mergeSwitches(
 }
 
 const switchClassName =
-  "h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-surface dark:data-unchecked:bg-sts-card-border [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
+  "h-[22px] w-[38px] shrink-0 data-checked:bg-sts-blue data-unchecked:bg-sts-muted/45 dark:data-unchecked:bg-sts-muted/60 [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:bg-white! [&_[data-slot=switch-thumb]]:shadow-sm [&_[data-slot=switch-thumb]]:data-checked:translate-x-[calc(100%-2px)]";
 
 /**
  * The 6 notification toggles. "Workspace default" edits the workspace-wide

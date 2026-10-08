@@ -9,11 +9,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
-import { TIMEZONES } from "@/lib/timezones";
+import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { toast } from "sonner";
 import { toastResponseError } from "@/lib/toast-error";
 import { useAvailabilityRefresh } from "@/components/providers/availability-provider";
 import { Tip } from "@/components/ui/tooltip";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -69,6 +70,9 @@ export function MemberConfigPanel({
   const [subDepartmentMemberships, setSubDepartmentMemberships] = useState(
     member.subDepartmentMemberships ?? []
   );
+  const [pendingBlockToggle, setPendingBlockToggle] = useState<
+    { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean } | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newHolidayRange, setNewHolidayRange] = useState<DateRange | undefined>(undefined);
@@ -80,10 +84,6 @@ export function MemberConfigPanel({
   const [reassignTeamId, setReassignTeamId] = useState("");
   const [reassigning, setReassigning] = useState(false);
   const [reassignResult, setReassignResult] = useState<string | null>(null);
-
-  const timezoneOptions = TIMEZONES.some((t) => t.value === timezone)
-    ? TIMEZONES
-    : [{ value: timezone, label: timezone }, ...TIMEZONES];
 
   useEffect(() => {
     async function load() {
@@ -184,32 +184,22 @@ export function MemberConfigPanel({
     refreshAvailability();
   }
 
+  // Runs from the confirm dialog, which shows the spinner and toasts on throw.
   async function toggleDoNotAssign(subDepartmentId: string, current: boolean) {
     const next = !current;
-    // Optimistic update
+    const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: member.id, doNotAssign: next }),
+    });
+    if (!res.ok) {
+      const msg = await res.json().catch(() => null);
+      throw new Error(msg?.error ?? "Failed to update assignment blocking");
+    }
     setSubDepartmentMemberships((prev) =>
       prev.map((t) => (t.subDepartmentId === subDepartmentId ? { ...t, doNotAssign: next } : t))
     );
-    try {
-      const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/members`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: member.id, doNotAssign: next }),
-      });
-      if (!res.ok) {
-        const msg = await res.json().catch(() => null);
-        throw new Error(msg?.error ?? `Request failed (${res.status})`);
-      }
-      router.refresh();
-    } catch (err) {
-      // Revert on failure and surface the reason
-      setSubDepartmentMemberships((prev) =>
-        prev.map((t) => (t.subDepartmentId === subDepartmentId ? { ...t, doNotAssign: current } : t))
-      );
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update assignment blocking",
-      );
-    }
+    router.refresh();
   }
 
   async function handleReassign() {
@@ -318,14 +308,10 @@ export function MemberConfigPanel({
                 <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.9px] text-sts-subtle">
                   Timezone
                 </p>
-                <SearchableSelect
+                <TimezoneSelect
                   value={timezone}
                   onChange={setTimezone}
-                  options={timezoneOptions}
-                  searchable
-                  searchPlaceholder="Search timezone…"
-                  className="bg-sts-bg"
-                  aria-label="Timezone"
+                  triggerClassName="bg-sts-bg"
                 />
                 <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
                   Used for rota availability and working-hours checks.
@@ -394,7 +380,7 @@ export function MemberConfigPanel({
                         </div>
                         <button
                           type="button"
-                          onClick={() => toggleDoNotAssign(tm.subDepartmentId, tm.doNotAssign)}
+                          onClick={() => setPendingBlockToggle(tm)}
                           className={cn(
                             "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
                             tm.doNotAssign ? "bg-sts-muted/40" : "bg-sts-blue"
@@ -602,6 +588,24 @@ export function MemberConfigPanel({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingBlockToggle !== null}
+        onOpenChange={(open) => { if (!open) setPendingBlockToggle(null); }}
+        title={pendingBlockToggle?.doNotAssign ? "Resume assignment?" : "Block assignment?"}
+        description={
+          pendingBlockToggle?.doNotAssign
+            ? `${member.name} will be added back to the ${pendingBlockToggle.subDepartmentName} rotation and can receive new tickets.`
+            : `${member.name} will be excluded from the ${pendingBlockToggle?.subDepartmentName ?? ""} rotation and won't receive new tickets. Existing tickets stay assigned.`
+        }
+        confirmLabel={pendingBlockToggle?.doNotAssign ? "Resume" : "Block"}
+        successMessage={pendingBlockToggle?.doNotAssign ? "Assignment resumed" : "Assignment blocked"}
+        onConfirm={() =>
+          pendingBlockToggle
+            ? toggleDoNotAssign(pendingBlockToggle.subDepartmentId, pendingBlockToggle.doNotAssign)
+            : Promise.resolve()
+        }
+      />
     </div>
   );
 }

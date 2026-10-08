@@ -1,8 +1,10 @@
 /**
- * Per-tenant branding for the app shell: the display name and logo shown once a
- * tenant is active. Tenants customize their logo/name only — they do NOT recolor
- * the app (the theme/brand color stays the product default everywhere).
+ * Per-tenant branding for the app shell: the display name, logo, and accent
+ * color applied once a tenant is active. The accent replaces the product orange
+ * as the theme accent (see lib/tenant-accent for the light/dark derivation).
  */
+
+import { normalizeHex } from "@/lib/tenant-accent";
 
 export type TenantBranding = {
   /** Org name shown in the shell (falls back to Tenant.name). */
@@ -16,6 +18,8 @@ export type TenantBranding = {
    * Defaults ON (unset = hidden) — stored explicitly as `false` when turned off.
    */
   hideDisplayName?: boolean;
+  /** Brand hex (#rrggbb) used as the theme accent; unset = product default. */
+  accentColor?: string;
 };
 
 export type ResolvedTenantBranding = {
@@ -23,6 +27,7 @@ export type ResolvedTenantBranding = {
   logoUrl: string | null;
   hideLogo: boolean;
   hideDisplayName: boolean;
+  accentColor: string | null;
 };
 
 const MAX_URL = 2048;
@@ -48,6 +53,8 @@ export function sanitizeTenantBranding(input: unknown): TenantBranding | null {
     if (name) out.displayName = name;
   }
   if (isUsableUrl(raw.logoUrl)) out.logoUrl = raw.logoUrl;
+  const accent = normalizeHex(raw.accentColor);
+  if (accent) out.accentColor = accent;
   // At most one may be hidden — hiding both would leave the shell blank.
   // hideDisplayName defaults on, so an explicit `false` is kept to record opt-out.
   if (raw.hideLogo === true) out.hideLogo = true;
@@ -74,5 +81,6 @@ export function resolveTenantBranding(stored: unknown): ResolvedTenantBranding {
     hideLogo: b.hideLogo ?? false,
     // Default on — but only when there's a logo to fill the width.
     hideDisplayName: b.hideDisplayName ?? (!b.hideLogo && !!b.logoUrl),
+    accentColor: b.accentColor ?? null,
   };
 }

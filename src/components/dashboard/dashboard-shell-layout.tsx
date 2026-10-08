@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { getDashboardBadgesData } from "@/lib/dashboard-badges-data";
 import { getLayoutSeedFromProfile } from "@/lib/dashboard-layout-data";
 import { getTenantBranding } from "@/lib/tenant-config";
+import { TenantAccentStyle } from "@/components/theme/tenant-accent-style";
 import { DashboardBadgesHydrator } from "./dashboard-badges-hydrator";
 import type { AuthProfile } from "@/lib/auth";
 import { getProfileDeptScope } from "@/lib/dept-scope";
@@ -118,6 +119,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
   return (
     <>
       <TenantUrlGuard />
+      <TenantAccentStyle accentColor={branding?.accentColor} />
       <UserHydrator
         id={profile.id}
         email={profile.email}

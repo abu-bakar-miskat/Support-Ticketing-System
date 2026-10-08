@@ -263,7 +263,9 @@ function TenantCard({
           onClick={onEnter}
           aria-label={`Enter ${tenant.name}`}
           className={cn(
-            "ml-auto border-sts-blue/30 px-3.5 text-sts-blue hover:bg-sts-blue hover:text-white group-hover:border-transparent group-hover:bg-sts-blue group-hover:text-white dark:group-hover:text-gray-900 dark:hover:text-gray-900",
+            // The outline variant's dark:bg-input/30 / dark:border-input win over
+            // plain hover/group-hover fills, so dark mode restates them.
+            "ml-auto border-sts-blue/30 px-3.5 text-sts-blue hover:bg-sts-blue hover:text-white group-hover:border-transparent group-hover:bg-sts-blue group-hover:text-white dark:border-sts-blue/45 dark:bg-sts-blue/10 dark:hover:bg-sts-blue dark:hover:text-white dark:group-hover:border-transparent dark:group-hover:bg-sts-blue dark:group-hover:text-white",
             !canManage && "w-full",
           )}
         >

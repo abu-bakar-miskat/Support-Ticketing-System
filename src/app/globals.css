@@ -77,7 +77,7 @@
   --color-sts-secondary-bg: var(--sts-secondary-bg);
   --color-sts-secondary-fg: var(--sts-secondary-fg);
   --color-sts-accent: var(--sts-accent);
-  --color-sts-brand: #f84201;
+  --color-sts-brand: var(--sts-accent);
   --shadow-sts-card: var(--sts-card-shadow);
   /* Semantic action tokens */
   --color-sts-blue: var(--sts-blue);
@@ -251,10 +251,11 @@
 
   html.dark,
   html[data-theme="dark"] {
-    /* Clean dark theme with frosted-glass panels over an ambient gradient wash:
-       translucent slate cards + backdrop blur read as glass against the gradient. */
-    --sts-card-solid: #1e293b;
-    --sts-bg: #0f172a;
+    /* Clean dark theme on warm-neutral charcoal. Neutrals carry a faint warm
+       tint (hue ~60) so they sit with the orange brand instead of fighting it
+       the way cool navy slate did; the ambient wash is kept very subtle. */
+    --sts-card-solid: #1c1b19;
+    --sts-bg: #131211;
     --sts-bg-tint: rgba(255, 255, 255, 0.02);
     --sts-glass-blur: 16px;
     --sts-glass-saturate: 1.2;
@@ -262,24 +263,24 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       0 6px 24px rgba(0, 0, 0, 0.32);
     --sts-glass-highlight: rgba(255, 255, 255, 0.06);
-    --sts-card: rgba(30, 41, 59, 0.62);
-    --sts-card-border: #334155;
-    --sts-foreground: #f1f5f9;
-    --sts-muted: #a3aec0;
-    --sts-subtle: #8b95a6;
+    --sts-card: rgba(30, 29, 27, 0.72);
+    --sts-card-border: #363330;
+    --sts-foreground: #f5f3f0;
+    --sts-muted: #b5afa8;
+    --sts-subtle: #938c84;
     --sts-button: #f84201;
     --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #1e293b;
-    --sts-secondary-fg: #f1f5f9;
+    --sts-secondary-bg: #24221f;
+    --sts-secondary-fg: #f5f3f0;
     --sts-accent: #f84201;
     --sts-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     /* Action / semantic tokens — dark overrides */
     --sts-blue: #f84201;
     --sts-blue-fg: #ffffff;
     --sts-blue-tint: rgba(248, 66, 1, 0.16);
-    --sts-surface: #26334a;
-    --sts-settings-subnav: #172033;
-    --sts-settings-subnav-active: #1e293b;
+    --sts-surface: #282623;
+    --sts-settings-subnav: #181715;
+    --sts-settings-subnav-active: #24221f;
 
     --sts-id: #ff8a5c;
     --sts-red: #f87171;
@@ -292,51 +293,51 @@
     --sts-bg-gradient:
       linear-gradient(
         135deg,
-        color-mix(in srgb, var(--sts-accent) 12%, transparent) 0%,
+        color-mix(in srgb, var(--sts-accent) 5%, transparent) 0%,
         transparent 45%,
-        color-mix(in srgb, var(--sts-blue) 9%, transparent) 100%
+        color-mix(in srgb, var(--sts-blue) 3%, transparent) 100%
       ),
       radial-gradient(
         70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 10%, transparent) 0%,
+        color-mix(in srgb, var(--sts-accent) 6%, transparent) 0%,
         transparent 72%
       ),
       radial-gradient(
         64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 8%, transparent) 0%,
+        color-mix(in srgb, var(--sts-blue) 3%, transparent) 0%,
         transparent 74%
       ),
       var(--sts-bg);
-    --background: oklch(0.22 0.03 258);
-    --foreground: oklch(0.97 0.005 258);
-    --card: oklch(0.28 0.03 258);
-    --card-foreground: oklch(0.97 0.005 258);
-    --popover: oklch(0.28 0.03 258);
-    --popover-foreground: oklch(0.97 0.005 258);
+    --background: oklch(0.18 0.004 60);
+    --foreground: oklch(0.97 0.004 60);
+    --card: oklch(0.225 0.004 60);
+    --card-foreground: oklch(0.97 0.004 60);
+    --popover: oklch(0.235 0.004 60);
+    --popover-foreground: oklch(0.97 0.004 60);
     --primary: oklch(0.646 0.225 35.2);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.32 0.03 258);
-    --secondary-foreground: oklch(0.97 0.005 258);
-    --muted: oklch(0.32 0.03 258);
-    --muted-foreground: oklch(0.72 0.03 258);
-    --accent: oklch(0.32 0.03 258);
-    --accent-foreground: oklch(0.97 0.005 258);
+    --secondary: oklch(0.27 0.005 60);
+    --secondary-foreground: oklch(0.97 0.004 60);
+    --muted: oklch(0.27 0.005 60);
+    --muted-foreground: oklch(0.75 0.01 60);
+    --accent: oklch(0.27 0.005 60);
+    --accent-foreground: oklch(0.97 0.004 60);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(0.37 0.03 258);
-    --input: oklch(0.37 0.03 258);
+    --border: oklch(0.32 0.006 60);
+    --input: oklch(0.36 0.006 60);
     --ring: oklch(0.646 0.225 35.2);
     --chart-1: oklch(0.646 0.225 35.2);
     --chart-2: oklch(0.7 0.15 220);
     --chart-3: oklch(0.75 0.13 190);
     --chart-4: oklch(0.72 0.15 160);
     --chart-5: oklch(0.68 0.19 25);
-    --sidebar: oklch(0.2 0.03 258);
-    --sidebar-foreground: oklch(0.97 0.005 258);
+    --sidebar: oklch(0.17 0.004 60);
+    --sidebar-foreground: oklch(0.97 0.004 60);
     --sidebar-primary: oklch(0.646 0.225 35.2);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.32 0.03 258);
-    --sidebar-accent-foreground: oklch(0.97 0.005 258);
-    --sidebar-border: oklch(0.37 0.03 258);
+    --sidebar-accent: oklch(0.27 0.005 60);
+    --sidebar-accent-foreground: oklch(0.97 0.004 60);
+    --sidebar-border: oklch(0.32 0.006 60);
     --sidebar-ring: oklch(0.646 0.225 35.2);
   }
 
@@ -536,11 +537,19 @@
 
 @layer utilities {
   /*
-   * Solid sts-blue fills use a bright cyan in dark/AMOLED. `text-white` on those
-   * surfaces fails contrast — force the theme's on-blue ink (beats `.text-white`
-   * via higher specificity: html.dark + class).
+   * Solid sts-blue fills take the tenant's accent, which may be light (e.g. a
+   * yellow brand). `text-white` / `dark:text-gray-900` on those surfaces would
+   * then fail contrast — force the theme's on-accent ink in every mode (beats
+   * the text utilities via higher specificity: html + class). Covers the
+   * hover/group-hover/checked fills that swap to a solid accent too.
    */
-  html.dark .bg-sts-blue {
+  html .bg-sts-blue,
+  html [class~="hover:bg-sts-blue"]:hover,
+  html .group:hover [class~="group-hover:bg-sts-blue"],
+  html [class~="dark:hover:bg-sts-blue"]:hover,
+  html .group:hover [class~="dark:group-hover:bg-sts-blue"],
+  html [class~="data-checked:bg-sts-blue"][data-checked],
+  html [class~="data-popup-open:bg-sts-blue"][data-popup-open] {
     color: var(--sts-blue-fg);
   }
 

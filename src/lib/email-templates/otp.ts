@@ -3,7 +3,7 @@ import { applyPlaceholders, escapeHtml } from "./_shared";
 /**
  * The OTP sign-in email. Unlike the ticket/notification templates, this one is
  * platform-global (login is email-first — there's no tenant/department context
- * when a code is sent) and is edited by a super admin on /platform/settings.
+ * when a code is sent) and is edited by a super admin on /platform/otp-email.
  * The stored override lives on the `otpEmailTemplate` PlatformSetting row; when
  * unset, OTP_DEFAULT below is used, preserving the original hardcoded design.
  *

@@ -225,7 +225,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
               </SelectContent>
             </Select>
             <p className="font-sans text-[11px] text-sts-subtle">
-              Manage the available types under Platform → Tenant Types.
+              Manage the available types under Platform → Tenant configuration.
             </p>
           </div>
 

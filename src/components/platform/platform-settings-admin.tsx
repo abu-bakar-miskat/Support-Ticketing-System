@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Settings as SettingsIcon,
@@ -13,7 +13,6 @@ import {
   Power,
   FlaskConical,
   ExternalLink,
-  Mail,
   RotateCcw,
   Palette,
 } from "lucide-react";
@@ -22,13 +21,6 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { HtmlCodeEditor } from "@/components/ui/html-code-editor";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 import {
   MARKETPLACE_FEATURE_KEYS,
   TEMPLATE_FEATURE_LABELS,
@@ -43,7 +35,6 @@ import {
 import { PLATFORM_NAV_GROUPS } from "@/components/platform/platform-sidebar";
 import { SidebarColorsEditor } from "@/components/settings/sidebar-colors-editor";
 
-type TenantOption = { id: string; name: string; slug: string; status: string };
 type Overview = {
   tenants: number;
   suspended: number;
@@ -59,28 +50,18 @@ type PlatformSettings = {
   templateEnablementRequiresApproval: boolean;
   sidebarGroupColors: PlatformSidebarColors;
 };
-type OtpTemplate = { subject: string; bodyHtml: string };
 
 export function PlatformSettingsAdmin({
-  tenants: initialTenants,
   settings: initialSettings,
   overview,
   mailpitUiBase,
-  otpTemplate,
-  otpDefault,
 }: {
-  tenants: TenantOption[];
   settings: PlatformSettings;
   overview: Overview;
   /** Public Mailpit inbox URL (no credentials in the URL). */
   mailpitUiBase: string;
-  /** Current super-admin OTP override, or null when using the built-in default. */
-  otpTemplate: OtpTemplate | null;
-  /** The built-in OTP template — used to prefill and to reset. */
-  otpDefault: OtpTemplate;
 }) {
   const router = useRouter();
-  const [tenants, setTenants] = useState<TenantOption[]>(initialTenants);
 
   // ── Banners ────────────────────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
@@ -168,114 +149,6 @@ export function PlatformSettingsAdmin({
     }
   }
 
-  // ── Per-tenant configuration ─────────────────────────────────────────────────
-  const [tenantId, setTenantId] = useState<string>(tenants[0]?.id ?? "");
-  const [flags, setFlags] = useState<Record<MarketplaceFeatureKey, boolean> | null>(null);
-  const [loadingFlags, setLoadingFlags] = useState(false);
-  const [statusBusy, setStatusBusy] = useState(false);
-
-  const selectedTenant = tenants.find((t) => t.id === tenantId);
-
-  useEffect(() => {
-    if (!tenantId) return;
-    let cancelled = false;
-    async function load() {
-      setLoadingFlags(true);
-      try {
-        const res = await fetch(`/api/admin/tenants/${tenantId}/department-features`).then((r) => r.json());
-        if (cancelled) return;
-        setFlags(res.features ?? null);
-      } catch {
-        if (!cancelled) setError("Failed to load department features for this tenant");
-      } finally {
-        if (!cancelled) setLoadingFlags(false);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
-
-  async function writeFeatures(body: { key?: MarketplaceFeatureKey; all?: boolean; enabled: boolean }) {
-    const res = await fetch(`/api/admin/tenants/${tenantId}/department-features`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload.error ?? "Failed to update department features");
-    return payload.features as Record<MarketplaceFeatureKey, boolean>;
-  }
-
-  async function toggleFlag(key: MarketplaceFeatureKey, enabled: boolean) {
-    setError(null);
-    setFlags((prev) => (prev ? { ...prev, [key]: enabled } : prev));
-    try {
-      const features = await writeFeatures({ key, enabled });
-      setFlags(features);
-    } catch {
-      setFlags((prev) => (prev ? { ...prev, [key]: !enabled } : prev));
-      setError("Failed to update department features");
-    }
-  }
-
-  async function setAllFlags(enabled: boolean) {
-    if (!flags) return;
-    if (MARKETPLACE_FEATURE_KEYS.every((key) => flags[key] === enabled)) return;
-    setError(null);
-    const prev = flags;
-    setFlags(
-      Object.fromEntries(MARKETPLACE_FEATURE_KEYS.map((key) => [key, enabled])) as Record<
-        MarketplaceFeatureKey,
-        boolean
-      >,
-    );
-    try {
-      const features = await writeFeatures({ all: true, enabled });
-      setFlags(features);
-    } catch {
-      setFlags(prev);
-      setError("Failed to update department features");
-    }
-  }
-
-  async function setTenantStatus(next: "active" | "suspended") {
-    if (!tenantId || selectedTenant?.status === next) return;
-    setStatusBusy(true);
-    setError(null);
-    setStatus(null);
-    const prev = tenants;
-    setTenants((ts) => ts.map((t) => (t.id === tenantId ? { ...t, status: next } : t)));
-    try {
-      const res = await fetch(`/api/admin/tenants/${tenantId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Failed to update tenant status");
-      }
-      setStatus(`${selectedTenant?.name ?? "Tenant"} is now ${next}`);
-    } catch (e) {
-      setTenants(prev);
-      setError(e instanceof Error ? e.message : "Failed to update tenant status");
-    } finally {
-      setStatusBusy(false);
-    }
-  }
-
-  // ── OTP sign-in email template ───────────────────────────────────────────────
-  // Platform-global: login is email-first, so there's no tenant/department context
-  // when a code is sent. Seed from the override, falling back to the built-in default.
-  const [otpSubject, setOtpSubject] = useState((otpTemplate ?? otpDefault).subject);
-  const [otpBodyHtml, setOtpBodyHtml] = useState((otpTemplate ?? otpDefault).bodyHtml);
-  const [otpBaseline, setOtpBaseline] = useState<OtpTemplate>(otpTemplate ?? otpDefault);
-  const [savingOtp, setSavingOtp] = useState(false);
-  const [resettingOtp, setResettingOtp] = useState(false);
-
-  const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
   // ── Sidebar colours ──────────────────────────────────────────────────────────
   const [sidebarColors, setSidebarColors] = useState<PlatformSidebarColors>(initialSettings.sidebarGroupColors);
   const [sidebarBaseline, setSidebarBaseline] = useState<PlatformSidebarColors>(initialSettings.sidebarGroupColors);
@@ -311,63 +184,7 @@ export function PlatformSettingsAdmin({
     }
   }
 
-  useUnsavedChangesGuard(generalDirty || otpDirty || sidebarDirty);
-  const otpPreviewHtml = otpBodyHtml
-    .replaceAll("{{code}}", "123456")
-    .replaceAll("{{platformName}}", platformName.trim() || "Global Support Portal");
-
-  async function saveOtp() {
-    setSavingOtp(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/admin/platform-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpEmailTemplate: { subject: otpSubject, bodyHtml: otpBodyHtml } }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? "Failed to save OTP email");
-        return;
-      }
-      const saved: OtpTemplate = body.otpEmailTemplate ?? otpDefault;
-      setOtpSubject(saved.subject);
-      setOtpBodyHtml(saved.bodyHtml);
-      setOtpBaseline(saved);
-      setStatus("OTP sign-in email saved");
-    } catch {
-      setError("Failed to save OTP email");
-    } finally {
-      setSavingOtp(false);
-    }
-  }
-
-  async function resetOtp() {
-    setResettingOtp(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/admin/platform-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpEmailTemplate: null }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? "Failed to reset OTP email");
-        return;
-      }
-      setOtpSubject(otpDefault.subject);
-      setOtpBodyHtml(otpDefault.bodyHtml);
-      setOtpBaseline(otpDefault);
-      setStatus("OTP sign-in email reset to default");
-    } catch {
-      setError("Failed to reset OTP email");
-    } finally {
-      setResettingOtp(false);
-    }
-  }
+  useUnsavedChangesGuard(generalDirty || sidebarDirty);
 
   const statCards = [
     { label: "Tenants", value: overview.tenants, icon: Building2 },
@@ -383,7 +200,7 @@ export function PlatformSettingsAdmin({
         <PageHeader
           icon={SettingsIcon}
           title="Platform settings"
-          description="Global platform configuration, defaults for new departments, and per-tenant department features. Changes are recorded in the Activity Log."
+          description="Global platform configuration and defaults for new departments. Changes are recorded in the Activity Log."
         />
 
         {(error || status) && (
@@ -429,9 +246,45 @@ export function PlatformSettingsAdmin({
           })}
         </div>
 
-        {/* Two-column layout — global settings (left) · per-tenant (right) */}
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          {/* ── Global settings ─────────────────────────────────────────────── */}
+        {/* ── Sidebar colours ───────────────────────────────────────────────── */}
+        <div className="mt-6 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
+          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+              <Palette className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                Accent colour for each group in the platform sidebar. Cards and highlights are soft tints of the colour you pick.
+              </p>
+            </div>
+          </div>
+
+          <div className="px-[22px] py-5">
+            <SidebarColorsEditor
+              groups={PLATFORM_NAV_GROUPS.map((g) => ({ ...g, label: PLATFORM_SIDEBAR_GROUP_LABELS[g.key] }))}
+              value={sidebarColors}
+              onChange={(key, color) => setSidebarColors((current) => ({ ...current, [key]: color }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-sts-card-border bg-sts-surface/40 px-[22px] py-3.5">
+            <Button
+              variant="outline"
+              disabled={sidebarIsDefault || savingSidebar}
+              onClick={() => setSidebarColors(PLATFORM_SIDEBAR_COLOR_DEFAULTS)}
+            >
+              <RotateCcw className="size-4" />
+              Reset to default
+            </Button>
+            <Button disabled={!sidebarDirty || savingSidebar} onClick={saveSidebarColors}>
+              {savingSidebar ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Save colours
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-6">
           <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
             <div className="border-b border-sts-card-border px-[22px] py-4">
               <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Global settings</h2>
@@ -546,234 +399,6 @@ export function PlatformSettingsAdmin({
               <Button disabled={!generalDirty || savingGeneral} onClick={saveGeneral}>
                 {savingGeneral ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Save changes
-              </Button>
-            </div>
-          </div>
-
-          {/* ── Per-tenant configuration ────────────────────────────────────── */}
-          <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sts-card-border px-[22px] py-4">
-              <div className="min-w-0">
-                <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Per-tenant configuration</h2>
-                <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Department features and lifecycle status for one tenant.</p>
-              </div>
-              {tenants.length > 0 && (
-                <Select value={tenantId} onValueChange={(v) => v && setTenantId(v)}>
-                  <SelectTrigger className="h-9 w-[220px]">
-                    <span className="truncate font-sans text-[12.5px]">{selectedTenant?.name ?? "Select a tenant"}</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenants.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {tenants.length === 0 ? (
-              <p className="px-[22px] py-8 text-center font-sans text-[12.5px] text-sts-muted">No tenants yet.</p>
-            ) : !tenantId ? (
-              <p className="px-[22px] py-8 text-center font-sans text-[12.5px] text-sts-muted">
-                Select a tenant to configure.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-5 px-[22px] py-5">
-                {/* Tenant status */}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-sans text-[13px] font-medium text-sts-foreground">Status</span>
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase",
-                          selectedTenant?.status === "suspended"
-                            ? "bg-destructive/15 text-destructive"
-                            : "bg-sts-green/15 text-sts-green",
-                        )}
-                      >
-                        {selectedTenant?.status ?? "active"}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                      Suspending blocks all tenant access until reactivated.
-                    </p>
-                  </div>
-                  <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-card p-0.5">
-                    {(["active", "suspended"] as const).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        disabled={statusBusy}
-                        onClick={() => setTenantStatus(s)}
-                        className={cn(
-                          "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium capitalize transition-colors disabled:opacity-50",
-                          selectedTenant?.status === s
-                            ? s === "suspended"
-                              ? "bg-destructive text-white"
-                              : "bg-sts-green text-white"
-                            : "text-sts-muted hover:text-sts-foreground",
-                        )}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Department features for this tenant */}
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Department features</h3>
-                      <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                        Applies to every department in this tenant. Switched off, a tenant admin can still request it.
-                      </p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        disabled={loadingFlags || !flags}
-                        onClick={() => setAllFlags(true)}
-                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
-                      >
-                        Enable all
-                      </button>
-                      <button
-                        type="button"
-                        disabled={loadingFlags || !flags}
-                        onClick={() => setAllFlags(false)}
-                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
-                      >
-                        Disable all
-                      </button>
-                    </div>
-                  </div>
-                  <div className="relative flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
-                    {loadingFlags && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-sts-surface/60">
-                        <Loader2 className="size-4 animate-spin text-sts-muted" />
-                      </div>
-                    )}
-                    {MARKETPLACE_FEATURE_KEYS.map((key) => (
-                      <div key={key} className="flex items-center justify-between gap-3 py-2.5">
-                        <span className="font-sans text-[13px] text-sts-foreground">{TEMPLATE_FEATURE_LABELS[key]}</span>
-                        <Switch
-                          checked={flags ? flags[key] : false}
-                          disabled={loadingFlags || !flags}
-                          onCheckedChange={(checked) => toggleFlag(key, checked)}
-                          size="sm"
-                          aria-label={`${TEMPLATE_FEATURE_LABELS[key]} for this tenant`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Sidebar colours ───────────────────────────────────────────────── */}
-        <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-              <Palette className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                Accent colour for each group in the platform sidebar. Cards and highlights are soft tints of the colour you pick.
-              </p>
-            </div>
-          </div>
-
-          <div className="px-[22px] py-5">
-            <SidebarColorsEditor
-              groups={PLATFORM_NAV_GROUPS.map((g) => ({ ...g, label: PLATFORM_SIDEBAR_GROUP_LABELS[g.key] }))}
-              value={sidebarColors}
-              onChange={(key, color) => setSidebarColors((current) => ({ ...current, [key]: color }))}
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border-t border-sts-card-border bg-sts-surface/40 px-[22px] py-3.5">
-            <Button
-              variant="outline"
-              disabled={sidebarIsDefault || savingSidebar}
-              onClick={() => setSidebarColors(PLATFORM_SIDEBAR_COLOR_DEFAULTS)}
-            >
-              <RotateCcw className="size-4" />
-              Reset to default
-            </Button>
-            <Button disabled={!sidebarDirty || savingSidebar} onClick={saveSidebarColors}>
-              {savingSidebar ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Save colours
-            </Button>
-          </div>
-        </div>
-
-        {/* ── OTP sign-in email ─────────────────────────────────────────────── */}
-        <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-              <Mail className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">OTP sign-in email</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                The passwordless sign-in code email, sent to everyone across the platform. Use{" "}
-                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{code}}"}</code>{" "}
-                where the numeric code should appear, and{" "}
-                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{platformName}}"}</code>{" "}
-                for the company name.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 px-[22px] py-5">
-            {/* Subject — full width */}
-            <div className="flex flex-col gap-[5px]">
-              <label className="font-sans text-[13px] font-medium text-sts-foreground">Subject</label>
-              <Input value={otpSubject} onChange={(e) => setOtpSubject(e.target.value)} />
-            </div>
-
-            {/* Body editor + live preview, side by side and height-matched */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <div className="flex flex-col gap-[5px]">
-                <label className="font-sans text-[13px] font-medium text-sts-foreground">Body HTML</label>
-                <HtmlCodeEditor
-                  value={otpBodyHtml}
-                  onChange={setOtpBodyHtml}
-                  minHeight={420}
-                  maxHeight={420}
-                  className="h-[420px]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-[5px]">
-                <label className="font-sans text-[13px] font-medium text-sts-foreground">Preview</label>
-                <div className="h-[420px] overflow-hidden rounded-lg border border-sts-card-border bg-white">
-                  <iframe
-                    title="OTP email preview"
-                    srcDoc={otpPreviewHtml}
-                    sandbox=""
-                    className="h-full w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button onClick={saveOtp} disabled={!otpDirty || savingOtp}>
-                {savingOtp ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Save
-              </Button>
-              <Button variant="outline" onClick={resetOtp} disabled={resettingOtp}>
-                {resettingOtp ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
-                Reset to default
               </Button>
             </div>
           </div>

@@ -16,9 +16,12 @@ import { TenantTypeModal, type TenantTypeRow } from "@/components/platform/tenan
 export function TenantTypesClient({
   types,
   canManage,
+  embedded = false,
 }: {
   types: TenantTypeRow[];
   canManage: boolean;
+  /** Render as a section inside another page instead of a standalone screen. */
+  embedded?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -35,9 +38,24 @@ export function TenantTypesClient({
     window.location.reload();
   }
 
-  return (
-    <div className="min-h-screen overflow-y-auto">
-      <div className="w-full px-6 py-8 lg:px-10">
+  const catalog = (
+    <>
+      {embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sts-card-border px-[22px] py-4">
+          <div className="min-w-0">
+            <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Tenant types</h2>
+            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+              Categories a tenant can be classified as. The key is stored on the tenant; the label is what people see.
+            </p>
+          </div>
+          {canManage && (
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="size-4" />
+              Add type
+            </Button>
+          )}
+        </div>
+      ) : (
         <PageHeader
           icon={Tags}
           title="Tenant Types"
@@ -51,23 +69,26 @@ export function TenantTypesClient({
             )
           }
         />
+      )}
 
-        {error && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
+      {error && (
+        <div className={embedded ? "mx-[22px] mt-4" : "mt-4"}>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
             {error}
           </div>
-        )}
+        </div>
+      )}
 
-        {types.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-sts-card-border bg-sts-card/50 px-6 py-12 text-center">
-            <Tags className="mx-auto size-6 text-sts-subtle" />
-            <p className="mt-3 font-sans text-[13.5px] font-medium text-sts-foreground">No tenant types yet</p>
-            <p className="mt-1 font-sans text-[12.5px] text-sts-muted">
-              Create your first type to start classifying tenants.
-            </p>
-          </div>
-        ) : (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {types.length === 0 ? (
+        <div className={embedded ? "px-[22px] py-10 text-center" : "mt-6 rounded-xl border border-dashed border-sts-card-border bg-sts-card/50 px-6 py-12 text-center"}>
+          <Tags className="mx-auto size-6 text-sts-subtle" />
+          <p className="mt-3 font-sans text-[13.5px] font-medium text-sts-foreground">No tenant types yet</p>
+          <p className="mt-1 font-sans text-[12.5px] text-sts-muted">
+            Create your first type to start classifying tenants.
+          </p>
+        </div>
+      ) : (
+        <ul className={embedded ? "grid gap-3 px-[22px] py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}>
             {types.map((t) => (
               <li
                 key={t.id}
@@ -114,7 +135,20 @@ export function TenantTypesClient({
             ))}
           </ul>
         )}
-      </div>
+    </>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        <section className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
+          {catalog}
+        </section>
+      ) : (
+        <div className="min-h-screen overflow-y-auto">
+          <div className="w-full px-6 py-8 lg:px-10">{catalog}</div>
+        </div>
+      )}
 
       {showCreate && <TenantTypeModal onClose={() => setShowCreate(false)} />}
       {editTarget && <TenantTypeModal existing={editTarget} onClose={() => setEditTarget(null)} />}
@@ -134,6 +168,6 @@ export function TenantTypesClient({
           onConfirm={() => deleteType(deleteTarget.id)}
         />
       )}
-    </div>
+    </>
   );
 }

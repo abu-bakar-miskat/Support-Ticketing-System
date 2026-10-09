@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Mail, RotateCcw, Save } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
@@ -28,6 +28,34 @@ export function PlatformOtpEmailPage({
   const [otpBaseline, setOtpBaseline] = useState<OtpTemplate>(otpTemplate ?? otpDefault);
   const [savingOtp, setSavingOtp] = useState(false);
   const [resettingOtp, setResettingOtp] = useState(false);
+
+  const previewRef = useRef<HTMLIFrameElement>(null);
+  const previewObserverRef = useRef<ResizeObserver | null>(null);
+  const [previewHeight, setPreviewHeight] = useState(420);
+
+  useEffect(() => () => previewObserverRef.current?.disconnect(), []);
+
+  // Grow the preview iframe to the email's full height so it never scrolls internally.
+  // Needs allow-same-origin (scripts stay disabled) so we can measure its document.
+  function fitPreview() {
+    const doc = previewRef.current?.contentDocument;
+    if (!doc) return;
+    const body = doc.body;
+    if (!body) return;
+    // Measure the content's bottom edge rather than scrollHeight, which never drops below
+    // the iframe's current height (so the preview could grow but never shrink).
+    const measure = () => {
+      const children = Array.from(body.children);
+      const bottom = Math.max(0, ...children.map((el) => el.getBoundingClientRect().bottom));
+      const style = doc.defaultView?.getComputedStyle(body);
+      const trailing = style ? parseFloat(style.marginBottom) + parseFloat(style.paddingBottom) : 0;
+      setPreviewHeight(Math.max(200, Math.ceil(bottom + trailing)));
+    };
+    measure();
+    previewObserverRef.current?.disconnect();
+    previewObserverRef.current = new ResizeObserver(measure);
+    for (const el of Array.from(body.children)) previewObserverRef.current.observe(el);
+  }
 
   const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
   useUnsavedChangesGuard(otpDirty);
@@ -126,16 +154,25 @@ export function PlatformOtpEmailPage({
                 <HtmlCodeEditor
                   value={otpBodyHtml}
                   onChange={setOtpBodyHtml}
-                  minHeight={420}
-                  maxHeight={420}
-                  className="h-[420px]"
+                  minHeight={previewHeight}
+                  maxHeight={previewHeight}
+                  className="box-content"
                 />
               </div>
 
               <div className="flex flex-col gap-[5px]">
                 <label className="font-sans text-[13px] font-medium text-sts-foreground">Preview</label>
-                <div className="h-[420px] overflow-hidden rounded-lg border border-sts-card-border bg-white">
-                  <iframe title="OTP email preview" srcDoc={otpPreviewHtml} sandbox="" className="h-full w-full" />
+                <div className="overflow-hidden rounded-lg border border-sts-card-border bg-white">
+                  <iframe
+                    ref={previewRef}
+                    title="OTP email preview"
+                    srcDoc={otpPreviewHtml}
+                    sandbox="allow-same-origin"
+                    scrolling="no"
+                    onLoad={fitPreview}
+                    style={{ height: previewHeight }}
+                    className="block w-full"
+                  />
                 </div>
               </div>
             </div>

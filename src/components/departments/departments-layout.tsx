@@ -49,6 +49,7 @@ export function DepartmentsLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
   sidebarColors,
@@ -57,6 +58,7 @@ export function DepartmentsLayout({
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingLogoUrlDark?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
   sidebarColors: TenantSidebarColors;
@@ -127,6 +129,7 @@ export function DepartmentsLayout({
           className="hidden lg:flex"
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingLogoUrlDark={brandingLogoUrlDark}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
           sidebarColors={sidebarColors}
@@ -144,6 +147,7 @@ export function DepartmentsLayout({
                 onClose={() => setSidebarOpen(false)}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingLogoUrlDark={brandingLogoUrlDark}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
                 sidebarColors={sidebarColors}

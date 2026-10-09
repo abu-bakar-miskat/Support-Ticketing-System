@@ -22,6 +22,7 @@ import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { useNotificationStore } from "@/store";
 import { cn } from "@/lib/utils";
+import { TenantLogo } from "@/components/theme/tenant-logo";
 import type { LucideIcon } from "lucide-react";
 import {
   TENANT_SIDEBAR_GROUP_LABELS,
@@ -87,6 +88,8 @@ type DepartmentsSidebarProps = {
   className?: string;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  /** Logo variant for the dark theme; falls back to brandingLogoUrl. */
+  brandingLogoUrlDark?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
   sidebarColors: TenantSidebarColors;
@@ -97,6 +100,7 @@ export function DepartmentsSidebar({
   className,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
   sidebarColors,
@@ -125,13 +129,12 @@ export function DepartmentsSidebar({
           <div className="flex min-w-0 items-center gap-2">
             {!brandingHideLogo &&
               (brandingLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <TenantLogo
                   src={brandingLogoUrl}
-                  alt=""
+                  darkSrc={brandingLogoUrlDark}
                   height={36}
                   className={cn(
-                    "sts-tenant-logo w-auto shrink-0 object-contain",
+                    "w-auto shrink-0 object-contain",
                     brandingHideDisplayName ? "h-11 max-w-[150px]" : "h-9 max-w-[72px]",
                   )}
                 />

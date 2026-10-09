@@ -29,13 +29,14 @@ export async function PUT(request: Request, { params }: Params) {
   if (typeof body !== "object" || body === null) return badRequest("Invalid body")
   const raw = body as Record<string, unknown>
 
-  // This editor has no hide-logo/name toggles or sidebar colours — carry the stored ones over so
+  // This editor has no dark logo, hide-logo/name toggles or sidebar colours — carry the stored ones over so
   // a save here doesn't silently reset what the tenant admin chose.
   const stored = readTenantBranding(tenant.branding)
   const cleaned = sanitizeTenantBranding({
     displayName: raw.displayName,
     logoUrl: raw.logoUrl,
     accentColor: raw.accentColor,
+    logoUrlDark: stored.logoUrlDark,
     hideLogo: stored.hideLogo,
     hideDisplayName: stored.hideDisplayName,
     sidebarColors: stored.sidebarColors,

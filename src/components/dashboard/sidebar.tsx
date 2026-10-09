@@ -10,6 +10,7 @@ import { DepartmentIcon } from "@/components/icons/department-icon";
 import { getDepartmentIcon } from "@/lib/department-icons";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
+import { TenantLogo } from "@/components/theme/tenant-logo";
 
 import {
   LayoutDashboard,
@@ -207,6 +208,8 @@ type SidebarProps = {
   /** Active tenant branding — overrides the default PEN logo/name when set. */
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  /** Logo variant for the dark theme; falls back to brandingLogoUrl. */
+  brandingLogoUrlDark?: string | null;
   /** Hide the branded logo; the display name fills the width. */
   brandingHideLogo?: boolean;
   /** Hide the display name; the branded logo fills the width. */
@@ -369,6 +372,7 @@ export function Sidebar({
   isDrawer = false,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
   sidebarColors,
@@ -650,13 +654,13 @@ export function Sidebar({
                 aria-label="Expand sidebar"
               >
                 {brandingLogoUrl && !brandingHideLogo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <TenantLogo
                     src={brandingLogoUrl}
+                    darkSrc={brandingLogoUrlDark}
                     alt={brandingName ?? ""}
                     width={40}
                     height={40}
-                    className="sts-tenant-logo size-10 object-contain"
+                    className="size-10 object-contain"
                   />
                 ) : brandingName ? (
                   <span
@@ -691,13 +695,12 @@ export function Sidebar({
             <div className="flex min-w-0 items-center gap-2">
               {!brandingHideLogo &&
                 (brandingLogoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <TenantLogo
                     src={brandingLogoUrl}
-                    alt=""
+                    darkSrc={brandingLogoUrlDark}
                     height={36}
                     className={cn(
-                      "sts-tenant-logo w-auto shrink-0 object-contain",
+                      "w-auto shrink-0 object-contain",
                       brandingHideDisplayName
                         ? "h-11 max-w-[150px]"
                         : "h-9 max-w-[72px]",

@@ -94,6 +94,7 @@ export function DashboardLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
   sidebarColors,
@@ -102,6 +103,7 @@ export function DashboardLayout({
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingLogoUrlDark?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
   sidebarColors: DeptSidebarColors;
@@ -236,6 +238,7 @@ export function DashboardLayout({
           onCreateTask={openCreateTask}
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingLogoUrlDark={brandingLogoUrlDark}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
           sidebarColors={sidebarColors}
@@ -265,6 +268,7 @@ export function DashboardLayout({
                 onCreateTask={openCreateTask}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingLogoUrlDark={brandingLogoUrlDark}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
                 sidebarColors={sidebarColors}

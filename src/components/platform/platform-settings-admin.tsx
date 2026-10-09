@@ -246,44 +246,6 @@ export function PlatformSettingsAdmin({
           })}
         </div>
 
-        {/* ── Sidebar colours ───────────────────────────────────────────────── */}
-        <div className="mt-6 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-              <Palette className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                Accent colour for each group in the platform sidebar. Cards and highlights are soft tints of the colour you pick.
-              </p>
-            </div>
-          </div>
-
-          <div className="px-[22px] py-5">
-            <SidebarColorsEditor
-              groups={PLATFORM_NAV_GROUPS.map((g) => ({ ...g, label: PLATFORM_SIDEBAR_GROUP_LABELS[g.key] }))}
-              value={sidebarColors}
-              onChange={(key, color) => setSidebarColors((current) => ({ ...current, [key]: color }))}
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border-t border-sts-card-border bg-sts-surface/40 px-[22px] py-3.5">
-            <Button
-              variant="outline"
-              disabled={sidebarIsDefault || savingSidebar}
-              onClick={() => setSidebarColors(PLATFORM_SIDEBAR_COLOR_DEFAULTS)}
-            >
-              <RotateCcw className="size-4" />
-              Reset to default
-            </Button>
-            <Button disabled={!sidebarDirty || savingSidebar} onClick={saveSidebarColors}>
-              {savingSidebar ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Save colours
-            </Button>
-          </div>
-        </div>
-
         <div className="mt-6">
           <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
             <div className="border-b border-sts-card-border px-[22px] py-4">
@@ -401,6 +363,44 @@ export function PlatformSettingsAdmin({
                 Save changes
               </Button>
             </div>
+          </div>
+        </div>
+
+        {/* ── Sidebar colours ───────────────────────────────────────────────── */}
+        <div className="mt-6 overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
+          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
+              <Palette className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                Accent colour for each group in the platform sidebar. Cards and highlights are soft tints of the colour you pick.
+              </p>
+            </div>
+          </div>
+
+          <div className="px-[22px] py-5">
+            <SidebarColorsEditor
+              groups={PLATFORM_NAV_GROUPS.map((g) => ({ ...g, label: PLATFORM_SIDEBAR_GROUP_LABELS[g.key] }))}
+              value={sidebarColors}
+              onChange={(key, color) => setSidebarColors((current) => ({ ...current, [key]: color }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-sts-card-border bg-sts-surface/40 px-[22px] py-3.5">
+            <Button
+              variant="outline"
+              disabled={sidebarIsDefault || savingSidebar}
+              onClick={() => setSidebarColors(PLATFORM_SIDEBAR_COLOR_DEFAULTS)}
+            >
+              <RotateCcw className="size-4" />
+              Reset to default
+            </Button>
+            <Button disabled={!sidebarDirty || savingSidebar} onClick={saveSidebarColors}>
+              {savingSidebar ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Save colours
+            </Button>
           </div>
         </div>
       </div>

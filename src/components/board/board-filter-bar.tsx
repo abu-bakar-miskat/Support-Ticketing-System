@@ -8,7 +8,6 @@ import {
   FolderKanban,
   Flag,
   CalendarDays,
-  CalendarClock,
   Inbox,
   Tag,
   Circle,
@@ -270,7 +269,7 @@ const PRIORITY_OPTIONS: { value: PriorityFilter; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
-type DateFilterVariant = "due" | "target";
+type DateFilterVariant = "due";
 
 const DATE_FILTER_COPY: Record<
   DateFilterVariant,
@@ -301,23 +300,6 @@ const DATE_FILTER_COPY: Record<
       { value: "today", label: "Due today" },
       { value: "week", label: "Due this week" },
       { value: "none", label: "No due date" },
-    ],
-  },
-  target: {
-    icon: CalendarClock,
-    aria: "Filter by target date",
-    allLabel: "Target date",
-    rangeFallback: "Target range",
-    statusHeading: "Target status",
-    withinHeading: "Target within",
-    customHeading: "Custom target range",
-    applyLabel: "Apply target range",
-    options: [
-      { value: "all", label: "Target date" },
-      { value: "overdue", label: "Past target" },
-      { value: "today", label: "Target today" },
-      { value: "week", label: "Target this week" },
-      { value: "none", label: "No target date" },
     ],
   },
 };
@@ -427,7 +409,7 @@ function HybridDueDateFilter({
               }
             }}
             className="ml-0.5 cursor-pointer hover:opacity-70"
-            aria-label={`Clear ${variant === "target" ? "target" : "due"} date filter`}
+            aria-label="Clear due date filter"
           >
             <X className="size-3" />
           </span>
@@ -564,10 +546,6 @@ type Props = {
   onDateFilterChange: (value: DateFilter) => void;
   dueRange: DateRange;
   onDueRangeChange: (value: DateRange) => void;
-  targetDateFilter: DateFilter;
-  onTargetDateFilterChange: (value: DateFilter) => void;
-  targetRange: DateRange;
-  onTargetRangeChange: (value: DateRange) => void;
   intakeFilter: IntakeFilter;
   onIntakeFilterChange: (value: IntakeFilter) => void;
   labelFilter: LabelFilter;
@@ -612,10 +590,6 @@ export function BoardFilterBar({
   onDateFilterChange,
   dueRange,
   onDueRangeChange,
-  targetDateFilter,
-  onTargetDateFilterChange,
-  targetRange,
-  onTargetRangeChange,
   intakeFilter,
   onIntakeFilterChange,
   labelFilter,
@@ -786,17 +760,6 @@ export function BoardFilterBar({
           onDateFilterChange={onDateFilterChange}
           dueRange={dueRange}
           onDueRangeChange={onDueRangeChange}
-        />
-      )}
-
-      {/* Target date — per-person estimate target, matches any assignee */}
-      {isVisible("targetDate") && (
-        <HybridDueDateFilter
-          variant="target"
-          dateFilter={targetDateFilter}
-          onDateFilterChange={onTargetDateFilterChange}
-          dueRange={targetRange}
-          onDueRangeChange={onTargetRangeChange}
         />
       )}
 

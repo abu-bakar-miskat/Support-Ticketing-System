@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { X, Search, ChevronDown, Loader2, Users, ListTodo, CalendarClock } from "lucide-react";
+import { X, Search, ChevronDown, Loader2, Users, ListTodo } from "lucide-react";
 import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
@@ -164,7 +164,6 @@ export function AllTasksPage({
   const [selLabels, setSelLabels] = useState<Set<string>>(new Set()); // label names
   const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "portal" | "manual" | "mailbox"
   const [dateRange, setDateRange] = useState<DateRange>(null);
-  const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
   // ── Filter visibility (persisted per user) ──────────────────────────────────
   const filterVisibility = usePersistedHiddenFilters(unassignedOnly ? "all-tasks-unassigned" : "all-tasks");
@@ -198,8 +197,6 @@ export function AllTasksPage({
       labels: selLabels.size ? [...selLabels] : undefined,
       dateFrom: dateRange?.from ?? undefined,
       dateTo: dateRange?.to ?? undefined,
-      targetDateFrom: targetRange?.from ?? undefined,
-      targetDateTo: targetRange?.to ?? undefined,
       sort: sortKey,
       unassigned: unassignedOnly || undefined,
       drafts: draftsOnly || undefined,
@@ -217,7 +214,6 @@ export function AllTasksPage({
       selLabels,
       selSource,
       dateRange,
-      targetRange,
       sortKey,
       unassignedOnly,
       draftsOnly,
@@ -304,7 +300,6 @@ export function AllTasksPage({
         labelOptions.length > 0 ? { id: "labels", label: "Labels" } : null,
         { id: "source", label: "Source" },
         { id: "dateRange", label: "Created date" },
-        { id: "targetRange", label: "Target date" },
       ].filter((f): f is { id: string; label: string } => f !== null),
     [showSubDeptFilter, unassignedOnly, moduleOptions.length, labelOptions.length],
   );
@@ -387,14 +382,6 @@ export function AllTasksPage({
           },
         ]
       : []),
-    ...(targetRange
-      ? [
-          {
-            label: `Target: ${formatRangeLabel(targetRange)}`,
-            onRemove: () => setTargetRange(null),
-          },
-        ]
-      : []),
   ];
 
   const hasFilters =
@@ -407,8 +394,7 @@ export function AllTasksPage({
     selModule.size ||
     selLabels.size ||
     selSource.size ||
-    dateRange ||
-    targetRange;
+    dateRange;
 
   function clearAll() {
     setRawSearch("");
@@ -421,7 +407,6 @@ export function AllTasksPage({
     setSelLabels(new Set());
     setSelSource(new Set());
     setDateRange(null);
-    setTargetRange(null);
   }
 
   // ── Stats line ─────────────────────────────────────────────────────────────
@@ -599,17 +584,6 @@ export function AllTasksPage({
                   onClear={() => setDateRange(null)}
                 />
               )}
-              {showFilter("targetRange") && (
-                <DateRangeDropdown
-                  value={targetRange}
-                  onChange={setTargetRange}
-                  onClear={() => setTargetRange(null)}
-                  placeholder="Target date"
-                  icon={CalendarClock}
-                  future
-                />
-              )}
-
               <div className="hidden flex-1 lg:block" />
 
               <PageSizeSelector value={pageSize} onChange={setPageSize} />

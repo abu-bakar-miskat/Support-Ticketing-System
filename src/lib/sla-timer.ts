@@ -81,6 +81,20 @@ export type SlaIndicatorView = {
   /** Server instant the metrics were computed at (ISO). The client anchors its
    * live countdown to this so drift stays bounded by network latency. */
   asOf: string;
+  /** Present only for viewers allowed the full SLA breakdown (tenant admins,
+   * department admins/managers). */
+  details?: SlaIndicatorDetails;
+};
+
+export type SlaIndicatorDetails = {
+  policyName: string | null;
+  firstResponseStartedAt: string;
+  /** When the first public agent reply landed (null = still waiting). */
+  firstResponseStoppedAt: string | null;
+  resolutionStartedAt: string;
+  /** When the ticket was closed (null = still open). */
+  resolutionStoppedAt: string | null;
+  breaches: { metric: "first_response" | "resolution"; targetMins: number; breachedAt: string }[];
 };
 
 const SEVERITY: Record<SlaStatus, number> = { ON_TRACK: 0, AT_RISK: 1, BREACHED: 2 };

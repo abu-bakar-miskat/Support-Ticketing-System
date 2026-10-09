@@ -7,7 +7,6 @@ import {
   Users,
   UserPlus,
   Shield,
-  FolderKanban,
   Plus,
   X,
   Check,
@@ -96,7 +95,6 @@ export type DepartmentDetailData = {
   name: string;
   isHub: boolean;
   subDepartmentCount: number;
-  projectCount: number;
   memberCount: number;
   managerCount: number;
   isAdmin: boolean;
@@ -217,6 +215,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<MemberRow | null>(null);
+  const [confirmRemoveManager, setConfirmRemoveManager] = useState<ManagerRow | null>(null);
+  const [confirmRemoveMembership, setConfirmRemoveMembership] = useState<{ member: MemberRow; subDepartmentId: string; subDepartmentName: string } | null>(null);
   const [configMember, setConfigMember] = useState<MemberConfigTarget | null>(null);
   // Per-invite in-flight action ("resend" | "delete") for spinner/disabled state.
   const [inviteAction, setInviteAction] = useState<Record<string, "resend" | "delete">>({});
@@ -456,7 +456,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                       aria-label={`Remove ${m.name} from ${s.subDepartmentName}`}
                       type="button"
                       disabled={saving === m.userId}
-                      onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
+                      onClick={() => setConfirmRemoveMembership({ member: m, subDepartmentId: s.subDepartmentId, subDepartmentName: s.subDepartmentName })}
                       className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
                     >
                       <X className="size-3" />
@@ -470,23 +470,22 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         <TableCell className="py-0">
           <div className="flex h-[54px] items-center">
             {(() => {
-              // Invite is "accepted" only when the member has at least one
-              // sub-department membership and every one is active (isActive).
-              // A pending (isActive: false) membership means they haven't
-              // accepted yet — this is what login/ticket-creation require.
-              const accepted = memberships.length > 0 && memberships.every((s) => s.accepted !== false);
+              // Mirrors rota.ts "active in rotation": profile active AND this
+              // sub-department membership isn't flagged doNotAssign.
+              const membership = memberships.find((s) => s.subDepartmentId === currentSubId);
+              const inRotation = m.isActive !== false && !membership?.doNotAssign;
               return (
                 <span
-                  title={accepted ? "Invite accepted" : "Invite pending — member hasn't accepted yet"}
+                  title={inRotation ? "Active in rotation — receives auto-assigned tickets" : "Out of rotation — excluded from auto-assignment"}
                   className={cn(
-                    "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
-                    accepted
+                    "inline-flex h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-sans text-[11.5px] font-medium",
+                    inRotation
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                      : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
                   )}
                 >
-                  <span className={cn("size-1.5 rounded-full", accepted ? "bg-green-500" : "bg-amber-500")} />
-                  {accepted ? "Accepted" : "Pending"}
+                  <span className={cn("size-1.5 rounded-full", inRotation ? "bg-green-500" : "bg-red-500")} />
+                  {inRotation ? "In rotation" : "Out of rotation"}
                 </span>
               );
             })()}
@@ -566,9 +565,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} sub-department{data.subDepartmentCount !== 1 ? "s" : ""}
-            </span>
-            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <Shield className="size-3.5 shrink-0" /> {data.managerCount} manager{data.managerCount !== 1 ? "s" : ""}
@@ -730,7 +726,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                             <button
                               aria-label={`Remove manager ${m.name}`}
                               type="button"
-                              onClick={() => removeManager(m.userId)}
+                              onClick={() => setConfirmRemoveManager(m)}
                               className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                             >
                               <X className="size-3.5" />
@@ -783,7 +779,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
                           <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
                           <TableHead className="h-8"><SectionLabel>Other sub-departments</SectionLabel></TableHead>
-                          <TableHead className="h-8 w-[110px]"><SectionLabel>Invite</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[130px]"><SectionLabel>Rotation</SectionLabel></TableHead>
                           <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
                           <TableHead className="h-8 w-10" />
                         </TableRow>
@@ -959,6 +955,36 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         confirmLabel="Remove"
         successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed from sub-departments` : undefined}
         onConfirm={async () => { if (confirmRemoveMember) await removeMember(confirmRemoveMember); }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmRemoveManager}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveManager(null); }}
+        title="Remove manager"
+        description={confirmRemoveManager ? `Remove ${confirmRemoveManager.name} as a manager of ${data.name}?` : ""}
+        confirmLabel="Remove"
+        successMessage={confirmRemoveManager ? `${confirmRemoveManager.name} removed as manager` : undefined}
+        onConfirm={async () => { if (confirmRemoveManager) await removeManager(confirmRemoveManager.userId); }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmRemoveMembership}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveMembership(null); }}
+        title="Remove from sub-department"
+        description={
+          confirmRemoveMembership
+            ? `Remove ${confirmRemoveMembership.member.name} from ${confirmRemoveMembership.subDepartmentName}?`
+            : ""
+        }
+        confirmLabel="Remove"
+        successMessage={
+          confirmRemoveMembership
+            ? `${confirmRemoveMembership.member.name} removed from ${confirmRemoveMembership.subDepartmentName}`
+            : undefined
+        }
+        onConfirm={async () => {
+          if (confirmRemoveMembership) await handleRemoveMembership(confirmRemoveMembership.member, confirmRemoveMembership.subDepartmentId);
+        }}
       />
     </div>
   );

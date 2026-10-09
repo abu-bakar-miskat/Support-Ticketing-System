@@ -106,6 +106,7 @@ import type {
 } from "@/components/board/board-types";
 import { PriorityPill } from "@/components/board/priority-indicator";
 import { SlaIndicatorBadge } from "@/components/tickets/sla-indicator-badge";
+import { SlaDetailsSection } from "@/components/tickets/sla-details-section";
 import { StatusPill as SharedStatusPill } from "@/components/board/status-pill";
 import { TagPill } from "@/components/board/tag-pill";
 import type { UserListPerson } from "@/lib/user-list-person";
@@ -2018,6 +2019,8 @@ export function TicketDetailPage({
   // Support-project tickets hide features that don't apply to support work:
   // sub-tickets, story points, and asset links.
   const isSupport = projectKind === "support";
+  // Refetch SLA when the conversation (first response) or status (resolution) changes.
+  const slaRefreshKey = `${liveStatus}|${liveMessages.map((message) => message.id).join(":")}`;
 
   const isImageFile = (fileName: string | undefined | null) =>
     /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(fileName ?? "");
@@ -2508,7 +2511,7 @@ export function TicketDetailPage({
                 <SlaIndicatorBadge
                   ticketId={dbId}
                   size="md"
-                  refreshKey={liveMessages.map((message) => message.id).join(":")}
+                  refreshKey={slaRefreshKey}
                 />
               ) : null}
 
@@ -3831,6 +3834,11 @@ export function TicketDetailPage({
                   : null
               }
             />
+
+            {/* SLA breakdown — rendered only for admins / department managers */}
+            {!isHydrating ? (
+              <SlaDetailsSection ticketId={dbId} refreshKey={slaRefreshKey} />
+            ) : null}
 
             {/* Assignees */}
             <div className="flex flex-col gap-1.5">

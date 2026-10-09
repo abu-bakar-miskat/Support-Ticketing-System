@@ -166,8 +166,8 @@ export function AllTasksPage({
   const [dateRange, setDateRange] = useState<DateRange>(null);
   const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
-  // ── Filter visibility (persisted per user) ──────────────────────────────────
-  const filterVisibility = usePersistedHiddenFilters(unassignedOnly ? "all-tasks-unassigned" : "all-tasks");
+  // ── Filter visibility (persisted per user, shared across All / Unassigned / Drafts tabs) ──
+  const filterVisibility = usePersistedHiddenFilters("all-tasks");
   // ── Bulk selection ──────────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [assignModalOpen, setAssignModalOpen] = useState(false);

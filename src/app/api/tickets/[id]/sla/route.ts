@@ -6,7 +6,8 @@ import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/tickets/[id]/sla — the ticket's SLA indicator (SLA-06): status +
 // remaining/overdue time for first-response and resolution. Returns
-// { indicator: null } when no SLA policy applied to this ticket.
+// { indicator: null } when no SLA policy applied to this ticket. Admins and the
+// department's managers also receive `indicator.details`.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -34,6 +35,17 @@ export async function GET(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
 
-  const indicator = await runAsSystem(() => getSlaIndicatorViewForTicket(ticketId))
+  // Full breakdown (clock instants, breach history) is for tenant admins and the
+  // ticket department's admins/managers; everyone else gets the badge summary.
+  const departmentId = ticket.subDepartment.departmentId
+  const includeDetails =
+    profile.isSuperAdmin ||
+    profile.role === "admin" ||
+    (profile.managedDepartmentIds ?? []).includes(departmentId) ||
+    (profile.departmentAdminIds ?? []).includes(departmentId)
+
+  const indicator = await runAsSystem(() =>
+    getSlaIndicatorViewForTicket(ticketId, new Date(), { includeDetails }),
+  )
   return NextResponse.json({ indicator })
 }

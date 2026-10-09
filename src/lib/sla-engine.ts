@@ -387,10 +387,14 @@ const RUNNING_PROBE_MS = 1000;
 export async function getSlaIndicatorViewForTicket(
   ticketId: string,
   now: Date = new Date(),
+  opts: { includeDetails?: boolean } = {},
 ): Promise<SlaIndicatorView | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
-    include: { ticket: { select: SLA_TICKET_SELECT } },
+    include: {
+      ticket: { select: SLA_TICKET_SELECT },
+      policy: { select: { name: true } },
+    },
   });
   if (!timer || !isSlaEligible(timer.ticket)) return null;
 
@@ -419,12 +423,34 @@ export async function getSlaIndicatorViewForTicket(
   const atNow = evaluateSlaIndicator(state, now, calendar, slaConfig.atRiskPct, resolutionPauses);
   const atProbe = evaluateSlaIndicator(state, probeEnd, calendar, slaConfig.atRiskPct, resolutionPauses);
 
-  return {
+  const view: SlaIndicatorView = {
     firstResponse: { ...atNow.firstResponse, running: atProbe.firstResponse.remainingMs < atNow.firstResponse.remainingMs },
     resolution: { ...atNow.resolution, running: atProbe.resolution.remainingMs < atNow.resolution.remainingMs },
     overall: atNow.overall,
     asOf: now.toISOString(),
   };
+  if (!opts.includeDetails) return view;
+
+  // Admin/manager detail view: clock instants + the immutable breach history
+  // (SLA-07), which survives reopen cycles that reset the live metrics.
+  const breaches = await prisma.slaBreach.findMany({
+    where: { ticketId },
+    orderBy: { breachedAt: "asc" },
+    select: { metric: true, targetMins: true, breachedAt: true },
+  });
+  view.details = {
+    policyName: timer.policy?.name ?? null,
+    firstResponseStartedAt: timer.firstResponseStartedAt.toISOString(),
+    firstResponseStoppedAt: timer.firstResponseStoppedAt?.toISOString() ?? null,
+    resolutionStartedAt: timer.resolutionStartedAt.toISOString(),
+    resolutionStoppedAt: timer.resolutionStoppedAt?.toISOString() ?? null,
+    breaches: breaches.map((b) => ({
+      metric: b.metric === "resolution" ? "resolution" : "first_response",
+      targetMins: b.targetMins,
+      breachedAt: b.breachedAt.toISOString(),
+    })),
+  };
+  return view;
 }
 
 /**

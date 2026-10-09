@@ -35,7 +35,7 @@ export default async function DepartmentRoute() {
           name: true,
           isHub: true,
           type: true,
-          _count: { select: { subDepartments: true, projects: true } },
+          _count: { select: { subDepartments: true } },
         },
       }),
       prisma.departmentManager.findMany({
@@ -190,7 +190,6 @@ export default async function DepartmentRoute() {
     name: dept.name,
     isHub: dept.isHub,
     subDepartmentCount: ownSubDeptIds ? scopedSubDepartments.length : dept._count.subDepartments,
-    projectCount: dept._count.projects,
     managerCount: managerUserIds.size,
     memberCount: memberProfilesById.size,
     isAdmin,

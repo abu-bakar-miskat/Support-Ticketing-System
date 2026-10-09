@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import type { ManualResolutionView } from "@/lib/manual-resolution"
 import { cn } from "@/lib/utils"
 
 export type SlaMetric = {
@@ -14,6 +15,8 @@ export type SlaMetric = {
 }
 
 export type SlaIndicator = {
+  source?: string
+  completed?: boolean
   firstResponse: SlaMetric
   resolution: SlaMetric
   overall: "ON_TRACK" | "AT_RISK" | "BREACHED"
@@ -24,7 +27,7 @@ export type SlaIndicator = {
     policyName: string | null
     firstResponseStartedAt: string
     firstResponseStoppedAt: string | null
-    resolutionStartedAt: string
+    resolutionStartedAt: string | null
     resolutionStoppedAt: string | null
     breaches: { metric: "first_response" | "resolution"; targetMins: number; breachedAt: string }[]
   }
@@ -57,16 +60,19 @@ export function formatDuration(ms: number): string {
  * the sidebar details panel share one request per refresh.
  */
 export function useSlaIndicator(ticketId: string, refreshKey?: number | string) {
-  const { data: indicator, dataUpdatedAt } = useQuery({
+  const { data, dataUpdatedAt } = useQuery({
     queryKey: ["tickets", ticketId, "sla", refreshKey ?? null],
-    queryFn: async (): Promise<SlaIndicator | null> => {
+    queryFn: async (): Promise<{ indicator: SlaIndicator | null; manualResolution?: ManualResolutionView } | null> => {
       const res = await fetch(`/api/tickets/${ticketId}/sla`)
       if (!res.ok) return null
       const data = await res.json()
-      return data.indicator ?? null
+      return data
     },
     staleTime: 30_000,
+    refetchInterval: (query) => query.state.data?.manualResolution?.runningCount || (query.state.data?.indicator?.source === "mailbox" && !query.state.data.indicator.completed) ? 15_000 : false,
   })
+  const indicator = data?.indicator ?? null
+  const manualResolution = data?.manualResolution ?? null
   // Client clock at the moment the current snapshot was received; the live
   // countdown measures elapsed time from here rather than trusting `asOf`
   // directly, so unsynced client/server clocks don't skew the number.
@@ -77,7 +83,7 @@ export function useSlaIndicator(ticketId: string, refreshKey?: number | string) 
 
   // Only tick while a metric's clock is actually moving; when everything is
   // stopped or paused (outside hours / waiting on customer) we render statically.
-  const anyRunning = !!indicator && (indicator.firstResponse.running || indicator.resolution.running)
+  const anyRunning = !!manualResolution?.runningCount || (!!indicator && (indicator.firstResponse.running || indicator.resolution.running))
   useEffect(() => {
     if (!anyRunning) return
     const id = setInterval(() => setClock(Date.now()), TICK_MS)
@@ -94,7 +100,16 @@ export function useSlaIndicator(ticketId: string, refreshKey?: number | string) 
     }
   }
 
-  return { indicator: indicator ?? null, live }
+  const manual = manualResolution ? (() => {
+    const addedSecs = Math.floor(Math.max(0, clock - receivedAt) / 1000) * manualResolution.runningCount
+    const trackedSecs = manualResolution.trackedSecs + addedSecs
+    return {
+      ...manualResolution, trackedSecs,
+      overtimeSecs: Math.max(0, trackedSecs - manualResolution.estimatedMins * 60),
+      status: trackedSecs > manualResolution.estimatedMins * 60 ? "BREACHED" as const : "ON_TRACK" as const,
+    }
+  })() : null
+  return { indicator, manual, live }
 }
 
 /** SLA-06: on-ticket indicator (ON_TRACK/AT_RISK/BREACHED) with remaining/overdue time. */
@@ -108,8 +123,18 @@ export function SlaIndicatorBadge({
   /** Changes whenever the ticket conversation changes so stopped/paused clocks refresh immediately. */
   refreshKey?: number | string
 }) {
-  const { indicator, live } = useSlaIndicator(ticketId, refreshKey)
+  const { indicator, manual, live } = useSlaIndicator(ticketId, refreshKey)
 
+  if (manual) {
+    const style = STATUS_STYLE[manual.status]
+    const remainingSecs = manual.estimatedMins * 60 - manual.trackedSecs
+    return (
+      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-sans text-[11.5px] font-medium", style.bg, style.text)}
+        title="Resolution SLA based on actual tracked work">
+        Resolution: {style.label} · {formatWorkDuration(Math.abs(remainingSecs) * 1000)} {remainingSecs < 0 ? "over" : "left"}
+      </span>
+    )
+  }
   if (!indicator) return null
 
   const style = STATUS_STYLE[indicator.overall]
@@ -137,4 +162,14 @@ export function SlaIndicatorBadge({
       SLA: {style.label} · {timeLabel}
     </span>
   )
+}
+
+
+/** Keep short manual work and overtime visible to the second. */
+export function formatWorkDuration(ms: number): string {
+  const seconds = Math.floor(Math.abs(ms) / 1000)
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainder = seconds % 60
+  return [hours ? `${hours}h` : "", minutes ? `${minutes}m` : "", remainder || (!hours && !minutes) ? `${remainder}s` : ""].filter(Boolean).join(" ")
 }

@@ -1,3 +1,5 @@
+import { recoverMailboxSla } from "@/lib/mailbox-sla-recovery"
+import { getManualResolutionView } from "@/lib/manual-resolution"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -39,10 +41,18 @@ export async function GET(
   // ticket department's admins/managers; everyone else gets the badge summary.
   const departmentId = ticket.subDepartment.departmentId
   const includeDetails =
+    (profile.tenantMemberships ?? []).some((membership) =>
+      membership.tenantId === ticket.tenantId && ["admin", "manager"].includes(membership.role),
+    ) ||
     profile.isSuperAdmin ||
     profile.role === "admin" ||
     (profile.managedDepartmentIds ?? []).includes(departmentId) ||
     (profile.departmentAdminIds ?? []).includes(departmentId)
+
+  await runAsSystem(() => recoverMailboxSla(ticketId))
+
+  const manualResolution = await runAsSystem(() => getManualResolutionView(ticketId, new Date(), includeDetails))
+  if (manualResolution) return NextResponse.json({ indicator: null, manualResolution })
 
   const indicator = await runAsSystem(() =>
     getSlaIndicatorViewForTicket(ticketId, new Date(), { includeDetails }),

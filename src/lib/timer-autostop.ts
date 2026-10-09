@@ -1,3 +1,6 @@
+import { stopMailboxFirstResponseOnActiveStatus } from "@/lib/sla-engine"
+import { finalizeManualResolution } from "@/lib/manual-resolution"
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
@@ -16,8 +19,10 @@ export async function stopRunningTimersOnStatusChange(
   ticketId: string,
   newStatus: string,
 ): Promise<void> {
+  await stopMailboxFirstResponseOnActiveStatus(ticketId, newStatus).catch(() => undefined)
   if (normalizeStatus(newStatus) === "In Progress") return
 
+  await finalizeManualResolution(ticketId)
   await stopRunningTimers(ticketId)
 }
 
@@ -42,7 +47,10 @@ async function stopRunningTimers(ticketId: string): Promise<void> {
       profile: { select: { name: true } },
     },
   })
-  if (running.length === 0) return
+  if (running.length === 0) {
+    await checkAndNotifyEstimateOverrun(ticketId)
+    return
+  }
 
   const now = new Date()
   await prisma.$transaction(
@@ -53,6 +61,8 @@ async function stopRunningTimers(ticketId: string): Promise<void> {
       }),
     ),
   )
+
+  await checkAndNotifyEstimateOverrun(ticketId)
 
   const affected = [...new Set(running.map((e) => e.profileId))]
   await Promise.all([

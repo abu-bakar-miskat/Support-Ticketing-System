@@ -1,3 +1,4 @@
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { NextRequest, NextResponse, after } from "next/server"
 import { requireAuth, assertTicketAccess, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -454,6 +455,7 @@ export async function PATCH(
   }
 
   if (hasEstimatedTime && updateData.estimatedTime !== ticket.estimatedTime) {
+    await checkAndNotifyEstimateOverrun(id)
     events.push(appendTicketEvent(id, profile.id, "ESTIMATED_TIME_CHANGED", {
       from: ticket.estimatedTime ?? null,
       to:   updateData.estimatedTime ?? null,

@@ -1,3 +1,4 @@
+import { checkAndNotifySla } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopRunningTimersForWaitingCustomer } from "@/lib/timer-autostop"
@@ -14,6 +15,7 @@ export async function syncWorkTimerWithConversation(
 ): Promise<void> {
   if (direction === "outbound") {
     await stopRunningTimersForWaitingCustomer(ticketId)
+    await checkAndNotifySla(ticketId)
     return
   }
 

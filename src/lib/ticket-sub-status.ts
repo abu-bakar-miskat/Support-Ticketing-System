@@ -43,7 +43,7 @@ export function deriveSubStatus(messages: readonly ConversationMessage[]): SubSt
 
 /** Human-readable label for a sub-status (UI badge). */
 export function subStatusLabel(sub: SubStatus | null): string | null {
-  if (sub === "WAITING_FOR_SUPPORT") return "Waiting for support";
+  if (sub === "WAITING_FOR_SUPPORT") return "Waiting for assignee";
   if (sub === "WAITING_FOR_CUSTOMER") return "Waiting for customer";
   return null;
 }

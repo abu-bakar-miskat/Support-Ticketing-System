@@ -1,3 +1,4 @@
+vi.mock("@/lib/sla-engine", () => ({ checkAndNotifySla: vi.fn().mockResolvedValue(undefined), stopMailboxFirstResponseOnActiveStatus: vi.fn().mockResolvedValue(undefined) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/db", () => ({

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const m = vi.hoisted(() => ({
-  sla: vi.fn(), mailboxSla: vi.fn().mockResolvedValue(undefined), rules: vi.fn().mockResolvedValue(undefined),
-  create: vi.fn().mockResolvedValue({ id: "email-ticket", ticketNumber: 12 }),
+  sla: vi.fn(), mailboxSla: vi.fn().mockResolvedValue({ source: "mailbox", tenantId: "tenant-1" }), timerCreate: vi.fn(), rules: vi.fn().mockResolvedValue(undefined),
+  create: vi.fn().mockResolvedValue({ id: "email-ticket", ticketNumber: 12, createdAt: new Date("2026-10-09T09:00:00Z") }),
   audit: vi.fn().mockResolvedValue({}), origin: vi.fn().mockResolvedValue(null),
   message: vi.fn().mockResolvedValue({ id: "message-1" }),
 }))
@@ -12,7 +12,7 @@ vi.mock("@/lib/db", () => ({ prisma: {
   $transaction: vi.fn(async callback => callback({
     $executeRaw: vi.fn().mockResolvedValue(1),
     ticketMessage: { findFirst: vi.fn().mockResolvedValue(null), create: m.message },
-    ticket: { create: m.create }, activityLog: { create: m.audit, findFirst: m.origin },
+    slaTimer: { create: m.timerCreate }, ticket: { create: m.create }, activityLog: { create: m.audit, findFirst: m.origin },
   })),
 } }))
 vi.mock("@/lib/assignment-engine", () => ({
@@ -22,7 +22,7 @@ vi.mock("@/lib/board-data", () => ({ getSubDepartmentStatuses: vi.fn().mockResol
 vi.mock("@/lib/support-project", () => ({ resolveSupportProjectForDepartment: vi.fn().mockResolvedValue("support-project") }))
 vi.mock("@/lib/intake-conversion", () => ({ ensureSystemUser: vi.fn().mockResolvedValue("system-user") }))
 vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: vi.fn() }))
-vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla, startMailboxSlaTimer: m.mailboxSla }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla, prepareMailboxSla: m.mailboxSla }))
 vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: m.rules }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: vi.fn() }))
@@ -48,7 +48,8 @@ describe("mailbox ticket creation", () => {
     expect(m.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ description: "<p>Help</p>" }) }))
     expect(m.audit).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadata: expect.objectContaining({ providerMessageId: "email-1", fromEmail: "customer@example.test" }) }) }))
     expect(m.sla).not.toHaveBeenCalled()
-    expect(m.mailboxSla).toHaveBeenCalledWith("email-ticket", "tenant-1", "dept-1")
+    expect(m.mailboxSla).toHaveBeenCalledWith("tenant-1", "dept-1", expect.objectContaining({ subDepartmentId: "sub-1" }))
+    expect(m.timerCreate).toHaveBeenCalledWith({ data: { ticketId: "email-ticket", source: "mailbox", tenantId: "tenant-1", firstResponseStartedAt: new Date("2026-10-09T09:00:00Z"), resolutionStartedAt: new Date("2026-10-09T09:00:00Z") } })
     expect(m.rules).toHaveBeenCalledWith(
       expect.objectContaining({ id: "email-ticket", allowSla: false }),
       expect.objectContaining({ fromEmail: "customer@example.test" }),
@@ -68,4 +69,13 @@ describe("mailbox ticket creation", () => {
     expect(m.message).not.toHaveBeenCalled()
   })
 
+})
+
+it("fails the creation transaction if applying its configured SLA fails", async () => {
+  m.timerCreate.mockRejectedValueOnce(new Error("timer write failed"))
+  await expect(createTicketFromInboundEmail({
+    departmentId: "dept-1", teamId: "sub-1", fromEmail: "customer@example.test", fromName: "Customer", subject: "Test",
+    inboundMessage: { providerMessageIds: ["new-email"], data: { providerMessageId: "new-email", direction: "inbound", bodyHtml: "Help", fromName: "Customer", fromEmail: "customer@example.test" } },
+  })).rejects.toThrow("timer write failed")
+  expect(m.rules).not.toHaveBeenCalled()
 })

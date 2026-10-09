@@ -1,3 +1,4 @@
+import { creationEstimate } from "@/lib/ticket-estimates"
 import { prisma } from "@/lib/db"
 import { NextResponse, after } from "next/server"
 import { parseStartDatePayload, parseDueDatePayload } from "@/lib/ticket-datetime"
@@ -402,6 +403,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
     : []
 
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
+  const initialEstimate = creationEstimate(assigneeId, estimatedTime)
   let ticket
   try {
     const persist = async (db: Prisma.TransactionClient | typeof prisma) => {
@@ -424,6 +426,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
           ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
           ...(storyPoints != null && !isNaN(storyPoints) ? { storyPoints } : {}),
           ...(estimatedTime != null && !isNaN(estimatedTime) ? { estimatedTime } : {}),
+          ...(initialEstimate ? { estimates: { create: initialEstimate } } : {}),
           ...(sprintId ? { sprint: { connect: { id: sprintId } } } : {}),
           ...(moduleId ? { module: { connect: { id: moduleId } } } : {}),
           ...(labels.length > 0 ? { labels } : {}),

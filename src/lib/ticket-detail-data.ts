@@ -1,4 +1,5 @@
 import "server-only";
+import { personalEstimatesWithCreationFallback } from "@/lib/ticket-estimates";
 
 import { unstable_cache } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
@@ -666,11 +667,11 @@ export async function getTicketDetailPayload(
     canEditDescription,
     storyPoints: ticket.storyPoints ?? null,
     estimatedTime: ticket.estimatedTime ?? null,
-    personalEstimates: ticket.estimates.map((e) => ({
+    personalEstimates: personalEstimatesWithCreationFallback(ticket.estimates.map((e) => ({
       userId: e.userId,
       estimatedMinutes: e.estimatedMinutes ?? null,
       targetDateIso: e.targetDate ? serializeTicketDateIso(e.targetDate, "due") : null,
-    })),
+    })), ticket.assigneeId, ticket.estimatedTime),
     assetLinks: (ticket.assetLinks as { label: string; url: string }[]) ?? [],
     timeEntries: [...timeByUser.values()],
     subTicketTime,

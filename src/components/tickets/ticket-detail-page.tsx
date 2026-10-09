@@ -106,7 +106,7 @@ import type {
   UiPriority,
 } from "@/components/board/board-types";
 import { PriorityPill } from "@/components/board/priority-indicator";
-import { SlaIndicatorBadge } from "@/components/tickets/sla-indicator-badge";
+import { SlaIndicatorBadge, useSlaIndicator } from "@/components/tickets/sla-indicator-badge";
 import { SlaDetailsSection } from "@/components/tickets/sla-details-section";
 import { StatusPill as SharedStatusPill } from "@/components/board/status-pill";
 import { TagPill } from "@/components/board/tag-pill";
@@ -2033,7 +2033,7 @@ export function TicketDetailPage({
   // sub-tickets, story points, and asset links.
   const isSupport = projectKind === "support";
   // Refetch SLA when the conversation (first response) or status (resolution) changes.
-  const slaRefreshKey = `${liveStatus}|${liveMessages.map((message) => message.id).join(":")}`;
+  const slaRefreshKey = `${liveStatus}|${liveEstimatedTime}|${liveTimeEntries.map((entry) => `${entry.userId}:${entry.totalSecs}:${entry.isRunning}`).join(":")}|${liveMessages.map((message) => message.id).join(":")}`;
 
   const isImageFile = (fileName: string | undefined | null) =>
     /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(fileName ?? "");
@@ -3937,6 +3937,7 @@ export function TicketDetailPage({
               ticketHumanId={ticketId}
               ticketTitle={titleValue}
               estimatedTime={liveEstimatedTime}
+              slaRefreshKey={slaRefreshKey}
               timeEntries={liveTimeEntries}
               myActiveTimerId={initialActiveTimerId}
               myActiveTimerStartedAt={myActiveTimerStartedAt}
@@ -4595,12 +4596,13 @@ function TimeTrackingSection({
   ticketHumanId,
   ticketTitle,
   estimatedTime: initialEstimatedTime,
+  slaRefreshKey,
   timeEntries: initialEntries,
   myActiveTimerId,
   myActiveTimerStartedAt,
   canStart,
   isAssignee,
-  estimateEditable,
+  estimateEditable: allowEstimateEdit,
   canEditEstimate,
   currentUserId,
   currentUserName,
@@ -4610,6 +4612,7 @@ function TimeTrackingSection({
   ticketHumanId: string;
   ticketTitle: string;
   estimatedTime: number | null;
+  slaRefreshKey?: number | string;
   timeEntries: TimeEntrySummary[];
   myActiveTimerId: string | null;
   myActiveTimerStartedAt: string | null;
@@ -4622,7 +4625,11 @@ function TimeTrackingSection({
   currentUserName: string;
   currentUserAvatarUrl: string | null;
 }) {
-  const [estimatedTime, setEstimatedTime] = useState(initialEstimatedTime);
+  const [ticketEstimatedTime, setEstimatedTime] = useState(initialEstimatedTime);
+  const { indicator } = useSlaIndicator(ticketId, slaRefreshKey);
+  const mailboxTargetMins = indicator?.source === "mailbox" ? indicator.resolution.targetMs / 60_000 : null;
+  const estimatedTime = mailboxTargetMins ?? ticketEstimatedTime;
+  const estimateEditable = allowEstimateEdit && mailboxTargetMins === null;
   const [editingEst, setEditingEst] = useState(false);
   const [estInput, setEstInput] = useState(
     initialEstimatedTime ? formatMins(initialEstimatedTime) : "",
@@ -5142,7 +5149,7 @@ function TimeTrackingSection({
                 )
               ) : (
                 <span className="ml-auto font-sans text-[11px] text-sts-subtle/60">
-                  rolled up
+                  {mailboxTargetMins !== null ? "SLA target" : "rolled up"}
                 </span>
               )}
             </div>

@@ -1,3 +1,6 @@
+import { isMailboxActiveStatus } from "@/lib/mailbox-sla"
+import { DEFAULT_STATUSES } from "@/components/board/board-types"
+import type { Prisma } from "@/generated/prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -14,12 +17,27 @@ function canEditMailboxSla(profile: ProfileLike, departmentId: string): boolean 
   return canAdminDeptSettings(profile, departmentId) || (profile.managedDepartmentIds ?? []).includes(departmentId)
 }
 
-const SELECT = { mailboxFirstResponseMins: true, mailboxResolutionMins: true } as const
+const SELECT = {
+  tenantId: true, slaConfig: true, mailboxFirstResponseMins: true, mailboxResolutionMins: true,
+  subDepartments: { select: { statuses: { select: { label: true, isComplete: true }, orderBy: { order: "asc" as const } } } },
+  mailboxConnections: { select: { id: true, address: true, slaFirstResponseMins: true, slaResolutionMins: true } },
+} as const
 
-function toBody(dept: { mailboxFirstResponseMins: number | null; mailboxResolutionMins: number | null }) {
+function availableStatuses(dept: { subDepartments?: { statuses: { label: string; isComplete: boolean }[] }[] }) {
+  const workflows = dept.subDepartments?.length ? dept.subDepartments.map((sub) => sub.statuses.length ? sub.statuses : DEFAULT_STATUSES) : [DEFAULT_STATUSES]
+  return [...new Set(workflows.flat().filter((status) => !status.isComplete).map((status) => status.label))]
+}
+
+function toBody(dept: { mailboxFirstResponseMins: number | null; mailboxResolutionMins: number | null; slaConfig?: unknown; subDepartments?: { statuses: { label: string; isComplete: boolean }[] }[]; mailboxConnections?: { id: string; address: string; slaFirstResponseMins: number | null; slaResolutionMins: number | null }[] }) {
   return {
+    availableStatuses: availableStatuses(dept),
     firstResponseMins: dept.mailboxFirstResponseMins,
     resolutionMins: dept.mailboxResolutionMins,
+    activeStatuses: ((dept.slaConfig as { mailboxActiveStatuses?: string[] } | null)?.mailboxActiveStatuses ?? ["In Progress"]).map((status) => availableStatuses(dept).find((label) => isMailboxActiveStatus(label, [status])) ?? status),
+    mailboxes: (dept.mailboxConnections ?? []).map((mailbox) => ({
+      id: mailbox.id, address: mailbox.address,
+      firstResponseMins: mailbox.slaFirstResponseMins, resolutionMins: mailbox.slaResolutionMins,
+    })),
   }
 }
 
@@ -44,7 +62,8 @@ export async function GET(
 
 /**
  * PATCH /api/departments/:id/mailbox-sla — `{ firstResponseMins, resolutionMins }`,
- * both positive minutes, or both null to turn the mailbox SLA off. Applies to
+ * both positive minutes, or both null to turn off department defaults. mailboxConnectionId optionally selects
+ * a per-mailbox override instead (null pair inherits department targets). Applies to
  * mailbox tickets created from now on; existing timers keep their targets.
  */
 export async function PATCH(
@@ -72,12 +91,35 @@ export async function PATCH(
     )
   }
 
-  const exists = await prisma.department.findUnique({ where: { id }, select: { id: true } })
+  const exists = await prisma.department.findUnique({ where: { id }, select: { id: true, slaConfig: true, subDepartments: SELECT.subDepartments } })
   if (!exists) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
+  if (body.mailboxConnectionId !== undefined) {
+    if (typeof body.mailboxConnectionId !== "string") return NextResponse.json({ error: "Invalid mailbox" }, { status: 400 })
+    const mailbox = await prisma.mailboxConnection.findFirst({
+      where: { id: body.mailboxConnectionId, departmentId: id }, select: { id: true },
+    })
+    if (!mailbox) return NextResponse.json({ error: "Mailbox not found in department" }, { status: 404 })
+    await prisma.mailboxConnection.update({
+      where: { id: mailbox.id }, data: { slaFirstResponseMins: first, slaResolutionMins: resolution },
+    })
+    const department = await prisma.department.findUnique({ where: { id }, select: SELECT })
+    return NextResponse.json({ ...toBody(department!), canEdit: true })
+  }
+  const activeStatuses = body.activeStatuses
+  if (activeStatuses !== undefined && (!Array.isArray(activeStatuses) || activeStatuses.length === 0 || activeStatuses.length > 20 || activeStatuses.some((status: unknown) => typeof status !== "string" || !status.trim() || status.length > 100))) {
+    return NextResponse.json({ error: "Provide at least one active status name" }, { status: 400 })
+  }
+  if (activeStatuses !== undefined && activeStatuses.some((status: string) => !availableStatuses(exists).includes(status.trim()))) {
+    return NextResponse.json({ error: "Select active statuses from this department's workflows" }, { status: 400 })
+  }
+  const currentConfig = exists.slaConfig && typeof exists.slaConfig === "object" && !Array.isArray(exists.slaConfig) ? exists.slaConfig : {}
   const updated = await prisma.department.update({
     where: { id },
-    data: { mailboxFirstResponseMins: first, mailboxResolutionMins: resolution },
+    data: {
+      mailboxFirstResponseMins: first, mailboxResolutionMins: resolution,
+      ...(activeStatuses === undefined ? {} : { slaConfig: { ...currentConfig, mailboxActiveStatuses: [...new Set(activeStatuses.map((status: string) => status.trim()))] } as Prisma.InputJsonValue }),
+    },
     select: SELECT,
   })
   return NextResponse.json({ ...toBody(updated), canEdit: true })

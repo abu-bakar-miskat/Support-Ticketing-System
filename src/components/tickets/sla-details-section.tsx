@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/format"
 import {
   formatDuration,
+  formatWorkDuration,
   useSlaIndicator,
   type SlaIndicator,
   type SlaMetric,
@@ -47,7 +48,23 @@ export function SlaDetailsSection({
   ticketId: string
   refreshKey?: number | string
 }) {
-  const { indicator, live } = useSlaIndicator(ticketId, refreshKey)
+  const { indicator, manual, live } = useSlaIndicator(ticketId, refreshKey)
+  if (manual?.details) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <p className="sts-text-label">SLA overview</p>
+        <p className="font-sans text-[11px] text-sts-subtle">Estimated time compared with actual tracked work.</p>
+        <MetricCard icon={CheckCircle2} label="Resolution" metric={{
+          status: manual.status, elapsedMs: manual.trackedSecs * 1000,
+          targetMs: manual.estimatedMins * 60_000,
+          remainingMs: (manual.estimatedMins * 60 - manual.trackedSecs) * 1000,
+          running: manual.runningCount > 0,
+        }} startedAt={manual.details.firstWorkedAt} stoppedAt={manual.details.resolvedAt}
+          metLabel="Resolved" pendingLabel="Work tracking" frozen={false}
+          breaches={manual.details.breaches} strictExceed formatTime={formatWorkDuration} />
+      </div>
+    )
+  }
   if (!indicator?.details) return null
   const details = indicator.details
   const closed = details.resolutionStoppedAt !== null
@@ -56,7 +73,7 @@ export function SlaDetailsSection({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
         <p className="sts-text-label flex items-center gap-1">
-          SLA
+          SLA overview
           <span
             className="text-sts-subtle"
             title="Times count business hours only and exclude waiting-on-customer pauses."
@@ -89,11 +106,12 @@ export function SlaDetailsSection({
         <MetricCard
           icon={CheckCircle2}
           label="Resolution"
+          strictExceed={indicator.source === "mailbox"}
           metric={live(indicator.resolution)}
           startedAt={details.resolutionStartedAt}
           stoppedAt={details.resolutionStoppedAt}
           metLabel="Resolved"
-          pendingLabel="Open"
+          pendingLabel={details.resolutionStartedAt ? "Open" : "Awaiting agent work"}
           frozen={false}
           breaches={details.breaches.filter((b) => b.metric === "resolution")}
         />
@@ -112,21 +130,25 @@ function MetricCard({
   pendingLabel,
   frozen,
   breaches,
+  strictExceed = false,
+  formatTime = formatDuration,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   metric: SlaMetric
-  startedAt: string
+  startedAt: string | null
   stoppedAt: string | null
   metLabel: string
   pendingLabel: string
   /** Clock never stopped, but the ticket is closed so nothing more will happen. */
   frozen: boolean
   breaches: Details["breaches"]
+  strictExceed?: boolean
+  formatTime?: (ms: number) => string
 }) {
   // Re-derive from the live-interpolated numbers so a running clock flips to
   // "Breached" on screen the moment it crosses the target.
-  const breached = metric.remainingMs <= 0 || metric.status === "BREACHED"
+  const breached = (strictExceed ? metric.remainingMs < 0 : metric.remainingMs <= 0) || metric.status === "BREACHED"
   const done = stoppedAt !== null
   const tone: Tone = breached ? "breach" : metric.status === "AT_RISK" && !done ? "risk" : "ok"
   const verdict = breached ? "Breached" : done ? "Met" : tone === "risk" ? "At risk" : "On track"
@@ -156,10 +178,10 @@ function MetricCard({
       {/* Actual vs. target */}
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-sans text-[18px] font-semibold leading-none tabular-nums text-sts-foreground">
-          {formatDuration(metric.elapsedMs)}
+          {formatTime(metric.elapsedMs)}
         </span>
         <span className="font-sans text-[11px] text-sts-subtle tabular-nums">
-          target {formatDuration(metric.targetMs)}
+          target {formatTime(metric.targetMs)}
         </span>
       </div>
       <div className="flex flex-col gap-1">
@@ -168,16 +190,16 @@ function MetricCard({
         </div>
         <span className={cn("font-sans text-[11px] font-medium tabular-nums", TONE[tone].text)}>
           {breached
-            ? `${formatDuration(metric.remainingMs)} over target`
+            ? `${formatTime(metric.remainingMs)} over target`
             : done
-              ? `${formatDuration(metric.remainingMs)} under target`
-              : `${formatDuration(metric.remainingMs)} left`}
+              ? `${formatTime(metric.remainingMs)} under target`
+              : `${formatTime(metric.remainingMs)} left`}
         </span>
       </div>
 
       {/* Timeline */}
       <ol className="flex flex-col gap-1 border-t border-sts-card-border pt-2 font-sans text-[11px]">
-        <TimelineRow dot="bg-sts-subtle/50" term="Started" value={formatDateTime(new Date(startedAt))} />
+        {startedAt ? <TimelineRow dot="bg-sts-subtle/50" term="Started" value={formatDateTime(new Date(startedAt))} /> : null}
         {lastBreach ? (
           <TimelineRow
             dot={TONE.breach.dot}
@@ -197,7 +219,7 @@ function MetricCard({
           <TimelineRow
             dot="bg-sts-card-border"
             term={pendingLabel}
-            value={paused ? "Paused" : frozen ? "—" : "Running"}
+            value={!startedAt ? "Not started" : paused ? "Paused" : frozen ? "—" : "Running"}
             valueClass="text-sts-subtle"
             icon={paused ? <PauseCircle className="size-3" /> : frozen ? null : <Timer className="size-3" />}
           />

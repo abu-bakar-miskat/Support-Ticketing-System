@@ -148,12 +148,22 @@ export async function PATCH(
   const nextSlaConfig = readSlaConfig({ ...readSlaConfig(baseSla), ...body.slaConfig })
   const nextBusinessHours = readBusinessHours({ ...readBusinessHours(baseBh), ...body.businessHours })
 
-  if (nextSlaConfig.atRiskPct <= 0 || nextSlaConfig.atRiskPct > 100) {
+  if (!Number.isFinite(nextSlaConfig.atRiskPct) || nextSlaConfig.atRiskPct <= 0 || nextSlaConfig.atRiskPct > 100) {
     return NextResponse.json({ error: "atRiskPct must be between 1 and 100" }, { status: 400 })
   }
 
+  const timeFormat = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+  let timezoneValid = true
+  try { new Intl.DateTimeFormat("en", { timeZone: nextBusinessHours.timezone }).format(new Date()) } catch { timezoneValid = false }
+  if (!timezoneValid || !nextBusinessHours.workingDays.length || nextBusinessHours.workingDays.some((day) => !Number.isInteger(day) || day < 0 || day > 6) || !timeFormat.test(nextBusinessHours.workStartTime) || !timeFormat.test(nextBusinessHours.workEndTime) || nextBusinessHours.workEndTime <= nextBusinessHours.workStartTime) {
+    return NextResponse.json({ error: "Provide a valid timezone, working days, and opening/closing times within the same day." }, { status: 400 })
+  }
+
   const data = {
-    slaConfig: nextSlaConfig as Prisma.InputJsonValue,
+    slaConfig: {
+      ...(baseSla && typeof baseSla === "object" && !Array.isArray(baseSla) ? baseSla as Record<string, Prisma.InputJsonValue> : {}),
+      ...nextSlaConfig,
+    } as Prisma.InputJsonValue,
     businessHours: nextBusinessHours as Prisma.InputJsonValue,
   }
   const updated = scope.subDepartmentId

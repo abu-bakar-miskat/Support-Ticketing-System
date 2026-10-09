@@ -1203,6 +1203,9 @@ model MailboxConnection {
   // is the hand-picked roster used when assignmentMethod is MANUAL_SELECT.
   assignmentMethod  AssignmentMethod?
   manualAssigneeIds String[]               @default([])
+  // Null pair inherits department mailbox targets, then tenant SLA defaults.
+  slaFirstResponseMins Int?
+  slaResolutionMins    Int?
   // Manual on/off switch, independent of health `status`. When false the mailbox
   // is paused: the inbound router skips it so no new tickets are created, but
   // existing tickets are untouched. `status` stays health-only (ACTIVE/AUTH_ERROR/
@@ -1880,6 +1883,8 @@ model SlaTimer {
   // "mailbox" for timers started from the department's shared-mailbox SLA;
   // null for form-policy timers.
   source                         String?
+  // Mailbox tickets freeze their calendar, warnings and qualifying active statuses.
+  mailboxConfig                  Json?
   firstResponseTargetMins        Int
   resolutionTargetMins           Int
   firstResponseStartedAt         DateTime

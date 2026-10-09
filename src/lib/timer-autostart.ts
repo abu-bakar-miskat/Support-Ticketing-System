@@ -1,3 +1,5 @@
+import { startMailboxResolutionOnWork } from "@/lib/sla-engine"
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
@@ -106,6 +108,12 @@ export async function startTimerOnStatusChange(
     })
     return { entry: created, closed: closedEntries }
   })
+
+  await startMailboxResolutionOnWork(ticketId, now).catch(() => undefined)
+
+  for (const previous of closed) {
+    if (previous.ticketId) await checkAndNotifyEstimateOverrun(previous.ticketId)
+  }
 
   await broadcastTimerChange(actor.id)
   await Promise.all([

@@ -44,6 +44,7 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   assignment_failed_alert: { icon: AlertTriangle, color: "#dc2626", label: "needs a manual assignee" },
   agreement_expiring: { icon: CalendarClock, color: "#d97706", label: "agreement expiring" },
   feature_request_submitted: { icon: GitPullRequest, color: "#f84201", label: "requested feature approval" },
+  time_estimate_exceeded: { icon: AlertTriangle, color: "#dc2626", label: "Ticket breached its resolution estimate" },
   sla_breach:     { icon: AlertTriangle,  color: "#dc2626", label: "Ticket breached the SLA"     },
   sla_at_risk:    { icon: CalendarClock,  color: "#d97706", label: "Ticket is at risk of breaching SLA" },
 };
@@ -64,7 +65,7 @@ function NotifRow({
   const Icon = meta.icon;
 
   // SLA alerts are system-generated: lead with the ticket number, not "System".
-  const isSla = item.type === "sla_breach" || item.type === "sla_at_risk";
+  const isSla = item.type === "sla_breach" || item.type === "sla_at_risk" || item.type === "time_estimate_exceeded";
   const subject = isSla ? (item.ticket?.humanId ?? item.actorName) : item.actorName;
 
   function handleClick() {

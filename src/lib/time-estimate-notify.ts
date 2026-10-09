@@ -1,48 +1,49 @@
+import { checkAndNotifyLegacyEstimateOverrun } from "@/lib/legacy-time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
+import { getManualResolutionTicket, trackedWorkSeconds } from "@/lib/manual-resolution"
 
-/**
- * Alerts the assignee + department managers the first time a ticket's total
- * logged time (sum of TimeEntry.durationSecs) crosses its `estimatedTime`.
- *
- * Fires at most once per ticket: guarded by `Ticket.estimateOverrunNotifiedAt`,
- * which is stamped via a conditional updateMany so concurrent timer stops can't
- * double-send. No-ops when the ticket has no estimate. Best-effort — callers
- * invoke it fire-and-forget so it never blocks the timer API response.
- */
-export async function checkAndNotifyEstimateOverrun(ticketId: string): Promise<void> {
+/** Record a manual resolution breach once, including work still running. */
+export async function checkAndNotifyEstimateOverrun(
+  ticketId: string,
+  now: Date = new Date(),
+  finalizing = false,
+): Promise<void> {
   try {
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
-      select: {
-        estimatedTime: true,
-        estimateOverrunNotifiedAt: true,
-        deletedAt: true,
-        assigneeId: true,
-        subDepartment: { select: { departmentId: true } },
-      },
-    })
-
-    // Nothing to compare against, already alerted, or ticket is gone.
-    if (!ticket || ticket.deletedAt !== null) return
+    const ticket = await getManualResolutionTicket(ticketId)
+    if (!ticket) {
+      if (!finalizing) await checkAndNotifyLegacyEstimateOverrun(ticketId)
+      return
+    }
+    if (ticket.closedAt && !finalizing) return
     if (!ticket.estimatedTime || ticket.estimatedTime <= 0) return
     if (ticket.estimateOverrunNotifiedAt !== null) return
 
-    // Sum completed laps only — a running entry has no durationSecs yet, and the
-    // stop that triggered this call has already been finalized.
-    const agg = await prisma.timeEntry.aggregate({
-      where: { ticketId, endedAt: { not: null } },
-      _sum: { durationSecs: true },
-    })
-    const trackedSecs = agg._sum.durationSecs ?? 0
-    if (trackedSecs < ticket.estimatedTime * 60) return
+    const trackedSecs = await trackedWorkSeconds(ticketId, ticket.closedAt ?? now)
+    // Exactly the estimate is still compliant; breach requires excess work.
+    if (trackedSecs <= ticket.estimatedTime * 60) return
 
-    // Stamp the guard atomically; only the winner of the race sends.
-    const stamped = await prisma.ticket.updateMany({
-      where: { id: ticketId, estimateOverrunNotifiedAt: null },
-      data: { estimateOverrunNotifiedAt: new Date() },
+    const stamped = await prisma.$transaction(async (tx) => {
+      const claim = await tx.ticket.updateMany({
+        where: {
+          id: ticketId, estimateOverrunNotifiedAt: null,
+          estimatedTime: ticket.estimatedTime, closedAt: ticket.closedAt,
+        },
+        data: { estimateOverrunNotifiedAt: now },
+      })
+      if (claim.count === 0) return false
+      await tx.slaBreach.create({
+        data: {
+          ticketId, tenantId: ticket.tenantId,
+          // SlaBreach.timerId is an opaque string, not a foreign key. Manual
+          // work has no two-clock SlaTimer and no first-response SLA.
+          timerId: `manual:${ticketId}`, metric: "resolution",
+          targetMins: ticket.estimatedTime!, breachedAt: now,
+        },
+      })
+      return true
     })
-    if (stamped.count === 0) return
+    if (!stamped) return
 
     const recipientIds = new Set<string>()
     if (ticket.assigneeId) recipientIds.add(ticket.assigneeId)
@@ -51,16 +52,16 @@ export async function checkAndNotifyEstimateOverrun(ticketId: string): Promise<v
       select: { userId: true },
     })
     for (const m of managers) recipientIds.add(m.userId)
-
-    for (const recipientId of recipientIds) {
-      createNotification({
-        recipientId,
-        type: "time_estimate_exceeded",
-        ticketId,
-        message: "has exceeded its time estimate",
-      }).catch(() => undefined)
-    }
-  } catch {
-    // best-effort — never break the timer flow
+    const tenantManagers = await prisma.tenantMembership.findMany({
+      where: { tenantId: ticket.tenantId, role: "manager", isActive: true },
+      select: { userId: true },
+    })
+    for (const manager of tenantManagers) recipientIds.add(manager.userId)
+    await Promise.all([...recipientIds].map((recipientId) => createNotification({
+      recipientId, type: "time_estimate_exceeded", ticketId,
+      message: "has breached its resolution estimate",
+    })))
+  } catch (error) {
+    console.error("[manual-resolution] breach check failed", error)
   }
 }

@@ -192,3 +192,15 @@ describe("POST /api/tickets", () => {
     expect(m.email).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: "user-2", humanId: "DEV-7" }))
   })
 })
+
+
+it.each([undefined, "user-2"])("saves the creation estimate for the primary assignee %s", async assigneeId => {
+  expect((await POST(request({ ...valid, assigneeId, estimatedTime: 5 }))).status).toBe(201)
+  expect(m.ticket.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+    estimatedTime: 5, estimates: { create: { userId: assigneeId ?? profile.id, estimatedMinutes: 5 } },
+  }) }))
+})
+it("does not invent a personal estimate when creation supplies no estimate", async () => {
+  await POST(request(valid))
+  expect(m.ticket.create.mock.calls[0][0].data).not.toHaveProperty("estimates")
+})

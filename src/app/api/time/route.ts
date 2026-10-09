@@ -1,3 +1,4 @@
+import { startMailboxResolutionOnWork } from "@/lib/sla-engine"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -122,10 +123,13 @@ export async function POST(request: NextRequest) {
     if (ticketId) {
       const ticket = await prisma.ticket.findUnique({
         where: { id: ticketId },
-        select: { id: true, deletedAt: true },
+        select: { id: true, deletedAt: true, closedAt: true },
       })
       if (!ticket || ticket.deletedAt !== null) {
         return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
+      }
+      if (ticket.closedAt) {
+        return NextResponse.json({ error: "Cannot track work on a resolved ticket" }, { status: 409 })
       }
       const tScope = await ticketsInScope(profile, [ticketId])
       if (!tScope) {
@@ -172,6 +176,7 @@ export async function POST(request: NextRequest) {
       return { entry: created, closed: closedEntries }
     })
 
+    if (ticketId) await startMailboxResolutionOnWork(ticketId, now).catch(() => undefined)
     await broadcastTimerChange(profile.id)
     await Promise.all([
       ...closed.map((c) =>
@@ -234,10 +239,15 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-    const updated = await prisma.timeEntry.update({
-      where: { id: running.id },
-      data: { endedAt: now, durationSecs: durationSecsBetween(running.startedAt, now) },
+    const ticket = running.ticketId ? await prisma.ticket.findUnique({
+      where: { id: running.ticketId }, select: { closedAt: true },
+    }) : null
+    const endedAt = ticket?.closedAt ?? now
+    await prisma.timeEntry.updateMany({
+      where: { id: running.id, endedAt: null },
+      data: { endedAt, durationSecs: durationSecsBetween(running.startedAt, endedAt) },
     })
+    const updated = await prisma.timeEntry.findUniqueOrThrow({ where: { id: running.id } })
 
     await broadcastTimerChange(profile.id)
     await broadcastTicketTimer(

@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save, Mail } 
 import { cn } from "@/lib/utils";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -100,6 +101,7 @@ export function SlaSettingsPage({
   hideBackLink = false,
   showSubDepartment = true,
   canEditPolicies = true,
+  showMailboxSla = true,
 }: {
   departmentId: string;
   departmentName: string;
@@ -118,6 +120,8 @@ export function SlaSettingsPage({
    * form policies and working hours are shown read-only.
    */
   canEditPolicies?: boolean;
+  /** Shared mailbox configuration belongs only on department settings. */
+  showMailboxSla?: boolean;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
@@ -358,7 +362,7 @@ export function SlaSettingsPage({
         </div>
       )}
 
-      <MailboxSlaCard departmentId={departmentId} />
+      {showMailboxSla && <MailboxSlaCard departmentId={departmentId} />}
 
       <div className="mb-8">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -655,7 +659,10 @@ export function SlaSettingsPage({
   );
 }
 
-type MailboxSla = { firstResponseMins: number | null; resolutionMins: number | null; canEdit: boolean };
+type MailboxSla = {
+  firstResponseMins: number | null; resolutionMins: number | null; canEdit: boolean; activeStatuses: string[]; availableStatuses: string[];
+  mailboxes: { id: string; address: string; firstResponseMins: number | null; resolutionMins: number | null }[];
+};
 
 /**
  * Department-wide SLA for tickets created from the department's shared
@@ -664,6 +671,7 @@ type MailboxSla = { firstResponseMins: number | null; resolutionMins: number | n
  */
 function MailboxSlaCard({ departmentId }: { departmentId: string }) {
   const [saved, setSaved] = useState<MailboxSla | null>(null);
+  const [activeStatuses, setActiveStatuses] = useState<string[]>(["In Progress"]);
   const [draft, setDraft] = useState<{ firstResponseMins: number | ""; resolutionMins: number | "" }>({
     firstResponseMins: "",
     resolutionMins: "",
@@ -678,6 +686,7 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
       .then((res: MailboxSla) => {
         if (cancelled) return;
         setSaved(res);
+        setActiveStatuses(res.activeStatuses);
         setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
       })
       .catch((e) => {
@@ -690,13 +699,13 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
 
   const dirty =
     saved !== null &&
-    (draft.firstResponseMins !== (saved.firstResponseMins ?? "") ||
+    (JSON.stringify([...activeStatuses].sort()) !== JSON.stringify([...saved.activeStatuses].sort()) || draft.firstResponseMins !== (saved.firstResponseMins ?? "") ||
       draft.resolutionMins !== (saved.resolutionMins ?? ""));
   useUnsavedChangesGuard(dirty);
 
   const bothSet = Number(draft.firstResponseMins) > 0 && Number(draft.resolutionMins) > 0;
   const bothEmpty = draft.firstResponseMins === "" && draft.resolutionMins === "";
-  const valid = bothSet || bothEmpty;
+  const valid = (bothSet || bothEmpty) && activeStatuses.length > 0 && activeStatuses.every((status) => saved?.availableStatuses.includes(status));
   const enabled = saved?.firstResponseMins != null && saved?.resolutionMins != null;
   const readOnly = saved !== null && !saved.canEdit;
 
@@ -708,10 +717,11 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
         await fetch(`/api/departments/${departmentId}/mailbox-sla`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(next),
+          body: JSON.stringify({ ...next, activeStatuses }),
         }),
       );
       setSaved(res);
+      setActiveStatuses(res.activeStatuses);
       setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save mailbox SLA");
@@ -735,14 +745,14 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
               enabled ? "bg-sts-blue/10 text-sts-blue" : "bg-sts-surface text-sts-subtle",
             )}
           >
-            {enabled ? "Active" : "Off"}
+            {enabled ? "Department defaults" : "Department targets off"}
           </span>
         )}
       </div>
       <p className="mb-4 font-sans text-[11.5px] text-sts-muted">
-        Applies to every ticket created from an email to one of this department&apos;s shared mailboxes. The
-        support-form policies below never apply to mailbox tickets. Changes affect new tickets only. Working hours
-        and pausing follow the settings below.
+        Each mailbox can override these department targets. Shared mailbox SLA is configured only within the department.
+        When neither has targets, no shared mailbox SLA applies.
+        Changes affect new tickets only. Mailbox clocks always count configured working hours and pause while waiting for the customer.
       </p>
 
       {error && (
@@ -809,7 +819,7 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
                   onClick={() => save({ firstResponseMins: null, resolutionMins: null })}
                   className="rounded-full border border-sts-card-border px-3.5 py-1.5 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-60"
                 >
-                  Turn off
+                  Turn off department targets
                 </button>
               )}
               <button
@@ -835,8 +845,32 @@ function MailboxSlaCard({ departmentId }: { departmentId: string }) {
       )}
       {!valid && (
         <p className="mt-2 font-sans text-[11.5px] text-sts-red">
-          Set both targets (greater than 0), or clear both to turn the mailbox SLA off.
+          Set both targets (greater than 0), or clear both. Select at least one current active status.
         </p>
+      )}
+      {saved && (
+        <div className="mt-5 space-y-4 border-t border-sts-card-border pt-4">
+          <div className="flex flex-col gap-1.5 font-sans text-[11.5px] text-sts-muted">
+            <span id={`mailbox-active-statuses-${departmentId}`}>Active statuses that stop first response</span>
+            <Select multiple value={activeStatuses} onValueChange={setActiveStatuses} disabled={readOnly}>
+              <SelectTrigger aria-labelledby={`mailbox-active-statuses-${departmentId}`} className="w-full font-sans text-[12px]">
+                <SelectValue>{activeStatuses.length ? activeStatuses.join(", ") : "Select active statuses"}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {[...new Set([...saved.availableStatuses, ...activeStatuses])].map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}{saved.availableStatuses.includes(status) ? "" : " (no longer available)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p>Select one or more statuses from this department&apos;s workflows.</p>
+          </div>
+          {saved.mailboxes.map((mailbox) => (
+            <MailboxTargetRow key={mailbox.id} mailbox={mailbox} departmentId={departmentId} canEdit={saved.canEdit}
+              onSaved={(updated) => setSaved(updated)} />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -1335,6 +1369,45 @@ function NewPolicyModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+function MailboxTargetRow({ mailbox, departmentId, canEdit, onSaved }: {
+  mailbox: MailboxSla["mailboxes"][number]; departmentId: string; canEdit: boolean; onSaved: (saved: MailboxSla) => void;
+}) {
+  const [first, setFirst] = useState(mailbox.firstResponseMins?.toString() ?? "");
+  const [resolution, setResolution] = useState(mailbox.resolutionMins?.toString() ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = first !== (mailbox.firstResponseMins?.toString() ?? "") || resolution !== (mailbox.resolutionMins?.toString() ?? "");
+  useUnsavedChangesGuard(dirty);
+  async function save() {
+    setSaving(true); setError(null);
+    try {
+      const updated = await jsonOrThrow(await fetch(`/api/departments/${departmentId}/mailbox-sla`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mailboxConnectionId: mailbox.id, firstResponseMins: first === "" ? null : Number(first), resolutionMins: resolution === "" ? null : Number(resolution) }),
+      }));
+      onSaved(updated);
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not save mailbox targets"); }
+    finally { setSaving(false); }
+  }
+  return (
+    <div className="space-y-2 font-sans text-[11.5px]">
+      <p className="font-medium text-sts-foreground">{mailbox.address}</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-sts-muted">First response (mins)
+          <input type="number" min={1} value={first} readOnly={!canEdit} placeholder="Inherit" onChange={(event) => setFirst(event.target.value)} className="h-8 w-28 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-foreground" />
+        </label>
+        <label className="flex flex-col gap-1 text-sts-muted">Resolution (mins)
+          <input type="number" min={1} value={resolution} readOnly={!canEdit} placeholder="Inherit" onChange={(event) => setResolution(event.target.value)} className="h-8 w-28 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-foreground" />
+        </label>
+        {canEdit && <button onClick={save} disabled={saving || !dirty} className="rounded-full bg-sts-blue px-3 py-1.5 text-sts-blue-fg disabled:opacity-50">{saving ? "Saving…" : "Save targets"}</button>}
+      </div>
+      <p className="text-sts-subtle">Leave both empty to inherit department targets. If department targets are off, no SLA applies.</p>
+      {error && <p className="text-sts-red">{error}</p>}
     </div>
   );
 }

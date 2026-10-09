@@ -62,7 +62,7 @@ describe("deriveSubStatus — BD-07", () => {
 
 describe("subStatusLabel", () => {
   it("maps sub-statuses to UI labels", () => {
-    expect(subStatusLabel("WAITING_FOR_SUPPORT")).toBe("Waiting for support");
+    expect(subStatusLabel("WAITING_FOR_SUPPORT")).toBe("Waiting for assignee");
     expect(subStatusLabel("WAITING_FOR_CUSTOMER")).toBe("Waiting for customer");
     expect(subStatusLabel(null)).toBeNull();
   });

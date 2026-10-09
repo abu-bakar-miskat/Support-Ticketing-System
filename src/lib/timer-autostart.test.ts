@@ -1,3 +1,4 @@
+vi.mock("@/lib/sla-engine", () => ({ startMailboxResolutionOnWork: vi.fn().mockResolvedValue(undefined) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/db", () => ({

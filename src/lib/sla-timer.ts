@@ -75,6 +75,8 @@ export type SlaIndicator = {
 export type SlaMetricView = SlaMetricResult & { running: boolean };
 
 export type SlaIndicatorView = {
+  source?: string;
+  completed?: boolean;
   firstResponse: SlaMetricView;
   resolution: SlaMetricView;
   overall: SlaStatus;
@@ -91,7 +93,7 @@ export type SlaIndicatorDetails = {
   firstResponseStartedAt: string;
   /** When the first public agent reply landed (null = still waiting). */
   firstResponseStoppedAt: string | null;
-  resolutionStartedAt: string;
+  resolutionStartedAt: string | null;
   /** When the ticket was closed (null = still open). */
   resolutionStoppedAt: string | null;
   breaches: { metric: "first_response" | "resolution"; targetMins: number; breachedAt: string }[];

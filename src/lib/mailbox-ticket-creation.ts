@@ -8,7 +8,7 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
-import { startMailboxSlaTimer } from "@/lib/sla-engine";
+import { prepareMailboxSla } from "@/lib/sla-engine";
 import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
 import { TicketPriority } from "@/generated/prisma/enums";
 import { mailboxOriginIdsWhere, mailboxOriginRouting } from "@/lib/mailbox-ticket-origin";
@@ -95,6 +95,10 @@ export async function createTicketFromInboundEmail(params: {
     mailboxConnectionId,
   });
 
+  const slaPlan = await prepareMailboxSla(subDepartment.tenantId, departmentId, {
+    mailboxConnectionId, subDepartmentId: teamId, assigneeId: assignResult.assigneeId,
+  });
+
   const ticket = await prisma.$transaction(async (tx) => {
     // Serialize duplicate deliveries; the ticket and origin metadata commit together.
     // $executeRaw: pg_advisory_xact_lock returns `void`, which the adapter can't read.
@@ -140,7 +144,7 @@ export async function createTicketFromInboundEmail(params: {
         projectId,
         assigneeId: assignResult.assigneeId,
       },
-      select: { id: true, ticketNumber: true },
+      select: { id: true, ticketNumber: true, createdAt: true },
     });
 
     await tx.activityLog.create({
@@ -160,6 +164,10 @@ export async function createTicketFromInboundEmail(params: {
       await tx.subDepartment.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
     }
 
+    if (slaPlan) await tx.slaTimer.create({ data: {
+      ticketId: created.id, ...slaPlan,
+      firstResponseStartedAt: created.createdAt, resolutionStartedAt: created.createdAt,
+    } });
     return created;
   });
 
@@ -178,10 +186,6 @@ export async function createTicketFromInboundEmail(params: {
     fromName,
     priority: TicketPriority.Medium,
   };
-  // Shared-mailbox SLA: the department's flat mailbox targets (if set).
-  // Best-effort, never throws.
-  await startMailboxSlaTimer(ticket.id, subDepartment.tenantId, departmentId);
-
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
     {

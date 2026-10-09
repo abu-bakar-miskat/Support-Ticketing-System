@@ -7,6 +7,7 @@ import type { ProfileMembership } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
 import { DepartmentsClient } from "@/components/departments/departments-client";
+import type { DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
 import { MyDepartmentsClient, type MyDepartmentItem } from "@/components/departments/my-departments-client";
 import type { DepartmentRow, TemplateOption } from "@/components/settings/settings-departments-page";
 import type { MemberRow } from "@/components/settings/settings-members-page";
@@ -262,11 +263,15 @@ export default async function DepartmentsPage() {
     const tenantName =
       readTenantBranding(tenantRow?.branding).displayName ?? tenantRow?.name ?? null;
 
-    const mailboxUsage = rawDepts.map((d) => {
+    // Sub-department links must carry the department in the URL (/<tenant>/<dept>/…).
+    const tenantSlug = (await headers()).get(X_TENANT_SLUG_HEADER);
+
+    const mailboxUsage: DepartmentMailboxUsage[] = rawDepts.map((d) => {
       const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
       return {
         departmentId: d.id,
         name: d.name,
+        basePath: tenantSlug ? `/${tenantSlug}/${d.slug}` : "",
         subDepartments: d.subDepartments.map((subDepartment) => ({
           id: subDepartment.id,
           name: subDepartment.name,

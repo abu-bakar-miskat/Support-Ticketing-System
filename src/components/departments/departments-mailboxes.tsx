@@ -36,6 +36,8 @@ import type { InUseDomain } from "@/lib/email-domains";
 export type DepartmentMailboxUsage = {
   departmentId: string;
   name: string;
+  /** URL prefix naming this department (/<tenant>/<dept>), or "" when unknown. */
+  basePath: string;
   subDepartments: {
     id: string;
     name: string;
@@ -496,7 +498,7 @@ export function DepartmentsMailboxes({
                                     </p>
                                   </div>
                                   <Link
-                                    href={`/sub-departments/${encodeURIComponent(subDepartment.name)}/mailbox`}
+                                    href={`${r.basePath}/sub-departments/${encodeURIComponent(subDepartment.name)}/mailbox`}
                                     onClick={(event) => event.stopPropagation()}
                                     className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-sts-blue hover:underline"
                                   >

@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { listTenantDomains, listTenantInUseDomains, listTenantDepartmentScopes } from "@/lib/email-domains";
 import { listPendingDomainRequests } from "@/lib/email-domain-requests";
+import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path";
 import {
   DepartmentsMailboxes,
   type DepartmentMailboxUsage,
@@ -25,6 +27,7 @@ export default async function DepartmentsMailboxesRoute() {
       select: {
         id: true,
         name: true,
+        slug: true,
         subDepartments: {
           orderBy: { name: "asc" },
           select: { id: true, name: true },
@@ -75,11 +78,18 @@ export default async function DepartmentsMailboxesRoute() {
     mailboxesBySubDepartment.set(mailbox.subDepartmentId, entries);
   }
 
+  // Sub-department pages are department-scoped, so their links must name the
+  // department in the URL (/<tenant>/<dept>/…). A bare /sub-departments/… link
+  // from this tenant-level page has no department context and the proxy
+  // bounced it back to /<tenant>/departments (or to the cookie's department).
+  const tenantSlug = (await headers()).get(X_TENANT_SLUG_HEADER);
+
   const rows: DepartmentMailboxUsage[] = depts.map((d) => {
     const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
     return {
       departmentId: d.id,
       name: d.name,
+      basePath: tenantSlug ? `/${tenantSlug}/${d.slug}` : "",
       subDepartments: d.subDepartments.map((subDepartment) => ({
         ...subDepartment,
         mailboxes: mailboxesBySubDepartment.get(subDepartment.id) ?? [],

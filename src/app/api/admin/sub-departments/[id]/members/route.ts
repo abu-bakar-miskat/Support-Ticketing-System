@@ -55,9 +55,27 @@ export async function POST(
   if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
   // Admins, managers and super admins already have full access — they can't be
-  // added as a sub-department sub-manager or agent. (Authoritative check; the
-  // pickers also hide them.)
-  if (profile.role === "admin" || profile.role === "manager" || profile.isSuperAdmin) {
+  // added as a sub-department sub-manager or agent. Judge the role this tenant
+  // actually grants: Profile.role is a denormalized hint and is intentionally
+  // not lowered on demotion (the person may still be an admin elsewhere), so
+  // reading it here blocked a just-demoted agent from joining a sub-department.
+  const [tenantMembership, departmentManager] = await Promise.all([
+    prisma.tenantMembership.findFirst({
+      where: { userId, tenantId: subDepartment.tenantId, isActive: true },
+      select: { role: true },
+    }),
+    prisma.departmentManager.findFirst({
+      where: { userId, department: { tenantId: subDepartment.tenantId } },
+      select: { id: true },
+    }),
+  ])
+  const elevatedInTenant =
+    profile.isSuperAdmin ||
+    tenantMembership?.role === "admin" ||
+    tenantMembership?.role === "manager" ||
+    departmentManager != null ||
+    (!tenantMembership && (profile.role === "admin" || profile.role === "manager"))
+  if (elevatedInTenant) {
     return NextResponse.json(
       { error: "Admins, managers and super admins already have full access and can't be added as a sub-department member." },
       { status: 400 },

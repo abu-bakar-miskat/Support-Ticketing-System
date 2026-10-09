@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ListSearchInput, useListControls } from "@/components/ui/list-controls";
 
 export type RoutingRule = {
   id: string;
@@ -115,6 +116,12 @@ function RoutingRuleRow({ rule }: { rule: RoutingRule }) {
 }
 
 export function SettingsRoutingRulesPage({ rules }: { rules: RoutingRule[] }) {
+  // Search only — evaluation order is first-match-wins, so rules are never re-sorted.
+  const list = useListControls(rules, {
+    searchText: (r) => `${r.conditionType} ${r.conditionValue} ${r.subDepartment} ${r.priority ?? ""}`,
+    sortOptions: [],
+  });
+
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -135,16 +142,27 @@ export function SettingsRoutingRulesPage({ rules }: { rules: RoutingRule[] }) {
       <Phase2Banner />
 
       <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
-        <div className="pb-1.5">
-          <h2 className="font-sans text-sm font-semibold text-sts-foreground">
-            Routing rules
-          </h2>
-          <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
-            Applied top to bottom when an email ticket arrives. First match wins.
-          </p>
+        <div className="flex flex-col gap-2 pb-1.5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-sans text-sm font-semibold text-sts-foreground">
+              Routing rules
+            </h2>
+            <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+              Applied top to bottom when an email ticket arrives. First match wins.
+            </p>
+          </div>
+          {rules.length > 0 && (
+            <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search rules…" />
+          )}
         </div>
 
-        {rules.map((rule) => (
+        {rules.length > 0 && list.visible.length === 0 && (
+          <p className="border-t border-[#f0f4f8] py-3.5 font-sans text-[11.5px] text-sts-muted dark:border-[#3a3a37]">
+            No rules match &ldquo;{list.query.trim()}&rdquo;
+          </p>
+        )}
+
+        {list.visible.map((rule) => (
           <RoutingRuleRow key={rule.id} rule={rule} />
         ))}
 

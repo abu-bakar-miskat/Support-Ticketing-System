@@ -4,6 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox, Loader2, Check, X, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+} from "@/components/ui/list-controls";
 
 export type PendingDomainRequest = {
   id: string;
@@ -24,6 +32,16 @@ export function DomainRequestsPanel({ requests }: { requests: PendingDomainReque
   const router = useRouter();
   const [busy, setBusy] = useState<{ id: string; action: "approve" | "reject" } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const list = useListControls(requests, {
+    searchText: (r) =>
+      [r.domain, r.departmentName, r.subDepartmentName ?? "", r.requesterName, r.note ?? ""].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((r) => r.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((r) => r.createdAt) },
+      { id: "domain", label: "Domain (A–Z)", compare: byText((r) => r.domain) },
+      { id: "department", label: "Department", compare: byText((r) => r.departmentName) },
+    ],
+  });
 
   if (requests.length === 0) return null;
 
@@ -45,7 +63,7 @@ export function DomainRequestsPanel({ requests }: { requests: PendingDomainReque
 
   return (
     <div className="mb-6 overflow-hidden rounded-xl border border-amber-400/40 bg-amber-50/40 shadow-sts-card dark:bg-amber-900/10">
-      <div className="flex items-center gap-2 border-b border-amber-400/30 px-[22px] py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-amber-400/30 px-[22px] py-3">
         <Inbox className="size-4 text-amber-600 dark:text-amber-400" />
         <h3 className="font-sans text-[13.5px] font-semibold text-sts-foreground">
           Domain requests
@@ -53,14 +71,24 @@ export function DomainRequestsPanel({ requests }: { requests: PendingDomainReque
             {requests.length} pending
           </span>
         </h3>
+        <div className="ml-auto flex items-center gap-2">
+          <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search requests…" />
+          <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+        </div>
       </div>
 
       {error && (
         <div className="border-b border-amber-400/30 px-[22px] py-2 font-sans text-[12.5px] text-destructive">{error}</div>
       )}
 
+      {list.visible.length === 0 && (
+        <p className="px-[22px] py-6 text-center font-sans text-[12.5px] text-sts-muted">
+          No requests match &ldquo;{list.query.trim()}&rdquo;
+        </p>
+      )}
+
       <ul className="divide-y divide-amber-400/20">
-        {requests.map((r) => {
+        {list.visible.map((r) => {
           const rowBusy = busy?.id === r.id;
           const rejecting = rowBusy && busy?.action === "reject";
           const approving = rowBusy && busy?.action === "approve";

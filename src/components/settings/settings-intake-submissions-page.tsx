@@ -20,6 +20,14 @@ import type { SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+} from "@/components/ui/list-controls";
 
 export type SubmissionRow = {
   id: string;
@@ -45,6 +53,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 const URGENT_PRIORITIES = new Set(["High", "Critical", "Urgent"]);
+const PRIORITY_RANK: Record<string, number> = { Urgent: 0, Critical: 1, High: 2, Medium: 3, Low: 4 };
 
 function PriorityPill({ priority }: { priority: string }) {
   const urgent = URGENT_PRIORITIES.has(priority);
@@ -147,13 +156,39 @@ export function SettingsIntakeSubmissionsPage({
     return true;
   });
 
+  // Search + sort apply on top of the tab filter.
+  const list = useListControls(filtered, {
+    searchText: (s) =>
+      [
+        s.submitterName,
+        s.submitterEmail,
+        s.ticketNumber != null ? `#${s.ticketNumber} ${s.ticketNumber}` : "",
+        s.ticketStatus ?? "",
+        s.priority,
+        s.source === "portal" ? "portal" : "public link",
+        getAssignee(s).name ?? "",
+      ].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((s) => s.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((s) => s.createdAt) },
+      { id: "name", label: "Submitter (A–Z)", compare: byText((s) => s.submitterName) },
+      {
+        id: "priority",
+        label: "Priority",
+        compare: (a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9),
+      },
+      { id: "status", label: "Ticket status", compare: byText((s) => s.ticketStatus) },
+    ],
+  });
+  const visible = list.visible;
+
   // Only count selectable rows (those with a linked ticket)
-  const selectableIds = filtered.filter((s) => s.ticketId).map((s) => s.id);
+  const selectableIds = visible.filter((s) => s.ticketId).map((s) => s.id);
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const someSelected = selectableIds.some((id) => selected.has(id));
 
   // Submissions currently selected that have a ticket (for assignment)
-  const selectedWithTicket = filtered.filter((s) => s.ticketId && selected.has(s.id));
+  const selectedWithTicket = visible.filter((s) => s.ticketId && selected.has(s.id));
 
   function toggleOne(id: string) {
     setSelected((prev) => {
@@ -311,6 +346,17 @@ export function SettingsIntakeSubmissionsPage({
         ))}
       </div>
 
+      {submissions.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={list.query}
+            onChange={(v) => { list.setQuery(v); setSelected(new Set()); }}
+            placeholder="Search submissions…"
+          />
+          <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+        </div>
+      )}
+
       {/* Floating action bar */}
       {someSelected && (
         <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-2.5 shadow-sm">
@@ -349,7 +395,13 @@ export function SettingsIntakeSubmissionsPage({
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {filtered.length > 0 && visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
+          <p className="font-sans text-[13px] text-sts-muted">
+            No submissions match &ldquo;{list.query.trim()}&rdquo;
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
           <p className="font-sans text-[13px] text-sts-muted">
             {filter === "unassigned" ? "No unassigned tickets." : filter === "assigned" ? "No assigned tickets." : "No submissions yet."}
@@ -385,7 +437,7 @@ export function SettingsIntakeSubmissionsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => (
+              {visible.map((s) => (
                 <TableRow key={s.id} className={cn("border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]", selected.has(s.id) && "bg-sts-blue/[0.03]")}>
                   <TableCell className="py-0">
                     <div className="flex h-[56px] items-center">

@@ -60,6 +60,7 @@ import { toastError } from "@/lib/toast-error";
 import { toast } from "sonner";
 import { notifEvents } from "@/store";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byDateAsc, byDateDesc, byNumberDesc } from "@/components/ui/list-controls";
 
 export type SubDepartmentRow = {
   id: string;
@@ -397,6 +398,8 @@ function SubDepartmentModal({
 
 // ── Sub Department Members Modal ────────────────────────────────────────────────────────
 
+const MEMBER_ROLE_RANK: Record<string, number> = { admin: 0, manager: 1, sub_manager: 2, agent: 3 };
+
 type MemberEntry = {
   membershipId: string;
   userId: string;
@@ -428,6 +431,21 @@ function SubDepartmentMembersModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null);
+  const memberList = useListControls(members, {
+    searchText: (m) => [m.name, m.nickname ?? "", m.email, m.role.replace("_", " ")].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((m: MemberEntry) => m.nickname ?? m.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberEntry) => m.nickname ?? m.name)(b, a) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) =>
+          (MEMBER_ROLE_RANK[a.role] ?? 9) - (MEMBER_ROLE_RANK[b.role] ?? 9) ||
+          byText((m: MemberEntry) => m.nickname ?? m.name)(a, b),
+      },
+      { id: "active", label: "Active first", compare: (a, b) => Number(b.isActive) - Number(a.isActive) },
+    ],
+  });
 
   useEffect(() => {
     getAdminSubDepartmentMembers(subDepartment.id)
@@ -572,6 +590,10 @@ function SubDepartmentMembersModal({
             </div>
           ) : (
             <div>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-6 pt-3 pb-2">
+                <ListSearchInput value={memberList.query} onChange={memberList.setQuery} placeholder="Search members…" />
+                <SortDropdown value={memberList.sortKey} onChange={memberList.setSortKey} options={memberList.sortDropdownOptions} />
+              </div>
               {/* Column headers */}
               <div className="grid grid-cols-[1fr_120px_140px_32px] gap-3 border-b border-sts-card-border px-6 py-2">
                 <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
@@ -586,7 +608,12 @@ function SubDepartmentMembersModal({
                 <span />
               </div>
 
-              {members.map((m) =>
+              {memberList.visible.length === 0 && (
+                <p className="px-6 py-8 text-center font-sans text-[12.5px] text-sts-subtle">
+                  No members match &ldquo;{memberList.query.trim()}&rdquo;
+                </p>
+              )}
+              {memberList.visible.map((m) =>
                 editingId === m.userId ? (
                   // ── Edit row ──────────────────────────────────────────
                   <div
@@ -1099,6 +1126,16 @@ function JoinRequestsSection({
     });
   }, []);
 
+  const requestList = useListControls(requests, {
+    searchText: (r) => [r.userName, r.userEmail, r.departmentName, ...r.subDepartments.map((sd) => sd.name)].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((r: PendingRequest) => r.requestedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((r: PendingRequest) => r.requestedAt) },
+      { id: "name", label: "Name A–Z", compare: byText((r: PendingRequest) => r.userName) },
+      { id: "department", label: "Department", compare: byText((r: PendingRequest) => r.departmentName) },
+    ],
+  });
+
   if (requests.length === 0) return null;
 
   const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "agent";
@@ -1154,10 +1191,19 @@ function JoinRequestsSection({
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sts-id px-1.5 font-sans text-[11.5px] font-semibold text-white">
           {requests.length}
         </span>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <ListSearchInput value={requestList.query} onChange={requestList.setQuery} placeholder="Search requests…" />
+          <SortDropdown value={requestList.sortKey} onChange={requestList.setSortKey} options={requestList.sortDropdownOptions} />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
-        {requests.map((req, i) => (
+        {requestList.visible.length === 0 && (
+          <p className="px-5 py-6 text-center font-sans text-[12.5px] text-sts-subtle">
+            No requests match &ldquo;{requestList.query.trim()}&rdquo;
+          </p>
+        )}
+        {requestList.visible.map((req, i) => (
           <div
             key={req.id}
             className={cn(
@@ -1542,6 +1588,21 @@ export function SettingsSubDepartmentsPage({
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<SubDepartmentRow | null>(null);
+  const memberCount = (sd: SubDepartmentRow) => (sd.members?.length ?? sd.memberColors.length) + sd.extraMembers;
+  const subDeptList = useListControls(subDepartments, {
+    searchText: (sd) => [sd.name, sd.prefix, sd.department, ...sd.leads.map((l) => l.name)].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((sd: SubDepartmentRow) => sd.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((sd: SubDepartmentRow) => sd.name)(b, a) },
+      { id: "members", label: "Most members", compare: byNumberDesc(memberCount) },
+      {
+        id: "department",
+        label: "Department",
+        compare: (a, b) =>
+          byText((sd: SubDepartmentRow) => sd.department)(a, b) || byText((sd: SubDepartmentRow) => sd.name)(a, b),
+      },
+    ],
+  });
 
   function refresh() {
     setModal(null);
@@ -1638,8 +1699,18 @@ export function SettingsSubDepartmentsPage({
             <p className="font-sans text-[12.5px] text-sts-muted">No sub-departments yet.</p>
           </div>
         ) : (
+          <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ListSearchInput value={subDeptList.query} onChange={subDeptList.setQuery} placeholder="Search sub-departments, leads…" />
+            <SortDropdown value={subDeptList.sortKey} onChange={subDeptList.setSortKey} options={subDeptList.sortDropdownOptions} />
+          </div>
+          {subDeptList.visible.length === 0 ? (
+            <p className="py-8 text-center font-sans text-[12.5px] text-sts-muted">
+              No sub-departments match &ldquo;{subDeptList.query.trim()}&rdquo;
+            </p>
+          ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {subDepartments.map((subDepartment) => (
+            {subDeptList.visible.map((subDepartment) => (
               <SubDepartmentCard
                 key={subDepartment.id}
                 subDepartment={subDepartment}
@@ -1654,6 +1725,8 @@ export function SettingsSubDepartmentsPage({
               />
             ))}
           </div>
+          )}
+          </>
         )}
 
         {pendingRequests.length > 0 && (

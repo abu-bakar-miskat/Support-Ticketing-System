@@ -24,6 +24,7 @@ import {
 } from "@/components/departments/portal-api-forms-section";
 import { PortalApiDocumentation } from "@/components/departments/portal-api-documentation";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
 export type ApiKeyRow = {
   id: string;
@@ -481,6 +482,24 @@ export function SettingsApiKeysPage({
   const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
   const [routeCopied, setRouteCopied] = useState(false);
   const [showDocumentation, setShowDocumentation] = useState(false);
+  // The server sends keys newest-first with revoked keys last; dates arrive pre-formatted,
+  // so "oldest first" reverses that order within the active / revoked groups.
+  const list = useListControls(initialKeys, {
+    searchText: (k) => `${k.name} ${k.maskedKey} ${k.department} ${k.scope} ${k.createdBy} ${k.formName ?? ""}`,
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: () => 0 },
+      {
+        id: "oldest",
+        label: "Oldest first",
+        compare: (a, b) =>
+          Number(a.revoked) - Number(b.revoked) || initialKeys.indexOf(b) - initialKeys.indexOf(a),
+      },
+      { id: "name", label: "Name A–Z", compare: byText((k: ApiKeyRow) => k.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((k: ApiKeyRow) => k.name)(b, a) },
+      { id: "department", label: "Department", compare: byText((k: ApiKeyRow) => k.department) },
+      { id: "status", label: "Active first", compare: (a, b) => Number(a.revoked) - Number(b.revoked) },
+    ],
+  });
 
   function handleCreated(rawKey: string, keyName: string) {
     setShowGenerate(false);
@@ -687,6 +706,13 @@ export function SettingsApiKeysPage({
             onEdit={(id) => setEditKey(initialKeys.find((key) => key.id === id) ?? null)}
           />
         ) : (
+          <>
+          {initialKeys.length > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search API keys…" />
+              <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+            </div>
+          )}
           <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
             <Table className="min-w-[760px]">
             <TableHeader>
@@ -721,7 +747,18 @@ export function SettingsApiKeysPage({
                 </TableRow>
               )}
 
-              {initialKeys.map((apiKey) => (
+              {initialKeys.length > 0 && list.visible.length === 0 && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={6}
+                    className="h-14 px-0 font-sans text-[12.5px] text-sts-muted"
+                  >
+                    No API keys match &ldquo;{list.query.trim()}&rdquo;.
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {list.visible.map((apiKey) => (
                 <TableRow
                   key={apiKey.id}
                   className={cn(
@@ -799,6 +836,7 @@ export function SettingsApiKeysPage({
             </TableBody>
             </Table>
           </div>
+          </>
         )}
       </div>
     </>

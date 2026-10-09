@@ -20,6 +20,7 @@ import {
   validateAgreementDocFile,
 } from "@/lib/agreement-doc-file";
 import { getAgreementExpiry } from "@/lib/agreement-expiry";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, useListControls } from "@/components/ui/list-controls";
 
 const RENEWAL_STATUSES = ["ACTIVE", "PENDING_RENEWAL", "RENEWED", "EXPIRED", "CANCELLED"] as const;
 type RenewalStatus = (typeof RENEWAL_STATUSES)[number];
@@ -88,6 +89,16 @@ export function TenantAgreements({
     fileName: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const agreementList = useListControls(agreements, {
+    searchText: (a) =>
+      [STATUS_LABEL[a.renewalStatus], fmtDate(a.startDate), fmtDate(a.endDate), ...a.documents.map((d) => d.fileName)].join(" "),
+    sortOptions: [
+      { id: "end-desc", label: "Ends latest", compare: byDateDesc((a) => a.endDate) },
+      { id: "end-asc", label: "Ends soonest", compare: byDateAsc((a) => a.endDate) },
+      { id: "start-desc", label: "Started newest", compare: byDateDesc((a) => a.startDate) },
+      { id: "start-asc", label: "Started oldest", compare: byDateAsc((a) => a.startDate) },
+    ],
+  });
 
   function overlapsExisting(startISO: string, endISO: string, excludeId?: string) {
     const s = new Date(startISO).getTime();
@@ -259,8 +270,23 @@ export function TenantAgreements({
         </div>
       )}
 
-      <ul className="mt-4 flex flex-col gap-3">
-        {agreements.map((a) => (
+      {agreements.length > 0 && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={agreementList.query}
+            onChange={agreementList.setQuery}
+            placeholder="Search agreements…"
+          />
+          <SortDropdown
+            value={agreementList.sortKey}
+            onChange={agreementList.setSortKey}
+            options={agreementList.sortDropdownOptions}
+          />
+        </div>
+      )}
+
+      <ul className="mt-3 flex flex-col gap-3">
+        {agreementList.visible.map((a) => (
           <li key={a.id} className="rounded-lg border border-sts-card-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -351,6 +377,11 @@ export function TenantAgreements({
         ))}
         {agreements.length === 0 && (
           <li className="font-sans text-[12px] text-sts-subtle">No agreements recorded yet.</li>
+        )}
+        {agreements.length > 0 && agreementList.visible.length === 0 && (
+          <li className="font-sans text-[12px] text-sts-subtle">
+            No agreements match &ldquo;{agreementList.query.trim()}&rdquo;.
+          </li>
         )}
       </ul>
       <ConfirmDialog

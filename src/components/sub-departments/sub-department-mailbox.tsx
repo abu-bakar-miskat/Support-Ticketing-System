@@ -16,6 +16,13 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+} from "@/components/ui/list-controls";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -171,6 +178,18 @@ export function SubDepartmentMailboxManager({
 
   const list = connections ?? [];
   const loading = connections === null;
+  const mailboxList = useListControls(list, {
+    searchText: (c) => [c.address, STATUS[c.status].label, c.isActive ? "" : "disabled"].join(" "),
+    sortOptions: [
+      { id: "address", label: "Address (A–Z)", compare: byText((c) => c.address) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((c) => c.createdAt) },
+      {
+        id: "status",
+        label: "Problems first",
+        compare: (a, b) => Number(a.status === "ACTIVE") - Number(b.status === "ACTIVE"),
+      },
+    ],
+  });
 
   async function connect() {
     const value = address.trim();
@@ -464,8 +483,18 @@ export function SubDepartmentMailboxManager({
           </p>
         </div>
       ) : (
+        <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput value={mailboxList.query} onChange={mailboxList.setQuery} placeholder="Search mailboxes…" />
+          <SortDropdown value={mailboxList.sortKey} onChange={mailboxList.setSortKey} options={mailboxList.sortDropdownOptions} />
+        </div>
+        {mailboxList.visible.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-8 text-center font-sans text-[12.5px] text-sts-muted">
+            No mailboxes match &ldquo;{mailboxList.query.trim()}&rdquo;
+          </p>
+        )}
         <ul className="flex flex-col gap-3">
-          {list.map((c) => {
+          {mailboxList.visible.map((c) => {
             const meta = STATUS[c.status];
             const busy = !!rechecking[c.id];
             return (
@@ -722,6 +751,7 @@ export function SubDepartmentMailboxManager({
             );
           })}
         </ul>
+        </div>
       )}
 
       {/* ── Received mail (only once a mailbox is connected) ── */}

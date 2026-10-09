@@ -23,6 +23,7 @@ import { TagPill } from "@/components/board/tag-pill";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type TagRow = {
   id: string;
@@ -75,6 +76,15 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
   const [editColor, setEditColor] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<TagRow | null>(null);
+  const list = useListControls(labels, {
+    searchText: (l) => l.name,
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((l: TagRow) => l.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((l: TagRow) => l.name)(b, a) },
+      { id: "usage", label: "Most used", compare: byNumberDesc((l: TagRow) => l.count) },
+      { id: "usage-asc", label: "Least used", compare: (a, b) => a.count - b.count },
+    ],
+  });
 
   async function handleCreate() {
     if (!newName.trim() || saving) return;
@@ -155,6 +165,11 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
         </Button>
       </div>
 
+      <div className="flex items-center justify-between gap-2">
+        <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search labels…" />
+        <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+      </div>
+
       <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
@@ -214,7 +229,17 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
               </TableRow>
             ) : null}
 
-            {labels.map((label) => (
+            {labels.length > 0 && list.visible.length === 0 ? (
+              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                <TableCell colSpan={4} className="py-0">
+                  <div className="flex h-[46px] items-center">
+                    <span className="font-sans text-[11.5px] text-sts-muted">No labels match &ldquo;{list.query.trim()}&rdquo;</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {list.visible.map((label) => (
               <TableRow key={label.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">

@@ -21,6 +21,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+} from "@/components/ui/list-controls";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -213,6 +220,19 @@ export function DepartmentMailboxesPage({
   const loading = connections === null;
   const noSubDepartments = subDepartments.length === 0;
   const subDeptName = (id: string) => subDepartments.find((s) => s.id === id)?.name ?? "—";
+  const mailboxList = useListControls(list, {
+    searchText: (c) => [c.address, subDeptName(c.subDepartmentId), STATUS[c.status].label, c.isActive ? "" : "disabled"].join(" "),
+    sortOptions: [
+      { id: "address", label: "Address (A–Z)", compare: byText((c) => c.address) },
+      { id: "subdept", label: "Sub-department", compare: byText((c) => subDeptName(c.subDepartmentId)) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((c) => c.createdAt) },
+      {
+        id: "status",
+        label: "Problems first",
+        compare: (a, b) => Number(a.status === "ACTIVE") - Number(b.status === "ACTIVE"),
+      },
+    ],
+  });
   // The inherited default for a mailbox is the assignment method of the
   // sub-department it files into (already resolved against the dept default).
   const inheritedMethod = (subDepartmentId: string): AssignmentMethod =>
@@ -508,8 +528,18 @@ export function DepartmentMailboxesPage({
           </p>
         </div>
       ) : (
+        <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput value={mailboxList.query} onChange={mailboxList.setQuery} placeholder="Search mailboxes…" />
+          <SortDropdown value={mailboxList.sortKey} onChange={mailboxList.setSortKey} options={mailboxList.sortDropdownOptions} />
+        </div>
+        {mailboxList.visible.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-8 text-center font-sans text-[12.5px] text-sts-muted">
+            No mailboxes match &ldquo;{mailboxList.query.trim()}&rdquo;
+          </p>
+        )}
         <ul className="flex flex-col gap-3">
-          {list.map((c) => {
+          {mailboxList.visible.map((c) => {
             const meta = STATUS[c.status];
             const busy = !!rechecking[c.id];
             return (
@@ -815,6 +845,7 @@ export function DepartmentMailboxesPage({
             );
           })}
         </ul>
+        </div>
       )}
 
       {/* ── Received mail (only once a mailbox is connected) ── */}

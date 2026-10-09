@@ -28,6 +28,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ListSearchInput, SortDropdown, useListControls, byText } from "@/components/ui/list-controls";
 
 export type ManagerDnsRecord = {
   record: string;
@@ -234,6 +235,16 @@ export function EmailDomainsManager({
       return av - bv || a.name.localeCompare(b.name);
     });
   }, [domains, inUseDomains]);
+
+  const domainList = useListControls(mergedRows, {
+    searchText: (d) => [d.name, d.status, d.scopeLabel ?? "", ...d.usedBy].join(" "),
+    sortOptions: [
+      // mergedRows is already ordered needs-attention first, then A–Z.
+      { id: "attention", label: "Needs attention first", compare: () => 0 },
+      { id: "name", label: "Name (A–Z)", compare: byText((d) => d.name) },
+      { id: "status", label: "Status", compare: byText((d) => d.status) },
+    ],
+  });
 
   function upsertDomain(next: ManagerDomain) {
     setDomains((ds) => {
@@ -466,12 +477,26 @@ export function EmailDomainsManager({
 
       {/* Domain list */}
       <div className="flex flex-col gap-3">
-        {mergedRows.length === 0 ? (
+        {mergedRows.length > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <ListSearchInput value={domainList.query} onChange={domainList.setQuery} placeholder="Search domains…" />
+            <SortDropdown
+              value={domainList.sortKey}
+              onChange={domainList.setSortKey}
+              options={domainList.sortDropdownOptions}
+            />
+          </div>
+        )}
+        {mergedRows.length > 0 && domainList.visible.length === 0 ? (
+          <p className="rounded-xl border border-sts-card-border bg-sts-card px-[22px] py-10 text-center font-sans text-[12.5px] text-sts-muted shadow-sts-card">
+            No domains match &ldquo;{domainList.query.trim()}&rdquo;
+          </p>
+        ) : mergedRows.length === 0 ? (
           <p className="rounded-xl border border-sts-card-border bg-sts-card px-[22px] py-10 text-center font-sans text-[12.5px] text-sts-muted shadow-sts-card">
             No domains yet. Register one above to start sending and receiving from your own domain.
           </p>
         ) : (
-          mergedRows.map((d) => {
+          domainList.visible.map((d) => {
             const isOpen = d.registered && d.id !== null && expanded === d.id;
             const busy = d.id !== null && busyId === d.id;
             const pending = d.status !== "verified";

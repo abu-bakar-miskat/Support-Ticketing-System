@@ -32,6 +32,7 @@ import {
 } from "@/hooks/queries/sync-sub-department-status-caches";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput } from "@/components/ui/list-controls";
 
 type SubDepartmentStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
 type SubDepartment = { id: string; name: string; prefix: string };
@@ -218,7 +219,19 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
     ).catch(() => null);
   }
 
-  const { unstarted, active, done } = groupStatuses(statuses);
+  // Search only — column order is the board order (drag to reorder), so it is never re-sorted.
+  // Grouping is computed on the full list so a filtered status keeps its real category.
+  const [statusQuery, setStatusQuery] = useState("");
+  const statusTerms = statusQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesQuery = (s: SubDepartmentStatus) => {
+    const hay = [s.label, ...s.allowedLabels, s.isComplete ? "complete" : ""].join(" ").toLowerCase();
+    return statusTerms.every((t) => hay.includes(t));
+  };
+  const grouped = groupStatuses(statuses);
+  const unstarted = grouped.unstarted.filter(matchesQuery);
+  const active = grouped.active.filter(matchesQuery);
+  const done = grouped.done.filter(matchesQuery);
+  const noStatusMatches = statuses.length > 0 && unstarted.length + active.length + done.length === 0;
   const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
 
   function renderRow(s: SubDepartmentStatus) {
@@ -418,20 +431,27 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       {/* Status list */}
       {selectedSubDepartmentId && (
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
-          <div className="pb-1.5">
-            <h2 className="font-sans text-sm font-semibold text-sts-foreground">
-              {selectedSubDepartment?.prefix} workflow
-            </h2>
-            <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
-              Status columns shown on the board. First = starting, last = done.
-            </p>
+          <div className="flex flex-col gap-2 pb-1.5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="font-sans text-sm font-semibold text-sts-foreground">
+                {selectedSubDepartment?.prefix} workflow
+              </h2>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+                Status columns shown on the board. First = starting, last = done.
+              </p>
+            </div>
+            {statuses.length > 0 && (
+              <ListSearchInput value={statusQuery} onChange={setStatusQuery} placeholder="Search statuses…" />
+            )}
           </div>
 
           {error && (
             <p className="mt-2 rounded-[6px] bg-sts-red-tint px-3 py-2 font-sans text-[11.5px] text-sts-red">{error}</p>
           )}
 
-          {statuses.length > 0 ? (
+          {noStatusMatches ? (
+            <p className="py-4 font-sans text-[12px] text-sts-subtle">No statuses match &ldquo;{statusQuery.trim()}&rdquo;</p>
+          ) : statuses.length > 0 ? (
             <>
               {unstarted.length > 0 && (
                 <>

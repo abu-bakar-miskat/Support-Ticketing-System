@@ -24,6 +24,7 @@ import {
   type AgreementRow,
 } from "@/components/platform/tenant-agreements";
 import { tenantTypeLabel } from "@/lib/tenant-types";
+import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
 type UserResult = {
   id: string;
@@ -196,6 +197,22 @@ export function TenantManageClient({
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const memberList = useListControls(members, {
+    searchText: (m) => `${m.name} ${m.email} ${roleLabel(m.role)}`,
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((m) => m.name || m.email) },
+      { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<Member>((m) => m.name || m.email)(b, a) },
+      { id: "email", label: "Email", compare: byText((m) => m.email) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) =>
+          MEMBER_ROLES.indexOf(a.role as (typeof MEMBER_ROLES)[number]) -
+          MEMBER_ROLES.indexOf(b.role as (typeof MEMBER_ROLES)[number]),
+      },
+      { id: "restricted", label: "Restricted first", compare: (a, b) => Number(a.isActive) - Number(b.isActive) },
+    ],
+  });
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("agent");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
@@ -937,8 +954,23 @@ export function TenantManageClient({
               </div>
             )}
 
-            <ul className="mt-4 max-h-[530px] divide-y divide-sts-card-border overflow-y-auto">
-              {members.map((m) => (
+            {members.length > 0 && (
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <ListSearchInput
+                  value={memberList.query}
+                  onChange={memberList.setQuery}
+                  placeholder="Search members…"
+                />
+                <SortDropdown
+                  value={memberList.sortKey}
+                  onChange={memberList.setSortKey}
+                  options={memberList.sortDropdownOptions}
+                />
+              </div>
+            )}
+
+            <ul className="mt-2 max-h-[530px] divide-y divide-sts-card-border overflow-y-auto">
+              {memberList.visible.map((m) => (
                 <li key={m.id} className="flex items-center gap-3 py-2">
                   <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
                   <div className="min-w-0 flex-1">
@@ -977,6 +1009,11 @@ export function TenantManageClient({
               {members.length === 0 && (
                 <li className="py-3 font-sans text-[12px] text-sts-subtle">
                   No members yet.
+                </li>
+              )}
+              {members.length > 0 && memberList.visible.length === 0 && (
+                <li className="py-3 font-sans text-[12px] text-sts-subtle">
+                  No members match &ldquo;{memberList.query.trim()}&rdquo;.
                 </li>
               )}
             </ul>

@@ -14,6 +14,7 @@ import {
 } from "@/components/platform/platform-invite-member-dialog";
 import { UserAuditModal } from "@/components/platform/user-audit-modal";
 import { cn } from "@/lib/utils";
+import { SortDropdown, byText, byNumberDesc } from "@/components/ui/list-controls";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
 type UserRow = {
@@ -45,6 +46,15 @@ const ROLE_FILTERS: { id: RoleFilter; label: string }[] = [
   { id: "manager", label: "Manager" },
   { id: "sub_manager", label: "Sub-manager" },
   { id: "agent", label: "Agent" },
+];
+
+const userName = (u: UserRow) => u.name || u.email;
+const USER_SORT_OPTIONS: { id: string; label: string; compare: (a: UserRow, b: UserRow) => number }[] = [
+  { id: "name", label: "Name (A–Z)", compare: byText(userName) },
+  { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText(userName)(b, a) },
+  { id: "email", label: "Email", compare: byText((u) => u.email) },
+  { id: "departments", label: "Most departments", compare: byNumberDesc((u) => u.departments?.length ?? 0) },
+  { id: "tenants", label: "Most tenants", compare: byNumberDesc((u) => u.tenants?.length ?? 0) },
 ];
 
 function matchesRoleFilter(u: UserRow, f: RoleFilter): boolean {
@@ -108,6 +118,7 @@ export function PlatformUsers({
   const [users, setUsers] = useState<UserRow[]>(initialUsers);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [dirQuery, setDirQuery] = useState("");
+  const [sortKey, setSortKey] = useState<string>(USER_SORT_OPTIONS[0].id);
   const [auditUser, setAuditUser] = useState<UserRow | null>(null);
   // The user awaiting delete confirmation (null = dialog closed).
   const [confirmDelete, setConfirmDelete] = useState<UserRow | null>(null);
@@ -129,6 +140,7 @@ export function PlatformUsers({
 
   const filteredUsers = useMemo(() => {
     const q = dirQuery.trim().toLowerCase();
+    const compare = USER_SORT_OPTIONS.find((o) => o.id === sortKey)?.compare;
     return users.filter(
       (u) =>
         matchesRoleFilter(u, roleFilter) &&
@@ -136,8 +148,8 @@ export function PlatformUsers({
           (u.name ?? "").toLowerCase().includes(q) ||
           u.email.toLowerCase().includes(q) ||
           (u.departments ?? []).some((d) => d.name.toLowerCase().includes(q))),
-    );
-  }, [users, roleFilter, dirQuery]);
+    ).sort(compare);
+  }, [users, roleFilter, dirQuery, sortKey]);
 
   const roleCounts = useMemo(() => {
     const counts: Record<RoleFilter, number> = {
@@ -199,6 +211,14 @@ export function PlatformUsers({
               autoComplete="off"
             />
           </div>
+
+          <div className="ml-auto">
+            <SortDropdown
+              value={sortKey}
+              onChange={setSortKey}
+              options={USER_SORT_OPTIONS.map(({ id, label }) => ({ id, label }))}
+            />
+          </div>
         </div>
 
         <div className="mt-3">
@@ -208,7 +228,7 @@ export function PlatformUsers({
           <div className="mt-3 flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-2 shadow-sts-card">
             {filteredUsers.length === 0 ? (
               <p className="px-2 py-6 text-center font-sans text-[12px] text-sts-subtle">
-                No users match this filter.
+                {dirQuery.trim() ? <>No users match &ldquo;{dirQuery.trim()}&rdquo;.</> : "No users match this filter."}
               </p>
             ) : (
               filteredUsers.map((user) => {

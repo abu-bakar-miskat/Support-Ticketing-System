@@ -7,6 +7,7 @@ import { Users, FolderKanban, ArrowRight, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearchInput, SortDropdown, useListControls, byText, byNumberDesc } from "@/components/ui/list-controls";
 
 export type MyDepartmentItem = {
   id: string;
@@ -114,7 +115,25 @@ function DeptCard({ dept }: { dept: MyDepartmentItem }) {
   );
 }
 
+const ACCESS_RANK: Record<MyDepartmentItem["accessType"], number> = { manager: 0, member: 1, guest: 2 };
+
 export function MyDepartmentsClient({ departments }: { departments: MyDepartmentItem[] }) {
+  const deptList = useListControls(departments, {
+    searchText: (d) => [d.name, d.accessType].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((d: MyDepartmentItem) => d.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((d: MyDepartmentItem) => d.name)(b, a) },
+      { id: "members", label: "Most members", compare: byNumberDesc((d: MyDepartmentItem) => d.memberCount) },
+      { id: "projects", label: "Most projects", compare: byNumberDesc((d: MyDepartmentItem) => d.projectCount) },
+      {
+        id: "access",
+        label: "My access",
+        compare: (a, b) =>
+          ACCESS_RANK[a.accessType] - ACCESS_RANK[b.accessType] || byText((d: MyDepartmentItem) => d.name)(a, b),
+      },
+    ],
+  });
+
   return (
     <div className="h-full overflow-y-auto">
       {/* Header */}
@@ -140,10 +159,22 @@ export function MyDepartmentsClient({ departments }: { departments: MyDepartment
             description="Ask your workspace admin to add you to a department. Once they do, it will appear here."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {departments.map((dept) => (
-              <DeptCard key={dept.id} dept={dept} />
-            ))}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <ListSearchInput value={deptList.query} onChange={deptList.setQuery} placeholder="Search departments…" />
+              <SortDropdown value={deptList.sortKey} onChange={deptList.setSortKey} options={deptList.sortDropdownOptions} />
+            </div>
+            {deptList.visible.length === 0 ? (
+              <p className="py-10 text-center font-sans text-[13px] text-sts-muted">
+                No departments match &ldquo;{deptList.query.trim()}&rdquo;
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {deptList.visible.map((dept) => (
+                  <DeptCard key={dept.id} dept={dept} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

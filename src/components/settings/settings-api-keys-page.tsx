@@ -24,7 +24,7 @@ import {
 } from "@/components/departments/portal-api-forms-section";
 import { PortalApiDocumentation } from "@/components/departments/portal-api-documentation";
 import { Tip } from "@/components/ui/tooltip";
-import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type ApiKeyRow = {
   id: string;
@@ -33,6 +33,8 @@ export type ApiKeyRow = {
   scope: string;
   department: string;
   created: string;
+  /** Raw ISO creation date (`created` is pre-formatted relative text). */
+  createdAt?: string;
   createdBy: string;
   lastUsed: string;
   revoked: boolean;
@@ -482,17 +484,19 @@ export function SettingsApiKeysPage({
   const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
   const [routeCopied, setRouteCopied] = useState(false);
   const [showDocumentation, setShowDocumentation] = useState(false);
-  // The server sends keys newest-first with revoked keys last; dates arrive pre-formatted,
-  // so "oldest first" reverses that order within the active / revoked groups.
+  // Newest / Oldest keep revoked keys last, matching the server's default order.
   const list = useListControls(initialKeys, {
     searchText: (k) => `${k.name} ${k.maskedKey} ${k.department} ${k.scope} ${k.createdBy} ${k.formName ?? ""}`,
     sortOptions: [
-      { id: "newest", label: "Newest first", compare: () => 0 },
+      {
+        id: "newest",
+        label: "Newest first",
+        compare: (a, b) => Number(a.revoked) - Number(b.revoked) || byDateDesc((k: ApiKeyRow) => k.createdAt)(a, b),
+      },
       {
         id: "oldest",
         label: "Oldest first",
-        compare: (a, b) =>
-          Number(a.revoked) - Number(b.revoked) || initialKeys.indexOf(b) - initialKeys.indexOf(a),
+        compare: (a, b) => Number(a.revoked) - Number(b.revoked) || byDateAsc((k: ApiKeyRow) => k.createdAt)(a, b),
       },
       { id: "name", label: "Name A–Z", compare: byText((k: ApiKeyRow) => k.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((k: ApiKeyRow) => k.name)(b, a) },

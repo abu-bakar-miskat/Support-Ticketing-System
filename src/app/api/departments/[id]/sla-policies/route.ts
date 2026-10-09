@@ -35,6 +35,7 @@ const POLICY_SELECT = {
   priority: true,
   assigneeId: true,
   assignees: { select: { userId: true } },
+  createdAt: true,
 } as const
 
 type PolicyRow = { assignees: { userId: string }[] } & Record<string, unknown>

@@ -39,6 +39,7 @@ export async function PUT(request: Request) {
   const cleaned = sanitizeTenantBranding({
     displayName: (body as Record<string, unknown>).displayName,
     logoUrl: (body as Record<string, unknown>).logoUrl,
+    logoUrlDark: (body as Record<string, unknown>).logoUrlDark,
     hideLogo: (body as Record<string, unknown>).hideLogo,
     hideDisplayName: (body as Record<string, unknown>).hideDisplayName,
     accentColor: (body as Record<string, unknown>).accentColor,

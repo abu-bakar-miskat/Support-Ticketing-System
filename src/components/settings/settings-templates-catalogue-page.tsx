@@ -7,7 +7,7 @@ import { Check, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type TemplateFeatureKey, TEMPLATE_FEATURE_LABELS } from "@/lib/template-features";
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 const STATUS_RANK: Record<CatalogueEntry["status"], number> = { available: 0, requested: 1, active: 2 };
 const featureLabel = (key: string) => TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key;
@@ -19,6 +19,8 @@ export type CatalogueEntry = {
   description: string | null;
   features: string[];
   status: "active" | "requested" | "available";
+  /** ISO date the template was added to the catalogue. */
+  createdAt?: string;
 };
 
 export function SettingsTemplatesCataloguePage({
@@ -63,6 +65,8 @@ export function SettingsTemplatesCataloguePage({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((t: CatalogueEntry) => t.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((t: CatalogueEntry) => t.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((t: CatalogueEntry) => t.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((t: CatalogueEntry) => t.createdAt) },
       { id: "status", label: "Available first", compare: (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] },
       { id: "features", label: "Most features", compare: byNumberDesc((t: CatalogueEntry) => t.features.length) },
     ],

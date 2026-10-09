@@ -38,7 +38,7 @@ import { CreateTenantModal } from "@/components/platform/create-tenant-modal";
 import { tenantTypeLabel } from "@/lib/tenant-types";
 import { getAgreementExpiry, renewalStatusLabel } from "@/lib/agreement-expiry";
 import { Tip } from "@/components/ui/tooltip";
-import { SortDropdown, byText, byNumberDesc, byDateAsc } from "@/components/ui/list-controls";
+import { SortDropdown, byText, byNumberDesc, byDateAsc, byDateDesc } from "@/components/ui/list-controls";
 
 type TenantRow = {
   id: string;
@@ -52,11 +52,14 @@ type TenantRow = {
   members: number;
   agreementEndDate: string | null;
   renewalStatus: string | null;
+  createdAt: string;
 };
 
 const TENANT_SORT_OPTIONS: { id: string; label: string; compare: (a: TenantRow, b: TenantRow) => number }[] = [
   { id: "name", label: "Name (A–Z)", compare: byText((t) => t.name) },
   { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<TenantRow>((t) => t.name)(b, a) },
+  { id: "newest", label: "Newest first", compare: byDateDesc((t) => t.createdAt) },
+  { id: "oldest", label: "Oldest first", compare: byDateAsc((t) => t.createdAt) },
   { id: "members", label: "Most members", compare: byNumberDesc((t) => t.members) },
   { id: "departments", label: "Most departments", compare: byNumberDesc((t) => t.departments) },
   {

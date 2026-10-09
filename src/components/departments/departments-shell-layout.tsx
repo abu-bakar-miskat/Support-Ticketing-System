@@ -54,6 +54,7 @@ export async function DepartmentsShellLayout({ children }: { children: React.Rea
         initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}
         brandingName={branding?.displayName ?? null}
         brandingLogoUrl={branding?.logoUrl ?? null}
+        brandingLogoUrlDark={branding?.logoUrlDark ?? null}
         brandingHideLogo={branding?.hideLogo ?? false}
         brandingHideDisplayName={branding?.hideDisplayName ?? false}
         sidebarColors={branding?.sidebarColors ?? TENANT_SIDEBAR_COLOR_DEFAULTS}

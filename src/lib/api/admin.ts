@@ -195,7 +195,10 @@ export async function addAdminSubDepartmentMember(subDepartmentId: string, userI
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, ...(role ? { role } : {}) }),
   })
-  if (!res.ok) throw new Error("Failed to add subDepartment member")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to add subDepartment member")
+  }
 }
 
 export async function removeAdminSubDepartmentMember(subDepartmentId: string, userId: string) {

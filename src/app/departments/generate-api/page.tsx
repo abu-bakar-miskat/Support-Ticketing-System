@@ -85,6 +85,7 @@ export default async function GenerateApiPage() {
     scope: SCOPE_LABELS[key.scope],
     department: key.formConfig?.department.name ?? "—",
     created: formatRelative(key.createdAt),
+    createdAt: key.createdAt.toISOString(),
     createdBy: key.createdBy.name,
     lastUsed: formatRelative(key.lastUsedAt),
     revoked: key.revokedAt !== null,

@@ -26,6 +26,7 @@ import {
   SortDropdown,
   useListControls,
   byText,
+  byDateAsc,
   byDateDesc,
 } from "@/components/ui/list-controls";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -226,6 +227,7 @@ export function DepartmentMailboxesPage({
       { id: "address", label: "Address (A–Z)", compare: byText((c) => c.address) },
       { id: "subdept", label: "Sub-department", compare: byText((c) => subDeptName(c.subDepartmentId)) },
       { id: "newest", label: "Newest first", compare: byDateDesc((c) => c.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((c) => c.createdAt) },
       {
         id: "status",
         label: "Problems first",

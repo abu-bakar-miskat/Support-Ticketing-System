@@ -28,7 +28,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { ListSearchInput, SortDropdown, useListControls, byText } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, useListControls, byText, byDateAsc, byDateDesc } from "@/components/ui/list-controls";
 
 export type ManagerDnsRecord = {
   record: string;
@@ -142,7 +142,15 @@ type MergedRow = {
   capabilities?: { sending: string; receiving: string };
   scopeLabel: string | null;
   usedBy: string[];
+  /** When the domain was added; null for in-use domains that aren't registered here. */
+  createdAt: string | null;
 };
+
+/** Date sort that keeps undated rows last in either direction. */
+const datedFirst =
+  (compare: (a: MergedRow, b: MergedRow) => number) =>
+  (a: MergedRow, b: MergedRow) =>
+    !a.createdAt ? (b.createdAt ? 1 : 0) : !b.createdAt ? -1 : compare(a, b);
 
 /**
  * Add / verify / remove UI for Resend sending domains, with the tenant's
@@ -209,6 +217,7 @@ export function EmailDomainsManager({
         capabilities: d.capabilities,
         scopeLabel: d.scopeLabel ?? null,
         usedBy: [],
+        createdAt: d.createdAt,
       });
     }
     for (const u of inUseDomains) {
@@ -225,6 +234,7 @@ export function EmailDomainsManager({
           records: [],
           scopeLabel: null,
           usedBy: u.usedBy,
+          createdAt: null,
         });
       }
     }
@@ -242,6 +252,8 @@ export function EmailDomainsManager({
       // mergedRows is already ordered needs-attention first, then A–Z.
       { id: "attention", label: "Needs attention first", compare: () => 0 },
       { id: "name", label: "Name (A–Z)", compare: byText((d) => d.name) },
+      { id: "newest", label: "Newest first", compare: datedFirst(byDateDesc((d) => d.createdAt)) },
+      { id: "oldest", label: "Oldest first", compare: datedFirst(byDateAsc((d) => d.createdAt)) },
       { id: "status", label: "Status", compare: byText((d) => d.status) },
     ],
   });

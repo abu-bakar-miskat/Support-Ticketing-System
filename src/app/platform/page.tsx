@@ -20,6 +20,7 @@ export default async function TenantsPage() {
       type: true,
       status: true,
       deletedAt: true,
+      createdAt: true,
       branding: true,
       _count: { select: { departments: true } },
       // Current agreement — same "latest end date" rule as listTenantAgreementSummaries.
@@ -69,6 +70,7 @@ export default async function TenantsPage() {
       members: memberIdsByTenant.get(t.id)?.size ?? 0,
       agreementEndDate: agreement?.endDate.toISOString() ?? null,
       renewalStatus: agreement?.renewalStatus ?? null,
+      createdAt: t.createdAt.toISOString(),
     }
   })
 

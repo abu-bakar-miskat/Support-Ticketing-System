@@ -19,7 +19,7 @@ export default async function PlatformTenantConfigurationRoute() {
     }),
     prisma.tenantType.findMany({
       orderBy: { label: "asc" },
-      select: { id: true, key: true, label: true, description: true },
+      select: { id: true, key: true, label: true, description: true, createdAt: true },
     }),
     prisma.tenant.groupBy({
       by: ["type"],
@@ -35,6 +35,7 @@ export default async function PlatformTenantConfigurationRoute() {
     label: t.label,
     description: t.description,
     tenants: usageByKey.get(t.key) ?? 0,
+    createdAt: t.createdAt.toISOString(),
   }))
 
   return <PlatformTenantConfigurationPage tenants={tenants} types={types} />

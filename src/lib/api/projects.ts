@@ -147,6 +147,8 @@ export type ProjectDetailsResponse = {
     avatarUrl: string | null
     departmentName: string | null
     subDepartmentName: string | null
+    /** ISO timestamp the person was added to the project. */
+    addedAt: string
   }[]
   currentUserIsProjectMember: boolean
   canSelfJoinProject: boolean

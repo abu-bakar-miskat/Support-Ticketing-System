@@ -145,6 +145,7 @@ export async function listCatalogueForTenant(tenantId: string) {
     slug: template.slug,
     description: template.description,
     features: template.features.map((f) => f.key),
+    createdAt: template.createdAt.toISOString(),
     status: activeTemplateIds.has(template.id)
       ? ("active" as const)
       : pendingTemplateIds.has(template.id)

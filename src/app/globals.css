@@ -973,16 +973,6 @@
 /* Dark sidebar sits on a translucent glass panel, so a 10% orange wash lets
    the page gradient bleed through and the active pill fades out. Unlayered so
    it wins over the Tailwind tint utilities. */
-/* Tenant logos are uploaded for light backgrounds (dark wordmarks), so on the
-   black dark theme they vanish. Seat them on a soft light plate — the same
-   treatment the platform tenant cards use. */
-html.dark .sts-tenant-logo {
-  background-color: #f5f3f0;
-  padding: 4px 8px;
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
 html.dark .sts-nav-active,
 html.dark .sts-nav-active:hover {
   background-color: color-mix(in srgb, var(--grp, var(--sts-blue)) 46%, var(--sts-card-solid));

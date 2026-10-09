@@ -12,7 +12,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TenantTypeModal, type TenantTypeRow } from "@/components/platform/tenant-type-modal";
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+import {
+  ListSearchInput,
+  SortDropdown,
+  byDateAsc,
+  byDateDesc,
+  byNumberDesc,
+  byText,
+  useListControls,
+} from "@/components/ui/list-controls";
 
 export function TenantTypesClient({
   types,
@@ -33,6 +41,8 @@ export function TenantTypesClient({
     sortOptions: [
       { id: "label", label: "Name (A–Z)", compare: byText((t) => t.label) },
       { id: "label-desc", label: "Name (Z–A)", compare: (a, b) => byText<TenantTypeRow>((t) => t.label)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((t) => t.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((t) => t.createdAt) },
       { id: "tenants", label: "Most tenants", compare: byNumberDesc((t) => t.tenants) },
     ],
   });

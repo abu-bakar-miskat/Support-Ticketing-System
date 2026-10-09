@@ -94,7 +94,14 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { FilterDropdown } from "@/components/tasks/task-filter-dropdown";
 import { Tip } from "@/components/ui/tooltip";
-import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
+import {
+  ListSearchInput,
+  SortDropdown,
+  byDateAsc,
+  byDateDesc,
+  byText,
+  useListControls,
+} from "@/components/ui/list-controls";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -362,7 +369,8 @@ function StatusDistribution({ statusDist }: { statusDist: StatusDist[] }) {
   );
 }
 
-type ProjectMember = UserListPerson;
+/** `addedAt` (ISO) is when they joined the project — present on server-loaded members. */
+type ProjectMember = UserListPerson & { addedAt?: string | null };
 
 function ProjectMembersSection({
   projectMembers,
@@ -440,6 +448,8 @@ function ProjectMembersSection({
     sortOptions: [
       { id: "name", label: "Name (A–Z)", compare: byText((m) => m.name) },
       { id: "name_desc", label: "Name (Z–A)", compare: (a, b) => b.name.localeCompare(a.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m) => m.addedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m) => m.addedAt) },
       {
         id: "department",
         label: "Department",

@@ -24,7 +24,14 @@ import {
   type AgreementRow,
 } from "@/components/platform/tenant-agreements";
 import { tenantTypeLabel } from "@/lib/tenant-types";
-import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
+import {
+  ListSearchInput,
+  SortDropdown,
+  byDateAsc,
+  byDateDesc,
+  byText,
+  useListControls,
+} from "@/components/ui/list-controls";
 
 type UserResult = {
   id: string;
@@ -51,6 +58,8 @@ type Member = {
   avatarUrl: string | null;
   role: string;
   isActive: boolean;
+  /** ISO timestamp the person joined this tenant (earliest membership). */
+  joinedAt?: string | null;
 };
 
 const MEMBER_ROLES = ["admin", "manager", "sub_manager", "agent"] as const;
@@ -202,6 +211,8 @@ export function TenantManageClient({
     sortOptions: [
       { id: "name", label: "Name (A–Z)", compare: byText((m) => m.name || m.email) },
       { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<Member>((m) => m.name || m.email)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m) => m.joinedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m) => m.joinedAt) },
       { id: "email", label: "Email", compare: byText((m) => m.email) },
       {
         id: "role",
@@ -301,7 +312,8 @@ export function TenantManageClient({
     if (body.added && body.member) {
       setMembers((prev) => {
         const rest = prev.filter((m) => m.id !== body.member.id);
-        return [...rest, body.member];
+        // Just added — stamp the join time so date sorts place them correctly.
+        return [...rest, { joinedAt: new Date().toISOString(), ...body.member }];
       });
       setStatus(
         `${body.member.name || body.member.email} added as ${roleLabel(inviteRole)}.`,

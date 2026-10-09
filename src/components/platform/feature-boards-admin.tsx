@@ -293,11 +293,18 @@ function FeatureTemplates({
   onCreate: () => void;
 }) {
   const Icon = FEATURE_ICONS[featureKey];
+  // Saved templates carry no timestamp, but the store is append-only (edits replace
+  // in place), so list position is creation order.
+  const createdOrder = new Map(templates.map((feature, index) => [feature.id, index]));
+  const byCreated = (a: SavedFeature, b: SavedFeature) =>
+    (createdOrder.get(a.id) ?? 0) - (createdOrder.get(b.id) ?? 0);
   const templateList = useListControls(templates, {
     searchText: (feature) => [feature.name, feature.explanation, feature.useCase].join(" "),
     sortOptions: [
       { id: "name", label: "Name (A–Z)", compare: byText((feature) => feature.name) },
       { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<SavedFeature>((feature) => feature.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: (a, b) => byCreated(b, a) },
+      { id: "oldest", label: "Oldest first", compare: byCreated },
     ],
   });
   return (

@@ -409,6 +409,8 @@ type MemberEntry = {
   nickname: string | null;
   isActive: boolean;
   avatarUrl: string | null;
+  /** ISO date they joined this sub-department. */
+  joinedAt: string | null;
 };
 
 function SubDepartmentMembersModal({
@@ -436,6 +438,8 @@ function SubDepartmentMembersModal({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((m: MemberEntry) => m.nickname ?? m.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberEntry) => m.nickname ?? m.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m: MemberEntry) => m.joinedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m: MemberEntry) => m.joinedAt) },
       {
         id: "role",
         label: "Role",
@@ -460,6 +464,7 @@ function SubDepartmentMembersModal({
             nickname: m.nickname,
             isActive: m.isActive,
             avatarUrl: m.user?.avatarUrl ?? m.avatarUrl,
+            joinedAt: m.joinedAt ?? null,
           })),
         );
         setLoading(false);

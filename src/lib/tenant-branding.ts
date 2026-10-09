@@ -23,6 +23,8 @@ export type TenantBranding = {
   displayName?: string;
   /** Logo image URL for the sidebar (absolute or root-relative). */
   logoUrl?: string;
+  /** Optional logo variant shown in the dark theme (falls back to logoUrl). */
+  logoUrlDark?: string;
   /** Hide the logo in the shell; the display name then fills the width. */
   hideLogo?: boolean;
   /**
@@ -43,6 +45,7 @@ export type TenantBranding = {
 export type ResolvedTenantBranding = {
   displayName: string | null;
   logoUrl: string | null;
+  logoUrlDark: string | null;
   hideLogo: boolean;
   hideDisplayName: boolean;
   accentColor: string | null;
@@ -74,6 +77,7 @@ export function sanitizeTenantBranding(input: unknown): TenantBranding | null {
     if (name) out.displayName = name;
   }
   if (isUsableUrl(raw.logoUrl)) out.logoUrl = raw.logoUrl;
+  if (isUsableUrl(raw.logoUrlDark)) out.logoUrlDark = raw.logoUrlDark;
   const accent = normalizeHex(raw.accentColor);
   if (accent) out.accentColor = accent;
   const sidebarColors = pickSidebarColors(TENANT_SIDEBAR_GROUP_KEYS, raw.sidebarColors);
@@ -104,10 +108,12 @@ export function resolveTenantBranding(stored: unknown): ResolvedTenantBranding {
   const b = readTenantBranding(stored);
   return {
     displayName: b.displayName ?? null,
-    logoUrl: b.logoUrl ?? null,
+    // A dark-only upload still counts as the logo (shown in both themes).
+    logoUrl: b.logoUrl ?? b.logoUrlDark ?? null,
+    logoUrlDark: b.logoUrlDark ?? null,
     hideLogo: b.hideLogo ?? false,
     // Default on — but only when there's a logo to fill the width.
-    hideDisplayName: b.hideDisplayName ?? (!b.hideLogo && !!b.logoUrl),
+    hideDisplayName: b.hideDisplayName ?? (!b.hideLogo && !!(b.logoUrl ?? b.logoUrlDark)),
     accentColor: b.accentColor ?? null,
     sidebarColors: parseTenantSidebarColors(b.sidebarColors),
     deptSidebarColors: parseDeptSidebarColors(b.deptSidebarColors),

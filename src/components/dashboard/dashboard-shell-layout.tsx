@@ -139,6 +139,7 @@ export async function DashboardShellLayout({ children }: { children: React.React
         initialLayoutData={await getLayoutSeedFromProfile(profile, activeDeptId)}
         brandingName={branding?.displayName ?? null}
         brandingLogoUrl={branding?.logoUrl ?? null}
+        brandingLogoUrlDark={branding?.logoUrlDark ?? null}
         brandingHideLogo={branding?.hideLogo ?? false}
         brandingHideDisplayName={branding?.hideDisplayName ?? false}
         sidebarColors={branding?.deptSidebarColors ?? DEPT_SIDEBAR_COLOR_DEFAULTS}

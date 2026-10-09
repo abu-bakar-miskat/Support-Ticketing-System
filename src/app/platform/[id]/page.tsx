@@ -41,11 +41,11 @@ export default async function TenantManagePage({
     await Promise.all([
       prisma.tenantMembership.findMany({
         where: { tenantId: id, isActive: true },
-        select: { userId: true },
+        select: { userId: true, createdAt: true },
       }),
       prisma.subDepartmentMembership.findMany({
         where: { isActive: true, subDepartment: { tenantId: id } },
-        select: { userId: true },
+        select: { userId: true, joinedAt: true },
       }),
       prisma.department.findMany({
         where: { tenantId: id },
@@ -66,6 +66,15 @@ export default async function TenantManagePage({
     ]),
   ]
 
+  // When each person joined this tenant — the earliest of their memberships.
+  const joinedAtByUser = new Map<string, Date>()
+  const noteJoined = (userId: string, at: Date) => {
+    const prev = joinedAtByUser.get(userId)
+    if (!prev || at < prev) joinedAtByUser.set(userId, at)
+  }
+  for (const m of tenantMemberRows) noteJoined(m.userId, m.createdAt)
+  for (const m of subDeptMemberRows) noteJoined(m.userId, m.joinedAt)
+
   const memberProfiles = await prisma.profile.findMany({
     where: { id: { in: memberUserIds }, deletedAt: null },
     orderBy: { name: "asc" },
@@ -79,6 +88,7 @@ export default async function TenantManagePage({
     avatarUrl: p.avatarUrl ?? null,
     role: p.role,
     isActive: p.isActive,
+    joinedAt: joinedAtByUser.get(p.id)?.toISOString() ?? null,
   }))
 
   return (

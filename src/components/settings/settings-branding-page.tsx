@@ -132,6 +132,74 @@ const SIDEBAR_COLOR_SECTIONS: {
   },
 ]
 
+/** One logo slot (upload, preview, URL). The dark slot previews on a dark plate. */
+function LogoField({
+  label,
+  hint,
+  dark = false,
+  value,
+  onChange,
+  onUploaded,
+  onError,
+}: {
+  label: string
+  hint?: string
+  dark?: boolean
+  value: string
+  onChange: (url: string) => void
+  onUploaded: () => void
+  onError: (message: string) => void
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-[5px]">
+      <label className="block font-sans text-[13px] font-medium text-sts-foreground">{label}</label>
+      <div className="flex flex-wrap items-center gap-3">
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={value}
+            alt={`${label} preview`}
+            className={cn(
+              "h-16 w-36 shrink-0 rounded-md border border-sts-card-border object-contain p-2",
+              dark ? "bg-[#121212]" : "bg-[#f5f3f0]",
+            )}
+          />
+        ) : (
+          <div
+            className={cn(
+              "flex h-16 w-36 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border font-sans text-[11px]",
+              dark ? "bg-[#121212] text-[#8a8580]" : "bg-[#f5f3f0] text-[#8a8580]",
+            )}
+          >
+            No logo
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <LogoUploadButton
+            onUploaded={(url) => {
+              onChange(url)
+              onUploaded()
+            }}
+            onError={onError}
+          />
+          {value && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://example.com/logo.svg"
+        className="mt-1 h-9"
+      />
+      {hint && <p className="font-sans text-[11px] text-sts-muted">{hint}</p>}
+    </div>
+  )
+}
+
 export function SettingsBrandingPage({
   tenantName,
   initialBranding,
@@ -143,6 +211,7 @@ export function SettingsBrandingPage({
 }) {
   const [displayName, setDisplayName] = useState(initialBranding.displayName ?? "")
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "")
+  const [logoUrlDark, setLogoUrlDark] = useState(initialBranding.logoUrlDark ?? "")
   const [hideLogo, setHideLogo] = useState(initialBranding.hideLogo ?? false)
   // Default on (logo fills the width) unless the tenant explicitly turned it off.
   const [hideDisplayName, setHideDisplayName] = useState(
@@ -178,6 +247,7 @@ export function SettingsBrandingPage({
       body: JSON.stringify({
         displayName: displayName.trim() || undefined,
         logoUrl: logoUrl.trim() || undefined,
+        logoUrlDark: logoUrlDark.trim() || undefined,
         hideLogo,
         hideDisplayName,
         accentColor: normalizeHex(accentColor) ?? undefined,
@@ -248,45 +318,31 @@ export function SettingsBrandingPage({
               />
             </div>
 
-            <div className="flex flex-col gap-[5px]">
-              <label className={labelClass}>Logo</label>
-              <div className="flex flex-wrap items-center gap-3">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoUrl}
-                    alt="Logo preview"
-                    className="h-16 w-36 shrink-0 rounded-md border border-sts-card-border bg-sts-surface object-contain p-2"
-                  />
-                ) : (
-                  <div className="flex h-16 w-36 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border font-sans text-[11px] text-sts-muted">
-                    No logo
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <LogoUploadButton
-                    onUploaded={(url) => {
-                      setLogoUrl(url)
-                      setError(null)
-                      setStatus("Logo uploaded. Click “Save branding” to apply.")
-                    }}
-                    onError={(m) => setError(m)}
-                  />
-                  {logoUrl && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <Input
+            <div className="grid gap-4 sm:grid-cols-2">
+              <LogoField
+                label="Logo — light theme"
                 value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://example.com/logo.svg"
-                className="mt-1 h-9"
+                onChange={setLogoUrl}
+                onUploaded={() => {
+                  setError(null)
+                  setStatus("Logo uploaded. Click “Save branding” to apply.")
+                }}
+                onError={setError}
               />
-              <p className="font-sans text-[11px] text-sts-muted">PNG, JPG, GIF, WebP, or SVG · up to 5 MB.</p>
+              <LogoField
+                label="Logo — dark theme"
+                hint="Optional. Shown in dark mode; the light logo is used if empty."
+                dark
+                value={logoUrlDark}
+                onChange={setLogoUrlDark}
+                onUploaded={() => {
+                  setError(null)
+                  setStatus("Dark logo uploaded. Click “Save branding” to apply.")
+                }}
+                onError={setError}
+              />
             </div>
+            <p className="-mt-2 font-sans text-[11px] text-sts-muted">PNG, JPG, GIF, WebP, or SVG · up to 5 MB.</p>
 
             <div className="flex flex-col gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
               <label className="flex items-center gap-2.5">

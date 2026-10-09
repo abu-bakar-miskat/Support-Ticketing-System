@@ -52,6 +52,8 @@ export type MemberRow = {
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
   departments?: { id: string; name: string }[];
   memberships?: { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[];
+  /** ISO date the person's profile was created — drives the Newest / Oldest sorts. */
+  createdAt?: string | null;
 };
 
 export type InviteRow = {
@@ -532,9 +534,19 @@ export function SettingsMembersPage({
   }
 
   async function handleDepartmentChange(memberId: string, newDepartmentId: string) {
+    const dept = availableDepartments.find((d) => d.id === newDepartmentId);
+    const previous = liveMembers.find((m) => m.id === memberId);
     setLocalDepartments((prev) => ({ ...prev, [memberId]: newDepartmentId }));
     // A department move clears the sub-department; drop any stale local override.
     setLocalSubDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+    if (dept) {
+      setLiveMembers((prev) => prev.map((m) => m.id === memberId ? {
+        ...m,
+        departmentId: newDepartmentId,
+        department: dept.name,
+        departments: [{ id: dept.id, name: dept.name }],
+      } : m));
+    }
     setSaving(memberId);
     setError(null);
     try {
@@ -543,6 +555,9 @@ export function SettingsMembersPage({
     } catch {
       setError("Failed to change department");
       setLocalDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+      if (previous) {
+        setLiveMembers((prev) => prev.map((m) => m.id === memberId ? previous : m));
+      }
     } finally {
       setSaving(null);
     }
@@ -572,8 +587,8 @@ export function SettingsMembersPage({
     try {
       await addAdminSubDepartmentMember(subDepartmentId, member.id, currentRole(member));
       startTransition(() => router.refresh());
-    } catch {
-      setError("Failed to add subDepartment membership");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add subDepartment membership");
     } finally {
       setSaving(null);
     }
@@ -757,6 +772,8 @@ export function SettingsMembersPage({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((m: MemberRow) => m.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberRow) => m.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m: MemberRow) => m.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m: MemberRow) => m.createdAt) },
       { id: "email", label: "Email", compare: byText((m: MemberRow) => m.email) },
       {
         id: "role",
@@ -1152,10 +1169,9 @@ export function SettingsMembersPage({
               // list is empty and the "Add" control is disabled (below), rather
               // than offering every department's sub-departments indiscriminately.
               //
-              // For a member with no saved department the Department dropdown acts
-              // as a filter: picking one there (held in local state) narrows the
-              // addable sub-departments so a home can be chosen — adding the
-              // sub-department is what actually assigns the department.
+              // A saved department (or a department just picked in the dropdown, held
+              // in local state until refresh) narrows which sub-departments can
+              // be added. The department itself is persisted by the dropdown.
               const scopeDeptIds = memberDeptIds.size > 0
                 ? memberDeptIds
                 : (() => { const id = currentDepartmentId(member); return id ? new Set([id]) : new Set<string>(); })();

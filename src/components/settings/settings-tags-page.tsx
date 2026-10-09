@@ -23,13 +23,15 @@ import { TagPill } from "@/components/board/tag-pill";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type TagRow = {
   id: string;
   name: string;
   color: string;
   count: number;
+  /** ISO creation date — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 const COLOR_PRESETS = [
@@ -81,6 +83,8 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((l: TagRow) => l.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((l: TagRow) => l.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((l: TagRow) => l.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((l: TagRow) => l.createdAt) },
       { id: "usage", label: "Most used", compare: byNumberDesc((l: TagRow) => l.count) },
       { id: "usage-asc", label: "Least used", compare: (a, b) => a.count - b.count },
     ],
@@ -97,7 +101,7 @@ export function SettingsTagsPage({ labels: initial }: { labels: TagRow[] }) {
       });
       if (!res.ok) { const e = await res.json(); toast.error(e.error ?? "Failed"); return; }
       const label = await res.json();
-      setLabels((prev) => [...prev, { ...label, count: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
+      setLabels((prev) => [...prev, { ...label, count: 0, createdAt: new Date().toISOString() }].sort((a, b) => a.name.localeCompare(b.name)));
       queryClient.invalidateQueries({ queryKey: ["labels"] });
       setCreating(false);
       setNewName("");

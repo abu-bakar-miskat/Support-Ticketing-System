@@ -280,6 +280,27 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       pushScopeRow(row.userId, { role: row.role === "admin" ? "admin" : "manager", scopeType: "DEPARTMENT", scopeId: row.department.id });
     }
 
+    // Agents (including an admin just demoted to agent) can be given a home
+    // department before they belong to a sub-department. That assignment lives
+    // on DepartmentMember — without merging it here the roster keeps showing
+    // "No department" after the department dropdown saves.
+    const directMemberRows = await prisma.departmentMember
+      .findMany({
+        where: { userId: { in: managedProfileIds }, department: { tenantId } },
+        select: { userId: true, department: { select: { id: true, name: true } } },
+      })
+      .catch((e: unknown) => { console.error("[members/page] departmentMember query failed:", e); return [] as { userId: string; department: { id: string; name: string } }[]; });
+    for (const row of directMemberRows) {
+      if (!row.department?.id) continue;
+      const departments = departmentsByUser.get(row.userId) ?? [];
+      if (!departments.some((d) => d.id === row.department.id)) {
+        departments.push({ id: row.department.id, name: row.department.name });
+        departmentsByUser.set(row.userId, departments);
+      }
+      if (!deptByUser.has(row.userId)) deptByUser.set(row.userId, row.department.name);
+      if (!deptIdByUser.has(row.userId)) deptIdByUser.set(row.userId, row.department.id);
+    }
+
     // Tenant-level roles sit at the top of the precedence ladder — this is what
     // makes a tenant admin resolve to "admin" (and what a self-demoted admin's row
     // correctly drops to once they're only an agent in the tenant).
@@ -308,7 +329,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       include: {
         user: {
           select: {
-            id: true, name: true, email: true, avatarUrl: true, role: true,
+            id: true, name: true, email: true, avatarUrl: true, role: true, createdAt: true,
             subDepartment: { select: { name: true, department: { select: { id: true, name: true } } } },
           },
         },
@@ -331,6 +352,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       // target the "revoke access" action, distinct from `department` (their home dept, shown above).
       departmentId: activeDeptId,
       isCrossAccess: true,
+      createdAt: g.user.createdAt.toISOString(),
     }));
   }
 
@@ -447,7 +469,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
     .filter((inv) => inv.status === "pending");
 
   const members: MemberRow[] = [
-    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null; isSuperAdmin?: boolean | null }) => {
+    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null; isSuperAdmin?: boolean | null; createdAt?: Date | null }) => {
       // Effective role from the canonical grants (see scopeRowsByUser note above).
       // A super admin administers the active tenant as a tenant admin (mirrors the
       // synthetic grant in getProfile), so surface them as "admin" here too.
@@ -475,6 +497,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       subDepartmentMemberships: doNotAssignMap.get(p.id) ?? [],
       departments: departmentsByUser.get(p.id) ?? [],
       memberships: membershipsByUser.get(p.id) ?? [],
+      createdAt: p.createdAt?.toISOString() ?? null,
       };
     }),
     ...crossAccessRows,

@@ -28,6 +28,10 @@ vi.mock("@/lib/role-management", () => ({
   roleChangeHttpStatus: vi.fn(() => 400),
   RoleChangeError: class RoleChangeError extends Error {},
 }))
+vi.mock("@/lib/role-assignment", () => ({
+  syncUserRoleAssignments: vi.fn(),
+}))
+
 vi.mock("@/lib/db", () => ({
   prisma: {
     profile: {
@@ -35,8 +39,8 @@ vi.mock("@/lib/db", () => ({
       findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
     },
-    departmentManager: { findFirst: vi.fn() },
-    departmentMember: { findFirst: vi.fn() },
+    departmentManager: { findFirst: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn(), upsert: vi.fn() },
+    departmentMember: { findFirst: vi.fn(), deleteMany: vi.fn(), upsert: vi.fn() },
     subDepartmentMembership: {
       findFirst: vi.fn(),
       updateMany: vi.fn(),
@@ -45,7 +49,10 @@ vi.mock("@/lib/db", () => ({
     department: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
     tenantMembership: { findFirst: vi.fn() },
-    $transaction: vi.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg({ subDepartmentMembership: { updateMany: vi.fn(), upsert: vi.fn() } }))),
+    $transaction: vi.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg({
+      profile: { update: vi.fn() },
+      subDepartmentMembership: { updateMany: vi.fn(), upsert: vi.fn() },
+    }))),
   },
 }))
 
@@ -79,6 +86,10 @@ beforeEach(() => {
   vi.mocked(prisma.tenantMembership.findFirst).mockResolvedValue({ userId: "target" } as never)
   mockFindUnique.mockResolvedValue({ subDepartmentId: null, location: null, timezone: null, isActive: true } as never)
   mockFindUniqueOrThrow.mockResolvedValue(mockAdmin as never)
+  vi.mocked(prisma.$transaction).mockImplementation((arg: unknown) => {
+    if (typeof arg === "function") return arg({ profile: { update: mockUpdate } })
+    return arg
+  })
   mockLoadUserRoleChanges.mockResolvedValue([])
   mockPlanLegacy.mockReturnValue([
     { scopeType: "DEPARTMENT", scopeId: "dept-1", role: "manager" },
@@ -124,6 +135,28 @@ describe("PATCH /api/admin/users/[id]", () => {
     const res = await PATCH(request, { params })
 
     expect(res.status).toBe(400)
+  })
+
+  it("saves a department for an agent who has no sub-department yet", async () => {
+    const targetId = "00000000-0000-0000-0000-000000000002"
+    vi.mocked(prisma.department.findUnique).mockResolvedValue({ id: "dept-1", tenantId: "tenant-1" } as never)
+    vi.mocked(prisma.tenantMembership.findFirst).mockResolvedValue({ userId: targetId, role: "agent" } as never)
+    vi.mocked(prisma.departmentManager.findMany).mockResolvedValue([] as never)
+    mockUpdate.mockResolvedValue({ ...mockAdmin, id: targetId, subDepartmentId: null } as never)
+
+    const { request, params } = makeRequest(targetId, { departmentId: "dept-1" })
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(prisma.departmentMember.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { departmentId_userId: { departmentId: "dept-1", userId: targetId } },
+      create: expect.objectContaining({
+        departmentId: "dept-1",
+        userId: targetId,
+        addedBy: mockAdmin.id,
+      }),
+    }))
+    expect(prisma.departmentManager.upsert).not.toHaveBeenCalled()
   })
 
   it("returns 403 when caller is not admin or manager", async () => {

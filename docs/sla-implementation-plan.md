@@ -290,7 +290,7 @@ Reported ticket: `cmv14eyme000104jyqkh6k7va` (“Testing the shared mail box tic
 - Repaired only the user-reported test ticket through this helper. Verified the real SLA reader returns **60 minutes first response**, **120 minutes resolution**, source mailbox, and manager overview details. No notifications/emails or completion hooks were invoked.
 - Formal SLA sidebar heading now consistently reads **SLA overview**. UI render verification confirms both target cards (**1h**, **2h**).
 - **71 focused tests passed across 5 files**, including legacy envelope lookup, missing-timer recovery, concurrent repair, completion protection, access gating, and rendered mailbox targets. Changed files pass lint and `git diff --check`; typecheck retains only the established departments-page `basePath` error.
-- Retest: fully refresh the reported ticket as the super admin or authorized tenant manager. Confirm the header SLA badge and sidebar **SLA overview → First response / Resolution**, targets **1h / 2h**. Work Time Tracking's personal Estimate is independent of these mailbox SLA targets. Refresh another open email-origin test ticket created by the earlier processor to verify recovery. Deploying this Stage 2 code to the actual webhook instance is still required for that instance to create mailbox snapshots immediately.
+- Retest: fully refresh the reported ticket as the super admin or authorized tenant manager. Confirm the header SLA badge and sidebar **SLA overview → First response / Resolution**, targets **1h / 2h**. Time Tracking now displays the saved mailbox resolution target as its estimate (see the later user correction below). Refresh another open email-origin test ticket created by the earlier processor to verify recovery. Deploying this Stage 2 code to the actual webhook instance is still required for that instance to create mailbox snapshots immediately.
 
 Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
 
@@ -314,6 +314,15 @@ Stage 2 remains **Awaiting user testing**.
 - Verified the reported ticket `cmv14eyme000104jyqkh6k7va` using the real SLA reader: first response running; resolution **0 seconds**, not running, and no resolution start timestamp. This corrected its pending snapshot without sending notifications, creating work sessions, or changing workflow status.
 - **84 focused tests passed across 8 files**, covering pending clocks/no resolution breach, active-status and explicit tracking activation, first-response independence, reply-only behavior, older snapshot correction, once-only activation, zero-work completion, and rendered pending labels. Full suite: **1497 passed / 51 failed / 2 skipped**; failing cases match the established baseline. Changed files pass lint; typecheck retains only the known departments-page `basePath` error.
 - Retest: refresh the reported ticket. Resolution should show **0m / target 2h**, **2h left**, and **Awaiting agent work · Not started** while First response continues. Move a controlled test ticket to a configured active status (or start work tracking) and confirm resolution begins at that time, excluding initial queue time. A public reply should still stop First response and pause customer-wait time; the subsequent trusted customer reply resumes an already activated resolution clock.
+
+Stage 2 remains **Awaiting user testing**.
+
+## Stage 2 user correction — show resolution target in Time Tracking — 2026-10-09
+
+- Mailbox tickets now use their saved SLA resolution target as the Time Tracking estimate and progress/overtime denominator. The reported ticket's 120-minute target displays as **Estimate 2h** instead of an empty estimate.
+- The row identifies this value as **SLA target** and uses the department-configured target rather than exposing a separate Set/Edit action. It shares the existing SLA query/refresh key with the overview, so recovered targets appear without changing ticket personal-estimate rows or issuing database writes. Other ticket types retain their existing estimate behavior.
+- **57 SLA regression tests passed across 2 files**. Typecheck retains only the established departments-page `basePath` error; ticket-detail lint retains the same baseline counts by rule (**46 errors / 14 warnings**) and `git diff --check` passes.
+- Retest: refresh the reported mailbox ticket. Time Tracking should display **Estimate 2h · SLA target**, matching the Resolution target. As work is tracked, its progress uses that same 2-hour estimate.
 
 Stage 2 remains **Awaiting user testing**.
 

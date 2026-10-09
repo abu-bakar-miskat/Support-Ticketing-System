@@ -1,3 +1,4 @@
+import { getMailboxOriginMessageId } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -251,7 +252,7 @@ export async function POST(
       ticketTitle: ticket.title,
       messageText: messageHtml,
       replyToken,
-      inReplyTo: lastMessage?.providerMessageId ?? null,
+      inReplyTo: lastMessage?.providerMessageId ?? await getMailboxOriginMessageId(ticketId),
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       departmentId: ticket.subDepartment.departmentId,
       subDepartmentId: ticket.subDepartmentId,

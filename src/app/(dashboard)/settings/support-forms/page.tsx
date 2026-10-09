@@ -65,6 +65,7 @@ export default async function SettingsIntakeFormsRoute() {
         },
         intakeSubDepartment: { select: { id: true, name: true, slug: true, workloadThreshold: true, assignmentMethod: true } },
         _count: { select: { intakes: true } },
+        apiKey: { select: { kind: true, revokedAt: true } },
       },
     }),
     prisma.department.findMany({
@@ -118,6 +119,8 @@ export default async function SettingsIntakeFormsRoute() {
       "ROUND_ROBIN",
     scope: f.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" as const : "DEPARTMENT" as const,
     hasSlaPolicies: formsWithSla.has(f.id),
+    // Bound to a live portal API key — the form the external portal renders.
+    usedByPortal: f.apiKey?.kind === "portal" && f.apiKey.revokedAt === null,
   }))
 
   // Department members populate the per-issue "Assign to" picker (feature is

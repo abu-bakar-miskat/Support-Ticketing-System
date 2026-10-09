@@ -26,6 +26,7 @@ vi.mock("@/lib/email-config", () => ({
 vi.mock("@/lib/db", () => {
   // Shared so `tx.ticketMessage` inside $transaction is the same mock the tests
   // drive via mockFindFirstMsg / mockCreateMsg.
+  const activityLog = { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) }
   const ticketMessage = { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() }
   return {
     prisma: {
@@ -33,10 +34,10 @@ vi.mock("@/lib/db", () => {
       ticket: { update: vi.fn(), findFirst: vi.fn() },
       intake: { findUnique: vi.fn() },
       subDepartment: { findUnique: vi.fn() },
-      activityLog: { create: vi.fn() },
+      activityLog,
       $executeRaw: vi.fn().mockResolvedValue(undefined),
       $transaction: vi.fn(async (fn: (tx: unknown) => unknown) =>
-        fn({ $executeRaw: vi.fn().mockResolvedValue(undefined), ticketMessage }),
+        fn({ $executeRaw: vi.fn().mockResolvedValue(undefined), ticketMessage, activityLog }),
       ),
     },
   }
@@ -330,16 +331,6 @@ describe("POST /api/webhooks/resend", () => {
       subDepartmentPrefix: "SUP",
       creatorId: "creator-1",
       assigneeId: null,
-      message: {
-        id: "msg-new",
-        direction: "inbound",
-        status: "trusted",
-        bodyHtml: "<p>I cannot sign in to my account.</p>",
-        fromName: "Alice",
-        fromEmail: "alice@example.com",
-        createdAt: new Date(),
-        throttled: false,
-      },
     })
     mockReceivingGet.mockResolvedValue({
       data: {
@@ -362,7 +353,7 @@ describe("POST /api/webhooks/resend", () => {
         subject: "Cannot access my account",
         description: "<p>I cannot sign in to my account.</p>",
         mailboxConnectionId: "mailbox-1",
-        // The first message is stored with the ticket, not separately.
+        // Routing metadata is saved with the description, without a conversation row.
         inboundMessage: expect.objectContaining({
           data: expect.objectContaining({
             status: "trusted",
@@ -522,6 +513,36 @@ describe("POST /api/webhooks/resend", () => {
         }),
       }),
     )
+  })
+
+  it("threads a customer reply using description-only origin metadata", async () => {
+    const event = { ...receivedEventPayload, data: { ...receivedEventPayload.data, to: ["support@pengroup.com"] } }
+    mockVerify.mockReturnValue(event)
+    mockReceivingGet.mockResolvedValue({ data: {
+      ...fullEmail, to: ["support@pengroup.com"],
+      headers: { "in-reply-to": "<original-email@example.com>" },
+    }, error: null })
+    vi.mocked(prisma.activityLog.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce({ ticket: {
+        id: "mailbox-ticket", title: "Help", ticketNumber: 10, status: "To Do",
+        assigneeId: null, creatorId: "creator-1", subDepartmentId: "team-1",
+        subDepartment: { prefix: "SUP" },
+      } } as never)
+    const res = await POST(makeRequest(event))
+    expect(res.status).toBe(200)
+    expect(mockCreateTicketFromInboundEmail).not.toHaveBeenCalled()
+    expect(mockCreateMsg).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ ticketId: "mailbox-ticket", direction: "inbound" }),
+    }))
+  })
+
+  it("skips redelivery of an original email recorded only in the creation audit", async () => {
+    vi.mocked(prisma.activityLog.findFirst).mockResolvedValueOnce({ id: "origin-audit" } as never)
+    const res = await POST(makeRequest(receivedEventPayload))
+    expect(res.status).toBe(200)
+    expect(mockCreateMsg).not.toHaveBeenCalled()
+    expect(mockCreateTicketFromInboundEmail).not.toHaveBeenCalled()
   })
 
   it("returns 503 when RESEND_WEBHOOK_SECRET is not configured", async () => {

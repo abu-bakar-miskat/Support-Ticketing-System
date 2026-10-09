@@ -17,6 +17,7 @@ import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
 import { presentPortalComment } from "@/lib/portal-comments";
 import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer";
+import { getMailboxOriginMessageId } from "@/lib/mailbox-ticket-origin";
 import { findMailboxOriginMessageId } from "@/lib/mailbox-origin-message";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
@@ -97,6 +98,10 @@ const ticketCoreInclude = {
         },
       },
     },
+  },
+  attachments: {
+    where: { messageId: null, commentId: null },
+    select: { id: true, storageUrl: true, fileName: true, fileSize: true },
   },
   messages: {
     orderBy: { createdAt: "asc" as const },
@@ -429,6 +434,7 @@ export async function getTicketDetailPayload(
   const ticketDeptId = ticket.subDepartment.departmentId;
   const comments = ticket.comments;
   const messages = ticket.messages;
+  const mailboxOriginId = !ticket.intake ? await getMailboxOriginMessageId(ticket.id) : null;
   const lastInbound = [...messages].reverse().find((m) => m.direction === "inbound");
   const mailboxCustomer = !ticket.intake && !lastInbound?.fromEmail
     ? await getMailboxTicketCustomer(ticket.id)
@@ -753,7 +759,8 @@ export async function getTicketDetailPayload(
       metadata: (a.metadata ?? {}) as Record<string, unknown>,
     })),
     // Shown as the description; hidden from the reply thread.
-    originMessageId: findMailboxOriginMessageId(
+    descriptionAttachments: ticket.attachments,
+    originMessageId: mailboxOriginId ? null : findMailboxOriginMessageId(
       { createdAt: ticket.createdAt, hasIntake: ticket.intake !== null },
       messages,
     ),

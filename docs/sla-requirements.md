@@ -1,8 +1,15 @@
-We have two levels of SLA: **Tenant-level SLA** and **Department-level SLA**.
+# Global Support Portal — SLA Workflow
 
-If a Department-level SLA is found for a ticket, then the Department-level SLA will replace the Tenant-level SLA. If there is no Department-level SLA, then the Tenant-level SLA will be used.
+We have two levels of SLA:
 
-### SLA Working Days and Hours
+- **Tenant-level SLA**
+- **Department-level SLA**
+
+If a Department-level SLA is available for the ticket, it will override the Tenant-level SLA.
+
+If no Department-level SLA is found, then the Tenant-level SLA will be used.
+
+## SLA Working Days and Hours
 
 SLA time will only count during the configured working days and working hours.
 
@@ -10,83 +17,135 @@ For example:
 
 **Monday to Friday, 8:30 AM to 5:00 PM UK time.**
 
-If a ticket is created or submitted during these working hours, the SLA timer will start counting.
+If a ticket is created during working hours, the SLA timer will start immediately.
 
-If a ticket is created outside the working hours, the SLA timer will stay paused and automatically start when the next working period begins.
+If a ticket is created outside working hours, the SLA timer will stay paused and automatically start when the next working period begins.
 
-The SLA timer should also pause outside working hours and continue again when working hours start.
+The SLA timer will also pause when working hours end and continue again when the next working period starts.
 
-### Manual Ticket
+## Ticket Types
 
-There are different ways a ticket can be created. One way is a **Manual Ticket**.
+We have four types of tickets:
 
-A user can create a ticket for themselves, or someone else can create the ticket and assign it to another user.
+1. **Manual Ticket**
+2. **Mailbox Ticket**
+3. **Support Ticket**
+4. **Portal Ticket**
+
+## Manual Ticket
+
+A Manual Ticket can be created by a user for themselves, or someone can create the ticket and assign it to another user.
 
 For a Manual Ticket, the user will provide an **Estimated Time**.
 
-Time Tracking will be used to track how much time is spent on the ticket. If the Time Tracking exceeds the Estimated Time before the ticket is resolved, it will be considered a **Resolution Breach**.
+Time Tracking will track how much time is actually spent on the ticket.
 
-The manager will receive a notification about the Resolution Breach.
+If the tracked time exceeds the Estimated Time before the ticket is resolved, it will be considered a **Resolution Breach**.
 
-After the Estimated Time is exceeded, the system should also continue counting and record the overtime so we can see how many extra minutes or hours were required to resolve the ticket.
+The manager will receive a notification when the Resolution Breach happens.
 
-### Mailbox Ticket
+After the Estimated Time is exceeded, the timer will continue counting so we can see how much extra time was required to resolve the ticket.
 
-We also have tickets that are created from the **Shared Mailbox**.
+## Mailbox Ticket
 
-For these tickets, SLA has two time limits these response and resolution time will be same for all the shared mailbox ticket :
+Mailbox Tickets are created from a **Shared Mailbox**.
+
+The SLA is not connected to a specific issue. The same SLA rules will apply to all tickets created from that shared mailbox.
+
+A Mailbox SLA has:
 
 - **Time to First Response**
 - **Time to Resolution**
 
-The SLA is not associated with a specific issue. If a ticket is created, the corresponding SLA will automatically apply to the ticket. If the assignee does not respond within the response time, first when the 80% (dynamic) response time is over and the assignee did not do anything, then the manager will receive a notification that the response SLA is almost breached. If the full response time is over, the manager will receive a notification that the ticket response time has been breached. Then the ticket label will be escalated and the status will also be escalated. And the over-response time will keep counting. When the assignee comes to the ticket and updates the status to In Progress, then the SLA response timer countdown will stop, and the time when the assignee just responds will be recorded.
+When the ticket is created, the corresponding SLA will automatically apply.
 
-Now in the reply conversation section, where we can send email to the customer, when the assignee sends an email, the ticket gets a label named Waiting for Customer and the time tracker stops. When the label is Waiting for Customer and the customer replies, it becomes Waiting for Assignee and the time tracker starts again.
+## Support Ticket
 
-Now if the assignee is unable to resolve the ticket within the resolution time, the manager will receive a notification that this ticket breached the resolution time, and in the ticket the over timer will keep counting. When the assignee stops the countdown, it will stop and the over time will be recorded.
+A Support Ticket is created from a Support Form.
 
-### Support Ticket
+The user selects an issue, fills in the form, and submits it.
 
-The SLA is associated with a specific issue. If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+Each issue can have its own:
 
-### Portal Ticket
+- **Time to First Response**
+- **Time to Resolution**
 
-The SLA is associated with a specific issue. And the the specfic issue has If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+When a ticket is created with that issue, the SLA configured for that issue will automatically apply.
 
-The SLA is not associated with a specific issue. If a ticket is created, the corresponding SLA will automatically apply to the ticket. If the assignee does not respond within the response time, first when the 80% (dynamic) response time is over and the assignee did not do anything, then the manager will receive a notification that the response SLA is almost breached. If the full response time is over, the manager will receive a notification that the ticket response time has been breached. Then the ticket label will be escalated and the status will also be escalated. And the over-response time will keep counting. When the assignee comes to the ticket and updates the status to In Progress, then the SLA response timer countdown will stop, and the time when the assignee just responds will be recorded.
+## Portal Ticket
 
-Now in the reply conversation section, where we can send email to the customer, when the assignee sends an email, the ticket gets a label named Waiting for Customer and the time tracker stops. When the label is Waiting for Customer and the customer replies, it becomes Waiting for Assignee and the time tracker starts again.
+A Portal Ticket works the same way as a Support Ticket.
 
-Now if the assignee is unable to resolve the ticket within the resolution time, the manager will receive a notification that this ticket breached the resolution time, and in the ticket the over timer will keep counting. When the assignee stops the countdown, it will stop and the over time will be recorded.
+The difference is that the user submits the Support Form from another portal using our API.
 
-### Time to First Response SLA
+The SLA is still based on the selected issue, and the same First Response and Resolution rules will apply.
 
-If the assigned agent does not respond to the ticket within the defined First Response time, the manager should receive a notification that the ticket has breached the **First Response SLA**.
+## First Response SLA
 
-The system should also record that the ticket has breached the First Response SLA.
+The First Response SLA starts when the ticket is created during working hours.
 
-Even after the SLA is breached, the First Response timer should continue counting. This will allow us to see how many additional minutes or hours passed before the agent responded.
+If the ticket is created outside working hours, the timer starts when the next working period begins.
 
-Once the assigned agent replies to the ticket or changes the ticket status appropriately, the First Response SLA timer should stop.
+Before the First Response SLA is fully breached, the system can send an early warning based on a configurable percentage.
 
-### Time Tracking
+For example, if the warning percentage is **80%**, and the assignee has not responded or taken any action, the manager will receive a notification that the First Response SLA is almost breached.
 
-Then comes **Time Tracking**.
+If the full First Response time is reached without a response:
 
-Time Tracking has some specific rules.
+- The manager will receive a breach notification.
+- The ticket will be marked as escalated.
+- The ticket status can also be changed to **Escalated**.
+- The system will record that the First Response SLA was breached.
+- The timer will continue counting overtime.
 
-If the assigned agent replies, sends a message, email, or comment on a Support Ticket or Portal Ticket and changes the ticket status to **Waiting for Customer**, the Time Tracking should automatically stop.
+The First Response timer will stop when the assignee responds to the ticket or changes the ticket to the required active status, such as **In Progress**.
 
-When the customer replies, the Time Tracking should automatically start again.
+The actual response time will then be recorded.
 
-This means that the time spent waiting for the customer should not be counted against the agent's Resolution SLA.
+## Time Tracking and Waiting for Customer
 
-### Time to Resolution SLA
+Time Tracking is mainly used for the Resolution SLA.
 
-The assigned agent must resolve the ticket within the defined **Time to Resolution SLA**.
+When the assignee sends a reply, email, message, or comment to the customer and the ticket changes to **Waiting for Customer**, the Resolution timer should pause.
 
-If the total tracked time exceeds the Resolution SLA, the ticket will be considered as having breached the **Resolution SLA**.
+The time spent waiting for the customer should not count against the assignee.
 
-When the Resolution SLA is breached, the manager should receive a notification.
+When the customer replies:
 
-The system should also continue counting the overtime after the SLA has been breached so we can see exactly how many additional minutes or hours were required to resolve the ticket.
+- The ticket changes to **Waiting for Assignee**.
+- The Resolution timer starts again.
+
+This process can continue until the ticket is resolved.
+
+## Resolution SLA
+
+The assignee must resolve the ticket within the configured **Time to Resolution**.
+
+If the total tracked resolution time exceeds the allowed Resolution SLA:
+
+- The ticket will be considered a **Resolution SLA Breach**.
+- The manager will receive a notification.
+- The system will record the breach.
+- The overtime timer will continue counting.
+
+The timer will continue until the ticket is resolved or the resolution countdown is stopped according to the ticket workflow.
+
+The final record should show both:
+
+- The allowed Resolution SLA time.
+- The additional overtime required to resolve the ticket.
+
+## Summary of SLA Flow
+
+For Mailbox, Support, and Portal Tickets, the basic SLA flow is:
+
+**Ticket Created → First Response Timer Starts → Early Warning → First Response Breach if needed → Agent Responds → First Response Timer Stops → Resolution Timer Continues → Waiting for Customer Pauses Timer → Customer Replies → Timer Continues → Ticket Resolved → Resolution Timer Stops**
+
+This allows us to clearly track:
+
+- How long it took the assignee to first respond.
+- Whether the First Response SLA was met or breached.
+- How much active time was spent resolving the ticket.
+- How long the ticket was waiting for the customer.
+- Whether the Resolution SLA was met or breached.
+- How much overtime was required after an SLA breach.

@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const m = vi.hoisted(() => ({
   sla: vi.fn(), mailboxSla: vi.fn().mockResolvedValue(undefined), rules: vi.fn().mockResolvedValue(undefined),
   create: vi.fn().mockResolvedValue({ id: "email-ticket", ticketNumber: 12 }),
+  audit: vi.fn().mockResolvedValue({}), origin: vi.fn().mockResolvedValue(null),
   message: vi.fn().mockResolvedValue({ id: "message-1" }),
 }))
 vi.mock("@/lib/db", () => ({ prisma: {
@@ -11,7 +12,7 @@ vi.mock("@/lib/db", () => ({ prisma: {
   $transaction: vi.fn(async callback => callback({
     $executeRaw: vi.fn().mockResolvedValue(1),
     ticketMessage: { findFirst: vi.fn().mockResolvedValue(null), create: m.message },
-    ticket: { create: m.create }, activityLog: { create: vi.fn().mockResolvedValue({}) },
+    ticket: { create: m.create }, activityLog: { create: m.audit, findFirst: m.origin },
   })),
 } }))
 vi.mock("@/lib/assignment-engine", () => ({
@@ -27,13 +28,15 @@ vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: vi.fn() }))
 vi.mock("@/lib/department-setup", () => ({ assertDepartmentOperational: vi.fn().mockResolvedValue({ ok: true }) }))
 
-import { createTicketFromInboundEmail } from "./mailbox-ticket-creation"
+import { createTicketFromInboundEmail, DuplicateInboundEmailError } from "./mailbox-ticket-creation"
 
-describe("mailbox ticket SLA policy", () => {
+beforeEach(() => vi.clearAllMocks())
+
+describe("mailbox ticket creation", () => {
   it("starts only the department mailbox SLA (no form policies) and disables SLA rules", async () => {
     const ticket = await createTicketFromInboundEmail({
       departmentId: "dept-1", teamId: "sub-1", fromEmail: "customer@example.test",
-      fromName: "Customer", subject: "Email request",
+      fromName: "Customer", subject: "Email request", description: "<p>Help</p>",
       inboundMessage: { providerMessageIds: ["email-1"], data: {
         providerMessageId: "email-1", direction: "inbound", bodyHtml: "<p>Help</p>",
         fromName: "Customer", fromEmail: "customer@example.test",
@@ -41,7 +44,9 @@ describe("mailbox ticket SLA policy", () => {
     })
     expect(ticket.id).toBe("email-ticket")
     expect(m.create).toHaveBeenCalledOnce()
-    expect(m.message).toHaveBeenCalledOnce()
+    expect(m.message).not.toHaveBeenCalled()
+    expect(m.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ description: "<p>Help</p>" }) }))
+    expect(m.audit).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadata: expect.objectContaining({ providerMessageId: "email-1", fromEmail: "customer@example.test" }) }) }))
     expect(m.sla).not.toHaveBeenCalled()
     expect(m.mailboxSla).toHaveBeenCalledWith("email-ticket", "tenant-1", "dept-1")
     expect(m.rules).toHaveBeenCalledWith(
@@ -49,4 +54,18 @@ describe("mailbox ticket SLA policy", () => {
       expect.objectContaining({ fromEmail: "customer@example.test" }),
     )
   })
+  it("rejects duplicate delivery using the creation audit without creating another ticket", async () => {
+    m.origin.mockResolvedValueOnce({ id: "existing-audit" })
+    await expect(createTicketFromInboundEmail({
+      departmentId: "dept-1", teamId: "sub-1", fromEmail: "customer@example.test",
+      fromName: "Customer", subject: "Duplicate",
+      inboundMessage: { providerMessageIds: ["email-1"], data: {
+        providerMessageId: "email-1", direction: "inbound", bodyHtml: "Help",
+        fromName: "Customer", fromEmail: "customer@example.test",
+      } },
+    })).rejects.toBeInstanceOf(DuplicateInboundEmailError)
+    expect(m.create).not.toHaveBeenCalled()
+    expect(m.message).not.toHaveBeenCalled()
+  })
+
 })

@@ -699,6 +699,7 @@ export type TicketDetailProps = {
   messages?: MessageData[];
   /** Shared-mailbox ticket's original email: shown as the description, hidden from the reply thread. */
   originMessageId?: string | null;
+  descriptionAttachments?: CommentAttachment[];
   customerReply?: {
     enabled: boolean;
     customerName: string | null;
@@ -791,6 +792,7 @@ export function TicketDetailPage({
   comments,
   messages = EMPTY_MESSAGES,
   originMessageId = null,
+  descriptionAttachments = [],
   customerReply = DEFAULT_CUSTOMER_REPLY,
   activity,
   canDelete,
@@ -998,8 +1000,8 @@ export function TicketDetailPage({
     [liveMessages, originMessageId],
   );
   const originAttachments = useMemo(
-    () => liveMessages.find((m) => m.id === originMessageId)?.attachments ?? [],
-    [liveMessages, originMessageId],
+    () => [...descriptionAttachments, ...(liveMessages.find((m) => m.id === originMessageId)?.attachments ?? [])],
+    [liveMessages, originMessageId, descriptionAttachments],
   );
 
   // "inbound" = last message from submitter → waiting for assignee
@@ -1019,7 +1021,7 @@ export function TicketDetailPage({
             createdAt: c.createdAt,
           }))
       : [];
-    const conversation = [...liveMessages, ...portalThread];
+    const conversation = [...liveMessages.filter((m) => m.id !== originMessageId && m.status !== "system"), ...portalThread];
     if (conversation.length === 0) return null;
     const statusConfig = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
@@ -1032,7 +1034,7 @@ export function TicketDetailPage({
     return last.direction === "inbound"
       ? "awaiting-assignee"
       : "awaiting-customer";
-  }, [liveMessages, liveComments, isPortalTicket, liveStatus, effectiveSubDepartmentStatuses]);
+  }, [liveMessages, liveComments, isPortalTicket, liveStatus, effectiveSubDepartmentStatuses, originMessageId]);
 
   // Portal-visible replies and staff-only comments are intentionally split at
   // the data boundary. Both retain their threaded, chronological presentation.

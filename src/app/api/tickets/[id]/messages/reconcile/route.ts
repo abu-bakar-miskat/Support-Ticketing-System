@@ -1,3 +1,4 @@
+import { getMailboxOriginMessageId } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -86,8 +87,9 @@ export async function POST(
   const mailboxAddresses = new Set(
     mailboxRoutes.map((r) => r.address.trim().toLowerCase()).filter(Boolean),
   )
+  const originMessageId = await getMailboxOriginMessageId(ticketId)
   const knownMessageIds = new Set(
-    existingMessages.flatMap((m) => messageIdLookupVariants(m.providerMessageId)),
+    [...existingMessages.flatMap((m) => messageIdLookupVariants(m.providerMessageId)), ...messageIdLookupVariants(originMessageId)],
   )
 
   // Nothing to match against and no reply token / mailbox — nothing to recover.
@@ -159,7 +161,7 @@ export async function POST(
     },
     select: { providerMessageId: true },
   })
-  const storedIds = new Set(existing.flatMap((m) => messageIdLookupVariants(m.providerMessageId)))
+  const storedIds = new Set([...existing.flatMap((m) => messageIdLookupVariants(m.providerMessageId)), ...messageIdLookupVariants(originMessageId)])
 
   const missing = candidates.filter(
     (e) => !messageIdLookupVariants(e.message_id).some((v) => storedIds.has(v)),

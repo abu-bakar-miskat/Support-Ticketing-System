@@ -28,6 +28,7 @@ import {
   CheckSquare,
   Circle,
   CalendarDays,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -209,6 +210,9 @@ export type IntakeFormRow = {
   /** Whether this form has any enabled SLA policy. When false the public form
    *  hides the issue-type field, so its editor is hidden here too. */
   hasSlaPolicies: boolean;
+  /** Linked to an active (non-revoked) portal API key — the external portal
+   *  renders this form via /api/portal/v1/form. */
+  usedByPortal: boolean;
 };
 
 export type FormEditorTarget = Pick<
@@ -3086,6 +3090,15 @@ export function SettingsIntakeFormsPage({
                             >
                               <MessageCircle className="size-2.5" />
                               Chat
+                            </span>
+                          )}
+                          {form.usedByPortal && (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sts-id/40 bg-sts-id px-1.5 py-0.5 font-sans text-[10px] font-semibold text-white dark:text-gray-900"
+                              title="Used by the portal (linked to an active portal API key)"
+                            >
+                              <Globe className="size-2.5" />
+                              Portal
                             </span>
                           )}
                         </span>

@@ -8,14 +8,17 @@ import {
   Building2,
   Check,
   Clock,
+  LayoutGrid,
   Loader2,
+  Search,
+  Settings2,
   Tags,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { MARKETPLACE_FEATURE_GROUPS, featureTemplateNarrative } from "@/lib/template-features";
+import { MARKETPLACE_FEATURE_GROUPS, featureTemplateCardText, featureTemplateNarrative } from "@/lib/template-features";
 import { FEATURE_ICONS, TemplatePreview } from "@/components/settings/feature-preview";
 import type {
   MarketplaceDepartment,
@@ -49,6 +52,8 @@ export function FeaturesMarketplacePage({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<"all" | "view" | "configuration">("all");
   const [departmentId, setDepartmentId] = useState(departments[0]?.id ?? "");
   const departmentName = departments.find((department) => department.id === departmentId)?.name ?? "this department";
 
@@ -61,8 +66,12 @@ export function FeaturesMarketplacePage({
   const allStatus = shown ? statusForAll(shown, departmentIds) : "available";
   const featureTemplates = templates.filter((template) => template.board);
   const groupOrder = new Map(MARKETPLACE_FEATURE_GROUPS.map((group, index) => [group.label, index]));
+  const needle = query.trim().toLowerCase();
   const groups = [...featureTemplates.reduce((map, template) => {
     const name = template.board?.group || "Features";
+    const section = marketplaceKind(name);
+    if (kind !== "all" && section !== kind) return map;
+    if (needle && !templateMatches(template, needle)) return map;
     const list = map.get(name) ?? [];
     list.push(template);
     map.set(name, list);
@@ -70,6 +79,7 @@ export function FeaturesMarketplacePage({
   }, new Map<string, MarketplaceTemplate[]>())].sort(
     (a, b) => (groupOrder.get(a[0]) ?? 99) - (groupOrder.get(b[0]) ?? 99),
   );
+  const visibleCount = groups.reduce((sum, [, items]) => sum + items.length, 0);
 
   function requireDepartment() {
     if (departmentId) return true;
@@ -256,21 +266,71 @@ export function FeaturesMarketplacePage({
           No feature templates have been saved yet.
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          {groups.map(([group, items]) => (
-            <section key={group} className="flex flex-col gap-3">
-              <h2 className="font-sans text-[12px] font-semibold tracking-wide text-sts-subtle uppercase">{group}</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((template) => (
-                  <OperationCard
-                    key={template.id}
-                    template={template}
-                    onOpen={() => setSelectedId(template.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative min-w-0 sm:max-w-sm sm:flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-sts-subtle" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search features"
+                className="h-9 w-full rounded-full border border-sts-card-border bg-sts-card pr-3 pl-9 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+              />
+            </div>
+            <div className="flex items-center gap-1.5" role="group" aria-label="Filter features">
+              {(
+                [
+                  { id: "all", label: "All", icon: null },
+                  { id: "view", label: "Views", icon: LayoutGrid },
+                  { id: "configuration", label: "Configuration", icon: Settings2 },
+                ] as const
+              ).map((option) => {
+                const active = kind === option.id;
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setKind(option.id)}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 font-sans text-[12.5px] font-medium transition-colors",
+                      active
+                        ? "border-sts-id bg-sts-blue-tint text-sts-id"
+                        : "border-sts-card-border bg-sts-card text-sts-muted hover:text-sts-foreground",
+                    )}
+                  >
+                    {Icon && <Icon className="size-3.5" />}
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {visibleCount === 0 ? (
+            <div className="rounded-xl border border-dashed border-sts-card-border px-4 py-10 text-center font-sans text-[13px] text-sts-muted">
+              No features match that search.
+            </div>
+          ) : (
+            groups.map(([group, items]) => (
+              <section key={group} className="flex flex-col gap-3">
+                <h2 className="font-sans text-[12px] font-semibold tracking-wide text-sts-subtle uppercase">
+                  {group}
+                  <span className="ml-2 font-medium text-sts-subtle/80">{items.length}</span>
+                </h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map((template) => (
+                    <OperationCard
+                      key={template.id}
+                      template={template}
+                      onOpen={() => setSelectedId(template.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       )}
 
@@ -394,6 +454,27 @@ function forDepartment(template: MarketplaceTemplate, departmentId: string): Mar
   };
 }
 
+function marketplaceKind(group: string): "view" | "configuration" | "other" {
+  const name = group.trim().toLowerCase();
+  if (name === "sidebar" || name === "views") return "view";
+  if (name.includes("configuration")) return "configuration";
+  return "other";
+}
+
+function templateMatches(template: MarketplaceTemplate, needle: string) {
+  const blurb = featureTemplateCardText(featureTemplateNarrative(template)) ?? "";
+  const haystack = [
+    template.name,
+    template.board?.group ?? "",
+    template.board?.useCase ?? "",
+    blurb,
+    ...template.features.map((feature) => feature.label),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(needle);
+}
+
 function OperationCard({
   template,
   onOpen,
@@ -401,38 +482,56 @@ function OperationCard({
   template: MarketplaceTemplate;
   onOpen: () => void;
 }) {
-  const Icon = FEATURE_ICONS[template.features[0]?.key ?? ""] ?? Tags;
+  const blurb = featureTemplateCardText(featureTemplateNarrative(template));
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col items-start gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
+      className="flex flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card text-left transition-colors hover:border-sts-blue/50"
     >
-      <span className="flex w-full items-center gap-3">
-        <Icon className="size-4 shrink-0 text-sts-blue" strokeWidth={2} />
-        <span className="min-w-0 flex-1 truncate font-sans text-[12px] font-semibold tracking-wide text-sts-foreground uppercase">
+      <div className="relative h-28 border-b border-sts-card-border">
+        <TemplatePreview featureKeys={template.features.map((feature) => feature.key)} />
+        {(template.status === "enabled" || template.status === "pending") && (
+          <span
+            className={cn(
+              "absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-sans text-[11px] font-medium",
+              template.status === "enabled"
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+            )}
+          >
+            {template.status === "enabled" ? <Check className="size-3" /> : <Clock className="size-3" />}
+            {template.status === "enabled" ? "On" : "Pending"}
+          </span>
+        )}
+      </div>
+      <span className="flex flex-col gap-2 px-4 py-3.5">
+        <span className="truncate font-sans text-[14px] font-semibold text-sts-foreground">
           {template.name}
         </span>
-        {template.status === "enabled" && <Check className="size-3.5 shrink-0 text-emerald-600" />}
-        {template.status === "pending" && <Clock className="size-3.5 shrink-0 text-amber-600" />}
-      </span>
-      <span className="flex flex-wrap gap-1.5">
-        {template.features.map((feature) => {
-          const FeatureIcon = FEATURE_ICONS[feature.key] ?? Tags;
-          const on = feature.status === "enabled";
-          return (
-            <span
-              key={feature.key}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11px]",
-                on ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-sts-surface text-sts-muted",
-              )}
-            >
-              <FeatureIcon className={cn("size-3", on ? "text-emerald-600" : "text-sts-blue")} />
-              {feature.label}
-            </span>
-          );
-        })}
+        {blurb && (
+          <span className="line-clamp-2 font-sans text-[12.5px] leading-snug text-sts-muted">
+            {blurb}
+          </span>
+        )}
+        <span className="flex flex-wrap gap-1.5">
+          {template.features.map((feature) => {
+            const FeatureIcon = FEATURE_ICONS[feature.key] ?? Tags;
+            const on = feature.status === "enabled";
+            return (
+              <span
+                key={feature.key}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-sans text-[11px]",
+                  on ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-sts-surface text-sts-muted",
+                )}
+              >
+                <FeatureIcon className={cn("size-3", on ? "text-emerald-600" : "text-sts-blue")} />
+                {feature.label}
+              </span>
+            );
+          })}
+        </span>
       </span>
     </button>
   );

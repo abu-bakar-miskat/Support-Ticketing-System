@@ -27,6 +27,7 @@ import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byDateAsc, byDateDesc } from "@/components/ui/list-controls";
 
 export type MemberRow = {
   id: string;
@@ -65,6 +66,8 @@ export type InviteRow = {
   createdAt: string;
   expiresAt: string;
 };
+
+const ROLE_RANK: Record<Role, number> = { admin: 0, manager: 1, sub_manager: 2, agent: 3 };
 
 const INVITE_STATUS_STYLE: Record<InviteRow["status"], { label: string; className: string }> = {
   pending: { label: "Pending", className: "bg-sts-blue/10 text-sts-blue" },
@@ -739,13 +742,47 @@ export function SettingsMembersPage({
     ];
   }, [liveMembers, filterDept]);
 
+  // Free-text search + sort, applied before the filter bar and grouping so each
+  // department group keeps the chosen order.
+  const memberList = useListControls(liveMembers, {
+    searchText: (m) =>
+      [
+        m.name,
+        m.email,
+        m.role.replace("_", " "),
+        m.location ?? "",
+        ...deptEntriesOf(m).map((d) => d.name),
+        ...(m.memberships?.map((ms) => ms.subDepartmentName) ?? m.subDepartments),
+      ].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((m: MemberRow) => m.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberRow) => m.name)(b, a) },
+      { id: "email", label: "Email", compare: byText((m: MemberRow) => m.email) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || byText((m: MemberRow) => m.name)(a, b),
+      },
+    ],
+  });
+
+  const inviteList = useListControls(liveInvites, {
+    searchText: (i) => [i.email, i.role.replace("_", " "), i.target ?? "", i.invitedBy ?? "", i.status].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((i: InviteRow) => i.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((i: InviteRow) => i.createdAt) },
+      { id: "email", label: "Email A–Z", compare: byText((i: InviteRow) => i.email) },
+      { id: "expiring", label: "Expiring soonest", compare: byDateAsc((i: InviteRow) => i.expiresAt) },
+    ],
+  });
+
   const roleFilterOptions = [{ value: "", label: "All roles" }, ...ROLE_OPTIONS_ADMIN];
-  const hasActiveFilter = filterDept !== "" || filterSubDept !== "" || filterRole !== "";
-  const clearFilters = () => { setFilterDept(""); setFilterSubDept(""); setFilterRole(""); };
+  const hasActiveFilter = filterDept !== "" || filterSubDept !== "" || filterRole !== "" || memberList.isFiltering;
+  const clearFilters = () => { setFilterDept(""); setFilterSubDept(""); setFilterRole(""); memberList.setQuery(""); };
 
   // Apply the filter bar to the member list before grouping.
   const filteredMembers = useMemo(() => {
-    return liveMembers.filter((m) => {
+    return memberList.visible.filter((m) => {
       if (filterRole && currentRole(m) !== filterRole) return false;
       if (filterDept) {
         const entries = deptEntriesOf(m);
@@ -759,7 +796,7 @@ export function SettingsMembersPage({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveMembers, filterDept, filterSubDept, filterRole, localRoles]);
+  }, [memberList.visible, filterDept, filterSubDept, filterRole, localRoles]);
 
   // Group members department-wise. A member in several departments appears once
   // under each. Members with no department fall into a trailing "No department" group.
@@ -978,6 +1015,11 @@ export function SettingsMembersPage({
 
       {liveMembers.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-[10px] border border-sts-card-border bg-sts-card px-3 py-2.5">
+          <ListSearchInput
+            value={memberList.query}
+            onChange={memberList.setQuery}
+            placeholder="Search name, email, team…"
+          />
           <span className="inline-flex items-center gap-1.5 pr-1 font-sans text-[11.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
             <SlidersHorizontal className="size-3.5" />
             Filter
@@ -1033,6 +1075,9 @@ export function SettingsMembersPage({
               </button>
             </>
           )}
+          <div className={cn(!hasActiveFilter && "ml-auto")}>
+            <SortDropdown value={memberList.sortKey} onChange={memberList.setSortKey} options={memberList.sortDropdownOptions} />
+          </div>
         </div>
       )}
 
@@ -1066,7 +1111,11 @@ export function SettingsMembersPage({
                 <TableCell colSpan={colSpan} className="py-0">
                   <div className="flex h-[54px] items-center">
                     <span className="font-sans text-[11.5px] text-sts-muted">
-                      {liveMembers.length === 0 ? "No members yet" : "No members match these filters"}
+                      {liveMembers.length === 0
+                        ? "No members yet"
+                        : memberList.isFiltering
+                          ? `No members match "${memberList.query.trim()}"`
+                          : "No members match these filters"}
                     </span>
                   </div>
                 </TableCell>
@@ -1514,6 +1563,13 @@ export function SettingsMembersPage({
             </p>
           </div>
 
+          {liveInvites.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <ListSearchInput value={inviteList.query} onChange={inviteList.setQuery} placeholder="Search invites…" />
+              <SortDropdown value={inviteList.sortKey} onChange={inviteList.setSortKey} options={inviteList.sortDropdownOptions} />
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
             <Table className="min-w-[640px]">
               <TableHeader>
@@ -1527,16 +1583,18 @@ export function SettingsMembersPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {liveInvites.length === 0 ? (
+                {inviteList.visible.length === 0 ? (
                   <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                     <TableCell colSpan={6} className="py-0">
                       <div className="flex h-[54px] items-center">
-                        <span className="font-sans text-[11.5px] text-sts-muted">No pending invitations</span>
+                        <span className="font-sans text-[11.5px] text-sts-muted">
+                          {liveInvites.length === 0 ? "No pending invitations" : `No invites match "${inviteList.query.trim()}"`}
+                        </span>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  liveInvites.map((invite) => {
+                  inviteList.visible.map((invite) => {
                     const badge = INVITE_STATUS_STYLE[invite.status];
                     const busy = inviteBusy[invite.id];
                     return (

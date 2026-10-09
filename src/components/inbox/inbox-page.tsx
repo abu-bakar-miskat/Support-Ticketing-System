@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearchInput, SortDropdown } from "@/components/ui/list-controls";
 import {
   getNotification,
   markNotificationRead,
@@ -129,6 +130,25 @@ function generalMeta(type: string) {
 }
 
 type TimeGroup = "today" | "yesterday" | "this_week" | "earlier";
+
+type InboxSort = "newest" | "oldest" | "unread";
+
+const SORT_OPTIONS: { id: InboxSort; label: string }[] = [
+  { id: "newest", label: "Newest first" },
+  { id: "oldest", label: "Oldest first" },
+  { id: "unread", label: "Unread first" },
+];
+
+/** Text a notification is matched against by the inbox search box. */
+function searchTextFor(n: AnyItem): string {
+  if (n.kind === "ticket") {
+    return [n.actor, n.action, n.preview, n.ticketId, n.detail.title, n.detail.ticketHumanId].join(" ");
+  }
+  if (n.kind === "join_request") {
+    return [n.actor, "join request", n.subDepartmentName, n.message].join(" ");
+  }
+  return [n.actor, generalMeta(n.notifType).label, n.message].join(" ");
+}
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "all", label: "All", icon: Bell },
@@ -550,7 +570,11 @@ export function InboxPage({
   );
   const unreadCount = all.filter((n) => n.unread).length;
 
-  const filtered = all.filter((n) => {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<InboxSort>("newest");
+  const searchTerms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  const tabFiltered = all.filter((n) => {
     if (activeTab === "unread") return n.unread;
     if (activeTab === "mentions")
       return n.kind === "ticket" && n.type === "mention";
@@ -561,9 +585,21 @@ export function InboxPage({
     return true;
   });
 
+  const filtered = tabFiltered.filter((n) => {
+    if (searchTerms.length === 0) return true;
+    const hay = searchTextFor(n).toLowerCase();
+    return searchTerms.every((t) => hay.includes(t));
+  });
+  // `all` is already newest-first; the other sorts reorder within each time group.
+  if (sortKey === "oldest") filtered.reverse();
+  else if (sortKey === "unread") filtered.sort((a, b) => Number(b.unread) - Number(a.unread));
+
   // Group by time
   const groups: { key: TimeGroup; items: AnyItem[] }[] = [];
-  const groupOrder: TimeGroup[] = ["today", "yesterday", "this_week", "earlier"];
+  const groupOrder: TimeGroup[] =
+    sortKey === "oldest"
+      ? ["earlier", "this_week", "yesterday", "today"]
+      : ["today", "yesterday", "this_week", "earlier"];
   const grouped = new Map<TimeGroup, AnyItem[]>();
   for (const item of filtered) {
     const g = getTimeGroup(item.createdAt);
@@ -654,7 +690,7 @@ export function InboxPage({
       />
 
       {/* Tabs */}
-      <div className="mb-5 flex items-center gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <Filter className="size-3.5 shrink-0 text-sts-subtle" />
         <div className="flex gap-0.5 self-start rounded-full border border-sts-card-border bg-sts-surface p-0.5">
           {TABS.map((tab) => {
@@ -700,11 +736,34 @@ export function InboxPage({
             );
           })}
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <ListSearchInput value={query} onChange={setQuery} placeholder="Search notifications…" />
+          <SortDropdown
+            value={sortKey}
+            onChange={(v) => setSortKey(v as InboxSort)}
+            options={SORT_OPTIONS}
+          />
+        </div>
       </div>
 
       {/* Feed */}
       {filtered.length === 0 ? (
-        activeTab === "all" ? (
+        searchTerms.length > 0 && tabFiltered.length > 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No notifications match"
+            description={`Nothing matches "${query.trim()}".`}
+            action={
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+              >
+                Clear search
+              </button>
+            }
+          />
+        ) : activeTab === "all" ? (
           <EmptyState
             icon={Inbox}
             title="All caught up"

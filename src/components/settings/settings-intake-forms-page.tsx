@@ -66,6 +66,15 @@ import {
 import { deriveAccentPalette } from "@/lib/tenant-accent";
 import { Palette } from "lucide-react";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+  byNumberDesc,
+} from "@/components/ui/list-controls";
 
 const SWITCH_ACCENTS = {
   green: {
@@ -2433,6 +2442,8 @@ function FormDesignModal({
 // route its ticket to a concerned sub-department; assignment then follows that
 // sub-department's assignment method (unless the form/issue overrides it).
 
+const PRIORITY_RANK: Record<string, number> = { Urgent: 0, Critical: 1, High: 2, Medium: 3, Low: 4 };
+
 type IssueRow = {
   id: string;
   name: string;
@@ -2649,6 +2660,23 @@ export function IssuesModal({
     : subDepartments;
   const base = issuesEndpoint ?? `/api/departments/${form.departmentId}/sla-policies`;
 
+  const issueList = useListControls(issues ?? [], {
+    searchText: (i) => {
+      const dept = issueDepartments?.find((d) => d.id === i.departmentId);
+      const subs = dept?.subDepartments ?? subDepartments;
+      return [i.name, i.priority ?? "", dept?.name ?? "", subs.find((sd) => sd.id === i.subDepartmentId)?.name ?? ""].join(" ");
+    },
+    sortOptions: [
+      { id: "added", label: "Order added", compare: () => 0 },
+      { id: "name", label: "Name (A–Z)", compare: byText((i) => i.name) },
+      {
+        id: "priority",
+        label: "Priority",
+        compare: (a, b) => (PRIORITY_RANK[a.priority ?? ""] ?? 9) - (PRIORITY_RANK[b.priority ?? ""] ?? 9),
+      },
+    ],
+  });
+
   useEffect(() => {
     fetch(issuesEndpoint ? base : `${base}?formConfigId=${form.id}`)
       .then((r) => r.json())
@@ -2849,7 +2877,20 @@ export function IssuesModal({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {issues.map((issue) => (
+              <div className="flex items-center justify-between gap-2">
+                <ListSearchInput value={issueList.query} onChange={issueList.setQuery} placeholder="Search issues…" />
+                <SortDropdown
+                  value={issueList.sortKey}
+                  onChange={issueList.setSortKey}
+                  options={issueList.sortDropdownOptions}
+                />
+              </div>
+              {issueList.visible.length === 0 && (
+                <p className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
+                  No issues match &ldquo;{issueList.query.trim()}&rdquo;
+                </p>
+              )}
+              {issueList.visible.map((issue) => (
                 <IssueEditorRow
                   key={issue.id}
                   issue={issue}
@@ -3004,6 +3045,25 @@ export function SettingsIntakeFormsPage({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const showDepartmentColumn = !scopedDepartmentName;
 
+  const formList = useListControls(initialForms, {
+    searchText: (f) =>
+      [f.name, f.departmentName, f.intakeSubDepartmentName ?? "", f.publicPath, f.displayMode].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((f) => f.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((f) => f.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((f) => f.createdAt) },
+      { id: "submissions", label: "Most submissions", compare: byNumberDesc((f) => f.intakeCount) },
+      {
+        id: "status",
+        label: "Active first",
+        compare: (a, b) => Number(getIsActive(b)) - Number(getIsActive(a)) || a.name.localeCompare(b.name),
+      },
+      ...(showDepartmentColumn
+        ? [{ id: "department", label: "Department", compare: byText<IntakeFormRow>((f) => f.departmentName) }]
+        : []),
+    ],
+  });
+
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -3034,6 +3094,26 @@ export function SettingsIntakeFormsPage({
           </p>
         </div>
       ) : (
+        <>
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={formList.query}
+            onChange={formList.setQuery}
+            placeholder="Search forms…"
+          />
+          <SortDropdown
+            value={formList.sortKey}
+            onChange={formList.setSortKey}
+            options={formList.sortDropdownOptions}
+          />
+        </div>
+        {formList.visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-12 text-center">
+            <p className="font-sans text-[13px] text-sts-muted">
+              No forms match &ldquo;{formList.query.trim()}&rdquo;
+            </p>
+          </div>
+        ) : (
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[780px]">
             <TableHeader>
@@ -3067,7 +3147,7 @@ export function SettingsIntakeFormsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialForms.map((form) => {
+              {formList.visible.map((form) => {
                 const shareUrl = `${origin}${form.publicPath}`;
                 return (
                   <TableRow
@@ -3264,6 +3344,8 @@ export function SettingsIntakeFormsPage({
             </TableBody>
           </Table>
         </div>
+        )}
+        </>
       )}
 
       {modal && (

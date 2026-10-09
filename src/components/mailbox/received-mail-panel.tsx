@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { createMailboxMailSubscription } from "@/lib/realtime";
+import { ListSearchInput, SortDropdown } from "@/components/ui/list-controls";
 
 type MailboxMessage = {
   id: string;
@@ -62,6 +63,46 @@ const STATUS_STYLES: Record<MailboxMessage["status"], string> = {
   system: "bg-sts-surface text-sts-subtle",
 };
 
+type MailSort = "newest" | "oldest" | "review" | "sender";
+
+const MAIL_SORT_OPTIONS: { id: MailSort; label: string }[] = [
+  { id: "newest", label: "Newest first" },
+  { id: "oldest", label: "Oldest first" },
+  { id: "review", label: "Needs review first" },
+  { id: "sender", label: "Sender A–Z" },
+];
+
+const SUPPRESSED_SORT_OPTIONS: { id: MailSort; label: string }[] = [
+  { id: "newest", label: "Newest first" },
+  { id: "oldest", label: "Oldest first" },
+  { id: "sender", label: "Sender A–Z" },
+];
+
+function matchesQuery(query: string, parts: (string | null | undefined)[]) {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const hay = parts.filter(Boolean).join(" ").toLowerCase();
+  return terms.every((t) => hay.includes(t));
+}
+
+function compareMail(
+  sort: MailSort,
+  a: { createdAt: string; sender: string; needsReview: boolean },
+  b: { createdAt: string; sender: string; needsReview: boolean },
+) {
+  const newest = b.createdAt.localeCompare(a.createdAt);
+  switch (sort) {
+    case "oldest":
+      return -newest;
+    case "review":
+      return Number(b.needsReview) - Number(a.needsReview) || newest;
+    case "sender":
+      return a.sender.localeCompare(b.sender, undefined, { sensitivity: "base" }) || newest;
+    default:
+      return newest;
+  }
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-GB", {
     day: "numeric",
@@ -98,6 +139,8 @@ export function ReceivedMailPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"mail" | "suppressed">("mail");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<MailSort>("newest");
 
   // Ref so the realtime subscription (mounted once per endpoint) always calls
   // the latest loader without re-subscribing on every render.
@@ -168,6 +211,43 @@ export function ReceivedMailPanel({
     () => shownSuppressed?.filter((s) => s.reason !== "mailbox_paused") ?? null,
     [shownSuppressed],
   );
+
+  // Search + sort run after the mailbox filter. Received mail and paused mail are
+  // separate row shapes, so each is filtered/sorted on its own (mail first, as before).
+  const visibleMessages = useMemo(
+    () =>
+      shownMessages
+        ?.filter((m) =>
+          matchesQuery(query, [m.fromName, m.fromEmail, m.status, m.ticket.humanId, m.ticket.title, m.acceptedByName]),
+        )
+        .sort((a, b) =>
+          compareMail(
+            sort,
+            { createdAt: a.createdAt, sender: a.fromName || a.fromEmail, needsReview: a.status === "quarantined" },
+            { createdAt: b.createdAt, sender: b.fromName || b.fromEmail, needsReview: b.status === "quarantined" },
+          ),
+        ) ?? null,
+    [shownMessages, query, sort],
+  );
+  const sortSuppressed = useCallback(
+    (list: SuppressedMail[] | null) =>
+      list
+        ?.filter((s) => matchesQuery(query, [s.subject, s.fromEmail, s.toAddress, s.reason]))
+        .sort((a, b) =>
+          compareMail(
+            sort,
+            { createdAt: a.createdAt, sender: a.fromEmail ?? "", needsReview: false },
+            { createdAt: b.createdAt, sender: b.fromEmail ?? "", needsReview: false },
+          ),
+        ) ?? null,
+    [query, sort],
+  );
+  const visiblePausedMail = useMemo(() => sortSuppressed(shownPausedMail), [sortSuppressed, shownPausedMail]);
+  const visibleOtherSuppressed = useMemo(
+    () => sortSuppressed(shownOtherSuppressed),
+    [sortSuppressed, shownOtherSuppressed],
+  );
+  const searching = query.trim().length > 0;
 
   async function act(message: MailboxMessage, action: "accept" | "reject") {
     setBusyId(message.id);
@@ -297,6 +377,19 @@ export function ReceivedMailPanel({
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sts-card-border px-3 py-2">
+        <ListSearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder={tab === "mail" ? "Search sender, ticket…" : "Search subject, sender, reason…"}
+        />
+        <SortDropdown
+          value={tab === "suppressed" && sort === "review" ? "newest" : sort}
+          onChange={(v) => setSort(v as MailSort)}
+          options={tab === "mail" ? MAIL_SORT_OPTIONS : SUPPRESSED_SORT_OPTIONS}
+        />
+      </div>
+
       <div className="p-3">
         {tab === "mail" &&
           (shownMessages === null ? (
@@ -305,9 +398,11 @@ export function ReceivedMailPanel({
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No mail for ${activeMailbox.address} yet.` : "No mail received yet."}
             </p>
+          ) : searching && (visibleMessages?.length ?? 0) === 0 && (visiblePausedMail?.length ?? 0) === 0 ? (
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">No mail matches &ldquo;{query.trim()}&rdquo;.</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {shownMessages.map((m) => (
+              {visibleMessages?.map((m) => (
                 <div key={m.id} className="rounded-lg border border-sts-card-border bg-sts-surface/40">
                   <button
                     type="button"
@@ -389,7 +484,7 @@ export function ReceivedMailPanel({
                   )}
                 </div>
               ))}
-              {shownPausedMail?.map((s) => (
+              {visiblePausedMail?.map((s) => (
                 <div key={s.id} className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue/10 px-2 py-0.5 font-sans text-[10px] font-semibold tracking-wide text-sts-blue uppercase">
                     <Mail className="size-2.5" /> received
@@ -411,9 +506,13 @@ export function ReceivedMailPanel({
             <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
               {activeMailbox ? `No suppressed mail for ${activeMailbox.address}.` : "No suppressed mail."}
             </p>
+          ) : searching && (visibleOtherSuppressed?.length ?? 0) === 0 ? (
+            <p className="px-1 py-3 font-sans text-[12.5px] text-sts-muted">
+              No suppressed mail matches &ldquo;{query.trim()}&rdquo;.
+            </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {shownOtherSuppressed.map((s) => (
+              {visibleOtherSuppressed?.map((s) => (
                 <div
                   key={s.id}
                   className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-surface/40 px-3 py-2.5"

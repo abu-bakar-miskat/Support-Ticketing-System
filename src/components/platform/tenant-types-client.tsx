@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TenantTypeModal, type TenantTypeRow } from "@/components/platform/tenant-type-modal";
+import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export function TenantTypesClient({
   types,
@@ -27,6 +28,14 @@ export function TenantTypesClient({
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<TenantTypeRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TenantTypeRow | null>(null);
+  const typeList = useListControls(types, {
+    searchText: (t) => [t.label, t.key, t.description].filter(Boolean).join(" "),
+    sortOptions: [
+      { id: "label", label: "Name (A–Z)", compare: byText((t) => t.label) },
+      { id: "label-desc", label: "Name (Z–A)", compare: (a, b) => byText<TenantTypeRow>((t) => t.label)(b, a) },
+      { id: "tenants", label: "Most tenants", compare: byNumberDesc((t) => t.tenants) },
+    ],
+  });
 
   async function deleteType(id: string) {
     setError(null);
@@ -88,8 +97,18 @@ export function TenantTypesClient({
           </p>
         </div>
       ) : (
-        <ul className={embedded ? "grid gap-3 px-[22px] py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}>
-            {types.map((t) => (
+        <>
+          <div className={embedded ? "flex items-center justify-between gap-2 px-[22px] pt-5" : "mt-6 flex items-center justify-between gap-2"}>
+            <ListSearchInput value={typeList.query} onChange={typeList.setQuery} placeholder="Search tenant types…" />
+            <SortDropdown value={typeList.sortKey} onChange={typeList.setSortKey} options={typeList.sortDropdownOptions} />
+          </div>
+          {typeList.visible.length === 0 ? (
+            <p className={embedded ? "px-[22px] py-8 text-center font-sans text-[12.5px] text-sts-muted" : "mt-4 rounded-xl border border-dashed border-sts-card-border py-10 text-center font-sans text-[12.5px] text-sts-muted"}>
+              No tenant types match &ldquo;{typeList.query.trim()}&rdquo;.
+            </p>
+          ) : (
+        <ul className={embedded ? "grid gap-3 px-[22px] py-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}>
+            {typeList.visible.map((t) => (
               <li
                 key={t.id}
                 className="group flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card transition-all duration-200 hover:-translate-y-0.5 hover:border-sts-muted/40 hover:shadow-md"
@@ -134,6 +153,8 @@ export function TenantTypesClient({
               </li>
             ))}
           </ul>
+          )}
+        </>
         )}
     </>
   );

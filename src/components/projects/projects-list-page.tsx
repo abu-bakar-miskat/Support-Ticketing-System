@@ -21,8 +21,18 @@ import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { usePinnedProjects } from "@/hooks/use-pinned-projects";
 import { Tip } from "@/components/ui/tooltip";
+import { SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText } from "@/components/ui/list-controls";
 
 type ProjectRow = ProjectListRow;
+
+const PROJECT_SORTS: { id: string; label: string; compare: (a: ProjectRow, b: ProjectRow) => number }[] = [
+  { id: "name", label: "Name (A–Z)", compare: byText((p) => p.name) },
+  { id: "name_desc", label: "Name (Z–A)", compare: (a, b) => byText<ProjectRow>((p) => p.name)(b, a) },
+  { id: "newest", label: "Newest first", compare: byDateDesc((p) => p.createdAt) },
+  { id: "oldest", label: "Oldest first", compare: byDateAsc((p) => p.createdAt) },
+  { id: "tickets", label: "Most tickets", compare: byNumberDesc((p) => p.ticketCount) },
+  { id: "members", label: "Most members", compare: byNumberDesc((p) => p.members.length) },
+];
 
 const PROJECT_STATUS: Record<string, { label: string; shortLabel: string; color: string }> = {
   live:           { label: "Live",           shortLabel: "Live",     color: "#059669" },
@@ -731,6 +741,8 @@ export function ProjectsListPage({
   const [layout, setLayout] = usePersistedView(VIEW_KEYS.projectsLayout, "cards", ["list", "cards"] as const);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  // "default" keeps the server order (pinned projects always stay on top).
+  const [sortKey, setSortKey] = useState("default");
   const [membersModal, setMembersModal] = useState<{ id: string; name: string } | null>(null);
   const [editProject, setEditProject] = useState<ProjectRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -750,6 +762,9 @@ export function ProjectsListPage({
       filterStatus === "all" || effectiveStatus === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  const compare = PROJECT_SORTS.find((o) => o.id === sortKey)?.compare;
+  if (compare) filtered.sort(compare);
 
   const pinned = filtered.filter((p) => pins.has(p.id));
   const unpinned = filtered.filter((p) => !pins.has(p.id));
@@ -873,10 +888,18 @@ export function ProjectsListPage({
                 </Button>
               )}
 
-              <div className={cn(
-                "flex h-8 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card",
-                isCrossAccess && "ml-auto",
-              )}>
+              <div className={cn("shrink-0", isCrossAccess && "ml-auto")}>
+                <SortDropdown
+                  value={sortKey}
+                  onChange={setSortKey}
+                  options={[
+                    { id: "default", label: "Default order" },
+                    ...PROJECT_SORTS.map(({ id, label }) => ({ id, label })),
+                  ]}
+                />
+              </div>
+
+              <div className="flex h-8 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => setLayout("list")}

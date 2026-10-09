@@ -12,9 +12,12 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
+/** Highest priority first; policies with no priority goal sort last. */
+const priorityRank = (p: Priority | null) => (p ? PRIORITIES.length - PRIORITIES.indexOf(p) : 0);
 
 type SlaPolicy = {
   id: string;
@@ -292,13 +295,34 @@ export function SlaSettingsPage({
         ? policies
         : policies.filter((p) => !p.subDepartmentId);
 
+  // Display-only search/sort — when several policies match a ticket the strictest target wins,
+  // so list order has no effect on which policy applies.
+  const policyList = useListControls(visiblePolicies ?? [], {
+    searchText: (p) =>
+      [
+        p.name,
+        p.priority ?? "",
+        subDeptList.find((s) => s.id === p.subDepartmentId)?.name ?? "",
+        forms.find((f) => f.id === p.formConfigId)?.name ?? "",
+        p.enabled ? "enabled active" : "disabled",
+      ].join(" "),
+    sortOptions: [
+      { id: "default", label: "Default order", compare: (a, b) => a.order - b.order },
+      { id: "name", label: "Name A–Z", compare: byText((p: SlaPolicy) => p.name) },
+      { id: "priority", label: "Highest priority", compare: (a, b) => priorityRank(b.priority) - priorityRank(a.priority) },
+      { id: "first-response", label: "Fastest first response", compare: (a, b) => a.firstResponseMins - b.firstResponseMins },
+      { id: "resolution", label: "Fastest resolution", compare: (a, b) => a.resolutionMins - b.resolutionMins },
+    ],
+  });
+  const filteringPolicies = policyList.isFiltering;
+
   const policiesByForm = new Map<string, SlaPolicy[]>();
   const noFormPolicies: SlaPolicy[] = [];
   // Policies authored against a support form that has since been deleted. No
   // ticket can match them, so they're surfaced separately for clean-up rather
   // than mislabelled as department-level SLA.
   const deletedFormPolicies: SlaPolicy[] = [];
-  for (const p of visiblePolicies ?? []) {
+  for (const p of visiblePolicies === null ? [] : policyList.visible) {
     if (!p.formConfigId) {
       noFormPolicies.push(p);
     } else if (forms.some((f) => f.id === p.formConfigId)) {
@@ -337,7 +361,8 @@ export function SlaSettingsPage({
       <MailboxSlaCard departmentId={departmentId} />
 
       <div className="mb-8">
-        <div className="mb-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
           <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
           {visiblePolicies !== null && (
             <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
@@ -347,9 +372,20 @@ export function SlaSettingsPage({
             </p>
           )}
         </div>
+        {visiblePolicies !== null && visiblePolicies.length > 0 && (
+          <div className="flex items-center gap-2">
+            <ListSearchInput value={policyList.query} onChange={policyList.setQuery} placeholder="Search policies…" />
+            <SortDropdown value={policyList.sortKey} onChange={policyList.setSortKey} options={policyList.sortDropdownOptions} />
+          </div>
+        )}
+        </div>
 
         {visiblePolicies === null ? (
           <SkeletonRows count={3} height="h-44" />
+        ) : filteringPolicies && policyList.visible.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-sts-card-border px-3 py-8 text-center font-sans text-[12.5px] text-sts-muted">
+            No policies match &ldquo;{policyList.query.trim()}&rdquo;
+          </p>
         ) : !showSubDepartment ? (
           // Department-wide: one flat list of the department's SLA policies —
           // not split by support form. Each policy is created directly under the
@@ -377,7 +413,7 @@ export function SlaSettingsPage({
           </div>
         ) : (
           <div className="flex flex-col gap-5">
-            {forms.map((form) => (
+            {forms.filter((form) => !filteringPolicies || policiesByForm.has(form.id)).map((form) => (
               <PolicyGroup
                 key={form.id}
                 title={form.name}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Tip } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { ListSearchInput } from "@/components/ui/list-controls"
 import type { BankQuestion } from "@/lib/screening/question-bank"
 
 const TEXTAREA =
@@ -50,6 +51,19 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [busy, setBusy] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<BankQuestion | null>(null)
+  const [query, setQuery] = useState("")
+
+  // Search only — questions keep their bank order (and numbering), and reordering is
+  // disabled while filtering since "up/down" would jump over hidden questions.
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const filtering = terms.length > 0
+  const matches = (q: BankQuestion) => {
+    const hay = [q.prompt, q.hint, q.rubric.five, q.rubric.three, q.rubric.one, q.rubric.penalise]
+      .join(" ")
+      .toLowerCase()
+    return terms.every((t) => hay.includes(t))
+  }
+  const visibleCount = filtering ? initialQuestions.filter(matches).length : initialQuestions.length
 
   async function call(path: string, method: string, body?: unknown, silent = false) {
     setBusy(true)
@@ -119,7 +133,13 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
 
   return (
     <div className="space-y-4">
-      {initialQuestions.map((q, i) => (
+      {initialQuestions.length > 0 && (
+        <ListSearchInput value={query} onChange={setQuery} placeholder="Search questions…" />
+      )}
+      {filtering && visibleCount === 0 && (
+        <p className="text-muted-foreground py-6 text-center text-sm">No questions match.</p>
+      )}
+      {initialQuestions.map((q, i) => filtering && !matches(q) ? null : (
         <section
           key={q.id}
           className={cn(
@@ -160,7 +180,7 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      disabled={busy || i === 0}
+                      disabled={busy || filtering || i === 0}
                       aria-label={`Move question ${i + 1} up`}
                       onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "up" })}
                     >
@@ -171,7 +191,7 @@ export function QuestionsEditor({ initialQuestions }: { initialQuestions: BankQu
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      disabled={busy || i === initialQuestions.length - 1}
+                      disabled={busy || filtering || i === initialQuestions.length - 1}
                       aria-label={`Move question ${i + 1} down`}
                       onClick={() => call(`/api/screening/questions/${q.id}`, "PATCH", { move: "down" })}
                     >

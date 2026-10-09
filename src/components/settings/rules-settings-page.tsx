@@ -24,6 +24,7 @@ import {
 } from "@/components/settings/rule-conditions-editor";
 import { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput } from "@/components/ui/list-controls";
 
 // ── Types (mirror lib/rules-engine.ts) ───────────────────────────────────────
 type RuleActionType =
@@ -139,6 +140,17 @@ export function RulesSettingsPage({
   const [testFields, setTestFields] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
   const [testResult, setTestResult] = useState<RulesPlan | null>(null);
   const [testing, setTesting] = useState(false);
+  // Search only — rules run top to bottom, so they are never re-sorted. Matching rules keep their real
+  // position (#n, move up/down) rather than being renumbered.
+  const [ruleQuery, setRuleQuery] = useState("");
+  const ruleTerms = ruleQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const ruleMatches = (rule: Rule) => {
+    const hay = [rule.name, ...rule.actions.map((a) => actionLabel(a.type)), rule.enabled ? "enabled active" : "disabled"]
+      .join(" ")
+      .toLowerCase();
+    return ruleTerms.every((t) => hay.includes(t));
+  };
+  const visibleRuleCount = rules?.filter(ruleMatches).length ?? 0;
 
   const load = () => {
     setRules(null);
@@ -310,13 +322,18 @@ export function RulesSettingsPage({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowNewRule(true)}
-            className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-          >
-            <Plus className="size-3.5" /> New rule
-          </button>
+          <div className="flex items-center gap-2">
+            {rules !== null && rules.length > 0 && (
+              <ListSearchInput value={ruleQuery} onChange={setRuleQuery} placeholder="Search rules…" />
+            )}
+            <button
+              type="button"
+              onClick={() => setShowNewRule(true)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+            >
+              <Plus className="size-3.5" /> New rule
+            </button>
+          </div>
         </div>
 
         {rules === null ? (
@@ -342,7 +359,12 @@ export function RulesSettingsPage({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {rules.map((rule, index) => (
+            {visibleRuleCount === 0 && (
+              <p className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
+                No rules match &ldquo;{ruleQuery.trim()}&rdquo;
+              </p>
+            )}
+            {rules.map((rule, index) => !ruleMatches(rule) ? null : (
               <RuleCard
                 key={rule.id}
                 rule={rule}

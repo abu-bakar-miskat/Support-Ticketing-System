@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type InstitutionStatus = "live" | "onboarding";
 
@@ -70,11 +71,30 @@ function StatusIndicator({ status }: { status: InstitutionStatus }) {
   );
 }
 
+/** Students arrive pre-formatted (e.g. "12,400" or "1.2k"); parse back to a number for sorting. */
+function studentCount(value: string): number {
+  const m = /([\d.,]+)\s*([kKmM])?/.exec(value);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(/,/g, ""));
+  const mult = m[2]?.toLowerCase() === "m" ? 1_000_000 : m[2]?.toLowerCase() === "k" ? 1_000 : 1;
+  return Number.isNaN(n) ? 0 : n * mult;
+}
+
 export function SettingsInstitutionsPage({
   institutions,
 }: {
   institutions: InstitutionRow[];
 }) {
+  const list = useListControls(institutions, {
+    searchText: (i) => `${i.name} ${i.domain} ${STATUS_LABEL[i.status]}`,
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((i: InstitutionRow) => i.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((i: InstitutionRow) => i.name)(b, a) },
+      { id: "students", label: "Most students", compare: byNumberDesc((i: InstitutionRow) => studentCount(i.students)) },
+      { id: "status", label: "Status", compare: byText((i: InstitutionRow) => STATUS_LABEL[i.status]) },
+    ],
+  });
+
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -93,6 +113,13 @@ export function SettingsInstitutionsPage({
       </div>
 
       <InfoBanner />
+
+      {institutions.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search institutions…" />
+          <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
@@ -113,7 +140,16 @@ export function SettingsInstitutionsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {institutions.map((institution) => (
+            {institutions.length > 0 && list.visible.length === 0 && (
+              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                <TableCell colSpan={4} className="py-0">
+                  <div className="flex h-[46px] items-center">
+                    <span className="font-sans text-[11.5px] text-sts-muted">No institutions match &ldquo;{list.query.trim()}&rdquo;</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+            {list.visible.map((institution) => (
               <TableRow
                 key={institution.id}
                 className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"

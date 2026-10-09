@@ -37,6 +37,8 @@ import { AutoRefresh } from "./auto-refresh"
 import { InviteForm } from "./invite-form"
 import { RowActions } from "./row-actions"
 import { HowItWorks } from "./how-it-works"
+import { QueueControls } from "./queue-controls"
+import type { Prisma } from "@/generated/prisma/client"
 
 export const metadata = { title: "Screening — Global Support Portal" }
 
@@ -66,37 +68,63 @@ function initials(name: string): string {
 
 const PAGE_SIZE = 8
 
+// ?sort= values (ids mirror the dropdown in queue-controls.tsx); "default" is per-tab.
+const SORT_ORDER: Record<string, Prisma.ScreeningSessionOrderByWithRelationInput[]> = {
+  score: [{ overallScore: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+  newest: [{ createdAt: "desc" }],
+  oldest: [{ createdAt: "asc" }],
+  name: [{ candidateName: "asc" }],
+}
+
 export default async function ScreeningQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; page?: string }>
+  searchParams: Promise<{ view?: string; page?: string; q?: string; sort?: string }>
 }) {
   const profile = await getProfile()
   if (!profile) redirect("/login")
   if (profile.role !== "admin" && profile.role !== "manager") redirect("/")
 
-  const { view, page: pageParam } = await searchParams
+  const { view, page: pageParam, q: qParam, sort: sortParam } = await searchParams
   const showCompleted = view === "completed"
   const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1)
+  const q = (qParam ?? "").trim().slice(0, 100)
+  const sort = sortParam && sortParam in SORT_ORDER ? sortParam : "default"
+
+  // Search narrows both tabs (and their counts) so pagination totals stay right.
+  const searchWhere: Prisma.ScreeningSessionWhereInput = q
+    ? {
+        OR: [
+          { candidateName: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+          { roleTitle: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {}
+  const baseWhere: Prisma.ScreeningSessionWhereInput = {
+    AND: [screeningSessionWhere(profile), searchWhere],
+  }
 
   const [sessions, completedCount, activeCount] = await Promise.all([
     prisma.screeningSession.findMany({
       where: {
-        ...screeningSessionWhere(profile),
+        ...baseWhere,
         completedAt: showCompleted ? { not: null } : null,
       },
-      orderBy: showCompleted
-        ? [{ completedAt: "desc" }]
-        : [{ overallScore: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+      orderBy:
+        SORT_ORDER[sort] ??
+        (showCompleted
+          ? [{ completedAt: "desc" }]
+          : [{ overallScore: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }]),
       include: { answers: { select: { flags: true, score: true, objectKey: true, gazeVerdict: true } } },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
     prisma.screeningSession.count({
-      where: { ...screeningSessionWhere(profile), completedAt: { not: null } },
+      where: { ...baseWhere, completedAt: { not: null } },
     }),
     prisma.screeningSession.count({
-      where: { ...screeningSessionWhere(profile), completedAt: null },
+      where: { ...baseWhere, completedAt: null },
     }),
   ])
 
@@ -138,6 +166,17 @@ export default async function ScreeningQueuePage({
       active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
     )
 
+  // Carries search + sort across tab and page links.
+  const listHref = (opts: { completed: boolean; page?: number }) => {
+    const params = new URLSearchParams()
+    if (opts.completed) params.set("view", "completed")
+    if (q) params.set("q", q)
+    if (sort !== "default") params.set("sort", sort)
+    if (opts.page && opts.page > 1) params.set("page", String(opts.page))
+    const qs = params.toString()
+    return qs ? `/recruitment/screening?${qs}` : "/recruitment/screening"
+  }
+
   const headCell = "text-muted-foreground py-3.5 text-xs font-medium tracking-wider uppercase"
 
   return (
@@ -167,13 +206,16 @@ export default async function ScreeningQueuePage({
           <InviteForm />
         </div>
 
-        <div className="mt-8 flex items-center gap-1.5">
-          <Link href="/recruitment/screening" className={tab(!showCompleted)}>
+        <div className="mt-8 flex flex-wrap items-center gap-1.5">
+          <Link href={listHref({ completed: false })} className={tab(!showCompleted)}>
             Active ({activeCount})
           </Link>
-          <Link href="/recruitment/screening?view=completed" className={tab(showCompleted)}>
+          <Link href={listHref({ completed: true })} className={tab(showCompleted)}>
             Completed ({completedCount})
           </Link>
+          <div className="ml-auto">
+            <QueueControls view={showCompleted ? "completed" : undefined} q={q} sort={sort} />
+          </div>
         </div>
 
         <div className="sts-glass-panel border-border mt-4 overflow-hidden rounded-2xl border">
@@ -200,7 +242,9 @@ export default async function ScreeningQueuePage({
                   <TableCell colSpan={8} className="py-20 text-center">
                     <Inbox className="text-muted-foreground/60 mx-auto mb-3 h-8 w-8" strokeWidth={1.5} />
                     <p className="text-muted-foreground">
-                      {showCompleted
+                      {q
+                        ? `No candidates match "${q}".`
+                        : showCompleted
                         ? "Nothing completed yet — finished reviews land here with who signed them off."
                         : "No active screenings — send an invite above, or check the Completed tab."}
                     </p>
@@ -357,8 +401,7 @@ export default async function ScreeningQueuePage({
           const total = showCompleted ? completedCount : activeCount
           const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
           if (totalPages <= 1) return null
-          const href = (p: number) =>
-            `/recruitment/screening?${showCompleted ? "view=completed&" : ""}page=${p}`
+          const href = (p: number) => listHref({ completed: showCompleted, page: p })
           const pageLink = (p: number, label: string, enabled: boolean) =>
             enabled ? (
               <Link href={href(p)} className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>

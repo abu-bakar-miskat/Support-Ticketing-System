@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { Tip } from "@/components/ui/tooltip"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PortalSubmissionsModal } from "@/components/departments/portal-submissions-modal"
+import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls"
 
 export type PortalApiFormRow = {
   apiKeyId: string
@@ -62,13 +63,32 @@ export function PortalApiFormsSection({
     [forms, deletedCounts],
   )
   const activeCount = apiKeys.filter((key) => !key.revoked).length
+  const list = useListControls(apiKeys, {
+    searchText: (k) => {
+      const linked = formsByKey.get(k.id)
+      return `${k.name} ${k.maskedKey} ${k.department} ${linked?.form.name ?? ""} ${linked?.form.departmentName ?? ""}`
+    },
+    sortOptions: [
+      // Server order: newest first, revoked last.
+      { id: "newest", label: "Newest first", compare: () => 0 },
+      { id: "name", label: "Name A–Z", compare: byText((k: PortalApiConnectionRow) => k.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((k: PortalApiConnectionRow) => k.name)(b, a) },
+      { id: "department", label: "Department", compare: byText((k: PortalApiConnectionRow) => k.department) },
+      {
+        id: "submissions",
+        label: "Most submissions",
+        compare: byNumberDesc((k: PortalApiConnectionRow) => formsByKey.get(k.id)?.intakeCount ?? 0),
+      },
+      { id: "status", label: "Active first", compare: (a, b) => Number(a.revoked) - Number(b.revoked) },
+    ],
+  })
 
   return (
     <section
       aria-labelledby="portal-connections-title"
       className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-[0_14px_40px_-32px_rgba(74,44,35,0.45)]"
     >
-      <header className="flex items-center justify-between gap-4 border-b border-sts-card-border px-5 py-4 sm:px-6">
+      <header className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between sm:gap-4 border-sts-card-border px-5 py-4 sm:px-6">
         <div>
           <div className="flex items-center gap-2">
             <h2 id="portal-connections-title" className="font-sans text-[15px] font-semibold tracking-[-0.01em] text-sts-foreground">
@@ -82,6 +102,12 @@ export function PortalApiFormsSection({
             Each key connects an external portal to one existing support form.
           </p>
         </div>
+        {apiKeys.length > 0 && (
+          <div className="flex shrink-0 items-center gap-2">
+            <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search connections…" />
+            <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+          </div>
+        )}
       </header>
 
       {apiKeys.length === 0 ? (
@@ -96,7 +122,12 @@ export function PortalApiFormsSection({
         </div>
       ) : (
         <div className="divide-y divide-sts-card-border">
-          {apiKeys.map((apiKey) => {
+          {list.visible.length === 0 && (
+            <p className="px-6 py-10 text-center font-sans text-[12.5px] text-sts-muted">
+              No connections match &ldquo;{list.query.trim()}&rdquo;.
+            </p>
+          )}
+          {list.visible.map((apiKey) => {
             const linkedForm = formsByKey.get(apiKey.id)
             return (
               <article

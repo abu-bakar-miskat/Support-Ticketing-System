@@ -6,6 +6,14 @@ import { useTenantHref } from "@/hooks/use-tenant-href";
 import { ArrowLeft, Check, X, Mail, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+} from "@/components/ui/list-controls";
 
 type MailboxMessage = {
   id: string;
@@ -44,6 +52,8 @@ const STATUS_STYLES: Record<MailboxMessage["status"], string> = {
   system: "bg-sts-surface text-sts-subtle",
 };
 
+const STATUS_RANK: Record<MailboxMessage["status"], number> = { quarantined: 0, trusted: 1, system: 2 };
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
@@ -63,6 +73,31 @@ export function DepartmentMailboxPage({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"mail" | "suppressed">("mail");
+
+  const mailList = useListControls(messages ?? [], {
+    searchText: (m) =>
+      [m.fromName, m.fromEmail, m.status, m.ticket.humanId, m.ticket.title, m.acceptedByName ?? ""].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((m) => m.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m) => m.createdAt) },
+      {
+        id: "status",
+        label: "Needs review first",
+        compare: (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status],
+      },
+      { id: "sender", label: "Sender (A–Z)", compare: byText((m) => m.fromName || m.fromEmail) },
+    ],
+  });
+  const suppressedList = useListControls(suppressed ?? [], {
+    searchText: (s) => [s.subject ?? "", s.fromEmail ?? "", s.toAddress ?? "", s.reason].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((s) => s.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((s) => s.createdAt) },
+      { id: "sender", label: "Sender (A–Z)", compare: byText((s) => s.fromEmail) },
+      { id: "reason", label: "Reason", compare: byText((s) => s.reason) },
+    ],
+  });
+  const activeList = tab === "mail" ? mailList : suppressedList;
 
   const load = () => {
     fetch(`/api/departments/${departmentId}/mailbox-mail`)
@@ -161,14 +196,28 @@ export function DepartmentMailboxPage({
         ))}
       </div>
 
+      {(tab === "mail" ? messages : suppressed)?.length ? (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <ListSearchInput
+            key={tab}
+            value={activeList.query}
+            onChange={activeList.setQuery}
+            placeholder={tab === "mail" ? "Search mail…" : "Search suppressed mail…"}
+          />
+          <SortDropdown value={activeList.sortKey} onChange={activeList.setSortKey} options={activeList.sortDropdownOptions} />
+        </div>
+      ) : null}
+
       {tab === "mail" && (
         messages === null ? (
           <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : messages.length === 0 ? (
           <p className="font-sans text-[12.5px] text-sts-muted">No mail yet.</p>
+        ) : mailList.visible.length === 0 ? (
+          <p className="font-sans text-[12.5px] text-sts-muted">No mail matches &ldquo;{mailList.query.trim()}&rdquo;</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {messages.map((m) => (
+            {mailList.visible.map((m) => (
               <div key={m.id} className="rounded-lg border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
@@ -236,9 +285,13 @@ export function DepartmentMailboxPage({
           <p className="font-sans text-[12.5px] text-sts-muted">Loading…</p>
         ) : suppressed.length === 0 ? (
           <p className="font-sans text-[12.5px] text-sts-muted">No suppressed mail.</p>
+        ) : suppressedList.visible.length === 0 ? (
+          <p className="font-sans text-[12.5px] text-sts-muted">
+            No suppressed mail matches &ldquo;{suppressedList.query.trim()}&rdquo;
+          </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {suppressed.map((s) => (
+            {suppressedList.visible.map((s) => (
               <div key={s.id} className="flex items-center gap-3 rounded-lg border border-sts-card-border bg-sts-card px-4 py-3">
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
                   <Ban className="size-2.5" /> {s.reason}

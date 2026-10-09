@@ -94,6 +94,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { FilterDropdown } from "@/components/tasks/task-filter-dropdown";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -434,6 +435,19 @@ function ProjectMembersSection({
 
   const filtered = users.filter((u) => matchesUserListSearch(u, query));
 
+  const members = useListControls(projectMembers, {
+    searchText: (m) => [m.name, m.departmentName, m.subDepartmentName].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((m) => m.name) },
+      { id: "name_desc", label: "Name (Z–A)", compare: (a, b) => b.name.localeCompare(a.name) },
+      {
+        id: "department",
+        label: "Department",
+        compare: byText((m) => [m.departmentName, m.subDepartmentName, m.name].join(" ")),
+      },
+    ],
+  });
+
   return (
     <div className="sts-glass-panel rounded-xl border border-sts-card-border p-4">
       <div className="mb-3 flex items-center gap-2">
@@ -450,13 +464,33 @@ function ProjectMembersSection({
         </button>
       </div>
 
+      {projectMembers.length > 0 && (
+        <div className="mb-3 flex items-center gap-2">
+          <ListSearchInput
+            value={members.query}
+            onChange={members.setQuery}
+            placeholder="Search members…"
+            className="max-w-none flex-1"
+          />
+          <SortDropdown
+            value={members.sortKey}
+            onChange={members.setSortKey}
+            options={members.sortDropdownOptions}
+          />
+        </div>
+      )}
+
       {projectMembers.length === 0 ? (
         <p className="font-sans text-[12px] text-sts-subtle">
           No members assigned yet
         </p>
+      ) : members.visible.length === 0 ? (
+        <p className="font-sans text-[12px] text-sts-subtle">
+          No members match
+        </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {projectMembers.map((m) => (
+          {members.visible.map((m) => (
             <div key={m.id} className="flex items-center gap-2">
               <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
               <div className="min-w-0 flex-1">

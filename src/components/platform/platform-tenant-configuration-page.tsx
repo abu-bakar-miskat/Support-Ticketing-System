@@ -4,12 +4,8 @@ import { useEffect, useState } from "react";
 import { Loader2, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ListSearchInput, byText } from "@/components/ui/list-controls";
 import {
   MARKETPLACE_FEATURE_KEYS,
   TEMPLATE_FEATURE_LABELS,
@@ -35,8 +31,16 @@ export function PlatformTenantConfigurationPage({
   const [flags, setFlags] = useState<Record<MarketplaceFeatureKey, boolean> | null>(null);
   const [loadingFlags, setLoadingFlags] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
+  const [featureQuery, setFeatureQuery] = useState("");
 
   const selectedTenant = tenants.find((t) => t.id === tenantId);
+  const tenantOptions = [...tenants]
+    .sort(byText((t) => t.name))
+    .map((t) => ({ value: t.id, label: t.name, description: t.slug, keywords: [t.slug] }));
+  const featureQ = featureQuery.trim().toLowerCase();
+  const visibleFeatureKeys = MARKETPLACE_FEATURE_KEYS.filter(
+    (key) => !featureQ || TEMPLATE_FEATURE_LABELS[key].toLowerCase().includes(featureQ),
+  );
 
   useEffect(() => {
     if (!tenantId) return;
@@ -163,18 +167,17 @@ export function PlatformTenantConfigurationPage({
               </p>
             </div>
             {tenants.length > 0 && (
-              <Select value={tenantId} onValueChange={(v) => v && setTenantId(v)}>
-                <SelectTrigger className="h-9 w-[220px]">
-                  <span className="truncate font-sans text-[12.5px]">{selectedTenant?.name ?? "Select a tenant"}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {tenants.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={tenantId}
+                onChange={(v) => v && setTenantId(v)}
+                options={tenantOptions}
+                placeholder="Select a tenant"
+                searchPlaceholder="Search tenants…"
+                emptyLabel="No tenants match"
+                searchable
+                aria-label="Tenant"
+                className="w-[220px]"
+              />
             )}
           </div>
 
@@ -269,13 +272,24 @@ export function PlatformTenantConfigurationPage({
                     </button>
                   </div>
                 </div>
+                <ListSearchInput
+                  value={featureQuery}
+                  onChange={setFeatureQuery}
+                  placeholder="Search features…"
+                  className="mb-2"
+                />
                 <div className="relative flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
                   {loadingFlags && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-sts-surface/60">
                       <Loader2 className="size-4 animate-spin text-sts-muted" />
                     </div>
                   )}
-                  {MARKETPLACE_FEATURE_KEYS.map((key) => (
+                  {visibleFeatureKeys.length === 0 && (
+                    <p className="py-4 text-center font-sans text-[12.5px] text-sts-muted">
+                      No features match &ldquo;{featureQuery.trim()}&rdquo;.
+                    </p>
+                  )}
+                  {visibleFeatureKeys.map((key) => (
                     <div key={key} className="flex items-center justify-between gap-3 py-2.5">
                       <span className="font-sans text-[13px] text-sts-foreground">{TEMPLATE_FEATURE_LABELS[key]}</span>
                       <Switch

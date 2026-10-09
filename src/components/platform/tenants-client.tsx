@@ -38,6 +38,7 @@ import { CreateTenantModal } from "@/components/platform/create-tenant-modal";
 import { tenantTypeLabel } from "@/lib/tenant-types";
 import { getAgreementExpiry, renewalStatusLabel } from "@/lib/agreement-expiry";
 import { Tip } from "@/components/ui/tooltip";
+import { SortDropdown, byText, byNumberDesc, byDateAsc } from "@/components/ui/list-controls";
 
 type TenantRow = {
   id: string;
@@ -52,6 +53,20 @@ type TenantRow = {
   agreementEndDate: string | null;
   renewalStatus: string | null;
 };
+
+const TENANT_SORT_OPTIONS: { id: string; label: string; compare: (a: TenantRow, b: TenantRow) => number }[] = [
+  { id: "name", label: "Name (A–Z)", compare: byText((t) => t.name) },
+  { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<TenantRow>((t) => t.name)(b, a) },
+  { id: "members", label: "Most members", compare: byNumberDesc((t) => t.members) },
+  { id: "departments", label: "Most departments", compare: byNumberDesc((t) => t.departments) },
+  {
+    id: "agreement",
+    label: "Agreement ending soonest",
+    // Tenants without an end date sink to the bottom.
+    compare: (a, b) =>
+      !a.agreementEndDate ? 1 : !b.agreementEndDate ? -1 : byDateAsc<TenantRow>((t) => t.agreementEndDate)(a, b),
+  },
+];
 
 /** Only non-default states get a badge — "Active" on every card is noise. */
 function StatusBadge({ tenant }: { tenant: TenantRow }) {
@@ -379,6 +394,7 @@ export function TenantsClient({
   );
   const [purgeTarget, setPurgeTarget] = useState<TenantRow | null>(null);
   const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<string>(TENANT_SORT_OPTIONS[0].id);
 
   const liveTenants = tenants.filter((t) => !t.deleted);
   const deletedTenants = tenants.filter((t) => t.deleted);
@@ -386,8 +402,9 @@ export function TenantsClient({
   const q = query.trim().toLowerCase();
   const matches = (t: TenantRow) =>
     !q || t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q);
-  const visibleLive = liveTenants.filter(matches);
-  const visibleDeleted = deletedTenants.filter(matches);
+  const compare = TENANT_SORT_OPTIONS.find((o) => o.id === sortKey)?.compare;
+  const visibleLive = liveTenants.filter(matches).sort(compare);
+  const visibleDeleted = deletedTenants.filter(matches).sort(compare);
 
   const suspendedCount = tenants.filter((t) => !t.deleted && t.status === "suspended").length;
   const memberTotal = liveTenants.reduce((sum, t) => sum + t.members, 0);
@@ -577,18 +594,25 @@ export function TenantsClient({
                   {q ? `${visibleLive.length} of ${liveTenants.length}` : liveTenants.length}
                 </span>
               </h2>
-              <div className="relative w-full sm:w-64">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-sts-subtle"
-                  aria-hidden
-                />
-                <Input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name or slug"
-                  aria-label="Search tenants"
-                  className="h-8 rounded-full pl-8 text-[12.5px]"
+              <div className="flex w-full items-center gap-2 sm:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search
+                    className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-sts-subtle"
+                    aria-hidden
+                  />
+                  <Input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search by name or slug"
+                    aria-label="Search tenants"
+                    className="h-8 rounded-full pl-8 text-[12.5px]"
+                  />
+                </div>
+                <SortDropdown
+                  value={sortKey}
+                  onChange={setSortKey}
+                  options={TENANT_SORT_OPTIONS.map(({ id, label }) => ({ id, label }))}
                 />
               </div>
             </div>

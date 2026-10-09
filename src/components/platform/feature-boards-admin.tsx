@@ -22,6 +22,7 @@ import {
   type MarketplaceFeatureKey,
 } from "@/lib/template-features";
 import { cn } from "@/lib/utils";
+import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
 type StatusDraft = { label: string; color: string; isComplete: boolean };
 type ListDraft = { name: string; statuses: string[] };
@@ -77,6 +78,8 @@ export function FeatureBoardsAdmin({ saved }: { saved: SavedFeature[] }) {
   const [draft, setDraft] = useState<FeatureDraft | null>(null);
   const [busy, setBusy] = useState<"save" | "reset" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [featureQuery, setFeatureQuery] = useState("");
+  const [featureSort, setFeatureSort] = useState("grouped");
 
   useEffect(() => {
     setRecords(saved);
@@ -137,6 +140,66 @@ export function FeatureBoardsAdmin({ saved }: { saved: SavedFeature[] }) {
     router.refresh();
   }
 
+  const featureMatches = (key: MarketplaceFeatureKey) => {
+    const terms = featureQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return true;
+    const hay = [
+      TEMPLATE_FEATURE_LABELS[key],
+      MARKETPLACE_FEATURE_COPY[key].explanation,
+      ...records.filter((feature) => feature.key === key).map((feature) => feature.name),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return terms.every((t) => hay.includes(t));
+  };
+  const templateCount = (key: MarketplaceFeatureKey) => records.filter((feature) => feature.key === key).length;
+  const featureSections: { label: string | null; keys: MarketplaceFeatureKey[] }[] =
+    featureSort === "grouped"
+      ? MARKETPLACE_FEATURE_GROUPS.map((group) => ({ label: group.label, keys: group.keys.filter(featureMatches) })).filter(
+          (section) => section.keys.length > 0,
+        )
+      : (() => {
+          const keys = MARKETPLACE_FEATURE_GROUPS.flatMap((group) => group.keys)
+            .filter(featureMatches)
+            .sort(
+              featureSort === "templates"
+                ? (a, b) => templateCount(b) - templateCount(a) || byText<MarketplaceFeatureKey>((k) => TEMPLATE_FEATURE_LABELS[k])(a, b)
+                : byText<MarketplaceFeatureKey>((k) => TEMPLATE_FEATURE_LABELS[k]),
+            );
+          return keys.length ? [{ label: null, keys }] : [];
+        })();
+
+  function renderFeatureCard(key: MarketplaceFeatureKey) {
+    const templates = records.filter((feature) => feature.key === key);
+    const Icon = FEATURE_ICONS[key];
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => {
+          setError(null);
+          setOpenKey(key);
+        }}
+        className="flex flex-col items-start gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
+      >
+        <span className="flex w-full items-center gap-2">
+          {Icon && <Icon className="size-4 shrink-0 text-sts-blue" />}
+          <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-semibold text-sts-foreground">
+            {TEMPLATE_FEATURE_LABELS[key]}
+          </span>
+          {templates.length > 0 && (
+            <span className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[11px] text-sts-blue">
+              {templates.length} {templates.length === 1 ? "template" : "templates"}
+            </span>
+          )}
+        </span>
+        <span className="line-clamp-2 font-sans text-[12px] text-sts-muted">
+          {templates.length > 0 ? templates.map((feature) => feature.name).join(" · ") : MARKETPLACE_FEATURE_COPY[key].explanation}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10">
       <div>
@@ -182,43 +245,34 @@ export function FeatureBoardsAdmin({ saved }: { saved: SavedFeature[] }) {
         />
       ) : (
         <div className="flex flex-col gap-6">
-          {MARKETPLACE_FEATURE_GROUPS.map((group) => (
-            <section key={group.label} className="flex flex-col gap-3">
-              <h2 className="font-sans text-[12px] font-semibold tracking-wide text-sts-subtle uppercase">{group.label}</h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {group.keys.map((key) => {
-                  const templates = records.filter((feature) => feature.key === key);
-                  const Icon = FEATURE_ICONS[key];
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        setError(null);
-                        setOpenKey(key);
-                      }}
-                      className="flex flex-col items-start gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
-                    >
-                      <span className="flex w-full items-center gap-2">
-                        {Icon && <Icon className="size-4 shrink-0 text-sts-blue" />}
-                        <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-semibold text-sts-foreground">
-                          {TEMPLATE_FEATURE_LABELS[key]}
-                        </span>
-                        {templates.length > 0 && (
-                          <span className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[11px] text-sts-blue">
-                            {templates.length} {templates.length === 1 ? "template" : "templates"}
-                          </span>
-                        )}
-                      </span>
-                      <span className="line-clamp-2 font-sans text-[12px] text-sts-muted">
-                        {templates.length > 0 ? templates.map((feature) => feature.name).join(" · ") : MARKETPLACE_FEATURE_COPY[key].explanation}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+          <div className="flex items-center justify-between gap-2">
+            <ListSearchInput value={featureQuery} onChange={setFeatureQuery} placeholder="Search features or templates…" />
+            <SortDropdown
+              value={featureSort}
+              onChange={setFeatureSort}
+              options={[
+                { id: "grouped", label: "Grouped" },
+                { id: "name", label: "Name (A–Z)" },
+                { id: "templates", label: "Most templates" },
+              ]}
+            />
+          </div>
+          {featureSections.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-sts-card-border py-10 text-center font-sans text-[13px] text-sts-muted">
+              No features match &ldquo;{featureQuery.trim()}&rdquo;.
+            </p>
+          ) : (
+            featureSections.map((section) => (
+              <section key={section.label ?? "all"} className="flex flex-col gap-3">
+                {section.label && (
+                  <h2 className="font-sans text-[12px] font-semibold tracking-wide text-sts-subtle uppercase">{section.label}</h2>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {section.keys.map(renderFeatureCard)}
+                </div>
+              </section>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -239,6 +293,13 @@ function FeatureTemplates({
   onCreate: () => void;
 }) {
   const Icon = FEATURE_ICONS[featureKey];
+  const templateList = useListControls(templates, {
+    searchText: (feature) => [feature.name, feature.explanation, feature.useCase].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((feature) => feature.name) },
+      { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<SavedFeature>((feature) => feature.name)(b, a) },
+    ],
+  });
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -256,22 +317,38 @@ function FeatureTemplates({
           No templates yet. Save a customized version of {TEMPLATE_FEATURE_LABELS[featureKey]}.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {templates.map((feature) => {
-            const summary = featureSetupSummary(feature.key, savedFeatureToSetup(feature), feature.statuses);
-            return (
-              <button
-                key={feature.id}
-                type="button"
-                onClick={() => onOpen(feature)}
-                className="flex flex-col items-start gap-1 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
-              >
-                <span className="font-sans text-[13px] font-semibold text-sts-foreground">{feature.name}</span>
-                <span className="line-clamp-2 font-sans text-[12px] text-sts-muted">{summary || feature.explanation || feature.useCase}</span>
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <ListSearchInput value={templateList.query} onChange={templateList.setQuery} placeholder="Search templates…" />
+            <SortDropdown
+              value={templateList.sortKey}
+              onChange={templateList.setSortKey}
+              options={templateList.sortDropdownOptions}
+            />
+          </div>
+          {templateList.visible.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-sts-card-border py-8 text-center font-sans text-[13px] text-sts-muted">
+              No templates match &ldquo;{templateList.query.trim()}&rdquo;.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {templateList.visible.map((feature) => {
+                const summary = featureSetupSummary(feature.key, savedFeatureToSetup(feature), feature.statuses);
+                return (
+                  <button
+                    key={feature.id}
+                    type="button"
+                    onClick={() => onOpen(feature)}
+                    className="flex flex-col items-start gap-1 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 text-left transition-colors hover:border-sts-blue/50"
+                  >
+                    <span className="font-sans text-[13px] font-semibold text-sts-foreground">{feature.name}</span>
+                    <span className="line-clamp-2 font-sans text-[12px] text-sts-muted">{summary || feature.explanation || feature.useCase}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

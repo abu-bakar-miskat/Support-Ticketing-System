@@ -33,6 +33,7 @@ import {
   createAdminSubDepartment,
 } from "@/lib/api/admin";
 import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byNumberDesc } from "@/components/ui/list-controls";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -917,6 +918,25 @@ export function SettingsDepartmentsPage({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [showNewModal, setShowNewModal] = useState(false);
+  const deptList = useListControls(departments, {
+    searchText: (d) =>
+      [
+        d.name,
+        d.type ?? "",
+        ...d.subDepartments.map((sd) => sd.name),
+        ...d.managers.map((m) => `${m.user.name} ${m.user.email}`),
+      ].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((d: DepartmentRow) => d.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((d: DepartmentRow) => d.name)(b, a) },
+      { id: "members", label: "Most members", compare: byNumberDesc((d: DepartmentRow) => d.memberIds.length) },
+      {
+        id: "sub-departments",
+        label: "Most sub-departments",
+        compare: byNumberDesc((d: DepartmentRow) => d._count.subDepartments),
+      },
+    ],
+  });
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmDeleteDept = departments.find((d) => d.id === confirmDeleteId) ?? null;
@@ -1005,8 +1025,18 @@ export function SettingsDepartmentsPage({
           />
         </div>
       ) : (
+        <>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <ListSearchInput value={deptList.query} onChange={deptList.setQuery} placeholder="Search departments, managers…" />
+          <SortDropdown value={deptList.sortKey} onChange={deptList.setSortKey} options={deptList.sortDropdownOptions} />
+        </div>
+        {deptList.visible.length === 0 ? (
+          <p className="py-10 text-center font-sans text-[13px] text-sts-muted">
+            No departments match &ldquo;{deptList.query.trim()}&rdquo;
+          </p>
+        ) : (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-          {departments.map((dept, i) => (
+          {deptList.visible.map((dept, i) => (
             <DepartmentCard
               key={dept.id}
               dept={dept}
@@ -1018,6 +1048,8 @@ export function SettingsDepartmentsPage({
             />
           ))}
         </div>
+        )}
+        </>
       )}
     </div>
     </>

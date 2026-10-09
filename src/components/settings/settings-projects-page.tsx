@@ -23,6 +23,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteAdminProject } from "@/lib/api/admin";
 import { ProjectModal, type ProjectRow, type ModalMode } from "@/components/projects/project-modal";
 import { ProjectAvatar } from "@/components/projects/project-avatar";
+import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 type DepartmentOption = { id: string; name: string };
 
@@ -69,6 +70,17 @@ export function SettingsProjectsPage({
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<ProjectRow | null>(null);
+  const list = useListControls(projects, {
+    searchText: (p) =>
+      [p.name, p.prefix, p.departmentName ?? "", p.liveDomain ?? "", p.description ?? "", ...p.members.map((m) => m.name)].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((p: ProjectRow) => p.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((p: ProjectRow) => p.name)(b, a) },
+      { id: "department", label: "Department", compare: byText((p: ProjectRow) => p.departmentName ?? "\uffff") },
+      { id: "open", label: "Most open tickets", compare: byNumberDesc((p: ProjectRow) => p.openCount) },
+      { id: "members", label: "Most members", compare: byNumberDesc((p: ProjectRow) => p.members.length) },
+    ],
+  });
 
   function refresh() {
     setModal(null);
@@ -122,6 +134,13 @@ export function SettingsProjectsPage({
           </Button>
         </div>
 
+        {projects.length > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search projects…" />
+            <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+          </div>
+        )}
+
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[640px]">
             <TableHeader>
@@ -154,7 +173,16 @@ export function SettingsProjectsPage({
                   </TableCell>
                 </TableRow>
               ) : null}
-              {projects.map((project) => (
+              {projects.length > 0 && list.visible.length === 0 ? (
+                <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                  <TableCell colSpan={6} className="py-0">
+                    <div className="flex h-[52px] items-center">
+                      <span className="font-sans text-[11.5px] text-sts-muted">No projects match &ldquo;{list.query.trim()}&rdquo;</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {list.visible.map((project) => (
                 <TableRow
                   key={project.id}
                   className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]"

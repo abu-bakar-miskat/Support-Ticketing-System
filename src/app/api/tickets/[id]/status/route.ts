@@ -14,6 +14,7 @@ import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-l
 import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
+import { clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 
 type Status = string
 
@@ -124,7 +125,7 @@ export async function PATCH(
     )
   }
 
-  const nextLabels = labelsAfterDeEscalation(
+  const movedLabels = labelsAfterDeEscalation(
     labelsAfterStatusMove({
       ticketLabels: ticket.labels,
       priorLinkedLabels,
@@ -133,6 +134,9 @@ export async function PATCH(
     }),
     to,
   )
+  // A closed ticket isn't waiting on anyone — and the availability sweep only
+  // revisits open tickets, so the flag would otherwise stick forever.
+  const nextLabels = isCompletion ? clearAgentUnavailableLabel(movedLabels) : movedLabels
   const labelsChanged =
     nextLabels.length !== ticket.labels.length ||
     nextLabels.some((label) => !ticket.labels.includes(label)) ||

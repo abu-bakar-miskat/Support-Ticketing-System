@@ -9,6 +9,7 @@ import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { BASE_URL } from "@/lib/email-templates/_shared"
+import { AGENT_UNAVAILABLE_LABEL, clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 import type { ApiKeyContext } from "@/lib/api-key-auth"
 import {
   resolveCurrentStage,
@@ -555,6 +556,11 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     statusChange = { to: target.label, isComplete: target.isComplete }
     data.status = target.label
     data.closedAt = target.isComplete ? (ticket.closedAt ?? new Date()) : null
+    // A closed ticket isn't waiting on anyone — the availability sweep only
+    // revisits open tickets, so the flag would otherwise stick forever.
+    if (target.isComplete && ticket.labels.includes(AGENT_UNAVAILABLE_LABEL)) {
+      data.labels = clearAgentUnavailableLabel(ticket.labels)
+    }
     changed.status = { from: ticket.status, to: target.label }
   }
 

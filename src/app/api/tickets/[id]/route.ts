@@ -16,6 +16,7 @@ import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { AGENT_UNAVAILABLE_LABEL, clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
 type TicketPriority = (typeof VALID_PRIORITIES)[number]
 
@@ -365,6 +366,15 @@ export async function PATCH(
     const deEscalated = labelsAfterDeEscalation(base, updateData.status as string)
     if (deEscalated.length !== base.length) {
       updateData.labels = deEscalated
+    }
+  }
+
+  // A closed ticket isn't waiting on anyone — and the availability sweep only
+  // revisits open tickets, so the flag would otherwise stick forever.
+  if (updateData.closedAt) {
+    const base = updateData.labels ?? ticket.labels
+    if (base.includes(AGENT_UNAVAILABLE_LABEL)) {
+      updateData.labels = clearAgentUnavailableLabel(base)
     }
   }
 

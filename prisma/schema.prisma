@@ -424,6 +424,11 @@ model Department {
   // MemberSchedule row (or the ticket is unassigned): { timezone, workingDays,
   // workStartTime, workEndTime }. DepartmentHoliday supplies the holiday half.
   businessHours     Json?
+  // Shared-mailbox SLA: flat targets applied to every ticket created from one of
+  // the department's mailboxes (form policies never apply to those). Both null
+  // = no SLA for mailbox tickets.
+  mailboxFirstResponseMins Int?
+  mailboxResolutionMins    Int?
   // Ticket-assignment method (slice 11, ASG-01). Default preserves the
   // pre-existing round-robin-ish behavior of lib/rota.ts's resolveAssignee().
   assignmentMethod  AssignmentMethod     @default(ROUND_ROBIN)
@@ -1872,6 +1877,9 @@ model SlaTimer {
   ticketId                       String    @unique
   tenantId                       String
   policyId                       String?
+  // "mailbox" for timers started from the department's shared-mailbox SLA;
+  // null for form-policy timers.
+  source                         String?
   firstResponseTargetMins        Int
   resolutionTargetMins           Int
   firstResponseStartedAt         DateTime

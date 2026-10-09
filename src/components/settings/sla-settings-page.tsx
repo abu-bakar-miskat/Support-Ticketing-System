@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
@@ -96,6 +96,7 @@ export function SlaSettingsPage({
   subDepartments,
   hideBackLink = false,
   showSubDepartment = true,
+  canEditPolicies = true,
 }: {
   departmentId: string;
   departmentName: string;
@@ -109,6 +110,11 @@ export function SlaSettingsPage({
    * managed on the department's own settings page instead.
    */
   showSubDepartment?: boolean;
+  /**
+   * False for department managers: they may only set the shared-mailbox SLA;
+   * form policies and working hours are shown read-only.
+   */
+  canEditPolicies?: boolean;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
@@ -328,6 +334,8 @@ export function SlaSettingsPage({
         </div>
       )}
 
+      <MailboxSlaCard departmentId={departmentId} />
+
       <div className="mb-8">
         <div className="mb-3">
           <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
@@ -355,6 +363,7 @@ export function SlaSettingsPage({
             onSave={savePolicy}
             onDelete={deletePolicy}
             emptyHint="No SLA policies yet. Add one to set first-response and resolution targets for this department."
+            readOnly={!canEditPolicies}
           />
         ) : forms.length === 0 && noFormPolicies.length === 0 && deletedFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
@@ -379,6 +388,7 @@ export function SlaSettingsPage({
                 onSave={savePolicy}
                 onDelete={deletePolicy}
                 emptyHint="No SLA policies for this form yet."
+                readOnly={!canEditPolicies}
               />
             ))}
 
@@ -407,6 +417,7 @@ export function SlaSettingsPage({
                 onDelete={deletePolicy}
                 emptyHint=""
                 hideNewPolicy
+                readOnly={!canEditPolicies}
               />
             )}
           </div>
@@ -418,7 +429,12 @@ export function SlaSettingsPage({
         {!slaConfig || !businessHours ? (
           <SkeletonRows count={4} height="h-10" />
         ) : (
-          <div className="flex flex-col gap-4">
+          <fieldset disabled={!canEditPolicies} className="flex min-w-0 flex-col gap-4">
+            {!canEditPolicies && (
+              <p className="font-sans text-[11.5px] text-sts-muted">
+                Only admins can change working hours.
+              </p>
+            )}
             <label className="flex w-fit cursor-pointer items-start gap-2.5 font-sans text-[12.5px] text-sts-foreground">
               <Switch
                 className="mt-0.5"
@@ -571,17 +587,19 @@ export function SlaSettingsPage({
               </div>
             </div>
 
-            <div className="mt-1 flex justify-end border-t border-sts-card-border pt-4">
-              <button
-                type="button"
-                onClick={saveSettings}
-                disabled={saving || hoursError !== null || !isDirty}
-                className="shrink-0 rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save working hours"}
-              </button>
-            </div>
-          </div>
+            {canEditPolicies && (
+              <div className="mt-1 flex justify-end border-t border-sts-card-border pt-4">
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  disabled={saving || hoursError !== null || !isDirty}
+                  className="shrink-0 rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : "Save working hours"}
+                </button>
+              </div>
+            )}
+          </fieldset>
         )}
       </div>
 
@@ -596,6 +614,193 @@ export function SlaSettingsPage({
           onCancel={() => setNewPolicyFor(null)}
           onCreate={createPolicy}
         />
+      )}
+    </div>
+  );
+}
+
+type MailboxSla = { firstResponseMins: number | null; resolutionMins: number | null; canEdit: boolean };
+
+/**
+ * Department-wide SLA for tickets created from the department's shared
+ * mailboxes. Form policies never apply to those tickets, so this is their only
+ * SLA. Editable by the department's managers as well as admins.
+ */
+function MailboxSlaCard({ departmentId }: { departmentId: string }) {
+  const [saved, setSaved] = useState<MailboxSla | null>(null);
+  const [draft, setDraft] = useState<{ firstResponseMins: number | ""; resolutionMins: number | "" }>({
+    firstResponseMins: "",
+    resolutionMins: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/departments/${departmentId}/mailbox-sla`)
+      .then(jsonOrThrow)
+      .then((res: MailboxSla) => {
+        if (cancelled) return;
+        setSaved(res);
+        setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [departmentId]);
+
+  const dirty =
+    saved !== null &&
+    (draft.firstResponseMins !== (saved.firstResponseMins ?? "") ||
+      draft.resolutionMins !== (saved.resolutionMins ?? ""));
+  useUnsavedChangesGuard(dirty);
+
+  const bothSet = Number(draft.firstResponseMins) > 0 && Number(draft.resolutionMins) > 0;
+  const bothEmpty = draft.firstResponseMins === "" && draft.resolutionMins === "";
+  const valid = bothSet || bothEmpty;
+  const enabled = saved?.firstResponseMins != null && saved?.resolutionMins != null;
+  const readOnly = saved !== null && !saved.canEdit;
+
+  async function save(next: { firstResponseMins: number | null; resolutionMins: number | null }) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res: MailboxSla = await jsonOrThrow(
+        await fetch(`/api/departments/${departmentId}/mailbox-sla`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next),
+        }),
+      );
+      setSaved(res);
+      setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save mailbox SLA");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const numCls =
+    "h-8 w-24 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15 read-only:cursor-default read-only:focus:ring-0";
+
+  return (
+    <div className="mb-8 rounded-2xl border border-sts-card-border bg-sts-card p-5">
+      <div className="mb-1 flex items-center gap-1.5">
+        <Mail className="size-3.5 shrink-0 text-sts-subtle" />
+        <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Shared mailbox SLA</h2>
+        {saved !== null && (
+          <span
+            className={cn(
+              "ml-1 rounded-full px-2 py-0.5 font-sans text-[10.5px] font-medium",
+              enabled ? "bg-sts-blue/10 text-sts-blue" : "bg-sts-surface text-sts-subtle",
+            )}
+          >
+            {enabled ? "Active" : "Off"}
+          </span>
+        )}
+      </div>
+      <p className="mb-4 font-sans text-[11.5px] text-sts-muted">
+        Applies to every ticket created from an email to one of this department&apos;s shared mailboxes. The
+        support-form policies below never apply to mailbox tickets. Changes affect new tickets only. Working hours
+        and pausing follow the settings below.
+      </p>
+
+      {error && (
+        <p className="mb-3 font-sans text-[11.5px] text-sts-red">{error}</p>
+      )}
+
+      {saved === null ? (
+        <SkeletonRows count={1} height="h-10" />
+      ) : (
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex flex-col">
+            <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+              Time to first response (mins)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                placeholder="e.g. 60"
+                value={draft.firstResponseMins}
+                readOnly={readOnly}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, firstResponseMins: e.target.value === "" ? "" : Number(e.target.value) }))
+                }
+                className={numCls}
+              />
+              {draft.firstResponseMins !== "" && (
+                <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">
+                  {formatMins(draft.firstResponseMins)}
+                </span>
+              )}
+            </span>
+          </label>
+          <label className="flex flex-col">
+            <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+              Time to resolution (mins)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                placeholder="e.g. 480"
+                value={draft.resolutionMins}
+                readOnly={readOnly}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, resolutionMins: e.target.value === "" ? "" : Number(e.target.value) }))
+                }
+                className={numCls}
+              />
+              {draft.resolutionMins !== "" && (
+                <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">
+                  {formatMins(draft.resolutionMins)}
+                </span>
+              )}
+            </span>
+          </label>
+
+          {!readOnly && (
+            <div className="ml-auto flex items-center gap-2">
+              {enabled && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => save({ firstResponseMins: null, resolutionMins: null })}
+                  className="rounded-full border border-sts-card-border px-3.5 py-1.5 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-60"
+                >
+                  Turn off
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={saving || !dirty || !valid}
+                onClick={() =>
+                  save(
+                    bothEmpty
+                      ? { firstResponseMins: null, resolutionMins: null }
+                      : {
+                          firstResponseMins: Number(draft.firstResponseMins),
+                          resolutionMins: Number(draft.resolutionMins),
+                        },
+                  )
+                }
+                className="rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save mailbox SLA"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {!valid && (
+        <p className="mt-2 font-sans text-[11.5px] text-sts-red">
+          Set both targets (greater than 0), or clear both to turn the mailbox SLA off.
+        </p>
       )}
     </div>
   );

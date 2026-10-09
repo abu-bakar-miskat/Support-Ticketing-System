@@ -34,16 +34,30 @@ After the Estimated Time is exceeded, the system should also continue counting a
 
 We also have tickets that are created from the **Shared Mailbox**.
 
-For these tickets, SLA has two time limits:
+For these tickets, SLA has two time limits these response and resolution time will be same for all the shared mailbox ticket :
 
 - **Time to First Response**
 - **Time to Resolution**
 
-The SLA is associated with a specific issue. If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+The SLA is not associated with a specific issue. If a ticket is created, the corresponding SLA will automatically apply to the ticket. If the assignee does not respond within the response time, first when the 80% (dynamic) response time is over and the assignee did not do anything, then the manager will receive a notification that the response SLA is almost breached. If the full response time is over, the manager will receive a notification that the ticket response time has been breached. Then the ticket label will be escalated and the status will also be escalated. And the over-response time will keep counting. When the assignee comes to the ticket and updates the status to In Progress, then the SLA response timer countdown will stop, and the time when the assignee just responds will be recorded.
+
+Now in the reply conversation section, where we can send email to the customer, when the assignee sends an email, the ticket gets a label named Waiting for Customer and the time tracker stops. When the label is Waiting for Customer and the customer replies, it becomes Waiting for Assignee and the time tracker starts again.
+
+Now if the assignee is unable to resolve the ticket within the resolution time, the manager will receive a notification that this ticket breached the resolution time, and in the ticket the over timer will keep counting. When the assignee stops the countdown, it will stop and the over time will be recorded.
 
 ### Support Ticket
 
+The SLA is associated with a specific issue. If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+
 ### Portal Ticket
+
+The SLA is associated with a specific issue. And the the specfic issue has If a ticket is created with that issue, the corresponding SLA will automatically apply to the ticket.
+
+The SLA is not associated with a specific issue. If a ticket is created, the corresponding SLA will automatically apply to the ticket. If the assignee does not respond within the response time, first when the 80% (dynamic) response time is over and the assignee did not do anything, then the manager will receive a notification that the response SLA is almost breached. If the full response time is over, the manager will receive a notification that the ticket response time has been breached. Then the ticket label will be escalated and the status will also be escalated. And the over-response time will keep counting. When the assignee comes to the ticket and updates the status to In Progress, then the SLA response timer countdown will stop, and the time when the assignee just responds will be recorded.
+
+Now in the reply conversation section, where we can send email to the customer, when the assignee sends an email, the ticket gets a label named Waiting for Customer and the time tracker stops. When the label is Waiting for Customer and the customer replies, it becomes Waiting for Assignee and the time tracker starts again.
+
+Now if the assignee is unable to resolve the ticket within the resolution time, the manager will receive a notification that this ticket breached the resolution time, and in the ticket the over timer will keep counting. When the assignee stops the countdown, it will stop and the over time will be recorded.
 
 ### Time to First Response SLA
 

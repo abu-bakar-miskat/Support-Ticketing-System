@@ -262,6 +262,43 @@ export async function startSlaTimers(
   }
 }
 
+/** Marks timers started from a department's shared-mailbox SLA. */
+export const MAILBOX_SLA_SOURCE = "mailbox";
+
+/**
+ * Starts timers for a ticket created from a shared mailbox, using the
+ * department's flat mailbox targets (form policies never apply to these).
+ * No-op when the department hasn't set a mailbox SLA. Best-effort — never throws.
+ */
+export async function startMailboxSlaTimer(
+  ticketId: string,
+  tenantId: string,
+  departmentId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  try {
+    const dept = await prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { mailboxFirstResponseMins: true, mailboxResolutionMins: true },
+    });
+    if (!dept?.mailboxFirstResponseMins || !dept.mailboxResolutionMins) return;
+
+    await prisma.slaTimer.create({
+      data: {
+        ticketId,
+        tenantId,
+        source: MAILBOX_SLA_SOURCE,
+        firstResponseTargetMins: dept.mailboxFirstResponseMins,
+        resolutionTargetMins: dept.mailboxResolutionMins,
+        firstResponseStartedAt: now,
+        resolutionStartedAt: now,
+      },
+    });
+  } catch {
+    // best-effort — SLA timers are additive, never block ticket creation
+  }
+}
+
 async function loadResolutionPauseIntervals(
   ticketId: string,
   until: Date,
@@ -329,8 +366,10 @@ function toTimerState(timer: {
   return timer;
 }
 
-// Only form-submitted tickets are SLA-eligible. Existing timers on manual
-// and mailbox tickets are retained as history but ignored for indicators/alerts.
+// SLA-eligible timers: form-submitted tickets, plus timers started from the
+// department's shared-mailbox SLA. Older timers on manual and mailbox tickets
+// (pre-mailbox-SLA, no `source`) are retained as history but ignored for
+// indicators/alerts.
 const SLA_TICKET_SELECT = {
   id: true,
   assigneeId: true,
@@ -339,10 +378,11 @@ const SLA_TICKET_SELECT = {
   intake: { select: { id: true } },
 } as const satisfies Prisma.TicketSelect;
 
-function isSlaEligible(ticket: {
-  intake: { id: string } | null;
+function isSlaEligible(timer: {
+  source: string | null;
+  ticket: { intake: { id: string } | null };
 }): boolean {
-  return ticket.intake !== null;
+  return timer.ticket.intake !== null || timer.source === MAILBOX_SLA_SOURCE;
 }
 
 /** Read-only SLA indicator for a ticket (SLA-06), for the API/UI. Null when no SLA applies. */
@@ -351,7 +391,7 @@ export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new
     where: { ticketId },
     include: { ticket: { select: SLA_TICKET_SELECT } },
   });
-  if (!timer || !isSlaEligible(timer.ticket)) return null;
+  if (!timer || !isSlaEligible(timer)) return null;
 
   const departmentId = timer.ticket.subDepartment.departmentId;
   const subDepartmentId = timer.ticket.subDepartmentId;
@@ -396,7 +436,7 @@ export async function getSlaIndicatorViewForTicket(
       policy: { select: { name: true } },
     },
   });
-  if (!timer || !isSlaEligible(timer.ticket)) return null;
+  if (!timer || !isSlaEligible(timer)) return null;
 
   const departmentId = timer.ticket.subDepartment.departmentId;
   const subDepartmentId = timer.ticket.subDepartmentId;
@@ -439,7 +479,7 @@ export async function getSlaIndicatorViewForTicket(
     select: { metric: true, targetMins: true, breachedAt: true },
   });
   view.details = {
-    policyName: timer.policy?.name ?? null,
+    policyName: timer.policy?.name ?? (timer.source === MAILBOX_SLA_SOURCE ? "Shared mailbox SLA" : null),
     firstResponseStartedAt: timer.firstResponseStartedAt.toISOString(),
     firstResponseStoppedAt: timer.firstResponseStoppedAt?.toISOString() ?? null,
     resolutionStartedAt: timer.resolutionStartedAt.toISOString(),
@@ -476,7 +516,7 @@ export async function checkAndNotifySla(ticketId: string, now: Date = new Date()
         },
       },
     });
-    if (!timer || !isSlaEligible(timer.ticket)) return;
+    if (!timer || !isSlaEligible(timer)) return;
 
     const departmentId = timer.ticket.subDepartment.departmentId;
     const subDepartmentId = timer.ticket.subDepartmentId;

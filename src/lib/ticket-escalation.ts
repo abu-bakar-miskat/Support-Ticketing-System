@@ -17,6 +17,7 @@ import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-l
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 
 export const ESCALATED_LABEL = "Escalated"
 
@@ -112,6 +113,9 @@ export async function escalateTicket(
   if (!nextLabels.some((l) => l.toLowerCase() === ESCALATED_LABEL.toLowerCase())) {
     nextLabels = [...nextLabels, ESCALATED_LABEL]
   }
+  // A closed ticket isn't waiting on anyone (the availability sweep only
+  // revisits open tickets, so the flag would otherwise stick forever).
+  if (escalatedStatus?.isComplete) nextLabels = clearAgentUnavailableLabel(nextLabels)
 
   // FK-safe actor for the ActivityLog trigger; the creator satisfies the NOT
   // NULL actor when no human is driving the change (automation).

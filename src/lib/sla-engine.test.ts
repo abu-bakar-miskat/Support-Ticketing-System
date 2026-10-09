@@ -29,6 +29,7 @@ import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import {
   startSlaTimers,
+  startMailboxSlaTimer,
   stopFirstResponseOnPublicAgentMessage,
   syncResolutionTimerOnClosedAtChange,
   resolveCalendarForTicket,
@@ -607,6 +608,46 @@ describe("existing manual and mailbox tickets — no SLA", () => {
       slaConfig: { pauseOutsideHours: false }, businessHours: {},
     } as never)
     expect(await getSlaIndicatorViewForTicket("intake-1", new Date("2026-10-07T09:10:00Z")))
+      .toMatchObject({ overall: "ON_TRACK" })
+  })
+})
+
+describe("shared-mailbox SLA", () => {
+  it("starts a mailbox-sourced timer from the department's mailbox targets", async () => {
+    const now = new Date("2026-10-09T09:00:00Z")
+    mockDeptFind.mockResolvedValue({ mailboxFirstResponseMins: 30, mailboxResolutionMins: 240 } as never)
+
+    await startMailboxSlaTimer("email-1", "tenant-1", "dept-1", now)
+
+    expect(mockTimerCreate).toHaveBeenCalledWith({
+      data: {
+        ticketId: "email-1", tenantId: "tenant-1", source: "mailbox",
+        firstResponseTargetMins: 30, resolutionTargetMins: 240,
+        firstResponseStartedAt: now, resolutionStartedAt: now,
+      },
+    })
+    expect(mockPolicyFindMany).not.toHaveBeenCalled()
+  })
+
+  it("does nothing when the department has no mailbox SLA", async () => {
+    mockDeptFind.mockResolvedValue({ mailboxFirstResponseMins: null, mailboxResolutionMins: null } as never)
+    await startMailboxSlaTimer("email-1", "tenant-1", "dept-1")
+    expect(mockTimerCreate).not.toHaveBeenCalled()
+  })
+
+  it("evaluates mailbox-sourced timers on tickets without an intake", async () => {
+    mockTimerFind.mockResolvedValue({
+      id: "timer-m", ticketId: "email-1", source: "mailbox", policy: null,
+      firstResponseTargetMins: 60, resolutionTargetMins: 480,
+      firstResponseStartedAt: new Date("2026-10-09T09:00:00Z"), firstResponseStoppedAt: null,
+      resolutionStartedAt: new Date("2026-10-09T09:00:00Z"), resolutionStoppedAt: null,
+      ticket: { intake: null, assigneeId: null, subDepartmentId: "sub-1",
+        subDepartment: { departmentId: "dept-1" } },
+    } as never)
+    vi.mocked(prisma.subDepartment.findUnique).mockResolvedValue({
+      slaConfig: { pauseOutsideHours: false }, businessHours: {},
+    } as never)
+    expect(await getSlaIndicatorViewForTicket("email-1", new Date("2026-10-09T09:10:00Z")))
       .toMatchObject({ overall: "ON_TRACK" })
   })
 })

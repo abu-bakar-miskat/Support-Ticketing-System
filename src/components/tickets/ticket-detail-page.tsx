@@ -81,6 +81,7 @@ import { CommentInput } from "@/components/tickets/comment-input";
 import {
   CustomerMessageItem,
   CustomerReplyComposer,
+  MessageAttachments,
   type MessageData,
   type MessageNote,
 } from "@/components/tickets/customer-reply";
@@ -696,6 +697,8 @@ export type TicketDetailProps = {
   subTickets: SubTicketData[];
   comments: CommentData[];
   messages?: MessageData[];
+  /** Shared-mailbox ticket's original email: shown as the description, hidden from the reply thread. */
+  originMessageId?: string | null;
   customerReply?: {
     enabled: boolean;
     customerName: string | null;
@@ -787,6 +790,7 @@ export function TicketDetailPage({
   subTickets: initialSubTickets,
   comments,
   messages = EMPTY_MESSAGES,
+  originMessageId = null,
   customerReply = DEFAULT_CUSTOMER_REPLY,
   activity,
   canDelete,
@@ -982,13 +986,20 @@ export function TicketDetailPage({
 
   // Customer chat messages sorted oldest-first — chronological, with the
   // newest message nearest the composer pinned at the bottom of the thread.
+  // A mailbox ticket's original email is shown as the description, not here.
   const sortedMessages = useMemo(
     () =>
-      [...liveMessages].sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      ),
-    [liveMessages],
+      liveMessages
+        .filter((m) => m.id !== originMessageId)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+    [liveMessages, originMessageId],
+  );
+  const originAttachments = useMemo(
+    () => liveMessages.find((m) => m.id === originMessageId)?.attachments ?? [],
+    [liveMessages, originMessageId],
   );
 
   // "inbound" = last message from submitter → waiting for assignee
@@ -2866,6 +2877,12 @@ export function TicketDetailPage({
                         No description
                       </p>
                     )}
+                    {/* The original mailbox email's attachments live with its body here. */}
+                    {!descEditing && !isHydrating && originAttachments.length > 0 && (
+                      <div className="mt-3">
+                        <MessageAttachments attachments={originAttachments} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -3835,11 +3852,6 @@ export function TicketDetailPage({
               }
             />
 
-            {/* SLA breakdown — rendered only for admins / department managers */}
-            {!isHydrating ? (
-              <SlaDetailsSection ticketId={dbId} refreshKey={slaRefreshKey} />
-            ) : null}
-
             {/* Assignees */}
             <div className="flex flex-col gap-1.5">
               <SectionLabel>Assignees</SectionLabel>
@@ -3967,6 +3979,11 @@ export function TicketDetailPage({
             {subTicketTime && subTicketTime.perTicket.length > 0 && (
               <SubTicketTimeSection data={subTicketTime} />
             )}
+
+            {/* SLA breakdown — rendered only for admins / department managers */}
+            {!isHydrating ? (
+              <SlaDetailsSection ticketId={dbId} refreshKey={slaRefreshKey} />
+            ) : null}
           </div>
         </aside>
       </div>

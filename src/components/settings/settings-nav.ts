@@ -125,7 +125,10 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "SLA policies",
         href: "/settings/sla",
-        departmentAdmin: true,
+        // Managers see it for the shared-mailbox SLA; form policies and
+        // working hours are read-only for them.
+        managerOnly: true,
+        hideForSubManager: true,
         deptSpecific: true,
         templateFeatureKey: "slaPolicies",
       },

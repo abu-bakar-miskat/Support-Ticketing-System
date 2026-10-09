@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 const m = vi.hoisted(() => ({
-  sla: vi.fn(), rules: vi.fn().mockResolvedValue(undefined),
+  sla: vi.fn(), mailboxSla: vi.fn().mockResolvedValue(undefined), rules: vi.fn().mockResolvedValue(undefined),
   create: vi.fn().mockResolvedValue({ id: "email-ticket", ticketNumber: 12 }),
   message: vi.fn().mockResolvedValue({ id: "message-1" }),
 }))
@@ -21,7 +21,7 @@ vi.mock("@/lib/board-data", () => ({ getSubDepartmentStatuses: vi.fn().mockResol
 vi.mock("@/lib/support-project", () => ({ resolveSupportProjectForDepartment: vi.fn().mockResolvedValue("support-project") }))
 vi.mock("@/lib/intake-conversion", () => ({ ensureSystemUser: vi.fn().mockResolvedValue("system-user") }))
 vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: vi.fn() }))
-vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla, startMailboxSlaTimer: m.mailboxSla }))
 vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: m.rules }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: vi.fn() }))
@@ -30,7 +30,7 @@ vi.mock("@/lib/department-setup", () => ({ assertDepartmentOperational: vi.fn().
 import { createTicketFromInboundEmail } from "./mailbox-ticket-creation"
 
 describe("mailbox ticket SLA policy", () => {
-  it("creates the ticket and message without starting SLA timers, and disables SLA rules", async () => {
+  it("starts only the department mailbox SLA (no form policies) and disables SLA rules", async () => {
     const ticket = await createTicketFromInboundEmail({
       departmentId: "dept-1", teamId: "sub-1", fromEmail: "customer@example.test",
       fromName: "Customer", subject: "Email request",
@@ -43,6 +43,7 @@ describe("mailbox ticket SLA policy", () => {
     expect(m.create).toHaveBeenCalledOnce()
     expect(m.message).toHaveBeenCalledOnce()
     expect(m.sla).not.toHaveBeenCalled()
+    expect(m.mailboxSla).toHaveBeenCalledWith("email-ticket", "tenant-1", "dept-1")
     expect(m.rules).toHaveBeenCalledWith(
       expect.objectContaining({ id: "email-ticket", allowSla: false }),
       expect.objectContaining({ fromEmail: "customer@example.test" }),

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { AGENT_UNAVAILABLE_LABEL, clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 import { pickStatusMove, resolveTargetLabel, type GitHubStatusEvent } from "./status-map"
 
 /**
@@ -32,6 +33,7 @@ export async function advanceTicketStatus(
       creatorId: true,
       closedAt: true,
       deletedAt: true,
+      labels: true,
       subDepartment: { select: { prefix: true, githubStatusMap: true } },
       intake: { select: { id: true } },
     },
@@ -68,6 +70,11 @@ export async function advanceTicketStatus(
       data: {
         status: move.label,
         closedAt: newClosedAt,
+        // A closed ticket isn't waiting on anyone — the availability sweep
+        // only revisits open tickets, so the flag would otherwise stick.
+        ...(move.isComplete && ticket.labels.includes(AGENT_UNAVAILABLE_LABEL)
+          ? { labels: clearAgentUnavailableLabel(ticket.labels) }
+          : {}),
       },
     })
   })

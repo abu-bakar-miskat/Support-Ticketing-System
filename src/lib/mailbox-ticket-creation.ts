@@ -8,6 +8,7 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members";
 import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
+import { startMailboxSlaTimer } from "@/lib/sla-engine";
 import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
 import { TicketPriority } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
@@ -190,6 +191,10 @@ export async function createTicketFromInboundEmail(params: {
     fromName,
     priority: TicketPriority.Medium,
   };
+  // Shared-mailbox SLA: the department's flat mailbox targets (if set).
+  // Best-effort, never throws.
+  await startMailboxSlaTimer(ticket.id, subDepartment.tenantId, departmentId);
+
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
     {
@@ -198,7 +203,8 @@ export async function createTicketFromInboundEmail(params: {
       departmentId,
       subDepartmentId: teamId,
       assigneeId: assignResult.assigneeId,
-      // Mailbox tickets never receive SLA policies, including through automation.
+      // Mailbox tickets only use the department's shared-mailbox SLA (started
+      // above) — never form SLA policies, including through automation.
       allowSla: false,
     },
     ruleFormValues,

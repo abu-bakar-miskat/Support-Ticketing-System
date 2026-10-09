@@ -17,6 +17,7 @@ import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
 import { presentPortalComment } from "@/lib/portal-comments";
 import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer";
+import { findMailboxOriginMessageId } from "@/lib/mailbox-origin-message";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
@@ -751,6 +752,11 @@ export async function getTicketDetailPayload(
       createdAt: a.createdAt.toISOString(),
       metadata: (a.metadata ?? {}) as Record<string, unknown>,
     })),
+    // Shown as the description; hidden from the reply thread.
+    originMessageId: findMailboxOriginMessageId(
+      { createdAt: ticket.createdAt, hasIntake: ticket.intake !== null },
+      messages,
+    ),
     messages: messages.map((m) => ({
       id: m.id,
       direction: m.direction,

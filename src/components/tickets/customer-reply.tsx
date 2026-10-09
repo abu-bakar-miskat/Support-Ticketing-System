@@ -650,6 +650,73 @@ function MessageNotes({
 }
 
 /** A single customer-conversation message in the interleaved timeline. */
+/** Inline image previews + downloadable file chips for a message's attachments. */
+export function MessageAttachments({
+  attachments,
+  className,
+}: {
+  attachments: MessageData["attachments"];
+  className?: string;
+}) {
+  const imageAttachments = attachments.filter((a) => isImage(a.fileName));
+  const fileAttachments = attachments.filter((a) => !isImage(a.fileName));
+  if (attachments.length === 0) return null;
+  return (
+    <>
+      {/* Inline image previews */}
+      {imageAttachments.length > 0 && (
+        <div className={cn("flex flex-col gap-2", className)}>
+          {imageAttachments.map((a) => (
+            <a
+              key={a.id}
+              href={a.storageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block"
+            >
+              <img
+                src={a.storageUrl}
+                alt={a.fileName}
+                className="max-h-64 max-w-full rounded-lg object-contain"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* File attachments */}
+      {fileAttachments.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {fileAttachments.map((a) => (
+            <Tip key={a.id} label={`Download ${a.fileName}`}>
+              <button
+                type="button"
+                onClick={() => downloadFile(a.storageUrl, a.fileName)}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
+                  <FileText className="size-4 text-sts-blue" />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-sts-foreground">
+                    {a.fileName}
+                  </span>
+                  {a.fileSize > 0 && (
+                    <span className="font-sans text-[10.5px] text-sts-subtle">
+                      {formatFileSize(a.fileSize)}
+                    </span>
+                  )}
+                </span>
+                <Download className="ml-auto size-3.5 shrink-0 text-sts-muted" />
+              </button>
+            </Tip>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CustomerMessageItem({
   message,
   ticketId,
@@ -679,13 +746,6 @@ export function CustomerMessageItem({
   const displayName = outbound
     ? (message.authorName ?? message.fromName)
     : message.fromName;
-
-  const imageAttachments = message.attachments.filter((a) =>
-    isImage(a.fileName),
-  );
-  const fileAttachments = message.attachments.filter(
-    (a) => !isImage(a.fileName),
-  );
 
   async function doDelete() {
     if (!ticketId || !onDelete) return;
@@ -819,56 +879,10 @@ export function CustomerMessageItem({
               </div>
             )}
 
-            {/* Inline image previews */}
-            {imageAttachments.length > 0 && (
-              <div className={cn("flex flex-col gap-2", visibleBody && "mt-2")}>
-                {imageAttachments.map((a) => (
-                  <a
-                    key={a.id}
-                    href={a.storageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block"
-                  >
-                    <img
-                      src={a.storageUrl}
-                      alt={a.fileName}
-                      className="max-h-64 max-w-full rounded-lg object-contain"
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            {/* File attachments */}
-            {fileAttachments.length > 0 && (
-              <div className="mt-2 flex flex-col gap-1.5">
-                {fileAttachments.map((a) => (
-                  <Tip key={a.id} label={`Download ${a.fileName}`}>
-                    <button
-                      type="button"
-                      onClick={() => downloadFile(a.storageUrl, a.fileName)}
-                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
-                    >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
-                        <FileText className="size-4 text-sts-blue" />
-                      </span>
-                      <span className="flex min-w-0 flex-col">
-                        <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-sts-foreground">
-                          {a.fileName}
-                        </span>
-                        {a.fileSize > 0 && (
-                          <span className="font-sans text-[10.5px] text-sts-subtle">
-                            {formatFileSize(a.fileSize)}
-                          </span>
-                        )}
-                      </span>
-                      <Download className="ml-auto size-3.5 shrink-0 text-sts-muted" />
-                    </button>
-                  </Tip>
-                ))}
-              </div>
-            )}
+            <MessageAttachments
+              attachments={message.attachments}
+              className={cn(visibleBody && "mt-2")}
+            />
           </div>
 
           {/* Internal notes attached to this message (staff-only) */}

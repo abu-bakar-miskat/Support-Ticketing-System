@@ -304,7 +304,7 @@ export function EmailIdentityCard({ scope }: { scope: DeptOption | undefined }) 
   if (!scope) return null;
 
   return (
-    <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
+    <section className="w-full rounded-xl border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4 shadow-sts-card">
       <div className="pb-1.5">
         <h2 className="font-sans text-sm font-semibold text-sts-foreground">
           Department senders

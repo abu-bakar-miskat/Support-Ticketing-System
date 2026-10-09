@@ -201,188 +201,199 @@ export function SettingsBrandingPage({
     router.refresh()
   }
 
+  const [colorSection, setColorSection] = useState<SidebarColorField>("sidebarColors")
+  const activeColorSection =
+    SIDEBAR_COLOR_SECTIONS.find((sec) => sec.field === colorSection) ?? SIDEBAR_COLOR_SECTIONS[0]
   const labelClass = "block font-sans text-[13px] font-medium text-sts-foreground"
+  const cardClass = "rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card"
 
   return (
-    <div className="flex flex-col gap-[18px] px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
+    <div className="flex flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10">
       <header className="flex flex-col gap-[3px]">
         <h1 className="sts-text-admin-title">Branding</h1>
-        <p className="font-sans text-[13px] text-sts-muted">
+        <p className="max-w-2xl font-sans text-[13px] text-sts-muted">
           Customize how <span className="font-medium text-sts-foreground">{tenantName}</span> appears
           across the app. These settings apply only to this tenant.
         </p>
       </header>
 
       {error && (
-        <div className="w-full max-w-[920px] rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 font-sans text-[12.5px] text-destructive">
           {error}
         </div>
       )}
       {status && (
-        <div className="w-full max-w-[920px] rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12.5px] text-sts-green">
+        <div className="rounded-lg border border-sts-green/30 bg-sts-green/10 px-3 py-2 font-sans text-[12.5px] text-sts-green">
           {status}
         </div>
       )}
 
-      <section
-        className={cn(
-          "w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card",
-          "px-[22px] py-5",
-        )}
-      >
-        <form onSubmit={save} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-[5px]">
-            <label className={labelClass}>Display name</label>
-            <p className="font-sans text-[12px] text-sts-muted">
-              Shown in the sidebar (falls back to the tenant name).
-            </p>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={tenantName}
-              className="mt-1 h-9"
-            />
-          </div>
-
-          <div className="flex flex-col gap-[5px]">
-            <label className={labelClass}>Logo</label>
-            <p className="font-sans text-[12px] text-sts-muted">
-              Upload an image or paste an absolute (https://…) or root-relative (/…) URL.
-            </p>
-
-            <div className="mt-1 flex items-center gap-3">
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={logoUrl}
-                  alt="Logo preview"
-                  className="h-20 w-40 shrink-0 rounded-md border border-sts-card-border object-contain bg-sts-surface p-2"
-                />
-              ) : (
-                <div className="flex h-20 w-40 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border text-[11px] text-sts-muted">
-                  Logo
-                </div>
-              )}
-
-              <LogoUploadButton
-                onUploaded={(url) => {
-                  setLogoUrl(url)
-                  setError(null)
-                  setStatus("Logo uploaded. Click “Save branding” to apply.")
-                }}
-                onError={(m) => setError(m)}
-              />
-              {logoUrl && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLogoUrl("")}
-                >
-                  Remove
-                </Button>
-              )}
+      <form onSubmit={save} className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+          <section className={cn(cardClass, "flex flex-col gap-5 px-[22px] py-5")}>
+            <div>
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Identity</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                Name and logo shown in the sidebar.
+              </p>
             </div>
 
-            <Input
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://example.com/logo.svg"
-              className="mt-2 h-9"
-            />
-            <p className="font-sans text-[11px] text-sts-muted">
-              PNG, JPG, GIF, WebP, or SVG · up to 5 MB.
-            </p>
-          </div>
+            <div className="flex flex-col gap-[5px]">
+              <label className={labelClass}>Display name</label>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={tenantName}
+                className="h-9"
+              />
+            </div>
 
-          <div className="border-t border-sts-card-border pt-4">
-            <AccentColorField value={accentColor} onChange={setAccentColor} />
-          </div>
-
-          <div className="flex flex-col gap-[5px] border-t border-sts-card-border pt-4">
-            <label className={labelClass}>Sidebar colours</label>
-            <p className="font-sans text-[12px] text-sts-muted">
-              Accent for each group in the navigation menus. Cards and highlights are soft tints of
-              the colour you pick.
-            </p>
-            <div className="mt-2 flex flex-col gap-5">
-              {SIDEBAR_COLOR_SECTIONS.map((sec) => (
-                <div key={sec.field} className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                        {sec.title}
-                      </h3>
-                      <p className="font-sans text-[12px] text-sts-muted">{sec.description}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isDefaultColors(sec.field)}
-                      onClick={() =>
-                        setSidebarColors((current) => ({ ...current, [sec.field]: { ...sec.defaults } }))
-                      }
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  <SidebarColorsEditor
-                    groups={sec.groups}
-                    value={sidebarColors[sec.field]}
-                    onChange={(key, color) =>
-                      setSidebarColors((current) => ({
-                        ...current,
-                        [sec.field]: { ...current[sec.field], [key]: color },
-                      }))
-                    }
+            <div className="flex flex-col gap-[5px]">
+              <label className={labelClass}>Logo</label>
+              <div className="flex flex-wrap items-center gap-3">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="Logo preview"
+                    className="h-16 w-36 shrink-0 rounded-md border border-sts-card-border bg-sts-surface object-contain p-2"
                   />
+                ) : (
+                  <div className="flex h-16 w-36 shrink-0 items-center justify-center rounded-md border border-dashed border-sts-card-border font-sans text-[11px] text-sts-muted">
+                    No logo
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <LogoUploadButton
+                    onUploaded={(url) => {
+                      setLogoUrl(url)
+                      setError(null)
+                      setStatus("Logo uploaded. Click “Save branding” to apply.")
+                    }}
+                    onError={(m) => setError(m)}
+                  />
+                  {logoUrl && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>
+                      Remove
+                    </Button>
+                  )}
                 </div>
-              ))}
+              </div>
+              <Input
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://example.com/logo.svg"
+                className="mt-1 h-9"
+              />
+              <p className="font-sans text-[11px] text-sts-muted">PNG, JPG, GIF, WebP, or SVG · up to 5 MB.</p>
             </div>
+
+            <div className="flex flex-col gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
+              <label className="flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={hideLogo}
+                  onChange={(e) => {
+                    setHideLogo(e.target.checked)
+                    if (e.target.checked) setHideDisplayName(false)
+                  }}
+                  className="size-4 shrink-0 accent-sts-green"
+                />
+                <span className="font-sans text-[13px] text-sts-foreground">
+                  Hide logo <span className="text-sts-muted">— the display name fills the width.</span>
+                </span>
+              </label>
+              <label className="flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={hideDisplayName}
+                  onChange={(e) => {
+                    setHideDisplayName(e.target.checked)
+                    if (e.target.checked) setHideLogo(false)
+                  }}
+                  className="size-4 shrink-0 accent-sts-green"
+                />
+                <span className="font-sans text-[13px] text-sts-foreground">
+                  Hide display name <span className="text-sts-muted">— the logo fills the width.</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section className={cn(cardClass, "px-[22px] py-5")}>
+            <AccentColorField value={accentColor} onChange={setAccentColor} />
+          </section>
+        </div>
+
+        <section className={cn(cardClass, "px-[22px] py-5")}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Sidebar colours</h2>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
+                {activeColorSection.description} Cards and highlights are soft tints of the colour you pick.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isDefaultColors(activeColorSection.field)}
+              onClick={() =>
+                setSidebarColors((current) => ({
+                  ...current,
+                  [activeColorSection.field]: { ...activeColorSection.defaults },
+                }))
+              }
+            >
+              Reset
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-sts-card-border pt-4">
-            <label className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={hideLogo}
-                onChange={(e) => {
-                  setHideLogo(e.target.checked)
-                  if (e.target.checked) setHideDisplayName(false)
-                }}
-                className="size-4 shrink-0 accent-sts-green"
-              />
-              <span className="font-sans text-[13px] text-sts-foreground">
-                Hide logo{" "}
-                <span className="text-sts-muted">— the display name fills the width.</span>
-              </span>
-            </label>
-            <label className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={hideDisplayName}
-                onChange={(e) => {
-                  setHideDisplayName(e.target.checked)
-                  if (e.target.checked) setHideLogo(false)
-                }}
-                className="size-4 shrink-0 accent-sts-green"
-              />
-              <span className="font-sans text-[13px] text-sts-foreground">
-                Hide display name{" "}
-                <span className="text-sts-muted">— the logo fills the width.</span>
-              </span>
-            </label>
+          <div className="mt-4 flex flex-wrap gap-1 rounded-lg border border-sts-card-border bg-sts-surface p-1">
+            {SIDEBAR_COLOR_SECTIONS.map((sec) => {
+              const active = sec.field === activeColorSection.field
+              return (
+                <button
+                  key={sec.field}
+                  type="button"
+                  onClick={() => setColorSection(sec.field)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 font-sans text-[12.5px] transition-colors",
+                    active
+                      ? "bg-sts-card font-medium text-sts-foreground shadow-sm"
+                      : "text-sts-muted hover:text-sts-foreground",
+                  )}
+                >
+                  {sec.title}
+                </button>
+              )
+            })}
           </div>
 
-          <Button type="submit" size="lg" disabled={saving || !accentValid} className="w-fit">
+          <div className="mt-4">
+            <SidebarColorsEditor
+              key={activeColorSection.field}
+              groups={activeColorSection.groups}
+              value={sidebarColors[activeColorSection.field]}
+              onChange={(key, color) =>
+                setSidebarColors((current) => ({
+                  ...current,
+                  [activeColorSection.field]: { ...current[activeColorSection.field], [key]: color },
+                }))
+              }
+            />
+          </div>
+        </section>
+
+        <div className="flex justify-end">
+          <Button type="submit" size="lg" disabled={saving || !accentValid}>
             {saving ? "Saving…" : "Save branding"}
           </Button>
-        </form>
-      </section>
+        </div>
+      </form>
 
       {departments.length > 1 ? (
-        <div className="flex max-w-[920px] flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <label className="sts-text-label">Applies to</label>
           <Select value={scopeKey} onValueChange={(v) => setScopeKey(v ?? (departments[0] ? scopeKeyOf(departments[0]) : ""))}>
             <SelectTrigger className="h-9 w-full max-w-[320px] rounded-full border-sts-card-border bg-sts-bg font-sans text-[12.5px] text-sts-foreground">

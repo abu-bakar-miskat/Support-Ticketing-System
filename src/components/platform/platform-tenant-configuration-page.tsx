@@ -205,25 +205,40 @@ export function PlatformTenantConfigurationPage({
                     Suspending blocks all tenant access until reactivated.
                   </p>
                 </div>
-                <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-card p-0.5">
-                  {(["active", "suspended"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      disabled={statusBusy}
-                      onClick={() => setTenantStatus(s)}
-                      className={cn(
-                        "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium capitalize transition-colors disabled:opacity-50",
-                        selectedTenant?.status === s
-                          ? s === "suspended"
-                            ? "bg-destructive text-white"
-                            : "bg-sts-green text-white"
-                          : "text-sts-muted hover:text-sts-foreground",
-                      )}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                <div
+                  role="group"
+                  aria-label="Tenant status"
+                  className="flex h-8 items-center gap-0.5 rounded-full border border-sts-card-border bg-sts-card p-0.5"
+                >
+                  {(["active", "suspended"] as const).map((s) => {
+                    const selected = (selectedTenant?.status ?? "active") === s
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        disabled={statusBusy}
+                        aria-pressed={selected}
+                        onClick={() => setTenantStatus(s)}
+                        className={cn(
+                          "inline-flex h-full items-center gap-1.5 rounded-full px-3 font-sans text-[12px] font-medium capitalize transition-colors disabled:opacity-50",
+                          selected
+                            ? s === "suspended"
+                              ? "bg-destructive/15 text-destructive"
+                              : "bg-sts-green/15 text-sts-green"
+                            : "text-sts-muted hover:text-sts-foreground",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            s === "suspended" ? "bg-destructive" : "bg-sts-green",
+                            !selected && "opacity-40",
+                          )}
+                        />
+                        {s}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 

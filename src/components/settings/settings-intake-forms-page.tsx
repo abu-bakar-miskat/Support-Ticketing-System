@@ -63,6 +63,7 @@ import {
   type FormBranding,
   type FormBrandingDefaults,
 } from "@/lib/form-branding";
+import { deriveAccentPalette } from "@/lib/tenant-accent";
 import { Palette } from "lucide-react";
 import { Tip } from "@/components/ui/tooltip";
 
@@ -816,23 +817,46 @@ function FieldEditor({
     state.type === "select" ||
     state.type === "radio" ||
     state.type === "checkbox";
+  const advancedFilled = Boolean(
+    state.placeholder ||
+      state.helperText ||
+      state.visibleWhen ||
+      state.validation.minLength != null ||
+      state.validation.maxLength != null ||
+      state.validation.min != null ||
+      state.validation.max != null ||
+      state.validation.pattern,
+  );
+  const [showMore, setShowMore] = useState(advancedFilled);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-sts-id/30 bg-sts-card px-4 py-3.5 shadow-sm">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
-          Label
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+            Label
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <span className="font-sans text-[12px] text-sts-muted">Required</span>
+            <input
+              type="checkbox"
+              checked={state.isRequired}
+              onChange={(e) =>
+                setState((s) => ({ ...s, isRequired: e.target.checked }))
+              }
+              className="size-4 rounded accent-sts-blue"
+            />
+          </label>
+        </div>
         <input
           autoFocus
           value={state.label}
           onChange={(e) => setState((s) => ({ ...s, label: e.target.value }))}
           placeholder="e.g. Full name"
           onKeyDown={(e) => {
-            if (e.key === "Enter") onSave(state);
             if (e.key === "Escape") onCancel();
           }}
-          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+          className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
       </div>
 
@@ -869,233 +893,274 @@ function FieldEditor({
       </div>
 
       {hasOptions && (
-        <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
-            Options
-          </label>
+        <div className="flex flex-col gap-2">
+          <div>
+            <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+              Options
+            </label>
+            {state.type === "select" && (
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
+                Add a choice, then open it to nest sub-options under that choice.
+              </p>
+            )}
+          </div>
 
-          <div className="flex flex-col gap-1">
-            {state.options.map((opt, idx) => {
-              const children = state.childOptions[opt] ?? [];
-              const isOpen = expandedOption === opt;
-              const isEditingOpt = editingOption?.idx === idx;
-              return (
-                <div
-                  key={opt}
-                  className="rounded-lg border border-sts-card-border bg-sts-surface"
-                >
-                  <div className="flex items-center gap-2 px-2.5 py-1.5">
-                    {isEditingOpt ? (
-                      <>
-                        <input
-                          autoFocus
-                          value={editingOption.draft}
-                          onChange={(e) =>
-                            setEditingOption({
-                              ...editingOption,
-                              draft: e.target.value,
-                            })
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              confirmEditOption();
-                            }
-                            if (e.key === "Escape") setEditingOption(null);
-                          }}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
-                        />
-                        <Tip label="Save option">
-                          <button
-                            aria-label="Save option"
-                            type="button"
-                            onClick={confirmEditOption}
-                            className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                          >
-                            <Check className="size-3" />
-                          </button>
-                        </Tip>
-                        <Tip label="Cancel">
-                          <button
-                            aria-label="Cancel editing option"
-                            type="button"
-                            onClick={() => setEditingOption(null)}
-                            className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </Tip>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">
-                          {opt}
-                        </span>
-                        {state.type === "select" && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedOption(isOpen ? null : opt)
-                            }
-                            className={cn(
-                              "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
-                              isOpen
-                                ? "bg-sts-blue-tint text-sts-id"
-                                : "text-sts-subtle hover:text-sts-foreground",
-                            )}
-                          >
-                            <ChevronDown
-                              className={cn(
-                                "size-3 transition-transform",
-                                isOpen && "rotate-180",
-                              )}
-                            />
-                            {children.length > 0
-                              ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}`
-                              : "Sub-options"}
-                          </button>
-                        )}
-                        <Tip label="Edit option">
-                          <button
-                            aria-label="Edit option"
-                            type="button"
-                            onClick={() => setEditingOption({ idx, draft: opt })}
-                            className="text-sts-subtle hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3" />
-                          </button>
-                        </Tip>
-                        <Tip label="Remove option">
-                          <button
-                            aria-label="Remove option"
-                            type="button"
-                            onClick={() => removeOption(opt)}
-                            className="text-sts-subtle hover:text-sts-red"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </Tip>
-                      </>
+          {state.options.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {state.options.map((opt, idx) => {
+                const children = state.childOptions[opt] ?? [];
+                const isOpen = expandedOption === opt;
+                const isEditingOpt = editingOption?.idx === idx;
+                return (
+                  <div
+                    key={opt}
+                    className={cn(
+                      "overflow-hidden rounded-xl border bg-sts-card",
+                      isOpen ? "border-sts-id/40" : "border-sts-card-border",
                     )}
-                  </div>
+                  >
+                    <div className="flex items-center gap-2 px-2.5 py-2">
+                      {isEditingOpt ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={editingOption.draft}
+                            onChange={(e) =>
+                              setEditingOption({
+                                ...editingOption,
+                                draft: e.target.value,
+                              })
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                confirmEditOption();
+                              }
+                              if (e.key === "Escape") setEditingOption(null);
+                            }}
+                            className="h-8 min-w-0 flex-1 rounded-lg border border-sts-id bg-sts-surface px-2.5 font-sans text-[13px] text-sts-foreground outline-none"
+                          />
+                          <Tip label="Save option">
+                            <button
+                              aria-label="Save option"
+                              type="button"
+                              onClick={confirmEditOption}
+                              className="flex h-8 items-center justify-center rounded-full bg-sts-blue px-2.5 text-white"
+                            >
+                              <Check className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Cancel">
+                            <button
+                              aria-label="Cancel editing option"
+                              type="button"
+                              onClick={() => setEditingOption(null)}
+                              className="flex h-8 items-center justify-center rounded-full border border-sts-card-border px-2.5 text-sts-subtle hover:text-sts-foreground"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
+                        </>
+                      ) : (
+                        <>
+                          <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-sts-foreground">
+                            {opt}
+                          </span>
+                          {state.type === "select" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedOption(isOpen ? null : opt);
+                                setNewChild("");
+                                setEditingChild(null);
+                              }}
+                              className={cn(
+                                "flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 font-sans text-[11.5px] font-medium transition-colors",
+                                isOpen
+                                  ? "border-sts-id bg-sts-blue-tint text-sts-id"
+                                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
+                              )}
+                            >
+                              <ChevronDown
+                                className={cn(
+                                  "size-3.5 transition-transform",
+                                  isOpen && "rotate-180",
+                                )}
+                              />
+                              {children.length > 0
+                                ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}`
+                                : "Add sub-options"}
+                            </button>
+                          )}
+                          <Tip label="Edit option">
+                            <button
+                              aria-label="Edit option"
+                              type="button"
+                              onClick={() =>
+                                setEditingOption({ idx, draft: opt })
+                              }
+                              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Remove option">
+                            <button
+                              aria-label="Remove option"
+                              type="button"
+                              onClick={() => removeOption(opt)}
+                              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
+                        </>
+                      )}
+                    </div>
 
-                  {state.type === "select" && isOpen && (
-                    <div className="border-t border-sts-card-border px-2.5 py-2 flex flex-col gap-1.5">
-                      {children.length > 0 && (
-                        <div className="flex flex-col gap-1">
-                          {children.map((child, idx) => {
-                            const isEditingThis =
-                              editingChild?.parent === opt &&
-                              editingChild?.idx === idx;
-                            return isEditingThis ? (
-                              <div key={child} className="flex gap-1.5">
-                                <input
-                                  autoFocus
-                                  value={editingChild.draft}
-                                  onChange={(e) =>
-                                    setEditingChild({
-                                      ...editingChild,
-                                      draft: e.target.value,
-                                    })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      confirmEditChild();
-                                    }
-                                    if (e.key === "Escape")
-                                      setEditingChild(null);
-                                  }}
-                                  className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
-                                />
-                                <Tip label="Save sub-option">
-                                  <button
-                                    aria-label="Save sub-option"
-                                    type="button"
-                                    onClick={confirmEditChild}
-                                    className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                                  >
-                                    <Check className="size-2.5" />
-                                  </button>
-                                </Tip>
-                                <Tip label="Cancel">
-                                  <button
-                                    aria-label="Cancel editing sub-option"
-                                    type="button"
-                                    onClick={() => setEditingChild(null)}
-                                    className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                                  >
-                                    <X className="size-2.5" />
-                                  </button>
-                                </Tip>
-                              </div>
-                            ) : (
-                              <div
-                                key={child}
-                                className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1"
-                              >
-                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">
-                                  {child}
-                                </span>
-                                <Tip label="Edit sub-option">
-                                  <button
-                                    aria-label="Edit sub-option"
-                                    type="button"
-                                    onClick={() =>
+                    {state.type === "select" && !isOpen && children.length > 0 && (
+                      <div className="flex flex-wrap gap-1 border-t border-sts-card-border px-2.5 py-2">
+                        {children.map((child) => (
+                          <span
+                            key={child}
+                            className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11px] text-sts-muted"
+                          >
+                            {child}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {state.type === "select" && isOpen && (
+                      <div className="border-t border-sts-card-border bg-sts-surface/70 px-3 py-3">
+                        <p className="font-sans text-[11.5px] font-semibold text-sts-foreground">
+                          Sub-options for “{opt}”
+                        </p>
+                        <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
+                          These show after someone picks this choice.
+                        </p>
+
+                        {children.length > 0 ? (
+                          <div className="mt-2.5 flex flex-col gap-1.5">
+                            {children.map((child, childIdx) => {
+                              const isEditingThis =
+                                editingChild?.parent === opt &&
+                                editingChild?.idx === childIdx;
+                              return isEditingThis ? (
+                                <div key={child} className="flex gap-1.5">
+                                  <input
+                                    autoFocus
+                                    value={editingChild.draft}
+                                    onChange={(e) =>
                                       setEditingChild({
-                                        parent: opt,
-                                        idx,
-                                        draft: child,
+                                        ...editingChild,
+                                        draft: e.target.value,
                                       })
                                     }
-                                    className="text-sts-subtle hover:text-sts-foreground"
-                                  >
-                                    <Pencil className="size-2.5" />
-                                  </button>
-                                </Tip>
-                                <Tip label="Remove sub-option">
-                                  <button
-                                    aria-label="Remove sub-option"
-                                    type="button"
-                                    onClick={() => removeChild(opt, child)}
-                                    className="text-sts-subtle hover:text-sts-red"
-                                  >
-                                    <X className="size-2.5" />
-                                  </button>
-                                </Tip>
-                              </div>
-                            );
-                          })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        confirmEditChild();
+                                      }
+                                      if (e.key === "Escape")
+                                        setEditingChild(null);
+                                    }}
+                                    className="h-8 min-w-0 flex-1 rounded-lg border border-sts-id bg-sts-card px-2.5 font-sans text-[13px] text-sts-foreground outline-none"
+                                  />
+                                  <Tip label="Save sub-option">
+                                    <button
+                                      aria-label="Save sub-option"
+                                      type="button"
+                                      onClick={confirmEditChild}
+                                      className="flex h-8 items-center justify-center rounded-full bg-sts-blue px-2.5 text-white"
+                                    >
+                                      <Check className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                  <Tip label="Cancel">
+                                    <button
+                                      aria-label="Cancel editing sub-option"
+                                      type="button"
+                                      onClick={() => setEditingChild(null)}
+                                      className="flex h-8 items-center justify-center rounded-full border border-sts-card-border bg-sts-card px-2.5 text-sts-subtle hover:text-sts-foreground"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                </div>
+                              ) : (
+                                <div
+                                  key={child}
+                                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5 py-1.5"
+                                >
+                                  <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-sts-foreground">
+                                    {child}
+                                  </span>
+                                  <Tip label="Edit sub-option">
+                                    <button
+                                      aria-label="Edit sub-option"
+                                      type="button"
+                                      onClick={() =>
+                                        setEditingChild({
+                                          parent: opt,
+                                          idx: childIdx,
+                                          draft: child,
+                                        })
+                                      }
+                                      className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                                    >
+                                      <Pencil className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                  <Tip label="Remove sub-option">
+                                    <button
+                                      aria-label="Remove sub-option"
+                                      type="button"
+                                      onClick={() => removeChild(opt, child)}
+                                      className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="mt-2 font-sans text-[12px] text-sts-subtle">
+                            No sub-options yet.
+                          </p>
+                        )}
+
+                        <div className="mt-2.5 flex gap-1.5">
+                          <input
+                            value={newChild}
+                            onChange={(e) => setNewChild(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addChild(opt);
+                              }
+                            }}
+                            placeholder="Type a sub-option, then press Enter"
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addChild(opt)}
+                            className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
+                          >
+                            <Plus className="size-3.5" />
+                            Add
+                          </button>
                         </div>
-                      )}
-                      <div className="flex gap-1.5">
-                        <input
-                          value={newChild}
-                          onChange={(e) => setNewChild(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addChild(opt);
-                            }
-                          }}
-                          placeholder={`Add sub-option for "${opt}"…`}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-full border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
-                        >
-                          <Plus className="size-2.5" />
-                          Add
-                        </button>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex gap-1.5">
             <input
@@ -1107,21 +1172,61 @@ function FieldEditor({
                   addOption();
                 }
               }}
-              placeholder="Add option…"
-              className="h-7 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+              placeholder="Type an option, then press Enter"
+              className="h-9 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
             >
-              <Plus className="size-3" />
+              <Plus className="size-3.5" />
               Add
             </button>
           </div>
         </div>
       )}
 
+      <div className="rounded-lg border border-dashed border-sts-card-border bg-sts-surface/50 px-3 py-2.5">
+        <p className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Submitter preview
+        </p>
+        <p className="mt-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
+          {state.label.trim() || "Field label"}
+          {state.isRequired && <span className="ml-0.5 text-sts-red">*</span>}
+        </p>
+        {hasOptions ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {(state.options.length > 0 ? state.options : ["Option"]).slice(0, 4).map((opt) => (
+              <span
+                key={opt}
+                className="rounded-full border border-sts-card-border bg-sts-card px-2 py-0.5 font-sans text-[11px] text-sts-muted"
+              >
+                {opt}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-1.5 flex h-8 items-center rounded-lg border border-sts-card-border bg-sts-card px-2.5 font-sans text-[12px] text-sts-subtle">
+            {state.placeholder.trim() || "Answer"}
+          </div>
+        )}
+        {state.helperText.trim() && (
+          <p className="mt-1 font-sans text-[11px] text-sts-subtle">{state.helperText}</p>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowMore((open) => !open)}
+        className="flex items-center gap-1.5 self-start font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground"
+      >
+        <ChevronDown className={cn("size-3.5 transition-transform", showMore && "rotate-180")} />
+        {showMore ? "Hide extra options" : "Placeholder, help text, and rules"}
+      </button>
+
+      {showMore && (
+        <div className="flex flex-col gap-3">
       {/* Placeholder */}
       {hasPlaceholder && (
         <div className="flex flex-col gap-1">
@@ -1363,25 +1468,8 @@ function FieldEditor({
           </div>
         </div>
       )}
-
-      <label className="flex cursor-pointer items-center justify-between rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2">
-        <span className="flex flex-col">
-          <span className="font-sans text-[12px] font-medium text-sts-foreground">
-            Required field
-          </span>
-          <span className="font-sans text-[10.5px] text-sts-subtle">
-            Submitters must fill this in.
-          </span>
-        </span>
-        <input
-          type="checkbox"
-          checked={state.isRequired}
-          onChange={(e) =>
-            setState((s) => ({ ...s, isRequired: e.target.checked }))
-          }
-          className="size-4 rounded accent-sts-blue"
-        />
-      </label>
+        </div>
+      )}
 
       {error && <p className="font-sans text-[11.5px] text-sts-red">{error}</p>}
 
@@ -1443,6 +1531,8 @@ export function FieldBuilderModal({
   const visibleDefaultKeys = form.hasSlaPolicies
     ? DEFAULT_FIELD_KEYS
     : DEFAULT_FIELD_KEYS.filter((key) => key !== "issueType");
+  const editingField = fields.find((field) => field.id === editingId) ?? null;
+  const editorOpen = addingField || editingField != null;
 
   async function saveDefaults() {
     setSavingDefaults(true);
@@ -1594,8 +1684,14 @@ export function FieldBuilderModal({
         onClick={onClose}
       />
       <div
-        className="sts-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
-        style={{ height: "70vh", maxHeight: "70vh" }}
+        className="relative flex w-full max-w-5xl flex-col rounded-2xl border border-sts-card-border bg-[var(--sts-card-solid)] shadow-2xl"
+        style={{
+          height: "min(860px, 88vh)",
+          maxHeight: "88vh",
+          background: "var(--sts-card-solid)",
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+        }}
       >
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
@@ -1633,7 +1729,13 @@ export function FieldBuilderModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div
+          className={cn(
+            "grid min-h-0 flex-1",
+            editorOpen && "lg:grid-cols-[minmax(280px,0.9fr)_minmax(340px,1.1fr)]",
+          )}
+        >
+        <div className="overflow-y-auto px-6 py-4">
           {loadingFields ? (
             <div className="flex h-full flex-col items-center justify-center gap-2">
               <Loader2 className="size-5 animate-spin text-sts-muted" />
@@ -1776,42 +1878,6 @@ export function FieldBuilderModal({
               )}
 
               {fields.map((field) => {
-                if (editingId === field.id) {
-                  return (
-                    <FieldEditor
-                      key={field.id}
-                      initial={{
-                        label: field.label,
-                        type: field.type,
-                        isRequired: field.isRequired,
-                        options: field.options,
-                        childOptions: field.childOptions ?? {},
-                        placeholder: field.placeholder ?? "",
-                        helperText: field.helperText ?? "",
-                        validation: (field.validation as FieldValidation) ?? {},
-                        visibleWhen: field.visibleWhen?.fieldId
-                          ? {
-                              fieldId: field.visibleWhen.fieldId,
-                              equals:
-                                field.visibleWhen.equals ??
-                                field.visibleWhen.in?.[0] ??
-                                "",
-                            }
-                          : null,
-                      }}
-                      onSave={(state) => handleEdit(field.id, state)}
-                      onCancel={() => {
-                        setEditingId(null);
-                        setEditorError(null);
-                      }}
-                      saving={saving}
-                      error={editorError}
-                      siblingFields={fields
-                        .filter((f) => f.id !== field.id)
-                        .map((f) => ({ id: f.id, label: f.label }))}
-                    />
-                  );
-                }
                 return (
                   <div
                     key={field.id}
@@ -1833,8 +1899,14 @@ export function FieldBuilderModal({
                       dragId.current = null;
                       setDragOverId(null);
                     }}
+                    onClick={() => {
+                      setEditingId(field.id);
+                      setAddingField(false);
+                      setEditorError(null);
+                    }}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                      "group flex cursor-pointer items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                      editingId === field.id && "border-sts-id bg-sts-blue-tint/40",
                       dragOverId === field.id &&
                         "border-sts-id bg-sts-blue-tint",
                     )}
@@ -1865,7 +1937,8 @@ export function FieldBuilderModal({
                         <button
                           aria-label="Edit field"
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingId(field.id);
                             setAddingField(false);
                             setEditorError(null);
@@ -1879,7 +1952,10 @@ export function FieldBuilderModal({
                         <button
                           aria-label="Delete field"
                           type="button"
-                          onClick={() => setDeleteTarget(field)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(field);
+                          }}
                           className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
                         >
                           <Trash2 className="size-3" />
@@ -1890,34 +1966,76 @@ export function FieldBuilderModal({
                 );
               })}
 
-              {addingField && (
-                <FieldEditor
-                  initial={{
-                    label: "",
-                    type: "text",
-                    isRequired: false,
-                    options: [],
-                    childOptions: {},
-                    placeholder: "",
-                    helperText: "",
-                    validation: {},
-                    visibleWhen: null,
-                  }}
-                  onSave={handleAdd}
-                  onCancel={() => {
-                    setAddingField(false);
-                    setEditorError(null);
-                  }}
-                  saving={saving}
-                  error={editorError}
-                  siblingFields={fields.map((f) => ({
-                    id: f.id,
-                    label: f.label,
-                  }))}
-                />
-              )}
             </div>
           )}
+        </div>
+        {editorOpen && (
+          <div className="flex min-h-0 flex-col overflow-y-auto border-t border-sts-card-border px-5 py-4 lg:border-t-0 lg:border-l">
+            <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
+              {addingField ? "New field" : "Edit field"}
+            </p>
+            {addingField ? (
+              <FieldEditor
+                key="new"
+                initial={{
+                  label: "",
+                  type: "text",
+                  isRequired: false,
+                  options: [],
+                  childOptions: {},
+                  placeholder: "",
+                  helperText: "",
+                  validation: {},
+                  visibleWhen: null,
+                }}
+                onSave={handleAdd}
+                onCancel={() => {
+                  setAddingField(false);
+                  setEditorError(null);
+                }}
+                saving={saving}
+                error={editorError}
+                siblingFields={fields.map((f) => ({
+                  id: f.id,
+                  label: f.label,
+                }))}
+              />
+            ) : editingField ? (
+              <FieldEditor
+                key={editingField.id}
+                initial={{
+                  label: editingField.label,
+                  type: editingField.type,
+                  isRequired: editingField.isRequired,
+                  options: editingField.options,
+                  childOptions: editingField.childOptions ?? {},
+                  placeholder: editingField.placeholder ?? "",
+                  helperText: editingField.helperText ?? "",
+                  validation: (editingField.validation as FieldValidation) ?? {},
+                  visibleWhen: editingField.visibleWhen?.fieldId
+                    ? {
+                        fieldId: editingField.visibleWhen.fieldId,
+                        equals:
+                          editingField.visibleWhen.equals ??
+                          editingField.visibleWhen.in?.[0] ??
+                          "",
+                      }
+                    : null,
+                }}
+                onSave={(state) => handleEdit(editingField.id, state)}
+                onCancel={() => {
+                  setEditingId(null);
+                  setEditorError(null);
+                }}
+                saving={saving}
+                error={editorError}
+                siblingFields={fields
+                  .filter((f) => f.id !== editingField.id)
+                  .map((f) => ({ id: f.id, label: f.label }))}
+              />
+            ) : null}
+          </div>
+        )}
         </div>
       </div>
 
@@ -2023,13 +2141,13 @@ function FormDesignModal({
     (!accentColor.trim() || isHexColor(accentColor));
 
   const previewLogo = logoUrl.trim() || defaults.logoUrl;
-  const previewHeader = isHexColor(headerColor)
-    ? headerColor
-    : defaults.headerColor;
   const previewAccent = isHexColor(accentColor)
     ? accentColor
     : defaults.accentColor;
-  const previewBg = isHexColor(backgroundColor) ? backgroundColor : "#f8f8fc";
+  const previewPalette = deriveAccentPalette(previewAccent);
+  const previewBg = isHexColor(backgroundColor)
+    ? backgroundColor
+    : (previewPalette?.light.tint ?? "#f8f8fc");
 
   async function handleSave() {
     if (!colorsValid) {
@@ -2079,8 +2197,8 @@ function FormDesignModal({
           <div>
             <h2 className="sts-text-modal-title">Form design</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              Branding for the public “{form.name}” page. Empty fields fall back
-              to the department brand (Email settings → Branding).
+              Branding for the public “{form.name}” page. Empty fields use this
+              tenant’s logo and accent.
             </p>
           </div>
           <Tip label="Close">
@@ -2160,8 +2278,8 @@ function FormDesignModal({
                   />
                 </div>
                 <p className="font-sans text-[11px] text-sts-subtle">
-                  Upload an image or paste a public URL. Shown in a banner at
-                  the top of the form. Leave blank to use the workspace logo.
+                  Upload an image or paste a public URL. Leave blank to use this
+                  tenant’s logo.
                 </p>
               </div>
 
@@ -2239,26 +2357,33 @@ function FormDesignModal({
               className="w-full max-w-[560px] overflow-hidden rounded-xl border border-sts-card-border"
               style={{ background: previewBg }}
             >
-              <div className="px-6 py-5" style={{ background: previewHeader }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewLogo}
-                  alt="Logo preview"
-                  className="h-10 w-auto"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.visibility =
-                      "hidden";
-                  }}
-                />
-              </div>
-              <div className="px-6 py-6">
-                <p className="font-sans text-[12px] font-semibold uppercase tracking-wide text-gray-500">
+              <div className="flex items-center gap-3 px-6 pt-6">
+                {previewLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewLogo}
+                    alt="Logo preview"
+                    className="size-12 shrink-0 rounded-2xl bg-white object-contain p-1 shadow-sm"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility =
+                        "hidden";
+                    }}
+                  />
+                ) : null}
+                <div>
+                <p
+                  className="font-sans text-[12px] font-semibold uppercase tracking-wide"
+                  style={{ color: previewAccent }}
+                >
                   {form.departmentName}
                 </p>
-                <h3 className="mt-1.5 font-sans text-[22px] font-semibold text-gray-900">
+                <h3 className="mt-1 font-sans text-[22px] font-semibold text-gray-900">
                   {form.name}
                 </h3>
-                <p className="mt-1.5 font-sans text-[14px] text-gray-500">
+                </div>
+              </div>
+              <div className="px-6 py-6">
+                <p className="font-sans text-[14px] text-gray-500">
                   {introText.trim() ||
                     "Fill in the details below and we'll get back to you as soon as possible."}
                 </p>

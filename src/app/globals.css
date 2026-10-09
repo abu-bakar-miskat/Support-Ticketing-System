@@ -1076,9 +1076,11 @@ html.dark .sts-nav-active:hover {
     .sts-overlay-backdrop > .bg-sts-card,
     .sts-overlay-backdrop + .bg-sts-card
   ) {
-    background: var(--sts-card-solid);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    /* !important: .sts-glass-panel sets a translucent background from
+       @layer utilities, which otherwise beats this components-layer rule. */
+    background: var(--sts-card-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     box-shadow: 0 24px 48px -12px rgba(6, 71, 111, 0.22);
   }
 

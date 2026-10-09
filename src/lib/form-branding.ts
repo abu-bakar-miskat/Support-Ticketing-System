@@ -27,6 +27,31 @@ export type FormBrandingDefaults = {
   accentColor: string;
 };
 
+/**
+ * Defaults for a public form that has not set its own design.
+ * The tenant's logo and accent win over the platform email brand, so a
+ * customer sees that organisation rather than the product wordmark.
+ */
+export function publicFormBrandDefaults(input: {
+  tenantLogoUrl?: string | null;
+  tenantHideLogo?: boolean;
+  tenantAccent?: string | null;
+  emailLogoUrl: string;
+  emailHeaderColor: string;
+  emailAccent: string;
+}): FormBrandingDefaults {
+  const accent = input.tenantAccent?.trim() || input.emailAccent;
+  const tenantLogo =
+    !input.tenantHideLogo && input.tenantLogoUrl?.trim()
+      ? input.tenantLogoUrl.trim()
+      : "";
+  return {
+    logoUrl: tenantLogo || (input.tenantHideLogo ? "" : input.emailLogoUrl),
+    headerColor: input.tenantAccent?.trim() || input.emailHeaderColor,
+    accentColor: accent,
+  };
+}
+
 /** Fully-resolved branding used to render the public page. */
 export type ResolvedFormBranding = {
   logoUrl: string | null;

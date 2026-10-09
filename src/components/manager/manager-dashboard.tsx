@@ -244,7 +244,7 @@ export function ManagerDashboard({
             </div>
             <p className="mt-1.5 max-w-[68ch] font-sans text-[13px] leading-relaxed text-sts-muted">{digest}</p>
           </div>
-          <DualClock className="shrink-0 justify-end" />
+          <DualClock hideBangladesh className="shrink-0 justify-end" />
         </div>
 
         <DepartmentPulse

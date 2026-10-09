@@ -260,36 +260,35 @@
 
   html.dark,
   html[data-theme="dark"] {
-    /* AMOLED dark theme: true-black page with near-black panels. Neutrals carry
-       a faint warm tint (hue ~60) so they sit with the orange brand instead of
-       fighting it the way cool navy slate did. */
-    --sts-card-solid: #0e0d0c;
-    --sts-bg: #000000;
-    --sts-bg-tint: rgba(255, 255, 255, 0.02);
+    /* Warm charcoal, not pure black. The canvas is lifted, but type stays
+       bright enough to read: near-white body, light gray secondary text. */
+    --sts-card-solid: #1c1b19;
+    --sts-bg: #141311;
+    --sts-bg-tint: rgba(255, 255, 255, 0.03);
     --sts-glass-blur: 16px;
-    --sts-glass-saturate: 1.2;
+    --sts-glass-saturate: 1.15;
     --sts-glass-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 6px 24px rgba(0, 0, 0, 0.6);
+      0 8px 24px rgba(0, 0, 0, 0.28);
     --sts-glass-highlight: rgba(255, 255, 255, 0.06);
-    --sts-card: rgba(14, 13, 12, 0.9);
-    --sts-card-border: #272523;
-    --sts-foreground: #f5f3f0;
-    --sts-muted: #b0aaa3;
-    --sts-subtle: #8f8981;
+    --sts-card: rgba(28, 27, 25, 0.94);
+    --sts-card-border: #322f2c;
+    --sts-foreground: #f7f5f2;
+    --sts-muted: #c9c3bb;
+    --sts-subtle: #aea89f;
     --sts-button: #f84201;
     --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #161514;
-    --sts-secondary-fg: #f5f3f0;
+    --sts-secondary-bg: #221f1d;
+    --sts-secondary-fg: #f7f5f2;
     --sts-accent: #f84201;
     --sts-card-shadow: none;
     /* Action / semantic tokens — dark overrides */
     --sts-blue: #f84201;
     --sts-blue-fg: #ffffff;
     --sts-blue-tint: rgba(248, 66, 1, 0.16);
-    --sts-surface: #1a1917;
-    --sts-settings-subnav: #080808;
-    --sts-settings-subnav-active: #161514;
+    --sts-surface: #262421;
+    --sts-settings-subnav: #181716;
+    --sts-settings-subnav-active: #242220;
 
     --sts-id: #ff8a5c;
     --sts-red: #f87171;
@@ -298,45 +297,47 @@
     --sts-green-tint: rgba(74, 222, 128, 0.14);
     --sts-purple: #a78bfa;
     --sts-purple-tint: rgba(167, 139, 250, 0.14);
-    /* On pure black a bright, rainbow aurora reads as neon — keep it deep and
-       top-only: lower strength, no saturation boost, no bottom glow, and the
-       hue-shifted neighbours darkened/desaturated (see @supports below). */
-    --sts-aurora-strength: 24%;
+    /* A quiet warm wash, not a neon aurora. */
+    --sts-aurora-strength: 12%;
     --sts-aurora-bottom: 0;
-    --sts-aurora-filter: blur(56px);
-    /* AMOLED: the page is pure black (no ambient wash) so OLED pixels switch
-       off; panels lift off it with near-black surfaces and hairline borders. */
-    --sts-bg-gradient: var(--sts-bg);
-    --background: oklch(0 0 0);
+    --sts-aurora-filter: blur(72px);
+    --sts-bg-gradient:
+      radial-gradient(
+        90% 55% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 7%, transparent) 0%,
+        transparent 58%
+      ),
+      var(--sts-bg);
+    --background: oklch(0.18 0.004 60);
     --foreground: oklch(0.97 0.004 60);
-    --card: oklch(0.15 0.002 60);
+    --card: oklch(0.22 0.004 60);
     --card-foreground: oklch(0.97 0.004 60);
-    --popover: oklch(0.17 0.003 60);
+    --popover: oklch(0.23 0.004 60);
     --popover-foreground: oklch(0.97 0.004 60);
     --primary: oklch(0.646 0.225 35.2);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.21 0.003 60);
+    --secondary: oklch(0.24 0.004 60);
     --secondary-foreground: oklch(0.97 0.004 60);
-    --muted: oklch(0.21 0.003 60);
-    --muted-foreground: oklch(0.74 0.008 60);
-    --accent: oklch(0.21 0.003 60);
+    --muted: oklch(0.24 0.004 60);
+    --muted-foreground: oklch(0.82 0.008 60);
+    --accent: oklch(0.24 0.004 60);
     --accent-foreground: oklch(0.97 0.004 60);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(0.26 0.004 60);
-    --input: oklch(0.3 0.005 60);
+    --border: oklch(0.3 0.005 60);
+    --input: oklch(0.32 0.005 60);
     --ring: oklch(0.646 0.225 35.2);
     --chart-1: oklch(0.646 0.225 35.2);
     --chart-2: oklch(0.7 0.15 220);
     --chart-3: oklch(0.75 0.13 190);
     --chart-4: oklch(0.72 0.15 160);
     --chart-5: oklch(0.68 0.19 25);
-    --sidebar: oklch(0 0 0);
+    --sidebar: oklch(0.16 0.004 60);
     --sidebar-foreground: oklch(0.97 0.004 60);
     --sidebar-primary: oklch(0.646 0.225 35.2);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.21 0.003 60);
+    --sidebar-accent: oklch(0.24 0.004 60);
     --sidebar-accent-foreground: oklch(0.97 0.004 60);
-    --sidebar-border: oklch(0.26 0.004 60);
+    --sidebar-border: oklch(0.3 0.005 60);
     --sidebar-ring: oklch(0.646 0.225 35.2);
   }
 

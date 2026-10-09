@@ -72,8 +72,6 @@ import {
   matchesPriorityFilter,
   matchesDateFilter,
   matchesDueRange,
-  matchesTargetDateFilter,
-  matchesTargetDateRange,
   matchesIntakeFilter,
   matchesProjectFilter,
   matchesLabelFilter,
@@ -714,10 +712,6 @@ export function BoardPage({
     setStatusFilter,
     dueRange,
     setDueRange,
-    targetDateFilter,
-    setTargetDateFilter,
-    targetRange,
-    setTargetRange,
     sortKey,
     setSortKey,
     clearFilters,
@@ -1018,7 +1012,6 @@ export function BoardPage({
         modules.length > 0 ? { id: "module", label: "Module" } : null,
         { id: "priority", label: "Priority" },
         { id: "dueDate", label: "Due date" },
-        { id: "targetDate", label: "Target date" },
         { id: "intake", label: "Intake source" },
         { id: "status", label: "Status" },
         { id: "labels", label: "Labels" },
@@ -1067,8 +1060,6 @@ export function BoardPage({
         matchesPriorityFilter(c, priorityFilter) &&
         matchesDateFilter(c, dateFilter) &&
         matchesDueRange(c, dueRange) &&
-        matchesTargetDateFilter(c, targetDateFilter) &&
-        matchesTargetDateRange(c, targetRange) &&
         matchesIntakeFilter(c, intakeFilter) &&
         matchesLabelFilter(c, labelFilter) &&
         matchesStatusFilter(c, statusFilter)
@@ -1084,8 +1075,6 @@ export function BoardPage({
     priorityFilter,
     dateFilter,
     dueRange,
-    targetDateFilter,
-    targetRange,
     intakeFilter,
     labelFilter,
     statusFilter,
@@ -1102,8 +1091,6 @@ export function BoardPage({
     priorityFilter !== "all" ||
     dateFilter !== "all" ||
     dueRange !== null ||
-    targetDateFilter !== "all" ||
-    targetRange !== null ||
     intakeFilter !== "all" ||
     labelFilter.length > 0 ||
     statusFilter.length > 0;
@@ -1203,10 +1190,6 @@ export function BoardPage({
                 onDateFilterChange={setDateFilter}
                 dueRange={dueRange}
                 onDueRangeChange={setDueRange}
-                targetDateFilter={targetDateFilter}
-                onTargetDateFilterChange={setTargetDateFilter}
-                targetRange={targetRange}
-                onTargetRangeChange={setTargetRange}
                 intakeFilter={intakeFilter}
                 onIntakeFilterChange={setIntakeFilter}
                 labelFilter={labelFilter}

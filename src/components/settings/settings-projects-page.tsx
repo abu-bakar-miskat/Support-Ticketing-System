@@ -23,9 +23,12 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteAdminProject } from "@/lib/api/admin";
 import { ProjectModal, type ProjectRow, type ModalMode } from "@/components/projects/project-modal";
 import { ProjectAvatar } from "@/components/projects/project-avatar";
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 type DepartmentOption = { id: string; name: string };
+
+/** Settings rows carry the creation date (ISO) for the Newest / Oldest sorts. */
+export type SettingsProjectRow = ProjectRow & { createdAt: string };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -60,7 +63,7 @@ export function SettingsProjectsPage({
   isAdmin,
   canDeleteProjects = false,
 }: {
-  projects: ProjectRow[];
+  projects: SettingsProjectRow[];
   departments: DepartmentOption[];
   lockedDepartment?: { id: string; name: string } | null;
   isAdmin: boolean;
@@ -76,6 +79,8 @@ export function SettingsProjectsPage({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((p: ProjectRow) => p.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((p: ProjectRow) => p.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((p: SettingsProjectRow) => p.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((p: SettingsProjectRow) => p.createdAt) },
       { id: "department", label: "Department", compare: byText((p: ProjectRow) => p.departmentName ?? "\uffff") },
       { id: "open", label: "Most open tickets", compare: byNumberDesc((p: ProjectRow) => p.openCount) },
       { id: "members", label: "Most members", compare: byNumberDesc((p: ProjectRow) => p.members.length) },

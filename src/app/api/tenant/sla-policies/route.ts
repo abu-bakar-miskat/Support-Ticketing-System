@@ -52,7 +52,7 @@ export async function GET() {
   const policies = await prisma.slaPolicy.findMany({
     where: { tenantId, departmentId: null },
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-    select: TENANT_POLICY_SELECT,
+    select: { ...TENANT_POLICY_SELECT, createdAt: true },
   })
   return NextResponse.json(policies)
 }
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       order: nextOrder,
       priority: priority as TicketPriority | null,
     },
-    select: TENANT_POLICY_SELECT,
+    select: { ...TENANT_POLICY_SELECT, createdAt: true },
   })
 
   // NFR-09/DAT-05 (slice 20): SLA policy changes are audited.

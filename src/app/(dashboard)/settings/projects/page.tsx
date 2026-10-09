@@ -6,8 +6,8 @@ import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import {
   SettingsProjectsPage,
+  type SettingsProjectRow,
 } from "@/components/settings/settings-projects-page";
-import { type ProjectRow } from "@/components/projects/project-modal";
 import { canDeleteProjects } from "@/lib/project-permissions";
 import { avatarColorFor } from "@/lib/avatar";
 
@@ -71,7 +71,7 @@ export default async function SettingsProjectsRoute() {
     ? (departments.find((d) => d.id === activeDeptId) ?? null)
     : null;
 
-  const rows: ProjectRow[] = projects.map((p) => ({
+  const rows: SettingsProjectRow[] = projects.map((p) => ({
     id: p.id,
     name: p.name,
     color: p.color ?? "#0a76b9",
@@ -84,6 +84,7 @@ export default async function SettingsProjectsRoute() {
     openCount: p._count.tickets,
     departmentId: p.department?.id ?? null,
     departmentName: p.department?.name ?? null,
+    createdAt: p.createdAt.toISOString(),
     members: p.members.map((m) => ({
       id: m.user.id,
       name: m.user.name,

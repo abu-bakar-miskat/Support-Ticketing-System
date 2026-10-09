@@ -72,6 +72,7 @@ export default async function SettingsApiKeysRoute() {
     scope: SCOPE_LABELS[key.scope],
     department: key.department?.name ?? (isAdmin ? "Global" : "—"),
     created: formatRelative(key.createdAt),
+    createdAt: key.createdAt.toISOString(),
     createdBy: key.createdBy.name,
     lastUsed: formatRelative(key.lastUsedAt),
     revoked: key.revokedAt !== null,

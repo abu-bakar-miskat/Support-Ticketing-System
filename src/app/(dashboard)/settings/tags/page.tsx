@@ -27,7 +27,7 @@ export default async function SettingsTagsRoute() {
     prisma.label.findMany({
       where: { departmentId: deptScope?.activeDeptId ?? null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, color: true },
+      select: { id: true, name: true, color: true, createdAt: true },
     }),
     prisma.ticket.findMany({
       where: {
@@ -50,6 +50,7 @@ export default async function SettingsTagsRoute() {
     name: l.name,
     color: l.color,
     count: counts.get(l.name) ?? 0,
+    createdAt: l.createdAt.toISOString(),
   }));
 
   return <SettingsTagsPage labels={labels} />;

@@ -52,6 +52,8 @@ export type MemberRow = {
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
   departments?: { id: string; name: string }[];
   memberships?: { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[];
+  /** ISO date the person's profile was created — drives the Newest / Oldest sorts. */
+  createdAt?: string | null;
 };
 
 export type InviteRow = {
@@ -757,6 +759,8 @@ export function SettingsMembersPage({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((m: MemberRow) => m.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberRow) => m.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m: MemberRow) => m.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m: MemberRow) => m.createdAt) },
       { id: "email", label: "Email", compare: byText((m: MemberRow) => m.email) },
       {
         id: "role",

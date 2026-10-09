@@ -2456,6 +2456,8 @@ type IssueRow = {
   priority: string | null;
   firstResponseMins: number;
   resolutionMins: number;
+  /** ISO creation date — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 export type IssueDepartmentOption = {
@@ -2673,6 +2675,8 @@ export function IssuesModal({
     sortOptions: [
       { id: "added", label: "Order added", compare: () => 0 },
       { id: "name", label: "Name (A–Z)", compare: byText((i) => i.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((i: IssueRow) => i.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((i: IssueRow) => i.createdAt) },
       {
         id: "priority",
         label: "Priority",

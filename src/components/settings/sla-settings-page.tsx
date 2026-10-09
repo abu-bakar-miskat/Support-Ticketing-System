@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
 import { Tip } from "@/components/ui/tooltip";
-import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
@@ -30,6 +30,8 @@ type SlaPolicy = {
   formConfigId: string | null;
   subDepartmentId: string | null;
   priority: Priority | null;
+  /** ISO timestamp — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 type SubDepartmentOption = { id: string; name: string };
@@ -309,6 +311,8 @@ export function SlaSettingsPage({
     sortOptions: [
       { id: "default", label: "Default order", compare: (a, b) => a.order - b.order },
       { id: "name", label: "Name A–Z", compare: byText((p: SlaPolicy) => p.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((p: SlaPolicy) => p.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((p: SlaPolicy) => p.createdAt) },
       { id: "priority", label: "Highest priority", compare: (a, b) => priorityRank(b.priority) - priorityRank(a.priority) },
       { id: "first-response", label: "Fastest first response", compare: (a, b) => a.firstResponseMins - b.firstResponseMins },
       { id: "resolution", label: "Fastest resolution", compare: (a, b) => a.resolutionMins - b.resolutionMins },

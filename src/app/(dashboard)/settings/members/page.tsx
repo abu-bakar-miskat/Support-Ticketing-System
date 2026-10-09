@@ -308,7 +308,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       include: {
         user: {
           select: {
-            id: true, name: true, email: true, avatarUrl: true, role: true,
+            id: true, name: true, email: true, avatarUrl: true, role: true, createdAt: true,
             subDepartment: { select: { name: true, department: { select: { id: true, name: true } } } },
           },
         },
@@ -331,6 +331,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       // target the "revoke access" action, distinct from `department` (their home dept, shown above).
       departmentId: activeDeptId,
       isCrossAccess: true,
+      createdAt: g.user.createdAt.toISOString(),
     }));
   }
 
@@ -447,7 +448,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
     .filter((inv) => inv.status === "pending");
 
   const members: MemberRow[] = [
-    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null; isSuperAdmin?: boolean | null }) => {
+    ...profiles.map((p: { id: string; name: string; email: string; avatarUrl?: string | null; role: string; subDepartmentId?: string | null; location?: string | null; timezone?: string | null; isActive?: boolean | null; isSuperAdmin?: boolean | null; createdAt?: Date | null }) => {
       // Effective role from the canonical grants (see scopeRowsByUser note above).
       // A super admin administers the active tenant as a tenant admin (mirrors the
       // synthetic grant in getProfile), so surface them as "admin" here too.
@@ -475,6 +476,7 @@ export async function MembersPageView({ forceTenantWide = false }: { forceTenant
       subDepartmentMemberships: doNotAssignMap.get(p.id) ?? [],
       departments: departmentsByUser.get(p.id) ?? [],
       memberships: membershipsByUser.get(p.id) ?? [],
+      createdAt: p.createdAt?.toISOString() ?? null,
       };
     }),
     ...crossAccessRows,

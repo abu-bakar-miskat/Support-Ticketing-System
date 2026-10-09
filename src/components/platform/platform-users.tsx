@@ -14,7 +14,7 @@ import {
 } from "@/components/platform/platform-invite-member-dialog";
 import { UserAuditModal } from "@/components/platform/user-audit-modal";
 import { cn } from "@/lib/utils";
-import { SortDropdown, byText, byNumberDesc } from "@/components/ui/list-controls";
+import { SortDropdown, byText, byNumberDesc, byDateAsc, byDateDesc } from "@/components/ui/list-controls";
 
 type DeptInfo = { id: string; name: string; isManager: boolean; subDepartments: string[] };
 type UserRow = {
@@ -24,6 +24,7 @@ type UserRow = {
   avatarUrl: string | null;
   role?: string;
   isSuperAdmin?: boolean;
+  createdAt?: string;
   tenants?: string[];
   adminTenants?: string[];
   departments?: DeptInfo[];
@@ -52,6 +53,8 @@ const userName = (u: UserRow) => u.name || u.email;
 const USER_SORT_OPTIONS: { id: string; label: string; compare: (a: UserRow, b: UserRow) => number }[] = [
   { id: "name", label: "Name (A–Z)", compare: byText(userName) },
   { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText(userName)(b, a) },
+  { id: "newest", label: "Newest first", compare: byDateDesc((u) => u.createdAt) },
+  { id: "oldest", label: "Oldest first", compare: byDateAsc((u) => u.createdAt) },
   { id: "email", label: "Email", compare: byText((u) => u.email) },
   { id: "departments", label: "Most departments", compare: byNumberDesc((u) => u.departments?.length ?? 0) },
   { id: "tenants", label: "Most tenants", compare: byNumberDesc((u) => u.tenants?.length ?? 0) },

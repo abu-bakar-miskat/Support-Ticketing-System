@@ -13,6 +13,8 @@ export type TenantTypeRow = {
   label: string;
   description: string | null;
   tenants: number;
+  /** ISO timestamp — used to sort the catalogue by age. */
+  createdAt?: string;
 };
 
 function slugify(value: string): string {

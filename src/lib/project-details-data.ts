@@ -430,6 +430,7 @@ export async function getProjectDetailsData(
       avatarUrl: pm.user.avatarUrl ?? null,
       departmentName: person?.departmentName ?? null,
       subDepartmentName,
+      addedAt: pm.addedAt.toISOString(),
     };
   });
 

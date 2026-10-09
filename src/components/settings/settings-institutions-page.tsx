@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type InstitutionStatus = "live" | "onboarding";
 
@@ -22,6 +22,8 @@ export type InstitutionRow = {
   domain: string;
   students: string;
   status: InstitutionStatus;
+  /** ISO creation date — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 const STATUS_LABEL: Record<InstitutionStatus, string> = {
@@ -90,6 +92,8 @@ export function SettingsInstitutionsPage({
     sortOptions: [
       { id: "name", label: "Name A–Z", compare: byText((i: InstitutionRow) => i.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((i: InstitutionRow) => i.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((i: InstitutionRow) => i.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((i: InstitutionRow) => i.createdAt) },
       { id: "students", label: "Most students", compare: byNumberDesc((i: InstitutionRow) => studentCount(i.students)) },
       { id: "status", label: "Status", compare: byText((i: InstitutionRow) => STATUS_LABEL[i.status]) },
     ],

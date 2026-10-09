@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { Tip } from "@/components/ui/tooltip"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { PortalSubmissionsModal } from "@/components/departments/portal-submissions-modal"
-import { ListSearchInput, SortDropdown, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls"
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls"
 
 export type PortalApiFormRow = {
   apiKeyId: string
@@ -31,6 +31,8 @@ export type PortalApiConnectionRow = {
   department: string
   lastUsed: string
   revoked: boolean
+  /** Raw ISO creation date — drives the Newest / Oldest sorts. */
+  createdAt?: string
 }
 
 export function PortalApiFormsSection({
@@ -69,8 +71,19 @@ export function PortalApiFormsSection({
       return `${k.name} ${k.maskedKey} ${k.department} ${linked?.form.name ?? ""} ${linked?.form.departmentName ?? ""}`
     },
     sortOptions: [
-      // Server order: newest first, revoked last.
-      { id: "newest", label: "Newest first", compare: () => 0 },
+      // Newest / Oldest keep revoked connections last, matching the server's default order.
+      {
+        id: "newest",
+        label: "Newest first",
+        compare: (a, b) =>
+          Number(a.revoked) - Number(b.revoked) || byDateDesc((k: PortalApiConnectionRow) => k.createdAt)(a, b),
+      },
+      {
+        id: "oldest",
+        label: "Oldest first",
+        compare: (a, b) =>
+          Number(a.revoked) - Number(b.revoked) || byDateAsc((k: PortalApiConnectionRow) => k.createdAt)(a, b),
+      },
       { id: "name", label: "Name A–Z", compare: byText((k: PortalApiConnectionRow) => k.name) },
       { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((k: PortalApiConnectionRow) => k.name)(b, a) },
       { id: "department", label: "Department", compare: byText((k: PortalApiConnectionRow) => k.department) },

@@ -665,7 +665,7 @@ export function AllTasksPage({
               {allTasks.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showBulkSelect ? 10 : 9}
+                    colSpan={showBulkSelect ? 9 : 8}
                     className="py-20 text-center font-sans text-[13px] text-sts-subtle"
                   >
                     {unassignedOnly

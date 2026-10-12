@@ -72,7 +72,7 @@ import { ProjectAvatar, ProjectDot } from "@/components/projects/project-avatar"
 import type { AssignedSubtask } from "@/lib/board-data";
 import type { TasksMetaResponse } from "@/lib/api/tasks";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
-import { CardModuleSegment, ModuleCell } from "@/components/board/module-label";
+import { CardModuleSegment } from "@/components/board/module-label";
 import {
   LIST_TD,
   ListCreatedCell,
@@ -87,7 +87,6 @@ import {
   COL_ASSIGNEE,
   COL_CREATED,
   COL_CREATOR,
-  COL_MODULE,
   COL_PROJECT,
   COL_STATUS,
   COL_TIME,
@@ -601,9 +600,6 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
             <span className="min-w-0 truncate whitespace-nowrap font-sans text-[11.5px] text-sts-muted">{task.project}</span>
           </div>
         </td>
-        <td className={cn(COL_MODULE, "overflow-hidden", LIST_TD)}>
-          <ModuleCell moduleName={task.moduleName} />
-        </td>
         <td className={cn(COL_TIME, "overflow-hidden", LIST_TD)}>
           <TaskTimeCell
             ticketDbId={task.dbId}
@@ -655,7 +651,6 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
               )}
             </td>
             <td className={cn(COL_PROJECT, "py-2")} />
-            <td className={cn(COL_MODULE, "py-2")} />
             <td className={cn(COL_TIME, "py-2")} />
             <td className={cn(COL_CREATED, "py-2")} />
             <td className="py-2 pr-4" />
@@ -736,7 +731,6 @@ function SubtaskListRow({ task, colorMap, statuses }: { task: AssignedSubtask; c
           <span className="min-w-0 truncate font-sans text-[11.5px] text-sts-muted max-w-[110px]">{task.project}</span>
         </div>
       </td>
-      <td className={cn(COL_MODULE, "py-2.5")} />
       <td className={cn(COL_TIME, "py-2.5")} />
       <td className={cn(COL_CREATED, "py-2.5")} />
       <td className={cn("pr-4", LIST_TD)}>
@@ -1419,7 +1413,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               <tbody>
                 {pagedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10}>
+                    <td colSpan={9}>
                       {activeExtraFilters > 0 ? (
                         <EmptyState
                           icon={ListTodo}

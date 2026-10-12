@@ -25,8 +25,7 @@ import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { toastError } from "@/lib/toast-error";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
 import { useTenantHref } from "@/hooks/use-tenant-href";
-import { ModuleCell } from "@/components/board/module-label";
-import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_MODULE, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
+import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
 
 function truncateTitle(title: string, maxWords = 6): string {
   const words = title.trim().split(/\s+/);
@@ -237,9 +236,6 @@ export function TaskListRow({
             </span>
           </div>
         </td>
-        <td className={cn(COL_MODULE, "overflow-hidden py-2.5")}>
-          <ModuleCell moduleName={task.moduleName} />
-        </td>
         <td className={cn(COL_TIME, "overflow-hidden py-2.5")}>
           <TaskTimeCell
             ticketDbId={task.dbId}
@@ -322,7 +318,6 @@ export function TaskListRow({
                 )}
               </td>
               <td className={cn(COL_PROJECT, "py-2")} />
-              <td className={cn(COL_MODULE, "py-2")} />
               <td className={cn(COL_TIME, "py-2")} />
               <td className={cn(COL_CREATED, "py-2")} />
               <td className="py-2 pr-4" />
@@ -371,7 +366,7 @@ export function TaskListTable({
           {tasks.length === 0 ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={8}
                 className="py-20 text-center font-sans text-[13px] text-sts-subtle"
               >
                 {emptyMessage}
